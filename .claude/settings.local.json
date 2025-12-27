@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree /F /A)",
+      "Bash(dir /S /B)",
+      "Bash(bun install)",
+      "Bash(bun run dev)",
+      "Bash(bun run test)"
+    ]
+  }
+}
