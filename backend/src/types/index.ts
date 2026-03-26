@@ -110,3 +110,22 @@ export interface MvpProcessResponse {
   step2_matching: MatchAnalysis
   step3_optimized_resume: string
 }
+
+export type SourceResumeSourceType = 'manual' | 'file'
+
+export interface SourceResumeRecord {
+  id: string
+  title: string
+  resume_markdown: string
+  source_type: SourceResumeSourceType
+  original_file_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SaveSourceResumeInput {
+  title: string
+  resume_markdown: string
+  source_type: SourceResumeSourceType
+  original_file_name?: string | null
+}
