@@ -17,6 +17,7 @@ Reffo 是一个基于 AI Agent 架构的智能简历优化工具，核心功能�
 - **AI SDK**: OpenAI SDK (兼容 DeepSeek API)
 - **语言**: TypeScript 5.0+
 - **API 文档**: Swagger (自动生成)
+- **包管理**: bun
 
 ### 前端 (frontend/)
 
@@ -24,6 +25,7 @@ Reffo 是一个基于 AI Agent 架构的智能简历优化工具，核心功能�
 - **构建工具**: Vite 5.0+
 - **语言**: TypeScript 5.0+
 - **样式**: CSS
+- **包管理**: node 22
 
 ## 核心架构
 
@@ -32,13 +34,11 @@ Reffo 是一个基于 AI Agent 架构的智能简历优化工具，核心功能�
 项目采用三个独立的 AI Agent 串联完成简历优化流程：
 
 1. **Resume Analyzer Agent** (`backend/src/agents/resume-analyzer.ts`)
-
    - 分析 Markdown 格式简历
    - 提取结构化信息
    - 评估质量并提供优化建议
 
 2. **Matching Agent** (`backend/src/agents/matching-agent.ts`)
-
    - 解析 JD 要求
    - 分析简历与 JD 的匹配度
    - 识别优势和劣势

@@ -1665,3 +1665,508 @@ true && error
   - 就沿这个方向继续压尾部长帧与收尾刷新
 - release 起步仍然明显卡
   - 下一轮就继续回退这条实验分支，改做 threshold armed / 预热切牌状态
+
+
+## 35. 2026-03-09 首页滑卡第十七轮：尾部 residual settle，减少 commitIndex 后的栈瞬时归位
+
+本轮背景：
+
+- 用户确认当前 release 起步“确实更顺了”
+- 下一步重点转向尾部长帧 / 尾部卡栈接管的观感
+
+### 35.1 已建立的可回退提交点
+
+为了避免实验分叉过多难以回退，本轮开始前已做快照：
+
+- 根仓文档快照：`7f7398b` `feat: snapshot rn card swipe release experiment`
+- `reffo-taro` 子仓源码快照：`5e71e2e` `feat: snapshot rn home card swipe experiment`
+
+这意味着：
+
+- 当前工作区如果继续往前实验，随时可以退回到“用户主观上已经确认更顺”的那一版基础上重做尾部优化
+
+### 35.2 本轮尾部优化思路
+
+当前 release-direct 方案里，顶卡离场结束后会直接：
+
+- `dragX / dragY` 回零
+- `commitIndex`
+- 新栈瞬时归位
+
+这容易让尾部出现一种“虽然起步顺了，但最后还是有一个归位感”的问题。
+
+因此本轮改成：
+
+- 顶卡离场完成后，不把新栈立即硬归位
+- 而是给新栈一个很小的 residual 偏移：
+  - `dragX = settleX`
+  - `dragY = settleY`
+- 再用原生 `spring` 把它回正
+
+目标是让：
+
+- commit 后的新栈接管更像“落稳”
+- 而不是“替换完成后一下子回到标准位”
+
+### 35.3 真机热态结果
+
+样本：
+
+- `/Users/mi/code/reffo/.artifacts/reffo-rn-android/perf-round9-tail-settle/gfxinfo.txt`
+
+热态首页连续 5 次 swipe：
+
+- `50th percentile: 15ms`
+- `90th percentile: 26ms`
+- `95th percentile: 34ms`
+- `99th percentile: 73ms`
+- `Janky frames (legacy): 106 (20.15%)`
+- `Number High input latency: 1050`
+
+### 35.4 当前判断
+
+- 这轮属于“尾部观感优化”的实验，不是 release 起步优化
+- 数据层面是混合结果：
+  - `90th / 95th` 还可以
+  - 但 `99th` 仍然偏高
+- 因此是否保留这一版 residual settle，仍建议以用户主观观感优先
+
+
+## 36. 2026-03-09 首页滑卡第十八轮：补上 release-direct 尾段层级交接，避免二号卡“视觉上前顶但层级未接管”
+
+本轮背景：
+
+- 用户最新反馈：收尾时卡片层级像是没有改变
+- 这与当前 `release-direct` 分支的实现是吻合的：
+  - 顶卡 release 阶段不再进入原先的 `transition`
+  - 但渲染排序仍然主要依赖 `resolveCardLayer(model, Boolean(transition))`
+  - 当 `transition === null` 时，层级顺序仍是固定的 `60 - fromDepth`
+- 结果就是：
+  - 二号卡虽然在 preview transform 上已经明显放大、前顶
+  - 但真实 z-order 直到 `commitIndex` 之前都没有明确接管
+  - 这会让收尾阶段看起来像“卡面在变，但层级没交棒”
+
+### 36.1 本轮修改
+
+在 `HomeCardDeck` 中新增了一个非常轻量的 release handoff 机制：
+
+- 新增 `releaseHandoffActive`
+- 在 `animateDeckAdvance` 开始后约 `48%` 的时刻触发一次 handoff timer
+- handoff 触发后：
+  - 二号卡（`fromDepth === 1`）层级抬高到最前
+  - 正在离场的顶卡（`fromDepth === 0`）降到它下面，但仍高于更深层卡
+- 这样可以保持：
+  - release 起步仍沿用当前更顺的 direct timing 路径
+  - 尾段再做一次明确的视觉交棒，而不是重新回到整套 transition
+
+涉及文件：
+
+- `/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx`
+
+### 36.2 真机验证
+
+本轮产物目录：
+
+- `/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-tail-handoff-20260309-212131`
+
+其中包括：
+
+- 首页启动截图：`/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-tail-handoff-20260309-212131/launch.png`
+- 连续 5 次 swipe 后截图：`/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-tail-handoff-20260309-212131/post-swipes.png`
+- 首轮含冷启动 `gfxinfo`：`/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-tail-handoff-20260309-212131/gfxinfo.txt`
+- 热态 `gfxinfo`：`/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-tail-handoff-20260309-212131/gfxinfo-warm.txt`
+
+热态 5 次 swipe 样本：
+
+- `50th percentile: 17ms`
+- `90th percentile: 34ms`
+- `95th percentile: 48ms`
+- `99th percentile: 85ms`
+- `Janky frames (legacy): 98 (22.27%)`
+- `Number High input latency: 878`
+
+### 36.3 当前判断
+
+- 这轮修复的重点是“层级交棒是否明确”，不是继续压 release 起步卡顿
+- 从实现上看，之前用户指出的问题是成立的；本轮已经补上一个显式 handoff
+- 从性能统计看，这轮没有把首页打挂，但热态数据也没有优于之前的最佳样本
+- 因此这轮建议以用户主观观感为准：
+  - 如果你现在观察到二号卡在收尾阶段终于真正接管到了顶层，这轮可以保留
+  - 如果层级问题解决了但尾部手感又变差，就继续在 handoff 时机和权重上微调
+
+
+## 37. 2026-03-09 首页滑卡第十九轮：离场卡未真正沉到底层，继续压低尾段 z-order
+
+本轮背景：
+
+- 用户补充指出：问题不只是“层级交接不明显”
+- 更准确地说，是离场卡片在切换完成、回落到卡牌栈底的阶段，层级仍然偏高
+- 也就是：它虽然已经不该再挡住主卡，但视觉上仍像悬在栈面之上
+
+### 37.1 修正思路
+
+上一轮 handoff 里，我只做了：
+
+- 二号卡升到最前
+- 离场顶卡降到二号卡下面
+
+但这还不够。
+
+如果目标是“离场卡缩小后沉入栈底再消失”，那么它不应该只是低于二号卡，而应该低于整叠可见卡。
+
+因此本轮继续收紧为：
+
+- handoff 激活后：
+  - 二号卡仍保持最高层
+  - 离场顶卡直接降到所有预览卡片之下
+- 同时取消离场卡在尾段继续占据“可拖拽顶卡”的身份
+  - 避免它在 release 后还沿用顶卡的交互/渲染特性
+
+### 37.2 具体修改
+
+文件：
+
+- `/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx`
+
+调整内容：
+
+- `releaseHandoffActive` 时，离场卡 `fromDepth === 0` 的层级从 `61` 下调为 `52`
+  - 低于当前可见栈中最底部卡片的默认层级
+- `canDrag` 改为：
+  - 仅在 `!transition && !releaseHandoffActive && model.fromDepth === 0` 时成立
+- handoff 阶段保留头两张卡的 rasterize / hardware texture
+  - 但不再把离场卡当作“仍在顶部的主交互卡”
+
+### 37.3 真机产物
+
+本轮验证目录：
+
+- `/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-tail-bottom-20260309-214352`
+
+其中包括：
+
+- 尾段录屏：`/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-tail-bottom-20260309-214352/reffo_tail.mp4`
+- swipe 后截图：`/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-tail-bottom-20260309-214352/post-swipe.png`
+
+### 37.4 当前判断
+
+- 这一轮是对上一轮 handoff 的继续修正，不是新的动效路线
+- 核心目标只有一个：
+  - 让离场卡在尾段真正“沉到整叠卡下面”，而不是只在逻辑上不再是第一张
+- 下一步仍建议用户主观复核：
+  - 如果此时离场卡终于不会再压在栈面之上，就继续微调 timing
+  - 如果仍然像浮在上面，则要继续排查 Android 侧实际绘制层是否还受 wrapper / elevation 影响
+
+
+## 38. 2026-03-09 首页滑卡第二十轮：从“数值层级”转向“真实绘制层”，给外层 wrapper 和 Android elevation 同步分层
+
+本轮背景：
+
+- 用户确认上一轮后，层级依然不对
+- 这说明问题很可能不只是 `resolveCardLayer` 返回值偏高或偏低
+- 更可能的原因是：
+  - 当前每张卡真正作为兄弟节点参与绘制排序的，其实是外层 wrapper
+  - 而之前我主要修改的是内层 `Animated.View` 的 `zIndex`
+  - 同时 `cardBase` 在 Android 上一直带固定 `elevation: 7`
+- 因此即使逻辑层级数值变了，真实绘制顺序也未必跟着变
+
+### 38.1 本轮修正
+
+文件：
+
+- `/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx`
+
+这轮不再只改内层卡片，而是改成“外内两层一起分层”：
+
+- 新增 `resolveCardElevation`
+  - 让 Android 的真实 elevation 与视觉层级同步
+- 新增 `styles.cardLayer`
+  - 每张卡外层 wrapper 也参与 `zIndex / elevation`
+- `renderCardModel` 里：
+  - 外层 wrapper 使用 `style={[styles.cardLayer, {zIndex, elevation}]}`
+  - 内层 `Animated.View` 也同步覆盖 `elevation`
+- handoff 阶段仍保留：
+  - 二号卡高层级 / 高 elevation
+  - 离场卡低层级 / 低 elevation
+
+### 38.2 当前判断
+
+- 如果上一轮的问题真的是 Android 实际绘制层没有改掉，那么这一轮比单纯改 `zIndex` 更接近根因
+- 这轮仍然没有改 release-direct 的总体路线，只是把层级控制从“逻辑排序”下沉到“真实绘制层”
+
+### 38.3 产物
+
+- 冒烟截图：`/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-layer-wrapper-20260309-220543.png`
+
+
+## 39. 2026-03-09 首页滑卡第二十一轮：去掉“旧卡回弹后再切下一张”，改为独立 tail-exit 卡
+
+本轮背景：
+
+- 用户最新反馈非常明确：
+  - 动作结束后，卡片会先明显回弹
+  - 看起来像“先回到第一张卡片位置，再切到下一张”
+- 这说明当前问题已经不再是层级优先，而是 release 收尾阶段仍然在复用同一组 `dragX / dragY`
+
+### 39.1 根因判断
+
+当前 `release-direct` 路径里：
+
+- 顶卡离场使用 `dragX / dragY` 继续原生 timing
+- 动画结束后，又用同一组 `dragX / dragY` 去驱动新的牌堆归位/接管
+
+这会产生一个很典型的视觉问题：
+
+- 旧卡还没彻底从渲染责任里分离出去
+- 但共享的拖拽值已经被重置
+- 最终观感就会变成：
+  - 旧卡像被拉回顶位一下
+  - 然后新卡再接管
+
+### 39.2 本轮修改
+
+文件：
+
+- `/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx`
+
+这轮不再让旧卡和新牌堆共享同一段收尾值，而是：
+
+- 新增 `TailExitCard` 独立状态
+- 新增 `tailExitProgress`
+- release 完成后：
+  - 先把当前卡片冻结为一张独立的 `tailExitCard`
+  - 同时把 `activeIndex` 切到下一张
+  - 下一张牌堆立即使用静态姿态稳定接管
+  - 旧卡再用单独的 `tailExitProgress` 继续淡出/缩出
+- 当 `tailExitCard` 存在时：
+  - 顶卡与后栈不再继续吃旧的 `dragX / dragY`
+  - 从而避免“旧卡回弹带动新栈”的问题
+
+关键代码位点：
+
+- `TailExitCard`：`/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx:62`
+- 状态与进度值：`/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx:1293`
+- 清理函数：`/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx:1411`
+- release 收尾改造：`/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx:1453`
+- 独立离场卡渲染：`/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx:1692`
+- 牌堆在 tail-exit 期间禁用旧拖拽值：`/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx:1775`
+
+### 39.3 当前验证状态
+
+本轮已完成：
+
+- bundle 可正常从 `8083` 返回
+- 代码侧未发现 `HomeCardDeck` 相关的 TypeScript 编译报错
+- 录屏产物目录：`/Users/mi/code/reffo/.artifacts/reffo-rn-android/home-card-no-rebound-20260309-222048`
+
+但二次真机观感验证被当前设备锁屏层打断：
+
+- 当前 `uiautomator dump` 结果显示前台仍被系统 keyguard 覆盖
+- 因此这轮是否彻底消除“回弹后再切下一张”，仍需用户解锁后主观复核
+
+
+## 40. 2026-03-10 首页滑卡第二十二轮：设备已解锁，但 adb swipe 仍未触发 RN 卡片手势层
+
+本轮背景：
+
+- 设备已解锁，恢复真机验证
+- 首页可正常拉起，截图正常：
+  - `/Users/mi/code/reffo/.artifacts/reffo-rn-android/rebound-check-20260310-092750-home.png`
+- 但在继续验证“是否仍然先回弹再切下一张”时，发现自动化链路本身还有一个关键限制
+
+### 40.1 现象
+
+针对卡面中部坐标执行 adb swipe：
+
+- 轨迹：大致从 `(170, 520)` 到 `(500, 520)`
+- 连拍序列：
+  - `/Users/mi/code/reffo/.artifacts/reffo-rn-android/rebound-seq-card-20260310-092954/contact_sheet.png`
+- 结果：
+  - 序列帧几乎没有任何卡片位移
+  - `gfxinfo` 统计里 `Total frames rendered: 0`
+
+这说明：
+
+- 当前 `adb shell input swipe` / 现有脚本链路，并没有真正触发到首页卡片的 RN `PanGestureHandler`
+- 因而无法用它直接判断这轮“去回弹”结构是否已经完全生效
+
+### 40.2 结论
+
+- 自动化验证层面，此刻最大的瓶颈已经不是截图频率，而是 adb swipe 本身没有命中 RN 手势路径
+- 代码层面，本轮仍保留第二十一轮的核心改动：
+  - 旧卡与新牌堆已拆成独立 `tailExitCard`
+  - 不再共享同一组 `dragX / dragY` 收尾值
+- 但最终是否消除了用户主观观察到的“先回顶再切下一张”，当前仍需要人工真机滑动复核
+
+
+## 41. 2026-03-10 首页滑卡第二十三轮：切牌与离场彻底解耦，松手先切下一张，旧卡再独立退场
+
+本轮背景：
+
+- 用户进一步指出：当前最明显的问题发生在松手瞬间
+- 具体观感是：
+  - 卡片会先发生一次“回到第一张位置”的返回
+  - 返回到位后，层级/切牌才发生变化
+
+### 41.1 根因判断
+
+结合当前实现，问题更接近于：
+
+- 旧卡真正的离场与 `activeIndex` 切换顺序仍然是串行的
+- 也就是：
+  - 先让旧卡沿 release 路径继续跑完
+  - 然后才创建 `tailExitCard` / 更新下一张
+- 这会让用户感知成：
+  - 旧卡先处理自己的收尾
+  - 新卡接管明显偏晚
+
+### 41.2 本轮修正
+
+文件：
+
+- `/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx`
+
+这轮把 release 流程改成：
+
+- 一旦确认触发切牌：
+  - 立即 `commitIndex(nextIndex)`
+  - 旧卡立刻冻结成一张独立的 `tailExitCard`
+  - 新牌堆马上以下一张为顶卡稳定接管
+  - 旧卡再通过 `tailExitProgress` 单独离场
+- 这样层级/切牌变化会先发生，不再等待旧卡收尾动画完成后再切
+
+同时补了一个方向保险：
+
+- 即使是“位移不大但速度够高”的快速左甩
+- 也会保留左侧离场方向，不再默认按正向数值退到右边
+
+### 41.3 代码位点
+
+- release 解耦主逻辑：`/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx:1453`
+- 速度触发时的离场方向归一化：`/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx:1577`
+
+### 41.4 当前状态
+
+- 首页可正常拉起：
+  - `/Users/mi/code/reffo/.artifacts/reffo-rn-android/rebound-fix-20260310-093744.png`
+- 针对 `HomeCardDeck` 的定向 TypeScript 检查未新增该文件报错
+- 最终是否完全消除了用户主观观察到的“先回顶再切下一张”，仍需要用户手动在真机上复核
+
+
+## 42. 2026-03-10 首页滑卡第二十四轮：松手先降第一张层级，下一帧再切 activeIndex
+
+本轮背景：
+
+- 用户明确提出一个更贴近现象的判断：
+  - 问题可能不在尾段淡出本身
+  - 而在于松手时第一张卡的层级没有立刻降低
+- 也就是：
+  - 用户松手后，旧顶卡仍然先以“第一张”的身份留在最上层
+  - 等它回到位或收尾后，层级变化才发生
+
+### 42.1 本轮修正
+
+文件：
+
+- `/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx`
+
+这轮改成两段顺序：
+
+1. `on release` 当帧：
+   - 立即 `setReleaseHandoffActive(true)`
+   - 先把当前第一张卡的层级降下去
+2. 下一帧：
+   - 再创建 `tailExitCard`
+   - 再 `commitIndex(nextIndex)`
+   - 然后清零 `dragX / dragY`
+   - 再让旧卡独立退场
+
+目标是让用户主观感受到：
+
+- 松手 → 层级先变
+- 然后才进入切牌与旧卡收尾
+
+而不是：
+
+- 松手 → 旧卡还顶在最上层处理自己的返回/收尾
+- 然后层级才变化
+
+### 42.2 代码位点
+
+- release handoff 优先：`/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx:1453`
+
+### 42.3 当前状态
+
+- 针对 `HomeCardDeck` 的定向 TypeScript 检查未新增该文件报错
+- 首页可正常启动：
+  - `/Users/mi/code/reffo/.artifacts/reffo-rn-android/release-handoff-first-20260310-094307.png`
+- 该轮是否命中用户主观观察到的“松手先降层级”问题，仍需用户手动在真机上复核
+
+
+## 43. 2026-03-10 首页滑卡第二十五轮：去掉拖拽透明衰减，尾段改为可见缩小离场
+
+本轮背景：
+
+- 用户确认层级问题已经对了
+- 新的两个收口点变得明确：
+  1. 收尾动画感消失了
+  2. 现在卡片被拖到将要离场时会逐渐变透明，但期望是“不透明、触发后缩小离场”
+
+### 43.1 本轮修正
+
+文件：
+
+- `/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx`
+
+这轮做了三件事：
+
+- 顶卡拖拽阶段不再根据 `dragX` 做透明度衰减
+  - 直接保持顶卡不透明
+- `fromDepth === 0 -> toDepth === 5` 的离场动画不再以透明度衰减为主
+  - 改成以位移 + 缩放为主
+  - 让旧卡更像缩入卡栈尾部，而不是发白/淡出
+- `tailExitCard` 的渲染也取消内容透明度渐隐
+  - 同时把它的层级抬到“低于新顶卡，但高于更深层卡”的区间，尽量让缩小收尾重新可见
+
+### 43.2 当前状态
+
+- 首页可正常启动：
+  - `/Users/mi/code/reffo/.artifacts/reffo-rn-android/shrink-exit-20260310-094939.png`
+- 针对 `HomeCardDeck` 的定向 TypeScript 检查未新增该文件报错
+- 最终观感仍需用户手动在真机上复核：
+  - 松手后旧卡是否重新出现清晰的“缩小离场”
+  - 拖拽到阈值附近时是否不再出现渐隐
+
+
+## 44. 2026-03-10 首页滑卡第二十六轮：只收缩小离场节奏，改成单调收缩并略微延长时长
+
+本轮背景：
+
+- 用户反馈：旧卡已经开始缩小离场，但节奏不太对
+- 这一轮因此不再碰层级与切牌顺序，只微调缩小离场本身的 keyframe
+
+### 44.1 本轮修正
+
+文件：
+
+- `/Users/mi/code/reffo/frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.native.tsx`
+
+调整点：
+
+- 旧卡 `0 -> 5` 的离场缩放改成单调收缩：
+  - 避免中段缩小后尾段又回弹变大
+- 离场位移节奏调整为：
+  - 先顺着手势带出一点
+  - 再更连续地收进卡栈尾部
+- `tailExitCard` 的收尾时长从 `RELEASE_SWIPE_DURATION` 分离出来
+  - 新增 `TAIL_EXIT_DURATION = 280`
+  - easing 改成更偏平滑收拢的曲线
+
+### 44.2 当前状态
+
+- 首页可正常启动：
+  - `/Users/mi/code/reffo/.artifacts/reffo-rn-android/shrink-rhythm-20260310-095307.png`
+- 针对 `HomeCardDeck` 的定向 TypeScript 检查未新增该文件报错
+- 下一步需要用户真机主观确认：
+  - 旧卡缩小离场是否更顺
+  - 是否还存在“不自然的尾段节拍”

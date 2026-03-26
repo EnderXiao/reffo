@@ -1,0 +1,127 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e40]:
+      - application "Figma Design, 1 item selected" [active] [ref=e48]
+      - status [ref=e49]: Screenreader support for the board is currently disabled. To enable it via Accessibility settings, press ⌘K, type Accessibility Settings, and press Enter. To see available keyboard shortcuts, enter ⌃⇧Question mark .
+      - generic:
+        - generic:
+          - generic:
+            - region "Comments on canvas":
+              - button "Create new comment"
+      - generic:
+        - generic:
+          - generic:
+            - img
+          - generic:
+            - generic: 肖淦匀
+      - generic:
+        - region "Left sidebar":
+          - generic [ref=e50]:
+            - button "Main menu" [ref=e51]:
+              - img [ref=e52]
+            - button "Expand UI for file named Reffo Project" [ref=e54]:
+              - generic:
+                - generic:
+                  - generic:
+                    - button "Reffo Project, file name": Reffo Project
+                    - generic: File name
+              - generic:
+                - generic:
+                  - status
+              - generic:
+                - img
+      - generic [ref=e57]:
+        - generic [ref=e59]:
+          - button "Multiplayer tools" [ref=e61]:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - generic:
+                      - generic:
+                        - img
+            - img [ref=e64]
+          - generic [ref=e67]:
+            - button "Follow 肖淦匀" [ref=e68]
+            - generic [ref=e70]:
+              - img [ref=e71]
+              - img [ref=e76]
+        - button "100%, zoom and view options" [ref=e80]:
+          - generic [ref=e81]:
+            - generic [ref=e82]: 100%
+            - img [ref=e84]
+        - generic [ref=e87]:
+          - generic [ref=e88]:
+            - button "Present" [ref=e89]:
+              - generic:
+                - img
+            - button "Prototype view" [ref=e90]:
+              - generic:
+                - img
+          - button "Share" [ref=e92]:
+            - generic:
+              - generic:
+                - generic: Share
+    - generic:
+      - generic:
+        - generic:
+          - region "Application toolbar":
+            - generic [ref=e93]:
+              - toolbar "Editor" [ref=e95]:
+                - generic [ref=e97]:
+                  - generic:
+                    - generic [ref=e100]:
+                      - generic [ref=e101]:
+                        - button "Move" [ref=e102]:
+                          - img
+                        - button "Hand tool" [pressed] [ref=e103]:
+                          - img
+                        - button "Comment" [ref=e104]:
+                          - img
+                      - group "Frame" [ref=e106]:
+                        - button "Frame" [ref=e107]:
+                          - img
+                        - button "Region tools" [ref=e108]:
+                          - generic:
+                            - img
+                      - group "Rectangle" [ref=e109]:
+                        - button "Rectangle" [ref=e110]:
+                          - img
+                        - button "Shape tools" [ref=e111]:
+                          - generic:
+                            - img
+                      - group "Pen" [ref=e112]:
+                        - button "Pen" [ref=e113]:
+                          - img
+                        - button "Creation tools" [ref=e114]:
+                          - generic:
+                            - img
+                      - button "Text" [ref=e115]:
+                        - img
+                      - button "Actions" [ref=e116]:
+                        - img
+                    - text: Request sent
+                - generic [ref=e121]:
+                  - checkbox "Dev Mode" [ref=e123]
+                  - img [ref=e125]
+              - generic [ref=e127]:
+                - generic [ref=e128]: Sign up to comment, edit, inspect and more.
+                - generic [ref=e129]:
+                  - button "Sign up" [ref=e130]:
+                    - generic:
+                      - generic:
+                        - generic: Sign up
+                  - button "Continue with Google" [ref=e133]:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic: Continue
+  - status
+  - group [ref=e25]:
+    - alert [ref=e27]
+    - alert [ref=e29]
+  - region "Help/zoom toolbar" [ref=e33]:
+    - toolbar "Help/zoom toolbar" [ref=e35]:
+      - button "Help" [ref=e37]:
+        - img
