@@ -5,7 +5,10 @@
       "Bash(dir /S /B)",
       "Bash(bun install)",
       "Bash(bun run dev)",
-      "Bash(bun run test)"
+      "Bash(bun run test)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
