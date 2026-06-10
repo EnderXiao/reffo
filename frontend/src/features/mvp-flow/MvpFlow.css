@@ -1,0 +1,77 @@
+.step-content {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.step-content h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.step-content h3 {
+  margin-bottom: 1rem;
+  color: #667eea;
+  font-size: 1.3rem;
+}
+
+.step-content h4 {
+  margin-bottom: 0.5rem;
+  color: #555;
+  font-size: 1rem;
+}
+
+.hint {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #999;
+  text-align: center;
+}
+
+.loading-message {
+  background: #e3f2fd;
+  border: 2px solid #90caf9;
+  color: #1976d2;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.analysis-item {
+  margin-bottom: 1rem;
+}
+
+.analysis-item ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.analysis-item li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.analysis-item li:last-child {
+  border-bottom: none;
+}
+
+.resume-preview {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+}
+
+.resume-preview pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.8;
+  margin: 0;
+  font-size: 0.95rem;
+}
