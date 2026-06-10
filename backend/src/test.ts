@@ -3,7 +3,68 @@
  * 用于验证三个 Agent 的完整流程
  */
 
+import type { ApiResponse, MvpProcessResponse } from '@/types'
+
 const API_BASE_URL = 'http://localhost:3000'
+
+type MvpProcessApiResponse =
+  | { success: true; data: MvpProcessResponse }
+  | { success: false; error?: ApiResponse<never>['error'] }
+
+interface HealthResponse {
+  status: string
+  timestamp: string
+  service: string
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isMvpProcessResponseData(value: unknown): value is MvpProcessResponse {
+  return (
+    isRecord(value) &&
+    isRecord(value.step1_analysis) &&
+    isRecord(value.step2_matching) &&
+    typeof value.step3_optimized_resume === 'string'
+  )
+}
+
+function parseMvpProcessResponse(value: unknown): MvpProcessApiResponse {
+  if (!isRecord(value) || typeof value.success !== 'boolean') {
+    throw new Error('接口返回格式无效：缺少 success 字段')
+  }
+
+  if (!value.success) {
+    return {
+      success: false,
+      error: isRecord(value.error)
+        ? {
+            code: String(value.error.code ?? 'UNKNOWN_ERROR'),
+            message: String(value.error.message ?? '处理失败'),
+          }
+        : undefined,
+    }
+  }
+
+  if (!isMvpProcessResponseData(value.data)) {
+    throw new Error('接口返回格式无效：成功响应 data 字段不完整')
+  }
+
+  return {
+    success: true,
+    data: value.data,
+  }
+}
+
+function isHealthResponse(value: unknown): value is HealthResponse {
+  return (
+    isRecord(value) &&
+    typeof value.status === 'string' &&
+    typeof value.timestamp === 'string' &&
+    typeof value.service === 'string'
+  )
+}
 
 // 测试用的简历 Markdown
 const testResume = `# 张三
@@ -118,7 +179,7 @@ async function testFullProcess() {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
 
-    const result = await response.json()
+    const result = parseMvpProcessResponse(await response.json())
 
     if (!result.success) {
       console.error('❌ 处理失败:', result.error)
@@ -174,6 +235,11 @@ async function healthCheck() {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/mvp/health`)
     const data = await response.json()
+
+    if (!isHealthResponse(data)) {
+      console.error('❌ 健康检查返回格式无效')
+      return false
+    }
 
     if (data.status === 'ok') {
       console.log('✅ 服务运行正常')

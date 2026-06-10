@@ -20,6 +20,8 @@ backend/
 │   │   └── resume-generator.ts
 │   ├── routes/           # API 路由
 │   │   └── mvp.ts
+│   ├── services/         # 可测试的业务编排
+│   │   └── mvp-process.ts
 │   ├── types/            # TypeScript 类型定义
 │   │   └── index.ts
 │   ├── config/           # 配置文件
@@ -86,6 +88,21 @@ bun run dev
 
 ## 测试
 
+类型检查：
+
+```bash
+bun run typecheck
+```
+
+Mock 测试（默认测试入口，不需要启动服务，也不需要真实 LLM API Key）：
+
 ```bash
 bun run test
+```
+
+真实 LLM e2e（需要先配置 `OPENAI_API_KEY` 并启动后端服务，会调用 `/api/v1/mvp/process`）：
+
+```bash
+bun run dev
+bun run test:e2e
 ```

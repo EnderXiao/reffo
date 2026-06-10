@@ -4,6 +4,21 @@ import { cors } from '@elysiajs/cors'
 import { env, validateEnv } from '@/config/env'
 import { mvpRoutes } from '@/routes/mvp'
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string') {
+      return message
+    }
+  }
+
+  return fallback
+}
+
 /**
  * 启动应用
  */
@@ -55,7 +70,7 @@ async function bootstrap() {
           error: {
             code: 'VALIDATION_ERROR',
             message: '请求参数验证失败',
-            details: error.message,
+            details: getErrorMessage(error, '请求参数验证失败'),
           },
         }
       }
@@ -76,7 +91,7 @@ async function bootstrap() {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error.message || '服务器内部错误',
+          message: getErrorMessage(error, '服务器内部错误'),
         },
       }
     })

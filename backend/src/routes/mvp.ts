@@ -1,7 +1,6 @@
 import { Elysia, t } from 'elysia'
 import { ResumeAnalyzerAgent } from '@/agents/resume-analyzer'
-import { MatchingAgent } from '@/agents/matching-agent'
-import { ResumeGeneratorAgent } from '@/agents/resume-generator'
+import { processResumeOptimization } from '@/services/mvp-process'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 
 /**
@@ -23,34 +22,18 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         console.log('开始处理简历优化流程')
         console.log('========================================')
 
-        // Step 1: 分析源简历
-        console.log('\n[Step 1/3] 正在分析简历...')
-        const analyzer = new ResumeAnalyzerAgent()
-        const analysisResult = await analyzer.analyze(resume_markdown)
+        const data = await processResumeOptimization({ resume_markdown, jd_text })
+
         console.log('✓ 简历分析完成')
-        console.log(`  - 质量评分: ${analysisResult.quality_score}/100`)
-        console.log(`  - 优势点: ${analysisResult.strengths.length} 个`)
-        console.log(`  - 问题点: ${analysisResult.weaknesses.length} 个`)
-
-        // Step 2: 匹配分析
-        console.log('\n[Step 2/3] 正在分析匹配度...')
-        const matcher = new MatchingAgent()
-        const matchResult = await matcher.match(analysisResult.structured_resume, jd_text)
+        console.log(`  - 质量评分: ${data.step1_analysis.quality_score}/100`)
+        console.log(`  - 优势点: ${data.step1_analysis.strengths.length} 个`)
+        console.log(`  - 问题点: ${data.step1_analysis.weaknesses.length} 个`)
         console.log('✓ 匹配分析完成')
-        console.log(`  - 匹配度评分: ${matchResult.match_score}/100`)
-        console.log(`  - 已匹配技能: ${matchResult.skill_match.matched.length} 个`)
-        console.log(`  - 缺失技能: ${matchResult.skill_match.missing.length} 个`)
-
-        // Step 3: 生成优化简历
-        console.log('\n[Step 3/3] 正在生成优化简历...')
-        const generator = new ResumeGeneratorAgent()
-        const optimizedResume = await generator.generate(
-          analysisResult.structured_resume,
-          matchResult.jd_structure,
-          matchResult
-        )
+        console.log(`  - 匹配度评分: ${data.step2_matching.match_score}/100`)
+        console.log(`  - 已匹配技能: ${data.step2_matching.skill_match.matched.length} 个`)
+        console.log(`  - 缺失技能: ${data.step2_matching.skill_match.missing.length} 个`)
         console.log('✓ 简历生成完成')
-        console.log(`  - 优化简历长度: ${optimizedResume.length} 字符`)
+        console.log(`  - 优化简历长度: ${data.step3_optimized_resume.length} 字符`)
 
         console.log('\n========================================')
         console.log('流程处理完成！')
@@ -58,11 +41,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<MvpProcessResponse> = {
           success: true,
-          data: {
-            step1_analysis: analysisResult,
-            step2_matching: matchResult,
-            step3_optimized_resume: optimizedResume,
-          },
+          data,
         }
 
         return response
