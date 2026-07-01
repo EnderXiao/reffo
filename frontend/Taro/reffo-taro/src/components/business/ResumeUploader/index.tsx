@@ -3,6 +3,7 @@ import {Text, Textarea, View} from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import {StyleSheet} from 'react-native'
 import {Button} from '@/components/Button'
+import {pickBrowserFile, readBrowserTextFile} from '@/utils/web-file'
 
 export interface ResumeUploaderProps {
   value?: string
@@ -119,11 +120,14 @@ export function ResumeUploader({
 
   const handleFileSelect = async () => {
     try {
-      const res = await Taro.chooseMessageFile({
-        count: 1,
-        type: 'file',
-        extension: acceptTypes.map(ext => ext.replace('.', '')),
-      })
+      const browserFile = await pickBrowserFile({accept: acceptTypes})
+      const res = browserFile
+        ? {tempFiles: [browserFile]}
+        : await Taro.chooseMessageFile({
+            count: 1,
+            type: 'file',
+            extension: acceptTypes.map(ext => ext.replace('.', '')),
+          })
 
       if (!res.tempFiles?.length) return
 
@@ -151,7 +155,9 @@ export function ResumeUploader({
         return
       }
 
-      const fileContent = await readFileContent(file.path)
+      const fileContent = file.file
+        ? await readBrowserTextFile(file.file)
+        : await readFileContent(file.path)
       setContent(fileContent)
       setError(null)
       onUpload(fileContent)

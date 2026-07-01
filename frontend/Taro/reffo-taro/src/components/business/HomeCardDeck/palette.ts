@@ -252,8 +252,8 @@ export function deriveCardPalette(seedColor: string): DerivedCardPalette {
     }),
     stackColor: mixColors(surfaceBase, normalizedSeed, tone === 'soft' ? 0.12 : 0.18),
     logoColor: shiftHsl(normalizedSeed, {
-      saturation: clamp(hsl.saturation * 0.72, 28, 72),
-      lightness: tone === 'soft' ? 86 : 80,
+      saturation: clamp(hsl.saturation * 0.86, 36, 82),
+      lightness: tone === 'soft' ? 72 : 66,
     }),
     borderColor: 'rgba(255,255,255,0.72)',
     tone,

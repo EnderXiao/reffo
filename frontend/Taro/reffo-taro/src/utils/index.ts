@@ -69,3 +69,14 @@ export {
   type DeviceSystemInfo,
   type DeviceLayoutMetrics,
 } from './layout';
+
+// 视觉能力分层工具
+export {
+  detectVisualTierSync,
+  logVisualTier,
+  measureFrameBudget,
+  resolveVisualTier,
+  useVisualTier,
+  type VisualCapabilitySnapshot,
+  type VisualTier,
+} from './visual-tier';

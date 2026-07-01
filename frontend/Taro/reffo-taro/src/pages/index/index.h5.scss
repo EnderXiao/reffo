@@ -1,0 +1,994 @@
+html,
+body,
+#app,
+taro-page-core,
+.taro_page,
+.taro_page_show,
+.taro_page_stationed {
+  height: 100%;
+  width: 100vw;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.reffo-home {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #f8f9fb;
+  color: #111111;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  overscroll-behavior: none;
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.reffo-home__backdrop {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #dce9f9 0%, #eef4fb 33%, #f8f9fb 58%, #ffffff 100%);
+}
+
+.reffo-home__frame {
+  --page-width: 100vw;
+  --page-pad-x: clamp(24px, 7.6vw, 31px);
+  --deck-width: min(calc(100vw - var(--page-pad-x) * 1.48), 346px);
+  --card-design-width: 210px;
+  --card-design-height: 332px;
+  --card-responsive-scale: 0.82;
+  --card-stage-width: calc(var(--card-design-width) * var(--card-responsive-scale));
+  --card-stage-height: calc(var(--card-design-height) * var(--card-responsive-scale));
+  --deck-step-x: clamp(15px, calc((var(--deck-width) - var(--card-stage-width) - 38px) / 5.2), 25px);
+  --deck-step-y: clamp(3px, calc(var(--card-stage-width) * 0.018), 5px);
+  width: var(--page-width);
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 0 max(18px, env(safe-area-inset-bottom));
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.reffo-home__header {
+  flex: 0 0 auto;
+  height: 33px;
+  padding: 0 var(--page-pad-x);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 3;
+}
+
+.reffo-home__source-button,
+.reffo-home__github-button {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 10px rgba(191, 201, 217, 0.14);
+}
+
+.reffo-home__source-button {
+  min-width: 74px;
+  max-width: 148px;
+  height: 29px;
+  border-radius: 15px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c4c4c4;
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.reffo-home__source-button--active {
+  background: #177cff;
+  color: #ffffff;
+}
+
+.reffo-home__source-plus {
+  margin-right: 4px;
+}
+
+.reffo-home__source-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reffo-home__github-button {
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reffo-home__github-mark {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #111827;
+  position: relative;
+}
+
+.reffo-home__github-dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffffff;
+  left: 6px;
+  top: 6px;
+}
+
+.reffo-home__hero {
+  flex: 0 0 auto;
+  min-height: clamp(184px, 28.5dvh, 220px);
+  padding: clamp(82px, 13dvh, 112px) var(--page-pad-x) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.reffo-home__logo {
+  width: 99px;
+  height: 26px;
+  display: block;
+}
+
+.reffo-home__title {
+  width: min(252px, calc(100vw - var(--page-pad-x) * 2));
+  margin-top: 6px;
+  color: #000000;
+  font-size: 26px;
+  line-height: 34px;
+  font-weight: 300;
+  letter-spacing: 0;
+}
+
+.reffo-home__title-accent {
+  color: #1c77eb;
+  font-weight: 500;
+}
+
+.reffo-home__progress {
+  flex: 0 0 auto;
+  margin-left: calc(var(--page-pad-x) + 1px);
+  margin-bottom: 6px;
+  color: #949494;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.reffo-home-deck-wrap {
+  flex: 1 1 auto;
+  min-height: 252px;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.reffo-home-deck {
+  width: var(--deck-width);
+  height: 100%;
+  min-height: calc(var(--card-stage-height) + 20px);
+  max-height: 363px;
+  margin: 0 auto;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.reffo-home-deck__stack {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: calc(var(--deck-width) - 32px);
+  height: var(--card-stage-height);
+  perspective: 1280px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reffo-home-card {
+  --card-left: 0px;
+  --card-top: 0px;
+  --card-rotate: 0deg;
+  --card-drag-x: 0px;
+  --card-drag-y: 0px;
+  --card-drag-lift-y: 0px;
+  --card-drag-rotate: 0deg;
+  --card-drag-rotate-x: 0deg;
+  --card-drag-rotate-y: 0deg;
+  --card-drag-scale-x: 1;
+  --card-drag-scale-y: 1;
+  --card-preview-progress: 0;
+  --card-exit-x: 0px;
+  --card-exit-y: 0px;
+  --card-exit-rotate: 0deg;
+  --card-exit-rotate-x: 0deg;
+  --card-exit-rotate-y: 0deg;
+  --card-texture-x: 0px;
+  --card-texture-y: 0px;
+  --card-texture-scale: 1;
+  --card-content-x: 0px;
+  --card-content-y: 0px;
+  --card-content-scale: 1;
+  --card-highlight-strength: 0;
+  --card-highlight-angle: 0deg;
+  --card-highlight-x: 50%;
+  --card-highlight-y: 50%;
+  --card-depth-scale: 1;
+  --card-bg: #f0f6ff;
+  --card-accent: #286fe7;
+  --card-display-accent: color-mix(in srgb, var(--card-accent) 78%, #111111 22%);
+  --card-logo: #b8d7ff;
+  --card-border: rgba(255, 255, 255, 0.72);
+  --card-opacity: 1;
+  position: absolute;
+  left: var(--card-left);
+  top: var(--card-top);
+  width: var(--card-design-width);
+  height: var(--card-design-height);
+  transform: translate3d(0, 0, 0) rotate(var(--card-rotate)) scale(calc(var(--card-responsive-scale) * var(--card-depth-scale)));
+  opacity: var(--card-opacity);
+  transform-origin: 0 0;
+  border-radius: 10px;
+  filter: drop-shadow(0 12px 18px rgba(21, 30, 46, 0.16));
+  will-change: transform, opacity;
+  transition:
+    transform 280ms cubic-bezier(0.2, 0.92, 0.28, 1),
+    opacity 220ms ease;
+}
+
+.reffo-home-card::before,
+.reffo-home-card::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateZ(0);
+  transition: opacity 120ms ease;
+}
+
+.reffo-home-card::before {
+  z-index: 0;
+  background:
+    radial-gradient(
+      circle at var(--card-highlight-x, 50%) var(--card-highlight-y, 50%),
+      rgba(255, 255, 255, 0.98) 0,
+      color-mix(in srgb, var(--card-accent) 66%, #ffffff 34%) 20PX,
+      transparent 64PX
+    ),
+    conic-gradient(
+      from var(--card-highlight-angle, 0deg),
+      transparent 0deg,
+      transparent 12deg,
+      color-mix(in srgb, var(--card-accent) 70%, #ffffff 30%) 40deg,
+      rgba(255, 255, 255, 0.98) 66deg,
+      color-mix(in srgb, var(--card-accent) 58%, #ffffff 42%) 96deg,
+      transparent 126deg,
+      transparent 360deg
+    );
+  filter: blur(10PX);
+  -webkit-mask:
+    linear-gradient(#000000 0 0) content-box,
+    linear-gradient(#000000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000000 0 0) content-box,
+    linear-gradient(#000000 0 0);
+  mask-composite: exclude;
+  padding: 4PX;
+}
+
+.reffo-home-card::after {
+  z-index: 2;
+  inset: -1px;
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      circle at var(--card-highlight-x, 50%) var(--card-highlight-y, 50%),
+      rgba(255, 255, 255, 0.98) 0,
+      color-mix(in srgb, var(--card-accent) 66%, #ffffff 34%) 16PX,
+      transparent 44PX
+    ),
+    conic-gradient(
+      from var(--card-highlight-angle, 0deg),
+      transparent 0deg,
+      transparent 18deg,
+      rgba(255, 255, 255, 0.96) 44deg,
+      color-mix(in srgb, var(--card-accent) 72%, #ffffff 28%) 64deg,
+      rgba(255, 255, 255, 0.9) 88deg,
+      transparent 118deg,
+      transparent 360deg
+    );
+  -webkit-mask:
+    linear-gradient(#000000 0 0) content-box,
+    linear-gradient(#000000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000000 0 0) content-box,
+    linear-gradient(#000000 0 0);
+  mask-composite: exclude;
+  padding: 1px;
+}
+
+.reffo-home-card--draggable {
+  cursor: grab;
+}
+
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable {
+  cursor: grabbing;
+  transition: none;
+  transform:
+    perspective(1280px)
+    translate3d(var(--card-drag-x), calc(var(--card-drag-y) + var(--card-drag-lift-y)), 0)
+    rotate(var(--card-drag-rotate))
+    rotateY(var(--card-drag-rotate-y))
+    rotateX(var(--card-drag-rotate-x))
+    scale(calc(var(--card-responsive-scale) * var(--card-depth-scale) * var(--card-drag-scale-x) * var(--card-drag-scale-y)));
+}
+
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable::before {
+  opacity: calc(var(--card-highlight-strength, 0) * 0.78);
+}
+
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable::after {
+  opacity: calc(var(--card-highlight-strength, 0) * 0.92);
+}
+
+.reffo-home-deck__stack--settling .reffo-home-card--draggable {
+  transform: translate3d(0, 0, 0) rotate(var(--card-rotate)) scale(calc(var(--card-responsive-scale) * var(--card-depth-scale)));
+}
+
+.reffo-home-deck__stack--dragging .reffo-home-card--preview {
+  transform:
+    translate3d(
+      calc(var(--card-preview-progress) * var(--deck-step-x) * -0.72),
+      calc(var(--card-preview-progress) * var(--deck-step-y) * -0.72),
+      0
+    )
+    rotate(calc(var(--card-rotate) - var(--card-preview-progress) * 1.8deg))
+    scale(calc(var(--card-responsive-scale) * (var(--card-depth-scale) + var(--card-preview-progress) * 0.012)));
+}
+
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__texture {
+  transform:
+    translate3d(var(--card-texture-x), var(--card-texture-y), 0)
+    scale(var(--card-texture-scale));
+}
+
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__score,
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__glass,
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__create-title {
+  transform:
+    translate3d(var(--card-content-x), var(--card-content-y), 0)
+    scale(var(--card-content-scale));
+}
+
+.reffo-home-card--draggable .reffo-home-card__texture,
+.reffo-home-card--draggable .reffo-home-card__score,
+.reffo-home-card--draggable .reffo-home-card__glass,
+.reffo-home-card--draggable .reffo-home-card__create-title {
+  will-change: transform;
+  transition: transform 260ms cubic-bezier(0.2, 0.92, 0.28, 1);
+}
+
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__texture,
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__score,
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__glass,
+.reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__create-title {
+  transition: none;
+}
+
+.reffo-home-card--tail-exit {
+  z-index: 42 !important;
+  pointer-events: none;
+  animation: reffo-card-tail-exit 280ms cubic-bezier(0.2, 0.92, 0.28, 1) forwards;
+}
+
+@keyframes reffo-card-tail-exit {
+  from {
+    opacity: 1;
+    transform:
+      translate3d(var(--card-exit-x), var(--card-exit-y), 0)
+      rotate(var(--card-exit-rotate))
+      rotateY(var(--card-exit-rotate-y))
+      rotateX(var(--card-exit-rotate-x))
+      scale(calc(var(--card-responsive-scale) * var(--card-depth-scale) * 0.96));
+  }
+
+  to {
+    opacity: 0;
+    transform:
+      translate3d(calc(var(--card-exit-x) * 2.6), calc(var(--card-exit-y) - 70px), 0)
+      rotate(calc(var(--card-exit-rotate) * 1.45))
+      rotateY(calc(var(--card-exit-rotate-y) * 1.35))
+      rotateX(calc(var(--card-exit-rotate-x) * 1.2))
+      scale(calc(var(--card-responsive-scale) * var(--card-depth-scale) * 0.9));
+  }
+}
+
+.reffo-home-card__surface {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  clip-path: inset(0 round 10px);
+  isolation: isolate;
+  z-index: 1;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-bg) 82%, var(--card-accent) 18%) 0%, color-mix(in srgb, var(--card-bg) 88%, #ffffff 12%) 48%, rgba(255, 255, 255, 0.18) 100%),
+    var(--card-bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.reffo-home-card__premium-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.reffo-home-card__surface::before,
+.reffo-home-card__surface::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.reffo-home-card__surface::before {
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 58%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 54%);
+  z-index: 1;
+  opacity: 1;
+}
+
+.reffo-home-card__surface::after {
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.14) 100%);
+  z-index: 1;
+}
+
+.reffo-home-card__handle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 74px;
+  height: 6px;
+  margin-left: -37px;
+  border-radius: 999px;
+  background: rgba(35, 39, 47, 0.82);
+  z-index: 4;
+}
+
+.reffo-home-card__texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.reffo-home-card__logo-mark {
+  position: absolute;
+  z-index: 1;
+}
+
+.reffo-home-card__logo-repeat {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.92;
+}
+
+.reffo-home-card__logo-tile {
+  position: absolute;
+}
+
+.reffo-home-card__texture--repeat .reffo-home-card__logo-repeat {
+  opacity: 0.58;
+}
+
+.reffo-home-card__logo-mark svg,
+.reffo-home-card__logo-tile svg {
+  display: block;
+}
+
+.reffo-home-card__theme-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 10%, transparent) 0%, rgba(255, 255, 255, 0) 68%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 52%);
+}
+
+.reffo-home-card__score {
+  position: absolute;
+  left: 22px;
+  top: 93px;
+  display: flex;
+  align-items: flex-end;
+  color: var(--card-display-accent);
+  z-index: 5;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.reffo-home-card__grade-letter {
+  font-size: 46px;
+  line-height: 46px;
+  font-weight: 300;
+}
+
+.reffo-home-card__grade-meta {
+  margin-left: 6px;
+  margin-bottom: 9px;
+  font-size: 8px;
+  line-height: 11px;
+}
+
+.reffo-home-card__glass {
+  position: relative;
+  width: 100%;
+  height: 164px;
+  margin-top: auto;
+  padding: 15px 22px 13px;
+  z-index: 4;
+  overflow: hidden;
+  border-radius: 0 0 10px 10px;
+  background: rgba(255, 255, 255, 0.10);
+  background-clip: padding-box;
+  backdrop-filter: blur(5PX);
+  -webkit-backdrop-filter: blur(5PX);
+  border-top: 1px solid rgba(255, 255, 255, 0.26);
+}
+
+.reffo-home-card__glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.reffo-home-deck-wrap--basic .reffo-home-card__glass {
+  background: rgba(255, 255, 255, 0.34);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.reffo-home-deck-wrap--enhanced .reffo-home-card__glass,
+.reffo-home-deck-wrap--premium .reffo-home-card__glass {
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(5PX);
+  -webkit-backdrop-filter: blur(5PX);
+}
+
+.reffo-home-deck-wrap--premium .reffo-home-card__glass {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.reffo-home-deck-wrap--premium .reffo-home-card__glass::before {
+  opacity: 0.22;
+}
+
+.reffo-home-card__field {
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+
+.reffo-home-card__label {
+  margin-bottom: 2px;
+  color: rgba(31, 41, 55, 0.4);
+  font-size: 10px;
+  line-height: 13px;
+}
+
+.reffo-home-card__value {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.reffo-home-card__company {
+  color: var(--card-display-accent);
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.reffo-home-card__date-row {
+  position: absolute;
+  left: 22px;
+  bottom: 13px;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.reffo-home-card__date-label,
+.reffo-home-card__date {
+  color: rgba(31, 41, 55, 0.5);
+  font-size: 7px;
+  line-height: 10px;
+}
+
+.reffo-home-card__date {
+  margin-left: 7px;
+}
+
+.reffo-home-card--dark .reffo-home-card__value {
+  color: rgba(255, 255, 255, 0.98);
+}
+
+.reffo-home-card--dark .reffo-home-card__company {
+  color: var(--card-accent);
+}
+
+.reffo-home-card--dark .reffo-home-card__label {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.reffo-home-card--dark .reffo-home-card__date-label,
+.reffo-home-card--dark .reffo-home-card__date {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.reffo-home-card--dark .reffo-home-card__premium-canvas {
+  opacity: 1;
+}
+
+.reffo-home-card--dark .reffo-home-card__glass {
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(5PX);
+  -webkit-backdrop-filter: blur(5PX);
+  border-color: rgba(255, 255, 255, 0.20);
+}
+
+.reffo-home-card--dark .reffo-home-card__glass::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  opacity: 0.20;
+}
+
+.reffo-home-card--create {
+  cursor: pointer;
+  z-index: 30;
+}
+
+.reffo-home-card--create .reffo-home-card__surface {
+  border-color: #1c77eb;
+}
+
+.reffo-home-card__create-title {
+  position: absolute;
+  left: 34px;
+  top: 130px;
+  z-index: 5;
+  color: var(--card-display-accent);
+  font-size: 22px;
+  line-height: 29px;
+  font-weight: 700;
+}
+
+.reffo-home-card__glass--create {
+  padding: 64px 34px 42px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.reffo-home-card__create-copy {
+  color: #111111;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.reffo-home-card--grade-a {
+  --card-bg: #ffe1c7;
+  --card-accent: #ff5b0a;
+  --card-border: rgba(255, 255, 255, 0.85);
+}
+
+.reffo-home-card--grade-b {
+  --card-bg: #e5f2ff;
+  --card-accent: #1b76f2;
+  --card-border: rgba(255, 255, 255, 0.85);
+}
+
+.reffo-home-card--dark {
+  --card-bg: #111317;
+  --card-accent: #ffffff;
+  --card-display-accent: var(--card-accent);
+  --card-border: rgba(255, 255, 255, 0.16);
+}
+
+.reffo-home-card--dark .reffo-home-card__surface {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-bg) 88%, var(--card-accent) 12%) 0%, #111317 58%, #1e2024 100%);
+}
+
+.reffo-home-card--dark .reffo-home-card__surface::before {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 56%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 62%);
+  opacity: 1;
+}
+
+.reffo-home-card--dark .reffo-home-card__surface::after {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.22) 100%);
+}
+
+.reffo-home-card--dark .reffo-home-card__theme-wash {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 5%, transparent) 0%, rgba(0, 0, 0, 0) 62%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.18) 100%);
+}
+
+.reffo-home-card--dark .reffo-home-card__texture--repeat .reffo-home-card__logo-repeat {
+  opacity: 0.78;
+}
+
+.reffo-home-card--dark .reffo-home-card__texture--single .reffo-home-card__logo-mark {
+  opacity: 0.28;
+}
+
+.reffo-home-deck__rail {
+  position: absolute;
+  right: calc((var(--page-width) - var(--deck-width)) / -2 + 14px);
+  top: 50%;
+  width: 54px;
+  height: min(406px, calc(100dvh - 190px));
+  overflow: hidden;
+  z-index: 60;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: ns-resize;
+  transform: translateY(-50%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000000 14%, #000000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000000 14%, #000000 86%, transparent 100%);
+}
+
+.reffo-home-deck__rail-wheel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 54px;
+  transition: none;
+  z-index: 2;
+}
+
+.reffo-home-deck__rail-wheel--animating {
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.reffo-home-deck__rail-item {
+  position: relative;
+  width: 54px;
+  height: 58px;
+  transform-origin: right center;
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+
+.reffo-home-deck__rail-major,
+.reffo-home-deck__rail-minor {
+  position: absolute;
+  right: 0;
+  width: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  transform-origin: right center;
+  transition: transform 240ms ease, opacity 240ms ease;
+}
+
+.reffo-home-deck__rail-major {
+  top: -7px;
+  height: 14px;
+}
+
+.reffo-home-deck__rail-minor {
+  height: 1px;
+}
+
+.reffo-home-deck__rail-tick {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(170, 178, 191, 0.58);
+  transition: width 240ms ease, height 240ms ease, background 240ms ease;
+}
+
+.reffo-home-deck__rail-tick--major {
+  width: 10px;
+  height: 1px;
+}
+
+.reffo-home-deck__rail-tick--minor {
+  width: 6px;
+  height: 1px;
+  background: rgba(170, 178, 191, 0.56);
+}
+
+.reffo-home-deck__rail-label {
+  flex: 0 0 18px;
+  margin-right: 7px;
+  color: #c7cbd3;
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 500;
+  text-align: center;
+  transition: color 240ms ease, font-weight 240ms ease;
+}
+
+.reffo-home-deck__rail-item--d0 {
+  opacity: 1;
+  transform: none;
+}
+
+.reffo-home-deck__rail-item--d1 {
+  opacity: 0.78;
+  transform: none;
+}
+
+.reffo-home-deck__rail-item--d2 {
+  opacity: 0.48;
+  transform: none;
+}
+
+.reffo-home-deck__rail-item--d3 {
+  opacity: 0.28;
+  transform: none;
+}
+
+.reffo-home-deck__rail-item--d4 {
+  opacity: 0.14;
+  transform: none;
+}
+
+.reffo-home-deck__rail-item--d0 .reffo-home-deck__rail-major {
+  transform: scale(1.22);
+}
+
+.reffo-home-deck__rail-item--d1 .reffo-home-deck__rail-major {
+  transform: scale(1.08);
+}
+
+.reffo-home-deck__rail-item--active .reffo-home-deck__rail-label {
+  color: #111111;
+  font-weight: 700;
+}
+
+.reffo-home-deck__rail-item--active .reffo-home-deck__rail-tick--major {
+  width: 10px;
+  height: 2px;
+  background: #111111;
+}
+
+.reffo-home__footer {
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 0 var(--page-pad-x);
+  margin-top: clamp(7px, 1.2dvh, 12px);
+}
+
+.reffo-home__primary-action {
+  width: 179px;
+  height: 42px;
+  border-radius: 21px;
+  background: #286fe7;
+  color: #ffffff;
+  box-shadow: 0 8px 14px rgba(40, 111, 231, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reffo-home__primary-plus {
+  margin-right: 8px;
+  margin-top: -1px;
+  font-size: 22px;
+  line-height: 22px;
+  font-weight: 300;
+}
+
+.reffo-home__primary-text {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+}
+
+.reffo-home__inline-actions {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reffo-home__inline-action {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  color: #7d8591;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reffo-home__inline-action--cancel {
+  color: #111111;
+}
+
+.reffo-home__inline-icon {
+  width: 14px;
+  margin-right: 6px;
+  text-align: center;
+}
+
+.reffo-home__disclaimer {
+  display: block;
+  width: min(319px, calc(100vw - var(--page-pad-x) * 2));
+  margin-top: 14px;
+  color: #8d8d8d;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 300;
+}
+
+@media (max-height: 820px) {
+  .reffo-home__hero {
+    min-height: clamp(160px, 25dvh, 188px);
+    padding-top: clamp(62px, 10dvh, 84px);
+    padding-right: 30px;
+  }
+
+  .reffo-home__title {
+    width: min(238px, calc(100vw - var(--page-pad-x) * 2));
+    font-size: 24px;
+    line-height: 31px;
+  }
+
+  .reffo-home-deck {
+    min-height: 246px;
+    max-height: 342px;
+  }
+
+  .reffo-home__disclaimer {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .reffo-home__frame {
+    --page-width: 393px;
+    --deck-width: 346px;
+    --page-pad-x: 31px;
+  }
+}

@@ -5,6 +5,7 @@ import {sourceResumeApi} from '@/services/sourceResume'
 import {useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
 import type {SourceResumeSummary} from '@/types'
 import {saveLatestResultSession} from '@/utils/result-session'
+import {pickBrowserFile, readBrowserTextFile} from '@/utils/web-file'
 import {
   CREATE_STEP_META,
   CREATE_STEP_SEQUENCE,
@@ -148,9 +149,18 @@ interface PickedTempFile {
   name: string
   path: string
   size: number
+  file?: File
 }
 
 async function pickJobDescriptionFile(): Promise<PickedTempFile | null> {
+  const browserFile = await pickBrowserFile({
+    accept: JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
+  })
+
+  if (browserFile) {
+    return browserFile
+  }
+
   const chooseMessageFile = (Taro as any).chooseMessageFile
 
   if (typeof chooseMessageFile === 'function') {
@@ -165,40 +175,7 @@ async function pickJobDescriptionFile(): Promise<PickedTempFile | null> {
     return response.tempFiles?.[0] ?? null
   }
 
-  const [ImagePicker, FileSystem] = await Promise.all([
-    import('expo-image-picker'),
-    import('expo-file-system'),
-  ])
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-
-  if (!permission.granted) {
-    throw new Error('未获得相册权限')
-  }
-
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsMultipleSelection: false,
-    quality: 1,
-  })
-
-  if (result.canceled || !result.assets?.length) {
-    throw new Error('cancel')
-  }
-
-  const asset = result.assets[0]
-  const fileInfo = await FileSystem.getInfoAsync(asset.uri, {size: true} as any)
-  const fallbackName = asset.uri.split('/').pop() || `job-description-${Date.now()}.jpg`
-
-  return {
-    name: asset.fileName || fallbackName,
-    path: asset.uri,
-    size:
-      typeof asset.fileSize === 'number'
-        ? asset.fileSize
-        : typeof (fileInfo as any)?.size === 'number'
-          ? (fileInfo as any).size
-          : 0,
-  }
+  throw new Error('当前环境暂不支持选择文件')
 }
 
 function normalizeRouteStep(value?: string): CreateStepId | null {
@@ -539,11 +516,16 @@ export function usePageModel(): CreatePageViewModel {
 
   const handlePickResumeFile = async () => {
     try {
-      const response = await Taro.chooseMessageFile({
-        count: 1,
-        type: 'file',
-        extension: RESUME_FILE_ACCEPT_TYPES.map(type => type.replace('.', '')),
+      const browserFile = await pickBrowserFile({
+        accept: RESUME_FILE_ACCEPT_TYPES,
       })
+      const response = browserFile
+        ? {tempFiles: [browserFile]}
+        : await Taro.chooseMessageFile({
+            count: 1,
+            type: 'file',
+            extension: RESUME_FILE_ACCEPT_TYPES.map(type => type.replace('.', '')),
+          })
 
       const selectedFile = response.tempFiles?.[0]
       if (!selectedFile) {
@@ -605,7 +587,9 @@ export function usePageModel(): CreatePageViewModel {
 
       let extractedText: string | undefined
       if (isTextFile(selectedFile.name)) {
-        extractedText = await readTextFile(selectedFile.path)
+        extractedText = selectedFile.file
+          ? await readBrowserTextFile(selectedFile.file)
+          : await readTextFile(selectedFile.path)
         if (uploadRequestRef.current !== requestId) {
           return
         }

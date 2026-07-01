@@ -5,5 +5,11 @@ export default {
     stats: true
   },
   mini: {},
-  h5: {}
+  h5: {
+    devServer: {
+      client: {
+        overlay: false,
+      },
+    },
+  },
 } satisfies UserConfigExport<'webpack5'>

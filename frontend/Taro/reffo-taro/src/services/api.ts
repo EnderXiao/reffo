@@ -376,10 +376,19 @@ export class ApiClient {
  *
  * @returns API 基础 URL
  */
+function getConfiguredApiBaseURL(): string | undefined {
+  return process.env.API_BASE_URL?.trim() || undefined;
+}
+
+export function hasConfiguredApiBaseURL(): boolean {
+  return Boolean(getConfiguredApiBaseURL());
+}
+
 function getApiBaseURL(): string {
   // 优先使用环境变量
-  if (process.env.API_BASE_URL) {
-    return process.env.API_BASE_URL;
+  const configuredBaseURL = getConfiguredApiBaseURL();
+  if (configuredBaseURL) {
+    return configuredBaseURL;
   }
 
   // 开发环境默认值

@@ -1,0 +1,18 @@
+interface ReffoGlyphProps {
+  color: string
+}
+
+export default function ReffoGlyph({color}: ReffoGlyphProps) {
+  return (
+    <svg width='100%' height='100%' viewBox='0 0 48 47' fill='none' xmlns='http://www.w3.org/2000/svg'>
+      <path
+        d='M48 36C48 42.0751 43.0751 47 37 47C30.9249 47 26 42.0751 26 36C26 29.9249 30.9249 25 37 25C43.0751 25 48 29.9249 48 36Z'
+        fill={color}
+      />
+      <path
+        d='M0 25V47H10C15.6 47 17.6667 40.6667 18 37.5V22C18 19.6 20 19.3333 21 19.5H29.5C34.7 19.5 37.3333 13.8333 38 11V0H26C22.8 0 20.6667 2 20 3C14.6667 8 3.6 18.4 2 20C0.4 21.6 0 24 0 25Z'
+        fill={color}
+      />
+    </svg>
+  )
+}

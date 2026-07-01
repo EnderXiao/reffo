@@ -3,6 +3,7 @@ import Taro, {useDidShow} from '@tarojs/taro'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import {useHistoryStore} from '@/store/historyStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
+import {isH5} from '@/utils'
 import {HOME_PAGE_CONTENT} from '../constants/content'
 import {DEMO_CARDS, toHistoryCardItems} from './homeCardData'
 
@@ -67,6 +68,10 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
 
   useEffect(() => {
     if (isStrategyVisible || isCreateMode) {
+      return
+    }
+
+    if (isH5()) {
       return
     }
 
