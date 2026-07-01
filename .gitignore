@@ -10,3 +10,4 @@ dist/
 .vscode/
 .idea/
 .artifacts/
+.playwright-cli/
