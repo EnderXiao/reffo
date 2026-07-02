@@ -1,7 +1,7 @@
 import {Image, Text, View} from '@tarojs/components'
 import {logVisualTier, useVisualTier} from '@/utils'
 import classNames from 'classnames'
-import {useEffect, useMemo, useRef, useState} from 'react'
+import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import type {IndexPageViewModel} from './model/usePageModel'
 import {HOME_PAGE_CONTENT} from './constants/content'
 import HomeScoreCard from './components/HomeScoreCard.h5'
@@ -24,7 +24,7 @@ const CARD_DESIGN_WIDTH = 210
 const CARD_DESIGN_HEIGHT = 332
 const CARD_SWIPE_DISTANCE = 44
 const CARD_SWIPE_VELOCITY = 0.28
-const CARD_EXIT_DURATION_MS = 280
+const CARD_EXIT_DURATION_MS = 420
 const CARD_DRAG_MAX = 220
 
 type DeckDragState = {
@@ -33,11 +33,8 @@ type DeckDragState = {
   phase: 'idle' | 'dragging' | 'settling' | 'exiting'
 }
 
-type TailExitCardState = {
-  key: string
-  card: IndexPageViewModel['cardItems'][number]
-  releaseX: number
-  releaseY: number
+type DeckCardSnapshot = {
+  transform: string
 }
 
 type HeroMode = 'brand' | 'strategy' | 'create'
@@ -248,11 +245,13 @@ function HomeCardDeckH5({
   const [railMotionY, setRailMotionY] = useState(0)
   const [isRailAnimating, setIsRailAnimating] = useState(false)
   const [dragState, setDragState] = useState<DeckDragState>({x: 0, y: 0, phase: 'idle'})
-  const [tailExitCard, setTailExitCard] = useState<TailExitCardState | null>(null)
+  const [recyclingCardId, setRecyclingCardId] = useState<string | null>(null)
   const railRef = useRef<HTMLDivElement | null>(null)
   const stackRef = useRef<HTMLDivElement | null>(null)
   const railAnimationTimerRef = useRef<number | null>(null)
-  const tailExitTimerRef = useRef<number | null>(null)
+  const deckSettleTimerRef = useRef<number | null>(null)
+  const deckFlipSnapshotRef = useRef<Map<string, DeckCardSnapshot> | null>(null)
+  const deckFlipAnimationsRef = useRef<Map<string, Animation>>(new Map())
   const firstInteractionTimerRef = useRef<number | null>(null)
   const railAnimatingRef = useRef(false)
   const touchStartYRef = useRef<number | null>(null)
@@ -268,27 +267,50 @@ function HomeCardDeckH5({
   const dragStateRef = useRef(dragState)
   const resolvedActiveIndex = cards.length > 0 ? modulo(activeRailIndex, cards.length) : 0
   const activeCard = cards[resolvedActiveIndex]
-  const orderedCards = useMemo(() => {
+  const orderedCardEntries = useMemo(() => {
     if (!cards.length) {
       return []
     }
 
     const visibleCount = Math.min(5, cards.length)
-    const tailExitCardId = tailExitCard?.card.id
     const nextCards = []
 
-    for (let offset = visibleCount - 1; offset >= -cards.length && nextCards.length < visibleCount; offset -= 1) {
-      const card = cards[modulo(resolvedActiveIndex - offset, cards.length)]
+    for (let offset = 0; offset < cards.length && nextCards.length < visibleCount; offset += 1) {
+      const card = cards[modulo(resolvedActiveIndex + offset, cards.length)]
 
-      if (card.id === tailExitCardId) {
-        continue
-      }
-
-      nextCards.push(card)
+      nextCards.push({
+        card,
+        depth: offset,
+        isRecycling: card.id === recyclingCardId,
+        isTailEntering: Boolean(recyclingCardId) && offset === visibleCount - 1 && card.id !== recyclingCardId,
+      })
     }
 
-    return nextCards
-  }, [cards, resolvedActiveIndex, tailExitCard])
+    if (recyclingCardId && !nextCards.some(entry => entry.card.id === recyclingCardId)) {
+      const recyclingCard = cards.find(card => card.id === recyclingCardId)
+
+      if (recyclingCard) {
+        nextCards.push({
+          card: recyclingCard,
+          depth: visibleCount - 1,
+          isRecycling: true,
+          isTailEntering: false,
+        })
+      }
+    }
+
+    return nextCards.sort((current, next) => {
+      if (current.depth !== next.depth) {
+        return next.depth - current.depth
+      }
+
+      if (current.isRecycling === next.isRecycling) {
+        return 0
+      }
+
+      return current.isRecycling ? 1 : -1
+    })
+  }, [cards, recyclingCardId, resolvedActiveIndex])
   const railItems = useMemo(() => {
     if (!cards.length) {
       return []
@@ -328,6 +350,92 @@ function HomeCardDeckH5({
       firstInteractionTimerRef.current = null
       onFirstInteraction()
     }, 0)
+  }
+  const captureDeckFlipSnapshot = () => {
+    const stackElement = stackRef.current
+
+    if (!stackElement) {
+      return
+    }
+
+    const snapshot = new Map<string, DeckCardSnapshot>()
+    const cardElements = stackElement.querySelectorAll('[data-home-card-id]')
+
+    cardElements.forEach(element => {
+      const cardElement = element as HTMLElement
+      const cardId = cardElement.dataset.homeCardId
+
+      if (!cardId) {
+        return
+      }
+
+      const computedStyle = window.getComputedStyle(cardElement)
+
+      snapshot.set(cardId, {
+        transform: computedStyle.transform === 'none' ? 'matrix(1, 0, 0, 1, 0, 0)' : computedStyle.transform,
+      })
+    })
+
+    deckFlipSnapshotRef.current = snapshot
+  }
+  const playDeckFlipAnimation = () => {
+    const stackElement = stackRef.current
+    const snapshot = deckFlipSnapshotRef.current
+
+    if (!stackElement || !snapshot) {
+      return
+    }
+
+    deckFlipSnapshotRef.current = null
+
+    const cardElements = stackElement.querySelectorAll('[data-home-card-id]')
+
+    cardElements.forEach(element => {
+      const cardElement = element as HTMLElement
+      const cardId = cardElement.dataset.homeCardId
+      const fromState = cardId ? snapshot.get(cardId) : null
+
+      if (!fromState || typeof cardElement.animate !== 'function') {
+        return
+      }
+
+      const computedStyle = window.getComputedStyle(cardElement)
+      const nextTransform = computedStyle.transform === 'none' ? 'matrix(1, 0, 0, 1, 0, 0)' : computedStyle.transform
+      const hasTransformChange = fromState.transform !== nextTransform
+
+      if (!hasTransformChange) {
+        return
+      }
+
+      deckFlipAnimationsRef.current.get(cardId)?.cancel()
+      const animation = cardElement.animate(
+        [
+          {
+            transform: fromState.transform,
+          },
+          {
+            transform: nextTransform,
+          },
+        ],
+        {
+          duration: CARD_EXIT_DURATION_MS,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'none',
+        },
+      )
+
+      deckFlipAnimationsRef.current.set(cardId, animation)
+      animation.onfinish = () => {
+        if (deckFlipAnimationsRef.current.get(cardId) === animation) {
+          deckFlipAnimationsRef.current.delete(cardId)
+        }
+      }
+      animation.oncancel = () => {
+        if (deckFlipAnimationsRef.current.get(cardId) === animation) {
+          deckFlipAnimationsRef.current.delete(cardId)
+        }
+      }
+    })
   }
   const applyDeckDragVisuals = (state: DeckDragState) => {
     const stackElement = stackRef.current
@@ -383,6 +491,9 @@ function HomeCardDeckH5({
     }
 
     if (state.phase === 'dragging') {
+      const cardLeft = activeCardElement.style.getPropertyValue('--card-left') || '0px'
+      const cardTop = activeCardElement.style.getPropertyValue('--card-top') || '0px'
+
       activeCardElement.style.setProperty('--card-highlight-strength', String(0.26 + magnitude * 1.05))
       activeCardElement.style.setProperty('--card-highlight-angle', `${highlightAngle}deg`)
       activeCardElement.style.setProperty('--card-highlight-x', `${highlightX}%`)
@@ -391,7 +502,7 @@ function HomeCardDeckH5({
       activeCardElement.style.filter = `drop-shadow(${clamp(state.x * 0.08, -18, 18)}px ${shadowY}px ${shadowBlur}px rgba(21, 30, 46, ${shadowOpacity}))`
       activeCardElement.style.transform = [
         'perspective(1280px)',
-        `translate3d(${state.x}px, ${verticalDrag + horizontalLift}px, 0)`,
+        `translate3d(calc(${cardLeft} + ${state.x}px), calc(${cardTop} + ${verticalDrag + horizontalLift}px), 0)`,
         `rotate(${clamp(state.x / 31.4, -7, 7)}deg)`,
         `rotateY(${clamp(-state.x / 10, -22, 22)}deg)`,
         `rotateX(${clamp(state.y / 12.2, -18, 18)}deg)`,
@@ -407,7 +518,7 @@ function HomeCardDeckH5({
       activeCardElement.style.removeProperty('--card-highlight-y')
       activeCardElement.style.transition = 'transform 260ms cubic-bezier(0.2, 0.92, 0.28, 1)'
       activeCardElement.style.removeProperty('filter')
-      activeCardElement.style.transform = `translate3d(0, 0, 0) rotate(0deg) scale(${cardScale})`
+      activeCardElement.style.removeProperty('transform')
       return
     }
 
@@ -450,7 +561,7 @@ function HomeCardDeckH5({
     touchStartYRef.current = event?.touches?.[0]?.clientY ?? null
   }
   const beginDeckDrag = (clientX: number, clientY: number, pointerId: number | null = null) => {
-    if (!isDeckInteractive || tailExitCard) {
+    if (!isDeckInteractive) {
       return
     }
 
@@ -498,44 +609,34 @@ function HomeCardDeckH5({
     applyDeckDragVisuals(nextState)
     setDragState(nextState)
   }
-  const commitDeckAdvance = (releaseX: number, releaseY: number) => {
+  const commitDeckAdvance = () => {
     if (!activeCard || cards.length <= 1) {
       setDragState({x: 0, y: 0, phase: 'settling'})
       return
     }
 
-    const direction = releaseX === 0 ? 1 : Math.sign(releaseX)
-    const normalizedReleaseX = clamp(
-      Math.abs(releaseX) < CARD_SWIPE_DISTANCE ? direction * CARD_SWIPE_DISTANCE : releaseX,
-      -CARD_DRAG_MAX,
-      CARD_DRAG_MAX,
-    )
+    captureDeckFlipSnapshot()
 
-    setTailExitCard({
-      key: `tail-exit-${activeCard.id}-${Date.now()}`,
-      card: activeCard,
-      releaseX: normalizedReleaseX,
-      releaseY,
-    })
     const nextState: DeckDragState = {x: 0, y: 0, phase: 'exiting'}
 
     dragStateRef.current = nextState
     applyDeckDragVisuals(nextState)
     setDragState(nextState)
+    setRecyclingCardId(activeCard.id)
     setActiveRailIndex(current => current + 1)
 
-    if (tailExitTimerRef.current != null) {
-      window.clearTimeout(tailExitTimerRef.current)
+    if (deckSettleTimerRef.current != null) {
+      window.clearTimeout(deckSettleTimerRef.current)
     }
 
-    tailExitTimerRef.current = window.setTimeout(() => {
+    deckSettleTimerRef.current = window.setTimeout(() => {
       const idleState: DeckDragState = {x: 0, y: 0, phase: 'idle'}
 
-      setTailExitCard(null)
       dragStateRef.current = idleState
       applyDeckDragVisuals(idleState)
       setDragState(idleState)
-      tailExitTimerRef.current = null
+      setRecyclingCardId(null)
+      deckSettleTimerRef.current = null
     }, CARD_EXIT_DURATION_MS)
   }
   const resetDeckDrag = () => {
@@ -545,10 +646,12 @@ function HomeCardDeckH5({
     applyDeckDragVisuals(nextState)
     setDragState(nextState)
 
-    if (tailExitTimerRef.current != null) {
-      window.clearTimeout(tailExitTimerRef.current)
-      tailExitTimerRef.current = null
+    if (deckSettleTimerRef.current != null) {
+      window.clearTimeout(deckSettleTimerRef.current)
+      deckSettleTimerRef.current = null
     }
+
+    setRecyclingCardId(null)
 
     window.setTimeout(() => {
       setDragState(current => {
@@ -597,7 +700,7 @@ function HomeCardDeckH5({
     }
 
     if (shouldAdvanceDeck(currentDrag.x, currentDrag.y, velocityX)) {
-      commitDeckAdvance(currentDrag.x + clamp(velocityX * 120, -180, 180), currentDrag.y)
+      commitDeckAdvance()
       return
     }
 
@@ -635,6 +738,13 @@ function HomeCardDeckH5({
     dragStateRef.current = dragState
     applyDeckDragVisuals(dragState)
   }, [dragState])
+  useLayoutEffect(() => {
+    if (dragState.phase !== 'exiting') {
+      return
+    }
+
+    playDeckFlipAnimation()
+  }, [dragState.phase, orderedCardEntries])
   useEffect(() => {
     const stackElement = stackRef.current
 
@@ -732,7 +842,7 @@ function HomeCardDeckH5({
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isDeckInteractive, tailExitCard, activeCard])
+  }, [isDeckInteractive, activeCard])
   useEffect(() => {
     const railElement = railRef.current
 
@@ -783,9 +893,12 @@ function HomeCardDeckH5({
         window.clearTimeout(railAnimationTimerRef.current)
       }
 
-      if (tailExitTimerRef.current != null) {
-        window.clearTimeout(tailExitTimerRef.current)
+      if (deckSettleTimerRef.current != null) {
+        window.clearTimeout(deckSettleTimerRef.current)
       }
+
+      deckFlipAnimationsRef.current.forEach(animation => animation.cancel())
+      deckFlipAnimationsRef.current.clear()
 
       if (firstInteractionTimerRef.current != null) {
         window.clearTimeout(firstInteractionTimerRef.current)
@@ -815,26 +928,8 @@ function HomeCardDeckH5({
           onPointerUp={handleDeckPointerEnd}
           onPointerCancel={handleDeckPointerEnd}
         >
-          {tailExitCard ? (
-            <HomeScoreCard
-              key={tailExitCard.key}
-              card={tailExitCard.card}
-              depth={0}
-              active
-              visualTier={visualCapability.tier}
-              className='reffo-home-card--tail-exit'
-              style={{
-                '--card-exit-x': `${tailExitCard.releaseX}px`,
-                '--card-exit-y': `${tailExitCard.releaseY}px`,
-                '--card-exit-rotate': `${clamp(tailExitCard.releaseX / 31.4, -7, 7)}deg`,
-                '--card-exit-rotate-y': `${clamp(-tailExitCard.releaseX / 10, -22, 22)}deg`,
-                '--card-exit-rotate-x': `${clamp(tailExitCard.releaseY / 12.2, -18, 18)}deg`,
-              }}
-            />
-          ) : null}
-          {orderedCards.map((card, index) => {
-            const depth = orderedCards.length - 1 - index
-            const isActive = card.id === activeCard?.id
+          {orderedCardEntries.map(({card, depth, isRecycling, isTailEntering}) => {
+            const isActive = !isRecycling && card.id === activeCard?.id
             return (
               <HomeScoreCard
                 key={card.id}
@@ -844,7 +939,9 @@ function HomeCardDeckH5({
                 visualTier={visualCapability.tier}
                 className={classNames({
                   'reffo-home-card--draggable': isActive && isDeckInteractive,
-                  'reffo-home-card--preview': !isActive && isDeckInteractive,
+                  'reffo-home-card--preview': !isActive && !isRecycling && isDeckInteractive,
+                  'reffo-home-card--tail-enter': isTailEntering,
+                  'reffo-home-card--recycling': isRecycling,
                 })}
               />
             )

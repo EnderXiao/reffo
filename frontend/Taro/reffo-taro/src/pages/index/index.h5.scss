@@ -318,11 +318,6 @@ taro-page-core,
   --card-drag-scale-x: 1;
   --card-drag-scale-y: 1;
   --card-preview-progress: 0;
-  --card-exit-x: 0px;
-  --card-exit-y: 0px;
-  --card-exit-rotate: 0deg;
-  --card-exit-rotate-x: 0deg;
-  --card-exit-rotate-y: 0deg;
   --card-texture-x: 0px;
   --card-texture-y: 0px;
   --card-texture-scale: 1;
@@ -341,11 +336,14 @@ taro-page-core,
   --card-border: rgba(255, 255, 255, 0.72);
   --card-opacity: 1;
   position: absolute;
-  left: var(--card-left);
-  top: var(--card-top);
+  left: 0;
+  top: 0;
   width: var(--card-design-width);
   height: var(--card-design-height);
-  transform: translate3d(0, 0, 0) rotate(var(--card-rotate)) scale(calc(var(--card-responsive-scale) * var(--card-depth-scale)));
+  transform:
+    translate3d(var(--card-left), var(--card-top), 0)
+    rotate(var(--card-rotate))
+    scale(calc(var(--card-responsive-scale) * var(--card-depth-scale)));
   opacity: var(--card-opacity);
   transform-origin: 0 0;
   border-radius: 10px;
@@ -354,6 +352,43 @@ taro-page-core,
   transition:
     transform 280ms cubic-bezier(0.2, 0.92, 0.28, 1),
     opacity 220ms ease;
+}
+
+.reffo-home-deck__stack--exiting .reffo-home-card {
+  transition:
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-home-card--tail-enter {
+  animation: reffo-card-tail-enter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-home-card--recycling {
+  pointer-events: none;
+  animation: reffo-card-recycle-out 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes reffo-card-tail-enter {
+  0%,
+  24% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: var(--card-opacity);
+  }
+}
+
+@keyframes reffo-card-recycle-out {
+  0%,
+  20% {
+    opacity: var(--card-opacity);
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
 .reffo-home-card::before,
@@ -440,7 +475,11 @@ taro-page-core,
   transition: none;
   transform:
     perspective(1280px)
-    translate3d(var(--card-drag-x), calc(var(--card-drag-y) + var(--card-drag-lift-y)), 0)
+    translate3d(
+      calc(var(--card-left) + var(--card-drag-x)),
+      calc(var(--card-top) + var(--card-drag-y) + var(--card-drag-lift-y)),
+      0
+    )
     rotate(var(--card-drag-rotate))
     rotateY(var(--card-drag-rotate-y))
     rotateX(var(--card-drag-rotate-x))
@@ -456,14 +495,17 @@ taro-page-core,
 }
 
 .reffo-home-deck__stack--settling .reffo-home-card--draggable {
-  transform: translate3d(0, 0, 0) rotate(var(--card-rotate)) scale(calc(var(--card-responsive-scale) * var(--card-depth-scale)));
+  transform:
+    translate3d(var(--card-left), var(--card-top), 0)
+    rotate(var(--card-rotate))
+    scale(calc(var(--card-responsive-scale) * var(--card-depth-scale)));
 }
 
 .reffo-home-deck__stack--dragging .reffo-home-card--preview {
   transform:
     translate3d(
-      calc(var(--card-preview-progress) * var(--deck-step-x) * -0.72),
-      calc(var(--card-preview-progress) * var(--deck-step-y) * -0.72),
+      calc(var(--card-left) + var(--card-preview-progress) * var(--deck-step-x) * -0.72),
+      calc(var(--card-top) + var(--card-preview-progress) * var(--deck-step-y) * -0.72),
       0
     )
     rotate(calc(var(--card-rotate) - var(--card-preview-progress) * 1.8deg))
@@ -497,34 +539,6 @@ taro-page-core,
 .reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__glass,
 .reffo-home-deck__stack--dragging .reffo-home-card--draggable .reffo-home-card__create-title {
   transition: none;
-}
-
-.reffo-home-card--tail-exit {
-  z-index: 42 !important;
-  pointer-events: none;
-  animation: reffo-card-tail-exit 280ms cubic-bezier(0.2, 0.92, 0.28, 1) forwards;
-}
-
-@keyframes reffo-card-tail-exit {
-  from {
-    opacity: 1;
-    transform:
-      translate3d(var(--card-exit-x), var(--card-exit-y), 0)
-      rotate(var(--card-exit-rotate))
-      rotateY(var(--card-exit-rotate-y))
-      rotateX(var(--card-exit-rotate-x))
-      scale(calc(var(--card-responsive-scale) * var(--card-depth-scale) * 0.96));
-  }
-
-  to {
-    opacity: 0;
-    transform:
-      translate3d(calc(var(--card-exit-x) * 2.6), calc(var(--card-exit-y) - 70px), 0)
-      rotate(calc(var(--card-exit-rotate) * 1.45))
-      rotateY(calc(var(--card-exit-rotate-y) * 1.35))
-      rotateX(calc(var(--card-exit-rotate-x) * 1.2))
-      scale(calc(var(--card-responsive-scale) * var(--card-depth-scale) * 0.9));
-  }
 }
 
 .reffo-home-card__surface {

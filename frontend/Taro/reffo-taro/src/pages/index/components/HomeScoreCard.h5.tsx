@@ -164,6 +164,7 @@ export default function HomeScoreCard({
 
   return (
     <View
+      data-home-card-id={card.id}
       className={classNames(
         'reffo-home-card',
         `reffo-home-card--grade-${scoreGrade.toLowerCase()}`,
