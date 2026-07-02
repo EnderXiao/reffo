@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import {useEffect, useRef} from 'react'
 
 interface PremiumCardEffectProps {

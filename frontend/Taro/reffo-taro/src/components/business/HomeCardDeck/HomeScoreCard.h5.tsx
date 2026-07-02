@@ -1,10 +1,10 @@
 import {Text, View} from '@tarojs/components'
 import type {VisualTier} from '@/utils'
-import type {HomeCardItem} from '@/components/business/HomeCardDeck'
-import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
+import type {HomeCardItem} from './shared'
+import {deriveCardPalette} from './palette'
 import classNames from 'classnames'
 import {lazy, Suspense, useMemo} from 'react'
-import {HOME_PAGE_CONTENT} from '../constants/content'
+import {HOME_PAGE_CONTENT} from '@/pages/index/constants/content'
 import ReffoGlyph from './ReffoGlyph.h5'
 
 const PremiumCardEffect = lazy(() => import('./PremiumCardEffect.h5'))
