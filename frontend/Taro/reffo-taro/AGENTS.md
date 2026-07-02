@@ -1,5 +1,7 @@
 # Reffo Taro Agent Notes
 
+Also read the repository-level `AGENTS.md` at the repo root before changing this project.
+
 ## H5 Style Unit Policy
 
 Taro H5 styles must distinguish between layout metrics and visual effect parameters.
