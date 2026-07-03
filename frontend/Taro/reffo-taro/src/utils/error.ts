@@ -1,4 +1,4 @@
-import Taro from '@tarojs/taro';
+import {feedback} from './feedback';
 
 /**
  * 错误类型枚举
@@ -346,7 +346,7 @@ export function handleError(error: unknown, context?: any): AppError {
 /**
  * 显示错误提示
  *
- * 使用 Taro.showToast 显示用户友好的错误提示
+ * 使用统一反馈工具显示用户友好的错误提示
  *
  * @param error 错误对象（可以是任何类型）
  * @param duration 提示持续时间（毫秒），默认 3000
@@ -365,7 +365,7 @@ export function handleError(error: unknown, context?: any): AppError {
 export function showErrorToast(error: unknown, duration: number = 3000): void {
   const message = getErrorMessage(error);
 
-  Taro.showToast({
+  feedback.toast({
     title: message,
     icon: 'none',
     duration,
@@ -375,7 +375,7 @@ export function showErrorToast(error: unknown, duration: number = 3000): void {
 /**
  * 显示错误模态框
  *
- * 使用 Taro.showModal 显示详细的错误信息
+ * 使用统一反馈工具显示详细的错误信息
  *
  * @param error 错误对象
  * @param options 模态框选项
@@ -405,19 +405,14 @@ export function showErrorModal(
 ): void {
   const message = getErrorMessage(error);
 
-  Taro.showModal({
+  feedback.modal({
     title: options?.title || '错误',
     content: message,
     confirmText: options?.confirmText || '确定',
     cancelText: options?.cancelText,
     showCancel: !!options?.cancelText,
-    success: res => {
-      if (res.confirm && options?.onConfirm) {
-        options.onConfirm();
-      } else if (res.cancel && options?.onCancel) {
-        options.onCancel();
-      }
-    },
+    onConfirm: options?.onConfirm,
+    onCancel: options?.onCancel,
   });
 }
 

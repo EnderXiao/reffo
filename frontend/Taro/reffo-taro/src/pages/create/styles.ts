@@ -1,30 +1,41 @@
 import {StyleSheet} from 'react-native'
+import {createLineHeight} from './utils/createLineHeight'
 
 export const styles = StyleSheet.create({
   page: {
     flex: 1,
+    flexDirection: 'column',
   },
   container: {
     flex: 1,
+    flexDirection: 'column',
+    position: 'relative',
     backgroundColor: '#ffffff',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
   },
   contentShell: {
     flex: 1,
+    flexDirection: 'column',
     alignItems: 'center',
     minHeight: 0,
+    position: 'relative',
+    zIndex: 1,
   },
   contentFrame: {
     flex: 1,
+    flexDirection: 'column',
     width: '100%',
     maxWidth: 393,
-    paddingHorizontal: 24,
+    paddingLeft: 24,
+    paddingRight: 24,
     minHeight: 0,
   },
   contentFrameCompact: {
-    paddingHorizontal: 13,
+    paddingLeft: 13,
+    paddingRight: 13,
   },
   chromeRow: {
     flexDirection: 'row',
@@ -52,11 +63,12 @@ export const styles = StyleSheet.create({
   closeButtonText: {
     color: '#cfd4de',
     fontSize: 18,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
     fontWeight: '700',
   },
   scrollArea: {
     flex: 1,
+    width: '100%',
     minHeight: 0,
   },
   scrollAreaCompact: {
@@ -64,6 +76,7 @@ export const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    flexDirection: 'column',
     paddingBottom: 14,
   },
   scrollContentCompact: {
@@ -71,6 +84,7 @@ export const styles = StyleSheet.create({
   },
   staticContentArea: {
     flex: 1,
+    flexDirection: 'column',
     minHeight: 0,
   },
   staticContentAreaCompact: {
@@ -78,6 +92,7 @@ export const styles = StyleSheet.create({
   },
   staticContentBody: {
     flex: 1,
+    flexDirection: 'column',
     minHeight: 0,
   },
   staticContentBodyCompact: {
@@ -106,12 +121,12 @@ export const styles = StyleSheet.create({
     marginRight: 2,
     color: '#22201f',
     fontSize: 28,
-    lineHeight: 36,
+    lineHeight: createLineHeight(36),
     fontWeight: '600',
   },
   titleSegmentCompact: {
     fontSize: 24,
-    lineHeight: 31,
+    lineHeight: createLineHeight(31),
   },
   titleSegmentAccent: {
     color: '#135fdb',
@@ -124,11 +139,11 @@ export const styles = StyleSheet.create({
   description: {
     color: '#a7adba',
     fontSize: 14,
-    lineHeight: 22,
+    lineHeight: createLineHeight(22),
   },
   descriptionCompact: {
     fontSize: 11.5,
-    lineHeight: 17,
+    lineHeight: createLineHeight(17),
   },
   footer: {
     paddingTop: 16,
@@ -183,17 +198,17 @@ export const styles = StyleSheet.create({
     marginRight: 8,
     color: '#ffffff',
     fontSize: 16,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
     fontWeight: '700',
   },
   primaryButtonText: {
     color: '#ffffff',
     fontSize: 18,
-    lineHeight: 24,
+    lineHeight: createLineHeight(24),
     fontWeight: '700',
   },
   primaryButtonTextCompact: {
     fontSize: 15,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
   },
 })

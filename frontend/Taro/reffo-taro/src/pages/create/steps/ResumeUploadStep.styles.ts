@@ -1,5 +1,6 @@
 import {StyleSheet} from 'react-native'
 import {colors, radius, space, typography} from '@/styles/tokens'
+import {createLineHeight} from '../utils/createLineHeight'
 
 export const styles = StyleSheet.create({
   step: {
@@ -11,7 +12,7 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     color: '#131313',
     fontSize: 18,
-    lineHeight: typography.lineHeight.body,
+    lineHeight: createLineHeight(typography.lineHeight.body),
     fontWeight: typography.weight.bold,
     marginBottom: space[5],
   },
@@ -25,14 +26,16 @@ export const styles = StyleSheet.create({
   },
   uploadCardLarge: {
     minHeight: 136,
-    paddingHorizontal: space[9],
-    paddingVertical: space[10],
+    paddingLeft: space[9],
+    paddingRight: space[9],
+    paddingTop: space[10],
+    paddingBottom: space[10],
   },
   uploadHint: {
     marginTop: space[5],
     color: '#b8c5d4',
     fontSize: 17,
-    lineHeight: typography.lineHeight.xl,
+    lineHeight: createLineHeight(typography.lineHeight.xl),
     fontWeight: typography.weight.semibold,
   },
   documentIcon: {
@@ -68,13 +71,13 @@ export const styles = StyleSheet.create({
   uploadArrow: {
     color: '#afc1d4',
     fontSize: 22,
-    lineHeight: 22,
+    lineHeight: createLineHeight(22),
     fontWeight: typography.weight.bold,
   },
   documentBadge: {
     color: colors.text.inverse,
     fontSize: 10,
-    lineHeight: 12,
+    lineHeight: createLineHeight(12),
     fontWeight: typography.weight.bold,
   },
   errorBadge: {
@@ -91,7 +94,7 @@ export const styles = StyleSheet.create({
   errorBadgeText: {
     color: colors.text.inverse,
     fontSize: 10,
-    lineHeight: 10,
+    lineHeight: createLineHeight(10),
     fontWeight: typography.weight.bold,
   },
   progressTrack: {
@@ -113,8 +116,10 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: space[7],
-    paddingVertical: space[6],
+    paddingLeft: space[7],
+    paddingRight: space[7],
+    paddingTop: space[6],
+    paddingBottom: space[6],
   },
   statusCardSuccess: {
     borderColor: colors.border.coolActive,
@@ -132,19 +137,19 @@ export const styles = StyleSheet.create({
   fileName: {
     color: colors.text.coolMuted,
     fontSize: typography.fontSize.xl,
-    lineHeight: typography.lineHeight.lg,
+    lineHeight: createLineHeight(typography.lineHeight.lg),
     fontWeight: '500',
   },
   fileSize: {
     marginTop: 5,
     color: colors.text.coolSubtle,
     fontSize: typography.fontSize.base,
-    lineHeight: typography.lineHeight.md,
+    lineHeight: createLineHeight(typography.lineHeight.md),
   },
   errorText: {
     color: colors.state.error,
     fontSize: 18,
-    lineHeight: typography.lineHeight.body,
+    lineHeight: createLineHeight(typography.lineHeight.body),
     fontWeight: typography.weight.semibold,
   },
   removeButton: {
@@ -156,7 +161,7 @@ export const styles = StyleSheet.create({
   removeButtonText: {
     color: colors.brand.primary,
     fontSize: 20,
-    lineHeight: 20,
+    lineHeight: createLineHeight(20),
     fontWeight: typography.weight.bold,
   },
   dividerRow: {
@@ -170,10 +175,11 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.border.neutral,
   },
   dividerText: {
-    marginHorizontal: space[5],
+    marginLeft: space[5],
+    marginRight: space[5],
     color: colors.text.neutralMuted,
     fontSize: typography.fontSize.xl,
-    lineHeight: typography.lineHeight.base,
+    lineHeight: createLineHeight(typography.lineHeight.base),
     fontWeight: typography.weight.semibold,
   },
   textareaWrap: {
@@ -181,7 +187,8 @@ export const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border.cool,
-    paddingHorizontal: space[6],
+    paddingLeft: space[6],
+    paddingRight: space[6],
     paddingTop: space[5],
     paddingBottom: space[4],
     backgroundColor: colors.surface.white,
@@ -190,19 +197,19 @@ export const styles = StyleSheet.create({
     minHeight: 140,
     color: '#334155',
     fontSize: typography.fontSize.xl,
-    lineHeight: typography.lineHeight.body,
+    lineHeight: createLineHeight(typography.lineHeight.body),
     textAlignVertical: 'top',
   },
   editorHint: {
     marginTop: space[4],
     color: '#6f8097',
     fontSize: typography.fontSize.md,
-    lineHeight: typography.lineHeight.md,
+    lineHeight: createLineHeight(typography.lineHeight.md),
     fontWeight: '500',
   },
   tipText: {
     color: '#b8b8b8',
     fontSize: typography.fontSize.base,
-    lineHeight: typography.lineHeight.body,
+    lineHeight: createLineHeight(typography.lineHeight.body),
   },
 })

@@ -3,6 +3,7 @@ import {Text, View} from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import {StatusBar, StyleProp, StyleSheet, ViewStyle} from 'react-native'
 import {getStatusBarHeight} from '@/utils'
+import {navigation} from '@/utils/navigation'
 
 interface AppPageShellProps extends PropsWithChildren {
   title?: string
@@ -102,11 +103,11 @@ export default function AppPageShell({
     }
 
     if (Taro.getCurrentPages().length > 1) {
-      Taro.navigateBack()
+      void navigation.navigateBack()
       return
     }
 
-    Taro.reLaunch({url: '/pages/index/index'})
+    void navigation.reLaunch('/pages/index/index')
   }
 
   return (

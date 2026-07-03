@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro';
+import {runWithNavigationTransition} from './navigation-transition';
 
 /**
  * 导航参数类型
@@ -261,7 +262,10 @@ export class TaroNavigationAdapter implements NavigationAdapter {
         fullUrl,
       });
 
-      await Taro.navigateTo({url: fullUrl});
+      await runWithNavigationTransition(
+        () => Taro.navigateTo({url: fullUrl}),
+        {kind: 'forward'},
+      );
 
       console.log('[Navigation] navigateTo success:', {fullUrl});
     } catch (error) {
@@ -294,7 +298,10 @@ export class TaroNavigationAdapter implements NavigationAdapter {
     try {
       console.log('[Navigation] navigateBack:', {delta});
 
-      await Taro.navigateBack({delta});
+      await runWithNavigationTransition(
+        () => Taro.navigateBack({delta}),
+        {kind: 'back'},
+      );
 
       console.log('[Navigation] navigateBack success:', {delta});
     } catch (error) {
@@ -341,7 +348,10 @@ export class TaroNavigationAdapter implements NavigationAdapter {
         fullUrl,
       });
 
-      await Taro.redirectTo({url: fullUrl});
+      await runWithNavigationTransition(
+        () => Taro.redirectTo({url: fullUrl}),
+        {kind: 'replace'},
+      );
 
       console.log('[Navigation] redirectTo success:', {fullUrl});
     } catch (error) {
@@ -375,7 +385,10 @@ export class TaroNavigationAdapter implements NavigationAdapter {
     try {
       console.log('[Navigation] switchTab:', {url});
 
-      await Taro.switchTab({url});
+      await runWithNavigationTransition(
+        () => Taro.switchTab({url}),
+        {kind: 'replace'},
+      );
 
       console.log('[Navigation] switchTab success:', {url});
     } catch (error) {
@@ -422,7 +435,10 @@ export class TaroNavigationAdapter implements NavigationAdapter {
         fullUrl,
       });
 
-      await Taro.reLaunch({url: fullUrl});
+      await runWithNavigationTransition(
+        () => Taro.reLaunch({url: fullUrl}),
+        {kind: 'root'},
+      );
 
       console.log('[Navigation] reLaunch success:', {fullUrl});
     } catch (error) {

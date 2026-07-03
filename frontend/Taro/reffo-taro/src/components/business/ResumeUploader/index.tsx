@@ -3,6 +3,7 @@ import {Text, Textarea, View} from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import {StyleSheet} from 'react-native'
 import {Button} from '@/components/Button'
+import {feedback} from '@/utils/feedback'
 import {pickBrowserFile, readBrowserTextFile} from '@/utils/web-file'
 
 export interface ResumeUploaderProps {
@@ -136,22 +137,14 @@ export function ResumeUploader({
       if (!validateFileType(file.name)) {
         const message = `不支持的文件类型，请选择 ${acceptTypes.join('、')} 格式的文件`
         setError(message)
-        Taro.showToast({
-          title: '不支持的文件类型',
-          icon: 'none',
-          duration: 2000,
-        })
+        feedback.error('不支持的文件类型', {duration: 2000})
         return
       }
 
       if (!validateFileSize(file.size)) {
         const message = `文件大小超过限制（最大 ${maxSize}MB）`
         setError(message)
-        Taro.showToast({
-          title: `文件大小超过 ${maxSize}MB`,
-          icon: 'none',
-          duration: 2000,
-        })
+        feedback.error(`文件大小超过 ${maxSize}MB`, {duration: 2000})
         return
       }
 
@@ -162,19 +155,11 @@ export function ResumeUploader({
       setError(null)
       onUpload(fileContent)
 
-      Taro.showToast({
-        title: '文件上传成功',
-        icon: 'success',
-        duration: 1500,
-      })
+      feedback.success('文件上传成功')
     } catch (err) {
       console.error('文件选择失败:', err)
       setError('文件选择失败，请重试')
-      Taro.showToast({
-        title: '文件选择失败',
-        icon: 'none',
-        duration: 2000,
-      })
+      feedback.error('文件选择失败', {duration: 2000})
     }
   }
 

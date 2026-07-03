@@ -34,14 +34,24 @@ export enum PlatformType {
  * **Validates: Requirements 3.1, 3.6**
  */
 export function getPlatform(): PlatformType {
-  const env = Taro.getEnv();
+  const envType = Taro.ENV_TYPE ?? {
+    WEAPP: 'WEAPP',
+    WEB: 'WEB',
+    RN: 'RN',
+  };
+  const env =
+    typeof Taro.getEnv === 'function'
+      ? Taro.getEnv()
+      : process.env.TARO_ENV === 'h5'
+        ? envType.WEB
+        : envType.RN;
 
   switch (env) {
-    case Taro.ENV_TYPE.WEAPP:
+    case envType.WEAPP:
       return PlatformType.WEAPP;
-    case Taro.ENV_TYPE.WEB:
+    case envType.WEB:
       return PlatformType.H5;
-    case Taro.ENV_TYPE.RN:
+    case envType.RN:
       // 在 React Native 环境中，需要进一步判断是 iOS 还是 Android
       // 使用 Taro.getSystemInfoSync() 获取系统信息
       try {

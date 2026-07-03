@@ -1,11 +1,19 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
 import Taro, {useRouter} from '@tarojs/taro'
+import * as FileSystem from 'expo-file-system'
+import * as ImagePicker from 'expo-image-picker'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
 import {useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
 import type {SourceResumeSummary} from '@/types'
+import {feedback} from '@/utils/feedback'
+import {navigation} from '@/utils/navigation'
 import {saveLatestResultSession} from '@/utils/result-session'
-import {pickBrowserFile, readBrowserTextFile} from '@/utils/web-file'
+import {
+  canUseBrowserFilePicker,
+  pickBrowserFile,
+  readBrowserTextFile,
+} from '@/utils/web-file'
 import {
   CREATE_STEP_META,
   CREATE_STEP_SEQUENCE,
@@ -153,12 +161,19 @@ interface PickedTempFile {
 }
 
 async function pickJobDescriptionFile(): Promise<PickedTempFile | null> {
-  const browserFile = await pickBrowserFile({
-    accept: JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
-  })
+  const canPickBrowserFile = canUseBrowserFilePicker()
+  const browserFile = canPickBrowserFile
+    ? await pickBrowserFile({
+        accept: JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
+      })
+    : null
 
   if (browserFile) {
     return browserFile
+  }
+
+  if (canPickBrowserFile) {
+    return null
   }
 
   const chooseMessageFile = (Taro as any).chooseMessageFile
@@ -175,7 +190,37 @@ async function pickJobDescriptionFile(): Promise<PickedTempFile | null> {
     return response.tempFiles?.[0] ?? null
   }
 
-  throw new Error('当前环境暂不支持选择文件')
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+
+  if (!permission.granted) {
+    throw new Error('未获得相册访问权限')
+  }
+
+  const imageResult = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsMultipleSelection: false,
+    quality: 1,
+  })
+
+  if (imageResult.canceled) {
+    return null
+  }
+
+  const asset = imageResult.assets?.[0]
+
+  if (!asset?.uri) {
+    return null
+  }
+
+  const fileInfo = await FileSystem.getInfoAsync(asset.uri)
+
+  return {
+    name: asset.fileName || asset.uri.split('/').pop() || 'job-description.png',
+    path: asset.uri,
+    size: fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number'
+      ? fileInfo.size
+      : asset.fileSize || 0,
+  }
 }
 
 function normalizeRouteStep(value?: string): CreateStepId | null {
@@ -516,9 +561,17 @@ export function usePageModel(): CreatePageViewModel {
 
   const handlePickResumeFile = async () => {
     try {
-      const browserFile = await pickBrowserFile({
-        accept: RESUME_FILE_ACCEPT_TYPES,
-      })
+      const canPickBrowserFile = canUseBrowserFilePicker()
+      const browserFile = canPickBrowserFile
+        ? await pickBrowserFile({
+            accept: RESUME_FILE_ACCEPT_TYPES,
+          })
+        : null
+
+      if (canPickBrowserFile && !browserFile) {
+        return
+      }
+
       const response = browserFile
         ? {tempFiles: [browserFile]}
         : await Taro.chooseMessageFile({
@@ -540,11 +593,7 @@ export function usePageModel(): CreatePageViewModel {
           file: null,
           errorMessage: '上传失败',
         }))
-        Taro.showToast({
-          title: '仅支持 PDF、DOC、DOCX、MD、TXT 文件',
-          icon: 'none',
-          duration: 2200,
-        })
+        feedback.error('仅支持 PDF、DOC、DOCX、MD、TXT 文件')
         return
       }
 
@@ -556,22 +605,25 @@ export function usePageModel(): CreatePageViewModel {
           file: null,
           errorMessage: '上传失败',
         }))
-        Taro.showToast({
-          title: `文件不能超过 ${RESUME_FILE_MAX_SIZE_MB}MB`,
-          icon: 'none',
-          duration: 2200,
-        })
+        feedback.error(`文件不能超过 ${RESUME_FILE_MAX_SIZE_MB}MB`)
         return
       }
 
       const requestId = uploadRequestRef.current + 1
       uploadRequestRef.current = requestId
+      const pendingFile: UploadedResumeFile = {
+        name: selectedFile.name,
+        path: selectedFile.path,
+        size: selectedFile.size,
+        sizeLabel: formatFileSize(selectedFile.size),
+        extension: getFileExtension(selectedFile.name),
+      }
 
       setResumeUploadState(previous => ({
         ...previous,
         status: 'uploading',
         progress: 18,
-        file: null,
+        file: pendingFile,
         errorMessage: null,
       }))
 
@@ -620,10 +672,7 @@ export function usePageModel(): CreatePageViewModel {
       }
 
       const uploadedFile: UploadedResumeFile = {
-        name: selectedFile.name,
-        path: selectedFile.path,
-        size: selectedFile.size,
-        extension: getFileExtension(selectedFile.name),
+        ...pendingFile,
         extractedText,
       }
       const nextMarkdown =
@@ -638,11 +687,7 @@ export function usePageModel(): CreatePageViewModel {
         errorMessage: null,
       }))
 
-      Taro.showToast({
-        title: `${selectedFile.name} 已上传`,
-        icon: 'success',
-        duration: 1500,
-      })
+      feedback.success(`${selectedFile.name} 已上传`)
     } catch (error) {
       if (isUserCancelled(error)) {
         return
@@ -656,11 +701,7 @@ export function usePageModel(): CreatePageViewModel {
         file: null,
         errorMessage: '上传失败',
       }))
-      Taro.showToast({
-        title: '上传失败，请重试',
-        icon: 'none',
-        duration: 2200,
-      })
+      feedback.error('上传失败，请重试')
     }
   }
 
@@ -679,11 +720,7 @@ export function usePageModel(): CreatePageViewModel {
           attachment: null,
           attachmentErrorMessage: '仅支持 PNG、JPG、JPEG、WEBP 图片',
         }))
-        Taro.showToast({
-          title: '仅支持 PNG、JPG、JPEG、WEBP 图片',
-          icon: 'none',
-          duration: 2200,
-        })
+        feedback.error('仅支持 PNG、JPG、JPEG、WEBP 图片')
         return
       }
 
@@ -695,11 +732,7 @@ export function usePageModel(): CreatePageViewModel {
           attachment: null,
           attachmentErrorMessage: `文件不能超过 ${JOB_DESCRIPTION_FILE_MAX_SIZE_MB}MB`,
         }))
-        Taro.showToast({
-          title: `文件不能超过 ${JOB_DESCRIPTION_FILE_MAX_SIZE_MB}MB`,
-          icon: 'none',
-          duration: 2200,
-        })
+        feedback.error(`文件不能超过 ${JOB_DESCRIPTION_FILE_MAX_SIZE_MB}MB`)
         return
       }
 
@@ -741,11 +774,7 @@ export function usePageModel(): CreatePageViewModel {
         attachmentErrorMessage: null,
       }))
 
-      Taro.showToast({
-        title: `${selectedFile.name} 已选择`,
-        icon: 'success',
-        duration: 1500,
-      })
+      feedback.success(`${selectedFile.name} 已选择`)
     } catch (error) {
       if (isUserCancelled(error)) {
         return
@@ -759,31 +788,25 @@ export function usePageModel(): CreatePageViewModel {
         attachment: null,
         attachmentErrorMessage: '文件读取失败，请重试',
       }))
-      Taro.showToast({
-        title: '文件读取失败，请重试',
-        icon: 'none',
-        duration: 2200,
-      })
+      feedback.error('文件读取失败，请重试')
     }
   }
 
   const handlePrimaryAction = async () => {
     if (currentStep === 'resumeSummary') {
-      setCurrentStep('resumeUpload')
+      setCurrentStep('jobDescription')
       return
     }
 
     if (!canSaveCurrentStep) {
-      Taro.showToast({
-        title:
-          currentStep === 'resumeUpload'
-            ? '请先填写或整理 Markdown 简历'
-            : jobDescriptionState.inputMode === 'upload'
-              ? '请先上传岗位描述截图，或切换到“文字输入”补充岗位描述'
-              : '请先填写目标岗位描述',
-        icon: 'none',
-        duration: 2200,
-      })
+      feedback.message(
+        currentStep === 'resumeUpload'
+          ? '请先填写或整理 Markdown 简历'
+          : jobDescriptionState.inputMode === 'upload'
+            ? '请先上传岗位描述截图，或切换到“文字输入”补充岗位描述'
+            : '请先填写目标岗位描述',
+        {duration: 2200},
+      )
       return
     }
 
@@ -811,20 +834,12 @@ export function usePageModel(): CreatePageViewModel {
           .getState()
           .setLatestSourceResume(savedSourceResume)
 
-        Taro.showToast({
-          title: '源简历已保存',
-          icon: 'success',
-          duration: 1200,
-        })
+        feedback.success('源简历已保存', {duration: 1200})
 
         setCurrentStep('resumeSummary')
       } catch (error) {
         console.error('save source resume failed', error)
-        Taro.showToast({
-          title: '源简历保存失败，请重试',
-          icon: 'none',
-          duration: 2200,
-        })
+        feedback.error('源简历保存失败，请重试')
       } finally {
         setIsSavingCurrentStep(false)
       }
@@ -881,17 +896,13 @@ export function usePageModel(): CreatePageViewModel {
         return
       }
 
-      await Taro.navigateTo({url: '/pages/result/index'})
+      await navigation.navigateTo('/pages/result/index')
     } catch (error) {
       if (generationRequestRef.current !== requestId) {
         return
       }
       console.error('process resume failed', error)
-      Taro.showToast({
-        title: error instanceof Error ? error.message : '生成失败，请重试',
-        icon: 'none',
-        duration: 2200,
-      })
+      feedback.error(error instanceof Error ? error.message : '生成失败，请重试')
     } finally {
       if (generationRequestRef.current !== requestId) {
         return
@@ -913,7 +924,7 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handleClose = () => {
-    Taro.navigateBack()
+    void navigation.navigateBack()
   }
 
   const resumeUploadViewState: ResumeUploadStepState = {

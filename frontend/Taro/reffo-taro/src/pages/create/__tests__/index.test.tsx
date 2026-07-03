@@ -240,11 +240,11 @@ describe('CreatePage', () => {
     await waitFor(() => {
       expect(screen.getByText('源简历文件')).toBeTruthy()
       expect(screen.getByText('Jeremy Smith.md')).toBeTruthy()
-      expect(screen.getByText('编辑源简历')).toBeTruthy()
+      expect(screen.getByText('继续创建')).toBeTruthy()
     })
   })
 
-  test('源简历完成页点击主按钮会返回编辑态', async () => {
+  test('源简历完成页点击主按钮会进入岗位描述步骤', async () => {
     await renderPage()
 
     fireEvent.change(screen.getByTestId('resume-markdown-input'), {
@@ -266,8 +266,8 @@ describe('CreatePage', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('上传源简历')).toBeTruthy()
-      expect(screen.getByTestId('resume-markdown-input')).toBeTruthy()
+      expect(screen.getByText('目标岗位描述')).toBeTruthy()
+      expect(screen.getByText('开始生成最佳简历')).toBeTruthy()
     })
   })
 

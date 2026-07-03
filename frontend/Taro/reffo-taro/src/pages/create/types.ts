@@ -90,7 +90,7 @@ export const CREATE_STEP_META: Record<CreateStepId, CreateStepMeta> = {
     ],
     description:
       'Reffo 能够充分理解你的技能模型和工作经验对于针对目标岗位生成最佳简历是非常必要的',
-    actionLabel: '编辑源简历',
+    actionLabel: '继续创建',
   },
   jobDescription: {
     id: 'jobDescription',

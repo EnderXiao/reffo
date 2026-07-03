@@ -1,7 +1,7 @@
 import {Component, ReactNode} from 'react';
 import {View, Text} from '@tarojs/components';
-import Taro from '@tarojs/taro';
 import {Button} from '@/components';
+import {navigation} from '@/utils/navigation';
 import styles from './index.module.scss';
 
 interface ErrorBoundaryProps {
@@ -80,10 +80,7 @@ export class ErrorBoundary extends Component<
    * 刷新页面
    */
   handleReload = () => {
-    // 使用 Taro 的重新加载方法
-    Taro.reLaunch({
-      url: '/pages/index/index',
-    });
+    void navigation.reLaunch('/pages/index/index');
   };
 
   render() {

@@ -1,6 +1,7 @@
 import { Component, PropsWithChildren, createElement } from 'react'
 import { DeviceEventEmitter, StyleSheet } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { initializeNavigationTransitions } from '@/utils/navigation-transition'
 
 import './app.scss'
 
@@ -64,9 +65,13 @@ const styles = StyleSheet.create({
 
 class App extends Component<PropsWithChildren> {
 
-  componentDidMount () {}
+  componentDidMount () {
+    initializeNavigationTransitions()
+  }
 
-  componentDidShow () {}
+  componentDidShow () {
+    initializeNavigationTransitions()
+  }
 
   componentDidHide () {}
 

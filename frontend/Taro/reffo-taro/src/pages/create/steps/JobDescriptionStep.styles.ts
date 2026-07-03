@@ -1,5 +1,6 @@
 import {StyleSheet} from 'react-native'
 import {colors, radius, shadow, space, typography} from '@/styles/tokens'
+import {createLineHeight} from '../utils/createLineHeight'
 
 export const styles = StyleSheet.create({
   step: {
@@ -25,14 +26,16 @@ export const styles = StyleSheet.create({
     borderColor: colors.border.warmCard,
     backgroundColor: colors.surface.transparent,
     paddingTop: 25,
-    paddingHorizontal: space[7],
+    paddingLeft: space[7],
+    paddingRight: space[7],
     paddingBottom: space[8],
     ...shadow.warmCard,
   },
   applicationCardCompact: {
     maxWidth: 304,
     paddingTop: 24,
-    paddingHorizontal: 14,
+    paddingLeft: 14,
+    paddingRight: 14,
     paddingBottom: 14,
   },
   applicationCardFill: {
@@ -129,13 +132,13 @@ export const styles = StyleSheet.create({
   ribbonText: {
     color: colors.text.inverse,
     fontSize: typography.fontSize.sm,
-    lineHeight: 14,
+    lineHeight: createLineHeight(14),
     fontWeight: typography.weight.bold,
     letterSpacing: 0.2,
   },
   ribbonTextCompact: {
     fontSize: 9.5,
-    lineHeight: 11,
+    lineHeight: createLineHeight(11),
   },
   fieldBlock: {
     marginBottom: 12,
@@ -150,13 +153,13 @@ export const styles = StyleSheet.create({
   fieldLabel: {
     color: colors.text.primary,
     fontSize: typography.fontSize.lg,
-    lineHeight: typography.lineHeight.lg,
+    lineHeight: createLineHeight(typography.lineHeight.lg),
     fontWeight: typography.weight.bold,
     marginBottom: 7,
   },
   fieldLabelCompact: {
     fontSize: 14,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
     marginBottom: 5,
   },
   inputShell: {
@@ -164,22 +167,24 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.warmSoft,
     backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingHorizontal: 16,
+    paddingLeft: 16,
+    paddingRight: 16,
     minHeight: 46,
     justifyContent: 'center',
   },
   inputShellCompact: {
     minHeight: 40,
-    paddingHorizontal: 10,
+    paddingLeft: 10,
+    paddingRight: 10,
   },
   input: {
     color: colors.text.secondary,
     fontSize: typography.fontSize.lg,
-    lineHeight: typography.lineHeight.lg,
+    lineHeight: createLineHeight(typography.lineHeight.lg),
   },
   inputCompact: {
     fontSize: 14,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
   },
   jdPanel: {
     borderRadius: radius.xl,
@@ -200,12 +205,15 @@ export const styles = StyleSheet.create({
     minHeight: 182,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingTop: 14,
+    paddingBottom: 14,
   },
   uploadPanelCompact: {
     minHeight: 126,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   uploadPanelFill: {
     flex: 1,
@@ -308,37 +316,39 @@ export const styles = StyleSheet.create({
   uploadTitle: {
     color: '#d2c3bb',
     fontSize: 19,
-    lineHeight: 24,
+    lineHeight: createLineHeight(24),
     fontWeight: '700',
     textAlign: 'center',
   },
   uploadTitleCompact: {
     color: '#c8b8b0',
     fontSize: 16,
-    lineHeight: 20,
+    lineHeight: createLineHeight(20),
   },
   uploadSubtitle: {
     marginTop: 4,
     color: '#cdbeb6',
     fontSize: 11.5,
-    lineHeight: 17,
+    lineHeight: createLineHeight(17),
     textAlign: 'center',
   },
   uploadSubtitleCompact: {
     marginTop: 3,
     color: '#c6b7af',
     fontSize: 10.5,
-    lineHeight: 15,
+    lineHeight: createLineHeight(15),
   },
   loadingPanel: {
     minHeight: 182,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   loadingPanelCompact: {
     minHeight: 126,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   loadingPanelFill: {
     flex: 1,
@@ -398,12 +408,15 @@ export const styles = StyleSheet.create({
     minHeight: 182,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   filePanelCompact: {
     minHeight: 126,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   filePanelFill: {
     flex: 1,
@@ -428,34 +441,37 @@ export const styles = StyleSheet.create({
   filePanelName: {
     color: '#6f625b',
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: createLineHeight(22),
     fontWeight: '600',
     textAlign: 'center',
   },
   filePanelNameCompact: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: createLineHeight(20),
   },
   filePanelMeta: {
     marginTop: 4,
     color: '#b2a49d',
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
     textAlign: 'center',
   },
   filePanelMetaCompact: {
-    lineHeight: 17,
+    lineHeight: createLineHeight(17),
   },
   errorPanel: {
     minHeight: 182,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   errorPanelCompact: {
     minHeight: 126,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   errorPanelFill: {
     flex: 1,
@@ -480,44 +496,46 @@ export const styles = StyleSheet.create({
   errorBadgeText: {
     color: colors.brand.warm,
     fontSize: typography.fontSize.badge,
-    lineHeight: typography.lineHeight.badge,
+    lineHeight: createLineHeight(typography.lineHeight.badge),
     fontWeight: typography.weight.bold,
   },
   errorBadgeTextCompact: {
     fontSize: 24,
-    lineHeight: 24,
+    lineHeight: createLineHeight(24),
   },
   errorTitle: {
     color: colors.state.errorText,
     fontSize: typography.fontSize.xl,
-    lineHeight: typography.lineHeight.xl,
+    lineHeight: createLineHeight(typography.lineHeight.xl),
     fontWeight: typography.weight.bold,
   },
   errorTitleCompact: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: createLineHeight(20),
   },
   errorSubtitle: {
     marginTop: 6,
     color: '#b7978e',
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: createLineHeight(19),
     textAlign: 'center',
   },
   errorSubtitleCompact: {
     marginTop: 4,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
   },
   textareaWrap: {
     minHeight: 182,
-    paddingHorizontal: 14,
+    paddingLeft: 14,
+    paddingRight: 14,
     paddingTop: 12,
     paddingBottom: 8,
     backgroundColor: colors.surface.warmPanelSoft,
   },
   textareaWrapCompact: {
     minHeight: 126,
-    paddingHorizontal: 10,
+    paddingLeft: 10,
+    paddingRight: 10,
     paddingTop: 8,
     paddingBottom: 5,
   },
@@ -529,13 +547,13 @@ export const styles = StyleSheet.create({
     minHeight: 160,
     color: colors.text.secondary,
     fontSize: typography.fontSize.xl,
-    lineHeight: typography.lineHeight.body,
+    lineHeight: createLineHeight(typography.lineHeight.body),
     textAlignVertical: 'top',
   },
   textareaCompact: {
     minHeight: 113,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: createLineHeight(20),
   },
   textareaFill: {
     flex: 1,
@@ -567,13 +585,13 @@ export const styles = StyleSheet.create({
   modeTabGlyph: {
     color: colors.icon.muted,
     fontSize: 18,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
     fontWeight: '700',
   },
   modeTabGlyphActive: {
     color: colors.brand.warmDark,
     fontSize: 18,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
     fontWeight: '700',
   },
   pencilGlyph: {
@@ -656,12 +674,12 @@ export const styles = StyleSheet.create({
     marginTop: 8,
     color: colors.text.muted,
     fontSize: 12.5,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
   },
   tipTextCompact: {
     marginTop: 6,
     fontSize: 11,
-    lineHeight: 16,
+    lineHeight: createLineHeight(16),
   },
   tipTextFill: {
     marginTop: 6,

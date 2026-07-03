@@ -7,4 +7,8 @@ export default {
     navigationBarTitleText: 'Reffo',
     navigationBarTextStyle: 'black',
   },
+  animation: {
+    duration: 280,
+    delay: 30,
+  },
 }

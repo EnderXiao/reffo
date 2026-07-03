@@ -18,7 +18,7 @@ export default function CreateBackdrop({
   const gradientStops =
     variant === 'warm'
       ? ['#f8ddd6', '#fff2eb', '#fffaf6']
-      : ['#dce8fb', '#edf4ff', '#ffffff']
+      : ['#dce9f9', '#eef4fb', '#ffffff']
 
   return (
     <View pointerEvents='none' style={styles.backdrop}>
@@ -34,7 +34,7 @@ export default function CreateBackdrop({
             <Stop offset='100%' stopColor='#ffffff' stopOpacity={0} />
           </LinearGradient>
           <LinearGradient id={topWashId} x1='50%' y1='0%' x2='50%' y2='100%'>
-            <Stop offset='0%' stopColor={variant === 'warm' ? '#f7d7d0' : '#d7e4f8'} stopOpacity={0.78} />
+            <Stop offset='0%' stopColor={variant === 'warm' ? '#f7d7d0' : '#dce9f9'} stopOpacity={0.78} />
             <Stop offset='100%' stopColor='#ffffff' stopOpacity={0} />
           </LinearGradient>
         </Defs>
@@ -48,7 +48,7 @@ export default function CreateBackdrop({
             <Ellipse cx='70%' cy='44%' rx='148' ry='200' fill='#ffffff' fillOpacity={0.12} />
           </>
         ) : (
-          <Ellipse cx='18%' cy='10%' rx='180' ry='132' fill='#c5d7f6' fillOpacity={0.28} />
+          <Ellipse cx='18%' cy='10%' rx='180' ry='132' fill='#c5d7f6' fillOpacity={0.2} />
         )}
       </SvgIcon>
     </View>

@@ -1,5 +1,6 @@
 import {Text, View} from '@tarojs/components'
 import {StyleSheet} from 'react-native'
+import {createLineHeight} from '../utils/createLineHeight'
 import type {ResumeSummaryStepState} from '../types'
 
 interface ResumeSummaryStepProps {
@@ -48,7 +49,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#171717',
     fontSize: 18,
-    lineHeight: 24,
+    lineHeight: createLineHeight(24),
     fontWeight: '700',
     marginBottom: 16,
   },
@@ -58,8 +59,10 @@ const styles = StyleSheet.create({
     borderColor: '#d9e2f0',
     backgroundColor: 'rgba(244, 249, 255, 0.9)',
     minHeight: 72,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#b6c4d8',
@@ -80,7 +83,7 @@ const styles = StyleSheet.create({
   fileBadgeIcon: {
     color: '#ffffff',
     fontSize: 18,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
     fontWeight: '700',
   },
   fileMeta: {
@@ -89,14 +92,14 @@ const styles = StyleSheet.create({
   fileName: {
     color: '#5f7397',
     fontSize: 18,
-    lineHeight: 24,
+    lineHeight: createLineHeight(24),
     fontWeight: '500',
   },
   fileInfo: {
     marginTop: 2,
     color: '#7f8fa8',
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: createLineHeight(20),
   },
   timestampRow: {
     marginTop: 8,
@@ -105,6 +108,6 @@ const styles = StyleSheet.create({
   timestampText: {
     color: '#c2c6d0',
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: createLineHeight(18),
   },
 })

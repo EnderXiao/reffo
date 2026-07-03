@@ -1,6 +1,7 @@
 import {StyleSheet} from 'react-native'
 import {colors, radius, space, typography} from '@/styles/tokens'
 import {CARD_HEIGHT, CARD_WIDTH, DETAIL_ITEM_HEIGHT} from './AnalysisStage.constants'
+import {createLineHeight} from '../utils/createLineHeight'
 
 export const styles = StyleSheet.create({
   overlay: {
@@ -15,7 +16,8 @@ export const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: space[11],
+    paddingLeft: space[11],
+    paddingRight: space[11],
     paddingBottom: 88,
   },
   cardStage: {
@@ -89,7 +91,7 @@ export const styles = StyleSheet.create({
   frontBadgeText: {
     color: '#959caf',
     fontSize: typography.fontSize.title + 5,
-    lineHeight: typography.lineHeight.badge,
+    lineHeight: createLineHeight(typography.lineHeight.badge),
     fontWeight: typography.weight.bold,
   },
   frontPrimaryBar: {
@@ -146,12 +148,13 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: space[6],
-    paddingHorizontal: space[3],
+    paddingLeft: space[3],
+    paddingRight: space[3],
   },
   titleLead: {
     color: '#ff6230',
     fontSize: 21,
-    lineHeight: typography.lineHeight.badge,
+    lineHeight: createLineHeight(typography.lineHeight.badge),
     fontWeight: typography.weight.bold,
     marginRight: space[3],
   },
@@ -179,13 +182,13 @@ export const styles = StyleSheet.create({
     width: '100%',
     color: '#696768',
     fontSize: 20,
-    lineHeight: DETAIL_ITEM_HEIGHT,
+    lineHeight: createLineHeight(DETAIL_ITEM_HEIGHT),
     fontWeight: typography.weight.semibold,
   },
   subtitle: {
     color: '#b1adb0',
     fontSize: 13.5,
-    lineHeight: typography.lineHeight.base,
+    lineHeight: createLineHeight(typography.lineHeight.base),
     textAlign: 'center',
   },
   cancelAction: {
@@ -198,13 +201,13 @@ export const styles = StyleSheet.create({
   cancelActionMark: {
     color: '#1f1b1a',
     fontSize: 20,
-    lineHeight: typography.lineHeight.xl,
+    lineHeight: createLineHeight(typography.lineHeight.xl),
     marginRight: space[2],
   },
   cancelActionText: {
     color: '#1f1b1a',
     fontSize: 15.5,
-    lineHeight: typography.lineHeight.xl,
+    lineHeight: createLineHeight(typography.lineHeight.xl),
     fontWeight: '500',
   },
 })

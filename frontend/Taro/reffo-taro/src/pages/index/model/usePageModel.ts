@@ -1,8 +1,10 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
-import Taro, {useDidShow} from '@tarojs/taro'
+import {useDidShow} from '@tarojs/taro'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import {useHistoryStore} from '@/store/historyStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
+import {feedback} from '@/utils/feedback'
+import {navigation} from '@/utils/navigation'
 import {HOME_PAGE_CONTENT} from '../constants/content'
 import {DEMO_CARDS, toHistoryCardItems} from './homeCardData'
 
@@ -82,11 +84,11 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [])
 
   const handleConfirmCreate = useCallback(() => {
-    Taro.navigateTo({
-      url: latestSourceResume
+    void navigation.navigateTo(
+      latestSourceResume
         ? '/pages/create/index?step=jobDescription'
         : '/pages/create/index',
-    })
+    )
   }, [latestSourceResume])
 
   const handleCancelCreate = useCallback(() => {
@@ -95,14 +97,11 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
 
   const handleViewHistory = useCallback(() => {
     if (latestSourceResume) {
-      Taro.navigateTo({url: '/pages/create/index?step=resumeSummary'})
+      void navigation.navigateTo('/pages/create/index?step=resumeSummary')
       return
     }
 
-    Taro.showToast({
-      title: HOME_PAGE_CONTENT.header.sourceResumeEmptyToast,
-      icon: 'none',
-    })
+    feedback.message(HOME_PAGE_CONTENT.header.sourceResumeEmptyToast)
   }, [latestSourceResume])
 
   const handleCardChange = useCallback((_: HomeCardItem, index: number) => {

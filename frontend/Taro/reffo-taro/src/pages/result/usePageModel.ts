@@ -4,6 +4,8 @@ import {useHistoryStore} from '@/store/historyStore'
 import type {ProcessResult} from '@/types'
 import {getLatestResultSession, type LatestResultSessionContext} from '@/utils/result-session'
 import {createHistoryFromResult} from '@/utils/history-helper'
+import {feedback} from '@/utils/feedback'
+import {navigation} from '@/utils/navigation'
 
 export interface ResultPageViewModel {
   result: ProcessResult | null
@@ -81,12 +83,12 @@ export function usePageModel(): ResultPageViewModel {
         setResult(processResult)
         setSaved(true)
       } else {
-        Taro.showToast({title: '未找到结果', icon: 'none'})
-        Taro.navigateBack()
+        feedback.message('未找到结果')
+        void navigation.navigateBack()
       }
     } catch (error) {
       console.error('加载历史记录失败:', error)
-      Taro.showToast({title: '加载失败', icon: 'none'})
+      feedback.error('加载失败')
     } finally {
       setLoading(false)
     }
@@ -100,12 +102,12 @@ export function usePageModel(): ResultPageViewModel {
         setResult(session.result)
         setResultContext(session.context)
       } else {
-        Taro.showToast({title: '未找到结果', icon: 'none'})
-        Taro.navigateBack()
+        feedback.message('未找到结果')
+        void navigation.navigateBack()
       }
     } catch (error) {
       console.error('加载结果失败:', error)
-      Taro.showToast({title: '加载失败', icon: 'none'})
+      feedback.error('加载失败')
     } finally {
       setLoading(false)
     }
@@ -128,10 +130,10 @@ export function usePageModel(): ResultPageViewModel {
       })
 
       setSaved(true)
-      Taro.showToast({title: '保存成功', icon: 'success'})
+      feedback.success('保存成功')
     } catch (error) {
       console.error('保存失败:', error)
-      Taro.showToast({title: '保存失败', icon: 'none'})
+      feedback.error('保存失败')
     }
   }
 
@@ -140,12 +142,12 @@ export function usePageModel(): ResultPageViewModel {
       await Taro.showShareMenu({withShareTicket: true})
     } catch (error) {
       console.error('分享失败:', error)
-      Taro.showToast({title: '分享功能暂不可用', icon: 'none'})
+      feedback.message('分享功能暂不可用')
     }
   }
 
   const handleBackHome = () => {
-    Taro.reLaunch({url: '/pages/index/index'})
+    void navigation.reLaunch('/pages/index/index')
   }
 
   return {

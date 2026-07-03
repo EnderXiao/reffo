@@ -34,6 +34,13 @@ export {
   isValidationError,
 } from './error';
 
+export {
+  feedback,
+  type Feedback,
+  type FeedbackToastOptions,
+  type FeedbackModalOptions,
+} from './feedback';
+
 // 重试工具
 export {
   retry,
