@@ -835,6 +835,200 @@ taro-page-core,
   border-color: #1c77eb;
 }
 
+.reffo-home-card--generating .reffo-home-card__surface {
+  justify-content: center;
+  align-items: center;
+  border-color: rgba(255, 255, 255, 0.94);
+  background: transparent;
+  perspective: 960px;
+}
+
+.reffo-home-card--generating .reffo-home-card__texture {
+  opacity: 0;
+}
+
+.reffo-home-card--generating > .reffo-home-card__surface > .reffo-home-card__handle {
+  opacity: 0;
+}
+
+.reffo-home-card__generating {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+}
+
+.reffo-home-card__generating-flipper {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: reffo-generating-card-flip 4000ms linear infinite;
+}
+
+.reffo-home-card__generating-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.94);
+}
+
+.reffo-home-card__generating-face--front {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.84) 0, rgba(255, 255, 255, 0.46) 30%, rgba(255, 255, 255, 0) 58%),
+    linear-gradient(180deg, rgba(255, 239, 233, 0.96) 0%, rgba(255, 247, 244, 0.92) 68%, rgba(255, 255, 255, 0.96) 100%),
+    var(--card-bg);
+}
+
+.reffo-home-card__generating-face--back {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.07) 0, rgba(255, 255, 255, 0.02) 34%, rgba(255, 255, 255, 0) 58%),
+    #151313;
+  transform: rotateY(180deg);
+  border-color: rgba(255, 255, 255, 0.88);
+}
+
+.reffo-home-card__generating-handle {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 86px;
+  height: 7px;
+  margin-left: -43px;
+  border-radius: 999px;
+}
+
+.reffo-home-card__generating-handle--front {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.reffo-home-card__generating-handle--back {
+  background: rgba(190, 190, 192, 0.76);
+}
+
+.reffo-home-card__generating-mark {
+  position: absolute;
+  left: 50%;
+  top: 93px;
+  width: 96px;
+  height: 96px;
+  margin-left: -48px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 43% 36%, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.88) 62%, rgba(250, 246, 244, 0.94) 100%);
+  box-shadow:
+    16PX 14PX 28PX rgba(178, 151, 139, 0.18),
+    0 1PX 0 rgba(255, 255, 255, 0.92) inset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reffo-home-card__generating-letter {
+  color: #a9b1bd;
+  font-size: 33px;
+  line-height: 40px;
+  font-weight: 700;
+}
+
+.reffo-home-card__generating-bar {
+  position: absolute;
+  left: 50%;
+  height: 16px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(238, 238, 240, 0.42) 0%, rgba(246, 246, 247, 0.82) 48%, rgba(235, 235, 237, 0.42) 100%);
+  box-shadow: 0 1PX 0 rgba(255, 255, 255, 0.58) inset;
+}
+
+.reffo-home-card__generating-bar--wide {
+  bottom: 88px;
+  width: 150px;
+  margin-left: -75px;
+}
+
+.reffo-home-card__generating-bar--short {
+  bottom: 52px;
+  width: 104px;
+  height: 12px;
+  margin-left: -52px;
+}
+
+.reffo-home-card__generating-spark-ring {
+  position: absolute;
+  left: 50%;
+  top: 92px;
+  width: 96px;
+  height: 96px;
+  margin-left: -48px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reffo-home-card__generating-spark {
+  position: absolute;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.reffo-home-card__generating-spark--main {
+  left: 28px;
+  top: 32px;
+  font-size: 38px;
+}
+
+.reffo-home-card__generating-spark--small {
+  right: 27px;
+  top: 27px;
+  font-size: 18px;
+  opacity: 0.82;
+}
+
+.reffo-home-card__generating-bar--back-wide {
+  bottom: 88px;
+  width: 150px;
+  margin-left: -75px;
+  background: rgba(108, 108, 112, 0.86);
+}
+
+.reffo-home-card__generating-bar--back-short {
+  bottom: 52px;
+  width: 104px;
+  height: 12px;
+  margin-left: -52px;
+  background: rgba(108, 108, 112, 0.72);
+}
+
+@keyframes reffo-generating-card-flip {
+  0%,
+  8.4% {
+    transform: rotateY(0deg);
+    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
+  }
+
+  50%,
+  58.4% {
+    transform: rotateY(180deg);
+    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
+  }
+
+  100% {
+    transform: rotateY(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reffo-home-card__generating-flipper {
+    animation: none;
+  }
+}
+
 .reffo-home-card__create-title {
   position: absolute;
   left: 34px;

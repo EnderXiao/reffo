@@ -12,6 +12,12 @@ interface ResultDisplayProps {
   optimized: OptimizedResume
 }
 
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : []
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -160,12 +166,14 @@ const styles = StyleSheet.create({
   },
 })
 
-function renderItems(items: string[]) {
-  if (items.length === 0) {
+function renderItems(items: unknown) {
+  const normalizedItems = toStringArray(items)
+
+  if (normalizedItems.length === 0) {
     return <Text style={styles.emptyText}>暂无内容</Text>
   }
 
-  return items.map((item, index) => (
+  return normalizedItems.map((item, index) => (
     <View key={`${item}-${index}`} style={styles.itemCard}>
       <Text style={styles.itemText}>{item}</Text>
     </View>
@@ -177,6 +185,13 @@ export function ResultDisplay({
   matching,
   optimized,
 }: ResultDisplayProps) {
+  const qualityScore = analysis?.quality_score ?? 0
+  const matchScore = matching?.match_score ?? 0
+  const improvementScore = optimized?.improvement_score ?? 0
+  const optimizationSuggestions = toStringArray(matching?.optimization_suggestions)
+  const changesSummary = toStringArray(optimized?.changes_summary)
+  const optimizedResume = optimized?.optimized_resume || ''
+
   return (
     <ScrollView scrollY style={styles.container}>
       <View style={styles.content}>
@@ -184,17 +199,17 @@ export function ResultDisplay({
           <Text style={styles.cardTitle}>质量评分</Text>
           <View style={styles.scoreSection}>
             <View style={styles.scoreCircle}>
-              <Text style={styles.scoreValue}>{analysis.quality_score}</Text>
+              <Text style={styles.scoreValue}>{qualityScore}</Text>
               <Text style={styles.scoreLabel}>分</Text>
             </View>
             <View style={styles.scoreDetails}>
               <View style={styles.scoreItem}>
                 <Text style={styles.scoreItemLabel}>匹配度</Text>
-                <Text style={styles.scoreItemValue}>{matching.match_score}%</Text>
+                <Text style={styles.scoreItemValue}>{matchScore}%</Text>
               </View>
               <View style={styles.scoreItem}>
                 <Text style={styles.scoreItemLabel}>提升空间</Text>
-                <Text style={styles.scoreItemValue}>+{optimized.improvement_score} 分</Text>
+                <Text style={styles.scoreItemValue}>+{improvementScore} 分</Text>
               </View>
             </View>
           </View>
@@ -214,10 +229,10 @@ export function ResultDisplay({
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>优化建议</Text>
-          {matching.optimization_suggestions.length === 0 ? (
+          {optimizationSuggestions.length === 0 ? (
             <Text style={styles.emptyText}>暂无优化建议</Text>
           ) : (
-            matching.optimization_suggestions.map((suggestion, index) => (
+            optimizationSuggestions.map((suggestion, index) => (
               <View key={`${suggestion}-${index}`} style={styles.suggestionRow}>
                 <Text style={styles.suggestionNumber}>{index + 1}</Text>
                 <Text style={styles.suggestionText}>{suggestion}</Text>
@@ -229,16 +244,16 @@ export function ResultDisplay({
         <View style={styles.card}>
           <Text style={styles.cardTitle}>优化后的简历</Text>
           <View style={styles.resumeContent}>
-            <Text style={styles.resumeText}>{optimized.optimized_resume}</Text>
+            <Text style={styles.resumeText}>{optimizedResume}</Text>
           </View>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>主要变更</Text>
-          {optimized.changes_summary.length === 0 ? (
+          {changesSummary.length === 0 ? (
             <Text style={styles.emptyText}>暂无主要变更</Text>
           ) : (
-            optimized.changes_summary.map((change, index) => (
+            changesSummary.map((change, index) => (
               <View key={`${change}-${index}`} style={styles.changeRow}>
                 <Text style={styles.changeBullet}>•</Text>
                 <Text style={styles.changeText}>{change}</Text>

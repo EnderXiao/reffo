@@ -1,4 +1,5 @@
-import {useEffect, useRef, useState} from 'react'
+import {useEffect, useMemo, useRef, useState} from 'react'
+import {flushSync} from 'react-dom'
 import {Image, Input, Text, Textarea, View} from '@tarojs/components'
 import classNames from 'classnames'
 import PDF_FILE_ICON from '@/assets/create/pdf-file.svg'
@@ -6,9 +7,57 @@ import UPLOAD_ERROR_ICON from '@/assets/create/upload-error.svg'
 import UPLOAD_FILE_ICON from '@/assets/create/upload-file.svg'
 import UPLOAD_IMAGE_ICON from '@/assets/create/upoad-img.svg'
 import {Card} from '@/components/Card'
+import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
+import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
+import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
+import {useVisualTier} from '@/utils'
 import type {CreatePageViewModel} from './usePageModel'
-import type {CreateStepMeta, JobDescriptionInputMode, JobDescriptionStepState, ResumeUploadStepState} from './types'
+import type {
+  CreateGenerationState,
+  CreateStepMeta,
+  JobDescriptionInputMode,
+  JobDescriptionStepState,
+  ResumeSummaryStepState,
+  ResumeUploadStepState,
+} from './types'
+import '@/pages/index/index.h5.scss'
 import './index.h5.scss'
+
+const GENERATION_CARD_PALETTE = deriveCardPalette('#FF6A43')
+
+type DocumentWithViewTransition = Document & {
+  startViewTransition?: (callback: () => void) => {
+    ready: Promise<void>
+    finished: Promise<void>
+  }
+}
+
+function canUseViewTransition() {
+  return typeof document !== 'undefined'
+    && typeof (document as DocumentWithViewTransition).startViewTransition === 'function'
+}
+
+function buildPendingGenerationState({
+  resumeSummaryState,
+  jobDescriptionState,
+}: {
+  resumeSummaryState: ResumeSummaryStepState | null
+  jobDescriptionState: JobDescriptionStepState
+}): CreateGenerationState {
+  const companyName = jobDescriptionState.companyName.trim()
+  const positionName = jobDescriptionState.positionName.trim()
+  const resumeTitle = resumeSummaryState?.title || resumeSummaryState?.fileName || '源简历'
+  const resumeMonogram = resumeTitle.trim().match(/[A-Za-z0-9\u4e00-\u9fa5]/u)?.[0] || 'R'
+  const monogram = /[A-Za-z]/.test(resumeMonogram) ? resumeMonogram.toUpperCase() : resumeMonogram
+
+  return {
+    resumeTitle,
+    companyName,
+    positionName,
+    monogram,
+    detailItems: [],
+  }
+}
 
 function CreateBackdrop({variant}: {variant: 'cool' | 'warm'}) {
   return (
@@ -425,6 +474,7 @@ function JobDescriptionStepH5({
   onContentChange,
   onInputModeChange,
   onPickAttachment,
+  isExiting = false,
 }: {
   state: JobDescriptionStepState
   onCompanyNameChange: CreatePageViewModel['handleJobCompanyNameChange']
@@ -432,10 +482,17 @@ function JobDescriptionStepH5({
   onContentChange: CreatePageViewModel['handleJobDescriptionChange']
   onInputModeChange: CreatePageViewModel['handleJobInputModeChange']
   onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
+  isExiting?: boolean
 }) {
   return (
     <View className='reffo-create-step reffo-create-step--job'>
-      <Card className='reffo-create-job' bordered={false} shadow='none'>
+      <Card
+        className={classNames('reffo-create-job', {
+          'reffo-create-job--exiting': isExiting,
+        })}
+        bordered={false}
+        shadow='none'
+      >
         <View className='reffo-create-job__hardware' />
         <View className='reffo-create-job__ribbon'>
           <Text>新的工牌制作中！</Text>
@@ -486,14 +543,73 @@ function GenerationOverlay({
   state: NonNullable<CreatePageViewModel['generationState']>
   onCancelGeneration: CreatePageViewModel['handleCancelGeneration']
 }) {
+  const {tier: visualTier} = useVisualTier({benchmark: false})
+  const titleReelItems = useMemo(() => {
+    const items = [
+      state.resumeTitle.trim() || '源简历',
+      state.companyName.trim() || '目标公司',
+      state.positionName.trim() || '目标岗位',
+    ]
+
+    return [...items, items[0]]
+  }, [state.companyName, state.positionName, state.resumeTitle])
+  const card = useMemo<HomeCardItem>(() => {
+    const company = state.companyName.trim() || state.resumeTitle || 'Reffo'
+    const role = state.positionName.trim() || '最佳匹配简历'
+
+    return {
+      id: `generation-${company}-${role}`,
+      company,
+      indexLabel: state.monogram,
+      location: '智能生成中',
+      role,
+      dateLabel: '今天',
+      score: 88,
+      primaryColor: GENERATION_CARD_PALETTE.primaryColor,
+      surfaceColor: GENERATION_CARD_PALETTE.surfaceColor,
+      stackColor: GENERATION_CARD_PALETTE.stackColor,
+      logoColor: GENERATION_CARD_PALETTE.logoColor,
+      borderColor: GENERATION_CARD_PALETTE.borderColor,
+      tone: GENERATION_CARD_PALETTE.tone,
+      strategyBody: '',
+    }
+  }, [state.companyName, state.monogram, state.positionName, state.resumeTitle])
+
   return (
     <View className='reffo-create-generation'>
-      <CreateBackdrop variant='warm' />
+      <View className='reffo-create-generation__backdrop' />
       <View className='reffo-create-generation__content'>
-        <View className='reffo-create-generation__card'>
-          <Text className='reffo-create-generation__monogram'>{state.monogram}</Text>
-          <Text className='reffo-create-generation__title'>正在生成最佳简历</Text>
-          <Text className='reffo-create-generation__detail'>{state.companyName || state.positionName || state.resumeTitle}</Text>
+        <View className='reffo-create-generation__main'>
+          <View className='reffo-create-generation__card-stage reffo-home-deck-wrap--enhanced'>
+            <HomeScoreCard
+              card={card}
+              depth={0}
+              active
+              visualTier={visualTier}
+              variant='generating'
+              className='reffo-create-generation__home-card'
+            />
+          </View>
+          <View className='reffo-create-generation__copy'>
+            <View className='reffo-create-generation__title'>
+              <Text className='reffo-create-generation__title-accent'>正在分析 </Text>
+              <View className='reffo-create-generation__title-reel' aria-hidden='true'>
+                <View className='reffo-create-generation__title-reel-track'>
+                  {titleReelItems.map((item, index) => (
+                    <Text
+                      key={`${item}-${index}`}
+                      className='reffo-create-generation__title-main'
+                    >
+                      {item}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+            </View>
+            <Text className='reffo-create-generation__detail'>
+              正在为你的目标岗位量身定做最佳匹配简历……
+            </Text>
+          </View>
         </View>
         <View className='reffo-create-generation__cancel' onClick={onCancelGeneration}>
           <Text>× 取消</Text>
@@ -525,18 +641,117 @@ export default function PageView({
   handleClose,
 }: CreatePageViewModel) {
   const isJobStep = currentStep === 'jobDescription'
-  const isActionDisabled = !canSaveCurrentStep || isSavingCurrentStep
+  const [pendingGenerationState, setPendingGenerationState] = useState<CreateGenerationState | null>(null)
+  const [isLaunchingGeneration, setIsLaunchingGeneration] = useState(false)
+  const [isReturningFromGeneration, setIsReturningFromGeneration] = useState(false)
+  const [isCssFallbackLaunching, setIsCssFallbackLaunching] = useState(false)
+  const launchGenerationTimerRef = useRef<number | null>(null)
+  const isActionDisabled = !canSaveCurrentStep || isSavingCurrentStep || isLaunchingGeneration || isCssFallbackLaunching
   const actionLabel = currentStep === 'resumeUpload' ? '保存' : currentStepMeta.actionLabel
-  const handleActionClick = () => {
-    if (isActionDisabled) {
+  const visibleGenerationState = generationState || pendingGenerationState
+
+  useEffect(() => {
+    return () => {
+      if (launchGenerationTimerRef.current != null) {
+        window.clearTimeout(launchGenerationTimerRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (generationState && pendingGenerationState) {
+      setPendingGenerationState(null)
+    }
+  }, [generationState, pendingGenerationState])
+
+  const handleActionClick = async () => {
+    if (isActionDisabled || isLaunchingGeneration) {
       return
     }
 
-    handlePrimaryAction()
+    if (isJobStep) {
+      const nextGenerationState = buildPendingGenerationState({
+        resumeSummaryState,
+        jobDescriptionState,
+      })
+
+      setIsLaunchingGeneration(true)
+
+      if (canUseViewTransition()) {
+        const transition = (document as DocumentWithViewTransition).startViewTransition?.(() => {
+          flushSync(() => {
+            setPendingGenerationState(nextGenerationState)
+          })
+        })
+
+        void transition?.finished.finally(() => {
+          setIsLaunchingGeneration(false)
+          void handlePrimaryAction().finally(() => {
+            setPendingGenerationState(null)
+            setIsLaunchingGeneration(false)
+          })
+        })
+      } else {
+        setIsCssFallbackLaunching(true)
+        launchGenerationTimerRef.current = window.setTimeout(() => {
+          launchGenerationTimerRef.current = null
+          setPendingGenerationState(nextGenerationState)
+          setIsLaunchingGeneration(false)
+          setIsCssFallbackLaunching(false)
+          void handlePrimaryAction().finally(() => {
+            setPendingGenerationState(null)
+            setIsLaunchingGeneration(false)
+            setIsCssFallbackLaunching(false)
+          })
+        }, 260)
+      }
+      return
+    }
+
+    await handlePrimaryAction()
+  }
+
+  const handleGenerationCancelClick = () => {
+    if (!visibleGenerationState || isReturningFromGeneration) {
+      return
+    }
+
+    const clearGenerationState = () => {
+      setPendingGenerationState(null)
+      setIsLaunchingGeneration(false)
+      setIsCssFallbackLaunching(false)
+      handleCancelGeneration()
+    }
+
+    setIsReturningFromGeneration(true)
+
+    if (canUseViewTransition()) {
+      const transition = (document as DocumentWithViewTransition).startViewTransition?.(() => {
+        flushSync(clearGenerationState)
+      })
+
+      void transition?.finished.finally(() => {
+        setIsReturningFromGeneration(false)
+      })
+      return
+    }
+
+    clearGenerationState()
+    window.setTimeout(() => {
+      setIsReturningFromGeneration(false)
+    }, 360)
   }
 
   return (
-    <View className={classNames('reffo-create', {'reffo-create--warm': isJobStep})}>
+    <View
+      className={classNames('reffo-create', {
+        'reffo-create--warm': isJobStep,
+        'reffo-create--generation-launching': isLaunchingGeneration,
+        'reffo-create--css-generation-launching': isCssFallbackLaunching,
+        'reffo-create--launching-generation': isLaunchingGeneration,
+        'reffo-create--returning-generation': isReturningFromGeneration,
+      })}
+    >
       <CreateBackdrop variant={isJobStep ? 'warm' : 'cool'} />
       <View className='reffo-create__frame'>
         <View className='reffo-create__close' onClick={handleClose} role='button' data-testid='create-flow-close'>
@@ -555,7 +770,7 @@ export default function PageView({
           {currentStep === 'resumeSummary' && resumeSummaryState ? (
             <ResumeSummaryStepH5 state={resumeSummaryState} />
           ) : null}
-          {currentStep === 'jobDescription' ? (
+          {currentStep === 'jobDescription' && !visibleGenerationState ? (
             <JobDescriptionStepH5
               state={jobDescriptionState}
               onCompanyNameChange={handleJobCompanyNameChange}
@@ -563,6 +778,7 @@ export default function PageView({
               onContentChange={handleJobDescriptionChange}
               onInputModeChange={handleJobInputModeChange}
               onPickAttachment={handlePickJobAttachment}
+              isExiting={isLaunchingGeneration}
             />
           ) : null}
         </View>
@@ -578,12 +794,22 @@ export default function PageView({
             aria-disabled={isActionDisabled}
             data-testid='create-flow-primary-action'
           >
-            {isJobStep ? <Text className='reffo-create__primary-spark'>✦</Text> : null}
+            {isJobStep ? (
+              <View className='reffo-create__primary-spark' aria-hidden='true'>
+                <Text className='reffo-create__primary-spark-main'>✦</Text>
+                <Text className='reffo-create__primary-spark-small'>✦</Text>
+              </View>
+            ) : null}
             <Text>{isSavingCurrentStep ? '处理中...' : actionLabel}</Text>
           </View>
         </View>
       </View>
-      {generationState ? <GenerationOverlay state={generationState} onCancelGeneration={handleCancelGeneration} /> : null}
+      {visibleGenerationState ? (
+        <GenerationOverlay
+          state={visibleGenerationState}
+          onCancelGeneration={handleGenerationCancelClick}
+        />
+      ) : null}
     </View>
   )
 }

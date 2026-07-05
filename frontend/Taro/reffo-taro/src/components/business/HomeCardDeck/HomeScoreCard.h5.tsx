@@ -31,7 +31,7 @@ interface HomeScoreCardProps {
   depth: number
   active: boolean
   visualTier: VisualTier
-  variant?: 'score' | 'create'
+  variant?: 'score' | 'create' | 'generating'
   className?: string
   style?: Record<string, string | number>
   onClick?: () => void
@@ -47,6 +47,11 @@ function getScoreGrade(score: number) {
   }
 
   return 'C'
+}
+
+function resolveGeneratingMark(card: HomeCardItem) {
+  const source = card.indexLabel || card.company || card.role || 'J'
+  return source.trim().slice(0, 1).toUpperCase() || 'J'
 }
 
 function hashSeed(seed: string) {
@@ -144,7 +149,9 @@ export default function HomeScoreCard({
 
   const isDark = card.tone === 'dark'
   const isCreate = variant === 'create'
+  const isGenerating = variant === 'generating'
   const scoreGrade = getScoreGrade(card.score)
+  const generatingMark = isGenerating ? resolveGeneratingMark(card) : ''
   const glyphStyle = useMemo(() => resolveGlyphStyle(card), [card])
   const textureMode = useMemo(() => resolveTextureMode(card), [card])
   const repeatTiles = useMemo(() => buildRepeatTiles(card), [card])
@@ -172,6 +179,7 @@ export default function HomeScoreCard({
           'reffo-home-card--dark': isDark,
           'reffo-home-card--active': active,
           'reffo-home-card--create': isCreate,
+          'reffo-home-card--generating': isGenerating,
         },
         className,
       )}
@@ -205,7 +213,29 @@ export default function HomeScoreCard({
           )}
           <View className='reffo-home-card__theme-wash' />
         </View>
-        {isCreate ? (
+        {isGenerating ? (
+          <View className='reffo-home-card__generating'>
+            <View className='reffo-home-card__generating-flipper'>
+              <View className='reffo-home-card__generating-face reffo-home-card__generating-face--front'>
+                <View className='reffo-home-card__generating-handle reffo-home-card__generating-handle--front' />
+                <View className='reffo-home-card__generating-mark'>
+                  <Text className='reffo-home-card__generating-letter'>{generatingMark}</Text>
+                </View>
+                <View className='reffo-home-card__generating-bar reffo-home-card__generating-bar--wide' />
+                <View className='reffo-home-card__generating-bar reffo-home-card__generating-bar--short' />
+              </View>
+              <View className='reffo-home-card__generating-face reffo-home-card__generating-face--back'>
+                <View className='reffo-home-card__generating-handle reffo-home-card__generating-handle--back' />
+                <View className='reffo-home-card__generating-spark-ring'>
+                  <Text className='reffo-home-card__generating-spark reffo-home-card__generating-spark--main'>✦</Text>
+                  <Text className='reffo-home-card__generating-spark reffo-home-card__generating-spark--small'>✦</Text>
+                </View>
+                <View className='reffo-home-card__generating-bar reffo-home-card__generating-bar--back-wide' />
+                <View className='reffo-home-card__generating-bar reffo-home-card__generating-bar--back-short' />
+              </View>
+            </View>
+          </View>
+        ) : isCreate ? (
           <>
             <Text className='reffo-home-card__create-title'>{HOME_PAGE_CONTENT.createCard.title}</Text>
             <View className='reffo-home-card__glass reffo-home-card__glass--create'>

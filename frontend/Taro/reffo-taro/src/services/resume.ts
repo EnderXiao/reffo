@@ -44,6 +44,52 @@ export interface ProcessResumeResponse {
   step3_optimized_resume: string;
 }
 
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+}
+
+function normalizeAnalysis(analysis: ResumeAnalysis): ResumeAnalysis {
+  return {
+    ...analysis,
+    quality_score: analysis?.quality_score ?? 0,
+    strengths: toStringArray(analysis?.strengths),
+    weaknesses: toStringArray(analysis?.weaknesses),
+    suggestions: toStringArray(analysis?.suggestions),
+    capability_summary: analysis?.capability_summary || '',
+    structured_resume: analysis?.structured_resume || {
+      personal_info: {name: ''},
+      education: [],
+      experience: [],
+      projects: [],
+      skills: {hard_skills: [], soft_skills: []},
+    },
+  };
+}
+
+function normalizeMatching(matching: MatchingResult): MatchingResult {
+  return {
+    ...matching,
+    match_score: matching?.match_score ?? 0,
+    hard_requirements_match: Array.isArray(matching?.hard_requirements_match)
+      ? matching.hard_requirements_match
+      : [],
+    skill_match: {
+      matched_skills: toStringArray(matching?.skill_match?.matched_skills),
+      missing_skills: toStringArray(matching?.skill_match?.missing_skills),
+      match_percentage: matching?.skill_match?.match_percentage ?? 0,
+    },
+    experience_match: {
+      years_required: matching?.experience_match?.years_required ?? 0,
+      years_actual: matching?.experience_match?.years_actual ?? 0,
+      relevant_experience: toStringArray(matching?.experience_match?.relevant_experience),
+      match_percentage: matching?.experience_match?.match_percentage ?? 0,
+    },
+    optimization_suggestions: toStringArray(matching?.optimization_suggestions),
+  };
+}
+
 /**
  * 简历 API 服务
  *
@@ -216,16 +262,22 @@ export class ResumeApi {
       },
     );
 
+    const analysis = normalizeAnalysis(response.step1_analysis);
+    const matching = normalizeMatching(response.step2_matching);
+    const optimizedResume = typeof response.step3_optimized_resume === 'string'
+      ? response.step3_optimized_resume
+      : '';
+
     // 转换响应格式为统一的 ProcessResult 格式
     return {
-      analysis: response.step1_analysis,
-      matching: response.step2_matching,
+      analysis,
+      matching,
       optimized: {
-        optimized_resume: response.step3_optimized_resume,
-        changes_summary: response.step2_matching.optimization_suggestions,
+        optimized_resume: optimizedResume,
+        changes_summary: matching.optimization_suggestions,
         improvement_score:
-          response.step2_matching.match_score -
-          (response.step1_analysis.quality_score || 0),
+          matching.match_score -
+          (analysis.quality_score || 0),
       },
     };
   }

@@ -368,6 +368,36 @@ describe('ResumeApi', () => {
       // 验证改进分数可以为负：70 - 90 = -20
       expect(result.optimized.improvement_score).toBe(-20);
     });
+
+    test('should normalize missing optional list fields from process response', async () => {
+      const responseWithMissingLists = {
+        ...mockProcessResponse,
+        step1_analysis: {
+          ...mockProcessResponse.step1_analysis,
+          strengths: undefined,
+          weaknesses: undefined,
+          suggestions: undefined,
+        },
+        step2_matching: {
+          ...mockProcessResponse.step2_matching,
+          optimization_suggestions: undefined,
+          skill_match: undefined,
+          experience_match: undefined,
+        },
+      };
+
+      mockPost.mockResolvedValue(responseWithMissingLists);
+
+      const result = await resumeApi.processResume(sampleResume, sampleJD);
+
+      expect(result.analysis.strengths).toEqual([]);
+      expect(result.analysis.weaknesses).toEqual([]);
+      expect(result.analysis.suggestions).toEqual([]);
+      expect(result.matching.optimization_suggestions).toEqual([]);
+      expect(result.matching.skill_match.matched_skills).toEqual([]);
+      expect(result.matching.experience_match.relevant_experience).toEqual([]);
+      expect(result.optimized.changes_summary).toEqual([]);
+    });
   });
 
   describe('ResumeApi instance', () => {

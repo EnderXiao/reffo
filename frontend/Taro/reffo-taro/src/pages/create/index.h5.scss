@@ -97,6 +97,25 @@ taro-page-core,
 .reffo-create__hero {
   margin-top: var(--create-hero-top);
   margin-bottom: 30px;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 180ms cubic-bezier(0.4, 0, 1, 1),
+    transform 220ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.reffo-create--launching-generation .reffo-create__hero {
+  opacity: 0;
+  transform: translate3d(0, -12px, 0);
+}
+
+.reffo-create--css-generation-launching .reffo-create__hero {
+  opacity: 0;
+  transform: translate3d(0, -12px, 0);
+}
+
+.reffo-create--returning-generation .reffo-create__hero {
+  animation: reffo-create-return-hero-in 380ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .reffo-create__title {
@@ -581,6 +600,15 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   box-sizing: border-box;
   overflow: visible;
   box-shadow: 0 4PX 10PX rgba(114, 93, 82, 0.18);
+  view-transition-name: reffo-create-card;
+  contain: paint;
+  transform: translate3d(0, 0, 0) scale(1);
+  opacity: 1;
+  transform-origin: center 42%;
+  transition:
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 190ms cubic-bezier(0.4, 0, 1, 1),
+    filter 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reffo-create-job::before {
@@ -592,6 +620,20 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   background:
     linear-gradient(116deg, rgba(255, 255, 255, 0) 0 38%, rgba(255, 255, 255, 0.34) 50%, rgba(255, 255, 255, 0) 63%),
     radial-gradient(240px 240px at 18% 48%, rgba(244, 160, 116, 0.08), rgba(255, 255, 255, 0) 62%);
+}
+
+.reffo-create--css-generation-launching .reffo-create-job {
+  opacity: 1;
+  filter: drop-shadow(0 19PX 32PX rgba(178, 101, 68, 0.16));
+  transform: translate3d(0, 28px, 0) scale(0.48);
+}
+
+.reffo-create--css-generation-launching .reffo-create-job > * {
+  opacity: 0;
+  transform: translate3d(0, -8px, 0) scale(0.98);
+  transition:
+    opacity 150ms cubic-bezier(0.4, 0, 1, 1),
+    transform 180ms cubic-bezier(0.4, 0, 1, 1);
 }
 
 .reffo-create-job > * {
@@ -891,6 +933,27 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 180ms cubic-bezier(0.4, 0, 1, 1),
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-create--generation-launching .reffo-create__footer {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+  pointer-events: none;
+}
+
+.reffo-create--returning-generation .reffo-create__footer {
+  animation: reffo-create-return-footer-in 360ms 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-create--css-generation-launching .reffo-create__footer {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+  pointer-events: none;
 }
 
 .reffo-create__primary {
@@ -914,7 +977,7 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
 }
 
 .reffo-create__primary--warm {
-  background: #ff6a43;
+  background: linear-gradient(90deg, #f12030 0%, #f87e3d 55%, #fbb584 86%, #fde9c7 100%);
   box-shadow: 0 10PX 18PX rgba(239, 176, 140, 0.18);
 }
 
@@ -924,9 +987,31 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
 }
 
 .reffo-create__primary-spark {
-  margin-right: 8px;
-  font-size: 16px;
-  line-height: 18px;
+  position: relative;
+  width: 22px;
+  height: 18px;
+  margin-right: 7px;
+  flex: 0 0 22px;
+}
+
+.reffo-create__primary-spark-main,
+.reffo-create__primary-spark-small {
+  position: absolute;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.reffo-create__primary-spark-main {
+  left: 0;
+  top: 2px;
+  font-size: 19px;
+}
+
+.reffo-create__primary-spark-small {
+  right: 1px;
+  top: 0;
+  font-size: 9px;
+  opacity: 0.86;
 }
 
 .reffo-create-generation {
@@ -934,6 +1019,39 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   inset: 0;
   z-index: 20;
   overflow: hidden;
+}
+
+.reffo-create-generation__backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #ffffff;
+}
+
+.reffo-create-generation__backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 60dvh;
+  min-height: 390px;
+  background:
+    radial-gradient(82% 76% at 50% 0%, rgba(238, 102, 72, 0.3) 0%, rgba(244, 142, 112, 0.2) 50%, rgba(255, 232, 224, 0.08) 82%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, rgba(242, 115, 86, 0.26) 0%, rgba(255, 210, 198, 0.18) 58%, rgba(255, 255, 255, 0) 100%);
+  filter: blur(8PX);
+  transform: scaleY(0.42);
+  transform-origin: top center;
+  opacity: 0.82;
+  animation: reffo-generation-warm-expand 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.reffo-create-generation__backdrop::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 46%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 56%);
+  opacity: 0;
+  animation: reffo-generation-white-rise 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .reffo-create-generation__content {
@@ -947,50 +1065,112 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   justify-content: center;
 }
 
-.reffo-create-generation__card {
-  width: 210px;
-  min-height: 260px;
-  border-radius: 18px;
-  background: #fbf4ef;
-  border: 1px solid rgba(255, 255, 255, 0.88);
+.reffo-create-generation__main {
+  width: min(100%, 300px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 24px;
-  box-sizing: border-box;
-  box-shadow: 0 14PX 28PX rgba(157, 143, 134, 0.16);
 }
 
-.reffo-create-generation__monogram {
-  width: 66px;
-  height: 66px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.88);
-  color: #959caf;
-  font-size: 24px;
-  line-height: 28px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 30px;
+.reffo-create-generation__card-stage {
+  --card-design-width: 210px;
+  --card-design-height: 332px;
+  --card-responsive-scale: 0.74;
+  width: calc(var(--card-design-width) * var(--card-responsive-scale));
+  height: calc(var(--card-design-height) * var(--card-responsive-scale));
+  position: relative;
+  view-transition-name: reffo-create-card;
+  contain: layout;
+  isolation: isolate;
+}
+
+.reffo-create-generation__card-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 10px;
+  pointer-events: none;
+  box-shadow:
+    0 19PX 32PX rgba(178, 101, 68, 0.18),
+    0 6PX 16PX rgba(107, 76, 62, 0.08);
+  animation: reffo-generation-card-shadow 4000ms linear infinite;
+}
+
+.reffo-create-generation__home-card {
+  z-index: 1;
+  filter: none;
+  pointer-events: none;
 }
 
 .reffo-create-generation__title {
-  color: #ff6230;
-  font-size: 21px;
-  line-height: 28px;
+  width: 100%;
+  max-width: 300px;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: baseline;
+  margin-top: 54px;
+  color: #666666;
+  font-size: 24px;
+  line-height: 30px;
   font-weight: 700;
-  text-align: center;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.reffo-create-generation__copy {
+  opacity: 0;
+  transform: translate3d(0, -18px, 0);
+  animation: reffo-generation-copy-in 460ms 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.reffo-create-generation__title-accent {
+  color: #ff6230;
+  flex: 0 0 auto;
+  margin-right: 7px;
+}
+
+.reffo-create-generation__title-reel {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 30px;
+  overflow: hidden;
+  position: relative;
+  color: #666666;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000000 18%, #000000 82%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000000 18%, #000000 82%, transparent 100%);
+}
+
+.reffo-create-generation__title-reel-track {
+  display: flex;
+  flex-direction: column;
+  animation: reffo-generation-title-reel 6000ms linear infinite;
+  will-change: transform;
+}
+
+.reffo-create-generation__title-main {
+  display: block;
+  width: 100%;
+  height: 30px;
+  color: #666666;
+  line-height: 30px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reffo-create-generation__detail {
-  color: #b1adb0;
-  font-size: 14px;
-  line-height: 20px;
+  width: 100%;
+  color: #aaa7aa;
+  font-size: 12px;
+  line-height: 17px;
   text-align: center;
   margin-top: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reffo-create-generation__cancel {
@@ -1000,6 +1180,187 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   color: #1f1b1a;
   font-size: 16px;
   line-height: 22px;
+  opacity: 0;
+  transform: translate3d(18px, 18px, 0);
+  animation: reffo-generation-cancel-in 420ms 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+::view-transition-group(reffo-create-card) {
+  animation-duration: 560ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-old(reffo-create-card),
+::view-transition-new(reffo-create-card) {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  animation: reffo-view-root-out 260ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+::view-transition-new(root) {
+  animation: reffo-view-root-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes reffo-generation-warm-expand {
+  0% {
+    transform: scaleY(0.42);
+    opacity: 0.62;
+  }
+
+  58% {
+    opacity: 0.94;
+  }
+
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes reffo-generation-white-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reffo-generation-copy-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -16px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-create-return-hero-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -14px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-create-return-footer-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-generation-cancel-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(18px, 18px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-generation-card-shadow {
+  0%,
+  7% {
+    opacity: 1;
+  }
+
+  10% {
+    opacity: 0;
+  }
+
+  24%,
+  56% {
+    opacity: 1;
+  }
+
+  60% {
+    opacity: 0;
+  }
+
+  74%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes reffo-generation-title-reel {
+  0%,
+  15.333% {
+    transform: translate3d(0, 0, 0);
+    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
+  }
+
+  33.333%,
+  48.666% {
+    transform: translate3d(0, -30px, 0);
+    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
+  }
+
+  66.666%,
+  82% {
+    transform: translate3d(0, -60px, 0);
+    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
+  }
+
+  100% {
+    transform: translate3d(0, -90px, 0);
+  }
+}
+
+@keyframes reffo-view-root-out {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes reffo-view-root-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes reffo-generation-content-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (max-height: 760px) {
@@ -1061,5 +1422,11 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
     border-radius: 21px;
     font-size: 15px;
     line-height: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reffo-create-generation__title-reel-track {
+    animation: none;
   }
 }
