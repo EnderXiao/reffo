@@ -10,6 +10,12 @@ export default {
       client: {
         overlay: false,
       },
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
+      },
     },
   },
 } satisfies UserConfigExport<'webpack5'>

@@ -4,6 +4,8 @@ import classNames from 'classnames'
 import PDF_FILE_ICON from '@/assets/create/pdf-file.svg'
 import UPLOAD_ERROR_ICON from '@/assets/create/upload-error.svg'
 import UPLOAD_FILE_ICON from '@/assets/create/upload-file.svg'
+import UPLOAD_IMAGE_ICON from '@/assets/create/upoad-img.svg'
+import {Card} from '@/components/Card'
 import type {CreatePageViewModel} from './usePageModel'
 import type {CreateStepMeta, JobDescriptionInputMode, JobDescriptionStepState, ResumeUploadStepState} from './types'
 import './index.h5.scss'
@@ -240,13 +242,17 @@ function ResumeUploadStepH5({
 }
 
 function ResumeSummaryStepH5({state}: {state: NonNullable<CreatePageViewModel['resumeSummaryState']>}) {
+  const fileExtension = state.fileName.includes('.')
+    ? state.fileName.slice(state.fileName.lastIndexOf('.')).toLowerCase()
+    : '.md'
+
   return (
     <View className='reffo-create-step'>
       <View className='reffo-create-section'>
         <Text className='reffo-create-section__title'>源简历文件</Text>
         <View className='reffo-create-summary' data-testid='resume-summary-card'>
-          <View className='reffo-create-summary__badge'>
-            <Text>⌁</Text>
+          <View className='reffo-create-summary__icon'>
+            <UploadIcon status='success' extension={fileExtension} />
           </View>
           <View className='reffo-create-summary__body'>
             <Text className='reffo-create-summary__name'>{state.fileName}</Text>
@@ -277,7 +283,9 @@ function ModeTab({
       role='button'
       data-testid={mode === 'upload' ? 'job-mode-upload' : 'job-mode-manual'}
     >
-      <Text>{mode === 'upload' ? '↑' : '✎'}</Text>
+      <View
+        className={classNames('reffo-create-job__mode-icon', `reffo-create-job__mode-icon--${mode}`)}
+      />
     </View>
   )
 }
@@ -291,60 +299,125 @@ function JobUploadPanel({
   onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
   onContentChange: CreatePageViewModel['handleJobDescriptionChange']
 }) {
-  if (state.inputMode === 'manual') {
-    return (
-      <Textarea
-        value={state.content}
-        placeholder='粘贴目标岗位描述、招聘要求或 JD 文本'
-        maxlength={20000}
-        onInput={event => onContentChange(event.detail.value)}
-        className='reffo-create-textarea reffo-create-textarea--job'
-        data-testid='job-description-input'
-      />
-    )
-  }
+  const [visibleInputMode, setVisibleInputMode] = useState<JobDescriptionInputMode>(state.inputMode)
+  const [isModeFading, setIsModeFading] = useState(false)
+  const modeSwitchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const modeSwitchFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null)
 
   const isUploading = state.attachmentStatus === 'uploading'
   const hasError = state.attachmentStatus === 'error'
   const hasAttachment = Boolean(state.attachment)
 
+  useEffect(() => {
+    return () => {
+      if (modeSwitchTimerRef.current) {
+        clearTimeout(modeSwitchTimerRef.current)
+      }
+      if (modeSwitchFrameRef.current) {
+        cancelAnimationFrame(modeSwitchFrameRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (state.inputMode === visibleInputMode) {
+      if (modeSwitchTimerRef.current) {
+        clearTimeout(modeSwitchTimerRef.current)
+        modeSwitchTimerRef.current = null
+      }
+      if (modeSwitchFrameRef.current) {
+        cancelAnimationFrame(modeSwitchFrameRef.current)
+        modeSwitchFrameRef.current = null
+      }
+      setIsModeFading(false)
+      return
+    }
+
+    if (modeSwitchTimerRef.current) {
+      clearTimeout(modeSwitchTimerRef.current)
+    }
+    if (modeSwitchFrameRef.current) {
+      cancelAnimationFrame(modeSwitchFrameRef.current)
+    }
+
+    setIsModeFading(true)
+    modeSwitchTimerRef.current = setTimeout(() => {
+      setVisibleInputMode(state.inputMode)
+      modeSwitchFrameRef.current = requestAnimationFrame(() => {
+        setIsModeFading(false)
+        modeSwitchFrameRef.current = null
+      })
+      modeSwitchTimerRef.current = null
+    }, 140)
+  }, [state.inputMode, visibleInputMode])
+
+  if (visibleInputMode === 'manual') {
+    return (
+      <View
+        className={classNames('reffo-create-job__content', {
+          'reffo-create-job__content--fading': isModeFading,
+        })}
+      >
+        <Textarea
+          value={state.content}
+          placeholder='粘贴目标岗位描述、招聘要求或 JD 文本'
+          maxlength={20000}
+          onInput={event => onContentChange(event.detail.value)}
+          className='reffo-create-textarea reffo-create-textarea--job'
+          data-testid='job-description-input'
+        />
+      </View>
+    )
+  }
+
   return (
     <View
-      className={classNames('reffo-create-job__upload', {
-        'reffo-create-job__upload--filled': hasAttachment,
-        'reffo-create-job__upload--error': hasError,
+      className={classNames('reffo-create-job__content', {
+        'reffo-create-job__content--fading': isModeFading,
       })}
-      onClick={onPickAttachment}
-      role='button'
-      data-testid={hasError ? 'job-upload-error' : hasAttachment ? 'job-upload-preview' : 'job-upload-trigger'}
     >
-      {hasAttachment && state.attachment?.previewPath ? (
-        <Image src={state.attachment.previewPath} mode='aspectFit' className='reffo-create-job__preview' />
-      ) : (
-        <View className='reffo-create-job__upload-icon'>
-          <Text>{hasError ? '!' : '▣'}</Text>
-        </View>
-      )}
-      <Text className='reffo-create-job__upload-title'>
-        {isUploading
-          ? '上传中...'
-          : hasError
-            ? '上传失败'
+      <View
+        className={classNames('reffo-create-job__upload', {
+          'reffo-create-job__upload--filled': hasAttachment,
+          'reffo-create-job__upload--error': hasError,
+        })}
+        onClick={onPickAttachment}
+        role='button'
+        data-testid={hasError ? 'job-upload-error' : hasAttachment ? 'job-upload-preview' : 'job-upload-trigger'}
+      >
+        {hasAttachment && state.attachment?.previewPath ? (
+          <Image src={state.attachment.previewPath} mode='aspectFit' className='reffo-create-job__preview' />
+        ) : (
+          <View className={classNames('reffo-create-job__upload-icon', {
+            'reffo-create-job__upload-icon--error': hasError,
+          })}>
+            {hasError ? (
+              <Text>!</Text>
+            ) : (
+              <Image src={UPLOAD_IMAGE_ICON} mode='aspectFit' className='reffo-create-job__upload-file-icon' />
+            )}
+          </View>
+        )}
+        <Text className='reffo-create-job__upload-title'>
+          {isUploading
+            ? '上传中...'
+            : hasError
+              ? '上传失败'
+              : hasAttachment
+                ? state.attachment?.name
+                : '上传岗位描述截图'}
+        </Text>
+        <Text className='reffo-create-job__upload-subtitle'>
+          {hasError
+            ? state.attachmentErrorMessage || '文件读取失败，请重试'
             : hasAttachment
-              ? state.attachment?.name
-              : '上传岗位描述截图'}
-      </Text>
-      <Text className='reffo-create-job__upload-subtitle'>
-        {hasError
-          ? state.attachmentErrorMessage || '文件读取失败，请重试'
-          : hasAttachment
-            ? state.attachment?.sizeLabel || state.attachment?.extension
-            : '点击选择'}
-      </Text>
+              ? state.attachment?.sizeLabel || state.attachment?.extension
+              : '点击选择'}
+        </Text>
+      </View>
     </View>
   )
 }
-
 function JobDescriptionStepH5({
   state,
   onCompanyNameChange,
@@ -362,7 +435,7 @@ function JobDescriptionStepH5({
 }) {
   return (
     <View className='reffo-create-step reffo-create-step--job'>
-      <View className='reffo-create-job'>
+      <Card className='reffo-create-job' bordered={false} shadow='none'>
         <View className='reffo-create-job__hardware' />
         <View className='reffo-create-job__ribbon'>
           <Text>新的工牌制作中！</Text>
@@ -401,10 +474,7 @@ function JobDescriptionStepH5({
             </View>
           </View>
         </View>
-      </View>
-      <Text className='reffo-create-tip reffo-create-tip--job'>
-        你也可以先填写公司和岗位名称，Reffo 会结合岗位描述一起组织最贴合的简历版本
-      </Text>
+      </Card>
     </View>
   )
 }

@@ -393,7 +393,7 @@ function getApiBaseURL(): string {
 
   // 开发环境默认值
   if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:3000/api/v1';
+    return '/api/v1';
   }
 
   // 生产环境默认值

@@ -104,6 +104,7 @@ export default defineConfig<'webpack5'>(async (merge, { mode }) => {
 
         // H5 构建时将 React Native 专属包重定向到浏览器兼容的 mock 模块
         chain.resolve.alias
+          .set('@tarojs/components/global.css$', path.resolve(__dirname, '../src/styles/taro-components-global.h5.css'))
           .set('react-native$', path.resolve(__dirname, '../src/__mocks__/h5/react-native.js'))
           .set('@tarojs/components$', path.resolve(__dirname, '../src/__mocks__/h5/taro-components.js'))
           .set('react-native-gesture-handler$', path.resolve(__dirname, '../src/__mocks__/h5/react-native-gesture-handler.js'))
