@@ -4,6 +4,7 @@ import Taro, {useRouter} from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
 import {useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
+import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
 
 const defaultProcessResult = {
@@ -42,6 +43,10 @@ const defaultProcessResult = {
     changes_summary: [],
     improvement_score: 4,
   },
+  interview: {
+    questions: [],
+    story_recommendations: [],
+  },
 }
 
 function createDeferredPromise<T>() {
@@ -76,8 +81,12 @@ jest.mock('@/services/sourceResume', () => ({
 
 jest.mock('@/services/resume', () => ({
   resumeApi: {
-    processResume: jest.fn(),
+    analyzeResume: jest.fn(),
   },
+}))
+
+jest.mock('@/utils/result-session', () => ({
+  saveLatestResultSession: jest.fn(),
 }))
 
 jest.mock('react-native', () => {
@@ -144,7 +153,8 @@ describe('CreatePage', () => {
   const mockUseRouter = useRouter as jest.Mock
   const mockSaveSourceResume = sourceResumeApi.saveSourceResume as jest.Mock
   const mockGetLatestSourceResume = sourceResumeApi.getLatestSourceResume as jest.Mock
-  const mockProcessResume = resumeApi.processResume as jest.Mock
+  const mockAnalyzeResume = resumeApi.analyzeResume as jest.Mock
+  const mockSaveLatestResultSession = saveLatestResultSession as jest.Mock
   const mockExpoImagePicker = jest.requireMock('expo-image-picker') as {
     requestMediaLibraryPermissionsAsync: jest.Mock
     launchImageLibraryAsync: jest.Mock
@@ -159,6 +169,9 @@ describe('CreatePage', () => {
       await Promise.resolve()
     })
   }
+
+  const getLastSavedResultSession = () =>
+    mockSaveLatestResultSession.mock.calls.at(-1)?.[0]
 
   beforeEach(async () => {
     jest.clearAllMocks()
@@ -185,7 +198,8 @@ describe('CreatePage', () => {
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
     })
-    mockProcessResume.mockResolvedValue(defaultProcessResult)
+    mockAnalyzeResume.mockResolvedValue(defaultProcessResult.analysis)
+    mockSaveLatestResultSession.mockResolvedValue(undefined)
   })
 
   test('应该渲染新的单页流程容器', async () => {
@@ -294,7 +308,7 @@ describe('CreatePage', () => {
     })
   })
 
-  test('第二步提交会调用生成接口并跳转到结果页', async () => {
+  test('第二步提交会调用分析接口并跳转到结果页', async () => {
     const existingSourceResume = {
       id: 'source-resume-1',
       title: 'Jeremy Smith',
@@ -334,9 +348,24 @@ describe('CreatePage', () => {
     })
 
     await waitFor(() => {
-      expect(mockProcessResume).toHaveBeenCalledWith(
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(
         '# Jeremy Smith\n\n## Experience\n- Built growth platform',
-        '公司名称：OpenAI\n\n岗位名称：前端工程师\n\n负责复杂前端应用开发与架构设计，推动高质量交付并优化体验。',
+      )
+      expect(getLastSavedResultSession()).toEqual(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            company: 'OpenAI',
+            position: '前端工程师',
+            jdContent:
+              '公司名称：OpenAI\n\n岗位名称：前端工程师\n\n负责复杂前端应用开发与架构设计，推动高质量交付并优化体验。',
+          }),
+          progress: {
+            analysis: 'done',
+            matching: 'pending',
+            optimized: 'pending',
+            interview: 'pending',
+          },
+        }),
       )
     })
 
@@ -361,8 +390,8 @@ describe('CreatePage', () => {
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
     }
-    const deferred = createDeferredPromise<typeof defaultProcessResult>()
-    mockProcessResume.mockReturnValue(deferred.promise)
+    const deferred = createDeferredPromise<typeof defaultProcessResult.analysis>()
+    mockAnalyzeResume.mockReturnValue(deferred.promise)
     mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
     await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
     mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
@@ -395,7 +424,7 @@ describe('CreatePage', () => {
     })
 
     await act(async () => {
-      deferred.resolve(defaultProcessResult)
+      deferred.resolve(defaultProcessResult.analysis)
       await Promise.resolve()
     })
 
@@ -416,8 +445,8 @@ describe('CreatePage', () => {
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
     }
-    const deferred = createDeferredPromise<typeof defaultProcessResult>()
-    mockProcessResume.mockReturnValue(deferred.promise)
+    const deferred = createDeferredPromise<typeof defaultProcessResult.analysis>()
+    mockAnalyzeResume.mockReturnValue(deferred.promise)
     mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
     await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
     mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
@@ -449,7 +478,7 @@ describe('CreatePage', () => {
     })
 
     await act(async () => {
-      deferred.resolve(defaultProcessResult)
+      deferred.resolve(defaultProcessResult.analysis)
       await Promise.resolve()
     })
 
@@ -503,15 +532,16 @@ describe('CreatePage', () => {
     })
 
     await waitFor(() => {
-      expect(mockProcessResume).toHaveBeenCalledWith(
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(
         '# Jeremy Smith\n\n## Experience\n- Built growth platform',
-        expect.stringContaining('岗位描述附件：jd-shot.png'),
       )
     })
 
-    expect(mockProcessResume).toHaveBeenCalledWith(
-      '# Jeremy Smith\n\n## Experience\n- Built growth platform',
-      expect.stringContaining('公司名称：小米集团有限公司'),
+    expect(getLastSavedResultSession()?.context.jdContent).toContain(
+      '岗位描述附件：jd-shot.png',
+    )
+    expect(getLastSavedResultSession()?.context.jdContent).toContain(
+      '公司名称：小米集团有限公司',
     )
 
     await waitFor(() => {
@@ -582,12 +612,15 @@ describe('CreatePage', () => {
     })
 
     await waitFor(() => {
-      expect(mockProcessResume).toHaveBeenCalled()
+      expect(mockAnalyzeResume).toHaveBeenCalled()
     })
 
-    const lastCall = mockProcessResume.mock.calls.at(-1)
-    expect(lastCall?.[1]).toContain('负责 AI 产品设计与跨团队协作，推动复杂功能落地。')
-    expect(lastCall?.[1]).not.toContain('岗位描述附件：jd-shot.png')
+    expect(getLastSavedResultSession()?.context.jdContent).toContain(
+      '负责 AI 产品设计与跨团队协作，推动复杂功能落地。',
+    )
+    expect(getLastSavedResultSession()?.context.jdContent).not.toContain(
+      '岗位描述附件：jd-shot.png',
+    )
   })
 
   test('第二步切回图片上传后应只按上传内容判断和提交', async () => {
@@ -651,12 +684,15 @@ describe('CreatePage', () => {
     fireEvent.click(screen.getByTestId('create-flow-primary-action'))
 
     await waitFor(() => {
-      expect(mockProcessResume).toHaveBeenCalled()
+      expect(mockAnalyzeResume).toHaveBeenCalled()
     })
 
-    const lastCall = mockProcessResume.mock.calls.at(-1)
-    expect(lastCall?.[1]).toContain('岗位描述附件：jd-shot.png')
-    expect(lastCall?.[1]).not.toContain('这段手动输入内容不应该在上传模式下被提交。')
+    expect(getLastSavedResultSession()?.context.jdContent).toContain(
+      '岗位描述附件：jd-shot.png',
+    )
+    expect(getLastSavedResultSession()?.context.jdContent).not.toContain(
+      '这段手动输入内容不应该在上传模式下被提交。',
+    )
   })
 
   test('RN 端缺少 chooseMessageFile 时会回退到图片选择器', async () => {

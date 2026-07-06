@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
 import {useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
-import type {SourceResumeSummary} from '@/types'
+import type {ProcessResult, ResumeAnalysis, SourceResumeSummary} from '@/types'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
 import {saveLatestResultSession} from '@/utils/result-session'
@@ -69,6 +69,37 @@ const SUPPORTED_RESUME_FILE_TYPES = new Set<string>(RESUME_FILE_ACCEPT_TYPES)
 const SUPPORTED_JOB_DESCRIPTION_FILE_TYPES = new Set<string>(
   JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
 )
+
+function buildInitialProcessResult(analysis: ResumeAnalysis): ProcessResult {
+  return {
+    analysis,
+    matching: {
+      match_score: 0,
+      hard_requirements_match: [],
+      skill_match: {
+        matched_skills: [],
+        missing_skills: [],
+        match_percentage: 0,
+      },
+      experience_match: {
+        years_required: 0,
+        years_actual: 0,
+        relevant_experience: [],
+        match_percentage: 0,
+      },
+      optimization_suggestions: [],
+    },
+    optimized: {
+      optimized_resume: '',
+      changes_summary: [],
+      improvement_score: 0,
+    },
+    interview: {
+      questions: [],
+      story_recommendations: [],
+    },
+  }
+}
 
 function createInitialResumeUploadState(): ResumeUploadStepState {
   return {
@@ -873,14 +904,15 @@ export function usePageModel(): CreatePageViewModel {
       useResumeStore.getState().setResumeContent(resumeMarkdown)
       useJDStore.getState().setJDContent(jdText)
 
-      const processResult = await resumeApi.processResume(resumeMarkdown, jdText)
+      const analysis = await resumeApi.analyzeResume(resumeMarkdown)
 
       if (generationRequestRef.current !== requestId) {
         return
       }
 
+      const processResult = buildInitialProcessResult(analysis)
+
       useResumeStore.getState().setAnalysis(processResult.analysis)
-      useJDStore.getState().setMatching(processResult.matching)
 
       await saveLatestResultSession({
         result: processResult,
@@ -889,6 +921,12 @@ export function usePageModel(): CreatePageViewModel {
           position: jobDescriptionState.positionName.trim(),
           resumeContent: resumeMarkdown,
           jdContent: jdText,
+        },
+        progress: {
+          analysis: 'done',
+          matching: 'pending',
+          optimized: 'pending',
+          interview: 'pending',
         },
       })
 

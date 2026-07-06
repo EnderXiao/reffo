@@ -90,6 +90,17 @@ export interface MatchAnalysis {
   jd_structure: JDStructure
 }
 
+export interface InterviewStoryRecommendation {
+  title: string
+  background: string
+  result: string
+}
+
+export interface InterviewSuggestions {
+  questions: string[]
+  story_recommendations: InterviewStoryRecommendation[]
+}
+
 /**
  * API 响应格式
  */
@@ -109,6 +120,7 @@ export interface MvpProcessResponse {
   step1_analysis: ResumeAnalysis
   step2_matching: MatchAnalysis
   step3_optimized_resume: string
+  step4_interview_suggestions?: InterviewSuggestions
 }
 
 export type SourceResumeSourceType = 'manual' | 'file'

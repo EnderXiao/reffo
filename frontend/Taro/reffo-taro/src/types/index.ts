@@ -130,12 +130,24 @@ export interface OptimizedResume {
   improvement_score: number;
 }
 
+export interface InterviewStoryRecommendation {
+  title: string;
+  background: string;
+  result: string;
+}
+
+export interface InterviewSuggestions {
+  questions: string[];
+  story_recommendations: InterviewStoryRecommendation[];
+}
+
 // ============ 完整处理结果 ============
 
 export interface ProcessResult {
   analysis: ResumeAnalysis;
   matching: MatchingResult;
   optimized: OptimizedResume;
+  interview: InterviewSuggestions;
 }
 
 export type SourceResumeSourceType = 'manual' | 'file';

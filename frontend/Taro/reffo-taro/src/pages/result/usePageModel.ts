@@ -1,19 +1,82 @@
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import Taro, {useRouter} from '@tarojs/taro'
+import {resumeApi} from '@/services/resume'
 import {useHistoryStore} from '@/store/historyStore'
 import type {ProcessResult} from '@/types'
-import {getLatestResultSession, type LatestResultSessionContext} from '@/utils/result-session'
+import {
+  getLatestResultSession,
+  saveLatestResultSession,
+  type LatestResultSession,
+  type LatestResultSessionContext,
+  type LatestResultSessionProgress,
+} from '@/utils/result-session'
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
+
+const DONE_PROGRESS: LatestResultSessionProgress = {
+  analysis: 'done',
+  matching: 'done',
+  optimized: 'done',
+  interview: 'done',
+}
+
+const EMPTY_INTERVIEW = {
+  questions: [],
+  story_recommendations: [],
+}
+
+function normalizeInterviewResult(result: ProcessResult) {
+  const interview = result.interview
+
+  return {
+    questions: Array.isArray(interview?.questions) ? interview.questions : [],
+    story_recommendations: Array.isArray(interview?.story_recommendations)
+      ? interview.story_recommendations
+      : [],
+  }
+}
+
+function getDefaultProgress(result: ProcessResult | null): LatestResultSessionProgress {
+  if (!result) {
+    return {
+      analysis: 'pending',
+      matching: 'pending',
+      optimized: 'pending',
+      interview: 'pending',
+    }
+  }
+
+  return {
+    analysis: 'done',
+    matching: result.matching.match_score > 0 ? 'done' : 'pending',
+    optimized: result.optimized.optimized_resume.trim().length > 0 ? 'done' : 'pending',
+    interview: normalizeInterviewResult(result).questions.length > 0 ||
+      normalizeInterviewResult(result).story_recommendations.length > 0
+      ? 'done'
+      : 'pending',
+  }
+}
+
+function getProgressPercent(progress: LatestResultSessionProgress) {
+  if (progress.interview === 'done') return 100
+  if (progress.optimized === 'done') return 66.667
+  if (progress.analysis === 'done') return 33.333
+  return 0
+}
 
 export interface ResultPageViewModel {
   result: ProcessResult | null
   loading: boolean
   saved: boolean
+  progress: LatestResultSessionProgress
+  progressPercent: number
+  generationError: string | null
   handleSave: () => Promise<void>
   handleShare: () => Promise<void>
   handleBackHome: () => void
+  handlePendingStage: () => void
+  handleOptimizedResumeChange: (markdown: string) => Promise<void>
 }
 
 export function usePageModel(): ResultPageViewModel {
@@ -24,6 +87,12 @@ export function usePageModel(): ResultPageViewModel {
     useState<LatestResultSessionContext | null>(null)
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
+  const [progress, setProgress] = useState<LatestResultSessionProgress>(
+    getDefaultProgress(null),
+  )
+  const [generationError, setGenerationError] = useState<string | null>(null)
+  const continuationRef = useRef(0)
+  const isContinuingRef = useRef(false)
 
   useEffect(() => {
     const resultId = router.params.id
@@ -78,9 +147,11 @@ export function usePageModel(): ResultPageViewModel {
             changes_summary: [],
             improvement_score: 0,
           },
+          interview: EMPTY_INTERVIEW,
         }
 
         setResult(processResult)
+        setProgress(DONE_PROGRESS)
         setSaved(true)
       } else {
         feedback.message('未找到结果')
@@ -99,8 +170,23 @@ export function usePageModel(): ResultPageViewModel {
       const session = await getLatestResultSession()
 
       if (session) {
-        setResult(session.result)
+        const sessionProgress = {
+          ...getDefaultProgress(session.result),
+          ...session.progress,
+          interview: session.progress?.interview ?? getDefaultProgress(session.result).interview,
+        }
+        const sessionResult = {
+          ...session.result,
+          interview: normalizeInterviewResult(session.result),
+        }
+        setResult(sessionResult)
         setResultContext(session.context)
+        setProgress(sessionProgress)
+        void continueLatestSession({
+          ...session,
+          result: sessionResult,
+          progress: sessionProgress,
+        })
       } else {
         feedback.message('未找到结果')
         void navigation.navigateBack()
@@ -113,8 +199,144 @@ export function usePageModel(): ResultPageViewModel {
     }
   }
 
+  const persistSession = async (
+    session: LatestResultSession,
+    nextResult: ProcessResult,
+    nextProgress: LatestResultSessionProgress,
+  ) => {
+    const nextSession: LatestResultSession = {
+      ...session,
+      result: nextResult,
+      progress: nextProgress,
+    }
+
+    await saveLatestResultSession(nextSession)
+    setResult(nextResult)
+    setProgress(nextProgress)
+
+    return nextSession
+  }
+
+  const continueLatestSession = async (session: LatestResultSession) => {
+    if (isContinuingRef.current) return
+
+    const runId = continuationRef.current + 1
+    continuationRef.current = runId
+    isContinuingRef.current = true
+
+    let currentSession = session
+    let currentResult = session.result
+    let currentProgress = session.progress || getDefaultProgress(session.result)
+
+    try {
+      setGenerationError(null)
+
+      if (currentProgress.matching !== 'done') {
+        const generatingProgress: LatestResultSessionProgress = {
+          ...currentProgress,
+          matching: 'generating',
+        }
+        setProgress(generatingProgress)
+
+        const matching = await resumeApi.matchResume(
+          currentResult.analysis,
+          currentSession.context.jdContent,
+        )
+
+        if (continuationRef.current !== runId) return
+
+        currentResult = {
+          ...currentResult,
+          matching,
+        }
+        currentProgress = {
+          ...generatingProgress,
+          matching: 'done',
+        }
+        currentSession = await persistSession(
+          currentSession,
+          currentResult,
+          currentProgress,
+        )
+      }
+
+      if (currentProgress.optimized !== 'done') {
+        const generatingProgress: LatestResultSessionProgress = {
+          ...currentProgress,
+          optimized: 'generating',
+        }
+        setProgress(generatingProgress)
+
+        const optimized = await resumeApi.generateOptimizedResume(
+          currentResult.analysis,
+          currentResult.matching,
+        )
+
+        if (continuationRef.current !== runId) return
+
+        currentResult = {
+          ...currentResult,
+          optimized,
+        }
+        currentProgress = {
+          ...generatingProgress,
+          optimized: 'done',
+        }
+        currentSession = await persistSession(currentSession, currentResult, currentProgress)
+      }
+
+      if (currentProgress.interview !== 'done') {
+        const generatingProgress: LatestResultSessionProgress = {
+          ...currentProgress,
+          interview: 'generating',
+        }
+        setProgress(generatingProgress)
+
+        const interview = await resumeApi.generateInterviewSuggestions(
+          currentResult.analysis,
+          currentResult.matching,
+          currentResult.optimized,
+        )
+
+        if (continuationRef.current !== runId) return
+
+        currentResult = {
+          ...currentResult,
+          interview,
+        }
+        currentProgress = {
+          ...generatingProgress,
+          interview: 'done',
+        }
+        await persistSession(currentSession, currentResult, currentProgress)
+      }
+    } catch (error) {
+      if (continuationRef.current !== runId) return
+
+      const message = error instanceof Error ? error.message : '生成失败，请重试'
+      console.error('continue result generation failed', error)
+      setGenerationError(message)
+      setProgress({
+        ...currentProgress,
+        matching: currentProgress.matching === 'generating' ? 'failed' : currentProgress.matching,
+        optimized: currentProgress.optimized === 'generating' ? 'failed' : currentProgress.optimized,
+        interview: currentProgress.interview === 'generating' ? 'failed' : currentProgress.interview,
+      })
+      feedback.error(message)
+    } finally {
+      if (continuationRef.current === runId) {
+        isContinuingRef.current = false
+      }
+    }
+  }
+
   const handleSave = async () => {
     if (!result || saved) return
+
+    if (progress.interview !== 'done') {
+      feedback.message('正在生成中，请稍后')
+      return
+    }
 
     try {
       const baseHistory = createHistoryFromResult(
@@ -147,15 +369,48 @@ export function usePageModel(): ResultPageViewModel {
   }
 
   const handleBackHome = () => {
+    continuationRef.current += 1
     void navigation.reLaunch('/pages/index/index')
+  }
+
+  const handlePendingStage = () => {
+    feedback.message(generationError || '正在生成中，请稍后')
+  }
+
+  const handleOptimizedResumeChange = async (markdown: string) => {
+    if (!result) return
+
+    const nextResult: ProcessResult = {
+      ...result,
+      optimized: {
+        ...result.optimized,
+        optimized_resume: markdown,
+      },
+    }
+
+    setResult(nextResult)
+    setSaved(false)
+
+    if (!resultContext) return
+
+    await saveLatestResultSession({
+      context: resultContext,
+      result: nextResult,
+      progress,
+    })
   }
 
   return {
     result,
     loading,
     saved,
+    progress,
+    progressPercent: getProgressPercent(progress),
+    generationError,
     handleSave,
     handleShare,
     handleBackHome,
+    handlePendingStage,
+    handleOptimizedResumeChange,
   }
 }

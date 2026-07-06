@@ -1,0 +1,662 @@
+import {useEffect, useMemo, useRef, useState} from 'react'
+import type {CSSProperties} from 'react'
+import {Image, ScrollView, Text, View} from '@tarojs/components'
+import classNames from 'classnames'
+import type {HardRequirement, ProcessResult} from '@/types'
+import type {ResultPageViewModel} from './usePageModel'
+import lightIcon from '@/assets/result/light.svg'
+import textIcon from '@/assets/result/text.svg'
+import suggestionIcon from '@/assets/result/suggestion.svg'
+import downloadIcon from '@/assets/result/download.svg'
+import editIcon from '@/assets/result/edit.svg'
+import saveIcon from '@/assets/result/save.svg'
+import cancelIcon from '@/assets/result/cancel.svg'
+import alertIcon from '@/assets/result/alert-hex.svg'
+import confirmIcon from '@/assets/result/confirm.svg'
+import chatTagIcon from '@/assets/result/chat-tag.svg'
+import './index.h5.scss'
+
+type ResultStageKey = 'analysis' | 'resume' | 'interview'
+type VisibleStageStatus = 'ready' | 'generating' | 'pending'
+
+interface ResultStage {
+  key: ResultStageKey
+  title: string
+  accent: string
+  label: string
+  icon: string
+}
+
+const RESULT_STAGES: ResultStage[] = [
+  {key: 'analysis', title: '岗位分析', accent: '分析', label: '岗位分析', icon: lightIcon},
+  {key: 'resume', title: '最佳简历', accent: '最佳', label: '最佳简历', icon: textIcon},
+  {key: 'interview', title: '面试建议', accent: '建议', label: '面试建议', icon: suggestionIcon},
+]
+
+function normalizeItems(value: unknown, limit = 4): string[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    .map(item => item.trim())
+    .slice(0, limit)
+}
+
+function scoreToGrade(score: number) {
+  if (score >= 90) return 'A+'
+  if (score >= 80) return 'A'
+  if (score >= 70) return 'B'
+  if (score >= 60) return 'C'
+  return 'D'
+}
+
+function getUnmatchedRequirements(items: HardRequirement[] | undefined) {
+  if (!Array.isArray(items)) return []
+
+  return items
+    .filter(item => !item.matched)
+    .map(item => item.suggestion || item.requirement)
+    .filter(item => item.trim().length > 0)
+    .slice(0, 3)
+}
+
+interface MarkdownLine {
+  key: string
+  raw: string
+  prefix: string
+  text: string
+  kind:
+    | 'heading1'
+    | 'heading2'
+    | 'heading3'
+    | 'bullet'
+    | 'numbered'
+    | 'divider'
+    | 'blank'
+    | 'paragraph'
+}
+
+function parseMarkdownLine(raw: string, index: number): MarkdownLine {
+  const heading = raw.match(/^(#{1,3})\s+(.*)$/)
+  if (heading) {
+    const level = heading[1].length
+    return {
+      key: `${index}-${raw}`,
+      raw,
+      prefix: `${heading[1]} `,
+      text: heading[2],
+      kind: level === 1 ? 'heading1' : level === 2 ? 'heading2' : 'heading3',
+    }
+  }
+
+  const bullet = raw.match(/^(\s*[-*+]\s+)(.*)$/)
+  if (bullet) {
+    return {
+      key: `${index}-${raw}`,
+      raw,
+      prefix: bullet[1],
+      text: bullet[2],
+      kind: 'bullet',
+    }
+  }
+
+  const numbered = raw.match(/^(\s*\d+\.\s+)(.*)$/)
+  if (numbered) {
+    return {
+      key: `${index}-${raw}`,
+      raw,
+      prefix: numbered[1],
+      text: numbered[2],
+      kind: 'numbered',
+    }
+  }
+
+  if (/^\s*-{3,}\s*$/.test(raw)) {
+    return {
+      key: `${index}-divider`,
+      raw,
+      prefix: '',
+      text: '',
+      kind: 'divider',
+    }
+  }
+
+  if (raw.trim().length === 0) {
+    return {
+      key: `${index}-blank`,
+      raw,
+      prefix: '',
+      text: '',
+      kind: 'blank',
+    }
+  }
+
+  return {
+    key: `${index}-${raw}`,
+    raw,
+    prefix: '',
+    text: raw,
+    kind: 'paragraph',
+  }
+}
+
+function parseMarkdown(value: string): MarkdownLine[] {
+  const lines = value.trim().length > 0 ? value.split('\n') : ['']
+
+  return lines.map(parseMarkdownLine)
+}
+
+function canEditMarkdownLine(line: MarkdownLine) {
+  return line.kind !== 'blank' && line.kind !== 'divider' && line.text.trim().length > 0
+}
+
+function getVisibleStageStatus(
+  stage: ResultStageKey,
+  progress: ResultPageViewModel['progress'],
+): VisibleStageStatus {
+  if (stage === 'analysis') {
+    return progress.analysis === 'done' ? 'ready' : 'generating'
+  }
+
+  if (stage === 'resume') {
+    if (progress.optimized === 'done') return 'ready'
+    if (progress.matching === 'generating' || progress.optimized === 'generating') {
+      return 'generating'
+    }
+
+    return 'pending'
+  }
+
+  if (progress.interview === 'done') return 'ready'
+  if (progress.interview === 'generating') return 'generating'
+
+  return 'pending'
+}
+
+function getDownloadName(result: ProcessResult) {
+  const name = result.analysis.structured_resume.personal_info.name.trim()
+  const safeName = name.replace(/[\\/:*?"<>|]/g, '').trim()
+
+  return `${safeName || 'reffo'}-最佳简历.md`
+}
+
+function renderInlineMarkdown(value: string) {
+  const segments = value.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean)
+
+  return segments.map((segment, index) => {
+    if (segment.startsWith('**') && segment.endsWith('**')) {
+      return (
+        <Text key={`${segment}-${index}`} className='reffo-result__markdown-strong'>
+          {segment.slice(2, -2)}
+        </Text>
+      )
+    }
+
+    if (segment.startsWith('`') && segment.endsWith('`')) {
+      return (
+        <Text key={`${segment}-${index}`} className='reffo-result__markdown-code'>
+          {segment.slice(1, -1)}
+        </Text>
+      )
+    }
+
+    return segment
+  })
+}
+
+function SectionTitle({children, icon}: {children: string; icon?: string}) {
+  return (
+    <View className='reffo-result__section-title'>
+      {icon && (
+        <Image className='reffo-result__section-icon' src={icon} mode='aspectFit' />
+      )}
+      <Text>{children}</Text>
+    </View>
+  )
+}
+
+function EmptyText() {
+  return <Text className='reffo-result__empty'>暂无内容</Text>
+}
+
+function AnalysisPanel({result}: {result: ProcessResult}) {
+  const grade = scoreToGrade(result.analysis.quality_score)
+  const weaknesses = normalizeItems(result.analysis.weaknesses, 3)
+  const strategies = normalizeItems(
+    result.matching.optimization_suggestions.length > 0
+      ? result.matching.optimization_suggestions
+      : result.analysis.suggestions,
+    5,
+  )
+
+  return (
+    <View className='reffo-result__panel'>
+      <View className='reffo-result__score-row'>
+        <Text className='reffo-result__grade'>{grade}</Text>
+        <Text className='reffo-result__grade-label'>评级</Text>
+      </View>
+
+      <View className='reffo-result__alert reffo-result__alert--danger'>
+        <View className='reffo-result__alert-heading'>
+          <Image className='reffo-result__alert-icon' src={alertIcon} mode='aspectFit' />
+          <Text>差距分析</Text>
+        </View>
+        {weaknesses.length > 0 ? (
+          weaknesses.map((item, index) => (
+            <Text key={`${item}-${index}`} className='reffo-result__paragraph'>
+              {item}
+            </Text>
+          ))
+        ) : (
+          <EmptyText />
+        )}
+      </View>
+
+      <View className='reffo-result__alert reffo-result__alert--success'>
+        <View className='reffo-result__alert-heading'>
+          <Image className='reffo-result__alert-icon' src={confirmIcon} mode='aspectFit' />
+          <Text>优化策略</Text>
+        </View>
+        {strategies.length > 0 ? (
+          strategies.map((item, index) => (
+            <Text key={`${item}-${index}`} className='reffo-result__paragraph'>
+              {item}
+            </Text>
+          ))
+        ) : (
+          <EmptyText />
+        )}
+      </View>
+    </View>
+  )
+}
+
+function ResumePanel({
+  result,
+  onOptimizedResumeChange,
+}: {
+  result: ProcessResult
+  onOptimizedResumeChange: (markdown: string) => Promise<void>
+}) {
+  const [lines, setLines] = useState(() => parseMarkdown(result.optimized.optimized_resume))
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editingDraft, setEditingDraft] = useState('')
+  const editorRef = useRef<HTMLTextAreaElement | null>(null)
+  const markdown = useMemo(() => lines.map(line => line.raw).join('\n'), [lines])
+  const isEditing = editingIndex !== null
+
+  const resizeEditor = (element: HTMLTextAreaElement | null) => {
+    if (!element) return
+
+    element.style.height = 'auto'
+    element.style.height = `${element.scrollHeight}px`
+  }
+
+  useEffect(() => {
+    if (editingIndex !== null) return
+
+    setLines(parseMarkdown(result.optimized.optimized_resume))
+  }, [editingIndex, result.optimized.optimized_resume])
+
+  const commitMarkdown = async (nextLines = lines) => {
+    await onOptimizedResumeChange(nextLines.map(line => line.raw).join('\n'))
+  }
+
+  const handleEditLine = (lineIndex: number) => {
+    setEditingIndex(lineIndex)
+    setEditingDraft(lines[lineIndex]?.raw || '')
+  }
+
+  useEffect(() => {
+    resizeEditor(editorRef.current)
+  }, [editingDraft, editingIndex])
+
+  const handleCancelEdit = () => {
+    setEditingIndex(null)
+    setEditingDraft('')
+  }
+
+  const handleSaveLine = async (lineIndex: number) => {
+    const nextLines = lines.map((line, index) =>
+      index === lineIndex ? parseMarkdownLine(editingDraft, index) : line,
+    )
+
+    setLines(nextLines)
+    setEditingIndex(null)
+    setEditingDraft('')
+    await commitMarkdown(nextLines)
+  }
+
+  const handleDownload = () => {
+    if (isEditing) return
+
+    const blob = new Blob([markdown], {type: 'text/markdown;charset=utf-8'})
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = getDownloadName(result)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <View className='reffo-result__panel reffo-result__panel--resume'>
+      <View className='reffo-result__resume-paper'>
+        <View
+          className={classNames('reffo-result__download', {
+            'reffo-result__download--disabled': isEditing,
+          })}
+          onClick={handleDownload}
+          aria-disabled={isEditing}
+        >
+          <Image className='reffo-result__download-icon' src={downloadIcon} mode='aspectFit' />
+          <Text>下载</Text>
+        </View>
+
+        <View className='reffo-result__markdown'>
+          {lines.map((line, index) => (
+            <View
+              key={`line-${index}`}
+              className={classNames(
+                'reffo-result__markdown-line',
+                `reffo-result__markdown-line--${line.kind}`,
+              )}
+            >
+              {editingIndex === index ? (
+                <View className='reffo-result__markdown-editor'>
+                  <textarea
+                    ref={element => {
+                      editorRef.current = element
+                      resizeEditor(element)
+                    }}
+                    className='reffo-result__markdown-source'
+                    value={editingDraft}
+                    rows={1}
+                    onInput={event => {
+                      setEditingDraft(event.currentTarget.value)
+                      resizeEditor(event.currentTarget)
+                    }}
+                  />
+                  <View className='reffo-result__markdown-editor-actions'>
+                    <View
+                      className='reffo-result__markdown-save'
+                      onClick={() => {
+                        void handleSaveLine(index)
+                      }}
+                    >
+                      <Image className='reffo-result__markdown-action-icon' src={saveIcon} mode='aspectFit' />
+                    </View>
+                    <View className='reffo-result__markdown-cancel' onClick={handleCancelEdit}>
+                      <Image className='reffo-result__markdown-action-icon' src={cancelIcon} mode='aspectFit' />
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  {line.kind === 'divider' ? (
+                    <View className='reffo-result__markdown-divider' />
+                  ) : (
+                    <View className='reffo-result__markdown-rendered'>
+                      {line.kind === 'bullet' && (
+                        <Text className='reffo-result__markdown-marker'>•</Text>
+                      )}
+                      {line.kind === 'numbered' && (
+                        <Text className='reffo-result__markdown-marker'>{line.prefix.trim()}</Text>
+                      )}
+                      <Text className='reffo-result__markdown-text'>
+                        {renderInlineMarkdown(line.text)}
+                        {canEditMarkdownLine(line) && (
+                          <Image
+                            className='reffo-result__markdown-edit-icon'
+                            src={editIcon}
+                            mode='aspectFit'
+                            onClick={() => {
+                              handleEditLine(index)
+                            }}
+                          />
+                        )}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  )
+}
+
+function InterviewPanel({result}: {result: ProcessResult}) {
+  const missingSkills = normalizeItems(result.matching.skill_match.missing_skills, 3)
+  const unmatchedRequirements = getUnmatchedRequirements(result.matching.hard_requirements_match)
+  const strengths = normalizeItems(result.analysis.strengths, 3)
+  const generatedQuestions = normalizeItems(result.interview?.questions, 4)
+  const fallbackQuestions = [
+    ...missingSkills.map(item => `你会如何补齐「${item}」相关经验？`),
+    ...unmatchedRequirements.map(item => `针对「${item}」，你准备用什么项目证据回应？`),
+  ].slice(0, 2)
+  const questions = generatedQuestions.length > 0 ? generatedQuestions : fallbackQuestions
+  const story = result.interview?.story_recommendations?.[0]
+  const secondaryStory = result.interview?.story_recommendations?.[1]
+  const storyTitle = story?.title || strengths[0] || '高匹配项目经历'
+  const storyBody = story?.background || strengths[1] || result.analysis.capability_summary || '围绕目标岗位要求，选择最能证明能力迁移的项目经历展开。'
+  const storyResult = story?.result || result.optimized.changes_summary[0] || '用量化结果和职责边界说明你的贡献，避免只描述过程。'
+  const followUps = [
+    '设计团队是如何衡量一个项目是否成功的？',
+    '在AI时代背景下，贵公司认为产品团队目前面临的最大最困难的问题是什么？',
+  ]
+
+  return (
+    <View className='reffo-result__panel reffo-result__panel--interview'>
+      <SectionTitle icon={chatTagIcon}>可能的问题</SectionTitle>
+      <View className='reffo-result__question-list'>
+        {(questions.length > 0 ? questions : ['请介绍一段最能证明你适合这个岗位的经历。', '你如何理解这个岗位最核心的业务挑战？']).map((item, index) => (
+          <View key={`${item}-${index}`} className='reffo-result__question'>
+            <Text className='reffo-result__question-index'>Q{index + 1}</Text>
+            <Text className='reffo-result__question-text'>“{item}”</Text>
+          </View>
+        ))}
+      </View>
+
+      <SectionTitle>明星故事推荐</SectionTitle>
+      <View className='reffo-result__story-card'>
+        <View className='reffo-result__story-head'>
+          <Text className='reffo-result__story-title'>{storyTitle}</Text>
+          <Text className='reffo-result__story-tag'>故事1</Text>
+        </View>
+        <Text className='reffo-result__story-label'>故事背景</Text>
+        <Text className='reffo-result__story-text'>{storyBody}</Text>
+        <Text className='reffo-result__story-label'>故事结果</Text>
+        <Text className='reffo-result__story-text'>{storyResult}</Text>
+      </View>
+
+      <View className='reffo-result__story-card reffo-result__story-card--secondary'>
+        <View className='reffo-result__story-head'>
+          <Text className='reffo-result__story-title'>{secondaryStory?.title || '补齐短板的备选故事'}</Text>
+          <Text className='reffo-result__story-tag'>故事2</Text>
+        </View>
+        <Text className='reffo-result__story-label'>故事背景</Text>
+        <Text className='reffo-result__story-text'>
+          {secondaryStory?.background || '选择一段能回应岗位关键短板的经历，说明你如何快速学习、协作推进或补齐经验。'}
+        </Text>
+        <Text className='reffo-result__story-label'>故事结果</Text>
+        <Text className='reffo-result__story-text'>
+          {secondaryStory?.result || '强调可验证的交付结果、复盘沉淀或能力迁移，避免只描述主观态度。'}
+        </Text>
+      </View>
+
+      <SectionTitle>聪明的反问</SectionTitle>
+      <View className='reffo-result__follow-list'>
+        {followUps.map((item, index) => (
+          <View key={item} className='reffo-result__follow-note'>
+            <Text className='reffo-result__follow-index'>Q{index + 1}.</Text>
+            <Text className='reffo-result__follow-text'>{item}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}
+
+function ResultContent({
+  stage,
+  result,
+  onOptimizedResumeChange,
+}: {
+  stage: ResultStageKey
+  result: ProcessResult
+  onOptimizedResumeChange: (markdown: string) => Promise<void>
+}) {
+  if (stage === 'analysis') return <AnalysisPanel result={result} />
+  if (stage === 'resume') {
+    return (
+      <ResumePanel
+        result={result}
+        onOptimizedResumeChange={onOptimizedResumeChange}
+      />
+    )
+  }
+  return <InterviewPanel result={result} />
+}
+
+export default function PageView({
+  result,
+  loading,
+  saved,
+  progress,
+  progressPercent,
+  handleSave,
+  handleBackHome,
+  handlePendingStage,
+  handleOptimizedResumeChange,
+}: ResultPageViewModel) {
+  const [stageIndex, setStageIndex] = useState(0)
+  const activeStage = RESULT_STAGES[stageIndex]
+  const accentIndex = activeStage.title.indexOf(activeStage.accent)
+  const titleBeforeAccent = accentIndex >= 0 ? activeStage.title.slice(0, accentIndex) : ''
+  const titleAfterAccent = accentIndex >= 0
+    ? activeStage.title.slice(accentIndex + activeStage.accent.length)
+    : activeStage.title.replace(activeStage.accent, '')
+  const backgroundProgress = useMemo(() => `${progressPercent}%`, [progressPercent])
+  const stageAvailability: Record<ResultStageKey, boolean> = {
+    analysis: progress.analysis === 'done',
+    resume: progress.optimized === 'done',
+    interview: progress.interview === 'done',
+  }
+  const isComplete = progress.interview === 'done'
+
+  const handleAction = async () => {
+    if (!isComplete) {
+      handleBackHome()
+      return
+    }
+
+    if (!saved) {
+      await handleSave()
+    }
+    handleBackHome()
+  }
+
+  if (loading || !result) {
+    return (
+      <View className='reffo-result reffo-result--loading'>
+        <Text className='reffo-result__loading-text'>{loading ? '加载中...' : '未找到结果'}</Text>
+      </View>
+    )
+  }
+
+  return (
+    <View
+      className={classNames('reffo-result', {
+        'reffo-result--progress-complete': isComplete,
+      })}
+      style={{'--reffo-result-progress': backgroundProgress} as CSSProperties}
+    >
+      <View className='reffo-result__chrome'>
+        <View className='reffo-result__action' onClick={handleAction}>
+          <Text>{isComplete ? '完成' : '↻ 退出生成'}</Text>
+        </View>
+      </View>
+
+      <View className='reffo-result__shell'>
+        <View className='reffo-result__content'>
+          <View className='reffo-result__header'>
+            <View>
+              {titleBeforeAccent.length > 0 && (
+                <Text className='reffo-result__title-prefix'>{titleBeforeAccent}</Text>
+              )}
+              <Text className='reffo-result__title-accent'>{activeStage.accent}</Text>
+              {titleAfterAccent.length > 0 && (
+                <Text className='reffo-result__title-prefix'>{titleAfterAccent}</Text>
+              )}
+              <Text className='reffo-result__spark'>✦</Text>
+            </View>
+            <View
+              className='reffo-result__tabs'
+              style={{'--reffo-result-tab-offset': `${stageIndex * 100}%`} as CSSProperties}
+            >
+              <View className='reffo-result__tab-indicator' />
+              {RESULT_STAGES.map((stage, index) => {
+                const stageStatus = getVisibleStageStatus(stage.key, progress)
+
+                return (
+                  <View
+                    key={stage.key}
+                    className={classNames('reffo-result__tab', {
+                      [`reffo-result__tab--${stage.key}`]: true,
+                      'reffo-result__tab--active': index === stageIndex,
+                      'reffo-result__tab--ready': stageStatus === 'ready' && index !== stageIndex,
+                      'reffo-result__tab--generating': stageStatus === 'generating' && index !== stageIndex,
+                      'reffo-result__tab--pending': stageStatus === 'pending' && index !== stageIndex,
+                      'reffo-result__tab--disabled': !stageAvailability[stage.key],
+                    })}
+                    onClick={() => {
+                      if (!stageAvailability[stage.key]) {
+                        handlePendingStage()
+                        return
+                      }
+
+                      setStageIndex(index)
+                    }}
+                    aria-label={stage.label}
+                  >
+                    <Image
+                      className='reffo-result__tab-icon'
+                      src={stage.icon}
+                      mode='aspectFit'
+                    />
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+
+          <Text className='reffo-result__subtitle'>
+            查看Reffo为你生成的岗位分析，最佳简历以及针对性的面试建议！
+          </Text>
+        </View>
+
+        <View className='reffo-result__scroll-shell'>
+          <View className='reffo-result__scroll-fade' />
+          <View className='reffo-result__scroll-bottom-fade' />
+          <ScrollView scrollY className='reffo-result__scroll'>
+            <View className='reffo-result__body'>
+              <ResultContent
+                stage={activeStage.key}
+                result={result}
+                onOptimizedResumeChange={handleOptimizedResumeChange}
+              />
+
+              <Text className='reffo-result__disclaimer'>*内容由人工智能生成，请仔细检查</Text>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  )
+}
