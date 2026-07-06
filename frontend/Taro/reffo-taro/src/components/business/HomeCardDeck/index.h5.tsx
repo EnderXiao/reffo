@@ -56,6 +56,8 @@ function useResponsiveCardScale() {
 
 export default function HomeCardDeck({
   cards,
+  initialIndex,
+  enteringCardId,
   isCreateMode = false,
   onCreateCardPress,
   onCardChange,
@@ -81,6 +83,7 @@ export default function HomeCardDeck({
     visualCapability,
   } = useHomeCardDeckMotion({
     cards,
+    initialIndex,
     cardScale,
     isCreateMode,
     onCardChange,
@@ -125,6 +128,7 @@ export default function HomeCardDeck({
                   'reffo-home-card--preview': !isActive && !isRecycling && isDeckInteractive,
                   'reffo-home-card--tail-enter': isTailEntering,
                   'reffo-home-card--recycling': isRecycling,
+                  'reffo-home-card--new-entry': card.id === enteringCardId,
                 })}
               />
             )

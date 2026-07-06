@@ -140,6 +140,8 @@ export default function PageView({
   sourceResumeTitle,
   isStrategyVisible,
   isCreateMode,
+  initialCardIndex,
+  enteringCardId,
   handleEnterCreateMode,
   handleConfirmCreate,
   handleCancelCreate,
@@ -186,6 +188,8 @@ export default function PageView({
 
         <HomeCardDeck
           cards={cardItems}
+          initialIndex={initialCardIndex}
+          enteringCardId={enteringCardId}
           isCreateMode={isCreateMode}
           onCreateCardPress={handleConfirmCreate}
           onCardChange={handleCardChange}

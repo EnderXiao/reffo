@@ -1,5 +1,5 @@
 export default {
-  pages: ['pages/index/index', 'pages/create/index', 'pages/result/index'],
+  pages: ['pages/index/index', 'pages/create/index', 'pages/result/index', 'pages/complete/index'],
   window: {
     backgroundTextStyle: 'light',
     navigationStyle: 'custom',

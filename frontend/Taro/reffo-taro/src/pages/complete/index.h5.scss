@@ -1,0 +1,341 @@
+html:has(.reffo-complete),
+body:has(.reffo-complete) {
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.reffo-complete {
+  --card-design-width: 210px;
+  --card-design-height: 332px;
+  --card-responsive-scale: 1;
+  --card-stage-width: calc(var(--card-design-width) * var(--card-responsive-scale));
+  --card-stage-height: calc(var(--card-design-height) * var(--card-responsive-scale));
+  --complete-card-top: clamp(154px, 24dvh, 210px);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  color: #111111;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(72% 42% at 50% 0%, rgba(195, 255, 218, 0.92) 0%, rgba(224, 255, 236, 0.62) 58%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, #c8f8db 0%, #f3fff7 48%, #ffffff 100%);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.reffo-complete::before {
+  position: absolute;
+  inset: -12% -24% auto;
+  height: 54%;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 66%);
+  filter: blur(18PX);
+  content: '';
+}
+
+.reffo-complete__screen-fold {
+  position: absolute;
+  z-index: 6;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 0;
+  background:
+    radial-gradient(82% 76% at 46% 0%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0.22) 48%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, rgba(199, 247, 216, 0.96) 0%, rgba(227, 250, 233, 0.74) 58%, #ffffff 100%);
+  box-shadow: 0 20PX 54PX rgba(21, 161, 91, 0.16);
+  animation: reffo-complete-screen-fold 980ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
+  pointer-events: none;
+}
+
+.reffo-complete__fold-orb {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: rgba(20, 201, 114, 0.12);
+  filter: blur(14PX);
+  transform: translateX(-50%);
+}
+
+.reffo-complete__fold-header {
+  position: absolute;
+  top: 112px;
+  left: 31px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  color: #11c76d;
+  animation: reffo-complete-fold-content 720ms ease both;
+}
+
+.reffo-complete__fold-title {
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 40px;
+}
+
+.reffo-complete__fold-spark {
+  font-size: 18px;
+  line-height: 20px;
+}
+
+.reffo-complete__fold-lines {
+  position: absolute;
+  top: 188px;
+  left: 31px;
+  right: 31px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: reffo-complete-fold-content 680ms ease both;
+}
+
+.reffo-complete__fold-line {
+  width: 68%;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(20, 201, 114, 0.15);
+}
+
+.reffo-complete__fold-line--wide {
+  width: 92%;
+}
+
+.reffo-complete__fold-line--short {
+  width: 46%;
+}
+
+.reffo-complete__confetti {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.reffo-complete__confetti-piece {
+  position: absolute;
+  top: -12dvh;
+  left: var(--confetti-left);
+  width: var(--confetti-size);
+  height: var(--confetti-height);
+  border-radius: 2px 6px 2px 6px;
+  background: var(--confetti-color);
+  opacity: 0.94;
+  transform: rotate(var(--confetti-rotate));
+  animation: reffo-complete-confetti-fall var(--confetti-duration) linear var(--confetti-delay) infinite;
+}
+
+.reffo-complete__confetti-piece:nth-child(3n) {
+  border-radius: 50% 50% 3px 3px;
+}
+
+.reffo-complete__confetti-piece:nth-child(4n) {
+  width: var(--confetti-wide-size);
+  height: var(--confetti-flat-height);
+  border-radius: 999px;
+}
+
+.reffo-complete__card-stage {
+  position: relative;
+  z-index: 4;
+  width: var(--card-stage-width);
+  height: var(--card-stage-height);
+  margin-top: var(--complete-card-top);
+  opacity: 0;
+  transform: translate3d(0, 24px, 0) scale(0.94) rotate(-1deg);
+  animation: reffo-complete-card-reveal 760ms cubic-bezier(0.16, 1, 0.3, 1) 620ms both;
+}
+
+.reffo-complete__card {
+  filter: drop-shadow(0 18PX 26PX rgba(21, 30, 46, 0.2));
+}
+
+.reffo-complete__card-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #14c972, #66e8a7);
+  box-shadow: 0 18PX 26PX rgba(21, 30, 46, 0.18);
+}
+
+.reffo-complete__card-placeholder-text {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 40px;
+}
+
+.reffo-complete__copy {
+  position: relative;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: 48px;
+  padding: 0 32px;
+  text-align: center;
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  animation: reffo-complete-copy-in 540ms cubic-bezier(0.16, 1, 0.3, 1) 900ms both;
+}
+
+.reffo-complete__title {
+  color: #14c972;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 34px;
+  letter-spacing: 0.02em;
+}
+
+.reffo-complete__subtitle {
+  margin-top: 13px;
+  color: #9fa4a8;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.reffo-complete__hint {
+  margin-top: 14px;
+  color: rgba(20, 201, 114, 0.72);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  opacity: 0;
+  animation: reffo-complete-hint-pulse 1200ms ease-in-out 1400ms infinite;
+}
+
+@keyframes reffo-complete-screen-fold {
+  0% {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  58% {
+    opacity: 0.94;
+  }
+
+  100% {
+    top: var(--complete-card-top);
+    left: 50%;
+    width: var(--card-stage-width);
+    height: var(--card-stage-height);
+    border-radius: 12px;
+    opacity: 0;
+    transform: translate3d(-50%, 0, 0) rotate(-1deg);
+  }
+}
+
+@keyframes reffo-complete-fold-content {
+  0%,
+  44% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.92);
+  }
+}
+
+@keyframes reffo-complete-card-reveal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(0.94) rotate(-1deg);
+  }
+
+  64% {
+    opacity: 1;
+    transform: translate3d(0, -4px, 0) scale(1.012) rotate(0.4deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes reffo-complete-copy-in {
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-complete-hint-pulse {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+@keyframes reffo-complete-confetti-fall {
+  0% {
+    transform: translate3d(0, -14dvh, 0) rotate(var(--confetti-rotate));
+  }
+
+  42% {
+    transform: translate3d(var(--confetti-mid-drift), 46dvh, 0) rotate(280deg);
+  }
+
+  100% {
+    transform: translate3d(var(--confetti-drift), 114dvh, 0) rotate(760deg);
+  }
+}
+
+@media (max-height: 720px) {
+  .reffo-complete {
+    --complete-card-top: 122px;
+    --card-responsive-scale: 0.88;
+  }
+
+  .reffo-complete__copy {
+    margin-top: 28px;
+  }
+}
+
+@media (min-width: 560px) {
+  .reffo-complete {
+    --complete-card-top: clamp(142px, 20dvh, 188px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reffo-complete__screen-fold,
+  .reffo-complete__fold-header,
+  .reffo-complete__fold-lines,
+  .reffo-complete__card-stage,
+  .reffo-complete__copy,
+  .reffo-complete__hint,
+  .reffo-complete__confetti-piece {
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
+}

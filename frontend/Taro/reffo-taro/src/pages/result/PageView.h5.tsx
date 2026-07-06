@@ -527,10 +527,9 @@ function ResultContent({
 export default function PageView({
   result,
   loading,
-  saved,
   progress,
   progressPercent,
-  handleSave,
+  handleComplete,
   handleBackHome,
   handlePendingStage,
   handleOptimizedResumeChange,
@@ -556,10 +555,7 @@ export default function PageView({
       return
     }
 
-    if (!saved) {
-      await handleSave()
-    }
-    handleBackHome()
+    await handleComplete()
   }
 
   if (loading || !result) {

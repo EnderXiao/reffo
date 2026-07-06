@@ -171,21 +171,22 @@ function buildHistoryStrategyBody(history: ResumeHistory) {
 
 export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map(buildCardItem)
 
+export function toHistoryCardItem(history: ResumeHistory, index = 0): HomeCardItem {
+  return buildCardItem({
+    id: history.id || `history-${index}`,
+    company: history.company || '--',
+    indexLabel: getIndexLabel(history.company || '', index),
+    location: '--',
+    role: history.position || '--',
+    dateLabel: formatDateLabel(history.createdAt),
+    score: history.matchScore,
+    strategyBody: buildHistoryStrategyBody(history),
+    seedColor: history.cardColor,
+  })
+}
+
 export function toHistoryCardItems(histories: ResumeHistory[]): HomeCardItem[] {
   return histories
     .slice(0, 10)
-    .map((history, index) =>
-      buildCardItem({
-        id: history.id || `history-${index}`,
-        company: history.company || '--',
-        indexLabel: getIndexLabel(history.company || '', index),
-        location: '--',
-        role: history.position || '--',
-        dateLabel: formatDateLabel(history.createdAt),
-        score: history.matchScore,
-        strategyBody: buildHistoryStrategyBody(history),
-        seedColor: history.cardColor,
-      }),
-    )
-    .sort((left, right) => left.indexLabel.localeCompare(right.indexLabel))
+    .map(toHistoryCardItem)
 }

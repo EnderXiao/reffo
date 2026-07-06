@@ -9,6 +9,7 @@ jest.mock('@tarojs/taro', () => ({
   navigateTo: jest.fn(),
   showToast: jest.fn(),
   useDidShow: jest.fn(),
+  useRouter: jest.fn(() => ({params: {}})),
 }))
 
 jest.mock('@/store/historyStore')

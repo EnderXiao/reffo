@@ -27,6 +27,7 @@ export default function PageView({
   sourceResumeTitle,
   isStrategyVisible,
   isCreateMode,
+  initialCardIndex,
   handleEnterCreateMode,
   handleConfirmCreate,
   handleCancelCreate,
@@ -134,7 +135,7 @@ export default function PageView({
                   <View style={[styles.deckSection, isCompactLayout ? styles.deckSectionCompact : null] as any}>
                     <HomeCardDeck
                       cards={cardItems}
-                      initialIndex={hasHistories ? 0 : Math.max(0, cardItems.length - 1)}
+                      initialIndex={initialCardIndex}
                       isCreateMode={isCreateMode}
                       onCreateCardPress={handleConfirmCreate}
                       onCardChange={handleCardChange}

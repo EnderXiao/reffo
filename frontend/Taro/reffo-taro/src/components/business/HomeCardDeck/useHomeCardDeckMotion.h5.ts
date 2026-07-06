@@ -20,6 +20,7 @@ import type {HomeCardItem} from './shared'
 
 interface UseHomeCardDeckMotionOptions {
   cards: HomeCardItem[]
+  initialIndex?: number
   cardScale: number
   isCreateMode: boolean
   onCardChange?: (card: HomeCardItem, index: number) => void
@@ -28,13 +29,14 @@ interface UseHomeCardDeckMotionOptions {
 
 export default function useHomeCardDeckMotion({
   cards,
+  initialIndex,
   cardScale,
   isCreateMode,
   onCardChange,
   onFirstInteraction,
 }: UseHomeCardDeckMotionOptions) {
   const visualCapability = useVisualTier({benchmark: true})
-  const [activeRailIndex, setActiveRailIndex] = useState(() => Math.max(0, cards.length - 1))
+  const [activeRailIndex, setActiveRailIndex] = useState(() => initialIndex ?? Math.max(0, cards.length - 1))
   const [railMotionY, setRailMotionY] = useState(0)
   const [isRailAnimating, setIsRailAnimating] = useState(false)
   const [dragState, setDragState] = useState<H5DeckDragState>({x: 0, y: 0, phase: 'idle'})
@@ -136,6 +138,18 @@ export default function useHomeCardDeckMotion({
       onFirstInteraction?.()
     }, 0)
   }
+
+  useEffect(() => {
+    if (!cards.length || initialIndex == null) {
+      return
+    }
+
+    const normalizedIndex = modulo(initialIndex, cards.length)
+
+    setActiveRailIndex(currentIndex => (
+      modulo(currentIndex, cards.length) === normalizedIndex ? currentIndex : normalizedIndex
+    ))
+  }, [cards.length, initialIndex])
 
   const captureDeckFlipSnapshot = () => {
     const stackElement = stackRef.current

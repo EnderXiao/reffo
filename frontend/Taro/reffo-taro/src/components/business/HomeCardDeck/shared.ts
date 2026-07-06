@@ -20,6 +20,7 @@ export interface HomeCardItem {
 export interface HomeCardDeckProps {
   cards: HomeCardItem[]
   initialIndex?: number
+  enteringCardId?: string | null
   isCreateMode?: boolean
   onCreateCardPress?: () => void
   onCardChange?: (card: HomeCardItem, index: number) => void

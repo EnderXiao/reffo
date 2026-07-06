@@ -1,5 +1,5 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
-import {useDidShow} from '@tarojs/taro'
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {useDidShow, useRouter} from '@tarojs/taro'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import {useHistoryStore} from '@/store/historyStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
@@ -20,6 +20,8 @@ export interface IndexPageViewModel {
   sourceResumeTitle: string | null
   isStrategyVisible: boolean
   isCreateMode: boolean
+  initialCardIndex: number
+  enteringCardId: string | null
   handleEnterCreateMode: () => void
   handleConfirmCreate: () => void
   handleCancelCreate: () => void
@@ -30,6 +32,7 @@ export interface IndexPageViewModel {
 }
 
 export function usePageModel(logoSource: string): IndexPageViewModel {
+  const router = useRouter()
   const {histories, loading, loadHistories} = useHistoryStore()
   const {
     latestSourceResume,
@@ -39,6 +42,10 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   const [activeCardIndex, setActiveCardIndex] = useState(DEMO_CARDS.length - 1)
   const [isStrategyVisible, setIsStrategyVisible] = useState(false)
   const [isCreateMode, setIsCreateMode] = useState(false)
+  const [enteringCardId, setEnteringCardId] = useState<string | null>(
+    typeof router.params.newCardId === 'string' ? router.params.newCardId : null,
+  )
+  const consumedEntryCardIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     loadHistories()
@@ -54,11 +61,26 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [histories])
 
   const hasHistories = histories.length > 0
-  const initialDeckIndex = hasHistories ? 0 : Math.max(0, cardItems.length - 1)
+  const enteringCardIndex = useMemo(
+    () => enteringCardId ? cardItems.findIndex(card => card.id === enteringCardId) : -1,
+    [cardItems, enteringCardId],
+  )
+  const initialDeckIndex = enteringCardIndex >= 0
+    ? enteringCardIndex
+    : hasHistories ? 0 : Math.max(0, cardItems.length - 1)
 
   useDidShow(() => {
+    const nextEnteringCardId = typeof router.params.newCardId === 'string'
+      ? router.params.newCardId
+      : null
+
     setIsStrategyVisible(false)
     setIsCreateMode(false)
+    if (nextEnteringCardId && consumedEntryCardIdRef.current !== nextEnteringCardId) {
+      consumedEntryCardIdRef.current = nextEnteringCardId
+      setEnteringCardId(nextEnteringCardId)
+      setIsStrategyVisible(true)
+    }
     loadHistories()
     loadLatestSourceResume()
   })
@@ -66,6 +88,18 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   useEffect(() => {
     setActiveCardIndex(initialDeckIndex)
   }, [cardItems.length, initialDeckIndex])
+
+  useEffect(() => {
+    if (!enteringCardId) {
+      return undefined
+    }
+
+    const timer = setTimeout(() => {
+      setEnteringCardId(current => current === enteringCardId ? null : current)
+    }, 1800)
+
+    return () => clearTimeout(timer)
+  }, [enteringCardId])
 
   useEffect(() => {
     if (isStrategyVisible || isCreateMode) {
@@ -144,6 +178,8 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     sourceResumeTitle: latestSourceResume?.title ?? null,
     isStrategyVisible,
     isCreateMode,
+    initialCardIndex: initialDeckIndex,
+    enteringCardId,
     handleEnterCreateMode,
     handleConfirmCreate,
     handleCancelCreate,

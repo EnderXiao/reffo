@@ -72,7 +72,8 @@ export interface ResultPageViewModel {
   progress: LatestResultSessionProgress
   progressPercent: number
   generationError: string | null
-  handleSave: () => Promise<void>
+  handleSave: () => Promise<string | null>
+  handleComplete: () => Promise<void>
   handleShare: () => Promise<void>
   handleBackHome: () => void
   handlePendingStage: () => void
@@ -87,6 +88,9 @@ export function usePageModel(): ResultPageViewModel {
     useState<LatestResultSessionContext | null>(null)
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
+  const [savedHistoryId, setSavedHistoryId] = useState<string | null>(
+    typeof router.params.id === 'string' ? router.params.id : null,
+  )
   const [progress, setProgress] = useState<LatestResultSessionProgress>(
     getDefaultProgress(null),
   )
@@ -153,6 +157,7 @@ export function usePageModel(): ResultPageViewModel {
         setResult(processResult)
         setProgress(DONE_PROGRESS)
         setSaved(true)
+        setSavedHistoryId(id)
       } else {
         feedback.message('未找到结果')
         void navigation.navigateBack()
@@ -330,12 +335,14 @@ export function usePageModel(): ResultPageViewModel {
     }
   }
 
-  const handleSave = async () => {
-    if (!result || saved) return
+  const saveCurrentResult = async (showFeedback = true) => {
+    if (!result) return savedHistoryId
+
+    if (saved) return savedHistoryId
 
     if (progress.interview !== 'done') {
       feedback.message('正在生成中，请稍后')
-      return
+      return null
     }
 
     try {
@@ -345,18 +352,42 @@ export function usePageModel(): ResultPageViewModel {
         resultContext?.jdContent || '',
       )
 
-      await addHistory({
+      const historyId = await addHistory({
         ...baseHistory,
         position: resultContext?.position.trim() || baseHistory.position,
         company: resultContext?.company.trim() || baseHistory.company,
       })
 
       setSaved(true)
-      feedback.success('保存成功')
+      setSavedHistoryId(historyId)
+      if (showFeedback) {
+        feedback.success('保存成功')
+      }
+
+      return historyId
     } catch (error) {
       console.error('保存失败:', error)
       feedback.error('保存失败')
+      return null
     }
+  }
+
+  const handleSave = async () => saveCurrentResult(true)
+
+  const handleComplete = async () => {
+    if (progress.interview !== 'done') {
+      feedback.message('正在生成中，请稍后')
+      return
+    }
+
+    const historyId = await saveCurrentResult(false)
+
+    if (!historyId) {
+      return
+    }
+
+    continuationRef.current += 1
+    void navigation.redirectTo(`/pages/complete/index?historyId=${encodeURIComponent(historyId)}`)
   }
 
   const handleShare = async () => {
@@ -408,6 +439,7 @@ export function usePageModel(): ResultPageViewModel {
     progressPercent: getProgressPercent(progress),
     generationError,
     handleSave,
+    handleComplete,
     handleShare,
     handleBackHome,
     handlePendingStage,
