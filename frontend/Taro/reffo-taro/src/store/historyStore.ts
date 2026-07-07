@@ -52,6 +52,46 @@ import {getJSON, setJSON} from '@/utils/storage';
  * 历史记录存储键名
  */
 const STORAGE_KEY = 'resume_histories';
+const HISTORY_ID_PREFIX = 'JD';
+const HISTORY_ID_SEQUENCE_LENGTH = 5;
+const HISTORY_ID_MAX_SEQUENCE = 99999;
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function formatHistoryIdDate(dateInput?: string) {
+  const date = dateInput ? new Date(dateInput) : new Date();
+  const resolvedDate = Number.isNaN(date.getTime()) ? new Date() : date;
+
+  return [
+    resolvedDate.getFullYear(),
+    padDatePart(resolvedDate.getMonth() + 1),
+    padDatePart(resolvedDate.getDate()),
+  ].join('');
+}
+
+function createHistoryId(histories: ResumeHistory[], createdAt?: string) {
+  const datePart = formatHistoryIdDate(createdAt);
+  const idPrefix = `${HISTORY_ID_PREFIX}${datePart}`;
+  const pattern = new RegExp(`^${idPrefix}(\\d{${HISTORY_ID_SEQUENCE_LENGTH}})$`);
+  const maxSequence = histories.reduce((currentMax, history) => {
+    const match = history.id.match(pattern);
+
+    if (!match) {
+      return currentMax;
+    }
+
+    return Math.max(currentMax, Number.parseInt(match[1], 10));
+  }, 0);
+  const nextSequence = maxSequence + 1;
+
+  if (nextSequence > HISTORY_ID_MAX_SEQUENCE) {
+    throw new Error('当日历史记录编号已超过上限');
+  }
+
+  return `${idPrefix}${String(nextSequence).padStart(HISTORY_ID_SEQUENCE_LENGTH, '0')}`;
+}
 
 /**
  * 初始状态
@@ -137,7 +177,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
    * @example
    * ```typescript
    * const newHistory: ResumeHistory = {
-   *   id: Date.now().toString(),
+   *   id: 'JD2026070700001',
    *   position: '前端工程师',
    *   company: 'ABC 公司',
    *   name: '张三',
@@ -168,7 +208,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       // 确保有 ID
       const historyWithId = {
         ...history,
-        id: history.id || Date.now().toString(),
+        id: history.id || createHistoryId(histories, history.createdAt),
       };
 
       // 将新记录添加到列表开头

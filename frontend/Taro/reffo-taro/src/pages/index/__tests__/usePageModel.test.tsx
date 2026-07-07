@@ -3,6 +3,7 @@ import {act, fireEvent, render, screen} from '@testing-library/react'
 import Taro from '@tarojs/taro'
 import {useHistoryStore} from '@/store/historyStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
+import type {ResumeHistory} from '@/types'
 import {usePageModel} from '../model/usePageModel'
 
 jest.mock('@tarojs/taro', () => ({
@@ -19,6 +20,7 @@ const mockUseHistoryStore = useHistoryStore as jest.MockedFunction<typeof useHis
 const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
 >
+const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 
 function HookProbe() {
   const model = usePageModel('logo.png')
@@ -43,6 +45,9 @@ function HookProbe() {
       <button onClick={model.handleViewHistory} type='button'>
         source-resume
       </button>
+      <button onClick={() => model.currentCard && model.handleCardPress(model.currentCard)} type='button'>
+        open-card
+      </button>
     </>
   )
 }
@@ -54,6 +59,7 @@ describe('usePageModel', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
+    window.sessionStorage.removeItem(RESULT_RETURN_HOME_STORAGE_KEY)
 
     mockUseHistoryStore.mockReturnValue({
       histories: [],
@@ -186,5 +192,91 @@ describe('usePageModel', () => {
     expect(Taro.navigateTo).toHaveBeenCalledWith({
       url: '/pages/create/index?step=resumeSummary',
     })
+  })
+
+  test('点击真实历史卡片时携带卡片来源打开结果页', () => {
+    const history: ResumeHistory = {
+      id: 'JD2026070700001',
+      position: '前端工程师',
+      company: 'ABC 公司',
+      name: '张三',
+      createdAt: '2026-07-07T12:00:00.000Z',
+      qualityScore: 88,
+      matchScore: 92,
+      tags: ['React', 'TypeScript'],
+      resumeContent: '# 张三',
+      jdContent: '岗位职责：...',
+      optimizedContent: '# 张三（优化版）',
+    }
+
+    mockUseHistoryStore.mockReturnValue({
+      histories: [history],
+      loading: {isLoading: false, error: null},
+      loadHistories: mockLoadHistories,
+    } as ReturnType<typeof useHistoryStore>)
+
+    render(<HookProbe />)
+
+    fireEvent.click(screen.getByRole('button', {name: 'open-card'}))
+
+    expect(Taro.navigateTo).toHaveBeenCalledWith({
+      url: '/pages/result/index?id=JD2026070700001&fromCard=1',
+    })
+  })
+
+  test('从结果页返回首页时直接展示原卡片策略文案', () => {
+    const histories: ResumeHistory[] = [
+      {
+        id: 'JD2026070700001',
+        position: '前端工程师',
+        company: 'ABC 公司',
+        name: '张三',
+        createdAt: '2026-07-07T12:00:00.000Z',
+        qualityScore: 88,
+        matchScore: 92,
+        tags: ['React', 'TypeScript'],
+        resumeContent: '# 张三',
+        jdContent: '岗位职责：...',
+        optimizedContent: '# 张三（优化版）',
+      },
+      {
+        id: 'JD2026070700002',
+        position: '产品经理',
+        company: 'XYZ 公司',
+        name: '李四',
+        createdAt: '2026-07-08T12:00:00.000Z',
+        qualityScore: 86,
+        matchScore: 89,
+        tags: ['AI', '增长'],
+        resumeContent: '# 李四',
+        jdContent: '岗位职责：...',
+        optimizedContent: '# 李四（优化版）',
+      },
+    ]
+
+    window.sessionStorage.setItem(
+      RESULT_RETURN_HOME_STORAGE_KEY,
+      JSON.stringify({cardId: 'JD2026070700002'}),
+    )
+    mockUseHistoryStore.mockReturnValue({
+      histories,
+      loading: {isLoading: false, error: null},
+      loadHistories: mockLoadHistories,
+    } as ReturnType<typeof useHistoryStore>)
+
+    render(<HookProbe />)
+
+    expect((screen.getByTestId('strategy') as any).textContent).toBe('yes')
+    expect((screen.getByTestId('card-id') as any).textContent).toBe('JD2026070700002')
+    expect(mockLoadHistories).not.toHaveBeenCalled()
+    expect(mockLoadLatestSourceResume).not.toHaveBeenCalled()
+  })
+
+  test('点击示例卡片时不打开结果页', () => {
+    render(<HookProbe />)
+
+    fireEvent.click(screen.getByRole('button', {name: 'open-card'}))
+
+    expect(Taro.navigateTo).not.toHaveBeenCalled()
   })
 })

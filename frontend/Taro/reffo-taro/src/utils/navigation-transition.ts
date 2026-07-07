@@ -7,12 +7,26 @@ interface NavigationTransitionOptions {
 }
 
 type NavigationAction = () => Promise<unknown>
+type ViewTransitionUpdateCallback = () => Promise<void> | void
+
+interface ViewTransitionLike {
+  ready: Promise<void>
+  finished: Promise<void>
+  updateCallbackDone: Promise<void>
+  skipTransition: () => void
+}
+
+type DocumentWithViewTransition = Document & {
+  startViewTransition?: (callback: ViewTransitionUpdateCallback) => ViewTransitionLike
+}
 
 const NAVIGATION_STYLE_ID = 'reffo-navigation-transition-style'
 const ROUTE_FADE_DURATION = 280
 const ROUTE_FADE_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
+const VIEW_TRANSITION_DURATION = 420
 
 let styleInjected = false
+let shouldSuppressNextTransition = false
 
 function getH5EnvType() {
   return Taro.ENV_TYPE ?? {
@@ -88,15 +102,133 @@ function injectNavigationTransitionStyle() {
       z-index: 0;
     }
 
+    html[data-reffo-view-transition] .taro_router .taro_page {
+      transition: none !important;
+    }
+
+    html[data-reffo-skip-route-transition] .taro_router .taro_page {
+      transition: none !important;
+    }
+
+    html[data-reffo-view-transition]::view-transition-group(root) {
+      animation-duration: ${VIEW_TRANSITION_DURATION}ms;
+      animation-timing-function: ${ROUTE_FADE_EASING};
+    }
+
+    html[data-reffo-view-transition]::view-transition-old(root),
+    html[data-reffo-view-transition]::view-transition-new(root) {
+      height: 100%;
+      mix-blend-mode: normal;
+      animation-duration: ${VIEW_TRANSITION_DURATION}ms;
+      animation-timing-function: ${ROUTE_FADE_EASING};
+    }
+
+    html[data-reffo-view-transition="forward"]::view-transition-old(root),
+    html[data-reffo-view-transition="replace"]::view-transition-old(root),
+    html[data-reffo-view-transition="root"]::view-transition-old(root) {
+      animation-name: reffo-route-old-forward;
+    }
+
+    html[data-reffo-view-transition="forward"]::view-transition-new(root),
+    html[data-reffo-view-transition="replace"]::view-transition-new(root),
+    html[data-reffo-view-transition="root"]::view-transition-new(root) {
+      animation-name: reffo-route-new-forward;
+    }
+
+    html[data-reffo-view-transition="back"]::view-transition-old(root) {
+      animation-name: reffo-route-old-back;
+    }
+
+    html[data-reffo-view-transition="back"]::view-transition-new(root) {
+      animation-name: reffo-route-new-back;
+    }
+
+    @keyframes reffo-route-old-forward {
+      from {
+        opacity: 1;
+        transform: scale(1) translate3d(0, 0, 0);
+      }
+
+      to {
+        opacity: 0;
+        transform: scale(1.006) translate3d(0, -4px, 0);
+      }
+    }
+
+    @keyframes reffo-route-new-forward {
+      from {
+        opacity: 0;
+        transform: scale(0.99) translate3d(0, 12px, 0);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes reffo-route-old-back {
+      from {
+        opacity: 1;
+        transform: scale(1) translate3d(0, 0, 0);
+      }
+
+      to {
+        opacity: 0;
+        transform: scale(0.992) translate3d(0, 10px, 0);
+      }
+    }
+
+    @keyframes reffo-route-new-back {
+      from {
+        opacity: 0;
+        transform: scale(1.006) translate3d(0, -8px, 0);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translate3d(0, 0, 0);
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .taro_router .taro_page {
         transition: none !important;
+      }
+
+      html[data-reffo-view-transition]::view-transition-old(root),
+      html[data-reffo-view-transition]::view-transition-new(root) {
+        animation: none !important;
       }
     }
   `
 
   document.head.appendChild(style)
   styleInjected = true
+}
+
+function supportsViewTransition() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return false
+  }
+
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    return false
+  }
+
+  return typeof (document as DocumentWithViewTransition).startViewTransition === 'function'
+}
+
+function waitForNextPaint() {
+  if (typeof window === 'undefined') {
+    return Promise.resolve()
+  }
+
+  return new Promise<void>(resolve => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve())
+    })
+  })
 }
 
 export function initializeNavigationTransitions() {
@@ -107,9 +239,13 @@ export function initializeNavigationTransitions() {
   injectNavigationTransitionStyle()
 }
 
+export function suppressNextNavigationTransition() {
+  shouldSuppressNextTransition = true
+}
+
 export async function runWithNavigationTransition(
   action: NavigationAction,
-  _options: NavigationTransitionOptions,
+  options: NavigationTransitionOptions,
 ) {
   if (!isH5NavigationEnvironment()) {
     return action()
@@ -117,5 +253,49 @@ export async function runWithNavigationTransition(
 
   injectNavigationTransitionStyle()
 
-  return action()
+  if (shouldSuppressNextTransition) {
+    shouldSuppressNextTransition = false
+    document.documentElement.dataset.reffoSkipRouteTransition = '1'
+
+    try {
+      await action()
+      await waitForNextPaint()
+      return undefined
+    } finally {
+      delete document.documentElement.dataset.reffoSkipRouteTransition
+    }
+  }
+
+  if (!supportsViewTransition()) {
+    return action()
+  }
+
+  const root = document.documentElement
+  const startViewTransition = (document as DocumentWithViewTransition).startViewTransition
+  let actionStarted = false
+
+  root.dataset.reffoViewTransition = options.kind
+
+  try {
+    const transition = startViewTransition?.(async () => {
+      actionStarted = true
+      await action()
+      await waitForNextPaint()
+    })
+
+    if (!transition) {
+      return action()
+    }
+
+    await transition.finished
+    return undefined
+  } catch (error) {
+    if (actionStarted) {
+      throw error
+    }
+
+    return action()
+  } finally {
+    delete root.dataset.reffoViewTransition
+  }
 }

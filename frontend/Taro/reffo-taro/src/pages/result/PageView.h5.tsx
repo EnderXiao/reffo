@@ -1,8 +1,11 @@
-import {useEffect, useMemo, useRef, useState} from 'react'
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import type {CSSProperties} from 'react'
 import {Image, ScrollView, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
 import type {HardRequirement, ProcessResult} from '@/types'
+import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
+import {useVisualTier} from '@/utils'
+import {suppressNextNavigationTransition} from '@/utils/navigation-transition'
 import type {ResultPageViewModel} from './usePageModel'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
@@ -15,10 +18,27 @@ import alertIcon from '@/assets/result/alert-hex.svg'
 import confirmIcon from '@/assets/result/confirm.svg'
 import chatTagIcon from '@/assets/result/chat-tag.svg'
 import exitIcon from '@/assets/result/exit.svg'
+import '@/pages/index/index.h5.scss'
 import './index.h5.scss'
 
 type ResultStageKey = 'analysis' | 'resume' | 'interview'
 type VisibleStageStatus = 'ready' | 'generating' | 'pending'
+const CARD_OPEN_RECT_STORAGE_KEY = 'reffo.homeCardOpenRect'
+const RESULT_RETURN_HOME_DELAY = 760
+const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
+const RESULT_RETURN_HOME_DOM_KEY = 'reffoReturnHomePending'
+const HOME_CARD_DESIGN_WIDTH = 210
+const HOME_CARD_DESIGN_HEIGHT = 332
+
+interface CardOpenRectSnapshot {
+  cardId?: string
+  left: number
+  top: number
+  width: number
+  height: number
+  viewportWidth?: number
+  viewportHeight?: number
+}
 
 interface ResultStage {
   key: ResultStageKey
@@ -41,6 +61,92 @@ function normalizeItems(value: unknown, limit = 4): string[] {
     .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     .map(item => item.trim())
     .slice(0, limit)
+}
+
+function readCardOpenRect(): CardOpenRectSnapshot | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.sessionStorage?.getItem(CARD_OPEN_RECT_STORAGE_KEY)
+
+    if (!raw) {
+      return null
+    }
+
+    const parsed = JSON.parse(raw) as Partial<CardOpenRectSnapshot>
+    const isValid = [parsed.left, parsed.top, parsed.width, parsed.height].every(value => (
+      typeof value === 'number' && Number.isFinite(value)
+    ))
+
+    return isValid ? parsed as CardOpenRectSnapshot : null
+  } catch (error) {
+    console.warn('读取卡片过渡位置失败:', error)
+    return null
+  }
+}
+
+function resolveReturnStyle(): CSSProperties {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return {}
+  }
+
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 393
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 852
+  const snapshot = readCardOpenRect()
+  const widthRatio = snapshot?.viewportWidth ? viewportWidth / snapshot.viewportWidth : 1
+  const heightRatio = snapshot?.viewportHeight ? viewportHeight / snapshot.viewportHeight : 1
+  const targetWidth = Math.max(1, (snapshot?.width ?? Math.min(viewportWidth * 0.55, 218)) * widthRatio)
+  const targetHeight = Math.max(1, (snapshot?.height ?? targetWidth * 1.546) * heightRatio)
+  const targetLeft = snapshot ? snapshot.left * widthRatio : (viewportWidth - targetWidth) / 2
+  const targetTop = snapshot ? snapshot.top * heightRatio : Math.max(96, (viewportHeight - targetHeight) / 2)
+  const targetCenterX = targetLeft + targetWidth / 2
+  const targetCenterY = targetTop + targetHeight / 2
+  const startScale = Math.max(
+    viewportWidth / Math.max(targetWidth, 1),
+    viewportHeight / Math.max(targetHeight, 1),
+  ) * 1.08
+
+  return {
+    '--reffo-result-return-x': `${targetCenterX - viewportWidth / 2}px`,
+    '--reffo-result-return-y': `${targetCenterY - viewportHeight / 2}px`,
+    '--reffo-result-return-start-x': `${viewportWidth / 2 - targetCenterX}px`,
+    '--reffo-result-return-start-y': `${viewportHeight / 2 - targetCenterY}px`,
+    '--reffo-result-return-start-scale': String(startScale),
+    '--reffo-result-return-scale-x': String(targetWidth / viewportWidth),
+    '--reffo-result-return-scale-y': String(targetHeight / viewportHeight),
+    '--reffo-result-return-left': `${targetLeft}px`,
+    '--reffo-result-return-top': `${targetTop}px`,
+    '--reffo-result-return-width': `${targetWidth}px`,
+    '--reffo-result-return-height': `${targetHeight}px`,
+    '--card-responsive-scale': String(targetWidth / HOME_CARD_DESIGN_WIDTH),
+  } as CSSProperties
+}
+
+function clearCardOpenRect() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.sessionStorage?.removeItem(CARD_OPEN_RECT_STORAGE_KEY)
+  } catch (error) {
+    console.warn('清理卡片过渡位置失败:', error)
+  }
+}
+
+function markReturningHome(cardId?: string | null) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.sessionStorage?.setItem(RESULT_RETURN_HOME_STORAGE_KEY, JSON.stringify({cardId: cardId ?? null}))
+    document.documentElement.dataset[RESULT_RETURN_HOME_DOM_KEY] = '1'
+  } catch (error) {
+    console.warn('保存首页返回过渡标记失败:', error)
+  }
 }
 
 function scoreToGrade(score: number) {
@@ -525,27 +631,141 @@ export default function PageView({
   loading,
   progress,
   progressPercent,
+  enteredFromCard,
+  returnCard,
   handleComplete,
   handleBackHome,
   handlePendingStage,
   handleOptimizedResumeChange,
 }: ResultPageViewModel) {
+  const visualCapability = useVisualTier({benchmark: true})
   const [stageIndex, setStageIndex] = useState(0)
+  const [isFromCardReady, setIsFromCardReady] = useState(!enteredFromCard)
+  const [isReturningHome, setIsReturningHome] = useState(false)
+  const [returnStyle, setReturnStyle] = useState<CSSProperties>({})
+  const rootRef = useRef<HTMLElement | null>(null)
+  const returnTimerRef = useRef<number | null>(null)
   const activeStage = RESULT_STAGES[stageIndex]
   const accentIndex = activeStage.title.indexOf(activeStage.accent)
   const titleBeforeAccent = accentIndex >= 0 ? activeStage.title.slice(0, accentIndex) : ''
   const titleAfterAccent = accentIndex >= 0
     ? activeStage.title.slice(accentIndex + activeStage.accent.length)
     : activeStage.title.replace(activeStage.accent, '')
-  const backgroundProgress = useMemo(() => `${progressPercent}%`, [progressPercent])
+  const backgroundProgress = useMemo(
+    () => enteredFromCard ? '100%' : `${progressPercent}%`,
+    [enteredFromCard, progressPercent],
+  )
   const stageAvailability: Record<ResultStageKey, boolean> = {
     analysis: progress.analysis === 'done',
     resume: progress.optimized === 'done',
     interview: progress.interview === 'done',
   }
   const isComplete = progress.interview === 'done'
+  const hasRenderableResult = Boolean(result)
+  const resultStyle = useMemo(() => ({
+    '--reffo-result-progress': backgroundProgress,
+    ...returnStyle,
+  }) as CSSProperties, [backgroundProgress, returnStyle])
+
+  useEffect(() => {
+    let firstFrame = 0
+    let secondFrame = 0
+
+    if (!enteredFromCard) {
+      setIsFromCardReady(true)
+      return undefined
+    }
+
+    if (loading || !hasRenderableResult) {
+      setIsFromCardReady(false)
+      return undefined
+    }
+
+    setIsFromCardReady(false)
+    firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        setIsFromCardReady(true)
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame)
+      window.cancelAnimationFrame(secondFrame)
+    }
+  }, [enteredFromCard, hasRenderableResult, loading])
+
+  useEffect(() => () => {
+    if (returnTimerRef.current != null) {
+      window.clearTimeout(returnTimerRef.current)
+    }
+  }, [])
+
+  const handleReturnHome = useCallback(() => {
+    if (!enteredFromCard) {
+      handleBackHome()
+      return
+    }
+
+    if (isReturningHome) {
+      return
+    }
+
+    const cardOpenSnapshot = readCardOpenRect()
+    const returningCardId = returnCard?.id ?? cardOpenSnapshot?.cardId ?? null
+    const nextReturnStyle = resolveReturnStyle()
+    const rootElement = rootRef.current
+    const shellElement = rootElement?.querySelector('.reffo-result__shell') as HTMLElement | null
+    const chromeElement = rootElement?.querySelector('.reffo-result__chrome') as HTMLElement | null
+    let finished = false
+
+    const finishReturn = () => {
+      if (finished) {
+        return
+      }
+
+      finished = true
+      if (returnTimerRef.current != null) {
+        window.clearTimeout(returnTimerRef.current)
+        returnTimerRef.current = null
+      }
+      clearCardOpenRect()
+      suppressNextNavigationTransition()
+      handleBackHome()
+    }
+
+    markReturningHome(returningCardId)
+    setReturnStyle(nextReturnStyle)
+    setIsReturningHome(true)
+
+    if (returnTimerRef.current != null) {
+      window.clearTimeout(returnTimerRef.current)
+    }
+
+    returnTimerRef.current = window.setTimeout(finishReturn, RESULT_RETURN_HOME_DELAY + 80)
+
+    const fadingElements = [shellElement, chromeElement]
+
+    fadingElements.forEach(element => {
+      element?.animate?.(
+        [
+          {opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)'},
+          {opacity: 0, transform: 'translate3d(0, -8px, 0) scale(0.98)'},
+        ],
+        {
+          duration: 260,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'forwards',
+        },
+      )
+    })
+  }, [enteredFromCard, handleBackHome, isReturningHome, returnCard])
 
   const handleAction = async () => {
+    if (enteredFromCard) {
+      handleReturnHome()
+      return
+    }
+
     if (!isComplete) {
       handleBackHome()
       return
@@ -556,7 +776,14 @@ export default function PageView({
 
   if (loading || !result) {
     return (
-      <View className='reffo-result reffo-result--loading'>
+      <View
+        className={classNames('reffo-result', 'reffo-result--loading', {
+          'reffo-result--from-card': enteredFromCard,
+          'reffo-result--from-card-ready': enteredFromCard && isFromCardReady,
+          'reffo-result--returning-home': isReturningHome,
+        })}
+        style={returnStyle}
+      >
         <Text className='reffo-result__loading-text'>{loading ? '加载中...' : '未找到结果'}</Text>
       </View>
     )
@@ -564,19 +791,49 @@ export default function PageView({
 
   return (
     <View
+      ref={rootRef as any}
       className={classNames('reffo-result', {
         'reffo-result--progress-complete': isComplete,
+        'reffo-result--from-card': enteredFromCard,
+        'reffo-result--from-card-ready': enteredFromCard && isFromCardReady,
+        'reffo-result--returning-home': isReturningHome,
       })}
-      style={{'--reffo-result-progress': backgroundProgress} as CSSProperties}
+      style={resultStyle}
     >
-      <View className='reffo-result__chrome'>
-        <View className='reffo-result__action' onClick={handleAction}>
-          {!isComplete ? (
-            <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
+      {isReturningHome ? (
+        <View className='reffo-result__return-layer' style={returnStyle}>
+          <View className='reffo-result__return-home-backdrop' />
+          {returnCard ? (
+            <View className='reffo-result__return-card-stage'>
+              <HomeScoreCard
+                card={returnCard}
+                depth={0}
+                active
+                visualTier={visualCapability.tier}
+                className='reffo-result__return-card'
+              />
+            </View>
           ) : null}
-          <Text>{isComplete ? '完成' : '退出生成'}</Text>
         </View>
-      </View>
+      ) : null}
+
+      {enteredFromCard ? (
+        <View className='reffo-result__chrome reffo-result__chrome--back'>
+          <View className='reffo-result__action reffo-result__action--back' onClick={handleReturnHome}>
+            <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
+            <Text>返回</Text>
+          </View>
+        </View>
+      ) : (
+        <View className='reffo-result__chrome'>
+          <View className='reffo-result__action' onClick={handleAction}>
+            {!isComplete ? (
+              <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
+            ) : null}
+            <Text>{isComplete ? '完成' : '退出生成'}</Text>
+          </View>
+        </View>
+      )}
 
       <View className='reffo-result__shell'>
         <View className='reffo-result__content'>

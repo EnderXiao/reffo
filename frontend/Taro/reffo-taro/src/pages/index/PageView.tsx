@@ -32,6 +32,7 @@ export default function PageView({
   handleConfirmCreate,
   handleCancelCreate,
   handleViewHistory,
+  handleCardPress,
   handleCardChange,
   handleDeckFirstInteraction,
   logoSource,
@@ -138,6 +139,7 @@ export default function PageView({
                       initialIndex={initialCardIndex}
                       isCreateMode={isCreateMode}
                       onCreateCardPress={handleConfirmCreate}
+                      onCardPress={hasHistories ? handleCardPress : undefined}
                       onCardChange={handleCardChange}
                       onFirstInteraction={handleDeckFirstInteraction}
                     />

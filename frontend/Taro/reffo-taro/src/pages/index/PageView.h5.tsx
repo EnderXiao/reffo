@@ -2,12 +2,44 @@ import {Image, Text, View} from '@tarojs/components'
 import HomeCardDeck from '@/components/business/HomeCardDeck'
 import classNames from 'classnames'
 import {useEffect, useMemo, useRef, useState} from 'react'
+import {useDidShow} from '@tarojs/taro'
 import type {IndexPageViewModel} from './model/usePageModel'
 import {HOME_PAGE_CONTENT} from './constants/content'
 import githubIcon from '@/assets/home/github.svg'
 import './index.h5.scss'
 
 type HeroMode = 'brand' | 'strategy' | 'create'
+const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
+const RESULT_RETURN_HOME_DOM_KEY = 'reffoReturnHomePending'
+const HOME_RETURN_FADE_MS = 460
+
+function hasReturnHomeMarker() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  try {
+    const raw = window.sessionStorage?.getItem(RESULT_RETURN_HOME_STORAGE_KEY)
+
+    return Boolean(raw)
+  } catch (error) {
+    console.warn('读取首页返回过渡标记失败:', error)
+    return false
+  }
+}
+
+function clearReturnHomeMarker() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.sessionStorage?.removeItem(RESULT_RETURN_HOME_STORAGE_KEY)
+    delete document.documentElement.dataset[RESULT_RETURN_HOME_DOM_KEY]
+  } catch (error) {
+    console.warn('清理首页返回过渡标记失败:', error)
+  }
+}
 
 function resolveHeroMode(isCreateMode: boolean, isStrategyVisible: boolean): HeroMode {
   if (isCreateMode) {
@@ -21,11 +53,13 @@ function HomeHeroH5({
   currentCard,
   isCreateMode,
   isStrategyVisible,
+  immediateStrategy,
   logoSource,
 }: {
   currentCard: IndexPageViewModel['currentCard']
   isCreateMode: boolean
   isStrategyVisible: boolean
+  immediateStrategy?: boolean
   logoSource: string
 }) {
   const [renderMode, setRenderMode] = useState<HeroMode>(() => resolveHeroMode(isCreateMode, isStrategyVisible))
@@ -54,6 +88,17 @@ function HomeHeroH5({
       return undefined
     }
 
+    if (immediateStrategy && nextMode === 'strategy') {
+      if (switchTimerRef.current != null) {
+        window.clearTimeout(switchTimerRef.current)
+        switchTimerRef.current = null
+      }
+      setRenderMode(nextMode)
+      setRenderStrategyBody(nextStrategyBody)
+      setIsSwitching(false)
+      return undefined
+    }
+
     setIsSwitching(true)
 
     if (switchTimerRef.current != null) {
@@ -73,7 +118,7 @@ function HomeHeroH5({
         switchTimerRef.current = null
       }
     }
-  }, [nextMode, nextStrategyBody, renderMode, renderStrategyBody])
+  }, [immediateStrategy, nextMode, nextStrategyBody, renderMode, renderStrategyBody])
 
   return (
     <View className='reffo-home__hero'>
@@ -129,6 +174,7 @@ export default function PageView({
   currentCard,
   currentProgress,
   displayTotal,
+  hasHistories,
   hasSourceResume,
   sourceResumeTitle,
   isStrategyVisible,
@@ -139,14 +185,51 @@ export default function PageView({
   handleConfirmCreate,
   handleCancelCreate,
   handleViewHistory,
+  handleCardPress,
   handleCardChange,
   handleDeckFirstInteraction,
   logoSource,
 }: IndexPageViewModel) {
   const sourceLabel = hasSourceResume && sourceResumeTitle ? sourceResumeTitle : '源简历'
+  const [isReturningFromResult, setIsReturningFromResult] = useState(hasReturnHomeMarker)
+  const returnFadeTimerRef = useRef<number | null>(null)
+  const isReturnHomeTransition = isReturningFromResult || hasReturnHomeMarker()
+
+  useDidShow(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const shouldAnimate = hasReturnHomeMarker()
+
+    if (!shouldAnimate) {
+      return
+    }
+
+    setIsReturningFromResult(true)
+    if (returnFadeTimerRef.current != null) {
+      window.clearTimeout(returnFadeTimerRef.current)
+    }
+    returnFadeTimerRef.current = window.setTimeout(() => {
+      returnFadeTimerRef.current = null
+      clearReturnHomeMarker()
+      setIsReturningFromResult(false)
+    }, HOME_RETURN_FADE_MS)
+  })
+
+  useEffect(() => () => {
+    if (returnFadeTimerRef.current != null) {
+      window.clearTimeout(returnFadeTimerRef.current)
+      clearReturnHomeMarker()
+    }
+  }, [])
 
   return (
-    <View className='reffo-home'>
+    <View
+      className={classNames('reffo-home', {
+        'reffo-home--returning-from-result': isReturnHomeTransition,
+      })}
+    >
       <View className='reffo-home__backdrop' />
       <View className='reffo-home__frame'>
         <View className='reffo-home__header'>
@@ -168,6 +251,7 @@ export default function PageView({
           currentCard={currentCard}
           isCreateMode={isCreateMode}
           isStrategyVisible={isStrategyVisible}
+          immediateStrategy={isReturnHomeTransition}
           logoSource={logoSource}
         />
 
@@ -185,6 +269,7 @@ export default function PageView({
           enteringCardId={enteringCardId}
           isCreateMode={isCreateMode}
           onCreateCardPress={handleConfirmCreate}
+          onCardPress={hasHistories ? handleCardPress : undefined}
           onCardChange={handleCardChange}
           onFirstInteraction={handleDeckFirstInteraction}
         />

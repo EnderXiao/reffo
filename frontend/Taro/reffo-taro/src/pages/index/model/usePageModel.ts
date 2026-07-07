@@ -8,6 +8,41 @@ import {navigation} from '@/utils/navigation'
 import {HOME_PAGE_CONTENT} from '../constants/content'
 import {DEMO_CARDS, toHistoryCardItems} from './homeCardData'
 
+const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
+
+interface ReturningHomeState {
+  isReturning: boolean
+  cardId: string | null
+}
+
+function readReturningHomeState(): ReturningHomeState {
+  if (typeof window === 'undefined') {
+    return {isReturning: false, cardId: null}
+  }
+
+  try {
+    const raw = window.sessionStorage?.getItem(RESULT_RETURN_HOME_STORAGE_KEY)
+
+    if (!raw) {
+      return {isReturning: false, cardId: null}
+    }
+
+    if (raw === '1') {
+      return {isReturning: true, cardId: null}
+    }
+
+    const parsed = JSON.parse(raw) as {cardId?: unknown}
+    const cardId = typeof parsed.cardId === 'string' && parsed.cardId.length > 0
+      ? parsed.cardId
+      : null
+
+    return {isReturning: true, cardId}
+  } catch (error) {
+    console.warn('读取首页返回卡片标记失败:', error)
+    return {isReturning: false, cardId: null}
+  }
+}
+
 export interface IndexPageViewModel {
   cardItems: HomeCardItem[]
   currentCard: HomeCardItem | null
@@ -26,6 +61,7 @@ export interface IndexPageViewModel {
   handleConfirmCreate: () => void
   handleCancelCreate: () => void
   handleViewHistory: () => void
+  handleCardPress: (card: HomeCardItem) => void
   handleCardChange: (_: HomeCardItem, index: number) => void
   handleDeckFirstInteraction: () => void
   logoSource: string
@@ -39,18 +75,25 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     loading: sourceResumeLoading,
     loadLatestSourceResume,
   } = useSourceResumeStore()
+  const initialReturningHomeState = useMemo(readReturningHomeState, [])
   const [activeCardIndex, setActiveCardIndex] = useState(DEMO_CARDS.length - 1)
-  const [isStrategyVisible, setIsStrategyVisible] = useState(false)
+  const [isStrategyVisible, setIsStrategyVisible] = useState(initialReturningHomeState.isReturning)
   const [isCreateMode, setIsCreateMode] = useState(false)
   const [enteringCardId, setEnteringCardId] = useState<string | null>(
     typeof router.params.newCardId === 'string' ? router.params.newCardId : null,
   )
+  const [returningCardId, setReturningCardId] = useState<string | null>(initialReturningHomeState.cardId)
   const consumedEntryCardIdRef = useRef<string | null>(null)
+  const hasShownHomeRef = useRef(false)
 
   useEffect(() => {
+    if (initialReturningHomeState.isReturning) {
+      return
+    }
+
     loadHistories()
     loadLatestSourceResume()
-  }, [loadHistories, loadLatestSourceResume])
+  }, [initialReturningHomeState.isReturning, loadHistories, loadLatestSourceResume])
 
   const cardItems = useMemo(() => {
     if (histories.length > 0) {
@@ -65,24 +108,43 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     () => enteringCardId ? cardItems.findIndex(card => card.id === enteringCardId) : -1,
     [cardItems, enteringCardId],
   )
+  const returningCardIndex = useMemo(
+    () => returningCardId ? cardItems.findIndex(card => card.id === returningCardId) : -1,
+    [cardItems, returningCardId],
+  )
   const initialDeckIndex = enteringCardIndex >= 0
     ? enteringCardIndex
+    : returningCardIndex >= 0 ? returningCardIndex
     : hasHistories ? 0 : Math.max(0, cardItems.length - 1)
 
   useDidShow(() => {
     const nextEnteringCardId = typeof router.params.newCardId === 'string'
       ? router.params.newCardId
       : null
+    const returningHomeState = readReturningHomeState()
+    const isFirstHomeShow = !hasShownHomeRef.current
 
-    setIsStrategyVisible(false)
+    hasShownHomeRef.current = true
+
     setIsCreateMode(false)
-    if (nextEnteringCardId && consumedEntryCardIdRef.current !== nextEnteringCardId) {
+    if (returningHomeState.isReturning) {
+      if (returningHomeState.cardId) {
+        setReturningCardId(returningHomeState.cardId)
+      }
+      setIsStrategyVisible(true)
+    } else if (nextEnteringCardId && consumedEntryCardIdRef.current !== nextEnteringCardId) {
       consumedEntryCardIdRef.current = nextEnteringCardId
       setEnteringCardId(nextEnteringCardId)
       setIsStrategyVisible(true)
+    } else if (isFirstHomeShow) {
+      setIsStrategyVisible(false)
+    } else {
+      setIsStrategyVisible(true)
     }
-    loadHistories()
-    loadLatestSourceResume()
+    if (!returningHomeState.isReturning) {
+      loadHistories()
+      loadLatestSourceResume()
+    }
   })
 
   useEffect(() => {
@@ -138,6 +200,21 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     feedback.message(HOME_PAGE_CONTENT.header.sourceResumeEmptyToast)
   }, [latestSourceResume])
 
+  const handleCardPress = useCallback((card: HomeCardItem) => {
+    if (isCreateMode) {
+      return
+    }
+
+    const targetHistory = histories.find(history => history.id === card.id)
+    if (!targetHistory) {
+      return
+    }
+
+    void navigation.navigateTo(
+      `/pages/result/index?id=${encodeURIComponent(targetHistory.id)}&fromCard=1`,
+    )
+  }, [histories, isCreateMode])
+
   const handleCardChange = useCallback((_: HomeCardItem, index: number) => {
     setActiveCardIndex(previousIndex =>
       previousIndex === index ? previousIndex : index,
@@ -184,6 +261,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     handleConfirmCreate,
     handleCancelCreate,
     handleViewHistory,
+    handleCardPress,
     handleCardChange,
     handleDeckFirstInteraction,
     logoSource,

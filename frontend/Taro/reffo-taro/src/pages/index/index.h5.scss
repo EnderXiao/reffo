@@ -19,7 +19,7 @@ taro-page-core,
 .reffo-home {
   min-height: 100vh;
   min-height: 100dvh;
-  background: #f8f9fb;
+  background: linear-gradient(180deg, #dce9f9 0%, #eef4fb 33%, #f8f9fb 58%, #ffffff 100%);
   color: #111111;
   overflow-x: hidden;
   overflow-y: hidden;
@@ -53,6 +53,83 @@ taro-page-core,
   position: relative;
   display: flex;
   flex-direction: column;
+}
+
+.reffo-home--opening-result .reffo-home__frame,
+.reffo-home--opening-result .reffo-home__backdrop {
+  opacity: 0;
+  transform: scale(0.988) translate3d(0, -8px, 0);
+  transition:
+    opacity 320ms ease,
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html[data-reffo-return-home-pending] .reffo-home__backdrop,
+html[data-reffo-return-home-pending] .reffo-home__frame,
+.reffo-home--returning-from-result .reffo-home__backdrop,
+.reffo-home--returning-from-result .reffo-home__frame {
+  animation: reffo-home-return-fade-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
+html[data-reffo-return-home-pending] .reffo-home__frame,
+.reffo-home--returning-from-result .reffo-home__frame {
+  animation-delay: 24ms;
+}
+
+html[data-reffo-return-home-pending] .reffo-home__header,
+html[data-reffo-return-home-pending] .reffo-home__hero,
+html[data-reffo-return-home-pending] .reffo-home__progress,
+html[data-reffo-return-home-pending] .reffo-home-deck-wrap,
+html[data-reffo-return-home-pending] .reffo-home__footer,
+.reffo-home--returning-from-result .reffo-home__header,
+.reffo-home--returning-from-result .reffo-home__hero,
+.reffo-home--returning-from-result .reffo-home__progress,
+.reffo-home--returning-from-result .reffo-home-deck-wrap,
+.reffo-home--returning-from-result .reffo-home__footer {
+  animation: reffo-home-return-content-fade-in 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
+html[data-reffo-return-home-pending] .reffo-home__hero,
+.reffo-home--returning-from-result .reffo-home__hero {
+  animation-delay: 28ms;
+}
+
+html[data-reffo-return-home-pending] .reffo-home__progress,
+html[data-reffo-return-home-pending] .reffo-home-deck-wrap,
+.reffo-home--returning-from-result .reffo-home__progress,
+.reffo-home--returning-from-result .reffo-home-deck-wrap {
+  animation-delay: 44ms;
+}
+
+html[data-reffo-return-home-pending] .reffo-home__footer,
+.reffo-home--returning-from-result .reffo-home__footer {
+  animation-delay: 64ms;
+}
+
+@keyframes reffo-home-return-fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.006) translate3d(0, -8px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-home-return-content-fade-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .reffo-home__header {
@@ -523,6 +600,101 @@ taro-page-core,
 
 .reffo-home-card--draggable {
   cursor: grab;
+}
+
+.reffo-home-card--pressable {
+  cursor: pointer;
+}
+
+.reffo-home-card--opening-source {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.reffo-home-card--opening-clone {
+  cursor: default;
+  pointer-events: none !important;
+  transform-origin: center center !important;
+}
+
+.reffo-home-card-open-overlay {
+  overflow: hidden;
+}
+
+.reffo-home-card-open-overlay::before {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 60dvh;
+  min-height: 390px;
+  background:
+    radial-gradient(82% 76% at 46% 0%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0.22) 48%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, rgba(199, 247, 216, 0.88) 0%, rgba(227, 250, 233, 0.66) 58%, rgba(255, 255, 255, 0) 100%);
+  filter: blur(8PX);
+  content: '';
+}
+
+.reffo-home-card--opening-clone .reffo-home-card__surface {
+  border-color: rgba(199, 247, 216, 0.74);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-bg) 82%, var(--card-accent) 18%) 0%, color-mix(in srgb, var(--card-bg) 88%, #ffffff 12%) 48%, rgba(255, 255, 255, 0.18) 100%),
+    var(--card-bg);
+  transition:
+    border-color 460ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 460ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 360ms ease;
+}
+
+.reffo-home-card--opening-clone .reffo-home-card__surface::before,
+.reffo-home-card--opening-clone .reffo-home-card__surface::after {
+  transition: opacity 360ms ease;
+}
+
+.reffo-home-card--opening-active .reffo-home-card__surface {
+  border-color: rgba(199, 247, 216, 0);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.reffo-home-card--opening-active .reffo-home-card__surface::before,
+.reffo-home-card--opening-active .reffo-home-card__surface::after {
+  opacity: 0;
+}
+
+.reffo-home-card__open-result-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(82% 76% at 46% 0%, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0.24) 48%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, rgba(199, 247, 216, 0.94) 0%, rgba(227, 250, 233, 0.82) 58%, rgba(255, 255, 255, 0.9) 100%);
+  transition: opacity 460ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-home-card--opening-clone .reffo-home-card__texture,
+.reffo-home-card--opening-clone .reffo-home-card__premium-canvas,
+.reffo-home-card--opening-clone .reffo-home-card__score,
+.reffo-home-card--opening-clone .reffo-home-card__glass,
+.reffo-home-card--opening-clone .reffo-home-card__handle {
+  transition:
+    opacity 300ms ease,
+    transform 460ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 460ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-home-card--opening-active .reffo-home-card__open-result-wash {
+  opacity: 0.42;
+}
+
+.reffo-home-card--opening-active .reffo-home-card__texture,
+.reffo-home-card--opening-active .reffo-home-card__premium-canvas,
+.reffo-home-card--opening-active .reffo-home-card__score,
+.reffo-home-card--opening-active .reffo-home-card__glass,
+.reffo-home-card--opening-active .reffo-home-card__handle {
+  opacity: 0;
+  filter: blur(4PX);
+  transform: translate3d(0, -8px, 0) scale(0.98);
 }
 
 .reffo-home-deck__stack--dragging .reffo-home-card--draggable {

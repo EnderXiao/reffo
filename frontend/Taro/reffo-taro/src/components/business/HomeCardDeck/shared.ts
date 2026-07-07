@@ -23,6 +23,7 @@ export interface HomeCardDeckProps {
   enteringCardId?: string | null
   isCreateMode?: boolean
   onCreateCardPress?: () => void
+  onCardPress?: (card: HomeCardItem) => void | Promise<void>
   onCardChange?: (card: HomeCardItem, index: number) => void
   onFirstInteraction?: () => void
 }

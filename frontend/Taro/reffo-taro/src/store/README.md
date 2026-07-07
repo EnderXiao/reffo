@@ -123,7 +123,7 @@ function HistoryList() {
   // 添加新记录
   const handleAddHistory = async () => {
     const newHistory = {
-      id: Date.now().toString(),
+      id: 'JD2026070700001',
       position: '前端工程师',
       company: 'ABC 公司',
       name: '张三',

@@ -35,7 +35,7 @@ export function createHistoryFromResult(
   const cardColor = generateCardColor();
 
   return {
-    id: Date.now().toString(),
+    id: '',
     position,
     company,
     name,
@@ -46,6 +46,19 @@ export function createHistoryFromResult(
     resumeContent,
     jdContent,
     optimizedContent: result.optimized.optimized_resume,
+    processResult: result,
+    resultContext: {
+      company,
+      position,
+      resumeContent,
+      jdContent,
+    },
+    progress: {
+      analysis: 'done',
+      matching: 'done',
+      optimized: 'done',
+      interview: 'done',
+    },
     cardColor,
   };
 }

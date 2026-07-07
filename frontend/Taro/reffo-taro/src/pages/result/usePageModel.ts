@@ -2,7 +2,8 @@ import {useEffect, useRef, useState} from 'react'
 import Taro, {useRouter} from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {useHistoryStore} from '@/store/historyStore'
-import type {ProcessResult} from '@/types'
+import type {ProcessResult, ResumeHistory} from '@/types'
+import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {
   getLatestResultSession,
   saveLatestResultSession,
@@ -13,6 +14,7 @@ import {
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
+import {toHistoryCardItem} from '../index/model/homeCardData'
 
 const DONE_PROGRESS: LatestResultSessionProgress = {
   analysis: 'done',
@@ -65,6 +67,56 @@ function getProgressPercent(progress: LatestResultSessionProgress) {
   return 0
 }
 
+function buildFallbackResultFromHistory(history: ResumeHistory): ProcessResult {
+  return {
+    analysis: {
+      quality_score: history.qualityScore,
+      strengths: [],
+      weaknesses: [],
+      suggestions: [],
+      capability_summary: '',
+      structured_resume: {
+        personal_info: {name: history.name},
+        education: [],
+        experience: [],
+        projects: [],
+        skills: {hard_skills: [], soft_skills: []},
+      },
+    },
+    matching: {
+      match_score: history.matchScore,
+      hard_requirements_match: [],
+      skill_match: {
+        matched_skills: history.tags,
+        missing_skills: [],
+        match_percentage: history.matchScore,
+      },
+      experience_match: {
+        years_required: 0,
+        years_actual: 0,
+        relevant_experience: [],
+        match_percentage: 0,
+      },
+      optimization_suggestions: [],
+    },
+    optimized: {
+      optimized_resume: history.optimizedContent,
+      changes_summary: [],
+      improvement_score: 0,
+    },
+    interview: EMPTY_INTERVIEW,
+  }
+}
+
+function buildContextFromHistory(history: ResumeHistory): LatestResultSessionContext {
+  return history.resultContext ?? {
+    company: history.company,
+    position: history.position,
+    resumeContent: history.resumeContent,
+    jdContent: history.jdContent,
+  }
+}
+
 export interface ResultPageViewModel {
   result: ProcessResult | null
   loading: boolean
@@ -72,6 +124,8 @@ export interface ResultPageViewModel {
   progress: LatestResultSessionProgress
   progressPercent: number
   generationError: string | null
+  enteredFromCard: boolean
+  returnCard: HomeCardItem | null
   handleSave: () => Promise<string | null>
   handleComplete: () => Promise<void>
   handleShare: () => Promise<void>
@@ -83,6 +137,7 @@ export interface ResultPageViewModel {
 export function usePageModel(): ResultPageViewModel {
   const router = useRouter()
   const {addHistory} = useHistoryStore()
+  const enteredFromCard = router.params.fromCard === '1'
   const [result, setResult] = useState<ProcessResult | null>(null)
   const [resultContext, setResultContext] =
     useState<LatestResultSessionContext | null>(null)
@@ -95,6 +150,7 @@ export function usePageModel(): ResultPageViewModel {
     getDefaultProgress(null),
   )
   const [generationError, setGenerationError] = useState<string | null>(null)
+  const [returnCard, setReturnCard] = useState<HomeCardItem | null>(null)
   const continuationRef = useRef(0)
   const isContinuingRef = useRef(false)
 
@@ -111,51 +167,31 @@ export function usePageModel(): ResultPageViewModel {
 
   const loadFromHistory = async (id: string) => {
     try {
-      const {histories} = useHistoryStore.getState()
-      const history = histories.find(item => item.id === id)
+      let {histories} = useHistoryStore.getState()
+      let history = histories.find(item => item.id === id)
+
+      if (!history) {
+        await useHistoryStore.getState().loadHistories()
+        histories = useHistoryStore.getState().histories
+        history = histories.find(item => item.id === id)
+      }
 
       if (history) {
-        const processResult: ProcessResult = {
-          analysis: {
-            quality_score: history.qualityScore,
-            strengths: [],
-            weaknesses: [],
-            suggestions: [],
-            capability_summary: '',
-            structured_resume: {
-              personal_info: {name: history.name},
-              education: [],
-              experience: [],
-              projects: [],
-              skills: {hard_skills: [], soft_skills: []},
-            },
-          },
-          matching: {
-            match_score: history.matchScore,
-            hard_requirements_match: [],
-            skill_match: {
-              matched_skills: history.tags,
-              missing_skills: [],
-              match_percentage: history.matchScore,
-            },
-            experience_match: {
-              years_required: 0,
-              years_actual: 0,
-              relevant_experience: [],
-              match_percentage: 0,
-            },
-            optimization_suggestions: [],
-          },
-          optimized: {
-            optimized_resume: history.optimizedContent,
-            changes_summary: [],
-            improvement_score: 0,
-          },
-          interview: EMPTY_INTERVIEW,
+        setReturnCard(toHistoryCardItem(history))
+        const processResult: ProcessResult = history.processResult
+          ? {
+            ...history.processResult,
+            interview: normalizeInterviewResult(history.processResult),
+          }
+          : buildFallbackResultFromHistory(history)
+        const historyProgress = {
+          ...DONE_PROGRESS,
+          ...history.progress,
         }
 
         setResult(processResult)
-        setProgress(DONE_PROGRESS)
+        setResultContext(buildContextFromHistory(history))
+        setProgress(historyProgress)
         setSaved(true)
         setSavedHistoryId(id)
       } else {
@@ -186,6 +222,7 @@ export function usePageModel(): ResultPageViewModel {
         }
         setResult(sessionResult)
         setResultContext(session.context)
+        setReturnCard(null)
         setProgress(sessionProgress)
         void continueLatestSession({
           ...session,
@@ -351,11 +388,21 @@ export function usePageModel(): ResultPageViewModel {
         resultContext?.resumeContent || '',
         resultContext?.jdContent || '',
       )
+      const resolvedCompany = resultContext?.company.trim() || baseHistory.company
+      const resolvedPosition = resultContext?.position.trim() || baseHistory.position
 
       const historyId = await addHistory({
         ...baseHistory,
-        position: resultContext?.position.trim() || baseHistory.position,
-        company: resultContext?.company.trim() || baseHistory.company,
+        position: resolvedPosition,
+        company: resolvedCompany,
+        processResult: result,
+        resultContext: {
+          company: resolvedCompany,
+          position: resolvedPosition,
+          resumeContent: resultContext?.resumeContent || baseHistory.resumeContent,
+          jdContent: resultContext?.jdContent || baseHistory.jdContent,
+        },
+        progress,
       })
 
       setSaved(true)
@@ -401,6 +448,13 @@ export function usePageModel(): ResultPageViewModel {
 
   const handleBackHome = () => {
     continuationRef.current += 1
+    if (enteredFromCard) {
+      void navigation.navigateBack().catch(() => {
+        void navigation.reLaunch('/pages/index/index')
+      })
+      return
+    }
+
     void navigation.reLaunch('/pages/index/index')
   }
 
@@ -438,6 +492,8 @@ export function usePageModel(): ResultPageViewModel {
     progress,
     progressPercent: getProgressPercent(progress),
     generationError,
+    enteredFromCard,
+    returnCard,
     handleSave,
     handleComplete,
     handleShare,

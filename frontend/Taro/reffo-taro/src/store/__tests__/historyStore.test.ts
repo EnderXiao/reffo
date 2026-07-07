@@ -159,6 +159,37 @@ describe('History Store', () => {
       ]);
     });
 
+    test('未提供 ID 时应该生成 JD+年月日+递增编号的 15 位编码', async () => {
+      const existingHistory: ResumeHistory = {
+        id: 'JD2026070700002',
+        position: '前端工程师',
+        company: 'ABC 公司',
+        name: '张三',
+        createdAt: '2026-07-07T08:00:00.000Z',
+        qualityScore: 85,
+        matchScore: 90,
+        tags: ['React'],
+        resumeContent: '# 张三',
+        jdContent: '岗位职责：...',
+        optimizedContent: '# 张三（优化版）',
+      };
+      const newHistory: ResumeHistory = {
+        ...existingHistory,
+        id: '',
+        position: '产品经理',
+        createdAt: '2026-07-07T12:00:00.000Z',
+      };
+
+      useHistoryStore.setState({histories: [existingHistory]});
+      (storage.setJSON as any).mockResolvedValue(undefined);
+
+      const id = await useHistoryStore.getState().addHistory(newHistory);
+
+      expect(id).toBe('JD2026070700003');
+      expect(id).toHaveLength(15);
+      expect(useHistoryStore.getState().histories[0].id).toBe('JD2026070700003');
+    });
+
     test('应该将新记录添加到列表开头', async () => {
       const history1: ResumeHistory = {
         id: '1',
