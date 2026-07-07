@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="920" viewBox="0 0 1280 920">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7fbff"/><stop offset="1" stop-color="#f5fff8"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#66839e"/></marker>
+    <style>
+      .title{font:700 34px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#102033}
+      .sub{font:500 15px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#687a8d}
+      .head{font:700 17px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#26364a}
+      .note{font:600 13px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#69798b}
+      .api{font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#0c7a4f}
+      .life{stroke:#d9e5ef;stroke-width:2;stroke-dasharray:7 7}
+      .msg{stroke:#66839e;stroke-width:2.4;marker-end:url(#arrow);fill:none}
+      .return{stroke:#94a8bb;stroke-width:2.2;marker-end:url(#arrow);fill:none;stroke-dasharray:8 7}
+      .box{fill:#fff;stroke:#dce8f2;stroke-width:1.5;rx:14}
+      .stage{fill:#ecfff5;stroke:#bcefd5;stroke-width:1.5;rx:16}
+      .stage2{fill:#fff7ec;stroke:#f4d1b1;stroke-width:1.5;rx:16}
+    </style>
+  </defs>
+  <rect width="1280" height="920" rx="32" fill="url(#bg)"/>
+  <text x="56" y="62" class="title">接口调用主时序</text>
+  <text x="56" y="92" class="sub">创建页完成 analyze + match；结果页继续 generate + interview；完成后保存历史并进入成功页</text>
+
+  <g transform="translate(70 130)"><rect class="box" width="150" height="48"/><text x="34" y="30" class="head">创建页</text></g>
+  <g transform="translate(280 130)"><rect class="box" width="150" height="48"/><text x="35" y="30" class="head">resumeApi</text></g>
+  <g transform="translate(490 130)"><rect class="box" width="150" height="48"/><text x="43" y="30" class="head">后端 API</text></g>
+  <g transform="translate(700 130)"><rect class="box" width="150" height="48"/><text x="37" y="30" class="head">AI Agent</text></g>
+  <g transform="translate(910 130)"><rect class="box" width="150" height="48"/><text x="38" y="30" class="head">Storage</text></g>
+  <g transform="translate(1120 130)"><rect class="box" width="120" height="48"/><text x="32" y="30" class="head">页面</text></g>
+
+  <path class="life" d="M145 180V850"/><path class="life" d="M355 180V850"/><path class="life" d="M565 180V850"/><path class="life" d="M775 180V850"/><path class="life" d="M985 180V850"/><path class="life" d="M1180 180V850"/>
+
+  <rect class="stage" x="54" y="208" width="1172" height="160"/>
+  <text x="78" y="238" class="head">创建页：进入结果页前先完成岗位分析</text>
+  <path class="msg" d="M145 270H355"/><text x="176" y="260" class="api">analyzeResume()</text>
+  <path class="msg" d="M355 300H565"/><text x="384" y="290" class="api">POST /mvp/analyze</text>
+  <path class="msg" d="M565 330H775"/><text x="612" y="320" class="note">ResumeAnalyzerAgent</text>
+  <path class="return" d="M775 350H565"/><path class="return" d="M565 350H355"/><path class="return" d="M355 350H145"/><text x="178" y="342" class="note">ResumeAnalysis</text>
+
+  <rect class="stage" x="54" y="386" width="1172" height="150"/>
+  <text x="78" y="416" class="head">创建页：匹配建议真实可用后再跳结果页</text>
+  <path class="msg" d="M145 448H355"/><text x="176" y="438" class="api">matchResume()</text>
+  <path class="msg" d="M355 478H565"/><text x="394" y="468" class="api">POST /mvp/match</text>
+  <path class="msg" d="M565 508H775"/><text x="630" y="498" class="note">MatchingAgent</text>
+  <path class="return" d="M775 518H565"/><path class="return" d="M565 518H355"/><path class="return" d="M355 518H145"/><text x="178" y="510" class="note">MatchingResult</text>
+  <path class="msg" d="M145 536H985"/><text x="408" y="528" class="note">saveLatestResultSession(analysis/matching done)</text>
+  <path class="msg" d="M145 566H1180"/><text x="512" y="558" class="note">navigateTo /pages/result</text>
+
+  <rect class="stage2" x="54" y="590" width="1172" height="180"/>
+  <text x="78" y="620" class="head">结果页：继续生成最佳简历和面试建议</text>
+  <path class="msg" d="M1180 650H985"/><text x="1000" y="640" class="note">getLatestResultSession</text>
+  <path class="msg" d="M1180 682H355"/><text x="650" y="672" class="api">generateOptimizedResume()</text>
+  <path class="msg" d="M355 712H565"/><text x="390" y="702" class="api">POST /mvp/generate</text>
+  <path class="msg" d="M565 742H775"/><text x="620" y="732" class="note">ResumeGeneratorAgent</text>
+  <path class="return" d="M775 752H565"/><path class="return" d="M565 752H355"/><path class="return" d="M355 752H1180"/>
+  <path class="msg" d="M1180 782H985"/><text x="1000" y="774" class="note">persist optimized done</text>
+
+  <rect class="stage2" x="54" y="792" width="1172" height="86"/>
+  <path class="msg" d="M1180 822H355"/><text x="625" y="812" class="api">generateInterviewSuggestions()</text>
+  <path class="msg" d="M355 850H565"/><text x="390" y="840" class="api">POST /mvp/interview</text>
+  <path class="msg" d="M565 870H775"/><text x="610" y="860" class="note">InterviewAdvisorAgent</text>
+</svg>

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="680" viewBox="0 0 1280 680">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7fbff"/><stop offset="1" stop-color="#fff7ed"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#71869c"/></marker>
+    <style>
+      .title{font:700 34px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#102033}
+      .sub{font:500 15px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#687a8d}
+      .h{font:700 18px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#26364a}
+      .t{font:600 14px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#526377}
+      .api{font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#0c7a4f}
+      .box{fill:#fff;stroke:#dbe7f0;stroke-width:1.7;rx:18;filter:url(#shadow)}
+      .agent{fill:#f0fdf4;stroke:#bbf7d0;stroke-width:1.8;rx:18}
+      .compat{fill:#fff7ed;stroke:#fed7aa;stroke-width:1.8;rx:18}
+      .line{fill:none;stroke:#71869c;stroke-width:2.7;marker-end:url(#arrow)}
+    </style>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.08"/></filter>
+  </defs>
+  <rect width="1280" height="680" rx="32" fill="url(#bg)"/>
+  <text x="56" y="62" class="title">后端 Agent 编排</text>
+  <text x="56" y="92" class="sub">Taro H5 使用分步接口；/mvp/process 保留完整串行流程能力</text>
+
+  <rect x="56" y="132" width="1168" height="210" rx="26" fill="#fff" opacity="0.72"/>
+  <text x="82" y="166" class="h">当前前端主链路：分步调用，便于结果页渐进展示</text>
+  <g transform="translate(110 205)"><rect class="box" width="180" height="72"/><text x="24" y="30" class="api">/mvp/analyze</text><text x="24" y="54" class="t">resume_markdown</text></g>
+  <g transform="translate(370 205)"><rect class="agent" width="180" height="72"/><text x="24" y="30" class="h">Analyzer</text><text x="24" y="54" class="t">结构化简历</text></g>
+  <g transform="translate(630 205)"><rect class="box" width="180" height="72"/><text x="24" y="30" class="api">/mvp/match</text><text x="24" y="54" class="t">structured + JD</text></g>
+  <g transform="translate(890 205)"><rect class="agent" width="180" height="72"/><text x="24" y="30" class="h">Matcher</text><text x="24" y="54" class="t">匹配建议</text></g>
+  <path class="line" d="M290 241H362"/><path class="line" d="M550 241H622"/><path class="line" d="M810 241H882"/>
+
+  <rect x="56" y="380" width="1168" height="210" rx="26" fill="#fff" opacity="0.72"/>
+  <text x="82" y="414" class="h">结果页续跑：生成最佳简历与面试建议</text>
+  <g transform="translate(110 455)"><rect class="box" width="180" height="72"/><text x="24" y="30" class="api">/mvp/generate</text><text x="24" y="54" class="t">analysis + matching</text></g>
+  <g transform="translate(370 455)"><rect class="agent" width="180" height="72"/><text x="24" y="30" class="h">Generator</text><text x="24" y="54" class="t">最佳简历 Markdown</text></g>
+  <g transform="translate(630 455)"><rect class="box" width="180" height="72"/><text x="24" y="30" class="api">/mvp/interview</text><text x="24" y="54" class="t">optimized_resume</text></g>
+  <g transform="translate(890 455)"><rect class="agent" width="180" height="72"/><text x="24" y="30" class="h">Advisor</text><text x="24" y="54" class="t">面试问题/故事</text></g>
+  <path class="line" d="M290 491H362"/><path class="line" d="M550 491H622"/><path class="line" d="M810 491H882"/>
+
+  <g transform="translate(1040 302)">
+    <rect class="compat" width="150" height="78"/>
+    <text x="24" y="30" class="api">/mvp/process</text>
+    <text x="24" y="54" class="t">兼容完整流程</text>
+  </g>
+  <path class="line" d="M1115 302C1115 250 1085 245 1070 245"/>
+  <path class="line" d="M1115 380C1115 450 1085 485 1070 491"/>
+</svg>

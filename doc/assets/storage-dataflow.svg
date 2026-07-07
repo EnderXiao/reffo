@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#effdf5"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#748aa1"/></marker>
+    <style>
+      .title{font:700 34px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#102033}
+      .sub{font:500 15px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#687a8d}
+      .h{font:700 18px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#26364a}
+      .t{font:600 14px -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;fill:#526377}
+      .code{font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#0f766e}
+      .page{fill:#fff;stroke:#dbe7f0;stroke-width:1.6;rx:18;filter:url(#shadow)}
+      .store{fill:#ecfeff;stroke:#a5f3fc;stroke-width:1.8;rx:18}
+      .db{fill:#fefce8;stroke:#fde68a;stroke-width:1.8;rx:18}
+      .line{fill:none;stroke:#748aa1;stroke-width:2.7;marker-end:url(#arrow)}
+      .dash{fill:none;stroke:#a8b7c6;stroke-width:2.4;stroke-dasharray:8 7;marker-end:url(#arrow)}
+    </style>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.08"/></filter>
+  </defs>
+  <rect width="1280" height="760" rx="32" fill="url(#bg)"/>
+  <text x="56" y="62" class="title">数据持久化与流向</text>
+  <text x="56" y="92" class="sub">后端只保存源简历；生成会话和历史卡片在前端本地持久化</text>
+
+  <g transform="translate(80 170)"><rect class="page" width="180" height="70"/><text x="38" y="32" class="h">首页</text><text x="38" y="54" class="t">读取与展示</text></g>
+  <g transform="translate(80 330)"><rect class="page" width="180" height="70"/><text x="38" y="32" class="h">创建页</text><text x="38" y="54" class="t">保存/生成入口</text></g>
+  <g transform="translate(80 490)"><rect class="page" width="180" height="70"/><text x="38" y="32" class="h">结果页</text><text x="38" y="54" class="t">续跑/完成</text></g>
+  <g transform="translate(80 620)"><rect class="page" width="180" height="70"/><text x="38" y="32" class="h">成功页</text><text x="38" y="54" class="t">读取新卡片</text></g>
+
+  <g transform="translate(505 150)"><rect class="store" width="270" height="88"/><text x="28" y="34" class="h">latest_source_resume</text><text x="28" y="60" class="code">Taro Storage</text></g>
+  <g transform="translate(505 320)"><rect class="store" width="270" height="88"/><text x="28" y="34" class="h">latest_result_session</text><text x="28" y="60" class="code">result + context + progress</text></g>
+  <g transform="translate(505 520)"><rect class="store" width="270" height="88"/><text x="28" y="34" class="h">resume_histories</text><text x="28" y="60" class="code">历史卡片数组</text></g>
+
+  <g transform="translate(960 230)"><rect class="db" width="230" height="94"/><text x="28" y="35" class="h">source_resumes</text><text x="28" y="62" class="code">backend SQLite</text></g>
+
+  <path class="dash" d="M260 205H497"/><text x="315" y="190" class="t">首页读缓存</text>
+  <path class="line" d="M260 365H497"/><text x="310" y="350" class="t">保存源简历后写入</text>
+  <path class="line" d="M775 194C850 194 870 275 952 275"/><text x="815" y="178" class="t">后端 latest 同步</text>
+  <path class="line" d="M260 365C360 365 390 364 497 364"/>
+  <path class="line" d="M260 365C368 400 390 430 497 364"/><text x="310" y="425" class="t">analyze + match 完成写 session</text>
+  <path class="dash" d="M260 525H497"/><text x="330" y="510" class="t">结果页读取 session</text>
+  <path class="line" d="M775 364C862 364 865 520 782 550"/><text x="800" y="458" class="t">续跑后更新 progress</text>
+  <path class="line" d="M260 525H497"/>
+  <path class="line" d="M260 525C360 525 390 564 497 564"/><text x="315" y="585" class="t">点击完成写历史</text>
+  <path class="dash" d="M260 655C370 655 390 564 497 564"/><text x="310" y="665" class="t">成功页找 historyId</text>
+  <path class="dash" d="M260 205C390 205 380 564 497 564"/><text x="288" y="292" class="t">首页加载历史卡片</text>
+
+  <path class="line" d="M260 365C628 250 710 270 952 275"/><text x="535" y="255" class="t">POST /source-resume</text>
+</svg>
