@@ -69,6 +69,7 @@ body:has(.reffo-result) *::-webkit-scrollbar {
 }
 
 .reffo-result--progress-complete::before {
+  display: none;
   opacity: 0;
 }
 
@@ -112,6 +113,7 @@ body:has(.reffo-result) *::-webkit-scrollbar {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   min-width: 92px;
   height: 34px;
   padding: 0 15px;
@@ -124,6 +126,13 @@ body:has(.reffo-result) *::-webkit-scrollbar {
   box-shadow: 0 4PX 12PX rgba(44, 37, 36, 0.14), inset 0 1PX 0 rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(14PX);
   cursor: pointer;
+}
+
+.reffo-result__action-icon {
+  width: 13px;
+  height: 13px;
+  display: block;
+  flex: 0 0 auto;
 }
 
 .reffo-result__shell {

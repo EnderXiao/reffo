@@ -5,7 +5,12 @@ import * as ImagePicker from 'expo-image-picker'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
 import {useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
-import type {ProcessResult, ResumeAnalysis, SourceResumeSummary} from '@/types'
+import type {
+  MatchingResult,
+  ProcessResult,
+  ResumeAnalysis,
+  SourceResumeSummary,
+} from '@/types'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
 import {saveLatestResultSession} from '@/utils/result-session'
@@ -51,7 +56,7 @@ export interface CreatePageViewModel {
   handleJobPositionNameChange: (content: string) => void
   handleJobInputModeChange: (mode: JobDescriptionInputMode) => void
   handlePickJobAttachment: () => Promise<void>
-  handlePrimaryAction: () => Promise<void>
+  handlePrimaryAction: () => Promise<boolean>
   handleCancelGeneration: () => void
   handleClose: () => void
 }
@@ -70,10 +75,13 @@ const SUPPORTED_JOB_DESCRIPTION_FILE_TYPES = new Set<string>(
   JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
 )
 
-function buildInitialProcessResult(analysis: ResumeAnalysis): ProcessResult {
+function buildInitialProcessResult(
+  analysis: ResumeAnalysis,
+  matching?: MatchingResult,
+): ProcessResult {
   return {
     analysis,
-    matching: {
+    matching: matching || {
       match_score: 0,
       hard_requirements_match: [],
       skill_match: {
@@ -826,7 +834,7 @@ export function usePageModel(): CreatePageViewModel {
   const handlePrimaryAction = async () => {
     if (currentStep === 'resumeSummary') {
       setCurrentStep('jobDescription')
-      return
+      return true
     }
 
     if (!canSaveCurrentStep) {
@@ -838,11 +846,11 @@ export function usePageModel(): CreatePageViewModel {
             : '请先填写目标岗位描述',
         {duration: 2200},
       )
-      return
+      return false
     }
 
     if (isSavingCurrentStep) {
-      return
+      return false
     }
 
     if (currentStep === 'resumeUpload') {
@@ -868,14 +876,14 @@ export function usePageModel(): CreatePageViewModel {
         feedback.success('源简历已保存', {duration: 1200})
 
         setCurrentStep('resumeSummary')
+        return true
       } catch (error) {
         console.error('save source resume failed', error)
         feedback.error('源简历保存失败，请重试')
+        return false
       } finally {
         setIsSavingCurrentStep(false)
       }
-
-      return
     }
 
     setIsSavingCurrentStep(true)
@@ -907,10 +915,16 @@ export function usePageModel(): CreatePageViewModel {
       const analysis = await resumeApi.analyzeResume(resumeMarkdown)
 
       if (generationRequestRef.current !== requestId) {
-        return
+        return false
       }
 
-      const processResult = buildInitialProcessResult(analysis)
+      const matching = await resumeApi.matchResume(analysis, jdText)
+
+      if (generationRequestRef.current !== requestId) {
+        return false
+      }
+
+      const processResult = buildInitialProcessResult(analysis, matching)
 
       useResumeStore.getState().setAnalysis(processResult.analysis)
 
@@ -924,30 +938,30 @@ export function usePageModel(): CreatePageViewModel {
         },
         progress: {
           analysis: 'done',
-          matching: 'pending',
+          matching: 'done',
           optimized: 'pending',
           interview: 'pending',
         },
       })
 
       if (generationRequestRef.current !== requestId) {
-        return
+        return false
       }
 
       await navigation.navigateTo('/pages/result/index')
+      return true
     } catch (error) {
       if (generationRequestRef.current !== requestId) {
-        return
+        return false
       }
       console.error('process resume failed', error)
       feedback.error(error instanceof Error ? error.message : '生成失败，请重试')
+      return false
     } finally {
-      if (generationRequestRef.current !== requestId) {
-        return
+      if (generationRequestRef.current === requestId) {
+        setGenerationState(null)
+        setIsSavingCurrentStep(false)
       }
-
-      setGenerationState(null)
-      setIsSavingCurrentStep(false)
     }
   }
 

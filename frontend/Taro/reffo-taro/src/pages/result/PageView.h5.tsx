@@ -14,6 +14,7 @@ import cancelIcon from '@/assets/result/cancel.svg'
 import alertIcon from '@/assets/result/alert-hex.svg'
 import confirmIcon from '@/assets/result/confirm.svg'
 import chatTagIcon from '@/assets/result/chat-tag.svg'
+import exitIcon from '@/assets/result/exit.svg'
 import './index.h5.scss'
 
 type ResultStageKey = 'analysis' | 'resume' | 'interview'
@@ -222,12 +223,7 @@ function EmptyText() {
 function AnalysisPanel({result}: {result: ProcessResult}) {
   const grade = scoreToGrade(result.analysis.quality_score)
   const weaknesses = normalizeItems(result.analysis.weaknesses, 3)
-  const strategies = normalizeItems(
-    result.matching.optimization_suggestions.length > 0
-      ? result.matching.optimization_suggestions
-      : result.analysis.suggestions,
-    5,
-  )
+  const strategies = normalizeItems(result.matching.optimization_suggestions, 5)
 
   return (
     <View className='reffo-result__panel'>
@@ -575,7 +571,10 @@ export default function PageView({
     >
       <View className='reffo-result__chrome'>
         <View className='reffo-result__action' onClick={handleAction}>
-          <Text>{isComplete ? '完成' : '↻ 退出生成'}</Text>
+          {!isComplete ? (
+            <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
+          ) : null}
+          <Text>{isComplete ? '完成' : '退出生成'}</Text>
         </View>
       </View>
 

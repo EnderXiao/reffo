@@ -16,7 +16,7 @@ import {
   type H5DeckCardSnapshot,
   type H5DeckDragState,
 } from './motion.h5'
-import type {HomeCardItem} from './shared'
+import {VISIBLE_CARDS, type HomeCardItem} from './shared'
 
 interface UseHomeCardDeckMotionOptions {
   cards: HomeCardItem[]
@@ -72,7 +72,8 @@ export default function useHomeCardDeckMotion({
       return []
     }
 
-    const visibleCount = Math.min(5, cards.length)
+    const visibleCount = Math.min(VISIBLE_CARDS, cards.length)
+    const shouldRecycleTail = Boolean(recyclingCardId) && cards.length > visibleCount
     const nextCards = []
 
     for (let offset = 0; offset < cards.length && nextCards.length < visibleCount; offset += 1) {
@@ -81,12 +82,12 @@ export default function useHomeCardDeckMotion({
       nextCards.push({
         card,
         depth: offset,
-        isRecycling: card.id === recyclingCardId,
-        isTailEntering: Boolean(recyclingCardId) && offset === visibleCount - 1 && card.id !== recyclingCardId,
+        isRecycling: shouldRecycleTail && card.id === recyclingCardId,
+        isTailEntering: shouldRecycleTail && offset === visibleCount - 1 && card.id !== recyclingCardId,
       })
     }
 
-    if (recyclingCardId && !nextCards.some(entry => entry.card.id === recyclingCardId)) {
+    if (shouldRecycleTail && !nextCards.some(entry => entry.card.id === recyclingCardId)) {
       const recyclingCard = cards.find(card => card.id === recyclingCardId)
 
       if (recyclingCard) {
@@ -396,7 +397,7 @@ export default function useHomeCardDeckMotion({
     dragStateRef.current = nextState
     applyDeckDragVisuals(nextState)
     setDragState(nextState)
-    setRecyclingCardId(activeCard.id)
+    setRecyclingCardId(cards.length > VISIBLE_CARDS ? activeCard.id : null)
     setActiveRailIndex(current => current + 1)
 
     if (deckSettleTimerRef.current != null) {

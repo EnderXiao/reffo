@@ -65,8 +65,7 @@ taro-page-core,
   z-index: 3;
 }
 
-.reffo-home__source-button,
-.reffo-home__github-button {
+.reffo-home__source-button {
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 4px 10px rgba(191, 201, 217, 0.14);
 }
@@ -102,30 +101,17 @@ taro-page-core,
 }
 
 .reffo-home__github-button {
-  width: 33px;
-  height: 33px;
-  border-radius: 50%;
+  width: 41px;
+  height: 41px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.reffo-home__github-mark {
-  width: 19px;
-  height: 19px;
-  border-radius: 50%;
-  background: #111827;
-  position: relative;
-}
-
-.reffo-home__github-dot {
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ffffff;
-  left: 6px;
-  top: 6px;
+.reffo-home__github-icon {
+  width: 41px;
+  height: 41px;
+  display: block;
 }
 
 .reffo-home__hero {
@@ -667,7 +653,7 @@ taro-page-core,
   height: 6px;
   margin-left: -37px;
   border-radius: 999px;
-  background: rgba(35, 39, 47, 0.82);
+  background: #4e4e4e;
   z-index: 4;
 }
 
@@ -942,11 +928,11 @@ taro-page-core,
 }
 
 .reffo-home-card__generating-handle--front {
-  background: rgba(255, 255, 255, 0.72);
+  background: #4e4e4e;
 }
 
 .reffo-home-card__generating-handle--back {
-  background: rgba(190, 190, 192, 0.76);
+  background: #4e4e4e;
 }
 
 .reffo-home-card__generating-mark {

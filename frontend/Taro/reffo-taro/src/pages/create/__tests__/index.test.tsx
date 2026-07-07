@@ -82,6 +82,7 @@ jest.mock('@/services/sourceResume', () => ({
 jest.mock('@/services/resume', () => ({
   resumeApi: {
     analyzeResume: jest.fn(),
+    matchResume: jest.fn(),
   },
 }))
 
@@ -154,6 +155,7 @@ describe('CreatePage', () => {
   const mockSaveSourceResume = sourceResumeApi.saveSourceResume as jest.Mock
   const mockGetLatestSourceResume = sourceResumeApi.getLatestSourceResume as jest.Mock
   const mockAnalyzeResume = resumeApi.analyzeResume as jest.Mock
+  const mockMatchResume = resumeApi.matchResume as jest.Mock
   const mockSaveLatestResultSession = saveLatestResultSession as jest.Mock
   const mockExpoImagePicker = jest.requireMock('expo-image-picker') as {
     requestMediaLibraryPermissionsAsync: jest.Mock
@@ -199,6 +201,7 @@ describe('CreatePage', () => {
       updatedAt: '2026-03-25T12:00:00.000Z',
     })
     mockAnalyzeResume.mockResolvedValue(defaultProcessResult.analysis)
+    mockMatchResume.mockResolvedValue(defaultProcessResult.matching)
     mockSaveLatestResultSession.mockResolvedValue(undefined)
   })
 
@@ -361,7 +364,7 @@ describe('CreatePage', () => {
           }),
           progress: {
             analysis: 'done',
-            matching: 'pending',
+            matching: 'done',
             optimized: 'pending',
             interview: 'pending',
           },

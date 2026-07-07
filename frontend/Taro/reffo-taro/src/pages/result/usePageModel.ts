@@ -387,7 +387,7 @@ export function usePageModel(): ResultPageViewModel {
     }
 
     continuationRef.current += 1
-    void navigation.redirectTo(`/pages/complete/index?historyId=${encodeURIComponent(historyId)}`)
+    void navigation.navigateTo(`/pages/complete/index?historyId=${encodeURIComponent(historyId)}`)
   }
 
   const handleShare = async () => {

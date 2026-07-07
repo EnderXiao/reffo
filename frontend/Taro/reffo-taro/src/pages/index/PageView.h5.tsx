@@ -4,15 +4,8 @@ import classNames from 'classnames'
 import {useEffect, useMemo, useRef, useState} from 'react'
 import type {IndexPageViewModel} from './model/usePageModel'
 import {HOME_PAGE_CONTENT} from './constants/content'
+import githubIcon from '@/assets/home/github.svg'
 import './index.h5.scss'
-
-function GithubMark() {
-  return (
-    <View className='reffo-home__github-mark'>
-      <View className='reffo-home__github-dot' />
-    </View>
-  )
-}
 
 type HeroMode = 'brand' | 'strategy' | 'create'
 
@@ -167,7 +160,7 @@ export default function PageView({
             <Text className='reffo-home__source-text'>{sourceLabel}</Text>
           </View>
           <View className='reffo-home__github-button'>
-            <GithubMark />
+            <Image src={githubIcon} className='reffo-home__github-icon' mode='aspectFit' />
           </View>
         </View>
 

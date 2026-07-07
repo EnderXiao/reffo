@@ -645,6 +645,7 @@ export default function PageView({
   const [isLaunchingGeneration, setIsLaunchingGeneration] = useState(false)
   const [isReturningFromGeneration, setIsReturningFromGeneration] = useState(false)
   const [isCssFallbackLaunching, setIsCssFallbackLaunching] = useState(false)
+  const [isGenerationCompleted, setIsGenerationCompleted] = useState(false)
   const launchGenerationTimerRef = useRef<number | null>(null)
   const isActionDisabled = !canSaveCurrentStep || isSavingCurrentStep || isLaunchingGeneration || isCssFallbackLaunching
   const actionLabel = currentStep === 'resumeUpload' ? '保存' : currentStepMeta.actionLabel
@@ -676,6 +677,13 @@ export default function PageView({
       })
 
       setIsLaunchingGeneration(true)
+      setIsGenerationCompleted(false)
+
+      const finishGeneration = (didNavigateToResult: boolean) => {
+        if (didNavigateToResult) {
+          setIsGenerationCompleted(true)
+        }
+      }
 
       if (canUseViewTransition()) {
         const transition = (document as DocumentWithViewTransition).startViewTransition?.(() => {
@@ -686,7 +694,7 @@ export default function PageView({
 
         void transition?.finished.finally(() => {
           setIsLaunchingGeneration(false)
-          void handlePrimaryAction().finally(() => {
+          void handlePrimaryAction().then(finishGeneration).finally(() => {
             setPendingGenerationState(null)
             setIsLaunchingGeneration(false)
           })
@@ -698,7 +706,7 @@ export default function PageView({
           setPendingGenerationState(nextGenerationState)
           setIsLaunchingGeneration(false)
           setIsCssFallbackLaunching(false)
-          void handlePrimaryAction().finally(() => {
+          void handlePrimaryAction().then(finishGeneration).finally(() => {
             setPendingGenerationState(null)
             setIsLaunchingGeneration(false)
             setIsCssFallbackLaunching(false)
@@ -720,6 +728,7 @@ export default function PageView({
       setPendingGenerationState(null)
       setIsLaunchingGeneration(false)
       setIsCssFallbackLaunching(false)
+      setIsGenerationCompleted(false)
       handleCancelGeneration()
     }
 
@@ -750,6 +759,7 @@ export default function PageView({
         'reffo-create--css-generation-launching': isCssFallbackLaunching,
         'reffo-create--launching-generation': isLaunchingGeneration,
         'reffo-create--returning-generation': isReturningFromGeneration,
+        'reffo-create--generation-completed': isGenerationCompleted,
       })}
     >
       <CreateBackdrop variant={isJobStep ? 'warm' : 'cool'} />
