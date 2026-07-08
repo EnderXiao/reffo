@@ -176,5 +176,3 @@ export class HarnessRunRepository {
     }
   }
 }
-
-export const harnessRunRepository = new HarnessRunRepository()

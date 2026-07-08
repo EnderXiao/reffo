@@ -27,11 +27,9 @@ export function initializeDatabase() {
       updated_at TEXT NOT NULL
     );
 
-    INSERT INTO schema_versions (name, version, updated_at)
+    INSERT OR IGNORE INTO schema_versions (name, version, updated_at)
     VALUES ('harness', 1, datetime('now'))
-    ON CONFLICT(name) DO UPDATE SET
-      version = excluded.version,
-      updated_at = excluded.updated_at;
+    ;
 
     CREATE TABLE IF NOT EXISTS process_runs (
       id TEXT PRIMARY KEY,

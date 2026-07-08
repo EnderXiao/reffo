@@ -3,7 +3,7 @@ import type { ResumeAnalysis } from '@/types'
 
 export const resumeStructureSchema = z.object({
   personal_info: z.object({
-    name: z.string(),
+    name: z.string().optional(),
     contact: z.string().optional(),
     email: z.string().optional(),
     phone: z.string().optional(),
@@ -11,34 +11,34 @@ export const resumeStructureSchema = z.object({
     current_position: z.string().optional(),
   }).passthrough(),
   education: z.array(z.object({
-    school: z.string(),
-    major: z.string(),
-    degree: z.string(),
-    time_range: z.string(),
+    school: z.string().optional(),
+    major: z.string().optional(),
+    degree: z.string().optional(),
+    time_range: z.string().optional(),
     achievements: z.array(z.string()).optional(),
   }).passthrough()),
   experience: z.array(z.object({
-    company: z.string(),
-    position: z.string(),
-    time_range: z.string(),
-    responsibilities: z.array(z.string()),
-    achievements: z.array(z.string()),
+    company: z.string().optional(),
+    position: z.string().optional(),
+    time_range: z.string().optional(),
+    responsibilities: z.array(z.string()).optional(),
+    achievements: z.array(z.string()).optional(),
   }).passthrough()),
   projects: z.array(z.object({
-    name: z.string(),
-    role: z.string(),
-    tech_stack: z.array(z.string()),
-    description: z.string(),
-    achievements: z.array(z.string()),
+    name: z.string().optional(),
+    role: z.string().optional(),
+    tech_stack: z.array(z.string()).optional(),
+    description: z.string().optional(),
+    achievements: z.array(z.string()).optional(),
   }).passthrough()).optional(),
   skills: z.object({
-    hard_skills: z.array(z.string()),
+    hard_skills: z.array(z.string()).default([]),
     soft_skills: z.array(z.string()).optional(),
   }).passthrough(),
 }).passthrough()
 
 export const resumeAnalysisSchema = z.object({
-  quality_score: z.number().min(0).max(100),
+  quality_score: z.coerce.number().min(0).max(100),
   strengths: z.array(z.string()),
   weaknesses: z.array(z.string()),
   suggestions: z.array(z.string()),

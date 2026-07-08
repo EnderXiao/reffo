@@ -4,9 +4,13 @@ import { ResumeAnalyzerAgent } from '@/agents/resume-analyzer'
 import { MatchingAgent } from '@/agents/matching-agent'
 import { ResumeGeneratorAgent } from '@/agents/resume-generator'
 import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
-import { harnessRunRepository } from '@/repositories/harness-run-repository'
+import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
+
+function getHarnessRunRepository() {
+  return new HarnessRunRepository()
+}
 
 /**
  * MVP 路由
@@ -80,7 +84,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/dashboard',
     () => ({
       success: true,
-      data: harnessRunRepository.getDashboardMetrics(),
+      data: getHarnessRunRepository().getDashboardMetrics(),
     }),
     {
       detail: {
@@ -99,7 +103,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/regression-dataset',
     ({ query }) => ({
       success: true,
-      data: harnessRunRepository.buildRegressionDataset(Number(query.limit ?? 20)),
+      data: getHarnessRunRepository().buildRegressionDataset(Number(query.limit ?? 20)),
     }),
     {
       query: t.Object({
@@ -120,7 +124,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
   .get(
     '/runs/:run_id',
     ({ params, set }) => {
-      const result = harnessRunRepository.getRun(params.run_id)
+      const result = getHarnessRunRepository().getRun(params.run_id)
 
       if (!result) {
         set.status = 404
@@ -157,7 +161,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
   .get(
     '/runs/:run_id/replay',
     ({ params, set }) => {
-      const result = harnessRunRepository.replayRun(params.run_id)
+      const result = getHarnessRunRepository().replayRun(params.run_id)
 
       if (!result) {
         set.status = 404
@@ -194,7 +198,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
   .post(
     '/runs/:run_id/failure-samples',
     ({ params, body, set }) => {
-      const result = harnessRunRepository.createFailureSample(params.run_id, body.reason)
+      const result = getHarnessRunRepository().createFailureSample(params.run_id, body.reason)
 
       if (!result) {
         set.status = 404

@@ -927,6 +927,7 @@ export function usePageModel(): CreatePageViewModel {
       const processResult = buildInitialProcessResult(analysis, matching)
 
       useResumeStore.getState().setAnalysis(processResult.analysis)
+      useJDStore.getState().setMatching(processResult.matching)
 
       await saveLatestResultSession({
         result: processResult,

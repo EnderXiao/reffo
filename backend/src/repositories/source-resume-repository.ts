@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { initializeDatabase } from '@/repositories/database'
+import { getDatabase } from '@/repositories/database'
 import type { SaveSourceResumeInput, SourceResumeRecord } from '@/types'
 
 function ensureDatabase() {
-  const database = initializeDatabase()
+  const database = getDatabase()
   database.exec(`
     CREATE TABLE IF NOT EXISTS source_resumes (
       id TEXT PRIMARY KEY,

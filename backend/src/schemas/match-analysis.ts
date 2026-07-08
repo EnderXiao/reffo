@@ -18,9 +18,39 @@ export const jdStructureSchema = z.object({
   nice_to_have: z.array(z.string()),
 }).passthrough()
 
+const booleanLikeSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') {
+    return value
+  }
+
+  const normalized = value.trim().toLowerCase()
+  if (['true', 'yes', '是', '匹配', '满足'].includes(normalized)) {
+    return true
+  }
+  if (['false', 'no', '否', '不匹配', '不满足'].includes(normalized)) {
+    return false
+  }
+
+  return value
+}, z.boolean())
+
+export const matchAnalysisOutputSchema = z.object({
+  match_score: z.coerce.number().min(0).max(100),
+  hard_requirements_match: z.record(booleanLikeSchema).default({}),
+  skill_match: z.object({
+    matched: z.array(z.string()).default([]),
+    missing: z.array(z.string()).default([]),
+  }).passthrough(),
+  experience_match: z.string(),
+  soft_skills_match: z.string().default(''),
+  strengths: z.array(z.string()).default([]),
+  weaknesses: z.array(z.string()).default([]),
+  jd_structure: jdStructureSchema.optional(),
+}).passthrough()
+
 export const matchAnalysisSchema = z.object({
-  match_score: z.number().min(0).max(100),
-  hard_requirements_match: z.record(z.boolean()),
+  match_score: z.coerce.number().min(0).max(100),
+  hard_requirements_match: z.record(booleanLikeSchema),
   skill_match: z.object({
     matched: z.array(z.string()),
     missing: z.array(z.string()),
@@ -32,6 +62,7 @@ export const matchAnalysisSchema = z.object({
   jd_structure: jdStructureSchema,
 }).passthrough()
 
+export type MatchAnalysisOutputFromSchema = z.infer<typeof matchAnalysisOutputSchema>
 export type MatchAnalysisFromSchema = z.infer<typeof matchAnalysisSchema>
 
 export function isJDStructure(value: unknown): value is import('@/types').JDStructure {
@@ -40,4 +71,8 @@ export function isJDStructure(value: unknown): value is import('@/types').JDStru
 
 export function isMatchAnalysis(value: unknown): value is MatchAnalysis {
   return matchAnalysisSchema.safeParse(value).success
+}
+
+export function isMatchAnalysisOutput(value: unknown): value is MatchAnalysisOutputFromSchema {
+  return matchAnalysisOutputSchema.safeParse(value).success
 }

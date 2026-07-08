@@ -2,7 +2,7 @@ import { parseJsonOutput } from '@/harness/json-output'
 import { getPromptVersion, renderPromptVariantInstruction, resolvePromptVariant } from '@/harness/prompt-variant'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'
 import type { LlmProvider } from '@/providers/llm-provider'
-import { isMatchAnalysis } from '@/schemas/match-analysis'
+import { isMatchAnalysisOutput, matchAnalysisOutputSchema } from '@/schemas/match-analysis'
 import type { AgentExecutionOptions } from '@/agents/types'
 import type { MatchAnalysis, ResumeStructure, JDStructure } from '@/types'
 
@@ -104,9 +104,9 @@ ${JSON.stringify(jd, null, 2)}
         stepContext: options.stepContext,
       })
 
-      return await parseJsonOutput({
+      const parsedOutput = await parseJsonOutput({
         content: response.content,
-        validator: isMatchAnalysis,
+        validator: isMatchAnalysisOutput,
         outputName: 'MatchAnalysis',
         eventBus: options.eventBus,
         stepContext: options.stepContext,
@@ -128,6 +128,13 @@ ${JSON.stringify(jd, null, 2)}
           return repairResponse.content
         },
       })
+
+      const normalizedOutput = matchAnalysisOutputSchema.parse(parsedOutput)
+
+      return {
+        ...normalizedOutput,
+        jd_structure: jd,
+      }
     } catch (error) {
       console.error('Matching analysis failed:', error)
       throw new Error(`匹配分析失败: ${error instanceof Error ? error.message : '未知错误'}`)
