@@ -65,14 +65,22 @@ taro-page-core,
 }
 
 html[data-reffo-return-home-pending] .reffo-home__backdrop,
-html[data-reffo-return-home-pending] .reffo-home__frame,
 .reffo-home--returning-from-result .reffo-home__backdrop,
 .reffo-home--returning-from-result .reffo-home__frame {
-  animation: reffo-home-return-fade-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: opacity, transform;
 }
 
-html[data-reffo-return-home-pending] .reffo-home__frame,
+html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from-result) .reffo-home__backdrop,
+html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from-result) .reffo-home__frame {
+  opacity: 0;
+  transform: scale(1.006) translate3d(0, -8px, 0);
+}
+
+.reffo-home--returning-from-result .reffo-home__backdrop,
+.reffo-home--returning-from-result .reffo-home__frame {
+  animation: reffo-home-return-fade-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .reffo-home--returning-from-result .reffo-home__frame {
   animation-delay: 24ms;
 }
@@ -80,30 +88,61 @@ html[data-reffo-return-home-pending] .reffo-home__frame,
 html[data-reffo-return-home-pending] .reffo-home__header,
 html[data-reffo-return-home-pending] .reffo-home__hero,
 html[data-reffo-return-home-pending] .reffo-home__progress,
-html[data-reffo-return-home-pending] .reffo-home-deck-wrap,
 html[data-reffo-return-home-pending] .reffo-home__footer,
 .reffo-home--returning-from-result .reffo-home__header,
 .reffo-home--returning-from-result .reffo-home__hero,
 .reffo-home--returning-from-result .reffo-home__progress,
-.reffo-home--returning-from-result .reffo-home-deck-wrap,
+.reffo-home--returning-from-result .reffo-home__footer {
+  will-change: opacity, transform;
+}
+
+html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from-result) .reffo-home__header,
+html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from-result) .reffo-home__hero,
+html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from-result) .reffo-home__progress,
+html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from-result) .reffo-home__footer {
+  opacity: 0;
+  transform: translate3d(var(--reffo-home-return-x, 0px), var(--reffo-home-return-y, 8px), 0);
+}
+
+.reffo-home--returning-from-result .reffo-home__header,
+.reffo-home--returning-from-result .reffo-home__hero,
+.reffo-home--returning-from-result .reffo-home__progress,
 .reffo-home--returning-from-result .reffo-home__footer {
   animation: reffo-home-return-content-fade-in 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: opacity, transform;
+}
+
+html[data-reffo-return-home-pending] .reffo-home__header,
+.reffo-home--returning-from-result .reffo-home__header {
+  --reffo-home-return-x: 0px;
+  --reffo-home-return-y: -14px;
 }
 
 html[data-reffo-return-home-pending] .reffo-home__hero,
 .reffo-home--returning-from-result .reffo-home__hero {
-  animation-delay: 28ms;
+  --reffo-home-return-x: -18px;
+  --reffo-home-return-y: 0px;
 }
 
 html[data-reffo-return-home-pending] .reffo-home__progress,
-html[data-reffo-return-home-pending] .reffo-home-deck-wrap,
-.reffo-home--returning-from-result .reffo-home__progress,
-.reffo-home--returning-from-result .reffo-home-deck-wrap {
-  animation-delay: 44ms;
+.reffo-home--returning-from-result .reffo-home__progress {
+  --reffo-home-return-x: -12px;
+  --reffo-home-return-y: 0px;
 }
 
 html[data-reffo-return-home-pending] .reffo-home__footer,
+.reffo-home--returning-from-result .reffo-home__footer {
+  --reffo-home-return-x: 0px;
+  --reffo-home-return-y: 18px;
+}
+
+.reffo-home--returning-from-result .reffo-home__hero {
+  animation-delay: 28ms;
+}
+
+.reffo-home--returning-from-result .reffo-home__progress {
+  animation-delay: 44ms;
+}
+
 .reffo-home--returning-from-result .reffo-home__footer {
   animation-delay: 64ms;
 }
@@ -123,7 +162,7 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
 @keyframes reffo-home-return-content-fade-in {
   0% {
     opacity: 0;
-    transform: translate3d(0, 8px, 0);
+    transform: translate3d(var(--reffo-home-return-x, 0px), var(--reffo-home-return-y, 8px), 0);
   }
 
   100% {

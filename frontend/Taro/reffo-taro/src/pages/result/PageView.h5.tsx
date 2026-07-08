@@ -27,6 +27,7 @@ const CARD_OPEN_RECT_STORAGE_KEY = 'reffo.homeCardOpenRect'
 const RESULT_RETURN_HOME_DELAY = 760
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const RESULT_RETURN_HOME_DOM_KEY = 'reffoReturnHomePending'
+const RESULT_EDGE_ENTER_DELAY = 320
 const HOME_CARD_DESIGN_WIDTH = 210
 const HOME_CARD_DESIGN_HEIGHT = 332
 
@@ -641,10 +642,12 @@ export default function PageView({
   const visualCapability = useVisualTier({benchmark: true})
   const [stageIndex, setStageIndex] = useState(0)
   const [isFromCardReady, setIsFromCardReady] = useState(!enteredFromCard)
+  const [isEdgeEnterReady, setIsEdgeEnterReady] = useState(!enteredFromCard)
   const [isReturningHome, setIsReturningHome] = useState(false)
   const [returnStyle, setReturnStyle] = useState<CSSProperties>({})
   const rootRef = useRef<HTMLElement | null>(null)
   const returnTimerRef = useRef<number | null>(null)
+  const edgeEnterTimerRef = useRef<number | null>(null)
   const activeStage = RESULT_STAGES[stageIndex]
   const accentIndex = activeStage.title.indexOf(activeStage.accent)
   const titleBeforeAccent = accentIndex >= 0 ? activeStage.title.slice(0, accentIndex) : ''
@@ -694,7 +697,40 @@ export default function PageView({
     }
   }, [enteredFromCard, hasRenderableResult, loading])
 
+  useEffect(() => {
+    if (edgeEnterTimerRef.current != null) {
+      window.clearTimeout(edgeEnterTimerRef.current)
+      edgeEnterTimerRef.current = null
+    }
+
+    if (!enteredFromCard) {
+      setIsEdgeEnterReady(true)
+      return undefined
+    }
+
+    if (!isFromCardReady || loading || !hasRenderableResult) {
+      setIsEdgeEnterReady(false)
+      return undefined
+    }
+
+    setIsEdgeEnterReady(false)
+    edgeEnterTimerRef.current = window.setTimeout(() => {
+      edgeEnterTimerRef.current = null
+      setIsEdgeEnterReady(true)
+    }, RESULT_EDGE_ENTER_DELAY)
+
+    return () => {
+      if (edgeEnterTimerRef.current != null) {
+        window.clearTimeout(edgeEnterTimerRef.current)
+        edgeEnterTimerRef.current = null
+      }
+    }
+  }, [enteredFromCard, hasRenderableResult, isFromCardReady, loading])
+
   useEffect(() => () => {
+    if (edgeEnterTimerRef.current != null) {
+      window.clearTimeout(edgeEnterTimerRef.current)
+    }
     if (returnTimerRef.current != null) {
       window.clearTimeout(returnTimerRef.current)
     }
@@ -796,6 +832,7 @@ export default function PageView({
         'reffo-result--progress-complete': isComplete,
         'reffo-result--from-card': enteredFromCard,
         'reffo-result--from-card-ready': enteredFromCard && isFromCardReady,
+        'reffo-result--edge-enter-ready': enteredFromCard && isEdgeEnterReady,
         'reffo-result--returning-home': isReturningHome,
       })}
       style={resultStyle}

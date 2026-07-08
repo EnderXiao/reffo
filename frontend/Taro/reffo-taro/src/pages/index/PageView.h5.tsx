@@ -191,9 +191,10 @@ export default function PageView({
   logoSource,
 }: IndexPageViewModel) {
   const sourceLabel = hasSourceResume && sourceResumeTitle ? sourceResumeTitle : '源简历'
-  const [isReturningFromResult, setIsReturningFromResult] = useState(hasReturnHomeMarker)
+  const [isReturningFromResult, setIsReturningFromResult] = useState(false)
   const returnFadeTimerRef = useRef<number | null>(null)
-  const isReturnHomeTransition = isReturningFromResult || hasReturnHomeMarker()
+  const returnFadeFrameRef = useRef<number | null>(null)
+  const isReturnHomeTransition = isReturningFromResult
 
   useDidShow(() => {
     if (typeof window === 'undefined') {
@@ -206,7 +207,14 @@ export default function PageView({
       return
     }
 
-    setIsReturningFromResult(true)
+    setIsReturningFromResult(false)
+    if (returnFadeFrameRef.current != null) {
+      window.cancelAnimationFrame(returnFadeFrameRef.current)
+    }
+    returnFadeFrameRef.current = window.requestAnimationFrame(() => {
+      returnFadeFrameRef.current = null
+      setIsReturningFromResult(true)
+    })
     if (returnFadeTimerRef.current != null) {
       window.clearTimeout(returnFadeTimerRef.current)
     }
@@ -218,6 +226,10 @@ export default function PageView({
   })
 
   useEffect(() => () => {
+    if (returnFadeFrameRef.current != null) {
+      window.cancelAnimationFrame(returnFadeFrameRef.current)
+      returnFadeFrameRef.current = null
+    }
     if (returnFadeTimerRef.current != null) {
       window.clearTimeout(returnFadeTimerRef.current)
       clearReturnHomeMarker()

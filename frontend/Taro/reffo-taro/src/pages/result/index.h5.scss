@@ -109,6 +109,45 @@ body:has(.reffo-result) *::-webkit-scrollbar {
     transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.reffo-result--from-card .reffo-result__chrome,
+.reffo-result--from-card .reffo-result__content,
+.reffo-result--from-card .reffo-result__scroll-shell {
+  opacity: 0;
+}
+
+.reffo-result--edge-enter-ready .reffo-result__chrome,
+.reffo-result--edge-enter-ready .reffo-result__content,
+.reffo-result--edge-enter-ready .reffo-result__scroll-shell {
+  animation: reffo-result-edge-enter 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
+.reffo-result--edge-enter-ready .reffo-result__chrome {
+  --reffo-result-enter-x: 18px;
+  --reffo-result-enter-y: -12px;
+
+  animation-delay: 70ms;
+}
+
+.reffo-result--edge-enter-ready .reffo-result__chrome--back {
+  --reffo-result-enter-x: -18px;
+  --reffo-result-enter-y: -12px;
+}
+
+.reffo-result--edge-enter-ready .reffo-result__content {
+  --reffo-result-enter-x: -16px;
+  --reffo-result-enter-y: 0px;
+
+  animation-delay: 96ms;
+}
+
+.reffo-result--edge-enter-ready .reffo-result__scroll-shell {
+  --reffo-result-enter-x: 0px;
+  --reffo-result-enter-y: 18px;
+
+  animation-delay: 126ms;
+}
+
 .reffo-result--returning-home {
   animation: none;
   pointer-events: none;
@@ -213,6 +252,18 @@ body:has(.reffo-result) *::-webkit-scrollbar {
   100% {
     opacity: 1;
     transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-result-edge-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--reffo-result-enter-x, 0px), var(--reffo-result-enter-y, 12px), 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
   }
 }
 
