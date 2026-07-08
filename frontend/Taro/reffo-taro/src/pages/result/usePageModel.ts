@@ -26,6 +26,7 @@ const DONE_PROGRESS: LatestResultSessionProgress = {
 const EMPTY_INTERVIEW = {
   questions: [],
   story_recommendations: [],
+  follow_up_questions: [],
 }
 
 function normalizeInterviewResult(result: ProcessResult) {
@@ -35,6 +36,9 @@ function normalizeInterviewResult(result: ProcessResult) {
     questions: Array.isArray(interview?.questions) ? interview.questions : [],
     story_recommendations: Array.isArray(interview?.story_recommendations)
       ? interview.story_recommendations
+      : [],
+    follow_up_questions: Array.isArray(interview?.follow_up_questions)
+      ? interview.follow_up_questions
       : [],
   }
 }
@@ -54,7 +58,8 @@ function getDefaultProgress(result: ProcessResult | null): LatestResultSessionPr
     matching: result.matching.match_score > 0 ? 'done' : 'pending',
     optimized: result.optimized.optimized_resume.trim().length > 0 ? 'done' : 'pending',
     interview: normalizeInterviewResult(result).questions.length > 0 ||
-      normalizeInterviewResult(result).story_recommendations.length > 0
+      normalizeInterviewResult(result).story_recommendations.length > 0 ||
+      normalizeInterviewResult(result).follow_up_questions.length > 0
       ? 'done'
       : 'pending',
   }

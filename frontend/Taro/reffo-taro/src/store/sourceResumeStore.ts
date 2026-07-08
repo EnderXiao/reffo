@@ -86,6 +86,18 @@ export const useSourceResumeStore = create<SourceResumeState>(set => ({
     });
   },
 
+  deleteLatestSourceResume: async (id: string) => {
+    await sourceResumeApi.deleteSourceResume(id);
+    await storage.removeItem(STORAGE_KEY);
+    set({
+      latestSourceResume: null,
+      loading: {
+        isLoading: false,
+        error: null,
+      },
+    });
+  },
+
   clearLatestSourceResume: async () => {
     await storage.removeItem(STORAGE_KEY);
     set({

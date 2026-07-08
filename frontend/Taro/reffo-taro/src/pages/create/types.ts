@@ -25,11 +25,13 @@ export interface ResumeUploadStepState {
 }
 
 export interface ResumeSummaryStepState {
+  id: string
   title: string
   fileName: string
   sizeLabel: string | null
   updatedAtLabel: string
   sourceTypeLabel: string
+  markdown: string
 }
 
 export interface UploadedJobDescriptionFile {

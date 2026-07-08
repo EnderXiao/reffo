@@ -100,6 +100,7 @@ export interface SourceResumeState {
   loading: LoadingState;
   loadLatestSourceResume: () => Promise<void>;
   setLatestSourceResume: (resume: SourceResumeSummary | null) => Promise<void>;
+  deleteLatestSourceResume: (id: string) => Promise<void>;
   clearLatestSourceResume: () => Promise<void>;
   reset: () => void;
 }

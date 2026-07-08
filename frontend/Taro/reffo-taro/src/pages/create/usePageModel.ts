@@ -48,8 +48,11 @@ export interface CreatePageViewModel {
   generationState: CreateGenerationState | null
   canSaveCurrentStep: boolean
   isSavingCurrentStep: boolean
+  primaryActionLabel: string
   handlePickResumeFile: () => Promise<void>
   handleRemoveResumeFile: () => void
+  handleEditSourceResume: () => void
+  handleDeleteSourceResume: () => Promise<void>
   handleResumeMarkdownChange: (content: string) => void
   handleJobDescriptionChange: (content: string) => void
   handleJobCompanyNameChange: (content: string) => void
@@ -104,6 +107,7 @@ function buildInitialProcessResult(
     interview: {
       questions: [],
       story_recommendations: [],
+      follow_up_questions: [],
     },
   }
 }
@@ -309,13 +313,15 @@ function buildResumeSummaryState(
   }
 
   return {
+    id: latestSourceResume.id,
     title: latestSourceResume.title,
     fileName:
       latestSourceResume.originalFileName || `${latestSourceResume.title}.md`,
-    sizeLabel: null,
+    sizeLabel: `${latestSourceResume.resumeMarkdown.length.toLocaleString()} 字符`,
     updatedAtLabel: formatDateTime(latestSourceResume.updatedAt),
     sourceTypeLabel:
       latestSourceResume.sourceType === 'file' ? '来自文件上传' : 'Markdown 输入',
+    markdown: latestSourceResume.resumeMarkdown,
   }
 }
 
@@ -508,6 +514,9 @@ export function usePageModel(): CreatePageViewModel {
   }, [latestSourceResume?.id, latestSourceResume?.resumeMarkdown])
 
   const currentStepMeta = CREATE_STEP_META[currentStep]
+  const primaryActionLabel = currentStep === 'resumeSummary' && !latestSourceResume
+    ? '新的申请'
+    : currentStepMeta.actionLabel
   const resumeSummaryState = useMemo(
     () => buildResumeSummaryState(latestSourceResume),
     [
@@ -599,6 +608,69 @@ export function usePageModel(): CreatePageViewModel {
       file: null,
       errorMessage: null,
     }))
+  }
+
+  const handleEditSourceResume = () => {
+    const sourceResume = latestSourceResume
+    if (!sourceResume) {
+      setCurrentStep('resumeUpload')
+      return
+    }
+
+    useResumeStore.getState().setResumeContent(sourceResume.resumeMarkdown)
+    setResumeUploadState(previous => ({
+      ...previous,
+      status: 'success',
+      progress: 100,
+      file: sourceResume.sourceType === 'file' && sourceResume.originalFileName
+        ? {
+            name: sourceResume.originalFileName,
+            path: '',
+            size: sourceResume.resumeMarkdown.length,
+            extension: getFileExtension(sourceResume.originalFileName),
+            extractedText: sourceResume.resumeMarkdown,
+          }
+        : null,
+      markdown: sourceResume.resumeMarkdown,
+      errorMessage: null,
+    }))
+    setCurrentStep('resumeUpload')
+  }
+
+  const handleDeleteSourceResume = async () => {
+    const sourceResume = latestSourceResume
+    if (!sourceResume) {
+      setCurrentStep('resumeUpload')
+      return
+    }
+
+    const confirmResult = await Taro.showModal({
+      title: '删除源简历？',
+      content: '删除后需要重新上传或填写源简历，之后才能继续新的申请。',
+      cancelText: '取消',
+      confirmText: '删除',
+      confirmColor: '#ef4444',
+    })
+
+    if (!confirmResult.confirm) {
+      return
+    }
+
+    setIsSavingCurrentStep(true)
+
+    try {
+      await useSourceResumeStore
+        .getState()
+        .deleteLatestSourceResume(sourceResume.id)
+      useResumeStore.getState().setResumeContent('')
+      setResumeUploadState(createInitialResumeUploadState())
+      feedback.success('源简历已删除，请重新上传', {duration: 1400})
+    } catch (error) {
+      console.error('delete source resume failed', error)
+      feedback.error(error instanceof Error ? error.message : '删除源简历失败，请重试')
+    } finally {
+      setIsSavingCurrentStep(false)
+    }
   }
 
   const handlePickResumeFile = async () => {
@@ -734,7 +806,7 @@ export function usePageModel(): CreatePageViewModel {
         status: 'success',
         progress: 100,
         file: uploadedFile,
-        markdown: previous.markdown.trim() ? previous.markdown : nextMarkdown,
+        markdown: nextMarkdown,
         errorMessage: null,
       }))
 
@@ -857,6 +929,11 @@ export function usePageModel(): CreatePageViewModel {
 
   const handlePrimaryAction = async () => {
     if (currentStep === 'resumeSummary') {
+      if (!latestSourceResume) {
+        setCurrentStep('resumeUpload')
+        return true
+      }
+
       setCurrentStep('jobDescription')
       return true
     }
@@ -1017,6 +1094,7 @@ export function usePageModel(): CreatePageViewModel {
   return {
     currentStep,
     currentStepMeta,
+    primaryActionLabel,
     resumeUploadState: resumeUploadViewState,
     resumeSummaryState,
     jobDescriptionState,
@@ -1025,6 +1103,8 @@ export function usePageModel(): CreatePageViewModel {
     isSavingCurrentStep,
     handlePickResumeFile,
     handleRemoveResumeFile,
+    handleEditSourceResume,
+    handleDeleteSourceResume,
     handleResumeMarkdownChange,
     handleJobDescriptionChange,
     handleJobCompanyNameChange,

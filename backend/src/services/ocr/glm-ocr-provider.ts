@@ -71,8 +71,24 @@ function toBase64(buffer: ArrayBuffer) {
   return Buffer.from(buffer).toString('base64')
 }
 
-function formatDataUri(input: ParseDocumentInput) {
+function formatUploadFile(input: ParseDocumentInput) {
   return `data:${input.mimeType};base64,${toBase64(input.buffer)}`
+}
+
+function getErrorDetails(error: OcrProviderError) {
+  const details = error.details as { status?: unknown; details?: unknown; code?: unknown; message?: unknown } | undefined
+  const providerDetails = details?.details && typeof details.details === 'object'
+    ? details.details as { code?: unknown; message?: unknown }
+    : details
+  return {
+    status: typeof details?.status === 'number' ? details.status : error.status,
+    providerCode: providerDetails && typeof providerDetails === 'object' && 'code' in providerDetails
+      ? String((providerDetails as { code?: unknown }).code || '')
+      : undefined,
+    providerMessage: providerDetails && typeof providerDetails === 'object' && 'message' in providerDetails
+      ? String((providerDetails as { message?: unknown }).message || '')
+      : undefined,
+  }
 }
 
 function pickText(response: GlmLayoutParsingResponse) {
@@ -255,7 +271,7 @@ export class GlmOcrProvider implements OcrProvider {
         },
         body: JSON.stringify({
           model: env.GLM_OCR_MODEL,
-          file: formatDataUri(input),
+          file: formatUploadFile(input),
           return_crop_images: false,
           need_layout_visualization: false,
         }),
@@ -335,12 +351,41 @@ export class GlmOcrProvider implements OcrProvider {
       return result
     } catch (error) {
       if (error instanceof OcrProviderError) {
+        console.error('[GLM-OCR Error]', JSON.stringify({
+          fileName: input.fileName,
+          fileType: input.fileType,
+          purpose: input.purpose,
+          byteLength: input.buffer.byteLength,
+          latencyMs: Date.now() - startedAt,
+          code: error.code,
+          message: error.message,
+          ...getErrorDetails(error),
+        }))
         throw error
       }
 
       if (error instanceof Error && error.name === 'AbortError') {
+        console.error('[GLM-OCR Error]', JSON.stringify({
+          fileName: input.fileName,
+          fileType: input.fileType,
+          purpose: input.purpose,
+          byteLength: input.buffer.byteLength,
+          latencyMs: Date.now() - startedAt,
+          code: 'OCR_TIMEOUT',
+          message: 'GLM-OCR 解析超时',
+        }))
         throw new OcrProviderError('OCR_TIMEOUT', 'GLM-OCR 解析超时')
       }
+
+      console.error('[GLM-OCR Error]', JSON.stringify({
+        fileName: input.fileName,
+        fileType: input.fileType,
+        purpose: input.purpose,
+        byteLength: input.buffer.byteLength,
+        latencyMs: Date.now() - startedAt,
+        code: 'OCR_REQUEST_FAILED',
+        message: error instanceof Error ? error.message : 'GLM-OCR 请求失败',
+      }))
 
       throw new OcrProviderError(
         'OCR_REQUEST_FAILED',

@@ -1,10 +1,13 @@
-import {Text, View} from '@tarojs/components'
+import {Image, Text, View} from '@tarojs/components'
 import {StyleSheet} from 'react-native'
+import cancelIcon from '@/assets/create/cancel.svg'
 import {createLineHeight} from '../utils/createLineHeight'
 import type {ResumeSummaryStepState} from '../types'
 
 interface ResumeSummaryStepProps {
   state: ResumeSummaryStepState
+  onEdit: () => void
+  onDelete: () => Promise<void>
 }
 
 function FileBadge() {
@@ -15,19 +18,33 @@ function FileBadge() {
   )
 }
 
-export default function ResumeSummaryStep({state}: ResumeSummaryStepProps) {
+export default function ResumeSummaryStep({state, onEdit, onDelete}: ResumeSummaryStepProps) {
   return (
     <View style={styles.step}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>源简历文件</Text>
 
-        <View style={styles.fileCard} data-testid='resume-summary-card'>
+        <View
+          style={styles.fileCard}
+          onClick={onEdit}
+          data-testid='resume-summary-card'
+        >
           <FileBadge />
           <View style={styles.fileMeta}>
             <Text style={styles.fileName}>{state.fileName}</Text>
             <Text style={styles.fileInfo}>
               {state.sizeLabel || state.sourceTypeLabel}
             </Text>
+          </View>
+          <View
+            style={styles.deleteButton}
+            onClick={event => {
+              event.stopPropagation()
+              void onDelete()
+            }}
+            data-testid='resume-summary-delete'
+          >
+            <Image style={styles.deleteButtonIcon} src={cancelIcon} mode='aspectFit' />
           </View>
         </View>
 
@@ -88,6 +105,19 @@ const styles = StyleSheet.create({
   },
   fileMeta: {
     flex: 1,
+  },
+  deleteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 136, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  deleteButtonIcon: {
+    width: 14,
+    height: 14,
   },
   fileName: {
     color: '#5f7397',

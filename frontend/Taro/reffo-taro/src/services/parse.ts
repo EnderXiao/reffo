@@ -106,7 +106,7 @@ async function buildPayload(file: BrowserPickedFile, fallbackMimeType: string): 
 export class ParseApi {
   async parseResumeFile(file: BrowserPickedFile): Promise<ParsedDocumentResult> {
     const payload = await buildPayload(file, 'application/pdf')
-    return apiClient.post<ParsedDocumentResult>('/parse/resume-file', payload, {timeout: 60000})
+    return apiClient.post<ParsedDocumentResult>('/parse/resume-file', payload, {timeout: 180000})
   }
 
   async parseJobDescriptionImage(file: BrowserPickedFile): Promise<ParsedDocumentResult> {

@@ -74,3 +74,48 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
       },
     }
   )
+  .delete(
+    '/:id',
+    ({ params, set }) => {
+      try {
+        const deleted = sourceResumeRepository.delete(params.id)
+
+        if (!deleted) {
+          set.status = 404
+          return {
+            success: false,
+            error: {
+              code: 'SOURCE_RESUME_NOT_FOUND',
+              message: '源简历不存在或已删除',
+            },
+          } satisfies ApiResponse<never>
+        }
+
+        return {
+          success: true,
+          data: { deleted: true },
+        } satisfies ApiResponse<{ deleted: boolean }>
+      } catch (error) {
+        console.error('删除源简历失败:', error)
+        set.status = 500
+
+        return {
+          success: false,
+          error: {
+            code: 'SOURCE_RESUME_DELETE_FAILED',
+            message: error instanceof Error ? error.message : '删除源简历失败',
+          },
+        } satisfies ApiResponse<never>
+      }
+    },
+    {
+      params: t.Object({
+        id: t.String({ description: '源简历 ID', minLength: 1 }),
+      }),
+      detail: {
+        summary: '删除源简历',
+        description: '删除指定源简历记录，用于用户重新上传新的源简历。',
+        tags: ['SourceResume'],
+      },
+    }
+  )

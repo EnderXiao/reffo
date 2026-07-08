@@ -109,6 +109,15 @@ export class SourceResumeRepository {
       return mapRowToRecord(statement.get() as Record<string, unknown> | null)
     })
   }
+
+  delete(id: string): boolean {
+    return this.executeWithRecovery(() => {
+      const db = ensureDatabase()
+      const result = db.query('DELETE FROM source_resumes WHERE id = ?').run(id)
+
+      return result.changes > 0
+    })
+  }
 }
 
 export const sourceResumeRepository = new SourceResumeRepository()

@@ -2,6 +2,7 @@ import {useEffect, useMemo, useRef, useState} from 'react'
 import {flushSync} from 'react-dom'
 import {Image, Input, Text, Textarea, View} from '@tarojs/components'
 import classNames from 'classnames'
+import CANCEL_ICON from '@/assets/create/cancel.svg'
 import PDF_FILE_ICON from '@/assets/create/pdf-file.svg'
 import UPLOAD_ERROR_ICON from '@/assets/create/upload-error.svg'
 import UPLOAD_FILE_ICON from '@/assets/create/upload-file.svg'
@@ -290,7 +291,15 @@ function ResumeUploadStepH5({
   )
 }
 
-function ResumeSummaryStepH5({state}: {state: NonNullable<CreatePageViewModel['resumeSummaryState']>}) {
+function ResumeSummaryStepH5({
+  state,
+  onEdit,
+  onDelete,
+}: {
+  state: NonNullable<CreatePageViewModel['resumeSummaryState']>
+  onEdit: () => void
+  onDelete: () => Promise<void>
+}) {
   const fileExtension = state.fileName.includes('.')
     ? state.fileName.slice(state.fileName.lastIndexOf('.')).toLowerCase()
     : '.md'
@@ -299,7 +308,12 @@ function ResumeSummaryStepH5({state}: {state: NonNullable<CreatePageViewModel['r
     <View className='reffo-create-step'>
       <View className='reffo-create-section'>
         <Text className='reffo-create-section__title'>源简历文件</Text>
-        <View className='reffo-create-summary' data-testid='resume-summary-card'>
+        <View
+          className='reffo-create-summary'
+          onClick={onEdit}
+          role='button'
+          data-testid='resume-summary-card'
+        >
           <View className='reffo-create-summary__icon'>
             <UploadIcon status='success' extension={fileExtension} />
           </View>
@@ -307,8 +321,33 @@ function ResumeSummaryStepH5({state}: {state: NonNullable<CreatePageViewModel['r
             <Text className='reffo-create-summary__name'>{state.fileName}</Text>
             <Text className='reffo-create-summary__meta'>{state.sizeLabel || state.sourceTypeLabel}</Text>
           </View>
+          <View
+            className='reffo-create-summary__delete'
+            onClick={event => {
+              event.stopPropagation()
+              void onDelete()
+            }}
+            role='button'
+            data-testid='resume-summary-delete'
+          >
+            <Image className='reffo-create-summary__delete-icon' src={CANCEL_ICON} mode='aspectFit' />
+          </View>
         </View>
         <Text className='reffo-create-section__hint reffo-create-section__hint--right'>上传时间 {state.updatedAtLabel}</Text>
+      </View>
+    </View>
+  )
+}
+
+function EmptyResumeSummaryStepH5() {
+  return (
+    <View className='reffo-create-step'>
+      <View className='reffo-create-section'>
+        <Text className='reffo-create-section__title'>源简历已删除</Text>
+        <View className='reffo-create-summary reffo-create-summary--empty'>
+          <Text className='reffo-create-summary__empty-title'>开始新的申请前，请先上传新的源简历</Text>
+          <Text className='reffo-create-summary__empty-meta'>点击底部「新的申请」回到上传步骤</Text>
+        </View>
       </View>
     </View>
   )
@@ -628,8 +667,11 @@ export default function PageView({
   generationState,
   canSaveCurrentStep,
   isSavingCurrentStep,
+  primaryActionLabel,
   handlePickResumeFile,
   handleRemoveResumeFile,
+  handleEditSourceResume,
+  handleDeleteSourceResume,
   handleResumeMarkdownChange,
   handleJobDescriptionChange,
   handleJobCompanyNameChange,
@@ -648,7 +690,7 @@ export default function PageView({
   const [isGenerationCompleted, setIsGenerationCompleted] = useState(false)
   const launchGenerationTimerRef = useRef<number | null>(null)
   const isActionDisabled = !canSaveCurrentStep || isSavingCurrentStep || isLaunchingGeneration || isCssFallbackLaunching
-  const actionLabel = currentStep === 'resumeUpload' ? '保存' : currentStepMeta.actionLabel
+  const actionLabel = currentStep === 'resumeUpload' ? '保存' : primaryActionLabel
   const visibleGenerationState = generationState || pendingGenerationState
 
   useEffect(() => {
@@ -778,7 +820,14 @@ export default function PageView({
             />
           ) : null}
           {currentStep === 'resumeSummary' && resumeSummaryState ? (
-            <ResumeSummaryStepH5 state={resumeSummaryState} />
+            <ResumeSummaryStepH5
+              state={resumeSummaryState}
+              onEdit={handleEditSourceResume}
+              onDelete={handleDeleteSourceResume}
+            />
+          ) : null}
+          {currentStep === 'resumeSummary' && !resumeSummaryState ? (
+            <EmptyResumeSummaryStepH5 />
           ) : null}
           {currentStep === 'jobDescription' && !visibleGenerationState ? (
             <JobDescriptionStepH5

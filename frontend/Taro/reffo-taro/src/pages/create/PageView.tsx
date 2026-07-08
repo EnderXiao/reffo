@@ -12,6 +12,7 @@ import ResumeSummaryStep from './steps/ResumeSummaryStep'
 import ResumeUploadStep from './steps/ResumeUploadStep'
 import {styles} from './styles'
 import type {CreatePageViewModel} from './usePageModel'
+import {Text} from '@tarojs/components'
 
 export default function PageView({
   currentStep,
@@ -22,8 +23,11 @@ export default function PageView({
   generationState,
   canSaveCurrentStep,
   isSavingCurrentStep,
+  primaryActionLabel,
   handlePickResumeFile,
   handleRemoveResumeFile,
+  handleEditSourceResume,
+  handleDeleteSourceResume,
   handleResumeMarkdownChange,
   handleJobDescriptionChange,
   handleJobCompanyNameChange,
@@ -56,8 +60,17 @@ export default function PageView({
         )
       case 'resumeSummary':
         return resumeSummaryState ? (
-          <ResumeSummaryStep state={resumeSummaryState} />
-        ) : null
+          <ResumeSummaryStep
+            state={resumeSummaryState}
+            onEdit={handleEditSourceResume}
+            onDelete={handleDeleteSourceResume}
+          />
+        ) : (
+          <View style={styles.emptySummaryCard}>
+            <Text style={styles.emptySummaryTitle}>源简历已删除</Text>
+            <Text style={styles.emptySummaryText}>点击底部「新的申请」重新上传源简历</Text>
+          </View>
+        )
       case 'jobDescription':
         return (
           <JobDescriptionStep
@@ -139,7 +152,7 @@ export default function PageView({
             )}
             <CreatePrimaryAction
               stepId={currentStep}
-              label={currentStepMeta.actionLabel}
+              label={primaryActionLabel}
               disabled={!canSaveCurrentStep}
               loading={isSavingCurrentStep}
               compact={isCompactJobDescriptionLayout}

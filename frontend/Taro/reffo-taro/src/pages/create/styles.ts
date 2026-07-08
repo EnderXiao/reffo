@@ -211,4 +211,26 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: createLineHeight(18),
   },
+  emptySummaryCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#d9e2f0',
+    backgroundColor: 'rgba(244, 249, 255, 0.9)',
+    paddingTop: 18,
+    paddingRight: 16,
+    paddingBottom: 18,
+    paddingLeft: 16,
+  },
+  emptySummaryTitle: {
+    color: '#334155',
+    fontSize: 16,
+    lineHeight: createLineHeight(24),
+    fontWeight: '700',
+  },
+  emptySummaryText: {
+    marginTop: 4,
+    color: '#7f8fa8',
+    fontSize: 13,
+    lineHeight: createLineHeight(19),
+  },
 })

@@ -80,6 +80,12 @@ async function parseDocument(body: ParseBody, purpose: OcrPurpose, fileType: Ocr
 
 function toErrorResponse(error: unknown) {
   if (error instanceof OcrProviderError) {
+    console.error('[Parse Error]', JSON.stringify({
+      code: error.code,
+      message: error.message,
+      status: error.status,
+    }))
+
     return {
       status: error.status && error.status >= 400 ? error.status : 400,
       response: {
@@ -87,10 +93,13 @@ function toErrorResponse(error: unknown) {
         error: {
           code: error.code,
           message: error.message,
+          details: error.details,
         },
       } satisfies ApiResponse<never>,
     }
   }
+
+  console.error('[Parse Error]', error)
 
   return {
     status: 500,

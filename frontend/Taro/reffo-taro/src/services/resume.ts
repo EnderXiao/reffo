@@ -155,6 +155,7 @@ function normalizeMatching(matching: MatchingResult): MatchingResult {
 function normalizeInterviewSuggestions(value: Partial<InterviewSuggestions> | null | undefined): InterviewSuggestions {
   return {
     questions: toStringArray(value?.questions).slice(0, 4),
+    follow_up_questions: toStringArray(value?.follow_up_questions).slice(0, 3),
     story_recommendations: Array.isArray(value?.story_recommendations)
       ? value.story_recommendations
         .filter(item => item && typeof item === 'object')

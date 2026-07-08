@@ -99,6 +99,7 @@ export interface InterviewStoryRecommendation {
 export interface InterviewSuggestions {
   questions: string[]
   story_recommendations: InterviewStoryRecommendation[]
+  follow_up_questions: string[]
 }
 
 /**
@@ -110,6 +111,7 @@ export interface ApiResponse<T> {
   error?: {
     code: string
     message: string
+    details?: unknown
   }
 }
 

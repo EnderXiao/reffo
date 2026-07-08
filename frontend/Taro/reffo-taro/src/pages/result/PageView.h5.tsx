@@ -542,10 +542,13 @@ function InterviewPanel({result}: {result: ProcessResult}) {
   const storyTitle = story?.title || strengths[0] || '高匹配项目经历'
   const storyBody = story?.background || strengths[1] || result.analysis.capability_summary || '围绕目标岗位要求，选择最能证明能力迁移的项目经历展开。'
   const storyResult = story?.result || result.optimized.changes_summary[0] || '用量化结果和职责边界说明你的贡献，避免只描述过程。'
-  const followUps = [
-    '设计团队是如何衡量一个项目是否成功的？',
-    '在AI时代背景下，贵公司认为产品团队目前面临的最大最困难的问题是什么？',
-  ]
+  const generatedFollowUps = normalizeItems(result.interview?.follow_up_questions, 3)
+  const followUps = generatedFollowUps.length > 0
+    ? generatedFollowUps
+    : [
+        `这个岗位当前最希望新成员优先解决的业务问题是什么？`,
+        `团队会如何衡量这个岗位在前三个月的成功表现？`,
+      ]
 
   return (
     <View className='reffo-result__panel reffo-result__panel--interview'>

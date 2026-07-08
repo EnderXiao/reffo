@@ -160,6 +160,7 @@ export interface InterviewStoryRecommendation {
 export interface InterviewSuggestions {
   questions: string[];
   story_recommendations: InterviewStoryRecommendation[];
+  follow_up_questions: string[];
 }
 
 // ============ 完整处理结果 ============

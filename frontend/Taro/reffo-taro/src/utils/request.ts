@@ -85,6 +85,23 @@ export class RequestError extends Error {
   }
 }
 
+function getApiErrorPayload(data: unknown) {
+  if (!data || typeof data !== 'object' || !('success' in data)) {
+    return null
+  }
+
+  const payload = data as { success?: unknown; error?: { code?: unknown; message?: unknown; details?: unknown } }
+  if (payload.success !== false || !payload.error) {
+    return null
+  }
+
+  return {
+    code: typeof payload.error.code === 'string' ? payload.error.code : 'API_ERROR',
+    message: typeof payload.error.message === 'string' ? payload.error.message : '请求失败',
+    details: payload.error.details,
+  }
+}
+
 /**
  * 平台兼容的网络请求接口
  *
@@ -256,11 +273,12 @@ export class TaroRequestAdapter implements RequestAdapter {
 
       // 检查 HTTP 状态码
       if (!response.success) {
+        const apiError = getApiErrorPayload(response.data)
         throw new RequestError(
-          `HTTP 错误: ${response.statusCode}`,
-          'HTTP_ERROR',
+          apiError?.message || `HTTP 错误: ${response.statusCode}`,
+          apiError?.code || 'HTTP_ERROR',
           response.statusCode,
-          response.data,
+          apiError?.details ?? response.data,
         );
       }
 

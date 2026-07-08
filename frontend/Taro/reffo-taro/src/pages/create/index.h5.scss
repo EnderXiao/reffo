@@ -532,6 +532,7 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   box-shadow: 0 8PX 18PX rgba(182, 196, 216, 0.12);
   overflow: hidden;
   position: relative;
+  cursor: pointer;
 }
 
 .reffo-create-summary::before {
@@ -562,6 +563,55 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+
+.reffo-create-summary__delete {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  margin-left: 12px;
+  background: rgba(0, 136, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+}
+
+.reffo-create-summary__delete-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.reffo-create-summary__delete:active {
+  transform: scale(0.96);
+  background: rgba(0, 136, 255, 0.16);
+}
+
+.reffo-create-summary--empty {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  cursor: default;
+}
+
+.reffo-create-summary__empty-title {
+  color: #334155;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+}
+
+.reffo-create-summary__empty-meta {
+  color: #7f8fa8;
+  font-size: 13px;
+  line-height: 19px;
   position: relative;
   z-index: 1;
 }

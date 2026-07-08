@@ -2,7 +2,7 @@ import { parseJsonOutput } from '@/harness/json-output'
 import { getPromptVersion, renderPromptVariantInstruction, resolvePromptVariant } from '@/harness/prompt-variant'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'
 import type { LlmProvider } from '@/providers/llm-provider'
-import { isInterviewSuggestions } from '@/schemas/interview-suggestions'
+import { isInterviewSuggestions, parseInterviewSuggestions } from '@/schemas/interview-suggestions'
 import type { AgentExecutionOptions } from '@/agents/types'
 import type { InterviewSuggestions, MatchAnalysis, ResumeAnalysis } from '@/types'
 
@@ -53,12 +53,14 @@ ${variantInstruction}
       "background": "应该如何介绍背景和职责",
       "result": "应该强调的结果、指标或影响"
     }
-  ]
+  ],
+  "follow_up_questions": ["候选人可以反问面试官的高质量问题1", "候选人可以反问面试官的高质量问题2"]
 }
 
 要求：
 - 问题必须贴合目标岗位和简历中的真实经历。
 - 故事推荐必须依赖优化后的简历内容，不要凭空编造项目。
+- 反问必须围绕目标岗位、团队业务挑战、成功衡量方式或入职后优先级，不能使用通用模板。
 - 输出只包含 JSON，不要包含解释。`
 
     try {
@@ -71,7 +73,7 @@ ${variantInstruction}
         stepContext: options.stepContext,
       })
 
-      return await parseJsonOutput({
+      const parsedOutput = await parseJsonOutput({
         content: response.content,
         validator: isInterviewSuggestions,
         outputName: 'InterviewSuggestions',
@@ -95,6 +97,8 @@ ${variantInstruction}
           return repairResponse.content
         },
       })
+
+      return parseInterviewSuggestions(parsedOutput)
     } catch (error) {
       console.error('Interview advice generation failed:', error)
       throw new Error(`面试建议生成失败: ${error instanceof Error ? error.message : '未知错误'}`)

@@ -44,6 +44,10 @@ export class SourceResumeApi {
     const response = await apiClient.get<SourceResumeApiRecord | null>('/source-resume/latest');
     return response ? toSourceResumeSummary(response) : null;
   }
+
+  async deleteSourceResume(id: string): Promise<void> {
+    await apiClient.delete(`/source-resume/${encodeURIComponent(id)}`);
+  }
 }
 
 export const sourceResumeApi = new SourceResumeApi();
