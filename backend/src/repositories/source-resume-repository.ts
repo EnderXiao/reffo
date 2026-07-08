@@ -1,20 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { Database } from 'bun:sqlite'
+import { initializeDatabase } from '@/repositories/database'
 import type { SaveSourceResumeInput, SourceResumeRecord } from '@/types'
 
-const DATABASE_PATH = join(process.cwd(), 'data', 'reffo.sqlite')
-
-let database: Database | null = null
-
 function ensureDatabase() {
-  if (database) {
-    return database
-  }
-
-  mkdirSync(dirname(DATABASE_PATH), { recursive: true })
-  database = new Database(DATABASE_PATH, { create: true })
+  const database = initializeDatabase()
   database.exec(`
     CREATE TABLE IF NOT EXISTS source_resumes (
       id TEXT PRIMARY KEY,

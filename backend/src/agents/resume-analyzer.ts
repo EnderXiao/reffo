@@ -1,5 +1,9 @@
-import OpenAI from 'openai'
-import { env } from '@/config/env'
+import { parseJsonOutput } from '@/harness/json-output'
+import { getPromptVersion, renderPromptVariantInstruction, resolvePromptVariant } from '@/harness/prompt-variant'
+import { fallbackLlmProvider } from '@/providers/fallback-provider'
+import type { LlmProvider } from '@/providers/llm-provider'
+import { isResumeAnalysis } from '@/schemas/resume-analysis'
+import type { AgentExecutionOptions } from '@/agents/types'
 import type { ResumeAnalysis, ResumeStructure } from '@/types'
 
 /**
@@ -7,13 +11,10 @@ import type { ResumeAnalysis, ResumeStructure } from '@/types'
  * 负责分析 Markdown 格式的简历，提取结构化信息并提供优化建议
  */
 export class ResumeAnalyzerAgent {
-  private client: OpenAI
+  private readonly provider: LlmProvider
 
-  constructor() {
-    this.client = new OpenAI({
-      apiKey: env.OPENAI_API_KEY,
-      baseURL: env.OPENAI_BASE_URL,
-    })
+  constructor(provider: LlmProvider = fallbackLlmProvider) {
+    this.provider = provider
   }
 
   /**
@@ -21,13 +22,17 @@ export class ResumeAnalyzerAgent {
    * @param resumeMarkdown Markdown 格式的简历内容
    * @returns 简历分析结果
    */
-  async analyze(resumeMarkdown: string): Promise<ResumeAnalysis> {
+  async analyze(resumeMarkdown: string, options: AgentExecutionOptions = {}): Promise<ResumeAnalysis> {
+    const promptVariant = resolvePromptVariant(options.promptVariant)
+    const variantInstruction = renderPromptVariantInstruction(promptVariant)
     const prompt = `你是一位资深的人力资源专家和简历顾问。请对以下 Markdown 格式的简历进行全面分析。
 
 简历内容：
 \`\`\`markdown
 ${resumeMarkdown}
 \`\`\`
+
+${variantInstruction}
 
 请完成以下任务并以 JSON 格式返回结果：
 
@@ -76,20 +81,39 @@ ${resumeMarkdown}
 }`
 
     try {
-      const response = await this.client.chat.completions.create({
-        model: env.AI_MODEL,
+      const response = await this.provider.complete({
         messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
+        responseFormat: 'json_object',
         temperature: 0.3,
+        promptVersion: getPromptVersion('resume-analyzer', promptVariant),
+        eventBus: options.eventBus,
+        stepContext: options.stepContext,
       })
 
-      const content = response.choices[0]?.message?.content
-      if (!content) {
-        throw new Error('AI 返回内容为空')
-      }
+      return await parseJsonOutput({
+        content: response.content,
+        validator: isResumeAnalysis,
+        outputName: 'ResumeAnalysis',
+        eventBus: options.eventBus,
+        stepContext: options.stepContext,
+        repair: async ({ content, errorMessage, outputName }) => {
+          const repairResponse = await this.provider.complete({
+            messages: [
+              {
+                role: 'user',
+                content: `请只修复下面 ${outputName} 的 JSON 格式或字段结构，不要重新推理业务内容。\n错误：${errorMessage}\n原始输出：\n${content}`,
+              },
+            ],
+            responseFormat: 'json_object',
+            temperature: 0,
+            promptVersion: getPromptVersion('resume-analyzer.repair', promptVariant),
+            eventBus: options.eventBus,
+            stepContext: options.stepContext,
+          })
 
-      const result = JSON.parse(content) as ResumeAnalysis
-      return result
+          return repairResponse.content
+        },
+      })
     } catch (error) {
       console.error('Resume analysis failed:', error)
       throw new Error(`简历分析失败: ${error instanceof Error ? error.message : '未知错误'}`)

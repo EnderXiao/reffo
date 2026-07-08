@@ -113,10 +113,32 @@ export interface ApiResponse<T> {
   }
 }
 
+export type MvpWorkflowStatus = 'running' | 'succeeded' | 'failed' | 'partial'
+
+export interface MvpStepStatus {
+  stepRunId: string
+  stepName: string
+  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped' | 'partial'
+  startedAt: string
+  finishedAt?: string
+  errorCode?: string
+  errorMessage?: string
+}
+
+export interface MvpRecoverableError {
+  stepName: string
+  errorCode: string
+  message: string
+}
+
 /**
  * MVP 流程响应
  */
 export interface MvpProcessResponse {
+  run_id?: string
+  workflow_status?: MvpWorkflowStatus
+  step_statuses?: MvpStepStatus[]
+  recoverable_errors?: MvpRecoverableError[]
   step1_analysis: ResumeAnalysis
   step2_matching: MatchAnalysis
   step3_optimized_resume: string

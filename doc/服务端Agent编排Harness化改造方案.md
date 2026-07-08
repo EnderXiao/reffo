@@ -573,66 +573,66 @@ Harness 化第一版必须保持现有 MVP API 兼容，尤其是 `/api/v1/mvp/p
 
 ### 第 0 阶段：基础设施收口
 
-- [ ] 新增 `backend/src/repositories/database.ts`，统一 SQLite 连接和建表入口。
-- [ ] 增加轻量 schema version 或 migration 机制，避免后续表结构演进失控。
-- [ ] 新增结构化 logger，默认只输出摘要、digest、状态和错误码。
-- [ ] 为请求生成 `requestId`，并贯穿 workflow、event bus、provider 调用。
+- [x] 新增 `backend/src/repositories/database.ts`，统一 SQLite 连接和建表入口。
+- [x] 增加轻量 schema version 或 migration 机制，避免后续表结构演进失控。
+- [x] 新增结构化 logger，默认只输出摘要、digest、状态和错误码。
+- [x] 为请求生成 `requestId`，并贯穿 workflow、event bus、provider 调用。
 
 ### 第 1 阶段：Provider 与 Workflow 收口
 
-- [ ] 新增 `LlmProvider`，统一 DeepSeek 调用。
-- [ ] 所有 Agent 不再直接 new OpenAI client。
-- [ ] 把 `/process` 中的串行逻辑迁移到 `ResumeOptimizationWorkflow`。
-- [ ] 保持现有 API 响应兼容，只追加 `run_id`、`workflow_status`、`step_statuses`。
-- [ ] 增加 requestId / runId / stepName。
-- [ ] 记录耗时、模型、tokens、错误码。
-- [ ] 增加 workflow timeout、step timeout 和取消语义。
+- [x] 新增 `LlmProvider`，统一 DeepSeek 调用。
+- [x] 所有 Agent 不再直接 new OpenAI client。
+- [x] 把 `/process` 中的串行逻辑迁移到 `ResumeOptimizationWorkflow`。
+- [x] 保持现有 API 响应兼容，只追加 `run_id`、`workflow_status`、`step_statuses`。
+- [x] 增加 requestId / runId / stepName。
+- [x] 记录耗时、模型、tokens、错误码。
+- [x] 增加 workflow timeout、step timeout 和取消语义。
 
 ### 第 2 阶段：事件总线与运行时可观测
 
-- [ ] 新增 `backend/src/harness/event-bus.ts` 和 `backend/src/harness/events.ts`。
-- [ ] `runStep` 发布 workflow / step / attempt / provider / output / evaluation 生命周期事件。
-- [ ] 新增 `trace-subscriber`，生成本地 trace 结构。
-- [ ] 新增 `log-subscriber`，输出结构化日志。
-- [ ] 新增 fake event bus，用于 workflow 单测断言事件序列。
+- [x] 新增 `backend/src/harness/event-bus.ts` 和 `backend/src/harness/events.ts`。
+- [x] `runStep` 发布 workflow / step / attempt / provider / output / evaluation 生命周期事件。
+- [x] 新增 `trace-subscriber`，生成本地 trace 结构。
+- [x] 新增 `log-subscriber`，输出结构化日志。
+- [x] 新增 fake event bus，用于 workflow 单测断言事件序列。
 
 ### 第 3 阶段：Schema 与 Output Repair
 
-- [ ] 引入运行时 schema 校验，优先考虑 `zod`。
-- [ ] 为 `ResumeAnalysis` 增加 schema，并从 schema 推导类型。
-- [ ] 为 `MatchAnalysis` 增加 schema，并从 schema 推导类型。
-- [ ] 为 `InterviewSuggestions` 增加 schema，并从 schema 推导类型。
-- [ ] 增加 JSON parse error / schema error 分类。
-- [ ] 增加 output repair loop，并区分 `transportRetry` 和 `outputRepair`。
-- [ ] 为 Markdown 简历增加第一版规则 evaluator。
+- [x] 引入运行时 schema 校验，优先考虑 `zod`。
+- [x] 为 `ResumeAnalysis` 增加 schema，并从 schema 推导类型。
+- [x] 为 `MatchAnalysis` 增加 schema，并从 schema 推导类型。
+- [x] 为 `InterviewSuggestions` 增加 schema，并从 schema 推导类型。
+- [x] 增加 JSON parse error / schema error 分类。
+- [x] 增加 output repair loop，并区分 `transportRetry` 和 `outputRepair`。
+- [x] 为 Markdown 简历增加第一版规则 evaluator。
 
 ### 第 4 阶段：运行时持久化
 
-- [ ] 新增 `process_runs` 表。
-- [ ] 新增 `step_runs` 表。
-- [ ] 新增 `step_attempts` 表。
-- [ ] 新增 `harness_events` 表，用于保存事件流和后续 replay。
-- [ ] 新增 `artifacts` 表。
-- [ ] 新增 `evaluations` 表。
-- [ ] 新增 `persistence-subscriber`，从事件总线消费事件并写入 SQLite。
-- [ ] 默认只保存 digest、摘要和 redacted artifact。
-- [ ] 支持按 `runId` 查询执行状态与历史结果。
+- [x] 新增 `process_runs` 表。
+- [x] 新增 `step_runs` 表。
+- [x] 新增 `step_attempts` 表。
+- [x] 新增 `harness_events` 表，用于保存事件流和后续 replay。
+- [x] 新增 `artifacts` 表。
+- [x] 新增 `evaluations` 表。
+- [x] 新增 `persistence-subscriber`，从事件总线消费事件并写入 SQLite。
+- [x] 默认只保存 digest、摘要和 redacted artifact。
+- [x] 支持按 `runId` 查询执行状态与历史结果。
 
 ### 第 5 阶段：Workflow 能力增强
 
-- [ ] 拆出独立 `parse_jd` step。
-- [ ] 增加 `validate_resume` step。
-- [ ] 支持 partial result 和可恢复失败。
-- [ ] 支持 provider fallback。
-- [ ] 支持 LLM judge 作为可选异步 evaluator，不默认阻塞主链路。
+- [x] 拆出独立 `parse_jd` step。
+- [x] 增加 `validate_resume` step。
+- [x] 支持 partial result 和可恢复失败。
+- [x] 支持 provider fallback。
+- [x] 支持 LLM judge 作为可选异步 evaluator，不默认阻塞主链路。
 
 ### 第 6 阶段：Harness 工程增强
 
-- [ ] 支持 prompt A/B 版本。
-- [ ] 支持 replay 某一次 run。
-- [ ] 支持基于历史 run 的 regression dataset。
-- [ ] 支持质量指标 dashboard。
-- [ ] 支持线上失败样本回流到测试集。
+- [x] 支持 prompt A/B 版本。
+- [x] 支持 replay 某一次 run。
+- [x] 支持基于历史 run 的 regression dataset。
+- [x] 支持质量指标 dashboard。
+- [x] 支持线上失败样本回流到测试集。
 
 ## 和 GLM-OCR 的关系
 
@@ -656,21 +656,21 @@ parse_jd step
 
 建议先做一版不重构过度的最小 Harness：
 
-- [ ] 新增 `backend/src/repositories/database.ts`，统一 SQLite 连接、建表和 schema version。
-- [ ] 新增 `backend/src/workflows/resume-optimization-workflow.ts`，承接 `/process` 编排逻辑。
-- [ ] 新增 `backend/src/providers/deepseek-provider.ts`，集中 LLM 调用。
-- [ ] 新增 `backend/src/providers/llm-provider.ts`，定义 `ChatModelProvider` / `StructuredOutputProvider` 接口。
-- [ ] 新增 `backend/src/harness/event-bus.ts` 和 `backend/src/harness/events.ts`，实现强类型进程内事件总线。
-- [ ] 新增 `backend/src/harness/run-context.ts`，生成 `requestId`、`runId`、`stepId`。
-- [ ] 新增 `backend/src/harness/run-step.ts`，包装 step 执行、耗时、错误、事件发布和超时取消。
-- [ ] 新增 `backend/src/harness/json-output.ts`，封装 JSON parse、schema validate、repair 入口。
-- [ ] 新增 `backend/src/schemas/`，为 `ResumeAnalysis`、`MatchAnalysis`、`InterviewSuggestions` 提供 zod schema。
-- [ ] 新增第一版 `trace-subscriber` 和 `log-subscriber`，先实现本地可观测闭环。
-- [ ] 新增 SQLite 表保存 run / step / attempt / event，artifact 默认只保存 digest 和摘要。
-- [ ] 改造 `ResumeAnalyzerAgent` 使用 provider 和 schema。
-- [ ] 改造 `MatchingAgent` 使用 provider 和 schema。
-- [ ] 改造 `ResumeGeneratorAgent` 增加 Markdown evaluator。
-- [ ] `/api/v1/mvp/process` 保持现有响应字段，同时追加 `run_id`、`workflow_status`、`step_statuses`。
+- [x] 新增 `backend/src/repositories/database.ts`，统一 SQLite 连接、建表和 schema version。
+- [x] 新增 `backend/src/workflows/resume-optimization-workflow.ts`，承接 `/process` 编排逻辑。
+- [x] 新增 `backend/src/providers/deepseek-provider.ts`，集中 LLM 调用。
+- [x] 新增 `backend/src/providers/llm-provider.ts`，定义 `ChatModelProvider` / `StructuredOutputProvider` 接口。
+- [x] 新增 `backend/src/harness/event-bus.ts` 和 `backend/src/harness/events.ts`，实现强类型进程内事件总线。
+- [x] 新增 `backend/src/harness/run-context.ts`，生成 `requestId`、`runId`、`stepId`。
+- [x] 新增 `backend/src/harness/run-step.ts`，包装 step 执行、耗时、错误、事件发布和超时取消。
+- [x] 新增 `backend/src/harness/json-output.ts`，封装 JSON parse、schema validate、repair 入口。
+- [x] 新增 `backend/src/schemas/`，为 `ResumeAnalysis`、`MatchAnalysis`、`InterviewSuggestions` 提供 zod schema。
+- [x] 新增第一版 `trace-subscriber` 和 `log-subscriber`，先实现本地可观测闭环。
+- [x] 新增 SQLite 表保存 run / step / attempt / event，artifact 默认只保存 digest 和摘要。
+- [x] 改造 `ResumeAnalyzerAgent` 使用 provider 和 schema。
+- [x] 改造 `MatchingAgent` 使用 provider 和 schema。
+- [x] 改造 `ResumeGeneratorAgent` 增加 Markdown evaluator。
+- [x] `/api/v1/mvp/process` 保持现有响应字段，同时追加 `run_id`、`workflow_status`、`step_statuses`。
 
 ## 重要提醒
 
