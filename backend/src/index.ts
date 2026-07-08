@@ -5,6 +5,7 @@ import { env, validateEnv } from '@/config/env'
 import { mvpRoutes } from '@/routes/mvp'
 import { parseRoutes } from '@/routes/parse'
 import { sourceResumeRoutes } from '@/routes/source-resume'
+import { resumeHistoryRoutes } from '@/routes/resume-history'
 
 /**
  * 启动应用
@@ -34,6 +35,7 @@ async function bootstrap() {
             { name: 'Analysis', description: '简历分析相关接口' },
             { name: 'Parse', description: '文件和 OCR 解析接口' },
             { name: 'SourceResume', description: '源简历存储与查询接口' },
+            { name: 'ResumeHistory', description: '生成卡片历史接口' },
             { name: 'System', description: '系统接口' },
           ],
         },
@@ -102,6 +104,7 @@ async function bootstrap() {
     .use(mvpRoutes)
     .use(parseRoutes)
     .use(sourceResumeRoutes)
+    .use(resumeHistoryRoutes)
     // 启动服务
     .listen({
       hostname: env.HOST,

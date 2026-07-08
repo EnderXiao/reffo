@@ -8,6 +8,16 @@ import {describe, test, expect, beforeEach, jest} from '@jest/globals';
 import {useHistoryStore} from '../historyStore';
 import type {ResumeHistory} from '@/types';
 
+jest.mock('@/services/resumeHistory', () => ({
+  resumeHistoryApi: {
+    getHistories: jest.fn(),
+    saveHistory: jest.fn(),
+    updateHistory: jest.fn(),
+    deleteHistory: jest.fn(),
+    clearHistories: jest.fn(),
+  },
+}));
+
 // Mock storage 模块
 jest.mock('@/utils/storage', () => ({
   getJSON: jest.fn(async () => null),
@@ -15,11 +25,25 @@ jest.mock('@/utils/storage', () => ({
 }));
 
 import * as storage from '@/utils/storage';
+import {resumeHistoryApi} from '@/services/resumeHistory';
+
+const mockedResumeHistoryApi = resumeHistoryApi as jest.Mocked<typeof resumeHistoryApi>;
 
 describe('History Store', () => {
   // 在每个测试前重置 store
   beforeEach(() => {
+    jest.clearAllMocks();
     useHistoryStore.getState().reset();
+    (storage.getJSON as any).mockResolvedValue(null);
+    (storage.setJSON as any).mockResolvedValue(undefined);
+    mockedResumeHistoryApi.getHistories.mockResolvedValue([]);
+    mockedResumeHistoryApi.saveHistory.mockImplementation(async history => history);
+    mockedResumeHistoryApi.updateHistory.mockImplementation(async (id, updates) => ({
+      ...useHistoryStore.getState().histories.find(history => history.id === id),
+      ...updates,
+    } as ResumeHistory));
+    mockedResumeHistoryApi.deleteHistory.mockResolvedValue(undefined);
+    mockedResumeHistoryApi.clearHistories.mockResolvedValue(undefined);
   });
 
   describe('初始状态', () => {
@@ -65,20 +89,20 @@ describe('History Store', () => {
       ];
 
       // Mock getJSON 返回历史记录
-      (storage.getJSON as jest.Mock).mockResolvedValueOnce(mockHistories);
+      (storage.getJSON as any).mockResolvedValueOnce(mockHistories);
 
       const {loadHistories} = useHistoryStore.getState();
       await loadHistories();
 
       const state = useHistoryStore.getState();
-      expect(state.histories).toEqual(mockHistories);
+      expect(state.histories).toEqual([mockHistories[1], mockHistories[0]]);
       expect(state.loading.isLoading).toBe(false);
       expect(state.loading.error).toBeNull();
     });
 
     test('应该处理空的历史记录', async () => {
       // Mock getJSON 返回 null
-      (storage.getJSON as jest.Mock).mockResolvedValueOnce(null);
+      (storage.getJSON as any).mockResolvedValueOnce(null);
 
       const {loadHistories} = useHistoryStore.getState();
       await loadHistories();
@@ -91,9 +115,10 @@ describe('History Store', () => {
 
     test('应该处理加载错误', async () => {
       const errorMessage = '读取失败';
-      (storage.getJSON as jest.Mock).mockRejectedValueOnce(
+      (storage.getJSON as any).mockRejectedValueOnce(
         new Error(errorMessage),
       );
+      mockedResumeHistoryApi.getHistories.mockRejectedValueOnce(new Error(errorMessage));
 
       const {loadHistories} = useHistoryStore.getState();
       await loadHistories();
@@ -110,7 +135,7 @@ describe('History Store', () => {
         resolvePromise = resolve;
       });
 
-      (storage.getJSON as jest.Mock).mockReturnValueOnce(promise);
+      (storage.getJSON as any).mockReturnValueOnce(promise);
 
       const {loadHistories} = useHistoryStore.getState();
       const loadPromise = loadHistories();

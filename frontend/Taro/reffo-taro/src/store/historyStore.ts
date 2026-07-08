@@ -46,6 +46,7 @@
 import {create} from 'zustand';
 import type {HistoryState} from './types';
 import type {ResumeHistory} from '@/types';
+import {resumeHistoryApi} from '@/services/resumeHistory';
 import {getJSON, setJSON} from '@/utils/storage';
 
 /**
@@ -93,6 +94,54 @@ function createHistoryId(histories: ResumeHistory[], createdAt?: string) {
   return `${idPrefix}${String(nextSequence).padStart(HISTORY_ID_SEQUENCE_LENGTH, '0')}`;
 }
 
+function getHistoryTime(history: ResumeHistory) {
+  const time = new Date(history.createdAt).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function sortHistories(histories: ResumeHistory[]) {
+  return [...histories].sort((left, right) => getHistoryTime(right) - getHistoryTime(left));
+}
+
+function mergeHistories(primaryHistories: ResumeHistory[], fallbackHistories: ResumeHistory[]) {
+  const historyMap = new Map<string, ResumeHistory>();
+
+  fallbackHistories.forEach(history => {
+    historyMap.set(history.id, history);
+  });
+
+  primaryHistories.forEach(history => {
+    historyMap.set(history.id, history);
+  });
+
+  return sortHistories(Array.from(historyMap.values()));
+}
+
+async function syncMissingLocalHistories(
+  remoteHistories: ResumeHistory[],
+  cachedHistories: ResumeHistory[],
+) {
+  const remoteIds = new Set(remoteHistories.map(history => history.id));
+  const missingLocalHistories = cachedHistories.filter(history => !remoteIds.has(history.id));
+
+  if (missingLocalHistories.length === 0) {
+    return sortHistories(remoteHistories);
+  }
+
+  const syncedHistories: ResumeHistory[] = [];
+
+  for (const history of missingLocalHistories) {
+    try {
+      syncedHistories.push(await resumeHistoryApi.saveHistory(history));
+    } catch (error) {
+      console.warn('[HistoryStore] Failed to sync local history:', error);
+      syncedHistories.push(history);
+    }
+  }
+
+  return mergeHistories([...remoteHistories, ...syncedHistories], cachedHistories);
+}
+
 /**
  * 初始状态
  */
@@ -119,9 +168,9 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   ...initialState,
 
   /**
-   * 从本地存储加载历史记录
+   * 从接口加载历史记录
    *
-   * 读取本地存储的历史记录列表并更新到 store
+   * 优先读取后端持久化数据，并用本地存储作为缓存和迁移来源
    *
    * @throws {Error} 当读取失败时设置错误状态
    *
@@ -139,25 +188,40 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       },
     }));
 
+    let cachedHistories: ResumeHistory[] = [];
+
     try {
-      const histories = await getJSON<ResumeHistory[]>(STORAGE_KEY);
+      cachedHistories = await getJSON<ResumeHistory[]>(STORAGE_KEY) || [];
+
+      if (cachedHistories.length > 0) {
+        set({histories: sortHistories(cachedHistories)});
+      }
+    } catch (error) {
+      console.warn('[HistoryStore] Failed to read cached histories:', error);
+    }
+
+    try {
+      const remoteHistories = await resumeHistoryApi.getHistories();
+      const histories = await syncMissingLocalHistories(remoteHistories, cachedHistories);
+
+      await setJSON(STORAGE_KEY, histories);
 
       set({
-        histories: histories || [],
+        histories,
         loading: {
           isLoading: false,
           error: null,
         },
       });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : '加载历史记录失败';
+      const errorMessage = error instanceof Error ? error.message : '加载历史记录失败';
 
       set(state => ({
+        histories: cachedHistories.length > 0 ? sortHistories(cachedHistories) : state.histories,
         loading: {
           ...state.loading,
           isLoading: false,
-          error: errorMessage,
+          error: cachedHistories.length > 0 ? null : errorMessage,
         },
       }));
 
@@ -168,7 +232,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   /**
    * 添加新的历史记录
    *
-   * 将新记录添加到列表开头（最新的在前）并持久化到本地存储
+   * 将新记录保存到后端并同步本地缓存
    *
    * @param history 新的历史记录
    * @returns 新创建的历史记录 ID
@@ -205,16 +269,23 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     try {
       const {histories} = get();
 
-      // 确保有 ID
       const historyWithId = {
         ...history,
         id: history.id || createHistoryId(histories, history.createdAt),
       };
+      let savedHistory = historyWithId;
 
-      // 将新记录添加到列表开头
-      const updatedHistories = [historyWithId, ...histories];
+      try {
+        savedHistory = await resumeHistoryApi.saveHistory(historyWithId);
+      } catch (error) {
+        console.warn('[HistoryStore] Failed to save history remotely, fallback to local cache:', error);
+      }
 
-      // 持久化到本地存储
+      const updatedHistories = sortHistories([
+        savedHistory,
+        ...histories.filter(item => item.id !== savedHistory.id),
+      ]);
+
       await setJSON(STORAGE_KEY, updatedHistories);
 
       set({
@@ -225,7 +296,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         },
       });
 
-      return historyWithId.id;
+      return savedHistory.id;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : '添加历史记录失败';
@@ -246,7 +317,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   /**
    * 更新历史记录
    *
-   * 根据 ID 更新指定的历史记录并持久化到本地存储
+   * 根据 ID 更新指定的历史记录并同步后端与本地缓存
    *
    * @param id 历史记录 ID
    * @param updates 要更新的字段（部分更新）
@@ -279,13 +350,20 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         throw new Error(`历史记录不存在: ${id}`);
       }
 
-      const updatedHistories = [...histories];
-      updatedHistories[index] = {
-        ...updatedHistories[index],
+      let updatedHistory = {
+        ...histories[index],
         ...updates,
       };
 
-      // 持久化到本地存储
+      try {
+        updatedHistory = await resumeHistoryApi.updateHistory(id, updates);
+      } catch (error) {
+        console.warn('[HistoryStore] Failed to update history remotely, fallback to local cache:', error);
+      }
+
+      const updatedHistories = [...histories];
+      updatedHistories[index] = updatedHistory;
+
       await setJSON(STORAGE_KEY, updatedHistories);
 
       set({
@@ -315,7 +393,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   /**
    * 删除历史记录
    *
-   * 根据 ID 删除指定的历史记录并持久化到本地存储
+   * 根据 ID 删除指定的历史记录并同步后端与本地缓存
    *
    * @param id 历史记录 ID
    * @throws {Error} 当保存失败时设置错误状态
@@ -337,10 +415,14 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     try {
       const {histories, currentHistory} = get();
 
-      // 过滤掉要删除的记录
+      try {
+        await resumeHistoryApi.deleteHistory(id);
+      } catch (error) {
+        console.warn('[HistoryStore] Failed to delete history remotely, fallback to local cache:', error);
+      }
+
       const updatedHistories = histories.filter(h => h.id !== id);
 
-      // 持久化到本地存储
       await setJSON(STORAGE_KEY, updatedHistories);
 
       // 如果删除的是当前选中的记录，清空选中状态
@@ -396,7 +478,12 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     }));
 
     try {
-      // 清空本地存储
+      try {
+        await resumeHistoryApi.clearHistories();
+      } catch (error) {
+        console.warn('[HistoryStore] Failed to clear histories remotely, fallback to local cache:', error);
+      }
+
       await setJSON(STORAGE_KEY, []);
 
       set({

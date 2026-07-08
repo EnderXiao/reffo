@@ -165,3 +165,64 @@ export interface SaveSourceResumeInput {
   source_type: SourceResumeSourceType
   original_file_name?: string | null
 }
+
+export type ResultStepStatus = 'pending' | 'generating' | 'done' | 'failed'
+
+export interface ResultSessionContextRecord {
+  company: string
+  position: string
+  resumeContent: string
+  jdContent: string
+}
+
+export interface ResultSessionProgressRecord {
+  analysis: ResultStepStatus
+  matching: ResultStepStatus
+  optimized: ResultStepStatus
+  interview?: ResultStepStatus
+}
+
+export interface ResumeHistoryRecord {
+  id: string
+  position: string
+  company: string
+  name: string
+  created_at: string
+  updated_at: string
+  quality_score: number
+  match_score: number
+  tags: string[]
+  resume_content: string
+  jd_content: string
+  optimized_content: string
+  optimization_suggestions?: string[]
+  changes_summary?: string[]
+  process_result?: unknown
+  result_context?: ResultSessionContextRecord
+  progress?: ResultSessionProgressRecord
+  card_color?: string
+  card_pattern?: string
+}
+
+export interface SaveResumeHistoryInput {
+  id?: string | null
+  position: string
+  company: string
+  name: string
+  created_at: string
+  quality_score: number
+  match_score: number
+  tags: string[]
+  resume_content: string
+  jd_content: string
+  optimized_content: string
+  optimization_suggestions?: string[]
+  changes_summary?: string[]
+  process_result?: unknown
+  result_context?: ResultSessionContextRecord
+  progress?: ResultSessionProgressRecord
+  card_color?: string | null
+  card_pattern?: string | null
+}
+
+export type UpdateResumeHistoryInput = Partial<Omit<SaveResumeHistoryInput, 'id'>>
