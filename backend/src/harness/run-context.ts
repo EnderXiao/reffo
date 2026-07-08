@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 export interface RunContext {
   requestId: string
   runId: string
-  workflowName: 'resume_optimization'
+  workflowName: 'resume_optimization' | 'ocr_document_parse'
   workflowVersion: string
   startedAt: string
 }
@@ -16,11 +16,14 @@ export interface StepExecutionContext extends RunContext {
   signal?: AbortSignal
 }
 
-export function createRunContext(workflowVersion = 'v1'): RunContext {
+export function createRunContext(
+  workflowVersion = 'v1',
+  workflowName: RunContext['workflowName'] = 'resume_optimization'
+): RunContext {
   return {
     requestId: randomUUID(),
     runId: randomUUID(),
-    workflowName: 'resume_optimization',
+    workflowName,
     workflowVersion,
     startedAt: new Date().toISOString(),
   }

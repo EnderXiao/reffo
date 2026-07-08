@@ -3,6 +3,7 @@ import { swagger } from '@elysiajs/swagger'
 import { cors } from '@elysiajs/cors'
 import { env, validateEnv } from '@/config/env'
 import { mvpRoutes } from '@/routes/mvp'
+import { parseRoutes } from '@/routes/parse'
 import { sourceResumeRoutes } from '@/routes/source-resume'
 
 /**
@@ -31,6 +32,7 @@ async function bootstrap() {
           tags: [
             { name: 'MVP', description: 'MVP 核心功能接口' },
             { name: 'Analysis', description: '简历分析相关接口' },
+            { name: 'Parse', description: '文件和 OCR 解析接口' },
             { name: 'SourceResume', description: '源简历存储与查询接口' },
             { name: 'System', description: '系统接口' },
           ],
@@ -98,6 +100,7 @@ async function bootstrap() {
     }))
     // 注册路由
     .use(mvpRoutes)
+    .use(parseRoutes)
     .use(sourceResumeRoutes)
     // 启动服务
     .listen({

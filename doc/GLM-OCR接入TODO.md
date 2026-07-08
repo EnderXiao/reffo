@@ -38,12 +38,12 @@ Taro 前端回填简历 Markdown 或 JD 表单
 
 建议文件：`backend/src/services/ocr/types.ts`
 
-- [ ] 定义 `OcrProvider` 接口。
-- [ ] 定义 `ParseDocumentInput`。
-- [ ] 定义 `ParsedDocumentResult`。
-- [ ] 定义 `ParsedJobDescriptionResult`。
-- [ ] 定义统一 `OcrUsage`，用于记录 tokens、耗时、成本估算。
-- [ ] 定义统一错误类型，例如 `OcrProviderError`。
+- [x] 定义 `OcrProvider` 接口。
+- [x] 定义 `ParseDocumentInput`。
+- [x] 定义 `ParsedDocumentResult`。
+- [x] 定义 `ParsedJobDescriptionResult`。
+- [x] 定义统一 `OcrUsage`，用于记录 tokens、耗时、成本估算。
+- [x] 定义统一错误类型，例如 `OcrProviderError`。
 
 建议类型草案：
 
@@ -91,25 +91,25 @@ export interface OcrUsage {
 
 建议文件：`backend/src/services/ocr/glm-ocr-provider.ts`
 
-- [ ] 封装 GLM-OCR HTTP 调用。
-- [ ] 支持图片输入。
-- [ ] 支持 PDF 输入。
-- [ ] 支持设置输出格式：Markdown / JSON。
-- [ ] 将 GLM-OCR 原始响应转成 `ParsedDocumentResult`。
-- [ ] 统一处理超时、限流、鉴权失败、文件格式不支持等错误。
-- [ ] 记录 `provider`、耗时、tokens 和成本估算。
-- [ ] 日志中只记录文件名、类型、大小、耗时和错误摘要，不输出完整简历 / JD 内容。
+- [x] 封装 GLM-OCR HTTP 调用。
+- [x] 支持图片输入。
+- [x] 支持 PDF 输入。
+- [x] 支持设置输出格式：Markdown / JSON。
+- [x] 将 GLM-OCR 原始响应转成 `ParsedDocumentResult`。
+- [x] 统一处理超时、限流、鉴权失败、文件格式不支持等错误。
+- [x] 记录 `provider`、耗时、tokens 和成本估算。
+- [x] 日志中只记录文件名、类型、大小、耗时和错误摘要，不输出完整简历 / JD 内容。
 
 ### 3. 新增 OCR 配置
 
 建议文件：`backend/src/config/env.ts`
 
-- [ ] 新增 `GLM_OCR_API_KEY`。
-- [ ] 新增 `GLM_OCR_BASE_URL`。
-- [ ] 新增 `GLM_OCR_MODEL`。
-- [ ] 新增 `OCR_TIMEOUT_MS`。
-- [ ] 新增 `OCR_MAX_FILE_SIZE_MB`，默认可先沿用 10MB。
-- [ ] 同步更新 `backend/.env.example`。
+- [x] 新增 `GLM_OCR_API_KEY`。
+- [x] 新增 `GLM_OCR_BASE_URL`。
+- [x] 新增 `GLM_OCR_MODEL`。
+- [x] 新增 `OCR_TIMEOUT_MS`。
+- [x] 新增 `OCR_MAX_FILE_SIZE_MB`，默认可先沿用 10MB。
+- [x] 同步更新 `backend/.env.example`。
 
 建议环境变量：
 
@@ -127,13 +127,13 @@ OCR_MAX_FILE_SIZE_MB=10
 
 建议文件：`backend/src/routes/parse.ts`
 
-- [ ] 新增 `POST /api/v1/parse/resume-file`。
-- [ ] 新增 `POST /api/v1/parse/jd-image`。
-- [ ] 路由使用 `ApiResponse<T>` 统一响应格式。
-- [ ] 校验文件大小。
-- [ ] 校验扩展名和 MIME 类型。
-- [ ] 捕获 OCR 错误并返回可理解错误信息。
-- [ ] 在 `backend/src/index.ts` 注册 parse 路由。
+- [x] 新增 `POST /api/v1/parse/resume-file`。
+- [x] 新增 `POST /api/v1/parse/jd-image`。
+- [x] 路由使用 `ApiResponse<T>` 统一响应格式。
+- [x] 校验文件大小。
+- [x] 校验扩展名和 MIME 类型。
+- [x] 捕获 OCR 错误并返回可理解错误信息。
+- [x] 在 `backend/src/index.ts` 注册 parse 路由。
 
 推荐响应结构：
 
@@ -160,20 +160,20 @@ OCR_MAX_FILE_SIZE_MB=10
 
 ### 5. 简历 PDF 解析逻辑
 
-- [ ] PDF 简历上传后调用 `parse/resume-file`。
-- [ ] 后端用 GLM-OCR 提取 PDF 文本或 Markdown。
-- [ ] 返回给前端后写入 `resumeUploadState.markdown`。
-- [ ] 如果 PDF 是扫描版，也依赖 GLM-OCR 完成 OCR。
-- [ ] 解析失败时不要生成占位简历，应提示用户上传文本版或手动粘贴。
+- [x] PDF 简历上传后调用 `parse/resume-file`。
+- [x] 后端用 GLM-OCR 提取 PDF 文本或 Markdown。
+- [x] 返回给前端后写入 `resumeUploadState.markdown`。
+- [x] 如果 PDF 是扫描版，也依赖 GLM-OCR 完成 OCR。
+- [x] 解析失败时不要生成占位简历，应提示用户上传文本版或手动粘贴。
 
 ### 6. JD 图片解析逻辑
 
-- [ ] JD 图片上传后调用 `parse/jd-image`。
-- [ ] 后端用 GLM-OCR 解析图片。
-- [ ] 尽量输出 `companyName`、`positionName`、`jdText`、`responsibilities`、`requirements`。
-- [ ] 前端回填公司名、岗位名和 JD 文本。
-- [ ] OCR 结果必须允许用户编辑。
-- [ ] 生成请求中的 `jdContent` 应包含 OCR 文本，而不是只有“岗位描述附件：xxx”。
+- [x] JD 图片上传后调用 `parse/jd-image`。
+- [x] 后端用 GLM-OCR 解析图片。
+- [x] 尽量输出 `companyName`、`positionName`、`jdText`、`responsibilities`、`requirements`。
+- [x] 前端回填公司名、岗位名和 JD 文本。
+- [x] OCR 结果必须允许用户编辑。
+- [x] 生成请求中的 `jdContent` 应包含 OCR 文本，而不是只有“岗位描述附件：xxx”。
 
 ## 前端 TODO
 
@@ -181,32 +181,32 @@ OCR_MAX_FILE_SIZE_MB=10
 
 建议文件：`frontend/Taro/reffo-taro/src/services/parse.ts`
 
-- [ ] 新增 `parseResumeFile(file)`。
-- [ ] 新增 `parseJobDescriptionImage(file)`。
-- [ ] 统一处理 `RequestError`。
-- [ ] 复用现有 `ApiClient` 和 base URL 配置。
+- [x] 新增 `parseResumeFile(file)`。
+- [x] 新增 `parseJobDescriptionImage(file)`。
+- [x] 统一处理 `RequestError`。
+- [x] 复用现有 `ApiClient` 和 base URL 配置。
 
 ### 2. 改造简历上传
 
 涉及文件：`frontend/Taro/reffo-taro/src/pages/create/usePageModel.ts`
 
-- [ ] `.md` / `.txt` 可继续前端读取。
-- [ ] `.pdf` 调用后端 `parse/resume-file`。
+- [x] `.md` / `.txt` 可继续前端读取。
+- [x] `.pdf` 调用后端 `parse/resume-file`。
 - [ ] `.docx` 如仍要支持，需要决定是否走 GLM-OCR 或另接 DOCX 文本解析。
 - [ ] `.doc` 建议先移除或提示“暂不支持老版 Word，请另存为 DOCX / PDF”。
-- [ ] 删除或减少 PDF / DOCX 成功时的占位 Markdown 逻辑。
-- [ ] 解析失败时展示明确错误，不进入假成功。
+- [x] 删除或减少 PDF / DOCX 成功时的占位 Markdown 逻辑。
+- [x] 解析失败时展示明确错误，不进入假成功。
 
 ### 3. 改造 JD 图片上传
 
 涉及文件：`frontend/Taro/reffo-taro/src/pages/create/usePageModel.ts`
 
-- [ ] 图片选择成功后调用后端 `parse/jd-image`。
-- [ ] 上传 / 解析过程中显示 loading 状态。
-- [ ] 解析成功后设置 `jobDescriptionState.content`。
-- [ ] 如果返回公司名和岗位名，同步设置 `companyName` 和 `positionName`。
-- [ ] 保留附件预览和文件名，便于用户核对。
-- [ ] 允许用户修改 OCR 结果。
+- [x] 图片选择成功后调用后端 `parse/jd-image`。
+- [x] 上传 / 解析过程中显示 loading 状态。
+- [x] 解析成功后设置 `jobDescriptionState.content`。
+- [x] 如果返回公司名和岗位名，同步设置 `companyName` 和 `positionName`。
+- [x] 保留附件预览和文件名，便于用户核对。
+- [x] 允许用户修改 OCR 结果。
 
 ### 4. 更新测试
 
@@ -220,13 +220,13 @@ OCR_MAX_FILE_SIZE_MB=10
 
 ## 安全与隐私 TODO
 
-- [ ] 文件大小限制前后端都要做。
-- [ ] 后端不要信任前端传来的扩展名和 MIME 类型。
-- [ ] 上传文件只用于即时解析，不默认落盘持久化。
+- [x] 文件大小限制前后端都要做。
+- [x] 后端不要信任前端传来的扩展名和 MIME 类型。
+- [x] 上传文件只用于即时解析，不默认落盘持久化。
 - [ ] 如果使用临时文件，解析完成后必须清理。
-- [ ] 日志禁止输出完整简历、完整 JD、手机号、邮箱等敏感内容。
-- [ ] OCR 请求设置超时。
-- [ ] OCR 失败返回可恢复错误，允许用户手动粘贴继续流程。
+- [x] 日志禁止输出完整简历、完整 JD、手机号、邮箱等敏感内容。
+- [x] OCR 请求设置超时。
+- [x] OCR 失败返回可恢复错误，允许用户手动粘贴继续流程。
 - [ ] 如未来上线，需要在隐私说明中告知“上传文件会发送到 GLM-OCR 服务进行解析”。
 
 ## 验收 TODO
@@ -265,7 +265,7 @@ OCR_MAX_FILE_SIZE_MB=10
 
 ## 待确认问题
 
-- [ ] GLM-OCR 官方 HTTP 请求体、鉴权 header、文件上传方式和响应字段。
+- [x] GLM-OCR 官方 HTTP 请求体、鉴权 header、文件上传方式和响应字段。
 - [ ] GLM-OCR 对 PDF 页数和文件大小的限制。
 - [ ] GLM-OCR 是否原生支持 `.docx`，如果不支持，DOCX 是否继续用 `mammoth`。
 - [ ] 是否移除 `.doc` 上传支持，避免用户误以为老版 Word 可解析。

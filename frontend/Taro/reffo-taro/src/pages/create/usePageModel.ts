@@ -2,6 +2,7 @@ import {useEffect, useMemo, useRef, useState} from 'react'
 import Taro, {useRouter} from '@tarojs/taro'
 import * as FileSystem from 'expo-file-system'
 import * as ImagePicker from 'expo-image-picker'
+import {parseApi} from '@/services/parse'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
 import {useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
@@ -36,7 +37,6 @@ import {
 } from './types'
 import {
   buildSourceResumePayload,
-  createUploadedFileMarkdownStub,
 } from './utils/resumeMarkdown'
 
 export interface CreatePageViewModel {
@@ -66,7 +66,6 @@ const JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES = [
   '.png',
   '.jpg',
   '.jpeg',
-  '.webp',
 ] as const
 const JOB_DESCRIPTION_FILE_MAX_SIZE_MB = 10
 const CANCEL_PATTERN = /cancel|取消/i
@@ -148,6 +147,10 @@ function isSupportedJobDescriptionFile(fileName: string) {
 
 function isTextFile(fileName: string) {
   return TEXT_FILE_TYPES.has(getFileExtension(fileName))
+}
+
+function isPdfFile(fileName: string) {
+  return getFileExtension(fileName) === '.pdf'
 }
 
 function formatFileSize(size: number) {
@@ -693,16 +696,23 @@ export function usePageModel(): CreatePageViewModel {
           ...previous,
           progress: 84,
         }))
-      } else {
-        await wait(100)
+      } else if (isPdfFile(selectedFile.name)) {
+        const parsedDocument = await parseApi.parseResumeFile(selectedFile)
         if (uploadRequestRef.current !== requestId) {
           return
+        }
+
+        extractedText = parsedDocument.markdown?.trim() || parsedDocument.rawText.trim()
+        if (!extractedText) {
+          throw new Error('PDF 解析结果为空，请上传文本版 PDF 或手动粘贴简历')
         }
 
         setResumeUploadState(previous => ({
           ...previous,
           progress: 84,
         }))
+      } else {
+        throw new Error('暂不支持 DOC/DOCX 解析，请另存为 PDF、MD、TXT 或手动粘贴')
       }
 
       await wait(120)
@@ -714,8 +724,10 @@ export function usePageModel(): CreatePageViewModel {
         ...pendingFile,
         extractedText,
       }
-      const nextMarkdown =
-        extractedText?.trim() || createUploadedFileMarkdownStub(selectedFile.name)
+      const nextMarkdown = extractedText?.trim()
+      if (!nextMarkdown) {
+        throw new Error('文件解析结果为空，请手动粘贴简历')
+      }
 
       setResumeUploadState(previous => ({
         ...previous,
@@ -732,15 +744,16 @@ export function usePageModel(): CreatePageViewModel {
         return
       }
 
+      const message = error instanceof Error ? error.message : '上传失败，请重试'
       console.error('resume upload failed', error)
       setResumeUploadState(previous => ({
         ...previous,
         status: 'error',
         progress: 0,
         file: null,
-        errorMessage: '上传失败',
+        errorMessage: message,
       }))
-      feedback.error('上传失败，请重试')
+      feedback.error(message)
     }
   }
 
@@ -757,9 +770,9 @@ export function usePageModel(): CreatePageViewModel {
           inputMode: 'upload',
           attachmentStatus: 'error',
           attachment: null,
-          attachmentErrorMessage: '仅支持 PNG、JPG、JPEG、WEBP 图片',
+          attachmentErrorMessage: '仅支持 PNG、JPG、JPEG 图片',
         }))
-        feedback.error('仅支持 PNG、JPG、JPEG、WEBP 图片')
+        feedback.error('仅支持 PNG、JPG、JPEG 图片')
         return
       }
 
@@ -800,34 +813,45 @@ export function usePageModel(): CreatePageViewModel {
         previewPath: selectedFile.path,
       }
 
-      await wait(220)
+      const parsedDocument = await parseApi.parseJobDescriptionImage(selectedFile)
       if (jobAttachmentRequestRef.current !== requestId) {
         return
+      }
+
+      const parsedJob = parsedDocument.structured
+      const ocrText = parsedJob?.jdText?.trim() || parsedDocument.rawText.trim()
+
+      if (!ocrText) {
+        throw new Error('JD 图片解析结果为空，请重新上传或切换到文字输入')
       }
 
       setJobDescriptionState(previous => ({
         ...previous,
         attachmentStatus: 'success',
         attachment,
-        inputMode: 'upload',
+        inputMode: 'manual',
+        content: ocrText,
+        companyName: previous.companyName.trim() || parsedJob?.companyName || '',
+        positionName: previous.positionName.trim() || parsedJob?.positionName || '',
         attachmentErrorMessage: null,
       }))
 
-      feedback.success(`${selectedFile.name} 已选择`)
+      feedback.success(`${selectedFile.name} 已解析，可继续编辑`)
     } catch (error) {
       if (isUserCancelled(error)) {
         return
       }
 
+      const message = error instanceof Error ? error.message : '文件读取失败，请重试'
       console.error('job description attachment failed', error)
       setJobDescriptionState(previous => ({
         ...previous,
         inputMode: 'upload',
         attachmentStatus: 'error',
         attachment: null,
-        attachmentErrorMessage: '文件读取失败，请重试',
+        attachmentErrorMessage: message,
       }))
-      feedback.error('文件读取失败，请重试')
+      feedback.error(message)
     }
   }
 

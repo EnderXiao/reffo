@@ -16,3 +16,10 @@ export type {
   ProcessResumeRequest,
   ProcessResumeResponse,
 } from './resume';
+
+// 文件解析 API
+export {ParseApi, parseApi} from './parse';
+export type {
+  ParsedDocumentResult,
+  ParsedJobDescriptionResult,
+} from './parse';
