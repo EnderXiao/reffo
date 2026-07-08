@@ -5,6 +5,7 @@ import { MatchingAgent } from '@/agents/matching-agent'
 import { ResumeGeneratorAgent } from '@/agents/resume-generator'
 import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
+import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 
@@ -25,7 +26,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/process',
     async ({ body, set }) => {
       try {
-        const { resume_markdown, jd_text, prompt_variant, enable_llm_judge } = body
+        const { prompt_variant, enable_llm_judge } = body
+        const resume_markdown = normalizeMarkdownText(body.resume_markdown)
+        const jd_text = normalizeMarkdownText(body.jd_text)
 
         const workflow = new ResumeOptimizationWorkflow()
         const result = await workflow.run({ resume_markdown, jd_text, prompt_variant, enable_llm_judge })
@@ -240,7 +243,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     async ({ body, set }) => {
       try {
         const analyzer = new ResumeAnalyzerAgent()
-        const result = await analyzer.analyze(body.resume_markdown)
+        const result = await analyzer.analyze(normalizeMarkdownText(body.resume_markdown))
 
         const response: ApiResponse<typeof result> = {
           success: true,
@@ -288,7 +291,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       try {
         const parser = new JDParserAgent()
         const matcher = new MatchingAgent()
-        const jd = await parser.parse(body.jd_text)
+        const jd = await parser.parse(normalizeMarkdownText(body.jd_text))
         const result = await matcher.match(body.structured_resume, jd)
 
         const response: ApiResponse<typeof result> = {

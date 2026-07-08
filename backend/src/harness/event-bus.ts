@@ -7,6 +7,10 @@ interface Subscription {
   handler: HarnessEventHandler
 }
 
+function toErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
 export class HarnessEventBus {
   private readonly subscriptions: Subscription[] = []
 
@@ -29,7 +33,16 @@ export class HarnessEventBus {
   async publish(event: HarnessEvent) {
     for (const subscription of this.subscriptions) {
       if (!subscription.type || subscription.type === event.type) {
-        await subscription.handler(event)
+        try {
+          await subscription.handler(event)
+        } catch (error) {
+          console.error('[HarnessEventBus] subscriber failed', {
+            eventType: event.type,
+            runId: event.runId,
+            stepRunId: event.stepRunId,
+            message: toErrorMessage(error),
+          })
+        }
       }
     }
   }

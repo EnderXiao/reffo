@@ -2,7 +2,7 @@ import { parseJsonOutput } from '@/harness/json-output'
 import { getPromptVersion, renderPromptVariantInstruction, resolvePromptVariant } from '@/harness/prompt-variant'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'
 import type { LlmProvider } from '@/providers/llm-provider'
-import { isResumeAnalysis } from '@/schemas/resume-analysis'
+import { isResumeAnalysis, parseResumeAnalysis } from '@/schemas/resume-analysis'
 import type { AgentExecutionOptions } from '@/agents/types'
 import type { ResumeAnalysis, ResumeStructure } from '@/types'
 
@@ -90,7 +90,7 @@ ${variantInstruction}
         stepContext: options.stepContext,
       })
 
-      return await parseJsonOutput({
+      const parsedOutput = await parseJsonOutput({
         content: response.content,
         validator: isResumeAnalysis,
         outputName: 'ResumeAnalysis',
@@ -114,6 +114,8 @@ ${variantInstruction}
           return repairResponse.content
         },
       })
+
+      return parseResumeAnalysis(parsedOutput)
     } catch (error) {
       console.error('Resume analysis failed:', error)
       throw new Error(`简历分析失败: ${error instanceof Error ? error.message : '未知错误'}`)

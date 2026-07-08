@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { initializeDatabase } from '@/repositories/database'
+import { initializeDatabase, resetDatabaseConnection } from '@/repositories/database'
 import type { HarnessEvent } from '@/harness/events'
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -15,15 +15,35 @@ function asNumber(value: unknown) {
 }
 
 export class PersistenceSubscriber {
-  private readonly db = initializeDatabase()
+  private db: ReturnType<typeof initializeDatabase> | null = null
 
   handle = (event: HarnessEvent) => {
-    this.persistEvent(event)
-    this.persistState(event)
+    try {
+      this.persistEvent(event)
+      this.persistState(event)
+    } catch (error) {
+      console.error('[PersistenceSubscriber] persist failed', {
+        eventType: event.type,
+        runId: event.runId,
+        stepRunId: event.stepRunId,
+        message: error instanceof Error ? error.message : String(error),
+      })
+
+      resetDatabaseConnection()
+      this.db = null
+    }
+  }
+
+  private getDb() {
+    if (!this.db) {
+      this.db = initializeDatabase()
+    }
+
+    return this.db
   }
 
   private persistEvent(event: HarnessEvent) {
-    this.db
+    this.getDb()
       .query(
         `
           INSERT OR IGNORE INTO harness_events (
@@ -54,10 +74,11 @@ export class PersistenceSubscriber {
 
   private persistState(event: HarnessEvent) {
     const payload = asRecord(event.payload)
+    const db = this.getDb()
 
     switch (event.type) {
       case 'workflow.started':
-        this.db
+        db
           .query(
             `
               INSERT OR REPLACE INTO process_runs (
@@ -84,7 +105,7 @@ export class PersistenceSubscriber {
       case 'workflow.succeeded':
       case 'workflow.failed':
       case 'workflow.partial':
-        this.db
+        db
           .query(
             `
               UPDATE process_runs
@@ -101,7 +122,7 @@ export class PersistenceSubscriber {
           )
         return
       case 'step.started':
-        this.db
+        db
           .query(
             `
               INSERT OR REPLACE INTO step_runs (
@@ -124,7 +145,7 @@ export class PersistenceSubscriber {
       case 'step.succeeded':
       case 'step.failed':
       case 'step.partial':
-        this.db
+        db
           .query(
             `
               UPDATE step_runs
@@ -141,7 +162,7 @@ export class PersistenceSubscriber {
           )
         return
       case 'attempt.started':
-        this.db
+        db
           .query(
             `
               INSERT OR REPLACE INTO step_attempts (
@@ -156,7 +177,7 @@ export class PersistenceSubscriber {
           .run(event.attemptId ?? null, event.stepRunId ?? null, asNumber(payload.attemptNumber) ?? 1, 'running', event.occurredAt)
         return
       case 'provider.requested':
-        this.db
+        db
           .query(
             `
               UPDATE step_attempts
@@ -173,7 +194,7 @@ export class PersistenceSubscriber {
           )
         return
       case 'provider.responded':
-        this.db
+        db
           .query(
             `
               UPDATE step_attempts
@@ -205,13 +226,13 @@ export class PersistenceSubscriber {
         this.persistArtifact(event)
         return
       case 'output.validated':
-        this.db
+        db
           .query('UPDATE step_attempts SET parsed_output_digest = ? WHERE id = ?')
           .run(asString(payload.outputDigest), event.attemptId ?? null)
         return
       case 'attempt.succeeded':
       case 'attempt.failed':
-        this.db
+        db
           .query(
             `
               UPDATE step_attempts
@@ -239,8 +260,9 @@ export class PersistenceSubscriber {
   private persistArtifact(event: HarnessEvent) {
     const payload = asRecord(event.payload)
     const artifactId = randomUUID()
+    const db = this.getDb()
 
-    this.db
+    db
       .query(
         `
           INSERT INTO artifacts (
@@ -271,14 +293,15 @@ export class PersistenceSubscriber {
       )
 
     if (event.stepRunId) {
-      this.db.query('UPDATE step_runs SET output_artifact_id = ? WHERE id = ?').run(artifactId, event.stepRunId)
+      db.query('UPDATE step_runs SET output_artifact_id = ? WHERE id = ?').run(artifactId, event.stepRunId)
     }
   }
 
   private persistEvaluation(event: HarnessEvent) {
     const payload = asRecord(event.payload)
+    const db = this.getDb()
 
-    this.db
+    db
       .query(
         `
           INSERT INTO evaluations (

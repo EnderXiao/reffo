@@ -1,6 +1,7 @@
 import { env } from '@/config/env'
 import { createDigest } from '@/harness/run-context'
 import { createHarnessEvent } from '@/harness/events'
+import { normalizeMarkdownText } from '@/services/text-normalizer'
 import type {
   OcrProvider,
   OcrProviderOptions,
@@ -279,7 +280,7 @@ export class GlmOcrProvider implements OcrProvider {
         )
       }
 
-      const rawText = pickText(payload).trim()
+      const rawText = normalizeMarkdownText(pickText(payload))
       if (!rawText) {
         throw new OcrProviderError('OCR_EMPTY_OUTPUT', 'GLM-OCR 未返回可用文本')
       }

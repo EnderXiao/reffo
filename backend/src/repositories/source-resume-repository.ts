@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { getDatabase } from '@/repositories/database'
+import { getDatabase, resetDatabaseConnection } from '@/repositories/database'
 import type { SaveSourceResumeInput, SourceResumeRecord } from '@/types'
 
 function ensureDatabase() {
@@ -39,61 +39,75 @@ function mapRowToRecord(row: Record<string, unknown> | null | undefined): Source
 }
 
 export class SourceResumeRepository {
-  private readonly db = ensureDatabase()
-
-  save(input: SaveSourceResumeInput): SourceResumeRecord {
-    const now = new Date().toISOString()
-    const id = randomUUID()
-
-    const statement = this.db.query(`
-      INSERT INTO source_resumes (
-        id,
-        title,
-        resume_markdown,
-        source_type,
-        original_file_name,
-        created_at,
-        updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `)
-
-    statement.run(
-      id,
-      input.title,
-      input.resume_markdown,
-      input.source_type,
-      input.original_file_name ?? null,
-      now,
-      now
-    )
-
-    return {
-      id,
-      title: input.title,
-      resume_markdown: input.resume_markdown,
-      source_type: input.source_type,
-      original_file_name: input.original_file_name ?? null,
-      created_at: now,
-      updated_at: now,
+  private executeWithRecovery<T>(operation: () => T): T {
+    try {
+      return operation()
+    } catch (error) {
+      console.error('[SourceResumeRepository] database operation failed', error)
+      resetDatabaseConnection()
+      return operation()
     }
   }
 
-  getLatest(): SourceResumeRecord | null {
-    const statement = this.db.query(`
-      SELECT
-        id,
-        title,
-        resume_markdown,
-        source_type,
-        original_file_name,
-        created_at,
-        updated_at
-      FROM source_resumes
-      ORDER BY updated_at DESC
-      LIMIT 1
-    `)
+  save(input: SaveSourceResumeInput): SourceResumeRecord {
+    return this.executeWithRecovery(() => {
+      const db = ensureDatabase()
+      const now = new Date().toISOString()
+      const id = randomUUID()
 
-    return mapRowToRecord(statement.get() as Record<string, unknown> | null)
+      const statement = db.query(`
+        INSERT INTO source_resumes (
+          id,
+          title,
+          resume_markdown,
+          source_type,
+          original_file_name,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `)
+
+      statement.run(
+        id,
+        input.title,
+        input.resume_markdown,
+        input.source_type,
+        input.original_file_name ?? null,
+        now,
+        now
+      )
+
+      return {
+        id,
+        title: input.title,
+        resume_markdown: input.resume_markdown,
+        source_type: input.source_type,
+        original_file_name: input.original_file_name ?? null,
+        created_at: now,
+        updated_at: now,
+      }
+    })
+  }
+
+  getLatest(): SourceResumeRecord | null {
+    return this.executeWithRecovery(() => {
+      const db = ensureDatabase()
+      const statement = db.query(`
+        SELECT
+          id,
+          title,
+          resume_markdown,
+          source_type,
+          original_file_name,
+          created_at,
+          updated_at
+        FROM source_resumes
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `)
+
+      return mapRowToRecord(statement.get() as Record<string, unknown> | null)
+    })
   }
 }
 

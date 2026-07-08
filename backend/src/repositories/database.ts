@@ -6,6 +6,14 @@ const DATABASE_PATH = join(process.cwd(), 'data', 'reffo.sqlite')
 
 let database: Database | null = null
 
+function configureDatabase(db: Database) {
+  db.exec(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA busy_timeout = 5000;
+    PRAGMA foreign_keys = ON;
+  `)
+}
+
 export function getDatabase() {
   if (database) {
     return database
@@ -13,8 +21,23 @@ export function getDatabase() {
 
   mkdirSync(dirname(DATABASE_PATH), { recursive: true })
   database = new Database(DATABASE_PATH, { create: true })
+  configureDatabase(database)
 
   return database
+}
+
+export function resetDatabaseConnection() {
+  if (!database) {
+    return
+  }
+
+  try {
+    database.close()
+  } catch (error) {
+    console.error('[Database] close failed', error)
+  } finally {
+    database = null
+  }
 }
 
 export function initializeDatabase() {
