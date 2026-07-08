@@ -6,6 +6,7 @@ import type {HardRequirement, ProcessResult} from '@/types'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import {useVisualTier} from '@/utils'
 import {suppressNextNavigationTransition} from '@/utils/navigation-transition'
+import {resolveResumeGrade} from '@/utils/score-grade'
 import type {ResultPageViewModel} from './usePageModel'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
@@ -148,14 +149,6 @@ function markReturningHome(cardId?: string | null) {
   } catch (error) {
     console.warn('保存首页返回过渡标记失败:', error)
   }
-}
-
-function scoreToGrade(score: number) {
-  if (score >= 90) return 'A+'
-  if (score >= 80) return 'A'
-  if (score >= 70) return 'B'
-  if (score >= 60) return 'C'
-  return 'D'
 }
 
 function getUnmatchedRequirements(items: HardRequirement[] | undefined) {
@@ -328,7 +321,7 @@ function EmptyText() {
 }
 
 function AnalysisPanel({result}: {result: ProcessResult}) {
-  const grade = scoreToGrade(result.analysis.quality_score)
+  const grade = resolveResumeGrade(result.analysis.quality_score)
   const weaknesses = normalizeItems(result.analysis.weaknesses, 3)
   const strategies = normalizeItems(result.matching.optimization_suggestions, 5)
 

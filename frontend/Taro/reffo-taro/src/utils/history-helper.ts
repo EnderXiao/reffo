@@ -46,6 +46,8 @@ export function createHistoryFromResult(
     resumeContent,
     jdContent,
     optimizedContent: result.optimized.optimized_resume,
+    optimizationSuggestions: result.matching.optimization_suggestions,
+    changesSummary: result.optimized.changes_summary,
     processResult: result,
     resultContext: {
       company,

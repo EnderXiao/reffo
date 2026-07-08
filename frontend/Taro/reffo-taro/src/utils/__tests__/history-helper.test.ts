@@ -72,5 +72,7 @@ describe('history-helper', () => {
       optimized: 'done',
       interview: 'done',
     })
+    expect(history.optimizationSuggestions).toEqual(['突出增长指标'])
+    expect(history.changesSummary).toEqual(['强化了增长指标'])
   })
 })

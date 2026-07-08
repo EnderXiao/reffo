@@ -1,5 +1,6 @@
 import {Text, View} from '@tarojs/components'
 import type {VisualTier} from '@/utils'
+import {resolveResumeGrade} from '@/utils/score-grade'
 import type {HomeCardItem} from './shared'
 import {deriveCardPalette} from './palette'
 import classNames from 'classnames'
@@ -35,18 +36,6 @@ interface HomeScoreCardProps {
   className?: string
   style?: Record<string, string | number>
   onClick?: () => void
-}
-
-function getScoreGrade(score: number) {
-  if (score >= 88) {
-    return 'A'
-  }
-
-  if (score >= 72) {
-    return 'B'
-  }
-
-  return 'C'
 }
 
 function resolveGeneratingMark(card: HomeCardItem) {
@@ -131,6 +120,10 @@ function resolveDeckStepY(depth: number) {
   return Math.min((2 + (depth - 1)) * 2, 10)
 }
 
+function isLikelyWrappedCompanyName(company: string) {
+  return Array.from(company.trim()).length > 8
+}
+
 export default function HomeScoreCard({
   card: inputCard,
   depth,
@@ -150,7 +143,9 @@ export default function HomeScoreCard({
   const isDark = card.tone === 'dark'
   const isCreate = variant === 'create'
   const isGenerating = variant === 'generating'
-  const scoreGrade = getScoreGrade(card.score)
+  const hasWrappedCompanyName = !isCreate && !isGenerating && isLikelyWrappedCompanyName(card.company)
+  const scoreGrade = resolveResumeGrade(card.score)
+  const scoreGradeClass = scoreGrade === 'A+' ? 'a' : scoreGrade.toLowerCase()
   const generatingMark = isGenerating ? resolveGeneratingMark(card) : ''
   const glyphStyle = useMemo(() => resolveGlyphStyle(card), [card])
   const textureMode = useMemo(() => resolveTextureMode(card), [card])
@@ -174,12 +169,13 @@ export default function HomeScoreCard({
       data-home-card-id={card.id}
       className={classNames(
         'reffo-home-card',
-        `reffo-home-card--grade-${scoreGrade.toLowerCase()}`,
+        `reffo-home-card--grade-${scoreGradeClass}`,
         {
           'reffo-home-card--dark': isDark,
           'reffo-home-card--active': active,
           'reffo-home-card--create': isCreate,
           'reffo-home-card--generating': isGenerating,
+          'reffo-home-card--company-wrap': hasWrappedCompanyName,
         },
         className,
       )}
