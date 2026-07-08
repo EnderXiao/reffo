@@ -951,6 +951,12 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
   border-top: 1px solid rgba(255, 255, 255, 0.26);
 }
 
+.reffo-home-card--company-wrap .reffo-home-card__glass {
+  height: 186px;
+  padding-top: 13px;
+  padding-bottom: 34px;
+}
+
 .reffo-home-card__glass::before {
   content: "";
   position: absolute;
@@ -990,6 +996,10 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
   z-index: 1;
 }
 
+.reffo-home-card--company-wrap .reffo-home-card__field {
+  margin-bottom: 4px;
+}
+
 .reffo-home-card__label {
   margin-bottom: 2px;
   color: rgba(31, 41, 55, 0.4);
@@ -1008,6 +1018,11 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
   color: var(--card-display-accent);
   font-size: 17px;
   line-height: 22px;
+}
+
+.reffo-home-card--company-wrap .reffo-home-card__company {
+  max-height: 44px;
+  overflow: hidden;
 }
 
 .reffo-home-card__date-row {

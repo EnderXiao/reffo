@@ -2,6 +2,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {useDidShow, useRouter} from '@tarojs/taro'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import {useHistoryStore} from '@/store/historyStore'
+import {useJDStore} from '@/store/jdStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
@@ -180,6 +181,8 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [])
 
   const handleConfirmCreate = useCallback(() => {
+    useJDStore.getState().reset()
+
     void navigation.navigateTo(
       latestSourceResume
         ? '/pages/create/index?step=jobDescription'

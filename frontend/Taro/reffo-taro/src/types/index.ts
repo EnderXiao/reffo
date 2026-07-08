@@ -30,6 +30,8 @@ export interface ResumeHistory {
   resumeContent: string; // 原始简历内容
   jdContent: string; // JD 内容
   optimizedContent: string; // 优化后的简历
+  optimizationSuggestions?: string[]; // 后端返回的岗位匹配优化建议
+  changesSummary?: string[]; // 后端返回的简历改写摘要
   processResult?: ProcessResult; // 完整生成结果，用于根据 cardId 还原结果页
   resultContext?: ResultSessionContext; // 生成上下文，用于结果页继续保存/编辑
   progress?: ResultSessionProgress; // 结果生成进度快照
