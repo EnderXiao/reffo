@@ -162,11 +162,36 @@ function formatDateLabel(dateInput: string) {
   return `生成日期 ${year}.${month}.${day}`
 }
 
-function buildHistoryStrategyBody(history: ResumeHistory) {
-  const company = history.company || '目标公司'
-  const role = history.position || '目标岗位'
+function normalizeStrategyLines(lines?: string[]) {
+  return (lines ?? [])
+    .map(line => line.trim())
+    .filter(Boolean)
+}
 
-  return `优先突出与${company}相关的经验，把最贴近${role}的案例放到前面。\n\n弱化泛化职责描述，强化效率提升、跨团队协同和可量化结果。`
+function buildHistoryStrategyBody(history: ResumeHistory) {
+  const backendSuggestions = normalizeStrategyLines(
+    history.optimizationSuggestions ?? history.processResult?.matching.optimization_suggestions,
+  )
+
+  if (backendSuggestions.length > 0) {
+    return backendSuggestions.slice(0, 2).join('\n\n')
+  }
+
+  const changeSummary = normalizeStrategyLines(
+    history.changesSummary ?? history.processResult?.optimized.changes_summary,
+  )
+
+  if (changeSummary.length > 0) {
+    return changeSummary.slice(0, 2).join('\n\n')
+  }
+
+  const analysisSuggestions = normalizeStrategyLines(history.processResult?.analysis.suggestions)
+
+  if (analysisSuggestions.length > 0) {
+    return analysisSuggestions.slice(0, 2).join('\n\n')
+  }
+
+  return '暂无后端优化策略，请进入详情页查看完整分析。'
 }
 
 export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map(buildCardItem)
@@ -179,7 +204,7 @@ export function toHistoryCardItem(history: ResumeHistory, index = 0): HomeCardIt
     location: '--',
     role: history.position || '--',
     dateLabel: formatDateLabel(history.createdAt),
-    score: history.matchScore,
+    score: history.qualityScore,
     strategyBody: buildHistoryStrategyBody(history),
     seedColor: history.cardColor,
   })

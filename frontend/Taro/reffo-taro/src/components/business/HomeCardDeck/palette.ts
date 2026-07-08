@@ -1,3 +1,5 @@
+import {resolveResumeGrade} from '@/utils/score-grade'
+
 export type CardTone = 'soft' | 'default' | 'dark'
 
 export interface DerivedCardPalette {
@@ -283,13 +285,5 @@ export function resolveCardInk(tone: CardTone, accentColor: string) {
 }
 
 export function resolveCardGrade(score: number) {
-  if (score >= 88) {
-    return 'A'
-  }
-
-  if (score >= 72) {
-    return 'B'
-  }
-
-  return 'C'
+  return resolveResumeGrade(score)
 }
