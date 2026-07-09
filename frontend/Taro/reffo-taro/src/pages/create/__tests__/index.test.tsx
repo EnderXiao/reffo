@@ -194,6 +194,16 @@ describe('CreatePage', () => {
       .toBe(value)
   }
 
+  const expectJobCompanyInputValue = (value: string) => {
+    expect((screen.getByTestId('job-company-input') as HTMLInputElement).value)
+      .toBe(value)
+  }
+
+  const expectJobPositionInputValue = (value: string) => {
+    expect((screen.getByTestId('job-position-input') as HTMLInputElement).value)
+      .toBe(value)
+  }
+
   beforeEach(async () => {
     jest.clearAllMocks()
     jest.useRealTimers()
@@ -361,7 +371,7 @@ describe('CreatePage', () => {
     })
   })
 
-  test('源简历卡片删除后主按钮变为新的申请并可重新上传', async () => {
+  test('源简历卡片删除后直接进入空白上传编辑页', async () => {
     const existingSourceResume = {
       id: 'source-resume-1',
       title: 'Jeremy Smith',
@@ -389,13 +399,11 @@ describe('CreatePage', () => {
     await waitFor(() => {
       expect(mockShowModal).toHaveBeenCalledWith(expect.objectContaining({title: '删除源简历？'}))
       expect(mockDeleteSourceResume).toHaveBeenCalledWith('source-resume-1')
-      expect(screen.getByText('新的申请')).toBeTruthy()
-    })
-
-    fireEvent.click(screen.getByTestId('create-flow-primary-action'))
-
-    await waitFor(() => {
       expect(screen.getByText('上传源简历')).toBeTruthy()
+      expect(screen.getByText('保存源简历')).toBeTruthy()
+      expect((screen.getByTestId('resume-markdown-input') as HTMLTextAreaElement).value).toBe('')
+      expect(screen.queryByText('源简历已删除')).toBeNull()
+      expect(screen.queryByText('新的申请')).toBeNull()
     })
   })
 
@@ -661,6 +669,128 @@ describe('CreatePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('开始生成最佳简历')).toBeTruthy()
+    })
+  })
+
+  test('上传岗位截图后会从 OCR 文本兜底填入公司和岗位名称', async () => {
+    jest.useFakeTimers()
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
+    mockChooseMessageFile.mockResolvedValue({
+      tempFiles: [
+        {
+          name: 'mango-tv-jd.png',
+          path: '/tmp/mango-tv-jd.png',
+          size: 256 * 1024,
+        },
+      ],
+    })
+    mockParseJobDescriptionImage.mockResolvedValueOnce({
+      provider: 'glm-ocr',
+      fileName: 'mango-tv-jd.png',
+      fileType: 'image',
+      rawText: '芒果tv正在招聘\n# AI创新产品经理\n长沙/20-40K/1-3年/本科\n## 职位详情',
+      structured: {
+        companyName: '',
+        positionName: '',
+        jdText: '芒果tv正在招聘\n# AI创新产品经理\n长沙/20-40K/1-3年/本科\n## 职位详情',
+        responsibilities: [],
+        requirements: [],
+      },
+      warnings: [],
+    })
+
+    await renderPage()
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('job-upload-trigger'))
+      await jest.runAllTimersAsync()
+    })
+
+    await waitFor(() => {
+      expectJobDescriptionInputValue('芒果tv正在招聘\n# AI创新产品经理\n长沙/20-40K/1-3年/本科\n## 职位详情')
+      expectJobCompanyInputValue('芒果 TV')
+      expectJobPositionInputValue('AI创新产品经理')
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(getLastSavedResultSession()).toEqual(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            company: '芒果 TV',
+            position: 'AI创新产品经理',
+            jdContent: expect.stringContaining('公司名称：芒果 TV'),
+          }),
+        }),
+      )
+    })
+  })
+
+  test('上传岗位截图后忽略结构化结果里的招聘口号岗位名', async () => {
+    jest.useFakeTimers()
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    const jdText = '万兴科技正在招聘\n# 产品策划经理\n长沙/25-50K·15薪/3-5年/本科\n## 职位详情'
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
+    mockChooseMessageFile.mockResolvedValue({
+      tempFiles: [
+        {
+          name: 'wondershare-jd.png',
+          path: '/tmp/wondershare-jd.png',
+          size: 256 * 1024,
+        },
+      ],
+    })
+    mockParseJobDescriptionImage.mockResolvedValueOnce({
+      provider: 'glm-ocr',
+      fileName: 'wondershare-jd.png',
+      fileType: 'image',
+      rawText: jdText,
+      structured: {
+        companyName: '万兴科技',
+        positionName: '万兴科技正在招聘',
+        jdText,
+        responsibilities: [],
+        requirements: [],
+      },
+      warnings: [],
+    })
+
+    await renderPage()
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('job-upload-trigger'))
+      await jest.runAllTimersAsync()
+    })
+
+    await waitFor(() => {
+      expectJobDescriptionInputValue(jdText)
+      expectJobCompanyInputValue('万兴科技')
+      expectJobPositionInputValue('产品策划经理')
     })
   })
 

@@ -122,14 +122,13 @@ describe('首页组件', () => {
     expect(screen.getByText('CV-Jeremy Smith')).toBeTruthy()
   })
 
-  test('无源简历时点击源简历按钮应提示上传', () => {
+  test('无源简历时点击源简历按钮应进入上传页', () => {
     render(<Index />)
 
     fireEvent.click(screen.getByText('源简历'))
 
-    expect(Taro.showToast).toHaveBeenCalledWith({
-      title: '尚未上传源简历',
-      icon: 'none',
+    expect(Taro.navigateTo).toHaveBeenCalledWith({
+      url: '/pages/create/index',
     })
   })
 
@@ -209,7 +208,7 @@ describe('首页组件', () => {
 
     expect(screen.getByText('前端工程师')).toBeTruthy()
     expect(screen.getByText('后端工程师')).toBeTruthy()
-    expect(screen.getByText('90')).toBeTruthy()
+    expect(screen.getByText('85')).toBeTruthy()
     expect(screen.getByText(/当前简历/)).toBeTruthy()
   })
 

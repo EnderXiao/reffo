@@ -38,6 +38,11 @@ import {
 import {
   buildSourceResumePayload,
 } from './utils/resumeMarkdown'
+import {
+  extractJobMetadataFromOcrText,
+  normalizeCompanyNameCandidate,
+  resolvePositionNameCandidate,
+} from './utils/jobMetadata'
 
 export interface CreatePageViewModel {
   currentStep: CreateStepId
@@ -513,10 +518,18 @@ export function usePageModel(): CreatePageViewModel {
     })
   }, [latestSourceResume?.id, latestSourceResume?.resumeMarkdown])
 
+  useEffect(() => {
+    if (
+      currentStep === 'resumeSummary' &&
+      hasResolvedLatestSourceResume &&
+      !latestSourceResume
+    ) {
+      setCurrentStep('resumeUpload')
+    }
+  }, [currentStep, hasResolvedLatestSourceResume, latestSourceResume])
+
   const currentStepMeta = CREATE_STEP_META[currentStep]
-  const primaryActionLabel = currentStep === 'resumeSummary' && !latestSourceResume
-    ? '新的申请'
-    : currentStepMeta.actionLabel
+  const primaryActionLabel = currentStepMeta.actionLabel
   const resumeSummaryState = useMemo(
     () => buildResumeSummaryState(latestSourceResume),
     [
@@ -646,7 +659,7 @@ export function usePageModel(): CreatePageViewModel {
 
     const confirmResult = await Taro.showModal({
       title: '删除源简历？',
-      content: '删除后需要重新上传或填写源简历，之后才能继续新的申请。',
+      content: '删除后需要重新上传或填写源简历，之后才能继续生成。',
       cancelText: '取消',
       confirmText: '删除',
       confirmColor: '#ef4444',
@@ -657,16 +670,18 @@ export function usePageModel(): CreatePageViewModel {
     }
 
     setIsSavingCurrentStep(true)
+    setCurrentStep('resumeUpload')
+    setResumeUploadState(createInitialResumeUploadState())
 
     try {
       await useSourceResumeStore
         .getState()
         .deleteLatestSourceResume(sourceResume.id)
       useResumeStore.getState().setResumeContent('')
-      setResumeUploadState(createInitialResumeUploadState())
-      feedback.success('源简历已删除，请重新上传', {duration: 1400})
+      feedback.success('请上传新的源简历', {duration: 1400})
     } catch (error) {
       console.error('delete source resume failed', error)
+      setCurrentStep('resumeSummary')
       feedback.error(error instanceof Error ? error.message : '删除源简历失败，请重试')
     } finally {
       setIsSavingCurrentStep(false)
@@ -897,14 +912,26 @@ export function usePageModel(): CreatePageViewModel {
         throw new Error('JD 图片解析结果为空，请重新上传或切换到文字输入')
       }
 
+      const extractedJobMetadata = extractJobMetadataFromOcrText(ocrText)
+      const parsedCompanyName = normalizeCompanyNameCandidate(parsedJob?.companyName || '')
+      const parsedPositionName = resolvePositionNameCandidate(
+        parsedJob?.positionName || '',
+        extractedJobMetadata.positionName,
+      )
+
       setJobDescriptionState(previous => ({
         ...previous,
         attachmentStatus: 'success',
         attachment,
         inputMode: 'manual',
         content: ocrText,
-        companyName: previous.companyName.trim() || parsedJob?.companyName || '',
-        positionName: previous.positionName.trim() || parsedJob?.positionName || '',
+        companyName:
+          previous.companyName.trim() ||
+          parsedCompanyName ||
+          extractedJobMetadata.companyName,
+        positionName:
+          previous.positionName.trim() ||
+          parsedPositionName,
         attachmentErrorMessage: null,
       }))
 

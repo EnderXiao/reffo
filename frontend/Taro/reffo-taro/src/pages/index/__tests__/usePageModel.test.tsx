@@ -207,6 +207,16 @@ describe('usePageModel', () => {
     })
   })
 
+  test('无源简历时点击源简历按钮导航到上传页', () => {
+    render(<HookProbe />)
+
+    fireEvent.click(screen.getByRole('button', {name: 'source-resume'}))
+
+    expect(Taro.navigateTo).toHaveBeenCalledWith({
+      url: '/pages/create/index',
+    })
+  })
+
   test('点击真实历史卡片时携带卡片来源打开结果页', () => {
     const history: ResumeHistory = {
       id: 'JD2026070700001',

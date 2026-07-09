@@ -4,9 +4,7 @@ import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import {useHistoryStore} from '@/store/historyStore'
 import {useJDStore} from '@/store/jdStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
-import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
-import {HOME_PAGE_CONTENT} from '../constants/content'
 import {DEMO_CARDS, toHistoryCardItems} from './homeCardData'
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
@@ -195,12 +193,11 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [])
 
   const handleViewHistory = useCallback(() => {
-    if (latestSourceResume) {
-      void navigation.navigateTo('/pages/create/index?step=resumeSummary')
-      return
-    }
-
-    feedback.message(HOME_PAGE_CONTENT.header.sourceResumeEmptyToast)
+    void navigation.navigateTo(
+      latestSourceResume
+        ? '/pages/create/index?step=resumeSummary'
+        : '/pages/create/index',
+    )
   }, [latestSourceResume])
 
   const handleCardPress = useCallback((card: HomeCardItem) => {
