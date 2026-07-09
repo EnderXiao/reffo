@@ -22,6 +22,46 @@ describe('homeCardData', () => {
     expect(card.score).toBe(58)
   })
 
+  test('历史卡片右侧刻度使用公司中文拼音首字母', () => {
+    const history: ResumeHistory = {
+      id: 'JD2026070900001',
+      position: 'AI 创新产品经理',
+      company: '芒果 TV',
+      name: '候选人',
+      createdAt: '2026-07-09T12:00:00.000Z',
+      qualityScore: 91,
+      matchScore: 88,
+      tags: [],
+      resumeContent: '# 候选人',
+      jdContent: '岗位名称：AI 创新产品经理',
+      optimizedContent: '# 候选人优化版',
+    }
+
+    const card = toHistoryCardItem(history)
+
+    expect(card.indexLabel).toBe('M')
+  })
+
+  test('历史卡片不会因公司名后缀英文错误命中刻度字母', () => {
+    const history: ResumeHistory = {
+      id: 'JD2026070900002',
+      position: '增长产品经理',
+      company: '携程旅行网',
+      name: '候选人',
+      createdAt: '2026-07-09T12:00:00.000Z',
+      qualityScore: 86,
+      matchScore: 80,
+      tags: [],
+      resumeContent: '# 候选人',
+      jdContent: '岗位名称：增长产品经理',
+      optimizedContent: '# 候选人优化版',
+    }
+
+    const card = toHistoryCardItem(history)
+
+    expect(card.indexLabel).toBe('X')
+  })
+
   test('历史卡片优化策略优先展示后端返回的建议', () => {
     const history: ResumeHistory = {
       id: 'JD2026070800002',

@@ -1,7 +1,6 @@
 export const HOME_PAGE_CONTENT = {
   header: {
     sourceResumeLabel: '源简历',
-    sourceResumeEmptyToast: '尚未上传源简历',
   },
   hero: {
     titlePrefix: '一个',

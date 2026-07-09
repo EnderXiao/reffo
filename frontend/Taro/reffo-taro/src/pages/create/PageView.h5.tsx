@@ -339,20 +339,6 @@ function ResumeSummaryStepH5({
   )
 }
 
-function EmptyResumeSummaryStepH5() {
-  return (
-    <View className='reffo-create-step'>
-      <View className='reffo-create-section'>
-        <Text className='reffo-create-section__title'>源简历已删除</Text>
-        <View className='reffo-create-summary reffo-create-summary--empty'>
-          <Text className='reffo-create-summary__empty-title'>开始新的申请前，请先上传新的源简历</Text>
-          <Text className='reffo-create-summary__empty-meta'>点击底部「新的申请」回到上传步骤</Text>
-        </View>
-      </View>
-    </View>
-  )
-}
-
 function ModeTab({
   mode,
   active,
@@ -827,7 +813,12 @@ export default function PageView({
             />
           ) : null}
           {currentStep === 'resumeSummary' && !resumeSummaryState ? (
-            <EmptyResumeSummaryStepH5 />
+            <ResumeUploadStepH5
+              state={resumeUploadState}
+              onPickFile={handlePickResumeFile}
+              onRemoveFile={handleRemoveResumeFile}
+              onMarkdownChange={handleResumeMarkdownChange}
+            />
           ) : null}
           {currentStep === 'jobDescription' && !visibleGenerationState ? (
             <JobDescriptionStepH5

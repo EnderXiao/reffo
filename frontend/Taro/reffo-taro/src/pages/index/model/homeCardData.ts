@@ -5,11 +5,12 @@ import {
   normalizeHexColor,
 } from '@/components/business/HomeCardDeck/palette'
 import type {ResumeHistory} from '@/types'
+import {resolveTextInitial} from '@/utils/text-initial'
 
 interface CardSeedInput {
   id: string
   company: string
-  indexLabel: string
+  indexLabel?: string
   location: string
   role: string
   dateLabel: string
@@ -22,28 +23,10 @@ const COMPANY_COLOR_OVERRIDES: Array<{matcher: RegExp; color: string}> = [
   {matcher: /小米/, color: '#FF6900'},
 ]
 
-const CHINESE_INITIALS: Record<string, string> = {
-  携: 'C',
-  程: 'C',
-  滴: 'D',
-  饿: 'E',
-  飞: 'F',
-  高: 'G',
-  华: 'H',
-  美: 'M',
-  小: 'X',
-  百: 'B',
-  阿: 'A',
-  京: 'J',
-  微: 'W',
-  拼: 'P',
-}
-
 const DEMO_CARD_INPUTS: CardSeedInput[] = [
   {
     id: 'demo-f',
     company: '飞书科技',
-    indexLabel: 'F',
     location: '深圳',
     role: 'AI 工作台产品经理',
     dateLabel: '生成日期 2025.12.12',
@@ -53,7 +36,6 @@ const DEMO_CARD_INPUTS: CardSeedInput[] = [
   {
     id: 'demo-c',
     company: '携程旅行网',
-    indexLabel: 'C',
     location: '上海',
     role: '增长策略产品经理',
     dateLabel: '生成日期 2025.11.20',
@@ -63,7 +45,6 @@ const DEMO_CARD_INPUTS: CardSeedInput[] = [
   {
     id: 'demo-d',
     company: '滴滴出行',
-    indexLabel: 'D',
     location: '北京',
     role: '用户平台产品经理',
     dateLabel: '生成日期 2025.12.02',
@@ -73,7 +54,6 @@ const DEMO_CARD_INPUTS: CardSeedInput[] = [
   {
     id: 'demo-e',
     company: '饿了么',
-    indexLabel: 'E',
     location: '杭州',
     role: '商家增长产品经理',
     dateLabel: '生成日期 2025.12.09',
@@ -83,7 +63,6 @@ const DEMO_CARD_INPUTS: CardSeedInput[] = [
   {
     id: 'demo-h',
     company: '华为技术有限公司',
-    indexLabel: 'H',
     location: '东莞',
     role: '终端智能体产品经理',
     dateLabel: '生成日期 2025.12.14',
@@ -93,7 +72,6 @@ const DEMO_CARD_INPUTS: CardSeedInput[] = [
   {
     id: 'demo-x',
     company: '小米集团有限公司',
-    indexLabel: 'X',
     location: '武汉',
     role: 'AI 产品经理',
     dateLabel: '生成日期 2025.12.15',
@@ -128,6 +106,7 @@ function buildCardItem(input: CardSeedInput): HomeCardItem {
 
   return {
     ...input,
+    indexLabel: input.indexLabel ?? getIndexLabel(input.company, 0),
     primaryColor: palette.primaryColor,
     surfaceColor: palette.surfaceColor,
     stackColor: palette.stackColor,
@@ -138,19 +117,7 @@ function buildCardItem(input: CardSeedInput): HomeCardItem {
 }
 
 function getIndexLabel(company: string, fallbackIndex: number) {
-  const trimmed = company.trim()
-  const firstChar = trimmed.charAt(0)
-
-  if (CHINESE_INITIALS[firstChar]) {
-    return CHINESE_INITIALS[firstChar]
-  }
-
-  const latinMatch = trimmed.match(/[A-Za-z]/)
-  if (latinMatch) {
-    return latinMatch[0].toUpperCase()
-  }
-
-  return String.fromCharCode(65 + (fallbackIndex % 26))
+  return resolveTextInitial(company) ?? String.fromCharCode(65 + (fallbackIndex % 26))
 }
 
 function formatDateLabel(dateInput: string) {
@@ -194,7 +161,12 @@ function buildHistoryStrategyBody(history: ResumeHistory) {
   return '暂无后端优化策略，请进入详情页查看完整分析。'
 }
 
-export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map(buildCardItem)
+export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map((input, index) =>
+  buildCardItem({
+    ...input,
+    indexLabel: getIndexLabel(input.company, index),
+  }),
+)
 
 export function toHistoryCardItem(history: ResumeHistory, index = 0): HomeCardItem {
   return buildCardItem({

@@ -592,30 +592,6 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   background: rgba(0, 136, 255, 0.16);
 }
 
-.reffo-create-summary--empty {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  cursor: default;
-}
-
-.reffo-create-summary__empty-title {
-  color: #334155;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 700;
-  position: relative;
-  z-index: 1;
-}
-
-.reffo-create-summary__empty-meta {
-  color: #7f8fa8;
-  font-size: 13px;
-  line-height: 19px;
-  position: relative;
-  z-index: 1;
-}
-
 .reffo-create-summary__name {
   color: #5f7397;
   font-size: 18px;

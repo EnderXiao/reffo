@@ -55,6 +55,8 @@ export class SourceResumeRepository {
       const now = new Date().toISOString()
       const id = randomUUID()
 
+      db.query('DELETE FROM source_resumes').run()
+
       const statement = db.query(`
         INSERT INTO source_resumes (
           id,
@@ -113,7 +115,13 @@ export class SourceResumeRepository {
   delete(id: string): boolean {
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
-      const result = db.query('DELETE FROM source_resumes WHERE id = ?').run(id)
+      const existing = db.query('SELECT id FROM source_resumes WHERE id = ? LIMIT 1').get(id)
+
+      if (!existing) {
+        return false
+      }
+
+      const result = db.query('DELETE FROM source_resumes').run()
 
       return result.changes > 0
     })
