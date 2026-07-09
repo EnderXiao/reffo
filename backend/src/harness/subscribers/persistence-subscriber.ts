@@ -1,0 +1,330 @@
+import { randomUUID } from 'node:crypto'
+import { initializeDatabase, resetDatabaseConnection } from '@/repositories/database'
+import type { HarnessEvent } from '@/harness/events'
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+function asString(value: unknown) {
+  return typeof value === 'string' ? value : null
+}
+
+function asNumber(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+export class PersistenceSubscriber {
+  private db: ReturnType<typeof initializeDatabase> | null = null
+
+  handle = (event: HarnessEvent) => {
+    try {
+      this.persistEvent(event)
+      this.persistState(event)
+    } catch (error) {
+      console.error('[PersistenceSubscriber] persist failed', {
+        eventType: event.type,
+        runId: event.runId,
+        stepRunId: event.stepRunId,
+        message: error instanceof Error ? error.message : String(error),
+      })
+
+      resetDatabaseConnection()
+      this.db = null
+    }
+  }
+
+  private getDb() {
+    if (!this.db) {
+      this.db = initializeDatabase()
+    }
+
+    return this.db
+  }
+
+  private persistEvent(event: HarnessEvent) {
+    this.getDb()
+      .query(
+        `
+          INSERT OR IGNORE INTO harness_events (
+            id,
+            type,
+            version,
+            run_id,
+            request_id,
+            step_run_id,
+            attempt_id,
+            occurred_at,
+            payload_json
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        event.id,
+        event.type,
+        event.version,
+        event.runId,
+        event.requestId,
+        event.stepRunId ?? null,
+        event.attemptId ?? null,
+        event.occurredAt,
+        JSON.stringify(event.payload)
+      )
+  }
+
+  private persistState(event: HarnessEvent) {
+    const payload = asRecord(event.payload)
+    const db = this.getDb()
+
+    switch (event.type) {
+      case 'workflow.started':
+        db
+          .query(
+            `
+              INSERT OR REPLACE INTO process_runs (
+                id,
+                request_id,
+                workflow_name,
+                workflow_version,
+                status,
+                input_digest,
+                started_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            `
+          )
+          .run(
+            event.runId,
+            event.requestId,
+            asString(payload.workflowName) ?? 'resume_optimization',
+            asString(payload.workflowVersion) ?? 'v1',
+            'running',
+            asString(payload.inputDigest),
+            event.occurredAt
+          )
+        return
+      case 'workflow.succeeded':
+      case 'workflow.failed':
+      case 'workflow.partial':
+        db
+          .query(
+            `
+              UPDATE process_runs
+              SET status = ?, finished_at = ?, error_code = ?, error_message = ?
+              WHERE id = ?
+            `
+          )
+          .run(
+            event.type.replace('workflow.', ''),
+            asString(payload.finishedAt) ?? event.occurredAt,
+            asString(payload.errorCode),
+            asString(payload.errorMessage),
+            event.runId
+          )
+        return
+      case 'step.started':
+        db
+          .query(
+            `
+              INSERT OR REPLACE INTO step_runs (
+                id,
+                run_id,
+                step_name,
+                status,
+                started_at
+              ) VALUES (?, ?, ?, ?, ?)
+            `
+          )
+          .run(
+            event.stepRunId ?? null,
+            event.runId,
+            asString(payload.stepName) ?? 'unknown_step',
+            'running',
+            asString(payload.startedAt) ?? event.occurredAt
+          )
+        return
+      case 'step.succeeded':
+      case 'step.failed':
+      case 'step.partial':
+        db
+          .query(
+            `
+              UPDATE step_runs
+              SET status = ?, finished_at = ?, error_code = ?, error_message = ?
+              WHERE id = ?
+            `
+          )
+          .run(
+            event.type.replace('step.', ''),
+            asString(payload.finishedAt) ?? event.occurredAt,
+            asString(payload.errorCode),
+            asString(payload.errorMessage),
+            event.stepRunId ?? null
+          )
+        return
+      case 'attempt.started':
+        db
+          .query(
+            `
+              INSERT OR REPLACE INTO step_attempts (
+                id,
+                step_run_id,
+                attempt_number,
+                status,
+                started_at
+              ) VALUES (?, ?, ?, ?, ?)
+            `
+          )
+          .run(event.attemptId ?? null, event.stepRunId ?? null, asNumber(payload.attemptNumber) ?? 1, 'running', event.occurredAt)
+        return
+      case 'provider.requested':
+        db
+          .query(
+            `
+              UPDATE step_attempts
+              SET provider = ?, model = ?, prompt_version = ?, raw_output_digest = COALESCE(raw_output_digest, ?)
+              WHERE id = ?
+            `
+          )
+          .run(
+            asString(payload.provider),
+            asString(payload.model),
+            asString(payload.promptVersion),
+            asString(payload.inputDigest),
+            event.attemptId ?? null
+          )
+        return
+      case 'provider.responded':
+        db
+          .query(
+            `
+              UPDATE step_attempts
+              SET
+                provider = ?,
+                model = ?,
+                provider_request_id = ?,
+                finish_reason = ?,
+                input_tokens = ?,
+                output_tokens = ?,
+                latency_ms = ?,
+                raw_output_digest = ?
+              WHERE id = ?
+            `
+          )
+          .run(
+            asString(payload.provider),
+            asString(payload.model),
+            asString(payload.providerRequestId),
+            asString(payload.finishReason),
+            asNumber(payload.inputTokens),
+            asNumber(payload.outputTokens),
+            asNumber(payload.latencyMs),
+            asString(payload.outputDigest),
+            event.attemptId ?? null
+          )
+        return
+      case 'output.parsed':
+        this.persistArtifact(event)
+        return
+      case 'output.validated':
+        db
+          .query('UPDATE step_attempts SET parsed_output_digest = ? WHERE id = ?')
+          .run(asString(payload.outputDigest), event.attemptId ?? null)
+        return
+      case 'attempt.succeeded':
+      case 'attempt.failed':
+        db
+          .query(
+            `
+              UPDATE step_attempts
+              SET status = ?, finished_at = ?, error_code = ?, error_message = ?, retry_reason = ?
+              WHERE id = ?
+            `
+          )
+          .run(
+            event.type.replace('attempt.', ''),
+            asString(payload.finishedAt) ?? event.occurredAt,
+            asString(payload.errorCode),
+            asString(payload.errorMessage),
+            asString(payload.retryReason),
+            event.attemptId ?? null
+          )
+        return
+      case 'evaluation.completed':
+        this.persistEvaluation(event)
+        return
+      default:
+        return
+    }
+  }
+
+  private persistArtifact(event: HarnessEvent) {
+    const payload = asRecord(event.payload)
+    const artifactId = randomUUID()
+    const db = this.getDb()
+
+    db
+      .query(
+        `
+          INSERT INTO artifacts (
+            id,
+            run_id,
+            step_run_id,
+            type,
+            content_type,
+            content_digest,
+            summary,
+            storage_ref,
+            redaction_policy,
+            created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        artifactId,
+        event.runId,
+        event.stepRunId ?? null,
+        asString(payload.outputName) ?? 'parsed_output',
+        'application/json',
+        asString(payload.outputDigest) ?? '',
+        asString(payload.summary),
+        null,
+        'pii_redacted',
+        event.occurredAt
+      )
+
+    if (event.stepRunId) {
+      db.query('UPDATE step_runs SET output_artifact_id = ? WHERE id = ?').run(artifactId, event.stepRunId)
+    }
+  }
+
+  private persistEvaluation(event: HarnessEvent) {
+    const payload = asRecord(event.payload)
+    const db = this.getDb()
+
+    db
+      .query(
+        `
+          INSERT INTO evaluations (
+            id,
+            step_run_id,
+            evaluator_name,
+            evaluator_version,
+            passed,
+            score,
+            issues_json,
+            created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        randomUUID(),
+        event.stepRunId ?? null,
+        asString(payload.evaluatorName) ?? 'unknown_evaluator',
+        asString(payload.evaluatorVersion) ?? 'v1',
+        payload.passed === true ? 1 : 0,
+        asNumber(payload.score),
+        JSON.stringify(payload.issues ?? []),
+        event.occurredAt
+      )
+  }
+}

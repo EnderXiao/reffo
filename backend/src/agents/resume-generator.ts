@@ -1,5 +1,7 @@
-import OpenAI from 'openai'
-import { env } from '@/config/env'
+import { getPromptVersion, renderPromptVariantInstruction, resolvePromptVariant } from '@/harness/prompt-variant'
+import { fallbackLlmProvider } from '@/providers/fallback-provider'
+import type { LlmProvider } from '@/providers/llm-provider'
+import type { AgentExecutionOptions } from '@/agents/types'
 import type { ResumeStructure, JDStructure, MatchAnalysis } from '@/types'
 
 /**
@@ -7,13 +9,10 @@ import type { ResumeStructure, JDStructure, MatchAnalysis } from '@/types'
  * 负责根据匹配分析结果重新编排和优化简历，输出 Markdown 格式
  */
 export class ResumeGeneratorAgent {
-  private client: OpenAI
+  private readonly provider: LlmProvider
 
-  constructor() {
-    this.client = new OpenAI({
-      apiKey: env.OPENAI_API_KEY,
-      baseURL: env.OPENAI_BASE_URL,
-    })
+  constructor(provider: LlmProvider = fallbackLlmProvider) {
+    this.provider = provider
   }
 
   /**
@@ -26,8 +25,11 @@ export class ResumeGeneratorAgent {
   async generate(
     sourceResume: ResumeStructure,
     jd: JDStructure,
-    matchAnalysis: MatchAnalysis
+    matchAnalysis: MatchAnalysis,
+    options: AgentExecutionOptions = {}
   ): Promise<string> {
+    const promptVariant = resolvePromptVariant(options.promptVariant)
+    const variantInstruction = renderPromptVariantInstruction(promptVariant)
     const prompt = `你是一位专业的简历撰写专家。请基于候选人的源简历、目标岗位要求和匹配分析，生成一份高度匹配、专业化、数据驱动的优化简历。
 
 源简历（结构化数据）：
@@ -44,6 +46,8 @@ ${JSON.stringify(jd, null, 2)}
 \`\`\`json
 ${JSON.stringify(matchAnalysis, null, 2)}
 \`\`\`
+
+${variantInstruction}
 
 请完成简历优化，输出 Markdown 格式的简历文本：
 
@@ -150,18 +154,15 @@ ${JSON.stringify(matchAnalysis, null, 2)}
 现在请根据以上原则和模板，生成优化后的简历：`
 
     try {
-      const response = await this.client.chat.completions.create({
-        model: env.AI_MODEL,
+      const response = await this.provider.complete({
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.5,
+        promptVersion: getPromptVersion('resume-generator', promptVariant),
+        eventBus: options.eventBus,
+        stepContext: options.stepContext,
       })
 
-      const content = response.choices[0]?.message?.content
-      if (!content) {
-        throw new Error('AI 返回内容为空')
-      }
-
-      return content.trim()
+      return response.content.trim()
     } catch (error) {
       console.error('Resume generation failed:', error)
       throw new Error(`简历生成失败: ${error instanceof Error ? error.message : '未知错误'}`)

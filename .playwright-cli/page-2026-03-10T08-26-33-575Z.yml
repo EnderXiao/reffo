@@ -1,0 +1,287 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e5]:
+        - link [ref=e6] [cursor=pointer]:
+          - /url: /explore?channel_type=web_note_detail_r10
+          - img
+        - generic [ref=e7]:
+          - textbox "登录探索更多内容" [ref=e8]
+          - img [ref=e11] [cursor=pointer]
+        - generic [ref=e15]:
+          - button "创作中心" [ref=e17] [cursor=pointer]:
+            - generic [ref=e19]: 创作中心
+          - button "业务合作" [ref=e21] [cursor=pointer]:
+            - generic [ref=e23]: 业务合作
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - list [ref=e26]:
+            - generic [ref=e27]:
+              - listitem [ref=e28] [cursor=pointer]:
+                - link "发现" [ref=e29]:
+                  - /url: /explore?channel_id=homefeed_recommend
+                  - img [ref=e30]
+                  - generic [ref=e32]: 发现
+              - listitem [ref=e33] [cursor=pointer]:
+                - link "发布" [ref=e34]:
+                  - /url: https://creator.xiaohongshu.com/publish/publish?source=official
+                  - img [ref=e35]
+                  - generic [ref=e37]: 发布
+              - listitem [ref=e38] [cursor=pointer]:
+                - link "通知" [ref=e39]:
+                  - /url: /notification
+                  - img [ref=e41]
+                  - generic [ref=e43]: 通知
+              - button "登录" [ref=e217] [cursor=pointer]:
+                - generic [ref=e219]: 登录
+              - generic [ref=e220] [cursor=pointer]:
+                - generic [ref=e221]: 马上登录即可
+                - generic [ref=e222]:
+                  - img [ref=e223]
+                  - generic [ref=e225]: 刷到更懂你的优质内容
+                - generic [ref=e226]:
+                  - img [ref=e227]
+                  - generic [ref=e229]: 搜索最新种草、拔草信息
+                - generic [ref=e230]:
+                  - img [ref=e231]
+                  - generic [ref=e233]: 查看收藏、点赞的笔记
+                - generic [ref=e234]:
+                  - img [ref=e235]
+                  - generic [ref=e237]: 与他人更好地互动、交流
+            - generic [ref=e44]:
+              - paragraph [ref=e45]:
+                - link "沪ICP备13030189号" [ref=e46] [cursor=pointer]:
+                  - /url: //beian.miit.gov.cn/
+                - text: "|"
+                - link "营业执照" [ref=e47] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform/5581076bd6b6af2e0e943abb024ad0e16f2ebff6.pdf
+                - text: "|"
+                - link "2024沪公网安备31010102002533号" [ref=e48] [cursor=pointer]:
+                  - /url: //www.beian.gov.cn/portal/registerSystemInfo?recordcode=31010102002533
+                - text: "|"
+                - link "增值电信业务经营许可证：沪B2-20150021" [ref=e49] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform-file/104101b831hhkkll23u0678gtks7tu70004en2n231udpe
+                - text: "|"
+                - link "医疗器械网络交易服务第三方平台备案：(沪)网械平台备字[2019]第00006号" [ref=e50] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform/410dce57bc12a6d7e5808060e47644fbe46f68ff.pdf
+                - text: "|"
+                - link "互联网药品信息服务资格证书：(沪)-经营性-2023-0144" [ref=e51] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform/f37a08cacc088061beb38329c387c32fc48fc6fe.pdf
+                - text: "|"
+                - link "违法不良信息举报电话：4006676810" [ref=e52] [cursor=pointer]:
+                  - /url: //www.shjbzx.cn
+                - text: "|"
+                - link "上海市互联网举报中心" [ref=e53] [cursor=pointer]:
+                  - /url: //www.shjbzx.cn
+                - text: "|"
+                - link "网上有害信息举报专区" [ref=e54] [cursor=pointer]:
+                  - /url: //www.12377.cn
+                - text: "|"
+                - link "自营经营者信息" [ref=e55] [cursor=pointer]:
+                  - /url: //dc.xhscdn.com/06c2adb0-b353-11e9-9d0c-7be9ff8961c1/自营经营者信息公示.pdf
+                - text: "|"
+                - link "网络文化经营许可证：沪网文(2024)1344-086号" [ref=e56] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform/7970f6e8b70aedc995ba273d04b6b6751abcd63c.pdf
+                - text: "|"
+                - link "个性化推荐算法 网信算备310101216601302230019号" [ref=e57] [cursor=pointer]:
+                  - /url: https://beian.cac.gov.cn/api/static/fileUpload/principalOrithm/additional/user_c015445c-80ac-45f7-94d7-3871e961b1fe_d4425f3b-7f35-45af-b8d4-badd4424d6d5.pdf
+              - generic [ref=e58]:
+                - paragraph [ref=e59]: © 2014-2024
+                - paragraph [ref=e60]: 行吟信息科技（上海）有限公司
+                - paragraph [ref=e61]: 地址：上海市黄浦区马当路388号C座
+                - paragraph [ref=e62]: 电话：9501-3888
+          - generic [ref=e64]:
+            - generic [ref=e65] [cursor=pointer]:
+              - img [ref=e66]
+              - text: 更多
+            - generic [ref=e68]:
+              - paragraph [ref=e69]:
+                - link "沪ICP备13030189号" [ref=e70] [cursor=pointer]:
+                  - /url: //beian.miit.gov.cn/
+                - text: "|"
+                - link "营业执照" [ref=e71] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform/5581076bd6b6af2e0e943abb024ad0e16f2ebff6.pdf
+                - text: "|"
+                - link "2024沪公网安备31010102002533号" [ref=e72] [cursor=pointer]:
+                  - /url: //www.beian.gov.cn/portal/registerSystemInfo?recordcode=31010102002533
+                - text: "|"
+                - link "增值电信业务经营许可证：沪B2-20150021" [ref=e73] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform-file/104101b831hhkkll23u0678gtks7tu70004en2n231udpe
+                - text: "|"
+                - link "医疗器械网络交易服务第三方平台备案：(沪)网械平台备字[2019]第00006号" [ref=e74] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform/410dce57bc12a6d7e5808060e47644fbe46f68ff.pdf
+                - text: "|"
+                - link "互联网药品信息服务资格证书：(沪)-经营性-2023-0144" [ref=e75] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform/f37a08cacc088061beb38329c387c32fc48fc6fe.pdf
+                - text: "|"
+                - link "违法不良信息举报电话：4006676810" [ref=e76] [cursor=pointer]:
+                  - /url: //www.shjbzx.cn
+                - text: "|"
+                - link "上海市互联网举报中心" [ref=e77] [cursor=pointer]:
+                  - /url: //www.shjbzx.cn
+                - text: "|"
+                - link "网上有害信息举报专区" [ref=e78] [cursor=pointer]:
+                  - /url: //www.12377.cn
+                - text: "|"
+                - link "自营经营者信息" [ref=e79] [cursor=pointer]:
+                  - /url: //dc.xhscdn.com/06c2adb0-b353-11e9-9d0c-7be9ff8961c1/自营经营者信息公示.pdf
+                - text: "|"
+                - link "网络文化经营许可证：沪网文(2024)1344-086号" [ref=e80] [cursor=pointer]:
+                  - /url: //fe-video-qc.xhscdn.com/fe-platform/7970f6e8b70aedc995ba273d04b6b6751abcd63c.pdf
+                - text: "|"
+                - link "个性化推荐算法 网信算备310101216601302230019号" [ref=e81] [cursor=pointer]:
+                  - /url: https://beian.cac.gov.cn/api/static/fileUpload/principalOrithm/additional/user_c015445c-80ac-45f7-94d7-3871e961b1fe_d4425f3b-7f35-45af-b8d4-badd4424d6d5.pdf
+              - generic [ref=e82]:
+                - paragraph [ref=e83]: © 2014-2024
+                - paragraph [ref=e84]: 行吟信息科技（上海）有限公司
+                - paragraph [ref=e85]: 地址：上海市黄浦区马当路388号C座
+                - paragraph [ref=e86]: 电话：9501-3888
+        - generic [ref=e89]:
+          - generic [ref=e92]:
+            - text: /
+            - img [ref=e96] [cursor=pointer]
+          - generic [ref=e99]:
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - link [ref=e105] [cursor=pointer]:
+                  - /url: /user/profile/55edc178f5a263273c885d05?channel_type=web_note_detail_r10&xsec_token=ABWTyfUipVdlKiJad8QlOklOPaMurFpxY5vcptg0DaCx0%3D&xsec_source=pc_note
+                  - img [ref=e106]
+                - link "Motion Core" [ref=e107] [cursor=pointer]:
+                  - /url: /user/profile/55edc178f5a263273c885d05?channel_type=web_note_detail_r10&parent_page_channel_type=web_profile_board&xsec_token=ABWTyfUipVdlKiJad8QlOklOPaMurFpxY5vcptg0DaCx0=&xsec_source=pc_note
+                  - generic [ref=e108]: Motion Core
+              - button "关注" [ref=e110] [cursor=pointer]:
+                - generic [ref=e112]: 关注
+            - generic [ref=e113]:
+              - generic [ref=e114]:
+                - generic [ref=e115]: 这个跟手滑动让选择更真实
+                - generic [ref=e117]:
+                  - link "#动效" [ref=e118] [cursor=pointer]:
+                    - /url: /search_result?keyword=%25E5%258A%25A8%25E6%2595%2588&type=54&source=web_note_detail_r10
+                  - link "#动效创作" [ref=e119] [cursor=pointer]:
+                    - /url: /search_result?keyword=%25E5%258A%25A8%25E6%2595%2588%25E5%2588%259B%25E4%25BD%259C&type=54&source=web_note_detail_r10
+                  - link "#动效设计" [ref=e120] [cursor=pointer]:
+                    - /url: /search_result?keyword=%25E5%258A%25A8%25E6%2595%2588%25E8%25AE%25BE%25E8%25AE%25A1&type=54&source=web_note_detail_r10
+                  - link "#视觉设计" [ref=e121] [cursor=pointer]:
+                    - /url: /search_result?keyword=%25E8%25A7%2586%25E8%25A7%2589%25E8%25AE%25BE%25E8%25AE%25A1&type=54&source=web_note_detail_r10
+                  - link "#用户体验设计" [ref=e122] [cursor=pointer]:
+                    - /url: /search_result?keyword=%25E7%2594%25A8%25E6%2588%25B7%25E4%25BD%2593%25E9%25AA%258C%25E8%25AE%25BE%25E8%25AE%25A1&type=54&source=web_note_detail_r10
+                  - link "#交互动效" [ref=e123] [cursor=pointer]:
+                    - /url: /search_result?keyword=%25E4%25BA%25A4%25E4%25BA%2592%25E5%258A%25A8%25E6%2595%2588&type=54&source=web_note_detail_r10
+                  - link "#ui" [ref=e124] [cursor=pointer]:
+                    - /url: /search_result?keyword=ui&type=54&source=web_note_detail_r10
+                  - link "#ai" [ref=e125] [cursor=pointer]:
+                    - /url: /search_result?keyword=ai&type=54&source=web_note_detail_r10
+                  - link "#设计灵感" [ref=e126] [cursor=pointer]:
+                    - /url: /search_result?keyword=%25E8%25AE%25BE%25E8%25AE%25A1%25E7%2581%25B5%25E6%2584%259F&type=54&source=web_note_detail_r10
+                - generic [ref=e127]:
+                  - generic [ref=e128]: 2025-12-12
+                  - img [ref=e132] [cursor=pointer]
+              - generic [ref=e239]:
+                - generic [ref=e240]: 共 3 条评论
+                - generic [ref=e241]:
+                  - generic [ref=e242]:
+                    - generic [ref=e244]:
+                      - link [ref=e246] [cursor=pointer]:
+                        - /url: /user/profile/59f9dfab11be1037eeff930b?channel_type=web_note_detail_r10&xsec_token=ABGymPnBZ3k_7Ikpe_lKpBq17lDOTb4kw7khYz6KoXK0U%3D&xsec_source=pc_comment
+                        - img [ref=e247]
+                      - generic [ref=e248]:
+                        - generic [ref=e249]:
+                          - link "三只栗子🌰" [ref=e251] [cursor=pointer]:
+                            - /url: /user/profile/59f9dfab11be1037eeff930b?channel_type=web_note_detail_r10&parent_page_channel_type=web_user_board&xsec_token=ABGymPnBZ3k_7Ikpe_lKpBq17lDOTb4kw7khYz6KoXK0U=&xsec_source=pc_comment
+                          - img [ref=e254] [cursor=pointer]
+                        - generic [ref=e257]: 请问，这种是靠代码实现么？
+                        - generic [ref=e258]:
+                          - generic [ref=e259]: 2025-12-14浙江
+                          - generic [ref=e260]:
+                            - generic [ref=e262] [cursor=pointer]:
+                              - img [ref=e264]
+                              - generic [ref=e266]: 赞
+                            - generic [ref=e267] [cursor=pointer]:
+                              - img [ref=e268]
+                              - generic [ref=e270]: "1"
+                    - generic [ref=e274]:
+                      - link [ref=e276] [cursor=pointer]:
+                        - /url: /user/profile/55edc178f5a263273c885d05?channel_type=web_note_detail_r10&xsec_token=AB9vxl15frSD6Fps-6G7xKdb12Quu01CA7sPBgIdRZl7U%3D&xsec_source=pc_comment
+                        - img [ref=e277]
+                      - generic [ref=e278]:
+                        - generic [ref=e279]:
+                          - generic [ref=e280]:
+                            - link "Motion Core" [ref=e281] [cursor=pointer]:
+                              - /url: /user/profile/55edc178f5a263273c885d05?channel_type=web_note_detail_r10&parent_page_channel_type=web_user_board&xsec_token=AB9vxl15frSD6Fps-6G7xKdb12Quu01CA7sPBgIdRZl7U=&xsec_source=pc_comment
+                            - generic [ref=e282]: 作者
+                          - img [ref=e285] [cursor=pointer]
+                        - generic [ref=e288]: 做demo的话protopie spline 都可以
+                        - generic [ref=e289]:
+                          - generic [ref=e290]: 2025-12-14韩国
+                          - generic [ref=e291]:
+                            - generic [ref=e293] [cursor=pointer]:
+                              - img [ref=e295]
+                              - generic [ref=e297]: 赞
+                            - generic [ref=e298] [cursor=pointer]:
+                              - img [ref=e299]
+                              - generic [ref=e301]: 回复
+                  - generic [ref=e304]:
+                    - link [ref=e306] [cursor=pointer]:
+                      - /url: /user/profile/611a57320000000001005f40?channel_type=web_note_detail_r10&xsec_token=ABzVYuBIR3l7QDhwy3O2yEwzfSD0vZIV-eqvo78axVNOs%3D&xsec_source=pc_comment
+                      - img [ref=e307]
+                    - generic [ref=e308]:
+                      - generic [ref=e309]:
+                        - link "F法凡菲德" [ref=e311] [cursor=pointer]:
+                          - /url: /user/profile/611a57320000000001005f40?channel_type=web_note_detail_r10&parent_page_channel_type=web_user_board&xsec_token=ABzVYuBIR3l7QDhwy3O2yEwzfSD0vZIV-eqvo78axVNOs=&xsec_source=pc_comment
+                        - img [ref=e314] [cursor=pointer]
+                      - generic [ref=e317]: 你的头像好像那个小美ai
+                      - generic [ref=e318]:
+                        - generic [ref=e319]: 2025-12-12北京
+                        - generic [ref=e320]:
+                          - generic [ref=e322] [cursor=pointer]:
+                            - img [ref=e324]
+                            - generic [ref=e326]: "1"
+                          - generic [ref=e327] [cursor=pointer]:
+                            - img [ref=e328]
+                            - generic [ref=e330]: 回复
+                - generic [ref=e331]:
+                  - paragraph [ref=e332]: 登录查看全部评论内容
+                  - button "登录" [ref=e333] [cursor=pointer]
+            - generic [ref=e155]:
+              - generic [ref=e156]:
+                - generic [ref=e157]:
+                  - paragraph [ref=e158]
+                  - generic [ref=e160]:
+                    - img [ref=e161]
+                    - text: 登录后评论
+                - generic [ref=e164]:
+                  - generic [ref=e165]:
+                    - generic [ref=e166] [cursor=pointer]:
+                      - img [ref=e168]
+                      - generic [ref=e170]: "32"
+                    - generic [ref=e171] [cursor=pointer]:
+                      - img [ref=e172]
+                      - generic [ref=e174]: "53"
+                    - generic [ref=e175] [cursor=pointer]:
+                      - img [ref=e176]
+                      - generic [ref=e178]: "3"
+                  - generic [ref=e180] [cursor=pointer]:
+                    - img [ref=e181]
+                    - img [ref=e183]
+              - generic [ref=e185]:
+                - generic [ref=e186]:
+                  - img [ref=e188] [cursor=pointer]
+                  - img [ref=e191] [cursor=pointer]
+                - generic [ref=e193]:
+                  - button "发送" [disabled] [ref=e194] [cursor=pointer]
+                  - button "取消" [ref=e195] [cursor=pointer]
+    - generic [ref=e196]:
+      - generic [ref=e197]:
+        - button [ref=e200] [cursor=pointer]:
+          - img [ref=e202]
+        - generic [ref=e204]: 活动
+        - generic [ref=e205]:
+          - button [ref=e207] [cursor=pointer]:
+            - img [ref=e209]
+          - button [ref=e211] [cursor=pointer]:
+            - img [ref=e213]
+      - iframe [ref=e215]:
+        
+  - generic [ref=e335]:
+    - img [ref=e337]
+    - generic [ref=e347]: 鼠标悬停查看 Ta 的信息 好的

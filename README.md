@@ -41,6 +41,8 @@ bun run dev
 
 ### 📚 详细文档
 
+- **[Agent 开发手册](AGENTS.md)** - 面向开发 agent 的项目结构、技术栈、代码规范、设计规范和验证流程
+- [项目调研纪要](PROJECT_SURVEY.md) - 当前仓库结构、主链路和风险点梳理
 - **[MVP 完整运行指南](MVP_GUIDE.md)** - ⭐ 推荐阅读
 - [安装指南](INSTALL.md) - 从零开始搭建环境
 - [快速启动指南](QUICKSTART.md) - 快速上手

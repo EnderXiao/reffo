@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reffo RN Android Compare"
+  short_description: "运行 Reffo RN Android 并做设备截图对比"
+  default_prompt: "Use $reffo-taro-rn-android-compare to run the Reffo Taro RN Android app, drive a connected device with adb, and compare screenshots against either a local design image or a Figma node link."

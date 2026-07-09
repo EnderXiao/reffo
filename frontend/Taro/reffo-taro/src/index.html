@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+  <meta content="width=device-width,initial-scale=1,user-scalable=no" name="viewport">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-touch-fullscreen" content="yes">
+  <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="%23101521"/><path d="M18 42V20h16c7 0 12 4 12 11S41 42 34 42H18zm8-7h8c3 0 5-1 5-4s-2-4-5-4h-8v8z" fill="%23ffffff"/></svg>'>
+  <meta name="format-detection" content="telephone=no,address=no">
+  <meta name="apple-mobile-web-app-status-bar-style" content="white">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" >
+  <title>reffo-taro</title>
+  <script><%= htmlWebpackPlugin.options.script %></script>
+  <script>
+    (function () {
+      var DESIGN_WIDTH = 393
+      var BASE_FONT_SIZE = 20
+      var MIN_ROOT_SIZE = 14
+      var MAX_ROOT_SIZE = 24
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value))
+      }
+
+      function getViewportSize() {
+        var viewport = window.visualViewport
+        var documentElement = document.documentElement
+        return {
+          width: viewport && viewport.width ? viewport.width : documentElement.clientWidth,
+          height: viewport && viewport.height ? viewport.height : documentElement.clientHeight,
+        }
+      }
+
+      function refreshRootFontSize() {
+        var size = getViewportSize()
+        var effectiveWidth = Math.min(size.width, DESIGN_WIDTH)
+        var nextFontSize = BASE_FONT_SIZE * (effectiveWidth / DESIGN_WIDTH)
+
+        document.documentElement.style.fontSize = clamp(nextFontSize, MIN_ROOT_SIZE, MAX_ROOT_SIZE) + 'px'
+      }
+
+      function scheduleRefresh() {
+        window.requestAnimationFrame(refreshRootFontSize)
+      }
+
+      refreshRootFontSize()
+      window.addEventListener('resize', scheduleRefresh)
+      window.addEventListener('orientationchange', scheduleRefresh)
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleRefresh)
+        window.visualViewport.addEventListener('scroll', scheduleRefresh)
+      }
+    })()
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+</body>
+</html>

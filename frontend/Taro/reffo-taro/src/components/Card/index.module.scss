@@ -1,0 +1,43 @@
+@use '../../styles/variables.scss' as *;
+
+.card {
+  background: var(--color-bg-primary);
+  border-radius: $radius-xl;
+  overflow: hidden;
+  transition: all $transition-base;
+}
+
+.card--bordered {
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--color-border-light);
+}
+
+.card--hoverable {
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// 阴影样式
+.card--shadow-sm {
+  box-shadow: $shadow-sm;
+}
+
+.card--shadow-md {
+  box-shadow: $shadow-md;
+}
+
+.card--shadow-lg {
+  box-shadow: $shadow-lg;
+}
+
+.card--shadow-xl {
+  box-shadow: $shadow-xl;
+}

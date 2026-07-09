@@ -3,9 +3,13 @@ dist/
 .env
 .env.local
 *.log
+*.sqlite-shm
+*.sqlite-wal
 .DS_Store
 *.swp
 *.swo
 *~
 .vscode/
 .idea/
+.artifacts/
+.playwright-cli/

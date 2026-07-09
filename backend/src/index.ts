@@ -3,6 +3,9 @@ import { swagger } from '@elysiajs/swagger'
 import { cors } from '@elysiajs/cors'
 import { env, validateEnv } from '@/config/env'
 import { mvpRoutes } from '@/routes/mvp'
+import { parseRoutes } from '@/routes/parse'
+import { sourceResumeRoutes } from '@/routes/source-resume'
+import { resumeHistoryRoutes } from '@/routes/resume-history'
 
 /**
  * 启动应用
@@ -30,6 +33,9 @@ async function bootstrap() {
           tags: [
             { name: 'MVP', description: 'MVP 核心功能接口' },
             { name: 'Analysis', description: '简历分析相关接口' },
+            { name: 'Parse', description: '文件和 OCR 解析接口' },
+            { name: 'SourceResume', description: '源简历存储与查询接口' },
+            { name: 'ResumeHistory', description: '生成卡片历史接口' },
             { name: 'System', description: '系统接口' },
           ],
         },
@@ -71,12 +77,19 @@ async function bootstrap() {
         }
       }
 
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' && error !== null && 'message' in error
+            ? String((error as { message?: unknown }).message || '服务器内部错误')
+            : '服务器内部错误'
+
       set.status = 500
       return {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error.message || '服务器内部错误',
+          message: errorMessage,
         },
       }
     })
@@ -89,6 +102,9 @@ async function bootstrap() {
     }))
     // 注册路由
     .use(mvpRoutes)
+    .use(parseRoutes)
+    .use(sourceResumeRoutes)
+    .use(resumeHistoryRoutes)
     // 启动服务
     .listen({
       hostname: env.HOST,

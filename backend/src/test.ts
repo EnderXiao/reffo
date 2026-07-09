@@ -3,6 +3,20 @@
  * 用于验证三个 Agent 的完整流程
  */
 
+import type { MvpProcessResponse } from '@/types'
+
+interface ProcessApiResponse {
+  success: boolean
+  data?: MvpProcessResponse
+  error?: unknown
+}
+
+interface HealthApiResponse {
+  status: string
+  timestamp: string
+  service: string
+}
+
 const API_BASE_URL = 'http://localhost:3000'
 
 // 测试用的简历 Markdown
@@ -118,9 +132,9 @@ async function testFullProcess() {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
 
-    const result = await response.json()
+    const result = (await response.json()) as ProcessApiResponse
 
-    if (!result.success) {
+    if (!result.success || !result.data) {
       console.error('❌ 处理失败:', result.error)
       return
     }
@@ -173,7 +187,7 @@ async function healthCheck() {
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/mvp/health`)
-    const data = await response.json()
+    const data = (await response.json()) as HealthApiResponse
 
     if (data.status === 'ok') {
       console.log('✅ 服务运行正常')
