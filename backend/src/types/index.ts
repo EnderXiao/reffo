@@ -2,6 +2,9 @@
  * TypeScript 类型定义
  */
 
+import type { RecoverySummary } from '@/harness/runtime-state'
+import type { HarnessResponseMeta } from '@/harness/harnessed-request'
+
 /**
  * 简历结构化数据
  */
@@ -76,6 +79,15 @@ export interface JDStructure {
 /**
  * 匹配分析结果
  */
+export type WeaknessEvidenceType = 'direct_missing' | 'implicit_evidence' | 'wording_gap'
+
+export interface MatchWeaknessDetail {
+  weakness: string
+  evidence_type: WeaknessEvidenceType
+  evidence: string
+  suggestion: string
+}
+
 export interface MatchAnalysis {
   match_score: number
   hard_requirements_match: Record<string, boolean>
@@ -87,6 +99,7 @@ export interface MatchAnalysis {
   soft_skills_match: string
   strengths: string[]
   weaknesses: string[]
+  weakness_details?: MatchWeaknessDetail[]
   jd_structure: JDStructure
 }
 
@@ -108,6 +121,9 @@ export interface InterviewSuggestions {
 export interface ApiResponse<T> {
   success: boolean
   data?: T
+  meta?: {
+    harness?: HarnessResponseMeta
+  }
   error?: {
     code: string
     message: string
@@ -141,6 +157,7 @@ export interface MvpProcessResponse {
   workflow_status?: MvpWorkflowStatus
   step_statuses?: MvpStepStatus[]
   recoverable_errors?: MvpRecoverableError[]
+  recovery_summary?: RecoverySummary[]
   step1_analysis: ResumeAnalysis
   step2_matching: MatchAnalysis
   step3_optimized_resume: string

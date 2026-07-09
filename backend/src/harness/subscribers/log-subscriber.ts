@@ -8,6 +8,19 @@ const LOGGABLE_EVENTS = new Set<HarnessEvent['type']>([
   'step.started',
   'step.succeeded',
   'step.failed',
+  'step.partial',
+  'attempt.started',
+  'attempt.succeeded',
+  'attempt.failed',
+  'recovery.planned',
+  'recovery.started',
+  'recovery.succeeded',
+  'recovery.failed',
+  'provider.requested',
+  'provider.responded',
+  'output.parsed',
+  'output.validated',
+  'evaluation.completed',
 ])
 
 export function logHarnessEvent(event: HarnessEvent) {
@@ -21,6 +34,7 @@ export function logHarnessEvent(event: HarnessEvent) {
       requestId: event.requestId,
       runId: event.runId,
       stepRunId: event.stepRunId,
+      attemptId: event.attemptId,
       occurredAt: event.occurredAt,
       payload: event.payload,
     })

@@ -34,6 +34,35 @@ const booleanLikeSchema = z.preprocess((value) => {
   return value
 }, z.boolean())
 
+const weaknessEvidenceTypeSchema = z.enum(['direct_missing', 'implicit_evidence', 'wording_gap'])
+
+const weaknessDetailSchema = z.object({
+  weakness: z.string(),
+  evidence_type: weaknessEvidenceTypeSchema,
+  evidence: z.string().default(''),
+  suggestion: z.string().default(''),
+}).passthrough()
+
+const weaknessStringArraySchema = z.preprocess((value) => {
+  if (!Array.isArray(value)) {
+    return value
+  }
+
+  return value.map((item) => {
+    if (typeof item === 'string') {
+      return item
+    }
+    if (item && typeof item === 'object') {
+      const weakness = 'weakness' in item ? item.weakness : undefined
+      const description = 'description' in item ? item.description : undefined
+      const content = 'content' in item ? item.content : undefined
+      return String(weakness ?? description ?? content ?? '')
+    }
+
+    return String(item ?? '')
+  }).filter((item) => item.trim())
+}, z.array(z.string()))
+
 export const matchAnalysisOutputSchema = z.object({
   match_score: z.coerce.number().min(0).max(100),
   hard_requirements_match: z.record(booleanLikeSchema).default({}),
@@ -44,7 +73,8 @@ export const matchAnalysisOutputSchema = z.object({
   experience_match: z.string(),
   soft_skills_match: z.string().default(''),
   strengths: z.array(z.string()).default([]),
-  weaknesses: z.array(z.string()).default([]),
+  weaknesses: weaknessStringArraySchema.default([]),
+  weakness_details: z.array(weaknessDetailSchema).default([]),
   jd_structure: jdStructureSchema.optional(),
 }).passthrough()
 
@@ -58,7 +88,8 @@ export const matchAnalysisSchema = z.object({
   experience_match: z.string(),
   soft_skills_match: z.string(),
   strengths: z.array(z.string()),
-  weaknesses: z.array(z.string()),
+  weaknesses: weaknessStringArraySchema,
+  weakness_details: z.array(weaknessDetailSchema).optional(),
   jd_structure: jdStructureSchema,
 }).passthrough()
 

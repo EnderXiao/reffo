@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "test": "bun run src/test.ts"
+    "test": "bun run src/test.ts",
+    "test:unit": "bun test ./src"
   },
   "dependencies": {
     "elysia": "^1.0.0",

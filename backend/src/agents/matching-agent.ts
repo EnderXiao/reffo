@@ -68,11 +68,22 @@ ${JSON.stringify(jd, null, 2)}
 
 7. **劣势点** (weaknesses)：
    - 列出 2-3 个候选人需要改进的地方（体现与岗位的差距）
+   - 保持为字符串数组，便于前端直接展示
+
+8. **劣势证据标注** (weakness_details)：
+   - 必须与 weaknesses 一一对应，每条弱点都要标注证据类型
+   - evidence_type 只能取以下三类之一：
+     - direct_missing：源简历中确实没有相关经历或技能证据
+     - implicit_evidence：源简历项目/经历能间接证明，但没有显式写清楚 JD 需要的能力
+     - wording_gap：能力可能具备，只是表达不够贴近 JD 关键词或业务场景
+   - evidence 写明判断依据，必须引用源简历或 JD 中可见的信息，不要凭空推断
+   - suggestion 给出改写方向，优先建议显式化表达，不要把 implicit_evidence 误判成 direct_missing
 
 **重要提示**：
 - 必须严格按照 JSON 格式返回
 - 评估必须客观、准确，基于事实
 - 如果 JD 中某些信息不明确，可以合理推断但不要过度解读
+- 判断弱点时要区分“真的没有”和“有间接证据但表达不够明确”。例如候选人有多个 Web 项目经验，但没有直接写“工程化/性能优化/组件化”，应优先标为 implicit_evidence 或 wording_gap，而不是 direct_missing
 
 返回格式示例：
 {
@@ -91,6 +102,20 @@ ${JSON.stringify(jd, null, 2)}
   "soft_skills_match": "候选人展现出良好的团队协作和问题解决能力...",
   "strengths": ["优势1", "优势2", "优势3"],
   "weaknesses": ["劣势1", "劣势2"],
+  "weakness_details": [
+    {
+      "weakness": "劣势1",
+      "evidence_type": "implicit_evidence",
+      "evidence": "源简历有相关项目经验，但没有直接使用 JD 中的关键词描述该能力",
+      "suggestion": "在项目经历中补充该能力的使用场景和结果"
+    },
+    {
+      "weakness": "劣势2",
+      "evidence_type": "wording_gap",
+      "evidence": "源简历体现了相近能力，但表达与 JD 术语不一致",
+      "suggestion": "将相近表述改写为 JD 关键词，并保留事实边界"
+    }
+  ],
   "jd_structure": ${JSON.stringify(jd, null, 2)}
 }`
 

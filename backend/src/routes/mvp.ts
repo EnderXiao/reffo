@@ -4,6 +4,19 @@ import { ResumeAnalyzerAgent } from '@/agents/resume-analyzer'
 import { MatchingAgent } from '@/agents/matching-agent'
 import { ResumeGeneratorAgent } from '@/agents/resume-generator'
 import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
+import { ResumeRevisionAgent } from '@/agents/resume-revision'
+import { createHarnessEvent } from '@/harness/events'
+import {
+  evaluateInterviewSuggestionsBusiness,
+  evaluateMatchAnalysisBusiness,
+  evaluateResumeAnalysisBusiness,
+  evaluateSourceResumeForGeneration,
+} from '@/harness/evaluators/business-evaluators'
+import { assertBusinessEvaluation, publishEvaluationCompleted } from '@/harness/evaluators/evaluation-events'
+import { evaluateMarkdownResume } from '@/harness/evaluators/markdown-resume-evaluator'
+import { runHarnessedRequest, runHarnessedStep } from '@/harness/harnessed-request'
+import { buildQualityGateAttempt, classifyAttemptResult, decideNextAction } from '@/harness/runtime-state'
+import { runStep } from '@/harness/run-step'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
@@ -242,12 +255,33 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/analyze',
     async ({ body, set }) => {
       try {
+        const resumeMarkdown = normalizeMarkdownText(body.resume_markdown)
         const analyzer = new ResumeAnalyzerAgent()
-        const result = await analyzer.analyze(normalizeMarkdownText(body.resume_markdown))
+        const { result, meta } = await runHarnessedStep({
+          workflowVersion: 'single:v1:analyze_resume',
+          stepName: 'analyze_resume',
+          inputDigestSource: { resume_markdown: resumeMarkdown },
+          stepTimeoutMs: 120000,
+          execute: async (stepContext, { eventBus }) => {
+            const analysis = await analyzer.analyze(resumeMarkdown, {
+              eventBus,
+              stepContext,
+            })
+            await assertBusinessEvaluation({
+              eventBus,
+              stepContext,
+              evaluation: evaluateResumeAnalysisBusiness(analysis),
+              errorPrefix: '简历分析业务校验失败',
+            })
+
+            return analysis
+          },
+        })
 
         const response: ApiResponse<typeof result> = {
           success: true,
           data: result,
+          meta: { harness: meta },
         }
 
         return response
@@ -289,14 +323,59 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/match',
     async ({ body, set }) => {
       try {
+        const jdText = normalizeMarkdownText(body.jd_text)
         const parser = new JDParserAgent()
         const matcher = new MatchingAgent()
-        const jd = await parser.parse(normalizeMarkdownText(body.jd_text))
-        const result = await matcher.match(body.structured_resume, jd)
+        const { result, meta } = await runHarnessedRequest({
+          workflowVersion: 'single:v1:match_resume_to_jd',
+          inputDigestSource: {
+            structured_resume: body.structured_resume,
+            jd_text: jdText,
+          },
+          execute: async ({ runContext, eventBus, steps, getRemainingWorkflowTimeout }) => {
+            const jdStep = await runStep({
+              runContext,
+              eventBus,
+              stepName: 'parse_jd',
+              timeoutMs: Math.min(90000, getRemainingWorkflowTimeout()),
+              execute: (stepContext) =>
+                parser.parse(jdText, {
+                  eventBus,
+                  stepContext,
+                }),
+            })
+            steps.push(jdStep.step)
+
+            const matchingStep = await runStep({
+              runContext,
+              eventBus,
+              stepName: 'match_resume_to_jd',
+              timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
+              execute: async (stepContext) => {
+                const matchAnalysis = await matcher.match(body.structured_resume, jdStep.result, {
+                  eventBus,
+                  stepContext,
+                })
+                await assertBusinessEvaluation({
+                  eventBus,
+                  stepContext,
+                  evaluation: evaluateMatchAnalysisBusiness(matchAnalysis),
+                  errorPrefix: '匹配分析业务校验失败',
+                })
+
+                return matchAnalysis
+              },
+            })
+            steps.push(matchingStep.step)
+
+            return matchingStep.result
+          },
+        })
 
         const response: ApiResponse<typeof result> = {
           success: true,
           data: result,
+          meta: { harness: meta },
         }
 
         return response
@@ -342,11 +421,157 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     async ({ body, set }) => {
       try {
         const generator = new ResumeGeneratorAgent()
-        const optimizedResume = await generator.generate(
-          body.structured_resume,
-          body.matching.jd_structure,
-          body.matching
-        )
+        const reviser = new ResumeRevisionAgent()
+        const { result: optimizedResume, meta } = await runHarnessedRequest({
+          workflowVersion: 'single:v1:generate_resume',
+          inputDigestSource: {
+            structured_resume: body.structured_resume,
+            matching: body.matching,
+          },
+          execute: async ({ runContext, eventBus, steps, getRemainingWorkflowTimeout }) => {
+            const precheckStep = await runStep({
+              runContext,
+              eventBus,
+              stepName: 'validate_source_resume_for_generation',
+              timeoutMs: Math.min(30000, getRemainingWorkflowTimeout()),
+              execute: async (stepContext) => {
+                const evaluation = evaluateSourceResumeForGeneration(body.structured_resume)
+                await assertBusinessEvaluation({
+                  eventBus,
+                  stepContext,
+                  evaluation,
+                  errorPrefix: '优化简历生成前置校验失败',
+                })
+
+                return evaluation
+              },
+            })
+            steps.push(precheckStep.step)
+
+            const generationStep = await runStep({
+              runContext,
+              eventBus,
+              stepName: 'generate_resume',
+              timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
+              execute: (stepContext) =>
+                generator.generate(
+                  body.structured_resume,
+                  body.matching.jd_structure,
+                  body.matching,
+                  {
+                    eventBus,
+                    stepContext,
+                  }
+                ),
+            })
+            steps.push(generationStep.step)
+
+            let optimizedResume = generationStep.result
+            let revisionAttempts = 0
+            const maxRevisionAttempts = 2
+
+            while (revisionAttempts <= maxRevisionAttempts) {
+              const validationStep = await runStep({
+                runContext,
+                eventBus,
+                stepName: 'validate_resume',
+                timeoutMs: Math.min(30000, getRemainingWorkflowTimeout()),
+                execute: async (stepContext) => {
+                  const evaluation = evaluateMarkdownResume(optimizedResume, body.structured_resume)
+                  await publishEvaluationCompleted({ eventBus, stepContext, evaluation })
+                  return evaluation
+                },
+              })
+              steps.push(validationStep.step)
+
+              const qualityGateAttempt = buildQualityGateAttempt({
+                stepName: validationStep.step.stepName,
+                attemptNumber: revisionAttempts + 1,
+                evaluation: validationStep.result,
+              })
+              const decision = decideNextAction(classifyAttemptResult(qualityGateAttempt))
+
+              if (decision.action === 'accept') {
+                if (revisionAttempts > 0) {
+                  await eventBus.publish(createHarnessEvent({
+                    type: 'recovery.succeeded',
+                    runId: runContext.runId,
+                    requestId: runContext.requestId,
+                    payload: {
+                      triggerStep: 'validate_resume',
+                      action: 'revise_output',
+                      attempts: revisionAttempts,
+                      maxAttempts: maxRevisionAttempts,
+                      reason: `第 ${revisionAttempts} 次修订后通过质量门禁`,
+                    },
+                  }))
+                }
+                return optimizedResume
+              }
+
+              if (decision.action !== 'revise_output' || revisionAttempts >= maxRevisionAttempts) {
+                await eventBus.publish(createHarnessEvent({
+                  type: 'recovery.failed',
+                  runId: runContext.runId,
+                  requestId: runContext.requestId,
+                  payload: {
+                    triggerStep: 'validate_resume',
+                    action: decision.action,
+                    attempts: revisionAttempts,
+                    maxAttempts: maxRevisionAttempts,
+                    reason: qualityGateAttempt.error?.message ?? '优化简历质量门禁未通过',
+                  },
+                }))
+                throw new Error(qualityGateAttempt.error?.message ?? '优化简历质量门禁未通过')
+              }
+
+              revisionAttempts += 1
+              const recoveryPayload = {
+                triggerStep: 'validate_resume',
+                action: decision.action,
+                revisionStep: decision.revisionStep,
+                attempts: revisionAttempts,
+                maxAttempts: maxRevisionAttempts,
+                issueCodes: validationStep.result.issues.map((issue) => issue.code),
+                reason: decision.reason,
+              }
+              await eventBus.publish(createHarnessEvent({
+                type: 'recovery.planned',
+                runId: runContext.runId,
+                requestId: runContext.requestId,
+                payload: recoveryPayload,
+              }))
+              await eventBus.publish(createHarnessEvent({
+                type: 'recovery.started',
+                runId: runContext.runId,
+                requestId: runContext.requestId,
+                payload: recoveryPayload,
+              }))
+              const revisionStep = await runStep({
+                runContext,
+                eventBus,
+                stepName: decision.revisionStep,
+                timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
+                execute: (stepContext) =>
+                  reviser.revise(
+                    body.structured_resume,
+                    body.matching.jd_structure,
+                    body.matching,
+                    optimizedResume,
+                    validationStep.result,
+                    {
+                      eventBus,
+                      stepContext,
+                    }
+                  ),
+              })
+              steps.push(revisionStep.step)
+              optimizedResume = revisionStep.result
+            }
+
+            return optimizedResume
+          },
+        })
 
         const response: ApiResponse<{
           optimized_resume: string
@@ -360,9 +585,10 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
               ? body.matching.optimization_suggestions
               : Array.isArray(body.matching.weaknesses)
                 ? body.matching.weaknesses
-                : [],
+              : [],
             improvement_score: Math.max(0, (body.matching.match_score ?? 0) - 75),
           },
+          meta: { harness: meta },
         }
 
         return response
@@ -407,15 +633,40 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     async ({ body, set }) => {
       try {
         const advisor = new InterviewAdvisorAgent()
-        const result = await advisor.advise(
-          body.analysis,
-          body.matching,
-          body.optimized_resume
-        )
+        const { result, meta } = await runHarnessedStep({
+          workflowVersion: 'single:v1:generate_interview_advice',
+          stepName: 'generate_interview_advice',
+          inputDigestSource: {
+            analysis: body.analysis,
+            matching: body.matching,
+            optimized_resume: body.optimized_resume,
+          },
+          stepTimeoutMs: 120000,
+          execute: async (stepContext, { eventBus }) => {
+            const suggestions = await advisor.advise(
+              body.analysis,
+              body.matching,
+              body.optimized_resume,
+              {
+                eventBus,
+                stepContext,
+              }
+            )
+            await assertBusinessEvaluation({
+              eventBus,
+              stepContext,
+              evaluation: evaluateInterviewSuggestionsBusiness(suggestions),
+              errorPrefix: '面试建议业务校验失败',
+            })
+
+            return suggestions
+          },
+        })
 
         const response: ApiResponse<typeof result> = {
           success: true,
           data: result,
+          meta: { harness: meta },
         }
 
         return response

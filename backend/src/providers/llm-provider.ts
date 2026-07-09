@@ -12,6 +12,7 @@ export interface ChatCompletionInput {
   temperature?: number
   responseFormat?: 'json_object'
   promptVersion?: string
+  maxProviderAttempts?: number
   eventBus?: HarnessEventBus
   stepContext?: StepExecutionContext
 }

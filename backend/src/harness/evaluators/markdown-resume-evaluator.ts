@@ -16,6 +16,7 @@ export interface EvaluationResult {
 }
 
 const PLACEHOLDER_PATTERNS = [/XXX/i, /公司名称/, /职位名称/, /项目名称/, /学校名称/]
+const EXPERIENCE_SECTION_PATTERN = /工作经历|工作经验|职业经历|项目经历|项目经验|实习经历|实习经验|实践经历|实践经验/
 
 function includesAny(markdown: string, values: string[]) {
   return values.some((value) => value.trim() && markdown.includes(value.trim()))
@@ -33,7 +34,7 @@ export function evaluateMarkdownResume(markdown: string, sourceResume: ResumeStr
     })
   }
 
-  if (!/工作经历|工作经验|职业经历/.test(normalizedMarkdown)) {
+  if (!EXPERIENCE_SECTION_PATTERN.test(normalizedMarkdown)) {
     issues.push({
       severity: 'error',
       code: 'MISSING_EXPERIENCE_SECTION',
