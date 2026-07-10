@@ -146,6 +146,21 @@ export const styles = StyleSheet.create({
   fieldBlockCompact: {
     marginBottom: 6,
   },
+  fieldRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  fieldRowCompact: {
+    marginBottom: 6,
+  },
+  fieldRowItem: {
+    flex: 1,
+    minWidth: 0,
+    marginBottom: 0,
+  },
+  fieldRowItemLeft: {
+    marginRight: 8,
+  },
   descriptionFieldFill: {
     flex: 1,
     minHeight: 0,
@@ -177,6 +192,10 @@ export const styles = StyleSheet.create({
     paddingLeft: 10,
     paddingRight: 10,
   },
+  inputShellDisabled: {
+    opacity: 0.58,
+    backgroundColor: 'rgba(255,255,255,0.42)',
+  },
   input: {
     color: colors.text.secondary,
     fontSize: typography.fontSize.lg,
@@ -185,6 +204,9 @@ export const styles = StyleSheet.create({
   inputCompact: {
     fontSize: 14,
     lineHeight: createLineHeight(18),
+  },
+  inputDisabled: {
+    color: '#b7aaa3',
   },
   jdPanel: {
     borderRadius: radius.xl,
@@ -390,6 +412,21 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  uploadProgressBadge: {
+    position: 'relative',
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  uploadProgressBadgeCompact: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    marginBottom: 8,
+  },
   previewBadgeRing: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 999,
@@ -581,6 +618,9 @@ export const styles = StyleSheet.create({
   },
   modeTabActive: {
     backgroundColor: colors.surface.warmTab,
+  },
+  modeTabDisabled: {
+    opacity: 0.42,
   },
   modeTabGlyph: {
     color: colors.icon.muted,

@@ -47,6 +47,7 @@ function buildPendingGenerationState({
 }): CreateGenerationState {
   const companyName = jobDescriptionState.companyName.trim()
   const positionName = jobDescriptionState.positionName.trim()
+  const baseLocation = jobDescriptionState.baseLocation.trim()
   const resumeTitle = resumeSummaryState?.title || resumeSummaryState?.fileName || '源简历'
   const resumeMonogram = resumeTitle.trim().match(/[A-Za-z0-9\u4e00-\u9fa5]/u)?.[0] || 'R'
   const monogram = /[A-Za-z]/.test(resumeMonogram) ? resumeMonogram.toUpperCase() : resumeMonogram
@@ -55,6 +56,7 @@ function buildPendingGenerationState({
     resumeTitle,
     companyName,
     positionName,
+    baseLocation,
     monogram,
     detailItems: [],
   }
@@ -343,17 +345,20 @@ function ModeTab({
   mode,
   active,
   onClick,
+  disabled = false,
 }: {
   mode: JobDescriptionInputMode
   active: boolean
   onClick: () => void
+  disabled?: boolean
 }) {
   return (
     <View
       className={classNames('reffo-create-job__mode', {
         'reffo-create-job__mode--active': active,
+        'reffo-create-job__mode--disabled': disabled,
       })}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       role='button'
       data-testid={mode === 'upload' ? 'job-mode-upload' : 'job-mode-manual'}
     >
@@ -436,7 +441,12 @@ function JobUploadPanel({
           value={state.content}
           placeholder='粘贴目标岗位描述、招聘要求或 JD 文本'
           maxlength={20000}
-          onInput={event => onContentChange(event.detail.value)}
+          disabled={isUploading}
+          onInput={event => {
+            if (!isUploading) {
+              onContentChange(event.detail.value)
+            }
+          }}
           className='reffo-create-textarea reffo-create-textarea--job'
           data-testid='job-description-input'
         />
@@ -454,8 +464,10 @@ function JobUploadPanel({
         className={classNames('reffo-create-job__upload', {
           'reffo-create-job__upload--filled': hasAttachment,
           'reffo-create-job__upload--error': hasError,
+          'reffo-create-job__upload--uploading': isUploading,
         })}
-        onClick={onPickAttachment}
+        style={{'--job-upload-progress': state.attachmentProgress} as any}
+        onClick={isUploading ? undefined : onPickAttachment}
         role='button'
         data-testid={hasError ? 'job-upload-error' : hasAttachment ? 'job-upload-preview' : 'job-upload-trigger'}
       >
@@ -484,6 +496,8 @@ function JobUploadPanel({
         <Text className='reffo-create-job__upload-subtitle'>
           {hasError
             ? state.attachmentErrorMessage || '文件读取失败，请重试'
+            : isUploading
+              ? `${Math.round(state.attachmentProgress)}%`
             : hasAttachment
               ? state.attachment?.sizeLabel || state.attachment?.extension
               : '点击选择'}
@@ -496,6 +510,7 @@ function JobDescriptionStepH5({
   state,
   onCompanyNameChange,
   onPositionNameChange,
+  onLocationChange,
   onContentChange,
   onInputModeChange,
   onPickAttachment,
@@ -504,11 +519,14 @@ function JobDescriptionStepH5({
   state: JobDescriptionStepState
   onCompanyNameChange: CreatePageViewModel['handleJobCompanyNameChange']
   onPositionNameChange: CreatePageViewModel['handleJobPositionNameChange']
+  onLocationChange: CreatePageViewModel['handleJobLocationChange']
   onContentChange: CreatePageViewModel['handleJobDescriptionChange']
   onInputModeChange: CreatePageViewModel['handleJobInputModeChange']
   onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
   isExiting?: boolean
 }) {
+  const isUploadingAttachment = state.attachmentStatus === 'uploading'
+
   return (
     <View className='reffo-create-step reffo-create-step--job'>
       <Card
@@ -523,15 +541,42 @@ function JobDescriptionStepH5({
           <Text>新的工牌制作中！</Text>
         </View>
 
-        <View className='reffo-create-job__field'>
-          <Text className='reffo-create-job__label'>公司（可选）</Text>
-          <Input
-            value={state.companyName}
-            placeholder='输入公司名称'
-            onInput={event => onCompanyNameChange(event.detail.value)}
-            className='reffo-create-job__input'
-            data-testid='job-company-input'
-          />
+        <View className='reffo-create-job__meta-row'>
+          <View className='reffo-create-job__field reffo-create-job__field--half'>
+            <Text className='reffo-create-job__label'>公司（可选）</Text>
+            <Input
+              value={state.companyName}
+              placeholder='输入公司名称'
+              disabled={isUploadingAttachment}
+              onInput={event => {
+                if (!isUploadingAttachment) {
+                  onCompanyNameChange(event.detail.value)
+                }
+              }}
+              className={classNames('reffo-create-job__input', {
+                'reffo-create-job__input--disabled': isUploadingAttachment,
+              })}
+              data-testid='job-company-input'
+            />
+          </View>
+
+          <View className='reffo-create-job__field reffo-create-job__field--half'>
+            <Text className='reffo-create-job__label'>Base 地（可选）</Text>
+            <Input
+              value={state.baseLocation}
+              placeholder='输入工作城市'
+              disabled={isUploadingAttachment}
+              onInput={event => {
+                if (!isUploadingAttachment) {
+                  onLocationChange(event.detail.value)
+                }
+              }}
+              className={classNames('reffo-create-job__input', {
+                'reffo-create-job__input--disabled': isUploadingAttachment,
+              })}
+              data-testid='job-location-input'
+            />
+          </View>
         </View>
 
         <View className='reffo-create-job__field'>
@@ -539,8 +584,15 @@ function JobDescriptionStepH5({
           <Input
             value={state.positionName}
             placeholder='输入岗位名称'
-            onInput={event => onPositionNameChange(event.detail.value)}
-            className='reffo-create-job__input'
+            disabled={isUploadingAttachment}
+            onInput={event => {
+              if (!isUploadingAttachment) {
+                onPositionNameChange(event.detail.value)
+              }
+            }}
+            className={classNames('reffo-create-job__input', {
+              'reffo-create-job__input--disabled': isUploadingAttachment,
+            })}
             data-testid='job-position-input'
           />
         </View>
@@ -550,9 +602,9 @@ function JobDescriptionStepH5({
           <View className='reffo-create-job__panel'>
             <JobUploadPanel state={state} onPickAttachment={onPickAttachment} onContentChange={onContentChange} />
             <View className='reffo-create-job__modebar'>
-              <ModeTab mode='upload' active={state.inputMode === 'upload'} onClick={() => onInputModeChange('upload')} />
+              <ModeTab mode='upload' active={state.inputMode === 'upload'} disabled={isUploadingAttachment} onClick={() => onInputModeChange('upload')} />
               <View className='reffo-create-job__mode-divider' />
-              <ModeTab mode='manual' active={state.inputMode === 'manual'} onClick={() => onInputModeChange('manual')} />
+              <ModeTab mode='manual' active={state.inputMode === 'manual'} disabled={isUploadingAttachment} onClick={() => onInputModeChange('manual')} />
             </View>
           </View>
         </View>
@@ -574,10 +626,11 @@ function GenerationOverlay({
       state.resumeTitle.trim() || '源简历',
       state.companyName.trim() || '目标公司',
       state.positionName.trim() || '目标岗位',
+      state.baseLocation.trim() || '目标城市',
     ]
 
     return [...items, items[0]]
-  }, [state.companyName, state.positionName, state.resumeTitle])
+  }, [state.baseLocation, state.companyName, state.positionName, state.resumeTitle])
   const card = useMemo<HomeCardItem>(() => {
     const company = state.companyName.trim() || state.resumeTitle || 'Reffo'
     const role = state.positionName.trim() || '最佳匹配简历'
@@ -586,7 +639,7 @@ function GenerationOverlay({
       id: `generation-${company}-${role}`,
       company,
       indexLabel: state.monogram,
-      location: '智能生成中',
+      location: state.baseLocation.trim() || '智能生成中',
       role,
       dateLabel: '今天',
       score: 88,
@@ -598,7 +651,7 @@ function GenerationOverlay({
       tone: GENERATION_CARD_PALETTE.tone,
       strategyBody: '',
     }
-  }, [state.companyName, state.monogram, state.positionName, state.resumeTitle])
+  }, [state.baseLocation, state.companyName, state.monogram, state.positionName, state.resumeTitle])
 
   return (
     <View className='reffo-create-generation'>
@@ -662,6 +715,7 @@ export default function PageView({
   handleJobDescriptionChange,
   handleJobCompanyNameChange,
   handleJobPositionNameChange,
+  handleJobLocationChange,
   handleJobInputModeChange,
   handlePickJobAttachment,
   handlePrimaryAction,
@@ -825,6 +879,7 @@ export default function PageView({
               state={jobDescriptionState}
               onCompanyNameChange={handleJobCompanyNameChange}
               onPositionNameChange={handleJobPositionNameChange}
+              onLocationChange={handleJobLocationChange}
               onContentChange={handleJobDescriptionChange}
               onInputModeChange={handleJobInputModeChange}
               onPickAttachment={handlePickJobAttachment}

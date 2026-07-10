@@ -731,6 +731,18 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   margin-bottom: 14px;
 }
 
+.reffo-create-job__meta-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.reffo-create-job__field--half {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
 .reffo-create-job__field--description {
   margin-bottom: 0;
 }
@@ -757,6 +769,12 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   display: flex;
   align-items: center;
   box-shadow: inset 0 0 0 1PX rgba(238, 220, 208, 0.52);
+}
+
+.reffo-create-job__input--disabled {
+  opacity: 0.58;
+  background: rgba(255, 255, 255, 0.38);
+  color: #b7aaa3;
 }
 
 taro-input-core.reffo-create-job__input .taro-input,
@@ -836,9 +854,43 @@ taro-input-core.reffo-create-job__input .taro-input::placeholder,
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
+  position: relative;
   box-shadow:
     10PX 10PX 18PX rgba(191, 181, 176, 0.22),
     0 2PX 5PX rgba(160, 150, 146, 0.08);
+}
+
+@property --job-upload-progress {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+.reffo-create-job__upload-icon::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  background: conic-gradient(
+    #ff6c43 calc(var(--job-upload-progress) * 1%),
+    rgba(240, 233, 229, 0.94) 0
+  );
+  opacity: 0;
+  transition:
+    --job-upload-progress 260ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 180ms ease;
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4PX), #000 calc(100% - 3PX));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4PX), #000 calc(100% - 3PX));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.reffo-create-job__upload--uploading .reffo-create-job__upload-icon {
+  border-color: transparent;
+}
+
+.reffo-create-job__upload--uploading .reffo-create-job__upload-icon::before {
+  opacity: 1;
 }
 
 .reffo-create-job__upload-icon--error {
@@ -855,6 +907,8 @@ taro-input-core.reffo-create-job__input .taro-input::placeholder,
   margin: 0 auto;
   object-fit: contain;
   vertical-align: middle;
+  position: relative;
+  z-index: 2;
 }
 
 taro-image-core.reffo-create-job__upload-file-icon .taro-img,
@@ -952,6 +1006,11 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
 .reffo-create-job__mode--active {
   background: transparent;
   color: #f66f4b;
+}
+
+.reffo-create-job__mode--disabled {
+  opacity: 0.42;
+  pointer-events: none;
 }
 
 .reffo-create-job__mode-divider {

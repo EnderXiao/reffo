@@ -1,3 +1,28 @@
+const DEFAULT_CORS_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173',
+  'http://localhost:10086',
+  'http://127.0.0.1:10086',
+]
+
+function parseCorsOrigin(value: string | undefined) {
+  const normalizedValue = value?.trim()
+  if (!normalizedValue) {
+    return DEFAULT_CORS_ORIGINS
+  }
+
+  if (normalizedValue === '*') {
+    return true
+  }
+
+  return normalizedValue
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean)
+}
+
 /**
  * 环境变量配置
  */
@@ -28,7 +53,7 @@ export const env = {
   HOST: process.env.HOST || '0.0.0.0',
 
   // CORS Configuration
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  CORS_ORIGIN: parseCorsOrigin(process.env.CORS_ORIGIN),
 }
 
 /**

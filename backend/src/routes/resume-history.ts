@@ -12,6 +12,7 @@ const resultStepStatusSchema = t.Union([
 const resultContextSchema = t.Object({
   company: t.String({ description: '公司名称' }),
   position: t.String({ description: '岗位名称' }),
+  location: t.Optional(t.String({ description: '工作地点' })),
   resumeContent: t.String({ description: '原始简历内容' }),
   jdContent: t.String({ description: 'JD 内容' }),
 })

@@ -1,4 +1,6 @@
 import {Image, Text, Textarea, View} from '@tarojs/components'
+import {StyleSheet} from 'react-native'
+import SvgIcon, {Circle} from 'react-native-svg'
 import {styles} from './JobDescriptionStep.styles'
 import {DocumentGlyph} from './JobDescriptionStepGlyphs'
 import {readInputValue} from './JobDescriptionStep.utils'
@@ -45,12 +47,21 @@ function UploadIdlePanel({
 }
 
 function UploadLoadingPanel({
+  progress,
   compact = false,
   fillAvailableSpace = false,
 }: {
+  progress: number
   compact?: boolean
   fillAvailableSpace?: boolean
 }) {
+  const size = compact ? 58 : 66
+  const strokeWidth = 3
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
+  const normalizedProgress = Math.max(0, Math.min(100, progress))
+  const strokeDashoffset = circumference * (1 - normalizedProgress / 100)
+
   return (
     <View
       style={[
@@ -60,12 +71,37 @@ function UploadLoadingPanel({
       ] as any}
       data-testid='job-upload-loading'
     >
-      <View style={styles.previewBadge}>
-        <View style={styles.previewBadgeRing} />
+      <View style={[styles.uploadProgressBadge, compact ? styles.uploadProgressBadgeCompact : null] as any}>
+        <SvgIcon width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={StyleSheet.absoluteFill}>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke='#f0e3dc'
+            strokeWidth={strokeWidth}
+            fill='none'
+          />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke='#ff6c43'
+            strokeWidth={strokeWidth}
+            fill='none'
+            strokeLinecap='round'
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={strokeDashoffset}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            style={{transition: 'stroke-dashoffset 260ms cubic-bezier(0.4, 0, 0.2, 1)'} as any}
+          />
+        </SvgIcon>
         <View style={styles.previewBadgeInner}>
           <DocumentGlyph tone='accent' compact />
         </View>
       </View>
+      <Text style={[styles.uploadSubtitle, compact ? styles.uploadSubtitleCompact : null] as any}>
+        正在解析图片 {Math.round(normalizedProgress)}%
+      </Text>
     </View>
   )
 }
@@ -183,12 +219,14 @@ export default function JobDescriptionUploadArea({
   onPickAttachment,
   compact = false,
   fillAvailableSpace = false,
+  disabled = false,
 }: {
   state: JobDescriptionStepState
   onContentChange: (content: string) => void
   onPickAttachment: () => Promise<void>
   compact?: boolean
   fillAvailableSpace?: boolean
+  disabled?: boolean
 }) {
   if (state.inputMode === 'manual') {
     return (
@@ -204,7 +242,12 @@ export default function JobDescriptionUploadArea({
           placeholder='请输入职位描述、岗位要求，或简单描述你的目标岗位方向'
           maxlength={10000}
           autoHeight
-          onInput={event => onContentChange(readInputValue(event))}
+          disabled={disabled}
+          onInput={event => {
+            if (!disabled) {
+              onContentChange(readInputValue(event))
+            }
+          }}
           style={[
             styles.textarea,
             compact ? styles.textareaCompact : null,
@@ -217,7 +260,13 @@ export default function JobDescriptionUploadArea({
   }
 
   if (state.attachmentStatus === 'uploading') {
-    return <UploadLoadingPanel compact={compact} fillAvailableSpace={fillAvailableSpace} />
+    return (
+      <UploadLoadingPanel
+        progress={state.attachmentProgress}
+        compact={compact}
+        fillAvailableSpace={fillAvailableSpace}
+      />
+    )
   }
 
   if (state.attachmentStatus === 'error') {

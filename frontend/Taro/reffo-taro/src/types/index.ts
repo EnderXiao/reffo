@@ -5,6 +5,7 @@
 export interface ResultSessionContext {
   company: string;
   position: string;
+  location?: string;
   resumeContent: string;
   jdContent: string;
 }
@@ -121,6 +122,13 @@ export interface MatchingResult {
   skill_match: SkillMatch;
   experience_match: ExperienceMatch;
   optimization_suggestions: string[];
+  jd_structure?: {
+    basic_info?: {
+      title?: string;
+      company?: string;
+      location?: string;
+    };
+  };
 }
 
 export interface HardRequirement {

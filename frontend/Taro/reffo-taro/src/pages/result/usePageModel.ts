@@ -395,6 +395,10 @@ export function usePageModel(): ResultPageViewModel {
       )
       const resolvedCompany = resultContext?.company.trim() || baseHistory.company
       const resolvedPosition = resultContext?.position.trim() || baseHistory.position
+      const resolvedLocation =
+        resultContext?.location?.trim() ||
+        baseHistory.resultContext?.location?.trim() ||
+        ''
 
       const historyId = await addHistory({
         ...baseHistory,
@@ -404,6 +408,7 @@ export function usePageModel(): ResultPageViewModel {
         resultContext: {
           company: resolvedCompany,
           position: resolvedPosition,
+          ...(resolvedLocation ? {location: resolvedLocation} : {}),
           resumeContent: resultContext?.resumeContent || baseHistory.resumeContent,
           jdContent: resultContext?.jdContent || baseHistory.jdContent,
         },

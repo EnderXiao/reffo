@@ -384,6 +384,24 @@ export function hasConfiguredApiBaseURL(): boolean {
   return Boolean(getConfiguredApiBaseURL());
 }
 
+function isLocalPreviewHost(hostname: string): boolean {
+  return hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '0.0.0.0' ||
+    hostname === '[::1]' ||
+    hostname === '::1';
+}
+
+function getLocalPreviewApiBaseURL(): string | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return isLocalPreviewHost(window.location.hostname)
+    ? 'http://127.0.0.1:3000/api/v1'
+    : undefined;
+}
+
 function getApiBaseURL(): string {
   // 优先使用环境变量
   const configuredBaseURL = getConfiguredApiBaseURL();
@@ -394,6 +412,12 @@ function getApiBaseURL(): string {
   // 开发环境默认值
   if (process.env.NODE_ENV === 'development') {
     return '/api/v1';
+  }
+
+  // 本地预览生产构建时，避免误打不可用的线上 API 域名
+  const localPreviewBaseURL = getLocalPreviewApiBaseURL();
+  if (localPreviewBaseURL) {
+    return localPreviewBaseURL;
   }
 
   // 生产环境默认值

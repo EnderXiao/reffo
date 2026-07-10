@@ -13,6 +13,7 @@ export interface OcrUsage {
 export interface ParsedJobDescriptionResult {
   companyName: string
   positionName: string
+  location?: string
   jdText: string
   responsibilities: string[]
   requirements: string[]

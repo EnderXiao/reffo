@@ -13,7 +13,16 @@ describe('jobMetadata', () => {
     expect(metadata).toEqual({
       companyName: '万兴科技',
       positionName: '产品策划经理',
+      baseLocation: '长沙',
     })
+  })
+
+  test('从显式工作地点字段提取 base 地', () => {
+    const metadata = extractJobMetadataFromOcrText(
+      '字节跳动正在招聘\n# 前端开发工程师\n工作地点：上海\n## 职位详情',
+    )
+
+    expect(metadata.baseLocation).toBe('上海')
   })
 
   test('结构化岗位名是招聘口号时回退到 OCR 标题岗位', () => {

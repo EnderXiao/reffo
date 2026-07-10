@@ -41,6 +41,7 @@ import {
 import {
   extractJobMetadataFromOcrText,
   normalizeCompanyNameCandidate,
+  resolveBaseLocationCandidate,
   resolvePositionNameCandidate,
 } from './utils/jobMetadata'
 
@@ -62,6 +63,7 @@ export interface CreatePageViewModel {
   handleJobDescriptionChange: (content: string) => void
   handleJobCompanyNameChange: (content: string) => void
   handleJobPositionNameChange: (content: string) => void
+  handleJobLocationChange: (content: string) => void
   handleJobInputModeChange: (mode: JobDescriptionInputMode) => void
   handlePickJobAttachment: () => Promise<void>
   handlePrimaryAction: () => Promise<boolean>
@@ -134,8 +136,10 @@ function createInitialJobDescriptionState(
     content: initialContent,
     companyName: '',
     positionName: '',
+    baseLocation: '',
     inputMode: initialContent.trim() ? 'manual' : 'upload',
     attachmentStatus: 'idle',
+    attachmentProgress: 0,
     attachment: null,
     attachmentErrorMessage: null,
   }
@@ -349,6 +353,9 @@ function buildJobDescriptionPayload(state: JobDescriptionStepState) {
     state.positionName.trim()
       ? `岗位名称：${state.positionName.trim()}`
       : null,
+    state.baseLocation.trim()
+      ? `工作地：${state.baseLocation.trim()}`
+      : null,
     content || null,
     attachmentNote,
     uploadFallbackNote,
@@ -397,6 +404,7 @@ function buildGenerationState(args: {
   )
   const companyName = truncateText(jobDescriptionState.companyName.trim(), 24)
   const positionName = truncateText(jobDescriptionState.positionName.trim(), 24)
+  const baseLocation = truncateText(jobDescriptionState.baseLocation.trim(), 16)
   const descriptionSummary =
     jobDescriptionState.inputMode === 'upload'
       ? jobDescriptionState.attachment?.name
@@ -412,6 +420,7 @@ function buildGenerationState(args: {
     `简历 · ${resumeTitle}`,
     companyName ? `公司 · ${companyName}` : '',
     positionName ? `岗位 · ${positionName}` : '',
+    baseLocation ? `工作地 · ${baseLocation}` : '',
     descriptionSummary,
   ].filter(Boolean)
 
@@ -419,6 +428,7 @@ function buildGenerationState(args: {
     resumeTitle,
     companyName,
     positionName,
+    baseLocation,
     monogram: readCardMonogram(
       latestSourceResumeTitle,
       fallbackResumeFileName,
@@ -434,6 +444,7 @@ export function usePageModel(): CreatePageViewModel {
   const requestedStepRef = useRef(normalizeRouteStep(router.params?.step))
   const uploadRequestRef = useRef(0)
   const jobAttachmentRequestRef = useRef(0)
+  const jobAttachmentProgressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const generationRequestRef = useRef(0)
   const initialSourceResume = useSourceResumeStore.getState().latestSourceResume
   const [currentStep, setCurrentStep] = useState<CreateStepId>(() =>
@@ -467,8 +478,44 @@ export function usePageModel(): CreatePageViewModel {
       uploadRequestRef.current += 1
       jobAttachmentRequestRef.current += 1
       generationRequestRef.current += 1
+      if (jobAttachmentProgressTimerRef.current) {
+        clearInterval(jobAttachmentProgressTimerRef.current)
+      }
     }
   }, [])
+
+  const stopJobAttachmentProgress = () => {
+    if (jobAttachmentProgressTimerRef.current) {
+      clearInterval(jobAttachmentProgressTimerRef.current)
+      jobAttachmentProgressTimerRef.current = null
+    }
+  }
+
+  const startJobAttachmentProgress = (requestId: number) => {
+    stopJobAttachmentProgress()
+    jobAttachmentProgressTimerRef.current = setInterval(() => {
+      if (jobAttachmentRequestRef.current !== requestId) {
+        stopJobAttachmentProgress()
+        return
+      }
+
+      setJobDescriptionState(previous => {
+        if (previous.attachmentStatus !== 'uploading') {
+          return previous
+        }
+
+        const nextProgress = Math.min(
+          92,
+          Math.round(previous.attachmentProgress + Math.max(2, (92 - previous.attachmentProgress) * 0.18)),
+        )
+
+        return {
+          ...previous,
+          attachmentProgress: nextProgress,
+        }
+      })
+    }, 260)
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -584,6 +631,10 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handleJobDescriptionChange = (content: string) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     setJobDescriptionState(previous => ({
       ...previous,
       content,
@@ -592,6 +643,10 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handleJobCompanyNameChange = (content: string) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     setJobDescriptionState(previous => ({
       ...previous,
       companyName: content,
@@ -599,13 +654,32 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handleJobPositionNameChange = (content: string) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     setJobDescriptionState(previous => ({
       ...previous,
       positionName: content,
     }))
   }
 
+  const handleJobLocationChange = (content: string) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
+    setJobDescriptionState(previous => ({
+      ...previous,
+      baseLocation: content,
+    }))
+  }
+
   const handleJobInputModeChange = (mode: JobDescriptionInputMode) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     setJobDescriptionState(previous => ({
       ...previous,
       inputMode: mode,
@@ -845,6 +919,10 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handlePickJobAttachment = async () => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     try {
       const selectedFile = await pickJobDescriptionFile()
       if (!selectedFile) {
@@ -856,6 +934,7 @@ export function usePageModel(): CreatePageViewModel {
           ...previous,
           inputMode: 'upload',
           attachmentStatus: 'error',
+          attachmentProgress: 0,
           attachment: null,
           attachmentErrorMessage: '仅支持 PNG、JPG、JPEG 图片',
         }))
@@ -868,6 +947,7 @@ export function usePageModel(): CreatePageViewModel {
           ...previous,
           inputMode: 'upload',
           attachmentStatus: 'error',
+          attachmentProgress: 0,
           attachment: null,
           attachmentErrorMessage: `文件不能超过 ${JOB_DESCRIPTION_FILE_MAX_SIZE_MB}MB`,
         }))
@@ -882,14 +962,21 @@ export function usePageModel(): CreatePageViewModel {
         ...previous,
         inputMode: 'upload',
         attachmentStatus: 'uploading',
+        attachmentProgress: 8,
         attachment: null,
         attachmentErrorMessage: null,
       }))
+      startJobAttachmentProgress(requestId)
 
       await wait(120)
       if (jobAttachmentRequestRef.current !== requestId) {
         return
       }
+
+      setJobDescriptionState(previous => ({
+        ...previous,
+        attachmentProgress: Math.max(previous.attachmentProgress, 28),
+      }))
 
       const attachment: UploadedJobDescriptionFile = {
         name: selectedFile.name,
@@ -904,6 +991,7 @@ export function usePageModel(): CreatePageViewModel {
       if (jobAttachmentRequestRef.current !== requestId) {
         return
       }
+      stopJobAttachmentProgress()
 
       const parsedJob = parsedDocument.structured
       const ocrText = parsedJob?.jdText?.trim() || parsedDocument.rawText.trim()
@@ -918,10 +1006,19 @@ export function usePageModel(): CreatePageViewModel {
         parsedJob?.positionName || '',
         extractedJobMetadata.positionName,
       )
+      const parsedBaseLocation = resolveBaseLocationCandidate(
+        [extractedJobMetadata.baseLocation],
+        [
+          parsedCompanyName,
+          extractedJobMetadata.companyName,
+          parsedPositionName,
+        ],
+      )
 
       setJobDescriptionState(previous => ({
         ...previous,
         attachmentStatus: 'success',
+        attachmentProgress: 100,
         attachment,
         inputMode: 'manual',
         content: ocrText,
@@ -929,9 +1026,8 @@ export function usePageModel(): CreatePageViewModel {
           previous.companyName.trim() ||
           parsedCompanyName ||
           extractedJobMetadata.companyName,
-        positionName:
-          previous.positionName.trim() ||
-          parsedPositionName,
+        positionName: previous.positionName.trim() || parsedPositionName,
+        baseLocation: previous.baseLocation.trim() || parsedBaseLocation,
         attachmentErrorMessage: null,
       }))
 
@@ -943,10 +1039,12 @@ export function usePageModel(): CreatePageViewModel {
 
       const message = error instanceof Error ? error.message : '文件读取失败，请重试'
       console.error('job description attachment failed', error)
+      stopJobAttachmentProgress()
       setJobDescriptionState(previous => ({
         ...previous,
         inputMode: 'upload',
         attachmentStatus: 'error',
+        attachmentProgress: 0,
         attachment: null,
         attachmentErrorMessage: message,
       }))
@@ -1052,6 +1150,34 @@ export function usePageModel(): CreatePageViewModel {
         return false
       }
 
+      const parsedJdInfo = matching.jd_structure?.basic_info
+      const extractedJdMetadata = extractJobMetadataFromOcrText(jobDescriptionState.content)
+      const resolvedCompanyName =
+        jobDescriptionState.companyName.trim() ||
+        normalizeCompanyNameCandidate(parsedJdInfo?.company || '') ||
+        extractedJdMetadata.companyName
+      const resolvedPositionName =
+        jobDescriptionState.positionName.trim() ||
+        resolvePositionNameCandidate(parsedJdInfo?.title || '', extractedJdMetadata.positionName)
+      const resolvedBaseLocation =
+        jobDescriptionState.baseLocation.trim() ||
+        resolveBaseLocationCandidate(
+          [extractedJdMetadata.baseLocation],
+          [
+            resolvedCompanyName,
+            normalizeCompanyNameCandidate(parsedJdInfo?.company || ''),
+            extractedJdMetadata.companyName,
+            resolvedPositionName,
+          ],
+        )
+
+      setJobDescriptionState(previous => ({
+        ...previous,
+        companyName: resolvedCompanyName || previous.companyName,
+        positionName: resolvedPositionName || previous.positionName,
+        baseLocation: resolvedBaseLocation || previous.baseLocation,
+      }))
+
       const processResult = buildInitialProcessResult(analysis, matching)
 
       useResumeStore.getState().setAnalysis(processResult.analysis)
@@ -1060,8 +1186,9 @@ export function usePageModel(): CreatePageViewModel {
       await saveLatestResultSession({
         result: processResult,
         context: {
-          company: jobDescriptionState.companyName.trim(),
-          position: jobDescriptionState.positionName.trim(),
+          company: resolvedCompanyName,
+          position: resolvedPositionName,
+          location: resolvedBaseLocation,
           resumeContent: resumeMarkdown,
           jdContent: jdText,
         },
@@ -1136,6 +1263,7 @@ export function usePageModel(): CreatePageViewModel {
     handleJobDescriptionChange,
     handleJobCompanyNameChange,
     handleJobPositionNameChange,
+    handleJobLocationChange,
     handleJobInputModeChange,
     handlePickJobAttachment,
     handlePrimaryAction,

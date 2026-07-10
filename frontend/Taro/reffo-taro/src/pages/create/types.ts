@@ -47,8 +47,10 @@ export interface JobDescriptionStepState {
   content: string
   companyName: string
   positionName: string
+  baseLocation: string
   inputMode: JobDescriptionInputMode
   attachmentStatus: JobDescriptionAttachmentStatus
+  attachmentProgress: number
   attachment: UploadedJobDescriptionFile | null
   attachmentErrorMessage: string | null
 }
@@ -57,6 +59,7 @@ export interface CreateGenerationState {
   resumeTitle: string
   companyName: string
   positionName: string
+  baseLocation: string
   monogram: string
   detailItems: string[]
 }

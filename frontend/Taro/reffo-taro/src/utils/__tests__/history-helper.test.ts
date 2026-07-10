@@ -51,7 +51,7 @@ describe('history-helper', () => {
   }
 
   test('创建历史记录时保留完整结果和上下文', () => {
-    const jdContent = '公司名称：小米\n岗位名称：产品经理\n岗位职责：负责增长'
+    const jdContent = '公司名称：小米\n岗位名称：产品经理\n工作地：北京\n岗位职责：负责增长'
     const history = createHistoryFromResult(
       processResult,
       '# Jeremy Smith',
@@ -63,6 +63,7 @@ describe('history-helper', () => {
     expect(history.resultContext).toEqual({
       company: '小米',
       position: '产品经理',
+      location: '北京',
       resumeContent: '# Jeremy Smith',
       jdContent,
     })
