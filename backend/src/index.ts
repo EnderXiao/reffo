@@ -119,6 +119,7 @@ async function bootstrap() {
   console.log('========================================')
   console.log(`🤖 AI 模型: ${env.AI_MODEL}`)
   console.log(`🔗 API 地址: ${env.OPENAI_BASE_URL}`)
+  console.log(`📄 OCR 模型: ${env.GLM_OCR_MODEL}`)
   console.log('========================================\n')
 }
 

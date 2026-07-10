@@ -1,5 +1,5 @@
 import { Elysia, t } from 'elysia'
-import { env } from '@/config/env'
+import { env, getOcrEnvStatus } from '@/config/env'
 import { OcrParseWorkflow } from '@/workflows/ocr-parse-workflow'
 import { OcrProviderError, type OcrFileType, type OcrPurpose } from '@/services/ocr/types'
 import type { ApiResponse } from '@/types'
@@ -114,6 +114,20 @@ function toErrorResponse(error: unknown) {
 }
 
 export const parseRoutes = new Elysia({ prefix: '/api/v1/parse' })
+  .get(
+    '/health',
+    () => ({
+      success: true,
+      data: getOcrEnvStatus(),
+    }),
+    {
+      detail: {
+        summary: 'OCR 配置状态',
+        description: '返回 GLM-OCR 是否已配置，以及缺失的环境变量。',
+        tags: ['Parse'],
+      },
+    }
+  )
   .post(
     '/resume-file',
     async ({ body, set }) => {

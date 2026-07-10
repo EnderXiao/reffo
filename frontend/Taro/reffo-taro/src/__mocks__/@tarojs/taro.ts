@@ -51,4 +51,24 @@ export const useRouter = jest.fn(() => ({
   params: {},
 }))
 
+export const request = Taro.request
+export const showToast = Taro.showToast
+export const showModal = Taro.showModal
+export const showLoading = Taro.showLoading
+export const hideLoading = Taro.hideLoading
+export const showShareMenu = Taro.showShareMenu
+export const navigateTo = Taro.navigateTo
+export const navigateBack = Taro.navigateBack
+export const redirectTo = Taro.redirectTo
+export const switchTab = Taro.switchTab
+export const reLaunch = Taro.reLaunch
+export const getSystemInfoSync = Taro.getSystemInfoSync
+export const chooseMessageFile = Taro.chooseMessageFile
+export const setStorage = Taro.setStorage
+export const getStorage = Taro.getStorage
+export const removeStorage = Taro.removeStorage
+export const clearStorage = Taro.clearStorage
+export const getStorageInfo = Taro.getStorageInfo
+export const getFileSystemManager = Taro.getFileSystemManager
+
 export default Taro

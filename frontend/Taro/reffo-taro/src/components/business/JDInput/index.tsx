@@ -78,6 +78,7 @@ export function JDInput({
   onChange,
   placeholder = '请输入或粘贴 JD 内容...',
   maxLength = 10000,
+  className,
 }: JDInputProps) {
   const [content, setContent] = useState(value)
 
@@ -102,7 +103,7 @@ export function JDInput({
   const isOverLimit = count > maxLength
 
   return (
-    <View style={styles.wrapper}>
+    <View className={['jdInput', className].filter(Boolean).join(' ')} style={styles.wrapper}>
       <View style={styles.textareaWrap}>
         <Textarea
           value={content}
@@ -116,6 +117,12 @@ export function JDInput({
 
       <View style={styles.toolbar}>
         <Text
+          className={[
+            'charCountText',
+            'charCount',
+            isNearLimit ? 'nearLimit' : '',
+            isOverLimit ? 'overLimit' : '',
+          ].filter(Boolean).join(' ')}
           style={[
             styles.charCount,
             isNearLimit && styles.charCountWarn,

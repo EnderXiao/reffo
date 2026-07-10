@@ -37,7 +37,7 @@ export const Textarea = ({
       // 将标准的 onChange 事件转换为 Taro 的 onInput 事件格式
       const taroEvent = {
         detail: {
-          value: e.target?.value || e.detail?.value || ''
+          value: e.detail?.value ?? e.target?.value ?? ''
         }
       }
       onInput(taroEvent)
@@ -49,6 +49,7 @@ export const Textarea = ({
       value={value}
       placeholder={placeholder}
       onChange={handleChange}
+      onInput={handleChange}
       className={className}
       maxLength={maxlength}
       {...props}

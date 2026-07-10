@@ -65,8 +65,16 @@ describe('navigation-transition', () => {
     expect(document.documentElement.className).toBe('')
   })
 
-  test('does not use View Transition API', async () => {
-    const startViewTransition = jest.fn()
+  test('uses View Transition API when available', async () => {
+    const startViewTransition = jest.fn(async callback => {
+      await callback()
+      return {
+        ready: Promise.resolve(),
+        finished: Promise.resolve(),
+        updateCallbackDone: Promise.resolve(),
+        skipTransition: jest.fn(),
+      }
+    })
     Object.defineProperty(document, 'startViewTransition', {
       configurable: true,
       writable: true,
@@ -77,9 +85,9 @@ describe('navigation-transition', () => {
       return 'done'
     })
 
-    await expect(runWithNavigationTransition(action, {kind: 'forward'})).resolves.toBe('done')
+    await expect(runWithNavigationTransition(action, {kind: 'forward'})).resolves.toBeUndefined()
     expect(action).toHaveBeenCalledTimes(1)
-    expect(startViewTransition).not.toHaveBeenCalled()
+    expect(startViewTransition).toHaveBeenCalledTimes(1)
   })
 
   test('initializes Taro page fade styles once', () => {

@@ -70,7 +70,7 @@ export interface ApiConfig {
  */
 export class ApiClient {
   /** 请求适配器 */
-  private request: TaroRequestAdapter;
+  private adapter: TaroRequestAdapter;
 
   /** API 基础 URL */
   private baseURL: string;
@@ -111,8 +111,8 @@ export class ApiClient {
     }
 
     // 创建请求适配器
-    this.request = new TaroRequestAdapter();
-    this.request.setDefaultTimeout(this.timeout);
+    this.adapter = new TaroRequestAdapter();
+    this.adapter.setDefaultTimeout(this.timeout);
 
     // 配置拦截器
     this.setupInterceptors();
@@ -128,7 +128,7 @@ export class ApiClient {
    */
   private setupInterceptors(): void {
     // 请求拦截器
-    this.request.addRequestInterceptor(config => {
+    this.adapter.addRequestInterceptor(config => {
       // 添加 baseURL
       if (!config.url.startsWith('http')) {
         config.url = `${this.baseURL}${config.url}`;
@@ -159,7 +159,7 @@ export class ApiClient {
     });
 
     // 响应拦截器
-    this.request.addResponseInterceptor(response => {
+    this.adapter.addResponseInterceptor(response => {
       // 记录响应日志
       if (this.enableLog) {
         console.log('[API Response]', {
@@ -185,7 +185,7 @@ export class ApiClient {
     });
 
     // 错误拦截器
-    this.request.addErrorInterceptor(error => {
+    this.adapter.addErrorInterceptor(error => {
       // 记录错误日志
       if (this.enableLog) {
         console.error('[API Error]', {
@@ -257,7 +257,7 @@ export class ApiClient {
     config?: Omit<RequestConfig, 'url' | 'method'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
-      const response = await this.request.get<ApiResponse<T>>(url, config);
+      const response = await this.adapter.get<ApiResponse<T>>(url, config);
       return response.data.data as T;
     });
   }
@@ -284,7 +284,7 @@ export class ApiClient {
     config?: Omit<RequestConfig, 'url' | 'method' | 'data'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
-      const response = await this.request.post<ApiResponse<T>>(
+      const response = await this.adapter.post<ApiResponse<T>>(
         url,
         data,
         config,
@@ -315,7 +315,7 @@ export class ApiClient {
     config?: Omit<RequestConfig, 'url' | 'method' | 'data'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
-      const response = await this.request.put<ApiResponse<T>>(
+      const response = await this.adapter.put<ApiResponse<T>>(
         url,
         data,
         config,
@@ -342,7 +342,7 @@ export class ApiClient {
     config?: Omit<RequestConfig, 'url' | 'method'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
-      const response = await this.request.delete<ApiResponse<T>>(url, config);
+      const response = await this.adapter.delete<ApiResponse<T>>(url, config);
       return response.data.data as T;
     });
   }
@@ -365,7 +365,7 @@ export class ApiClient {
    * ```
    */
   async request<T = any>(config: RequestConfig): Promise<Response<T>> {
-    return this.request.request<T>(config);
+    return this.adapter.request<T>(config);
   }
 }
 

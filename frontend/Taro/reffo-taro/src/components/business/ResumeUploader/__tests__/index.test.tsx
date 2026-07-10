@@ -21,6 +21,15 @@ beforeEach(() => {
   ;(Taro as any).getFileSystemManager = mockGetFileSystemManager
 })
 
+function clickUploadButton(container: HTMLElement) {
+  const uploadText = Array.from(container.querySelectorAll('span')).find(
+    el => el.textContent?.includes('选择文件')
+  )
+
+  expect(uploadText).toBeTruthy()
+  fireEvent.click(uploadText!)
+}
+
 describe('ResumeUploader 组件', () => {
   test('应该正确渲染组件', () => {
     const onUpload = jest.fn()
@@ -41,8 +50,8 @@ describe('ResumeUploader 组件', () => {
 
     // 模拟文本输入
     const testContent = '# 张三\n\n## 工作经历\n软件工程师'
-    fireEvent.input(textarea!, {
-      detail: { value: testContent }
+    fireEvent.change(textarea!, {
+      target: { value: testContent }
     })
 
     // 验证 onUpload 被调用
@@ -56,8 +65,8 @@ describe('ResumeUploader 组件', () => {
     const textarea = container.querySelector('textarea')
     const testContent = '测试内容'
 
-    fireEvent.input(textarea!, {
-      detail: { value: testContent }
+    fireEvent.change(textarea!, {
+      target: { value: testContent }
     })
 
     // 验证字符计数显示
@@ -71,12 +80,12 @@ describe('ResumeUploader 组件', () => {
     const textarea = container.querySelector('textarea')
 
     // 输入内容
-    fireEvent.input(textarea!, {
-      detail: { value: '测试内容' }
+    fireEvent.change(textarea!, {
+      target: { value: '测试内容' }
     })
 
     // 点击清空按钮
-    const clearButton = Array.from(container.querySelectorAll('div')).find(
+    const clearButton = Array.from(container.querySelectorAll('span')).find(
       el => el.textContent === '清空'
     )
     expect(clearButton).toBeTruthy()
@@ -109,11 +118,7 @@ describe('ResumeUploader 组件', () => {
 
     const { container } = render(<ResumeUploader onUpload={onUpload} />)
 
-    // 点击选择文件按钮
-    const uploadButton = Array.from(container.querySelectorAll('div')).find(
-      el => el.textContent?.includes('选择文件')
-    )
-    fireEvent.click(uploadButton!)
+    clickUploadButton(container)
 
     await waitFor(() => {
       expect(mockChooseMessageFile).toHaveBeenCalled()
@@ -143,11 +148,7 @@ describe('ResumeUploader 组件', () => {
 
     const { container } = render(<ResumeUploader onUpload={onUpload} />)
 
-    // 点击选择文件按钮
-    const uploadButton = Array.from(container.querySelectorAll('div')).find(
-      el => el.textContent?.includes('选择文件')
-    )
-    fireEvent.click(uploadButton!)
+    clickUploadButton(container)
 
     await waitFor(() => {
       expect(mockChooseMessageFile).toHaveBeenCalled()
@@ -179,11 +180,7 @@ describe('ResumeUploader 组件', () => {
       <ResumeUploader onUpload={onUpload} maxSize={maxSize} />
     )
 
-    // 点击选择文件按钮
-    const uploadButton = Array.from(container.querySelectorAll('div')).find(
-      el => el.textContent?.includes('选择文件')
-    )
-    fireEvent.click(uploadButton!)
+    clickUploadButton(container)
 
     await waitFor(() => {
       expect(mockChooseMessageFile).toHaveBeenCalled()
@@ -222,11 +219,7 @@ describe('ResumeUploader 组件', () => {
       <ResumeUploader onUpload={onUpload} maxSize={maxSize} />
     )
 
-    // 点击选择文件按钮
-    const uploadButton = Array.from(container.querySelectorAll('div')).find(
-      el => el.textContent?.includes('选择文件')
-    )
-    fireEvent.click(uploadButton!)
+    clickUploadButton(container)
 
     await waitFor(() => {
       expect(mockChooseMessageFile).toHaveBeenCalled()
@@ -242,11 +235,7 @@ describe('ResumeUploader 组件', () => {
 
     const { container } = render(<ResumeUploader onUpload={onUpload} />)
 
-    // 点击选择文件按钮
-    const uploadButton = Array.from(container.querySelectorAll('div')).find(
-      el => el.textContent?.includes('选择文件')
-    )
-    fireEvent.click(uploadButton!)
+    clickUploadButton(container)
 
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith(
@@ -281,11 +270,7 @@ describe('ResumeUploader 组件', () => {
 
     const { container } = render(<ResumeUploader onUpload={onUpload} />)
 
-    // 点击选择文件按钮
-    const uploadButton = Array.from(container.querySelectorAll('div')).find(
-      el => el.textContent?.includes('选择文件')
-    )
-    fireEvent.click(uploadButton!)
+    clickUploadButton(container)
 
     await waitFor(() => {
       expect(mockReadFile).toHaveBeenCalled()
@@ -361,11 +346,7 @@ describe('ResumeUploader 组件', () => {
 
     const { container } = render(<ResumeUploader onUpload={onUpload} />)
 
-    // 点击选择文件按钮
-    const uploadButton = Array.from(container.querySelectorAll('div')).find(
-      el => el.textContent?.includes('选择文件')
-    )
-    fireEvent.click(uploadButton!)
+    clickUploadButton(container)
 
     await waitFor(() => {
       // 验证错误信息显示
@@ -388,11 +369,7 @@ describe('ResumeUploader 组件', () => {
 
     const { container } = render(<ResumeUploader onUpload={onUpload} />)
 
-    // 触发错误
-    const uploadButton = Array.from(container.querySelectorAll('div')).find(
-      el => el.textContent?.includes('选择文件')
-    )
-    fireEvent.click(uploadButton!)
+    clickUploadButton(container)
 
     await waitFor(() => {
       expect(container.textContent).toContain('不支持的文件类型')
@@ -400,8 +377,8 @@ describe('ResumeUploader 组件', () => {
 
     // 输入新内容
     const textarea = container.querySelector('textarea')
-    fireEvent.input(textarea!, {
-      detail: { value: '新内容' }
+    fireEvent.change(textarea!, {
+      target: { value: '新内容' }
     })
 
     // 验证错误消失
