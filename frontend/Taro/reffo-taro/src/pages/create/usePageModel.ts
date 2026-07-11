@@ -335,15 +335,14 @@ function buildResumeSummaryState(
 }
 
 function buildJobDescriptionPayload(state: JobDescriptionStepState) {
-  const isUploadMode = state.inputMode === 'upload'
-  const content = isUploadMode ? '' : state.content.trim()
-  const attachmentNote = isUploadMode && state.attachment
+  const content = state.content.trim()
+  const attachmentNote = state.attachment
     ? `岗位描述附件：${state.attachment.name}${
         state.attachment.sizeLabel ? `（${state.attachment.sizeLabel}）` : ''
       }`
     : null
   const uploadFallbackNote =
-    isUploadMode && state.attachment
+    state.attachment && !content
       ? '补充说明：用户通过上传截图/附件提供岗位信息；若附件内容无法直接解析，请优先结合公司名称和岗位名称理解岗位方向。'
       : null
   const segments = [
@@ -405,17 +404,12 @@ function buildGenerationState(args: {
   const companyName = truncateText(jobDescriptionState.companyName.trim(), 24)
   const positionName = truncateText(jobDescriptionState.positionName.trim(), 24)
   const baseLocation = truncateText(jobDescriptionState.baseLocation.trim(), 16)
-  const descriptionSummary =
-    jobDescriptionState.inputMode === 'upload'
-      ? jobDescriptionState.attachment?.name
-        ? `岗位附件 · ${truncateText(jobDescriptionState.attachment.name, 22)}`
-        : ''
-      : jobDescriptionState.content.trim()
-        ? `岗位描述 · ${truncateText(
-            jobDescriptionState.content.trim().replace(/\s+/g, ' '),
-            22,
-          )}`
-        : ''
+  const normalizedDescription = jobDescriptionState.content.trim().replace(/\s+/g, ' ')
+  const descriptionSummary = normalizedDescription
+    ? `岗位描述 · ${truncateText(normalizedDescription, 22)}`
+    : jobDescriptionState.attachment?.name
+      ? `岗位附件 · ${truncateText(jobDescriptionState.attachment.name, 22)}`
+      : ''
   const detailItems = [
     `简历 · ${resumeTitle}`,
     companyName ? `公司 · ${companyName}` : '',
@@ -606,10 +600,7 @@ export function usePageModel(): CreatePageViewModel {
       jobDescriptionState.attachmentStatus === 'success' &&
       Boolean(jobDescriptionState.attachment)
 
-    const canSaveJobDescription =
-      jobDescriptionState.inputMode === 'upload'
-        ? hasUploadedAttachment
-        : hasManualDescription
+    const canSaveJobDescription = hasManualDescription || hasUploadedAttachment
 
     return !isSavingCurrentStep && canSaveJobDescription
   }, [
@@ -618,7 +609,6 @@ export function usePageModel(): CreatePageViewModel {
     jobDescriptionState.attachment,
     jobDescriptionState.attachmentStatus,
     jobDescriptionState.content,
-    jobDescriptionState.inputMode,
     resumeUploadState.markdown,
     resumeUploadState.status,
   ])
@@ -1067,9 +1057,7 @@ export function usePageModel(): CreatePageViewModel {
       feedback.message(
         currentStep === 'resumeUpload'
           ? '请先填写或整理 Markdown 简历'
-          : jobDescriptionState.inputMode === 'upload'
-            ? '请先上传岗位描述截图，或切换到“文字输入”补充岗位描述'
-            : '请先填写目标岗位描述',
+          : '请先上传岗位描述截图，或输入目标岗位描述',
         {duration: 2200},
       )
       return false

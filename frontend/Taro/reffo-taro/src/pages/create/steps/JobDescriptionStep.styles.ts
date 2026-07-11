@@ -223,6 +223,75 @@ export const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
+  combinedPanel: {
+    minHeight: 182,
+    paddingLeft: 0,
+    paddingRight: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  combinedPanelCompact: {
+    minHeight: 126,
+  },
+  combinedPanelFill: {
+    flex: 1,
+    minHeight: 0,
+  },
+  inlineUploadBar: {
+    position: 'relative',
+    minHeight: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.98)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    paddingLeft: 13,
+    paddingRight: 13,
+    marginBottom: 10,
+  },
+  inlineUploadBarCompact: {
+    minHeight: 31,
+    borderRadius: 9,
+    marginBottom: 8,
+    paddingLeft: 12,
+    paddingRight: 12,
+  },
+  inlineUploadBarUploading: {
+    borderColor: 'rgba(255,108,67,0.32)',
+  },
+  inlineUploadBarSuccess: {
+    borderColor: 'rgba(255,255,255,0.98)',
+  },
+  inlineUploadBarError: {
+    borderColor: 'rgba(255,56,60,0.22)',
+  },
+  inlineUploadProgressFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,108,67,0.2)',
+  },
+  inlineUploadText: {
+    color: '#0874f2',
+    fontSize: 13,
+    lineHeight: createLineHeight(18),
+    fontWeight: '700',
+  },
+  inlineUploadTextCompact: {
+    fontSize: 12,
+    lineHeight: createLineHeight(17),
+  },
+  inlineUploadTextUploading: {
+    color: '#d95e34',
+  },
+  inlineUploadTextSuccess: {
+    color: '#838383',
+  },
+  inlineUploadTextError: {
+    color: '#ff383c',
+  },
   uploadPanel: {
     minHeight: 182,
     alignItems: 'center',
@@ -569,12 +638,30 @@ export const styles = StyleSheet.create({
     paddingBottom: 8,
     backgroundColor: colors.surface.warmPanelSoft,
   },
+  textareaWrapCombined: {
+    flex: 1,
+    minHeight: 0,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#e1e4e8',
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    paddingLeft: 18,
+    paddingRight: 18,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
   textareaWrapCompact: {
     minHeight: 126,
     paddingLeft: 10,
     paddingRight: 10,
     paddingTop: 8,
     paddingBottom: 5,
+  },
+  textareaWrapCombinedCompact: {
+    paddingLeft: 14,
+    paddingRight: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   textareaWrapFill: {
     flex: 1,
@@ -595,6 +682,9 @@ export const styles = StyleSheet.create({
   textareaFill: {
     flex: 1,
     minHeight: 0,
+  },
+  textareaDisabled: {
+    opacity: 0.62,
   },
   modeBar: {
     flexDirection: 'row',

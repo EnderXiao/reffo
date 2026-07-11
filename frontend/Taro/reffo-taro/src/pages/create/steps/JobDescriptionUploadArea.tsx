@@ -228,18 +228,78 @@ export default function JobDescriptionUploadArea({
   fillAvailableSpace?: boolean
   disabled?: boolean
 }) {
-  if (state.inputMode === 'manual') {
-    return (
+  const isUploading = state.attachmentStatus === 'uploading'
+  const hasError = state.attachmentStatus === 'error'
+  const hasAttachment = state.attachmentStatus === 'success' && Boolean(state.attachment)
+  const normalizedProgress = Math.max(0, Math.min(100, state.attachmentProgress))
+  const uploadTestId = hasError
+    ? 'job-upload-error'
+    : isUploading
+      ? 'job-upload-loading'
+      : hasAttachment
+        ? 'job-upload-preview'
+        : 'job-upload-trigger'
+
+  return (
+    <View
+      style={[
+        styles.combinedPanel,
+        compact ? styles.combinedPanelCompact : null,
+        fillAvailableSpace ? styles.combinedPanelFill : null,
+      ] as any}
+    >
+      <View
+        style={[
+          styles.inlineUploadBar,
+          compact ? styles.inlineUploadBarCompact : null,
+          hasAttachment ? styles.inlineUploadBarSuccess : null,
+          hasError ? styles.inlineUploadBarError : null,
+          isUploading ? styles.inlineUploadBarUploading : null,
+        ] as any}
+        onClick={isUploading ? undefined : onPickAttachment}
+        role='button'
+        data-testid={uploadTestId}
+      >
+        {isUploading ? (
+          <View
+            pointerEvents='none'
+            style={[
+              styles.inlineUploadProgressFill,
+              {width: `${normalizedProgress}%`},
+            ] as any}
+          />
+        ) : null}
+        <Text
+          style={[
+            styles.inlineUploadText,
+            compact ? styles.inlineUploadTextCompact : null,
+            hasAttachment ? styles.inlineUploadTextSuccess : null,
+            hasError ? styles.inlineUploadTextError : null,
+            isUploading ? styles.inlineUploadTextUploading : null,
+          ] as any}
+        >
+          {hasError
+            ? `! ${state.attachmentErrorMessage || '上传失败，请重试'}`
+            : isUploading
+              ? `正在解析图片 ${Math.round(normalizedProgress)}%`
+              : hasAttachment
+                ? '✅ 已成功上传并解析岗位描述'
+                : '+ 上传岗位描述截图'}
+        </Text>
+      </View>
+
       <View
         style={[
           styles.textareaWrap,
+          styles.textareaWrapCombined,
           compact ? styles.textareaWrapCompact : null,
+          compact ? styles.textareaWrapCombinedCompact : null,
           fillAvailableSpace ? styles.textareaWrapFill : null,
         ] as any}
       >
         <Textarea
           value={state.content}
-          placeholder='请输入职位描述、岗位要求，或简单描述你的目标岗位方向'
+          placeholder='或输入岗位描述'
           maxlength={10000}
           autoHeight
           disabled={disabled}
@@ -252,50 +312,11 @@ export default function JobDescriptionUploadArea({
             styles.textarea,
             compact ? styles.textareaCompact : null,
             fillAvailableSpace ? styles.textareaFill : null,
+            disabled ? styles.textareaDisabled : null,
           ] as any}
           data-testid='job-description-input'
         />
       </View>
-    )
-  }
-
-  if (state.attachmentStatus === 'uploading') {
-    return (
-      <UploadLoadingPanel
-        progress={state.attachmentProgress}
-        compact={compact}
-        fillAvailableSpace={fillAvailableSpace}
-      />
-    )
-  }
-
-  if (state.attachmentStatus === 'error') {
-    return (
-      <UploadErrorPanel
-        message={state.attachmentErrorMessage || '文件读取失败，请重试'}
-        onPickAttachment={onPickAttachment}
-        compact={compact}
-        fillAvailableSpace={fillAvailableSpace}
-      />
-    )
-  }
-
-  if (state.attachmentStatus === 'success' && state.attachment) {
-    return (
-      <UploadSuccessPanel
-        state={state}
-        onPickAttachment={onPickAttachment}
-        compact={compact}
-        fillAvailableSpace={fillAvailableSpace}
-      />
-    )
-  }
-
-  return (
-    <UploadIdlePanel
-      onPickAttachment={onPickAttachment}
-      compact={compact}
-      fillAvailableSpace={fillAvailableSpace}
-    />
+    </View>
   )
 }

@@ -6,7 +6,6 @@ import CANCEL_ICON from '@/assets/create/cancel.svg'
 import PDF_FILE_ICON from '@/assets/create/pdf-file.svg'
 import UPLOAD_ERROR_ICON from '@/assets/create/upload-error.svg'
 import UPLOAD_FILE_ICON from '@/assets/create/upload-file.svg'
-import UPLOAD_IMAGE_ICON from '@/assets/create/upoad-img.svg'
 import {Card} from '@/components/Card'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
@@ -16,7 +15,6 @@ import type {CreatePageViewModel} from './usePageModel'
 import type {
   CreateGenerationState,
   CreateStepMeta,
-  JobDescriptionInputMode,
   JobDescriptionStepState,
   ResumeSummaryStepState,
   ResumeUploadStepState,
@@ -341,34 +339,6 @@ function ResumeSummaryStepH5({
   )
 }
 
-function ModeTab({
-  mode,
-  active,
-  onClick,
-  disabled = false,
-}: {
-  mode: JobDescriptionInputMode
-  active: boolean
-  onClick: () => void
-  disabled?: boolean
-}) {
-  return (
-    <View
-      className={classNames('reffo-create-job__mode', {
-        'reffo-create-job__mode--active': active,
-        'reffo-create-job__mode--disabled': disabled,
-      })}
-      onClick={disabled ? undefined : onClick}
-      role='button'
-      data-testid={mode === 'upload' ? 'job-mode-upload' : 'job-mode-manual'}
-    >
-      <View
-        className={classNames('reffo-create-job__mode-icon', `reffo-create-job__mode-icon--${mode}`)}
-      />
-    </View>
-  )
-}
-
 function JobUploadPanel({
   state,
   onPickAttachment,
@@ -378,131 +348,62 @@ function JobUploadPanel({
   onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
   onContentChange: CreatePageViewModel['handleJobDescriptionChange']
 }) {
-  const [visibleInputMode, setVisibleInputMode] = useState<JobDescriptionInputMode>(state.inputMode)
-  const [isModeFading, setIsModeFading] = useState(false)
-  const modeSwitchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const modeSwitchFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null)
-
   const isUploading = state.attachmentStatus === 'uploading'
   const hasError = state.attachmentStatus === 'error'
-  const hasAttachment = Boolean(state.attachment)
-
-  useEffect(() => {
-    return () => {
-      if (modeSwitchTimerRef.current) {
-        clearTimeout(modeSwitchTimerRef.current)
-      }
-      if (modeSwitchFrameRef.current) {
-        cancelAnimationFrame(modeSwitchFrameRef.current)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    if (state.inputMode === visibleInputMode) {
-      if (modeSwitchTimerRef.current) {
-        clearTimeout(modeSwitchTimerRef.current)
-        modeSwitchTimerRef.current = null
-      }
-      if (modeSwitchFrameRef.current) {
-        cancelAnimationFrame(modeSwitchFrameRef.current)
-        modeSwitchFrameRef.current = null
-      }
-      setIsModeFading(false)
-      return
-    }
-
-    if (modeSwitchTimerRef.current) {
-      clearTimeout(modeSwitchTimerRef.current)
-    }
-    if (modeSwitchFrameRef.current) {
-      cancelAnimationFrame(modeSwitchFrameRef.current)
-    }
-
-    setIsModeFading(true)
-    modeSwitchTimerRef.current = setTimeout(() => {
-      setVisibleInputMode(state.inputMode)
-      modeSwitchFrameRef.current = requestAnimationFrame(() => {
-        setIsModeFading(false)
-        modeSwitchFrameRef.current = null
-      })
-      modeSwitchTimerRef.current = null
-    }, 140)
-  }, [state.inputMode, visibleInputMode])
-
-  if (visibleInputMode === 'manual') {
-    return (
-      <View
-        className={classNames('reffo-create-job__content', {
-          'reffo-create-job__content--fading': isModeFading,
-        })}
-      >
-        <Textarea
-          value={state.content}
-          placeholder='粘贴目标岗位描述、招聘要求或 JD 文本'
-          maxlength={20000}
-          disabled={isUploading}
-          onInput={event => {
-            if (!isUploading) {
-              onContentChange(event.detail.value)
-            }
-          }}
-          className='reffo-create-textarea reffo-create-textarea--job'
-          data-testid='job-description-input'
-        />
-      </View>
-    )
-  }
+  const hasAttachment = state.attachmentStatus === 'success' && Boolean(state.attachment)
+  const uploadProgress = Math.max(0, Math.min(100, state.attachmentProgress))
+  const uploadTestId = hasError
+    ? 'job-upload-error'
+    : isUploading
+      ? 'job-upload-loading'
+      : hasAttachment
+        ? 'job-upload-preview'
+        : 'job-upload-trigger'
 
   return (
-    <View
-      className={classNames('reffo-create-job__content', {
-        'reffo-create-job__content--fading': isModeFading,
-      })}
-    >
+    <View className='reffo-create-job__content reffo-create-job__content--combined'>
       <View
-        className={classNames('reffo-create-job__upload', {
-          'reffo-create-job__upload--filled': hasAttachment,
-          'reffo-create-job__upload--error': hasError,
-          'reffo-create-job__upload--uploading': isUploading,
+        className={classNames('reffo-create-job__upload-strip', {
+          'reffo-create-job__upload-strip--filled': hasAttachment,
+          'reffo-create-job__upload-strip--error': hasError,
+          'reffo-create-job__upload-strip--uploading': isUploading,
         })}
-        style={{'--job-upload-progress': state.attachmentProgress} as any}
+        style={{'--job-upload-progress': uploadProgress / 100} as any}
         onClick={isUploading ? undefined : onPickAttachment}
         role='button'
-        data-testid={hasError ? 'job-upload-error' : hasAttachment ? 'job-upload-preview' : 'job-upload-trigger'}
+        data-testid={uploadTestId}
       >
-        {hasAttachment && state.attachment?.previewPath ? (
-          <Image src={state.attachment.previewPath} mode='aspectFit' className='reffo-create-job__preview' />
-        ) : (
-          <View className={classNames('reffo-create-job__upload-icon', {
-            'reffo-create-job__upload-icon--error': hasError,
-          })}>
-            {hasError ? (
-              <Text>!</Text>
-            ) : (
-              <Image src={UPLOAD_IMAGE_ICON} mode='aspectFit' className='reffo-create-job__upload-file-icon' />
-            )}
-          </View>
-        )}
-        <Text className='reffo-create-job__upload-title'>
-          {isUploading
-            ? '上传中...'
-            : hasError
-              ? '上传失败'
-              : hasAttachment
-                ? state.attachment?.name
-                : '上传岗位描述截图'}
-        </Text>
-        <Text className='reffo-create-job__upload-subtitle'>
+        <Text
+          className={classNames('reffo-create-job__upload-strip-text', {
+            'reffo-create-job__upload-strip-text--success': hasAttachment,
+            'reffo-create-job__upload-strip-text--error': hasError,
+            'reffo-create-job__upload-strip-text--uploading': isUploading,
+          })}
+        >
           {hasError
-            ? state.attachmentErrorMessage || '文件读取失败，请重试'
+            ? `! ${state.attachmentErrorMessage || '上传失败，请重试'}`
             : isUploading
-              ? `${Math.round(state.attachmentProgress)}%`
+              ? `正在解析图片 ${Math.round(uploadProgress)}%`
             : hasAttachment
-              ? state.attachment?.sizeLabel || state.attachment?.extension
-              : '点击选择'}
+              ? '✅ 已成功上传并解析岗位描述'
+              : '+ 上传岗位描述截图'}
         </Text>
       </View>
+      <Textarea
+        value={state.content}
+        placeholder='或输入岗位描述'
+        maxlength={20000}
+        disabled={isUploading}
+        onInput={event => {
+          if (!isUploading) {
+            onContentChange(event.detail.value)
+          }
+        }}
+        className={classNames('reffo-create-textarea reffo-create-textarea--job', {
+          'reffo-create-textarea--disabled': isUploading,
+        })}
+        data-testid='job-description-input'
+      />
     </View>
   )
 }
@@ -510,18 +411,14 @@ function JobDescriptionStepH5({
   state,
   onCompanyNameChange,
   onPositionNameChange,
-  onLocationChange,
   onContentChange,
-  onInputModeChange,
   onPickAttachment,
   isExiting = false,
 }: {
   state: JobDescriptionStepState
   onCompanyNameChange: CreatePageViewModel['handleJobCompanyNameChange']
   onPositionNameChange: CreatePageViewModel['handleJobPositionNameChange']
-  onLocationChange: CreatePageViewModel['handleJobLocationChange']
   onContentChange: CreatePageViewModel['handleJobDescriptionChange']
-  onInputModeChange: CreatePageViewModel['handleJobInputModeChange']
   onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
   isExiting?: boolean
 }) {
@@ -541,46 +438,26 @@ function JobDescriptionStepH5({
           <Text>新的工牌制作中！</Text>
         </View>
 
-        <View className='reffo-create-job__meta-row'>
-          <View className='reffo-create-job__field reffo-create-job__field--half'>
-            <Text className='reffo-create-job__label'>公司（可选）</Text>
-            <Input
-              value={state.companyName}
-              placeholder='输入公司名称'
-              disabled={isUploadingAttachment}
-              onInput={event => {
-                if (!isUploadingAttachment) {
-                  onCompanyNameChange(event.detail.value)
-                }
-              }}
-              className={classNames('reffo-create-job__input', {
-                'reffo-create-job__input--disabled': isUploadingAttachment,
-              })}
-              data-testid='job-company-input'
-            />
-          </View>
-
-          <View className='reffo-create-job__field reffo-create-job__field--half'>
-            <Text className='reffo-create-job__label'>Base 地（可选）</Text>
-            <Input
-              value={state.baseLocation}
-              placeholder='输入工作城市'
-              disabled={isUploadingAttachment}
-              onInput={event => {
-                if (!isUploadingAttachment) {
-                  onLocationChange(event.detail.value)
-                }
-              }}
-              className={classNames('reffo-create-job__input', {
-                'reffo-create-job__input--disabled': isUploadingAttachment,
-              })}
-              data-testid='job-location-input'
-            />
-          </View>
+        <View className='reffo-create-job__field'>
+          <Text className='reffo-create-job__label'>公司</Text>
+          <Input
+            value={state.companyName}
+            placeholder='输入公司名称'
+            disabled={isUploadingAttachment}
+            onInput={event => {
+              if (!isUploadingAttachment) {
+                onCompanyNameChange(event.detail.value)
+              }
+            }}
+            className={classNames('reffo-create-job__input', {
+              'reffo-create-job__input--disabled': isUploadingAttachment,
+            })}
+            data-testid='job-company-input'
+          />
         </View>
 
         <View className='reffo-create-job__field'>
-          <Text className='reffo-create-job__label'>岗位名称（可选）</Text>
+          <Text className='reffo-create-job__label'>目标岗位名称</Text>
           <Input
             value={state.positionName}
             placeholder='输入岗位名称'
@@ -601,11 +478,6 @@ function JobDescriptionStepH5({
           <Text className='reffo-create-job__label'>目标岗位描述</Text>
           <View className='reffo-create-job__panel'>
             <JobUploadPanel state={state} onPickAttachment={onPickAttachment} onContentChange={onContentChange} />
-            <View className='reffo-create-job__modebar'>
-              <ModeTab mode='upload' active={state.inputMode === 'upload'} disabled={isUploadingAttachment} onClick={() => onInputModeChange('upload')} />
-              <View className='reffo-create-job__mode-divider' />
-              <ModeTab mode='manual' active={state.inputMode === 'manual'} disabled={isUploadingAttachment} onClick={() => onInputModeChange('manual')} />
-            </View>
           </View>
         </View>
       </Card>
@@ -715,8 +587,6 @@ export default function PageView({
   handleJobDescriptionChange,
   handleJobCompanyNameChange,
   handleJobPositionNameChange,
-  handleJobLocationChange,
-  handleJobInputModeChange,
   handlePickJobAttachment,
   handlePrimaryAction,
   handleCancelGeneration,
@@ -879,9 +749,7 @@ export default function PageView({
               state={jobDescriptionState}
               onCompanyNameChange={handleJobCompanyNameChange}
               onPositionNameChange={handleJobPositionNameChange}
-              onLocationChange={handleJobLocationChange}
               onContentChange={handleJobDescriptionChange}
-              onInputModeChange={handleJobInputModeChange}
               onPickAttachment={handlePickJobAttachment}
               isExiting={isLaunchingGeneration}
             />
