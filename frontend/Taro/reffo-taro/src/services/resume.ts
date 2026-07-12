@@ -5,6 +5,8 @@ import type {
   OptimizedResume,
   ProcessResult,
   InterviewSuggestions,
+  JobDescriptionStructure,
+  MatchWeaknessDetail,
 } from '@/types';
 
 /**
@@ -40,7 +42,7 @@ export interface ProcessResumeResponse {
   /** 步骤 1: 简历分析结果 */
   step1_analysis: ResumeAnalysis;
   /** 步骤 2: 匹配分析结果 */
-  step2_matching: MatchingResult;
+  step2_matching: MatchingApiResult;
   /** 步骤 3: 优化后的简历 */
   step3_optimized_resume: string;
   /** 步骤 4: 面试建议 */
@@ -54,13 +56,28 @@ export interface MatchResumeRequest {
 
 export interface GenerateOptimizedResumeRequest {
   structured_resume: ResumeAnalysis['structured_resume'];
-  matching: MatchingResult;
+  matching: MatchingApiResult;
 }
 
 export interface GenerateInterviewSuggestionsRequest {
   analysis: ResumeAnalysis;
   matching: MatchingResult;
   optimized_resume: string;
+}
+
+interface MatchingApiResult {
+  match_score?: number;
+  hard_requirements_match?: unknown;
+  skill_match?: unknown;
+  experience_match?: unknown;
+  soft_skills_match?: unknown;
+  strengths?: unknown;
+  weaknesses?: unknown;
+  weakness_details?: unknown;
+  positioning_strategy?: unknown;
+  optimization_suggestions?: unknown;
+  context_fit?: unknown;
+  jd_structure?: JobDescriptionStructure;
 }
 
 function toStringArray(value: unknown): string[] {
@@ -84,6 +101,35 @@ function normalizeHardRequirements(value: unknown): MatchingResult['hard_require
   return [];
 }
 
+function normalizeWeaknessDetails(value: unknown): MatchWeaknessDetail[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') {
+      return [];
+    }
+
+    const detail = item as Record<string, unknown>;
+    const evidenceType = detail.evidence_type;
+    if (
+      evidenceType !== 'direct_missing' &&
+      evidenceType !== 'implicit_evidence' &&
+      evidenceType !== 'wording_gap'
+    ) {
+      return [];
+    }
+
+    return [{
+      weakness: typeof detail.weakness === 'string' ? detail.weakness : '',
+      evidence_type: evidenceType,
+      evidence: typeof detail.evidence === 'string' ? detail.evidence : '',
+      suggestion: typeof detail.suggestion === 'string' ? detail.suggestion : '',
+    }];
+  });
+}
+
 function normalizeAnalysis(analysis: ResumeAnalysis): ResumeAnalysis {
   return {
     ...analysis,
@@ -102,7 +148,7 @@ function normalizeAnalysis(analysis: ResumeAnalysis): ResumeAnalysis {
   };
 }
 
-function normalizeMatching(matching: MatchingResult): MatchingResult {
+function normalizeMatching(matching: MatchingApiResult | MatchingResult): MatchingResult {
   const rawSkillMatch = matching?.skill_match as unknown as {
     matched_skills?: unknown;
     missing_skills?: unknown;
@@ -119,6 +165,13 @@ function normalizeMatching(matching: MatchingResult): MatchingResult {
   const experienceMatch = matching?.experience_match;
   const experienceMatchText =
     typeof experienceMatch === 'string' ? experienceMatch : '';
+  const structuredExperienceMatch = experienceMatch && typeof experienceMatch === 'object'
+    ? experienceMatch as Partial<MatchingResult['experience_match']>
+    : undefined;
+  const rawMatching = matching as MatchingApiResult;
+  const contextFit = rawMatching.context_fit && typeof rawMatching.context_fit === 'object'
+    ? rawMatching.context_fit as Record<string, unknown>
+    : undefined;
 
   return {
     ...matching,
@@ -130,25 +183,66 @@ function normalizeMatching(matching: MatchingResult): MatchingResult {
       match_percentage: rawSkillMatch?.match_percentage ?? matching?.match_score ?? 0,
     },
     experience_match: {
-      years_required: typeof experienceMatch === 'object' && experienceMatch
-        ? experienceMatch.years_required ?? 0
+      years_required: structuredExperienceMatch
+        ? structuredExperienceMatch.years_required ?? 0
         : 0,
-      years_actual: typeof experienceMatch === 'object' && experienceMatch
-        ? experienceMatch.years_actual ?? 0
+      years_actual: structuredExperienceMatch
+        ? structuredExperienceMatch.years_actual ?? 0
         : 0,
-      relevant_experience: typeof experienceMatch === 'object' && experienceMatch
-        ? toStringArray(experienceMatch.relevant_experience)
+      relevant_experience: structuredExperienceMatch
+        ? toStringArray(structuredExperienceMatch.relevant_experience)
         : experienceMatchText
           ? [experienceMatchText]
           : [],
-      match_percentage: typeof experienceMatch === 'object' && experienceMatch
-        ? experienceMatch.match_percentage ?? 0
+      match_percentage: structuredExperienceMatch
+        ? structuredExperienceMatch.match_percentage ?? 0
         : 0,
     },
     optimization_suggestions: toStringArray(
       matching?.optimization_suggestions ??
         (matching as unknown as {weaknesses?: unknown}).weaknesses,
     ),
+    strengths: toStringArray(rawMatching.strengths),
+    weaknesses: toStringArray(rawMatching.weaknesses),
+    weakness_details: normalizeWeaknessDetails(rawMatching.weakness_details),
+    soft_skills_match: typeof rawMatching.soft_skills_match === 'string'
+      ? rawMatching.soft_skills_match
+      : '',
+    positioning_strategy: typeof rawMatching.positioning_strategy === 'string'
+      ? rawMatching.positioning_strategy
+      : '',
+    context_fit: contextFit ? {
+      company_alignment: typeof contextFit.company_alignment === 'string'
+        ? contextFit.company_alignment
+        : '',
+      location_alignment: typeof contextFit.location_alignment === 'string'
+        ? contextFit.location_alignment
+        : '',
+      hypotheses_used: toStringArray(contextFit.hypotheses_used),
+    } : undefined,
+    jd_structure: rawMatching.jd_structure,
+  };
+}
+
+function toMatchingApiPayload(matching: MatchingResult): MatchingApiResult {
+  return {
+    match_score: matching.match_score,
+    hard_requirements_match: Object.fromEntries(
+      matching.hard_requirements_match.map(item => [item.requirement, item.matched]),
+    ),
+    skill_match: {
+      matched: matching.skill_match.matched_skills,
+      missing: matching.skill_match.missing_skills,
+    },
+    experience_match: matching.experience_match.relevant_experience.join('；'),
+    soft_skills_match: matching.soft_skills_match ?? '',
+    strengths: matching.strengths ?? [],
+    weaknesses: matching.weaknesses ?? matching.optimization_suggestions,
+    weakness_details: matching.weakness_details ?? [],
+    positioning_strategy: matching.positioning_strategy ?? '',
+    optimization_suggestions: matching.optimization_suggestions,
+    context_fit: matching.context_fit,
+    jd_structure: matching.jd_structure,
   };
 }
 
@@ -278,7 +372,7 @@ export class ResumeApi {
       throw new Error('JD 内容不能为空且至少需要 10 个字符');
     }
 
-    const response = await apiClient.post<MatchingResult>(
+    const response = await apiClient.post<MatchingApiResult>(
       '/mvp/match',
       {
         structured_resume: analysis.structured_resume,
@@ -302,11 +396,15 @@ export class ResumeApi {
       throw new Error('匹配分析结果不存在');
     }
 
+    if (!matching.jd_structure) {
+      throw new Error('目标岗位结构化结果不存在');
+    }
+
     const response = await apiClient.post<OptimizedResume>(
       '/mvp/generate',
       {
         structured_resume: analysis.structured_resume,
-        matching,
+        matching: toMatchingApiPayload(matching),
       } satisfies GenerateOptimizedResumeRequest,
       {timeout: 90000},
     );
