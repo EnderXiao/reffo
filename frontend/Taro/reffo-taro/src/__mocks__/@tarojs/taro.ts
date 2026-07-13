@@ -16,6 +16,7 @@ const Taro = {
   redirectTo: jest.fn(),
   switchTab: jest.fn(),
   reLaunch: jest.fn(),
+  getCurrentPages: jest.fn(() => []),
   getSystemInfoSync: jest.fn(() => ({
     platform: 'ios',
   })),
@@ -62,6 +63,7 @@ export const navigateBack = Taro.navigateBack
 export const redirectTo = Taro.redirectTo
 export const switchTab = Taro.switchTab
 export const reLaunch = Taro.reLaunch
+export const getCurrentPages = Taro.getCurrentPages
 export const getSystemInfoSync = Taro.getSystemInfoSync
 export const chooseMessageFile = Taro.chooseMessageFile
 export const setStorage = Taro.setStorage

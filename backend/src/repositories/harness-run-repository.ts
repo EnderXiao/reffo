@@ -166,6 +166,16 @@ export class HarnessRunRepository {
     return sample
   }
 
+  createFailureSampleIfAbsent(runId: string, reason?: string) {
+    const existing = this.db.query('SELECT * FROM failure_samples WHERE run_id = ? LIMIT 1').get(runId)
+
+    if (existing) {
+      return existing
+    }
+
+    return this.createFailureSample(runId, reason)
+  }
+
   private parseEvent(event: Record<string, unknown>) {
     const payloadJson = typeof event.payload_json === 'string' ? event.payload_json : '{}'
 

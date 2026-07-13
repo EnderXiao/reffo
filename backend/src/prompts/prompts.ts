@@ -2,6 +2,7 @@ import type { EvaluationResult } from '@/harness/evaluators/markdown-resume-eval
 import type { ChatMessage } from '@/providers/llm-provider'
 import type {
   JDStructure,
+  InterviewSuggestions,
   MatchAnalysis,
   ResumeAnalysis,
   ResumeStructure,
@@ -94,6 +95,33 @@ export function buildResumeAnalysisMessages(resumeMarkdown: string): ChatMessage
   ]
 }
 
+export function buildResumeAnalysisBusinessRepairMessages(input: {
+  resumeMarkdown: string
+  currentOutput: ResumeAnalysis
+  evaluation: EvaluationResult
+}): ChatMessage[] {
+  return [
+    {
+      role: 'system',
+      content: `你是源简历结构化重抽专家。你只能基于源简历原文、当前分析结果和业务校验问题修复结构化简历分析，不得补写原文没有的信息。\n\n${FACT_SAFETY_CONTRACT}`,
+    },
+    {
+      role: 'user',
+      content: `请从源简历原文中重抽并修复当前简历分析，只返回修复后的 JSON 对象。\n\n${textData('source_resume', input.resumeMarkdown)}\n\n${jsonData('current_resume_analysis', input.currentOutput)}\n\n${jsonData('business_evaluation', input.evaluation)}
+
+修复范围：
+- 只修复 business_evaluation 中指出的问题，保留当前输出中已经正确且可由原文支持的字段。
+- 若原文能明确识别自然人姓名，写入 structured_resume.personal_info.name；通用标题、岗位名称、文件名或“个人简历”等模板词不能当作姓名。
+- 若原文包含工作经历、实习经历、项目实践或可证明职业经验的段落，应按原文拆入 experience 或 projects，不要合并不同来源。
+- 若原文明确出现技术栈、工具、框架、语言、平台、方法或专业能力，写入 skills.hard_skills；只能使用原文或由具体工作对象直接证明的技能。
+- 若原文确实没有姓名、经历或硬技能，必须继续留空或空数组，不得猜测、不得根据 JD 或常识补写。
+- capability_summary、strengths、weaknesses、suggestions 可以随修复同步调整，但必须全部基于源简历原文。
+
+只返回 JSON，不要输出解释、Markdown 代码块或修复说明。`,
+    },
+  ]
+}
+
 export function buildJdParsingMessages(jdText: string): ChatMessage[] {
   return [
     {
@@ -179,8 +207,6 @@ export function buildMatchingMessages(resume: ResumeStructure, jd: JDStructure):
     "location_alignment": "",
     "hypotheses_used": []
   }
-}
-
 评分与判断规则：
 - match_score 使用固定权重：明示硬要求 35、相关经历与结果 30、技能/方法 20、可迁移能力与语境适配 10、证据清晰度 5。
 - JD 未说明的门槛不得扣分；上下文假设对总分影响不得超过 5 分，也不能成为硬性不匹配。
@@ -194,6 +220,35 @@ export function buildMatchingMessages(resume: ResumeStructure, jd: JDStructure):
 - optimization_suggestions 禁止要求新增当前材料没有的项目、课程、经历、技能、语言、工具、职责、结果或数字；禁止“补充量化数据/将成果量化”等建议。direct_missing 只保留在 weaknesses/weakness_details 中，不得进入 optimization_suggestions；后者只允许重排和改写已有证据。
 - context_fit 只描述基于现有证据的适配或待验证点。hypotheses_used 必须逐条写明采用了哪些非明示假设；未采用则为空数组。
 - 只输出 JSON，不要输出解释、Markdown 代码块或 jd_structure；服务端会附加原始结构化 JD。`,
+    },
+  ]
+}
+
+export function buildMatchingBusinessRepairMessages(input: {
+  resume: ResumeStructure
+  jd: JDStructure
+  currentOutput: MatchAnalysis
+  evaluation: EvaluationResult
+}): ChatMessage[] {
+  return [
+    {
+      role: 'system',
+      content: `你是岗位匹配分析结果修复专家。你只能基于结构化源简历、结构化 JD、当前匹配分析和业务校验问题修复输出，不得新增输入中不存在的候选人事实。\n\n${FACT_SAFETY_CONTRACT}\n\n${CONTEXT_REASONING_CONTRACT}`,
+    },
+    {
+      role: 'user',
+      content: `请修复当前匹配分析中的业务校验问题，并只返回修复后的 JSON 对象。\n\n${jsonData('structured_source_resume', input.resume)}\n\n${jsonData('structured_job_description', input.jd)}\n\n${jsonData('current_match_analysis', input.currentOutput)}\n\n${jsonData('business_evaluation', input.evaluation)}
+
+修复范围：
+- 只修复 business_evaluation 中指出的问题，不要重写无关字段。
+- 若缺少 experience_match，基于源简历和 JD 补充经验匹配说明。
+- 若 weakness_details 缺失、数量不一致或 evidence_type 不合法，补齐为 direct_missing、implicit_evidence 或 wording_gap，并保持与 weaknesses 一一对应。
+- 若 skill_match 没有覆盖 JD required_skills，需要重新检查 required_skills，把已有证据支持的技能写入 matched，把当前材料未证明的明示关键技能写入 missing。
+- missing 只能表示“当前材料未证明”，不能断言候选人现实中不会或不具备。
+- optimization_suggestions 仍只能基于已有源简历事实做重排和改写建议，不得要求新增项目、技能、数字或经历。
+- 不要输出 jd_structure；服务端会附加原始结构化 JD。
+
+只返回 JSON，不要输出解释、Markdown 代码块或修复说明。`,
     },
   ]
 }
@@ -290,8 +345,6 @@ export function buildInterviewAdviceMessages(
     { "title": "", "background": "", "result": "" }
   ],
   "follow_up_questions": []
-}
-
 执行标准：
 - questions 输出 4 个高概率、高区分度问题，覆盖：核心任务/方法、真实项目深挖、关键差距或迁移能力、公司或工作地语境下的情境题。问题不得预设候选人做过源简历之外的事情。
 - story_recommendations 输出 2 个最值得准备的真实经历。title 必须指向源简历已有经历；background 说明可核验的背景、职责边界和应强调的行动；result 只使用已有成果。若源材料没有结果，明确建议候选人准备真实可核验的结果或反馈，不提供示例数字。
@@ -299,6 +352,36 @@ export function buildInterviewAdviceMessages(
 - 公司人才偏好和工作地影响只能用于选择问题、压力测试和反问方向。若依据是上下文假设，使用条件式问法，不宣称公司内部事实。
 - follow_up_questions 输出 3 个候选人可反问的问题，优先验证岗位成功标准、团队当前挑战、公司人才偏好假设、跨地域/客户协作和入职优先级，避免福利式或万能模板问题。
 - 只输出 JSON，不要输出答案范文、解释或 Markdown 代码块。`,
+    },
+  ]
+}
+
+export function buildInterviewBusinessRepairMessages(input: {
+  analysis: ResumeAnalysis
+  matching: MatchAnalysis
+  optimizedResume: string
+  currentOutput: InterviewSuggestions
+  evaluation: EvaluationResult
+}): ChatMessage[] {
+  return [
+    {
+      role: 'system',
+      content: `你是面试建议结果修复专家。你只能基于简历分析、匹配分析、优化简历、当前面试建议和业务校验问题修复输出，不得编造候选人经历、技能、结果或公司内部事实。\n\n${FACT_SAFETY_CONTRACT}\n\n${CONTEXT_REASONING_CONTRACT}`,
+    },
+    {
+      role: 'user',
+      content: `请修复当前面试建议中的业务校验问题，并只返回修复后的 JSON 对象。\n\n${jsonData('resume_analysis', input.analysis)}\n\n${jsonData('match_analysis', input.matching)}\n\n${textData('optimized_resume', input.optimizedResume)}\n\n${jsonData('current_interview_suggestions', input.currentOutput)}\n\n${jsonData('business_evaluation', input.evaluation)}
+
+修复范围：
+- 只修复 business_evaluation 中指出的问题，不要重写无关字段。
+- 若缺少 story_recommendations，基于优化简历和匹配分析补充 1-2 个真实经历准备建议。
+- 每个 story_recommendations 项必须包含 title、background、result。
+- title 必须指向源简历或优化简历中已有的真实经历、项目、工作或能力主题。
+- background 只描述可从材料中核验的背景、职责边界和行动。
+- result 只能使用材料已有结果；如果材料没有结果，写成“建议候选人准备真实可核验的结果或反馈”，不要编造数字。
+- questions 和 follow_up_questions 可以保留当前输出；只有明显为空或不完整时再基于材料补足。
+
+只返回 JSON，不要输出答案范文、解释、Markdown 代码块或修复说明。`,
     },
   ]
 }

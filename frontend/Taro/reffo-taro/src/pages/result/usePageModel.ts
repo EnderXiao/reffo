@@ -201,7 +201,7 @@ export function usePageModel(): ResultPageViewModel {
         setSavedHistoryId(id)
       } else {
         feedback.message('未找到结果')
-        void navigation.navigateBack()
+        void navigation.returnHome()
       }
     } catch (error) {
       console.error('加载历史记录失败:', error)
@@ -236,7 +236,7 @@ export function usePageModel(): ResultPageViewModel {
         })
       } else {
         feedback.message('未找到结果')
-        void navigation.navigateBack()
+        void navigation.returnHome()
       }
     } catch (error) {
       console.error('加载结果失败:', error)
@@ -459,9 +459,7 @@ export function usePageModel(): ResultPageViewModel {
   const handleBackHome = () => {
     continuationRef.current += 1
     if (enteredFromCard) {
-      void navigation.navigateBack().catch(() => {
-        void navigation.reLaunch('/pages/index/index')
-      })
+      void navigation.returnHome()
       return
     }
 

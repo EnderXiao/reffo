@@ -7,6 +7,11 @@ import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
 import { ResumeRevisionAgent } from '@/agents/resume-revision'
 import { createHarnessEvent } from '@/harness/events'
 import {
+  assertBusinessEvaluationPassed,
+  evaluateWithBusinessRecovery,
+  getBusinessEvaluationErrorDetails,
+} from '@/harness/business-recovery'
+import {
   evaluateInterviewSuggestionsBusiness,
   evaluateMatchAnalysisBusiness,
   evaluateResumeAnalysisBusiness,
@@ -24,6 +29,14 @@ import type { ApiResponse, MvpProcessResponse } from '@/types'
 
 function getHarnessRunRepository() {
   return new HarnessRunRepository()
+}
+
+function buildErrorPayload(code: string, fallbackMessage: string, error: unknown): ApiResponse<never>['error'] {
+  return {
+    code,
+    message: error instanceof Error ? error.message : fallbackMessage,
+    details: getBusinessEvaluationErrorDetails(error),
+  }
 }
 
 /**
@@ -58,10 +71,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'PROCESS_FAILED',
-            message: error instanceof Error ? error.message : '处理失败',
-          },
+          error: buildErrorPayload('PROCESS_FAILED', '处理失败', error),
         }
 
         return response
@@ -271,14 +281,24 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
               eventBus,
               stepContext,
             })
-            await assertBusinessEvaluation({
+            const recovered = await evaluateWithBusinessRecovery({
               eventBus,
               stepContext,
-              evaluation: evaluateResumeAnalysisBusiness(analysis),
+              outputName: 'ResumeAnalysis',
+              currentOutput: analysis,
+              evaluate: evaluateResumeAnalysisBusiness,
+              repair: ({ currentOutput, evaluation }) =>
+                analyzer.repairBusinessOutput(resumeMarkdown, currentOutput, evaluation, {
+                  eventBus,
+                  stepContext,
+                }),
+            })
+            assertBusinessEvaluationPassed({
+              evaluation: recovered.evaluation,
               errorPrefix: '简历分析业务校验失败',
             })
 
-            return analysis
+            return recovered.output
           },
         })
 
@@ -295,10 +315,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'ANALYSIS_FAILED',
-            message: error instanceof Error ? error.message : '分析失败',
-          },
+          error: buildErrorPayload('ANALYSIS_FAILED', '分析失败', error),
         }
 
         return response
@@ -360,14 +377,24 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
                   eventBus,
                   stepContext,
                 })
-                await assertBusinessEvaluation({
+                const recovered = await evaluateWithBusinessRecovery({
                   eventBus,
                   stepContext,
-                  evaluation: evaluateMatchAnalysisBusiness(matchAnalysis),
+                  outputName: 'MatchAnalysis',
+                  currentOutput: matchAnalysis,
+                  evaluate: evaluateMatchAnalysisBusiness,
+                  repair: ({ currentOutput, evaluation }) =>
+                    matcher.repairBusinessOutput(body.structured_resume, jdStep.result, currentOutput, evaluation, {
+                      eventBus,
+                      stepContext,
+                    }),
+                })
+                assertBusinessEvaluationPassed({
+                  evaluation: recovered.evaluation,
                   errorPrefix: '匹配分析业务校验失败',
                 })
 
-                return matchAnalysis
+                return recovered.output
               },
             })
             steps.push(matchingStep.step)
@@ -389,10 +416,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'MATCH_FAILED',
-            message: error instanceof Error ? error.message : '匹配分析失败',
-          },
+          error: buildErrorPayload('MATCH_FAILED', '匹配分析失败', error),
         }
 
         return response
@@ -602,10 +626,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'GENERATE_FAILED',
-            message: error instanceof Error ? error.message : '简历生成失败',
-          },
+          error: buildErrorPayload('GENERATE_FAILED', '简历生成失败', error),
         }
 
         return response
@@ -656,14 +677,31 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
                 stepContext,
               }
             )
-            await assertBusinessEvaluation({
+            const recovered = await evaluateWithBusinessRecovery({
               eventBus,
               stepContext,
-              evaluation: evaluateInterviewSuggestionsBusiness(suggestions),
+              outputName: 'InterviewSuggestions',
+              currentOutput: suggestions,
+              evaluate: evaluateInterviewSuggestionsBusiness,
+              repair: ({ currentOutput, evaluation }) =>
+                advisor.repairBusinessOutput(
+                  body.analysis,
+                  body.matching,
+                  body.optimized_resume,
+                  currentOutput,
+                  evaluation,
+                  {
+                    eventBus,
+                    stepContext,
+                  }
+                ),
+            })
+            assertBusinessEvaluationPassed({
+              evaluation: recovered.evaluation,
               errorPrefix: '面试建议业务校验失败',
             })
 
-            return suggestions
+            return recovered.output
           },
         })
 
@@ -680,10 +718,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'INTERVIEW_FAILED',
-            message: error instanceof Error ? error.message : '面试建议生成失败',
-          },
+          error: buildErrorPayload('INTERVIEW_FAILED', '面试建议生成失败', error),
         }
 
         return response

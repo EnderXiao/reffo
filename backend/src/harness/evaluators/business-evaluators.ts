@@ -36,12 +36,30 @@ function getRequiredSkills(jd?: JDStructure) {
   return jd?.hard_requirements?.required_skills?.filter((skill) => skill.trim()) ?? []
 }
 
-function includesAny(values: string[], candidates: string[]) {
-  const normalizedValues = values.map((value) => value.toLowerCase())
+function normalizeSkillTerm(value: string) {
+  return value.trim().toLowerCase()
+}
 
-  return candidates.some((candidate) => {
-    const normalizedCandidate = candidate.trim().toLowerCase()
-    return normalizedCandidate && normalizedValues.some((value) => value.includes(normalizedCandidate))
+function splitSkillTerms(value: string) {
+  return normalizeSkillTerm(value)
+    .split(/(?:\/|／|、|，|,|;|；|\||\+|&|\s+(?:和|及|与|或|and|or)\s+)/)
+    .map((term) => term.trim())
+    .filter((term) => term.length >= 2)
+}
+
+function buildSkillTerms(value: string) {
+  return [normalizeSkillTerm(value), ...splitSkillTerms(value)]
+    .filter((term, index, terms) => term.length >= 2 && terms.indexOf(term) === index)
+}
+
+function includesAny(values: string[], candidates: string[]) {
+  const valueTerms = values.flatMap(buildSkillTerms)
+  const candidateTerms = candidates.flatMap(buildSkillTerms)
+
+  return candidateTerms.some((candidate) => {
+    return valueTerms.some((value) => {
+      return value.includes(candidate) || candidate.includes(value)
+    })
   })
 }
 
