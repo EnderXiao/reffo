@@ -178,19 +178,23 @@ export const styles = StyleSheet.create({
     marginBottom: 5,
   },
   inputShell: {
-    borderRadius: radius.lg,
+    borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.border.warmSoft,
     backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingLeft: 16,
-    paddingRight: 16,
-    minHeight: 46,
+    paddingLeft: 10,
+    paddingRight: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
+    minHeight: 37,
     justifyContent: 'center',
   },
   inputShellCompact: {
-    minHeight: 40,
+    minHeight: 35,
     paddingLeft: 10,
     paddingRight: 10,
+    paddingTop: 7,
+    paddingBottom: 7,
   },
   inputShellDisabled: {
     opacity: 0.58,
@@ -242,8 +246,8 @@ export const styles = StyleSheet.create({
     minHeight: 34,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.98)',
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderColor: 'rgba(255,255,255,0)',
+    backgroundColor: 'transparent',
     overflow: 'hidden',
     justifyContent: 'center',
     paddingLeft: 13,
@@ -259,12 +263,15 @@ export const styles = StyleSheet.create({
   },
   inlineUploadBarUploading: {
     borderColor: 'rgba(255,108,67,0.32)',
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
   inlineUploadBarSuccess: {
-    borderColor: 'rgba(255,255,255,0.98)',
+    borderColor: 'rgba(255,216,192,0.96)',
+    backgroundColor: 'rgba(255,224,204,0.86)',
   },
   inlineUploadBarError: {
     borderColor: 'rgba(255,56,60,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
   inlineUploadProgressFill: {
     position: 'absolute',
@@ -287,7 +294,7 @@ export const styles = StyleSheet.create({
     color: '#d95e34',
   },
   inlineUploadTextSuccess: {
-    color: '#838383',
+    color: '#8a5a45',
   },
   inlineUploadTextError: {
     color: '#ff383c',

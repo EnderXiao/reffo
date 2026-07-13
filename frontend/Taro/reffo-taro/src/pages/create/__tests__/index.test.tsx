@@ -204,6 +204,11 @@ describe('CreatePage', () => {
       .toBe(value)
   }
 
+  const expectJobLocationInputValue = (value: string) => {
+    expect((screen.getByTestId('job-location-input') as HTMLInputElement).value)
+      .toBe(value)
+  }
+
   beforeEach(async () => {
     jest.clearAllMocks()
     jest.useRealTimers()
@@ -712,6 +717,7 @@ describe('CreatePage', () => {
       expectJobDescriptionInputValue('芒果tv正在招聘\n# AI创新产品经理\n长沙/20-40K/1-3年/本科\n## 职位详情')
       expectJobCompanyInputValue('芒果 TV')
       expectJobPositionInputValue('AI创新产品经理')
+      expectJobLocationInputValue('长沙')
     })
 
     await act(async () => {
@@ -787,6 +793,10 @@ describe('CreatePage', () => {
     fireEvent.change(screen.getByTestId('job-company-input'), {
       target: {value: '用户编辑的公司'},
     })
+    fireEvent.change(screen.getByTestId('job-location-input'), {
+      target: {value: '用户编辑的城市'},
+    })
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('job-upload-trigger'))
       await jest.runAllTimersAsync()
@@ -794,6 +804,7 @@ describe('CreatePage', () => {
 
     await waitFor(() => {
       expectJobCompanyInputValue('用户编辑的公司')
+      expectJobLocationInputValue('用户编辑的城市')
     })
 
     await act(async () => {
@@ -805,6 +816,7 @@ describe('CreatePage', () => {
       expect(getLastSavedResultSession()?.context).toEqual(
         expect.objectContaining({
           company: '用户编辑的公司',
+          location: '用户编辑的城市',
         }),
       )
     })
@@ -847,6 +859,7 @@ describe('CreatePage', () => {
     expect(screen.getByText(/正在解析图片 \d+%/)).toBeTruthy()
     expect((screen.getByTestId('job-company-input') as HTMLInputElement).disabled).toBe(true)
     expect((screen.getByTestId('job-position-input') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByTestId('job-location-input') as HTMLInputElement).disabled).toBe(true)
     expect((screen.getByTestId('job-description-input') as HTMLTextAreaElement).disabled)
       .toBe(true)
 
@@ -872,6 +885,7 @@ describe('CreatePage', () => {
     await waitFor(() => {
       expectJobCompanyInputValue('字节跳动')
       expectJobPositionInputValue('前端开发工程师')
+      expectJobLocationInputValue('北京')
       expectJobDescriptionInputValue('字节跳动正在招聘\n# 前端开发工程师\n工作地点：北京\n## 职位详情')
     })
   })
@@ -926,6 +940,7 @@ describe('CreatePage', () => {
       expectJobDescriptionInputValue(jdText)
       expectJobCompanyInputValue('万兴科技')
       expectJobPositionInputValue('产品策划经理')
+      expectJobLocationInputValue('长沙')
     })
   })
 

@@ -735,6 +735,7 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   margin-bottom: 14px;
 }
 
+.reffo-create-job__field-row,
 .reffo-create-job__meta-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -760,15 +761,15 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
 }
 
 .reffo-create-job__input {
-  height: 40px;
-  min-height: 40px;
-  border-radius: 6px;
+  height: auto;
+  min-height: 37px;
+  border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.98);
   background: rgba(255, 255, 255, 0.52);
   color: #36383d;
   font-size: 15px;
-  line-height: 40px;
-  padding: 0 16px;
+  line-height: 21px;
+  padding: 8px 10px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -785,7 +786,7 @@ taro-input-core.reffo-create-job__input .taro-input,
 .reffo-create-job__input input {
   height: 100%;
   min-height: 100%;
-  line-height: 40px;
+  line-height: 21px;
   display: flex;
   align-items: center;
   padding: 0;
@@ -795,7 +796,7 @@ taro-input-core.reffo-create-job__input .taro-input,
 taro-input-core.reffo-create-job__input .weui-input {
   height: 100%;
   min-height: 100%;
-  line-height: 40px;
+  line-height: 21px;
 }
 
 .reffo-create-job__input::placeholder,
@@ -856,17 +857,15 @@ taro-input-core.reffo-create-job__input .taro-input::placeholder,
   height: 34px;
   min-height: 34px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.98);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0);
   box-sizing: border-box;
   overflow: hidden;
   display: flex;
   align-items: center;
   padding: 0 13px;
   color: #0874f2;
-  box-shadow:
-    0 5PX 12PX rgba(160, 126, 112, 0.08),
-    inset 0 0 0 1PX rgba(238, 238, 238, 0.72);
+  box-shadow: none;
 }
 
 .reffo-create-job__upload-strip::before {
@@ -885,15 +884,26 @@ taro-input-core.reffo-create-job__input .taro-input::placeholder,
 }
 
 .reffo-create-job__upload-strip--uploading {
+  background: rgba(255, 255, 255, 0.42);
   border-color: rgba(255, 108, 67, 0.32);
   color: #d95e34;
 }
 
 .reffo-create-job__upload-strip--filled {
-  color: #838383;
+  background:
+    radial-gradient(72% 180% at 50% 50%, rgba(255, 245, 235, 0.98) 0%, rgba(255, 221, 198, 0.9) 58%, rgba(255, 190, 148, 0.72) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 212, 184, 0.66) 100%);
+  border-color: rgba(255, 216, 192, 0.96);
+  color: #8a5a45;
+  box-shadow:
+    0 5PX 12PX rgba(176, 103, 64, 0.08),
+    inset 0 1PX 0 rgba(255, 255, 255, 0.76),
+    inset 0 -1PX 0 rgba(217, 138, 92, 0.18);
 }
 
 .reffo-create-job__upload-strip--error {
+  background: rgba(255, 255, 255, 0.42);
+  border-color: rgba(255, 56, 60, 0.22);
   color: #ff383c;
 }
 

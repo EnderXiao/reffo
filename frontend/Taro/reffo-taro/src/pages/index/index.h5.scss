@@ -912,7 +912,7 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
 .reffo-home-card__score {
   position: absolute;
   left: 22px;
-  top: 93px;
+  top: 86px;
   display: flex;
   align-items: flex-end;
   color: var(--card-display-accent);
@@ -938,7 +938,7 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
 .reffo-home-card__glass {
   position: relative;
   width: 100%;
-  height: 164px;
+  height: 172px;
   margin-top: auto;
   padding: 15px 22px 13px;
   z-index: 4;
@@ -952,7 +952,7 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
 }
 
 .reffo-home-card--company-wrap .reffo-home-card__glass {
-  height: 186px;
+  height: 190px;
   padding-top: 13px;
   padding-bottom: 34px;
 }
@@ -1012,17 +1012,72 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
   font-size: 14px;
   line-height: 18px;
   font-weight: 700;
+  max-width: 100%;
 }
 
 .reffo-home-card__company {
   color: var(--card-display-accent);
   font-size: 17px;
   line-height: 22px;
+  display: -webkit-box;
+  max-height: 44px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-word;
 }
 
 .reffo-home-card--company-wrap .reffo-home-card__company {
   max-height: 44px;
   overflow: hidden;
+}
+
+.reffo-home-card__value--marquee {
+  display: block;
+  width: 100%;
+  height: 18px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.reffo-home-card__value-marquee-track {
+  display: inline-flex;
+  width: max-content;
+  min-width: 100%;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+.reffo-home-card__value--marquee-active .reffo-home-card__value-marquee-track {
+  animation: reffo-home-card-value-marquee 7.8s linear infinite;
+}
+
+.reffo-home-card__value-marquee-text {
+  flex: 0 0 auto;
+  padding-right: 22px;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+}
+
+@keyframes reffo-home-card-value-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reffo-home-card__value-marquee-track {
+    animation: none;
+  }
 }
 
 .reffo-home-card__date-row {

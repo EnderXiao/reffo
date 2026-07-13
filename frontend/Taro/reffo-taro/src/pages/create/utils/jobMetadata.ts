@@ -9,6 +9,7 @@ function normalizeOcrLine(line: string) {
 export function normalizeCompanyNameCandidate(value: string) {
   return normalizeOcrLine(value)
     .replace(/^(?:公司名称|公司|企业|招聘方)[:：]\s*/, '')
+    .replace(/[·•]\s*(?:HR|人事|招聘负责人|招聘者|猎头).*$/i, '')
     .replace(/(?:正在招聘|招聘中|热招中|诚聘|直聘|招聘|招募).*$/i, '')
     .replace(/[，,。；;：:\s]+$/g, '')
     .replace(/tv/ig, 'TV')
@@ -42,12 +43,19 @@ function isGenericJobSectionTitle(line: string) {
   return /^(?:职位详情|岗位详情|职位描述|岗位描述|职位职责|岗位职责|工作职责|任职要求|职位要求|岗位要求|公司介绍)$/i.test(line)
 }
 
+function isGenericPlatformNoiseLine(line: string) {
+  return /^(?:匹配度分析|收藏|立即申请|反馈率[:：]?.*|[优良中差]\s.*|.*分钟前在线)$/i.test(line) ||
+    /^!\[\]\(.+\)$/.test(line)
+}
+
 function isRecruitingHeadline(line: string) {
   return /(?:正在招聘|招聘中|热招中|诚聘|直聘|招募)/i.test(line)
 }
 
 function isLikelyCompanyName(line: string) {
-  return /(?:公司|集团|科技|网络|智能|股份|传媒|文化|信息|实业)$/i.test(line)
+  const normalized = normalizeCompanyNameCandidate(line)
+
+  return /(?:公司|集团|科技|网络|智能|股份|传媒|文化|信息|实业)$/i.test(normalized)
 }
 
 function isLikelyPositionNameCandidate(line: string) {
@@ -115,9 +123,16 @@ export function extractJobMetadataFromOcrText(text: string) {
       isLikelyMetadataLine(line) &&
       !/^#{1,6}\s*\S+/.test(rawLine) &&
       !isGenericJobSectionTitle(line) &&
-      !/(?:岗位|职位|职责|要求|详情|薪资|经验|本科|硕士|博士)/.test(line)
+      !isGenericPlatformNoiseLine(line) &&
+      isLikelyCompanyName(line)
     )
   })
+  const companyNameLine = normalizedLines
+    .slice(0, 12)
+    .find(line =>
+      !isGenericPlatformNoiseLine(line) &&
+      isLikelyCompanyName(line),
+    )
   const headingPosition = rawLines
     .filter(line => /^#{1,3}\s*\S+/.test(line))
     .map(normalizePositionNameCandidate)
@@ -146,7 +161,9 @@ export function extractJobMetadataFromOcrText(text: string) {
     .find((line, index) => index < 6 && isLikelyLocationCandidate(line))
 
   return {
-    companyName: normalizeCompanyNameCandidate(labelledCompany || recruitingCompany || firstPlainCompany || ''),
+    companyName: normalizeCompanyNameCandidate(
+      labelledCompany || recruitingCompany || companyNameLine || firstPlainCompany || '',
+    ),
     positionName: resolvePositionNameCandidate(labelledPosition || '', headingPosition || '', nextLinePosition || ''),
     baseLocation: resolveBaseLocationCandidate([labelledLocation || '', slashLocation || '']),
   }

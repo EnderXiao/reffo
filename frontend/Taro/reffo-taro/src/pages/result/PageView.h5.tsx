@@ -47,13 +47,35 @@ interface ResultStage {
   title: string
   accent: string
   label: string
+  subtitle: string
   icon: string
 }
 
 const RESULT_STAGES: ResultStage[] = [
-  {key: 'analysis', title: '岗位分析', accent: '分析', label: '岗位分析', icon: lightIcon},
-  {key: 'resume', title: '最佳简历', accent: '最佳', label: '最佳简历', icon: textIcon},
-  {key: 'interview', title: '面试建议', accent: '建议', label: '面试建议', icon: suggestionIcon},
+  {
+    key: 'analysis',
+    title: '岗位分析',
+    accent: '分析',
+    label: '岗位分析',
+    subtitle: '基于目标岗位描述与源简历进行岗位匹配分析，查看与目标岗位差距以及优化策略思路！',
+    icon: lightIcon,
+  },
+  {
+    key: 'resume',
+    title: '相契简历',
+    accent: '相契',
+    label: '最佳简历',
+    subtitle: '基于岗位分析生成人岗相契的简历，确保简历与目标岗位高度匹配！',
+    icon: textIcon,
+  },
+  {
+    key: 'interview',
+    title: '面试建议',
+    accent: '建议',
+    label: '面试建议',
+    subtitle: '查看Reffo为你生成的岗位分析，最佳简历以及针对性的面试建议！',
+    icon: suggestionIcon,
+  },
 ]
 
 function normalizeItems(value: unknown, limit = 4): string[] {
@@ -316,6 +338,24 @@ function SectionTitle({children, icon}: {children: string; icon?: string}) {
   )
 }
 
+function InterviewQuoteList({
+  items,
+  className,
+}: {
+  items: string[]
+  className: string
+}) {
+  return (
+    <View className={className}>
+      {items.map((item, index) => (
+        <View key={`${item}-${index}`} className='reffo-result__interview-line-item'>
+          <Text className='reffo-result__interview-quote'>“{item}”</Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
 function EmptyText() {
   return <Text className='reffo-result__empty'>暂无内容</Text>
 }
@@ -542,6 +582,9 @@ function InterviewPanel({result}: {result: ProcessResult}) {
   const storyTitle = story?.title || strengths[0] || '高匹配项目经历'
   const storyBody = story?.background || strengths[1] || result.analysis.capability_summary || '围绕目标岗位要求，选择最能证明能力迁移的项目经历展开。'
   const storyResult = story?.result || result.optimized.changes_summary[0] || '用量化结果和职责边界说明你的贡献，避免只描述过程。'
+  const secondaryStoryTitle = secondaryStory?.title || '补齐短板的备选故事'
+  const secondaryStoryBody = secondaryStory?.background || '选择一段能回应岗位关键短板的经历，说明你如何快速学习、协作推进或补齐经验。'
+  const secondaryStoryResult = secondaryStory?.result || '强调可验证的交付结果、复盘沉淀或能力迁移，避免只描述主观态度。'
   const generatedFollowUps = normalizeItems(result.interview?.follow_up_questions, 3)
   const followUps = generatedFollowUps.length > 0
     ? generatedFollowUps
@@ -553,51 +596,48 @@ function InterviewPanel({result}: {result: ProcessResult}) {
   return (
     <View className='reffo-result__panel reffo-result__panel--interview'>
       <SectionTitle icon={chatTagIcon}>可能的问题</SectionTitle>
-      <View className='reffo-result__question-list'>
-        {(questions.length > 0 ? questions : ['请介绍一段最能证明你适合这个岗位的经历。', '你如何理解这个岗位最核心的业务挑战？']).map((item, index) => (
-          <View key={`${item}-${index}`} className='reffo-result__question'>
-            <Text className='reffo-result__question-index'>Q{index + 1}</Text>
-            <Text className='reffo-result__question-text'>“{item}”</Text>
-          </View>
-        ))}
-      </View>
+      <InterviewQuoteList
+        className='reffo-result__question-list'
+        items={questions.length > 0 ? questions : ['请介绍一段最能证明你适合这个岗位的经历。', '你如何理解这个岗位最核心的业务挑战？']}
+      />
 
       <SectionTitle>明星故事推荐</SectionTitle>
-      <View className='reffo-result__story-card'>
-        <View className='reffo-result__story-head'>
-          <Text className='reffo-result__story-title'>{storyTitle}</Text>
-          <Text className='reffo-result__story-tag'>故事1</Text>
-        </View>
-        <Text className='reffo-result__story-label'>故事背景</Text>
-        <Text className='reffo-result__story-text'>{storyBody}</Text>
-        <Text className='reffo-result__story-label'>故事结果</Text>
-        <Text className='reffo-result__story-text'>{storyResult}</Text>
-      </View>
+      <View className='reffo-result__story-list'>
+        {[
+          {title: storyTitle, background: storyBody, result: storyResult},
+          {title: secondaryStoryTitle, background: secondaryStoryBody, result: secondaryStoryResult},
+        ].map((item, index) => (
+          <View key={`${item.title}-${index}`} className='reffo-result__story-block'>
+            <Text className='reffo-result__story-title'>{item.title}</Text>
+            <Text className='reffo-result__story-source'>
+              来自源简历
+              <Text className='reffo-result__story-reference'>【引用源简历内容】</Text>
+              和岗位描述
+              <Text className='reffo-result__story-reference'>【引用岗位描述原文内容】</Text>
+              。
+            </Text>
 
-      <View className='reffo-result__story-card reffo-result__story-card--secondary'>
-        <View className='reffo-result__story-head'>
-          <Text className='reffo-result__story-title'>{secondaryStory?.title || '补齐短板的备选故事'}</Text>
-          <Text className='reffo-result__story-tag'>故事2</Text>
-        </View>
-        <Text className='reffo-result__story-label'>故事背景</Text>
-        <Text className='reffo-result__story-text'>
-          {secondaryStory?.background || '选择一段能回应岗位关键短板的经历，说明你如何快速学习、协作推进或补齐经验。'}
-        </Text>
-        <Text className='reffo-result__story-label'>故事结果</Text>
-        <Text className='reffo-result__story-text'>
-          {secondaryStory?.result || '强调可验证的交付结果、复盘沉淀或能力迁移，避免只描述主观态度。'}
-        </Text>
+            <Text className='reffo-result__story-label'>故事回顾：</Text>
+            <View className='reffo-result__story-bullets'>
+              <Text className='reffo-result__story-bullet'>• {item.background}</Text>
+              <Text className='reffo-result__story-bullet'>• {item.result}</Text>
+            </View>
+
+            <Text className='reffo-result__story-label'>讲述思路：</Text>
+            <View className='reffo-result__story-bullets'>
+              <Text className='reffo-result__story-bullet'>
+                • 从岗位描述中 <Text className='reffo-result__story-reference'>【引用岗位描述原文内容】</Text> 推测招聘方看重标准建立能力和处理思路，建议重点阐述。
+              </Text>
+              <Text className='reffo-result__story-bullet'>
+                • 从岗位描述中 <Text className='reffo-result__story-reference'>【引用岗位描述引用引用原文内容】</Text> 推测招聘方不希望候选人不懂业务，建议避开此类描述。
+              </Text>
+            </View>
+          </View>
+        ))}
       </View>
 
       <SectionTitle>聪明的反问</SectionTitle>
-      <View className='reffo-result__follow-list'>
-        {followUps.map((item, index) => (
-          <View key={item} className='reffo-result__follow-note'>
-            <Text className='reffo-result__follow-index'>Q{index + 1}.</Text>
-            <Text className='reffo-result__follow-text'>{item}</Text>
-          </View>
-        ))}
-      </View>
+      <InterviewQuoteList className='reffo-result__follow-list' items={followUps} />
     </View>
   )
 }
@@ -645,6 +685,7 @@ export default function PageView({
   const returnTimerRef = useRef<number | null>(null)
   const edgeEnterTimerRef = useRef<number | null>(null)
   const activeStage = RESULT_STAGES[stageIndex]
+  const subtitle = activeStage.subtitle
   const accentIndex = activeStage.title.indexOf(activeStage.accent)
   const titleBeforeAccent = accentIndex >= 0 ? activeStage.title.slice(0, accentIndex) : ''
   const titleAfterAccent = accentIndex >= 0
@@ -879,7 +920,10 @@ export default function PageView({
               {titleAfterAccent.length > 0 && (
                 <Text className='reffo-result__title-prefix'>{titleAfterAccent}</Text>
               )}
-              <Text className='reffo-result__spark'>✦</Text>
+              <View className='reffo-result__title-spark' aria-hidden='true'>
+                <Text className='reffo-result__title-spark-main'>✦</Text>
+                <Text className='reffo-result__title-spark-small'>✦</Text>
+              </View>
             </View>
             <View
               className='reffo-result__tabs'
@@ -922,7 +966,7 @@ export default function PageView({
           </View>
 
           <Text className='reffo-result__subtitle'>
-            查看Reffo为你生成的岗位分析，最佳简历以及针对性的面试建议！
+            {subtitle}
           </Text>
         </View>
 

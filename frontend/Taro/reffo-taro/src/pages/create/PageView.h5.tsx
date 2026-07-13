@@ -411,6 +411,7 @@ function JobDescriptionStepH5({
   state,
   onCompanyNameChange,
   onPositionNameChange,
+  onLocationChange,
   onContentChange,
   onPickAttachment,
   isExiting = false,
@@ -418,6 +419,7 @@ function JobDescriptionStepH5({
   state: JobDescriptionStepState
   onCompanyNameChange: CreatePageViewModel['handleJobCompanyNameChange']
   onPositionNameChange: CreatePageViewModel['handleJobPositionNameChange']
+  onLocationChange: CreatePageViewModel['handleJobLocationChange']
   onContentChange: CreatePageViewModel['handleJobDescriptionChange']
   onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
   isExiting?: boolean
@@ -438,22 +440,42 @@ function JobDescriptionStepH5({
           <Text>新的工牌制作中！</Text>
         </View>
 
-        <View className='reffo-create-job__field'>
-          <Text className='reffo-create-job__label'>公司</Text>
-          <Input
-            value={state.companyName}
-            placeholder='输入公司名称'
-            disabled={isUploadingAttachment}
-            onInput={event => {
-              if (!isUploadingAttachment) {
-                onCompanyNameChange(event.detail.value)
-              }
-            }}
-            className={classNames('reffo-create-job__input', {
-              'reffo-create-job__input--disabled': isUploadingAttachment,
-            })}
-            data-testid='job-company-input'
-          />
+        <View className='reffo-create-job__field-row'>
+          <View className='reffo-create-job__field reffo-create-job__field--half'>
+            <Text className='reffo-create-job__label'>公司</Text>
+            <Input
+              value={state.companyName}
+              placeholder='输入公司名称'
+              disabled={isUploadingAttachment}
+              onInput={event => {
+                if (!isUploadingAttachment) {
+                  onCompanyNameChange(event.detail.value)
+                }
+              }}
+              className={classNames('reffo-create-job__input', {
+                'reffo-create-job__input--disabled': isUploadingAttachment,
+              })}
+              data-testid='job-company-input'
+            />
+          </View>
+
+          <View className='reffo-create-job__field reffo-create-job__field--half'>
+            <Text className='reffo-create-job__label'>Base</Text>
+            <Input
+              value={state.baseLocation}
+              placeholder='输入岗位城市'
+              disabled={isUploadingAttachment}
+              onInput={event => {
+                if (!isUploadingAttachment) {
+                  onLocationChange(event.detail.value)
+                }
+              }}
+              className={classNames('reffo-create-job__input', {
+                'reffo-create-job__input--disabled': isUploadingAttachment,
+              })}
+              data-testid='job-location-input'
+            />
+          </View>
         </View>
 
         <View className='reffo-create-job__field'>
@@ -587,6 +609,7 @@ export default function PageView({
   handleJobDescriptionChange,
   handleJobCompanyNameChange,
   handleJobPositionNameChange,
+  handleJobLocationChange,
   handlePickJobAttachment,
   handlePrimaryAction,
   handleCancelGeneration,
@@ -749,6 +772,7 @@ export default function PageView({
               state={jobDescriptionState}
               onCompanyNameChange={handleJobCompanyNameChange}
               onPositionNameChange={handleJobPositionNameChange}
+              onLocationChange={handleJobLocationChange}
               onContentChange={handleJobDescriptionChange}
               onPickAttachment={handlePickJobAttachment}
               isExiting={isLaunchingGeneration}

@@ -240,3 +240,54 @@ Step：`generate_interview_advice`
 | `story_recommendations` | error | `MISSING_STORY_RECOMMENDATIONS` | 必须是非空数组 | 面试建议必须包含故事或项目准备建议，否则缺少核心准备材料。 |
 | `follow_up_questions` | warning | `MISSING_FOLLOW_UP_QUESTIONS` | 建议为非空数组 | 反问问题缺失不会阻断，但会降低面试准备完整度。 |
 | `story_recommendations[].title`、`background`、`result` | error | `INCOMPLETE_STORY_RECOMMENDATION` | 每条故事建议都必须有非空标题、背景和结果 | 故事建议必须完整，方便候选人按 STAR 或项目叙事准备。 |
+
+## TODO：业务校验失败后的 LLM Recovery 策略
+
+当前实现中，业务校验失败后的行为并不统一：
+
+- JSON 解析失败或结构校验失败时，会默认请求 LLM 修复 1 次，但 prompt 明确要求只修复 JSON 格式或字段结构，不重新推理业务内容。
+- `generate` 的 Markdown 质量门禁失败时，会请求 LLM 执行 `revise_resume`，最多修订 2 次。
+- `analyze`、`match`、`interview` 的业务校验出现 `error` 时，目前会直接抛错并返回失败，不会继续请求 LLM 挖掘隐含信息或补全业务输出。
+
+后续可以补充一层 `business recovery policy`，按问题类型决定是否继续请求 LLM，而不是所有业务 error 都直接失败或全部交给 LLM 自动补。
+
+### Recovery 策略分层
+
+| 策略 | 适用问题 | 推荐行为 | 中文解释 |
+| --- | --- | --- | --- |
+| `repair_business_output` | 输出字段缺失、解释不完整、证据标注不完整，但所需事实已经在当前输入或当前输出中 | 使用原始输入、当前输出和 evaluator issues 重新请求 LLM 修复业务输出 | 这类问题通常是模型漏写、漏解释或结构化不完整，适合让 LLM 基于已有事实补全表达。 |
+| `reextract_from_source` | 源简历结构化字段缺失，但字段可能隐含在原始简历文本里 | 使用原始简历文本重新请求 LLM 抽取，并要求只引用原文、无法确认则留空 | 这类问题需要重新抽取事实，必须严格限制不能编造。 |
+| `fail_with_missing_input` | 源文本确实缺少关键事实，或继续推理会产生较高幻觉风险 | 直接返回失败，并提示用户补充输入 | 这类问题不应由 LLM 硬补，否则会污染简历事实。 |
+
+### 推荐优先级
+
+| 入口 | 当前业务 error 类型 | 推荐策略 | 中文解释 |
+| --- | --- | --- | --- |
+| `match` | `MISSING_EXPERIENCE_MATCH` | `repair_business_output` | 经验匹配说明可以基于结构化简历和 JD 重新生成。 |
+| `match` | `MISSING_WEAKNESS_EVIDENCE_TYPE` | `repair_business_output` | 弱点证据类型缺失属于解释不完整，适合让 LLM 补齐证据分类。 |
+| `match` | `INVALID_WEAKNESS_EVIDENCE_TYPE` | `repair_business_output` | 证据类型不合法可以让 LLM 映射到允许的三类枚举。 |
+| `match` | `JD_REQUIRED_SKILLS_NOT_CHECKED` | `repair_business_output` | 可能是模型漏检 JD 必备技能，也可能简历中存在相近表述，适合二次检查。 |
+| `interview` | `MISSING_STORY_RECOMMENDATIONS` | `repair_business_output` | 故事建议可以基于优化简历重新生成，风险相对可控。 |
+| `interview` | `INCOMPLETE_STORY_RECOMMENDATION` | `repair_business_output` | 标题、背景、结果缺失属于建议内容不完整，适合修复输出。 |
+| `analyze` | `MISSING_HARD_SKILLS` | `reextract_from_source` | 技能可能隐含在项目和经历描述中，适合基于原文重新抽取，但不能编造。 |
+| `analyze` | `MISSING_PERSON_NAME` | `reextract_from_source` 或 `fail_with_missing_input` | 如果原文包含姓名但模型漏抽，可重抽；如果原文确实没有，应失败并提示补充。 |
+| `analyze` | `MISSING_SOURCE_EXPERIENCE` | `reextract_from_source` 或 `fail_with_missing_input` | 如果原文存在经历但模型漏抽，可重抽；如果候选人确实没有经历，不能硬造。 |
+| `generate` | `MISSING_SOURCE_EXPERIENCE` | `fail_with_missing_input`，必要时回到 `analyze` 重抽 | 生成阶段不应该凭空补源工作经历。 |
+| `generate` | `MISSING_SOURCE_HARD_SKILLS` | `fail_with_missing_input`，必要时回到 `analyze` 重抽 | 生成阶段不应该凭空补源硬技能。 |
+| `generate` | `RESUME_TOO_SHORT`、`MISSING_EXPERIENCE_SECTION`、`MISSING_SKILL_SECTION`、`PLACEHOLDER_TEXT_FOUND` | 已有 `revise_resume`，可继续沿用 | 这类问题是生成结果质量问题，不是源事实缺失，当前修订机制合理。 |
+
+### 实施建议
+
+| 阶段 | 建议范围 | 目标 | 中文解释 |
+| --- | --- | --- | --- |
+| 第一阶段 | 只给 `match` 和 `interview` 增加 `repair_business_output` | 优先修复低幻觉风险、高收益的问题 | 这两个入口的业务 error 多数是输出解释不完整，适合先做业务修复闭环。 |
+| 第二阶段 | 给 `analyze` 增加 `reextract_from_source` | 支持从原始简历中重新抽取漏掉的姓名、经历、技能 | 需要 prompt 强约束“只基于原文、无法确认就留空”，并最好记录引用依据。 |
+| 第三阶段 | 统一沉淀 `business recovery policy` 配置 | 按 issue code 映射 recovery 行为、最大尝试次数和失败提示 | 避免在各 route 中散落 if/else，也方便后续调整策略。 |
+
+### Prompt 约束建议
+
+| 场景 | Prompt 约束 | 中文解释 |
+| --- | --- | --- |
+| `repair_business_output` | 只允许基于原始输入和当前输出修复 evaluator issues，不允许新增输入中不存在的事实 | 防止业务修复阶段借机编造经历、技能或项目。 |
+| `reextract_from_source` | 只从原始简历文本中抽取；每个新增字段必须能在原文找到依据；无法确认时留空并说明缺失 | 防止把推断当事实写入结构化简历。 |
+| `fail_with_missing_input` | 返回明确错误码和中文提示，指导用户补充缺失信息 | 让用户知道是输入材料不足，而不是系统失败。 |

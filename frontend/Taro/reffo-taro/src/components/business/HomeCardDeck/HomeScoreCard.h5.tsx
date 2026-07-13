@@ -4,7 +4,7 @@ import {resolveResumeGrade} from '@/utils/score-grade'
 import type {HomeCardItem} from './shared'
 import {deriveCardPalette} from './palette'
 import classNames from 'classnames'
-import {lazy, Suspense, useMemo} from 'react'
+import {lazy, Suspense, useEffect, useMemo, useState} from 'react'
 import {HOME_PAGE_CONTENT} from '@/pages/index/constants/content'
 import ReffoGlyph from './ReffoGlyph.h5'
 
@@ -124,6 +124,45 @@ function isLikelyWrappedCompanyName(company: string) {
   return Array.from(company.trim()).length > 8
 }
 
+function estimateCompactTextUnits(value: string) {
+  return Array.from(value.trim()).reduce((total, char) => total + (/^[\x00-\x7F]$/.test(char) ? 0.58 : 1), 0)
+}
+
+function shouldAutoScrollValue(value: string) {
+  return estimateCompactTextUnits(value) > 9.5
+}
+
+function renderCardValue(value: string, className: string, isMarqueeActive: boolean) {
+  const shouldScroll = shouldAutoScrollValue(value)
+
+  if (!shouldScroll) {
+    return (
+      <Text className={classNames('reffo-home-card__value', className)}>
+        {value}
+      </Text>
+    )
+  }
+
+  return (
+    <View
+      className={classNames(
+        'reffo-home-card__value reffo-home-card__value--marquee',
+        {
+          'reffo-home-card__value--marquee-active': isMarqueeActive,
+        },
+        className,
+      )}
+    >
+      <View className='reffo-home-card__value-marquee-track'>
+        <Text className='reffo-home-card__value-marquee-text'>{value}</Text>
+        <Text className='reffo-home-card__value-marquee-text reffo-home-card__value-marquee-text--clone'>
+          {value}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
 export default function HomeScoreCard({
   card: inputCard,
   depth,
@@ -134,7 +173,24 @@ export default function HomeScoreCard({
   style,
   onClick,
 }: HomeScoreCardProps) {
+  const [isValueMarqueeReady, setIsValueMarqueeReady] = useState(false)
   const card = variant === 'create' ? CREATE_CARD_ITEM : inputCard
+
+  useEffect(() => {
+    setIsValueMarqueeReady(false)
+
+    if (!active || depth !== 0 || variant !== 'score') {
+      return undefined
+    }
+
+    const timer = window.setTimeout(() => {
+      setIsValueMarqueeReady(true)
+    }, 500)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [active, depth, variant, card?.id])
 
   if (!card) {
     return null
@@ -254,11 +310,11 @@ export default function HomeScoreCard({
               </View>
               <View className='reffo-home-card__field'>
                 <Text className='reffo-home-card__label'>岗位</Text>
-                <Text className='reffo-home-card__value'>{card.role}</Text>
+                {renderCardValue(card.role, 'reffo-home-card__role', isValueMarqueeReady)}
               </View>
               <View className='reffo-home-card__field'>
                 <Text className='reffo-home-card__label'>工作地</Text>
-                <Text className='reffo-home-card__value'>{card.location}</Text>
+                {renderCardValue(card.location, 'reffo-home-card__location', isValueMarqueeReady)}
               </View>
               <View className='reffo-home-card__date-row'>
                 <Text className='reffo-home-card__date-label'>生成日期</Text>

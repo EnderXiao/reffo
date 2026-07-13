@@ -10,6 +10,7 @@ interface JobDescriptionStepProps {
   state: JobDescriptionStepState
   onCompanyNameChange: (content: string) => void
   onPositionNameChange: (content: string) => void
+  onLocationChange: (content: string) => void
   onContentChange: (content: string) => void
   onPickAttachment: () => Promise<void>
   compact?: boolean
@@ -20,6 +21,7 @@ export default function JobDescriptionStep({
   state,
   onCompanyNameChange,
   onPositionNameChange,
+  onLocationChange,
   onContentChange,
   onPickAttachment,
   compact = false,
@@ -61,15 +63,29 @@ export default function JobDescriptionStep({
           <View style={[styles.ribbonTail, compact ? styles.ribbonTailCompact : null] as any} />
         </View>
 
-        <JobDescriptionField
-          label='公司'
-          placeholder='输入公司名称'
-          value={state.companyName}
-          onChange={onCompanyNameChange}
-          testId='job-company-input'
-          compact={compact}
-          disabled={isUploadingAttachment}
-        />
+        <View style={[styles.fieldRow, compact ? styles.fieldRowCompact : null] as any}>
+          <JobDescriptionField
+            label='公司'
+            placeholder='输入公司名称'
+            value={state.companyName}
+            onChange={onCompanyNameChange}
+            testId='job-company-input'
+            compact={compact}
+            disabled={isUploadingAttachment}
+            containerStyle={[styles.fieldRowItem, styles.fieldRowItemLeft]}
+          />
+
+          <JobDescriptionField
+            label='Base'
+            placeholder='输入岗位城市'
+            value={state.baseLocation}
+            onChange={onLocationChange}
+            testId='job-location-input'
+            compact={compact}
+            disabled={isUploadingAttachment}
+            containerStyle={styles.fieldRowItem}
+          />
+        </View>
 
         <JobDescriptionField
           label='目标岗位名称'
