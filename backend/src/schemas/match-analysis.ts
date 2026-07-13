@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import type { MatchAnalysis } from '@/types'
 
+const contextConfidenceSchema = z.enum(['high', 'medium', 'low', 'unknown'])
+
 export const jdStructureSchema = z.object({
   basic_info: z.object({
     title: z.string(),
@@ -16,6 +18,38 @@ export const jdStructureSchema = z.object({
   tasks: z.array(z.string()),
   soft_skills: z.array(z.string()),
   nice_to_have: z.array(z.string()),
+  requirement_hierarchy: z.object({
+    must_have: z.array(z.string()).default([]),
+    core_outcomes: z.array(z.string()).default([]),
+    differentiators: z.array(z.string()).default([]),
+  }).passthrough().default({
+    must_have: [],
+    core_outcomes: [],
+    differentiators: [],
+  }),
+  company_context: z.object({
+    explicit_signals: z.array(z.string()).default([]),
+    inferred_talent_preferences: z.array(z.string()).default([]),
+    inference_basis: z.array(z.string()).default([]),
+    confidence: contextConfidenceSchema.default('unknown'),
+  }).passthrough().default({
+    explicit_signals: [],
+    inferred_talent_preferences: [],
+    inference_basis: [],
+    confidence: 'unknown',
+  }),
+  location_context: z.object({
+    explicit_signals: z.array(z.string()).default([]),
+    inferred_role_implications: z.array(z.string()).default([]),
+    inference_basis: z.array(z.string()).default([]),
+    confidence: contextConfidenceSchema.default('unknown'),
+  }).passthrough().default({
+    explicit_signals: [],
+    inferred_role_implications: [],
+    inference_basis: [],
+    confidence: 'unknown',
+  }),
+  uncertainties: z.array(z.string()).default([]),
 }).passthrough()
 
 const booleanLikeSchema = z.preprocess((value) => {
@@ -63,6 +97,12 @@ const weaknessStringArraySchema = z.preprocess((value) => {
   }).filter((item) => item.trim())
 }, z.array(z.string()))
 
+const contextFitSchema = z.object({
+  company_alignment: z.string().default(''),
+  location_alignment: z.string().default(''),
+  hypotheses_used: z.array(z.string()).default([]),
+}).passthrough()
+
 export const matchAnalysisOutputSchema = z.object({
   match_score: z.coerce.number().min(0).max(100),
   hard_requirements_match: z.record(booleanLikeSchema).default({}),
@@ -75,6 +115,13 @@ export const matchAnalysisOutputSchema = z.object({
   strengths: z.array(z.string()).default([]),
   weaknesses: weaknessStringArraySchema.default([]),
   weakness_details: z.array(weaknessDetailSchema).default([]),
+  positioning_strategy: z.string().default(''),
+  optimization_suggestions: z.array(z.string()).default([]),
+  context_fit: contextFitSchema.default({
+    company_alignment: '',
+    location_alignment: '',
+    hypotheses_used: [],
+  }),
   jd_structure: jdStructureSchema.optional(),
 }).passthrough()
 
@@ -90,6 +137,9 @@ export const matchAnalysisSchema = z.object({
   strengths: z.array(z.string()),
   weaknesses: weaknessStringArraySchema,
   weakness_details: z.array(weaknessDetailSchema).optional(),
+  positioning_strategy: z.string().optional(),
+  optimization_suggestions: z.array(z.string()).optional(),
+  context_fit: contextFitSchema.optional(),
   jd_structure: jdStructureSchema,
 }).passthrough()
 
