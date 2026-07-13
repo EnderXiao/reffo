@@ -82,6 +82,12 @@ export const env = {
   SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY || '',
   SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY || '',
   SUPABASE_PROJECT_ENV: parseSupabaseProjectEnv(process.env.SUPABASE_PROJECT_ENV),
+  SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || 'user-files',
+
+  // Harness runtime database
+  HARNESS_DATABASE_PATH: process.env.HARNESS_DATABASE_PATH || '',
+  HARNESS_RETENTION_DAYS: parseInt(process.env.HARNESS_RETENTION_DAYS || '7', 10),
+  HARNESS_MAX_RUNS: parseInt(process.env.HARNESS_MAX_RUNS || '1000', 10),
 
   // AI Provider Configuration
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
@@ -154,6 +160,14 @@ export function validateEnv() {
 
   if (!Number.isFinite(env.PORT) || env.PORT <= 0) {
     throw new Error('PORT must be a positive number')
+  }
+
+  if (!Number.isFinite(env.HARNESS_RETENTION_DAYS) || env.HARNESS_RETENTION_DAYS < 0) {
+    throw new Error('HARNESS_RETENTION_DAYS must be a non-negative number')
+  }
+
+  if (!Number.isFinite(env.HARNESS_MAX_RUNS) || env.HARNESS_MAX_RUNS < 0) {
+    throw new Error('HARNESS_MAX_RUNS must be a non-negative number')
   }
 
   if (env.APP_ENV === 'prod') {

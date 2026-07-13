@@ -660,8 +660,10 @@ export default function PageView({
   generationError,
   enteredFromCard,
   returnCard,
+  canEditHistory,
   handleComplete,
   handleBackHome,
+  handleEditHistory,
   handleOptimizedResumeChange,
 }: ResultPageViewModel) {
   const [stageIndex, setStageIndex] = useState(0)
@@ -1017,19 +1019,45 @@ export default function PageView({
       onTouchCancel={handleStageTouchCancel}
     >
       {enteredFromCard ? (
-        <View className='reffo-result__chrome reffo-result__chrome--back'>
-          <View className='reffo-result__action reffo-result__action--back' onClick={handleReturnHome}>
-            <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
-            <Text>返回</Text>
+        <>
+          <View className='reffo-result__chrome reffo-result__chrome--back'>
+            <View className='reffo-result__action reffo-result__action--back' onClick={handleReturnHome}>
+              <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
+              <Text>返回</Text>
+            </View>
           </View>
-        </View>
+          {canEditHistory ? (
+            <View className='reffo-result__chrome'>
+              <View
+                className='reffo-result__action reffo-result__action--edit'
+                onClick={() => {
+                  void handleEditHistory()
+                }}
+              >
+                <Image src={editIcon} className='reffo-result__action-icon' mode='aspectFit' />
+                <Text>编辑简历</Text>
+              </View>
+            </View>
+          ) : null}
+        </>
       ) : (
         <View className='reffo-result__chrome'>
-          <View className='reffo-result__action' onClick={handleAction}>
+          <View
+            className={classNames('reffo-result__action', {
+              'reffo-result__action--edit': isComplete && canEditHistory,
+            })}
+            onClick={isComplete && canEditHistory
+              ? () => {
+                  void handleEditHistory()
+                }
+              : handleAction}
+          >
             {!isComplete ? (
               <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
+            ) : canEditHistory ? (
+              <Image src={editIcon} className='reffo-result__action-icon' mode='aspectFit' />
             ) : null}
-            <Text>{isComplete ? '完成' : '退出生成'}</Text>
+            <Text>{isComplete && canEditHistory ? '编辑简历' : isComplete ? '完成' : '退出生成'}</Text>
           </View>
         </View>
       )}

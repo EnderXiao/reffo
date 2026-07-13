@@ -23,5 +23,9 @@ declare namespace NodeJS {
      * @see https://taro-docs.jd.com/docs/next/env-mode-config#特殊环境变量-taro_app_id
      */
     TARO_APP_ID: string
+    API_BASE_URL?: string
+    SUPABASE_URL?: string
+    SUPABASE_PUBLISHABLE_KEY?: string
+    SUPABASE_STORAGE_BUCKET?: string
   }
 }

@@ -35,11 +35,32 @@ backend/
 
 ```bash
 bun install
-cp .env.example .env
+cp .env.example .env.local
 bun run dev
 ```
 
 服务将在 `http://localhost:3000` 启动，Swagger 文档为 `http://localhost:3000/swagger`。
+
+## 环境配置
+
+后端按单环境文件运行，不再把正式和非正式配置同时放进一个 `.env`：
+
+- `.env.local`: 本地 SQLite 开发，默认由 `bun run dev` 使用。
+- `.env.nonprod`: 非生产 Supabase，用于测试/预发合并环境。
+- `.env.prod`: 正式 Supabase，仅在正式迁移或正式后端启动时使用。
+- `.env.example`: 变量模板，不保存真实 key。
+
+常用命令：
+
+```bash
+bun run dev:local
+bun run dev:nonprod
+bun run start:prod
+bun run migrate:sqlite-to-supabase:nonprod
+bun run migrate:sqlite-to-supabase:prod
+```
+
+`.env.prod` 必须设置 `APP_ENV=prod`、`DATABASE_PROVIDER=supabase`、`AUTH_REQUIRED=true`、`SUPABASE_PROJECT_ENV=prod`，并使用正式 Supabase project 的新 API key。
 
 ## 核心 API
 

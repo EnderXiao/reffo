@@ -119,6 +119,10 @@ taro-page-core,
   transform: translate3d(0, -12px, 0);
 }
 
+.reffo-create--delete-preview .reffo-create__hero {
+  animation: reffo-create-delete-copy-out 360ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 .reffo-create--returning-generation .reffo-create__hero {
   animation: reffo-create-return-hero-in 380ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -509,6 +513,10 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   opacity: 0.62;
 }
 
+.reffo-create-textarea--readonly {
+  opacity: 1;
+}
+
 .reffo-create-tip {
   color: #a6a6a6;
   font-size: 14px;
@@ -650,6 +658,10 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
     filter 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.reffo-create--history-edit:not(.reffo-create--delete-preview) .reffo-create-job {
+  view-transition-name: reffo-delete-jd-card;
+}
+
 .reffo-create-job::before {
   content: "";
   position: absolute;
@@ -673,6 +685,16 @@ taro-textarea-core.reffo-create-textarea .taro-textarea {
   transition:
     opacity 150ms cubic-bezier(0.4, 0, 1, 1),
     transform 180ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.reffo-create--delete-preview .reffo-create-job {
+  view-transition-name: none;
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(calc(var(--job-card-scale) * 1.08));
+  transition:
+    opacity 180ms 120ms cubic-bezier(0.4, 0, 1, 1),
+    transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
 }
 
 .reffo-create-job > * {
@@ -933,6 +955,14 @@ taro-input-core.reffo-create-job__input .taro-input::placeholder,
   line-height: 25px;
 }
 
+.reffo-create-job__content--combined .reffo-create-textarea--readonly,
+.reffo-create-job__content--combined taro-textarea-core.reffo-create-textarea--readonly .taro-textarea,
+.reffo-create-job__content--combined .reffo-create-textarea--readonly textarea {
+  color: #59616c;
+  -webkit-text-fill-color: #59616c;
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .reffo-create-job__content--combined .reffo-create-textarea--job::placeholder,
 .reffo-create-job__content--combined taro-textarea-core.reffo-create-textarea--job .taro-textarea::placeholder,
 .reffo-create-job__content--combined .reffo-create-textarea--job textarea::placeholder {
@@ -1149,6 +1179,15 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   pointer-events: none;
 }
 
+.reffo-create--delete-preview .reffo-create__footer {
+  animation: reffo-create-delete-copy-out 360ms 40ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.reffo-create__footer--edit {
+  width: 100%;
+  gap: 12px;
+}
+
 .reffo-create__primary {
   width: 222px;
   min-height: 42px;
@@ -1177,6 +1216,44 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
 .reffo-create__primary--disabled {
   background: linear-gradient(90deg, #bfbfbf 0%, #dedede 100%);
   box-shadow: none;
+}
+
+.reffo-create__footer--edit .reffo-create__primary {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  padding: 0 28px;
+}
+
+.reffo-create__delete-action {
+  margin-left: auto;
+  min-height: 42px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: #6f7378;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  box-shadow: none;
+  backdrop-filter: none;
+  white-space: nowrap;
+}
+
+.reffo-create__delete-action--disabled {
+  opacity: 0.54;
+  pointer-events: none;
+}
+
+.reffo-create__delete-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  filter: brightness(0) saturate(0) opacity(0.62);
 }
 
 .reffo-create__primary-spark {
@@ -1378,6 +1455,313 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   animation: reffo-generation-cancel-in 420ms 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+.reffo-create-delete {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.reffo-create-delete__backdrop {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+}
+
+.reffo-create-delete__backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 60dvh;
+  min-height: 390px;
+  background:
+    radial-gradient(82% 76% at 50% 0%, rgba(238, 102, 72, 0.24) 0%, rgba(244, 142, 112, 0.16) 50%, rgba(255, 232, 224, 0.08) 82%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, rgba(242, 115, 86, 0.2) 0%, rgba(255, 210, 198, 0.14) 58%, rgba(255, 255, 255, 0) 100%);
+  filter: blur(8PX);
+  opacity: 0;
+  animation: reffo-delete-backdrop-in 520ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-create-delete__content {
+  position: relative;
+  z-index: 1;
+  width: min(100vw, 393px);
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: max(58px, env(safe-area-inset-top)) 30px max(46px, env(safe-area-inset-bottom));
+}
+
+.reffo-create-delete__close {
+  position: absolute;
+  z-index: 3;
+  top: max(17px, env(safe-area-inset-top));
+  right: 30px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(222, 228, 238, 0.92);
+  color: #c4c8cf;
+  font-size: 23px;
+  line-height: 23px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6PX 10PX rgba(140, 160, 190, 0.12);
+  opacity: 0;
+  transform: translate3d(16px, -8px, 0);
+  animation: reffo-delete-close-in 360ms 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-create-delete__card-stage {
+  --card-design-width: 210px;
+  --card-design-height: 332px;
+  --delete-card-source-width: min(350px, calc(100vw - (clamp(30px, 7.8vw, 74px) * 2)));
+  --delete-card-width: calc(var(--delete-card-source-width) * 0.62);
+  --card-responsive-scale: calc(var(--delete-card-width) / var(--card-design-width));
+  width: var(--delete-card-width);
+  aspect-ratio: 210 / 332;
+  position: relative;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  view-transition-name: reffo-delete-jd-card;
+  contain: paint;
+  filter: drop-shadow(0 18PX 36PX rgba(114, 93, 82, 0.18));
+}
+
+.reffo-create-delete__flipper {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateY(180deg);
+}
+
+html.reffo-delete-vt-enter .reffo-create-delete__card-stage,
+html.reffo-delete-vt-return .reffo-create-delete__card-stage,
+html.reffo-delete-vt-enter .reffo-create-delete__flipper,
+html.reffo-delete-vt-return .reffo-create-delete__flipper {
+  animation: none;
+}
+
+html.reffo-delete-vt-enter .reffo-create-delete__flipper,
+html.reffo-delete-vt-return .reffo-create-delete__flipper {
+  transform: rotateY(180deg);
+}
+
+.reffo-create-delete__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.reffo-create-delete__face--back {
+  transform: rotateY(180deg);
+}
+
+.reffo-create-delete__front-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.98);
+  background:
+    linear-gradient(90deg, rgba(244, 151, 104, 0.18) 0%, rgba(248, 188, 154, 0.13) 62%, rgba(255, 230, 216, 0.08) 82%, rgba(255, 255, 255, 0) 100%),
+    radial-gradient(250px 160px at 28% 48%, rgba(238, 157, 116, 0.18) 0%, rgba(238, 157, 116, 0.12) 48%, rgba(255, 217, 195, 0.07) 78%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(90deg, #fff9f3 0%, #fffefe 52%, #fffaf5 100%);
+  box-shadow: 0 18PX 36PX rgba(114, 93, 82, 0.18);
+  padding: 28px 16px 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.reffo-create-delete__front-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 13px;
+  min-width: 0;
+}
+
+.reffo-create-delete__front-label {
+  color: #25211f;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.reffo-create-delete__front-value {
+  min-height: 34px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.52);
+  color: #36383d;
+  font-size: 14px;
+  line-height: 20px;
+  padding: 7px 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1PX rgba(238, 220, 208, 0.52);
+}
+
+.reffo-create-delete__home-card {
+  pointer-events: none;
+}
+
+.reffo-create-delete__copy {
+  position: absolute;
+  top: calc(max(17px, env(safe-area-inset-top)) + clamp(48px, 8.4dvh, 67px));
+  left: clamp(30px, 7.8vw, 74px);
+  right: clamp(30px, 7.8vw, 74px);
+  width: min(100%, 300px);
+  margin-top: 0;
+  opacity: 0;
+  transform: translate3d(48px, 0, 0);
+  animation: reffo-delete-copy-in 460ms 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-create-delete__title {
+  display: flex;
+  align-items: baseline;
+  color: #22201f;
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 400;
+}
+
+.reffo-create-delete__title-accent {
+  color: #ef4444;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.reffo-create-delete__description {
+  display: block;
+  margin-top: 10px;
+  color: #9da3ad;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.reffo-create-delete__footer {
+  position: absolute;
+  left: 50%;
+  bottom: max(46px, env(safe-area-inset-bottom));
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 8px;
+  color: #ef3f46;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
+  transform: translate3d(calc(-50% + 48px), 0, 0);
+  animation: reffo-delete-footer-in 460ms 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  overflow: hidden;
+}
+
+.reffo-create-delete__footer-text {
+  position: relative;
+  display: block;
+  color: transparent;
+  background:
+    linear-gradient(100deg, #ef3f46 0%, #ef3f46 36%, #ffb5b8 48%, #ef3f46 60%, #ef3f46 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: reffo-delete-footer-shine 1800ms 900ms linear infinite;
+}
+
+.reffo-create-delete__footer-arrow {
+  display: block;
+  color: transparent;
+  font-size: 17px;
+  line-height: 20px;
+  background:
+    linear-gradient(100deg, #ef3f46 0%, #ef3f46 36%, #ffb5b8 48%, #ef3f46 60%, #ef3f46 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: reffo-delete-footer-shine 1800ms 900ms linear infinite;
+}
+
+.reffo-create-delete__cancel-hint {
+  position: absolute;
+  right: clamp(17px, 5.2vw, 28px);
+  top: 50%;
+  min-width: 32px;
+  min-height: 122px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #18b96f;
+  font-size: 15px;
+  line-height: 17px;
+  font-weight: 700;
+  opacity: 0;
+  transform: translate3d(52px, -50%, 0);
+  animation: reffo-delete-cancel-in 460ms 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.reffo-create-delete__cancel-hint:active {
+  opacity: 0.72;
+}
+
+.reffo-create-delete__cancel-text {
+  display: block;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 1px;
+  color: transparent;
+  background:
+    linear-gradient(100deg, #18b96f 0%, #18b96f 36%, #bff7d9 48%, #18b96f 60%, #18b96f 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: reffo-delete-footer-shine 1800ms 980ms linear infinite;
+}
+
+.reffo-create-delete__cancel-arrow {
+  display: block;
+  color: #18b96f;
+  font-size: 19px;
+  line-height: 19px;
+}
+
+.reffo-create-delete--deleting .reffo-create-delete__card-stage,
+.reffo-create-delete--deleting .reffo-create-delete__copy,
+.reffo-create-delete--deleting .reffo-create-delete__footer,
+.reffo-create-delete--deleting .reffo-create-delete__cancel-hint,
+.reffo-create-delete--deleting .reffo-create-delete__close {
+  animation: reffo-delete-commit-out 360ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.reffo-create-delete--deleting .reffo-create-delete__footer {
+  animation: reffo-delete-footer-commit-out 360ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.reffo-create-delete--deleting .reffo-create-delete__cancel-hint {
+  animation: reffo-delete-cancel-commit-out 360ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 ::view-transition-group(reffo-create-card) {
   animation-duration: 560ms;
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
@@ -1397,6 +1781,156 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
 
 ::view-transition-new(root) {
   animation: reffo-view-root-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+html.reffo-delete-vt-enter::view-transition-old(root),
+html.reffo-delete-vt-enter::view-transition-new(root),
+html.reffo-delete-vt-return::view-transition-old(root),
+html.reffo-delete-vt-return::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.reffo-delete-vt-enter::view-transition-group(reffo-delete-jd-card),
+html.reffo-delete-vt-return::view-transition-group(reffo-delete-jd-card) {
+  animation-duration: 1040ms;
+  animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
+  overflow: visible;
+  perspective: 1000px;
+}
+
+html.reffo-delete-vt-enter::view-transition-image-pair(reffo-delete-jd-card),
+html.reffo-delete-vt-return::view-transition-image-pair(reffo-delete-jd-card) {
+  isolation: isolate;
+  transform-style: preserve-3d;
+}
+
+html.reffo-delete-vt-enter::view-transition-image-pair(reffo-delete-jd-card) {
+  animation: reffo-delete-card-vt-pair-enter 1040ms cubic-bezier(0.18, 0.92, 0.22, 1) both;
+}
+
+html.reffo-delete-vt-return::view-transition-image-pair(reffo-delete-jd-card) {
+  animation: reffo-delete-card-vt-pair-return 1040ms cubic-bezier(0.18, 0.92, 0.22, 1) both;
+}
+
+html.reffo-delete-vt-enter::view-transition-old(reffo-delete-jd-card),
+html.reffo-delete-vt-enter::view-transition-new(reffo-delete-jd-card),
+html.reffo-delete-vt-return::view-transition-old(reffo-delete-jd-card),
+html.reffo-delete-vt-return::view-transition-new(reffo-delete-jd-card) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: normal;
+  backface-visibility: hidden;
+  transform-origin: center center;
+}
+
+html.reffo-delete-vt-enter::view-transition-old(reffo-delete-jd-card) {
+  animation: reffo-delete-card-vt-old-enter 1040ms cubic-bezier(0.18, 0.92, 0.22, 1) both;
+}
+
+html.reffo-delete-vt-enter::view-transition-new(reffo-delete-jd-card) {
+  animation: reffo-delete-card-vt-new-enter 1040ms cubic-bezier(0.18, 0.92, 0.22, 1) both;
+}
+
+html.reffo-delete-vt-return::view-transition-old(reffo-delete-jd-card) {
+  animation: reffo-delete-card-vt-old-return 1040ms cubic-bezier(0.18, 0.92, 0.22, 1) both;
+}
+
+html.reffo-delete-vt-return::view-transition-new(reffo-delete-jd-card) {
+  animation: reffo-delete-card-vt-new-return 1040ms cubic-bezier(0.18, 0.92, 0.22, 1) both;
+}
+
+@keyframes reffo-delete-card-vt-pair-enter {
+  0% {
+    transform: scale(1);
+  }
+
+  18% {
+    transform: scale(1.42);
+  }
+
+  44% {
+    transform: scale(1.24);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes reffo-delete-card-vt-pair-return {
+  0% {
+    transform: scale(1);
+  }
+
+  22% {
+    transform: scale(0.74);
+  }
+
+  52% {
+    transform: scale(1.12);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes reffo-delete-card-vt-old-enter {
+  0%,
+  16% {
+    opacity: 1;
+    transform: rotateY(0deg);
+  }
+
+  34%,
+  100% {
+    opacity: 0;
+    transform: rotateY(88deg);
+  }
+}
+
+@keyframes reffo-delete-card-vt-new-enter {
+  0%,
+  22% {
+    opacity: 0;
+    transform: rotateY(-88deg);
+  }
+
+  40%,
+  100% {
+    opacity: 1;
+    transform: rotateY(0deg);
+  }
+}
+
+@keyframes reffo-delete-card-vt-old-return {
+  0%,
+  40% {
+    opacity: 1;
+    transform: rotateY(0deg);
+  }
+
+  54%,
+  100% {
+    opacity: 0;
+    transform: rotateY(-88deg);
+  }
+}
+
+@keyframes reffo-delete-card-vt-new-return {
+  0%,
+  46% {
+    opacity: 0;
+    transform: rotateY(88deg);
+  }
+
+  60%,
+  100% {
+    opacity: 1;
+    transform: rotateY(0deg);
+  }
 }
 
 @keyframes reffo-generation-warm-expand {
@@ -1436,6 +1970,158 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-create-delete-copy-out {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(-112vw, 0, 0);
+  }
+}
+
+@keyframes reffo-delete-backdrop-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0) scaleY(0.88);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scaleY(1);
+  }
+}
+
+@keyframes reffo-delete-close-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(16px, -8px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-delete-card-stage {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(1.08);
+  }
+
+  16% {
+    opacity: 1;
+    transform: translate3d(0, -18px, 0) scale(1.36);
+  }
+
+  54% {
+    opacity: 1;
+    transform: translate3d(0, -20px, 0) scale(1.36);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes reffo-delete-card-flip {
+  0%,
+  25% {
+    transform: rotateY(0deg);
+  }
+
+  76%,
+  100% {
+    transform: rotateY(180deg);
+  }
+}
+
+@keyframes reffo-delete-copy-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(52px, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-delete-footer-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + 52px), 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes reffo-delete-cancel-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(52px, -50%, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, -50%, 0);
+  }
+}
+
+@keyframes reffo-delete-footer-shine {
+  0% {
+    background-position: 120% 50%;
+  }
+
+  100% {
+    background-position: -120% 50%;
+  }
+}
+
+@keyframes reffo-delete-commit-out {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 120px, 0) scale(0.94);
+  }
+}
+
+@keyframes reffo-delete-footer-commit-out {
+  0% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, 120px, 0) scale(0.94);
+  }
+}
+
+@keyframes reffo-delete-cancel-commit-out {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, -50%, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(72px, -50%, 0) scale(0.94);
   }
 }
 

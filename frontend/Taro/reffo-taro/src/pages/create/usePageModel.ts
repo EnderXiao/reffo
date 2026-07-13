@@ -5,16 +5,19 @@ import * as ImagePicker from 'expo-image-picker'
 import {parseApi} from '@/services/parse'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
+import {useHistoryStore, useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
 import type {
   MatchingResult,
   ProcessResult,
   ResumeAnalysis,
+  ResumeHistory,
   SourceResumeSummary,
 } from '@/types'
+import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
 import {saveLatestResultSession} from '@/utils/result-session'
+import {toHistoryCardItem} from '../index/model/homeCardData'
 import {
   canUseBrowserFilePicker,
   pickBrowserFile,
@@ -52,6 +55,8 @@ export interface CreatePageViewModel {
   resumeSummaryState: ResumeSummaryStepState | null
   jobDescriptionState: JobDescriptionStepState
   generationState: CreateGenerationState | null
+  isHistoryEditMode: boolean
+  editingHistoryCard: HomeCardItem | null
   canSaveCurrentStep: boolean
   isSavingCurrentStep: boolean
   primaryActionLabel: string
@@ -67,6 +72,7 @@ export interface CreatePageViewModel {
   handleJobInputModeChange: (mode: JobDescriptionInputMode) => void
   handlePickJobAttachment: () => Promise<void>
   handlePrimaryAction: () => Promise<boolean>
+  handleDeleteHistoryResume: () => Promise<void>
   handleCancelGeneration: () => void
   handleClose: () => void
 }
@@ -83,6 +89,16 @@ const SUPPORTED_RESUME_FILE_TYPES = new Set<string>(RESUME_FILE_ACCEPT_TYPES)
 const SUPPORTED_JOB_DESCRIPTION_FILE_TYPES = new Set<string>(
   JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
 )
+
+const HISTORY_EDIT_STEP_META: CreateStepMeta = {
+  id: 'jobDescription',
+  titleSegments: [
+    {text: '编辑', tone: 'warm'},
+    {text: '申请', tone: 'default'},
+  ],
+  description: '仅可编辑公司名称和岗位名称以及工作地信息，不可重新上传目标岗位描述生成最佳简历哦。',
+  actionLabel: '更新信息',
+}
 
 function buildInitialProcessResult(
   analysis: ResumeAnalysis,
@@ -138,6 +154,22 @@ function createInitialJobDescriptionState(
     positionName: '',
     baseLocation: '',
     inputMode: initialContent.trim() ? 'manual' : 'upload',
+    attachmentStatus: 'idle',
+    attachmentProgress: 0,
+    attachment: null,
+    attachmentErrorMessage: null,
+  }
+}
+
+function buildJobDescriptionStateFromHistory(history: ResumeHistory): JobDescriptionStepState {
+  const context = history.resultContext
+
+  return {
+    content: context?.jdContent || history.jdContent,
+    companyName: context?.company || history.company,
+    positionName: context?.position || history.position,
+    baseLocation: context?.location || '',
+    inputMode: 'manual',
     attachmentStatus: 'idle',
     attachmentProgress: 0,
     attachment: null,
@@ -436,18 +468,27 @@ function buildGenerationState(args: {
 export function usePageModel(): CreatePageViewModel {
   const router = useRouter()
   const requestedStepRef = useRef(normalizeRouteStep(router.params?.step))
+  const editHistoryId = typeof router.params?.historyId === 'string'
+    ? router.params.historyId
+    : null
+  const isHistoryEditMode = router.params?.mode === 'editHistory' && Boolean(editHistoryId)
   const uploadRequestRef = useRef(0)
   const jobAttachmentRequestRef = useRef(0)
   const jobAttachmentProgressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const generationRequestRef = useRef(0)
   const initialSourceResume = useSourceResumeStore.getState().latestSourceResume
   const [currentStep, setCurrentStep] = useState<CreateStepId>(() =>
-    resolveInitialStep(requestedStepRef.current, Boolean(initialSourceResume)),
+    isHistoryEditMode
+      ? 'jobDescription'
+      : resolveInitialStep(requestedStepRef.current, Boolean(initialSourceResume)),
   )
+  const [editingHistory, setEditingHistory] = useState<ResumeHistory | null>(null)
+  const [hasLoadedEditingHistory, setHasLoadedEditingHistory] = useState(!isHistoryEditMode)
   const [hasResolvedLatestSourceResume, setHasResolvedLatestSourceResume] =
     useState(Boolean(initialSourceResume))
   const routeStepAppliedRef = useRef(
-    !requestedStepRef.current ||
+    isHistoryEditMode ||
+      !requestedStepRef.current ||
       requestedStepRef.current === 'resumeUpload' ||
       Boolean(initialSourceResume),
   )
@@ -514,6 +555,13 @@ export function usePageModel(): CreatePageViewModel {
   useEffect(() => {
     let isMounted = true
 
+    if (isHistoryEditMode) {
+      setHasResolvedLatestSourceResume(true)
+      return () => {
+        isMounted = false
+      }
+    }
+
     void loadLatestSourceResume().finally(() => {
       if (isMounted) {
         setHasResolvedLatestSourceResume(true)
@@ -524,6 +572,62 @@ export function usePageModel(): CreatePageViewModel {
       isMounted = false
     }
   }, [loadLatestSourceResume])
+
+  useEffect(() => {
+    if (!isHistoryEditMode || !editHistoryId) {
+      return
+    }
+
+    let isMounted = true
+
+    const loadEditingHistory = async () => {
+      setHasLoadedEditingHistory(false)
+
+      try {
+        let {histories} = useHistoryStore.getState()
+        let history = histories.find(item => item.id === editHistoryId)
+
+        if (!history) {
+          await useHistoryStore.getState().loadHistories()
+          histories = useHistoryStore.getState().histories
+          history = histories.find(item => item.id === editHistoryId)
+        }
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!history) {
+          feedback.message('未找到要编辑的简历')
+          void navigation.returnHome()
+          return
+        }
+
+        setEditingHistory(history)
+        setJobDescriptionState(buildJobDescriptionStateFromHistory(history))
+        useResumeStore.getState().setResumeContent(
+          history.resultContext?.resumeContent || history.resumeContent,
+        )
+        useJDStore.getState().setJDContent(
+          history.resultContext?.jdContent || history.jdContent,
+        )
+        setCurrentStep('jobDescription')
+      } catch (error) {
+        console.error('load editing history failed', error)
+        feedback.error('加载简历信息失败')
+      } finally {
+        if (isMounted) {
+          setHasLoadedEditingHistory(true)
+        }
+      }
+    }
+
+    void loadEditingHistory()
+
+    return () => {
+      isMounted = false
+    }
+  }, [editHistoryId, isHistoryEditMode])
 
   useEffect(() => {
     const requestedStep = requestedStepRef.current
@@ -562,14 +666,17 @@ export function usePageModel(): CreatePageViewModel {
   useEffect(() => {
     if (
       currentStep === 'resumeSummary' &&
+      !isHistoryEditMode &&
       hasResolvedLatestSourceResume &&
       !latestSourceResume
     ) {
       setCurrentStep('resumeUpload')
     }
-  }, [currentStep, hasResolvedLatestSourceResume, latestSourceResume])
+  }, [currentStep, hasResolvedLatestSourceResume, isHistoryEditMode, latestSourceResume])
 
-  const currentStepMeta = CREATE_STEP_META[currentStep]
+  const currentStepMeta = isHistoryEditMode && currentStep === 'jobDescription'
+    ? HISTORY_EDIT_STEP_META
+    : CREATE_STEP_META[currentStep]
   const primaryActionLabel = currentStepMeta.actionLabel
   const resumeSummaryState = useMemo(
     () => buildResumeSummaryState(latestSourceResume),
@@ -581,8 +688,41 @@ export function usePageModel(): CreatePageViewModel {
     latestSourceResume?.updatedAt,
     ],
   )
+  const editingHistoryCard = useMemo(() => {
+    if (!editingHistory) {
+      return null
+    }
+
+    const company = jobDescriptionState.companyName.trim() || editingHistory.company
+    const position = jobDescriptionState.positionName.trim() || editingHistory.position
+    const location = jobDescriptionState.baseLocation.trim() || editingHistory.resultContext?.location
+
+    return toHistoryCardItem({
+      ...editingHistory,
+      company,
+      position,
+      jdContent: buildJobDescriptionPayload(jobDescriptionState),
+      resultContext: {
+        company,
+        position,
+        ...(location ? {location} : {}),
+        resumeContent: editingHistory.resultContext?.resumeContent || editingHistory.resumeContent,
+        jdContent: buildJobDescriptionPayload(jobDescriptionState),
+      },
+    })
+  }, [
+    editingHistory,
+    jobDescriptionState.baseLocation,
+    jobDescriptionState.companyName,
+    jobDescriptionState.content,
+    jobDescriptionState.positionName,
+  ])
 
   const canSaveCurrentStep = useMemo(() => {
+    if (isHistoryEditMode && !hasLoadedEditingHistory) {
+      return false
+    }
+
     if (currentStep === 'resumeUpload') {
       return (
         !isSavingCurrentStep &&
@@ -605,6 +745,8 @@ export function usePageModel(): CreatePageViewModel {
     return !isSavingCurrentStep && canSaveJobDescription
   }, [
     currentStep,
+    hasLoadedEditingHistory,
+    isHistoryEditMode,
     isSavingCurrentStep,
     jobDescriptionState.attachment,
     jobDescriptionState.attachmentStatus,
@@ -1100,6 +1242,50 @@ export function usePageModel(): CreatePageViewModel {
       }
     }
 
+    if (isHistoryEditMode && editHistoryId) {
+      const history = editingHistory
+      if (!history) {
+        feedback.message('简历信息还在加载中')
+        return false
+      }
+
+      setIsSavingCurrentStep(true)
+
+      try {
+        const jdText = buildJobDescriptionPayload(jobDescriptionState)
+        const company = jobDescriptionState.companyName.trim() || history.company
+        const position = jobDescriptionState.positionName.trim() || history.position
+        const location = jobDescriptionState.baseLocation.trim()
+        const resumeContent = history.resultContext?.resumeContent || history.resumeContent
+
+        await useHistoryStore.getState().updateHistory(editHistoryId, {
+          company,
+          position,
+          jdContent: jdText,
+          resultContext: {
+            company,
+            position,
+            ...(location ? {location} : {}),
+            resumeContent,
+            jdContent: jdText,
+          },
+        })
+
+        feedback.success('信息已更新', {duration: 1200})
+        await navigation.redirectTo('/pages/result/index', {
+          id: editHistoryId,
+          fromCard: 1,
+        })
+        return true
+      } catch (error) {
+        console.error('update history resume failed', error)
+        feedback.error(error instanceof Error ? error.message : '更新信息失败，请重试')
+        return false
+      } finally {
+        setIsSavingCurrentStep(false)
+      }
+    }
+
     setIsSavingCurrentStep(true)
     const requestId = generationRequestRef.current + 1
     generationRequestRef.current = requestId
@@ -1219,6 +1405,25 @@ export function usePageModel(): CreatePageViewModel {
     setIsSavingCurrentStep(false)
   }
 
+  const handleDeleteHistoryResume = async () => {
+    if (!isHistoryEditMode || !editHistoryId) {
+      return
+    }
+
+    setIsSavingCurrentStep(true)
+
+    try {
+      await useHistoryStore.getState().deleteHistory(editHistoryId)
+      feedback.success('简历已删除', {duration: 1200})
+      await navigation.returnHome()
+    } catch (error) {
+      console.error('delete history resume failed', error)
+      feedback.error(error instanceof Error ? error.message : '删除简历失败，请重试')
+    } finally {
+      setIsSavingCurrentStep(false)
+    }
+  }
+
   const handleClose = () => {
     void navigation.navigateBack()
   }
@@ -1241,6 +1446,8 @@ export function usePageModel(): CreatePageViewModel {
     resumeSummaryState,
     jobDescriptionState,
     generationState,
+    isHistoryEditMode,
+    editingHistoryCard,
     canSaveCurrentStep,
     isSavingCurrentStep,
     handlePickResumeFile,
@@ -1255,6 +1462,7 @@ export function usePageModel(): CreatePageViewModel {
     handleJobInputModeChange,
     handlePickJobAttachment,
     handlePrimaryAction,
+    handleDeleteHistoryResume,
     handleCancelGeneration,
     handleClose,
   }

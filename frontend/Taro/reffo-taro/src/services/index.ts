@@ -8,6 +8,10 @@
 export {ApiClient, apiClient} from './api';
 export type {ApiResponse, ApiConfig} from './api';
 
+// Auth API
+export {AuthApi, authApi} from './auth';
+export type {AuthSession, SignInWithPasswordInput} from './auth';
+
 // 简历 API
 export {ResumeApi, resumeApi} from './resume';
 export type {

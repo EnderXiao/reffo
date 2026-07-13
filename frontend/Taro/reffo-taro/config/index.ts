@@ -121,6 +121,9 @@ export default defineConfig<'webpack5'>(async (merge, { mode }) => {
             'process.env': JSON.stringify({
               NODE_ENV: isDevelopment ? 'development' : 'production',
               API_BASE_URL: process.env.API_BASE_URL,
+              SUPABASE_URL: process.env.SUPABASE_URL,
+              SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY,
+              SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET,
             }),
           }],
         );

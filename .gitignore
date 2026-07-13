@@ -2,6 +2,8 @@ node_modules/
 dist/
 .env
 .env.local
+.env.nonprod
+.env.prod
 *.log
 *.sqlite-shm
 *.sqlite-wal

@@ -1,8 +1,8 @@
-import { initializeDatabase } from '@/repositories/database'
+import { initializeHarnessDatabase } from '@/repositories/database'
 import { randomUUID } from 'node:crypto'
 
 export class HarnessRunRepository {
-  private readonly db = initializeDatabase()
+  private readonly db = initializeHarnessDatabase()
 
   getRun(runId: string) {
     const run = this.db.query('SELECT * FROM process_runs WHERE id = ?').get(runId)

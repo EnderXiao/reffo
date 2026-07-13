@@ -135,8 +135,10 @@ export interface ResultPageViewModel {
   handleComplete: () => Promise<void>
   handleShare: () => Promise<void>
   handleBackHome: () => Promise<void>
+  handleEditHistory: () => Promise<void>
   handlePendingStage: () => void
   handleOptimizedResumeChange: (markdown: string) => Promise<void>
+  canEditHistory: boolean
 }
 
 export function usePageModel(): ResultPageViewModel {
@@ -465,6 +467,20 @@ export function usePageModel(): ResultPageViewModel {
     return navigation.reLaunch('/pages/index/index')
   }
 
+  const handleEditHistory = async () => {
+    if (!savedHistoryId) {
+      feedback.message('当前简历还未保存，暂不能编辑')
+      return
+    }
+
+    continuationRef.current += 1
+    await navigation.navigateTo('/pages/create/index', {
+      step: 'jobDescription',
+      mode: 'editHistory',
+      historyId: savedHistoryId,
+    })
+  }
+
   const handlePendingStage = () => {
     feedback.message(generationError || '正在生成中，请稍后')
   }
@@ -501,10 +517,12 @@ export function usePageModel(): ResultPageViewModel {
     generationError,
     enteredFromCard,
     returnCard,
+    canEditHistory: Boolean(savedHistoryId),
     handleSave,
     handleComplete,
     handleShare,
     handleBackHome,
+    handleEditHistory,
     handlePendingStage,
     handleOptimizedResumeChange,
   }

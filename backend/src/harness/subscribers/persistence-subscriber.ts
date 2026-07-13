@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { initializeDatabase, resetDatabaseConnection } from '@/repositories/database'
+import { initializeHarnessDatabase, resetHarnessDatabaseConnection } from '@/repositories/database'
 import type { HarnessEvent } from '@/harness/events'
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -15,7 +15,7 @@ function asNumber(value: unknown) {
 }
 
 export class PersistenceSubscriber {
-  private db: ReturnType<typeof initializeDatabase> | null = null
+  private db: ReturnType<typeof initializeHarnessDatabase> | null = null
 
   handle = (event: HarnessEvent) => {
     try {
@@ -29,14 +29,14 @@ export class PersistenceSubscriber {
         message: error instanceof Error ? error.message : String(error),
       })
 
-      resetDatabaseConnection()
+      resetHarnessDatabaseConnection()
       this.db = null
     }
   }
 
   private getDb() {
     if (!this.db) {
-      this.db = initializeDatabase()
+      this.db = initializeHarnessDatabase()
     }
 
     return this.db

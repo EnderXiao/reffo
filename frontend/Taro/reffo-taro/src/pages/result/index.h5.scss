@@ -259,6 +259,21 @@ body:has(.reffo-result) *::-webkit-scrollbar {
   filter: brightness(0) invert(1);
 }
 
+.reffo-result__action--edit,
+.reffo-result--progress-complete .reffo-result__action--edit {
+  min-width: 0;
+  height: 34px;
+  padding: 0;
+  color: #6f7378;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.reffo-result__action--edit .reffo-result__action-icon {
+  filter: brightness(0) saturate(0) opacity(0.62);
+}
+
 .reffo-result__shell {
   position: relative;
   z-index: 1;
@@ -274,6 +289,13 @@ body:has(.reffo-result) *::-webkit-scrollbar {
   color: #ffffff;
   background: #14c972;
   box-shadow: 0 7PX 14PX rgba(13, 156, 87, 0.2);
+}
+
+.reffo-result--progress-complete .reffo-result__action--edit {
+  min-width: 0;
+  color: #6f7378;
+  background: transparent;
+  box-shadow: none;
 }
 
 .reffo-result__scroll-shell {

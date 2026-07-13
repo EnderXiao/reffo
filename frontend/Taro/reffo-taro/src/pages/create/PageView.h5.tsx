@@ -3,6 +3,7 @@ import {flushSync} from 'react-dom'
 import {Image, Input, Text, Textarea, View} from '@tarojs/components'
 import classNames from 'classnames'
 import CANCEL_ICON from '@/assets/create/cancel.svg'
+import DELETE_ICON from '@/assets/create/delete.svg'
 import PDF_FILE_ICON from '@/assets/create/pdf-file.svg'
 import UPLOAD_ERROR_ICON from '@/assets/create/upload-error.svg'
 import UPLOAD_FILE_ICON from '@/assets/create/upload-file.svg'
@@ -31,9 +32,42 @@ type DocumentWithViewTransition = Document & {
   }
 }
 
+type DeletePreviewPhase = 'idle' | 'preview' | 'deleting'
+type DeleteCardTransitionDirection = 'enter' | 'return'
+
 function canUseViewTransition() {
   return typeof document !== 'undefined'
     && typeof (document as DocumentWithViewTransition).startViewTransition === 'function'
+}
+
+function runDeleteCardViewTransition(
+  direction: DeleteCardTransitionDirection,
+  update: () => void,
+) {
+  if (!canUseViewTransition()) {
+    update()
+    return
+  }
+
+  const transitionClass = direction === 'enter'
+    ? 'reffo-delete-vt-enter'
+    : 'reffo-delete-vt-return'
+  const root = document.documentElement
+
+  root.classList.add(transitionClass)
+
+  const transition = (document as DocumentWithViewTransition).startViewTransition?.(() => {
+    flushSync(update)
+  })
+
+  if (!transition) {
+    root.classList.remove(transitionClass)
+    return
+  }
+
+  void transition.finished.finally(() => {
+    root.classList.remove(transitionClass)
+  })
 }
 
 function buildPendingGenerationState({
@@ -343,10 +377,12 @@ function JobUploadPanel({
   state,
   onPickAttachment,
   onContentChange,
+  readOnly = false,
 }: {
   state: JobDescriptionStepState
   onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
   onContentChange: CreatePageViewModel['handleJobDescriptionChange']
+  readOnly?: boolean
 }) {
   const isUploading = state.attachmentStatus === 'uploading'
   const hasError = state.attachmentStatus === 'error'
@@ -362,45 +398,48 @@ function JobUploadPanel({
 
   return (
     <View className='reffo-create-job__content reffo-create-job__content--combined'>
-      <View
-        className={classNames('reffo-create-job__upload-strip', {
-          'reffo-create-job__upload-strip--filled': hasAttachment,
-          'reffo-create-job__upload-strip--error': hasError,
-          'reffo-create-job__upload-strip--uploading': isUploading,
-        })}
-        style={{'--job-upload-progress': uploadProgress / 100} as any}
-        onClick={isUploading ? undefined : onPickAttachment}
-        role='button'
-        data-testid={uploadTestId}
-      >
-        <Text
-          className={classNames('reffo-create-job__upload-strip-text', {
-            'reffo-create-job__upload-strip-text--success': hasAttachment,
-            'reffo-create-job__upload-strip-text--error': hasError,
-            'reffo-create-job__upload-strip-text--uploading': isUploading,
+      {!readOnly ? (
+        <View
+          className={classNames('reffo-create-job__upload-strip', {
+            'reffo-create-job__upload-strip--filled': hasAttachment,
+            'reffo-create-job__upload-strip--error': hasError,
+            'reffo-create-job__upload-strip--uploading': isUploading,
           })}
+          style={{'--job-upload-progress': uploadProgress / 100} as any}
+          onClick={isUploading ? undefined : onPickAttachment}
+          role='button'
+          data-testid={uploadTestId}
         >
-          {hasError
-            ? `! ${state.attachmentErrorMessage || '上传失败，请重试'}`
-            : isUploading
-              ? `正在解析图片 ${Math.round(uploadProgress)}%`
-            : hasAttachment
-              ? '✅ 已成功上传并解析岗位描述'
-              : '+ 上传岗位描述截图'}
-        </Text>
-      </View>
+          <Text
+            className={classNames('reffo-create-job__upload-strip-text', {
+              'reffo-create-job__upload-strip-text--success': hasAttachment,
+              'reffo-create-job__upload-strip-text--error': hasError,
+              'reffo-create-job__upload-strip-text--uploading': isUploading,
+            })}
+          >
+            {hasError
+              ? `! ${state.attachmentErrorMessage || '上传失败，请重试'}`
+              : isUploading
+                ? `正在解析图片 ${Math.round(uploadProgress)}%`
+              : hasAttachment
+                ? '✅ 已成功上传并解析岗位描述'
+                : '+ 上传岗位描述截图'}
+          </Text>
+        </View>
+      ) : null}
       <Textarea
         value={state.content}
         placeholder='或输入岗位描述'
         maxlength={20000}
-        disabled={isUploading}
+        disabled={isUploading || readOnly}
         onInput={event => {
-          if (!isUploading) {
+          if (!isUploading && !readOnly) {
             onContentChange(event.detail.value)
           }
         }}
         className={classNames('reffo-create-textarea reffo-create-textarea--job', {
           'reffo-create-textarea--disabled': isUploading,
+          'reffo-create-textarea--readonly': readOnly,
         })}
         data-testid='job-description-input'
       />
@@ -415,6 +454,7 @@ function JobDescriptionStepH5({
   onContentChange,
   onPickAttachment,
   isExiting = false,
+  isDescriptionReadOnly = false,
 }: {
   state: JobDescriptionStepState
   onCompanyNameChange: CreatePageViewModel['handleJobCompanyNameChange']
@@ -423,6 +463,7 @@ function JobDescriptionStepH5({
   onContentChange: CreatePageViewModel['handleJobDescriptionChange']
   onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
   isExiting?: boolean
+  isDescriptionReadOnly?: boolean
 }) {
   const isUploadingAttachment = state.attachmentStatus === 'uploading'
 
@@ -499,7 +540,12 @@ function JobDescriptionStepH5({
         <View className='reffo-create-job__field reffo-create-job__field--description'>
           <Text className='reffo-create-job__label'>目标岗位描述</Text>
           <View className='reffo-create-job__panel'>
-            <JobUploadPanel state={state} onPickAttachment={onPickAttachment} onContentChange={onContentChange} />
+            <JobUploadPanel
+              state={state}
+              onPickAttachment={onPickAttachment}
+              onContentChange={onContentChange}
+              readOnly={isDescriptionReadOnly}
+            />
           </View>
         </View>
       </Card>
@@ -591,6 +637,147 @@ function GenerationOverlay({
   )
 }
 
+function DeleteResumeOverlay({
+  card,
+  phase,
+  onCommitDelete,
+  onClose,
+  onReturnToEdit,
+}: {
+  card: HomeCardItem | null
+  phase: Exclude<DeletePreviewPhase, 'idle'>
+  onCommitDelete: () => Promise<void>
+  onClose: () => void
+  onReturnToEdit: () => void
+}) {
+  const {tier: visualTier} = useVisualTier({benchmark: false})
+  const touchStartRef = useRef<{x: number; y: number} | null>(null)
+  const isDeleting = phase === 'deleting'
+
+  const handleTouchStart = (event: any) => {
+    const touch = event.touches[0] ?? event.changedTouches[0]
+    touchStartRef.current = touch
+      ? {
+          x: touch.clientX,
+          y: touch.clientY,
+        }
+      : null
+  }
+
+  const handleTouchEnd = (event: any) => {
+    if (isDeleting) {
+      return
+    }
+
+    const start = touchStartRef.current
+    const touch = event.changedTouches[0]
+    touchStartRef.current = null
+
+    if (!start || !touch) {
+      return
+    }
+
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+
+    if (deltaX > 58 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      onReturnToEdit()
+      return
+    }
+
+    if (deltaY < 58 || Math.abs(deltaY) < Math.abs(deltaX) * 1.2) {
+      return
+    }
+
+    void onCommitDelete()
+  }
+
+  if (!card) {
+    return null
+  }
+
+  return (
+    <View
+      className={classNames('reffo-create-delete', {
+        'reffo-create-delete--deleting': isDeleting,
+      })}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <View className='reffo-create-delete__backdrop' />
+      <View className='reffo-create-delete__content'>
+        <View className='reffo-create-delete__close' onClick={onClose} role='button' aria-label='关闭编辑简历'>
+          <Text>×</Text>
+        </View>
+        <View className='reffo-create-delete__card-stage reffo-home-deck-wrap--enhanced'>
+          <View className='reffo-create-delete__flipper'>
+            <View className='reffo-create-delete__face reffo-create-delete__face--front'>
+              <View className='reffo-create-delete__front-card'>
+                <View className='reffo-create-job__hardware' />
+                <View className='reffo-create-job__ribbon'>
+                  <Text>申请信息</Text>
+                </View>
+                <View className='reffo-create-delete__front-field'>
+                  <Text className='reffo-create-delete__front-label'>公司</Text>
+                  <Text className='reffo-create-delete__front-value'>{card.company}</Text>
+                </View>
+                <View className='reffo-create-delete__front-field'>
+                  <Text className='reffo-create-delete__front-label'>岗位</Text>
+                  <Text className='reffo-create-delete__front-value'>{card.role}</Text>
+                </View>
+                <View className='reffo-create-delete__front-field'>
+                  <Text className='reffo-create-delete__front-label'>工作地</Text>
+                  <Text className='reffo-create-delete__front-value'>{card.location}</Text>
+                </View>
+              </View>
+            </View>
+            <View className='reffo-create-delete__face reffo-create-delete__face--back'>
+              <HomeScoreCard
+                card={card}
+                depth={0}
+                active
+                visualTier={visualTier}
+                className='reffo-create-delete__home-card'
+              />
+            </View>
+          </View>
+        </View>
+
+        <View className='reffo-create-delete__copy'>
+          <View className='reffo-create-delete__title'>
+            <Text className='reffo-create-delete__title-accent'>删除</Text>
+            <Text className='reffo-create-delete__title-main'>这份简历</Text>
+          </View>
+          <Text className='reffo-create-delete__description'>
+            删除后首页将不再显示这张岗位简历卡片
+          </Text>
+        </View>
+
+        <View className='reffo-create-delete__footer'>
+          {!isDeleting ? (
+            <Text className='reffo-create-delete__footer-arrow'>↓</Text>
+          ) : null}
+          <Text className='reffo-create-delete__footer-text'>{isDeleting ? '删除中...' : '下滑删除'}</Text>
+          {!isDeleting ? (
+            <Text className='reffo-create-delete__footer-arrow'>↓</Text>
+          ) : null}
+        </View>
+        {!isDeleting ? (
+          <View
+            className='reffo-create-delete__cancel-hint'
+            onClick={onReturnToEdit}
+            role='button'
+            aria-label='返回编辑简历'
+          >
+            <Text className='reffo-create-delete__cancel-text'>右滑返回</Text>
+            <Text className='reffo-create-delete__cancel-arrow'>→</Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
 export default function PageView({
   currentStep,
   currentStepMeta,
@@ -598,6 +785,8 @@ export default function PageView({
   resumeSummaryState,
   jobDescriptionState,
   generationState,
+  isHistoryEditMode,
+  editingHistoryCard,
   canSaveCurrentStep,
   isSavingCurrentStep,
   primaryActionLabel,
@@ -612,17 +801,25 @@ export default function PageView({
   handleJobLocationChange,
   handlePickJobAttachment,
   handlePrimaryAction,
+  handleDeleteHistoryResume,
   handleCancelGeneration,
   handleClose,
 }: CreatePageViewModel) {
   const isJobStep = currentStep === 'jobDescription'
   const [pendingGenerationState, setPendingGenerationState] = useState<CreateGenerationState | null>(null)
+  const [deletePreviewPhase, setDeletePreviewPhase] = useState<DeletePreviewPhase>('idle')
   const [isLaunchingGeneration, setIsLaunchingGeneration] = useState(false)
   const [isReturningFromGeneration, setIsReturningFromGeneration] = useState(false)
   const [isCssFallbackLaunching, setIsCssFallbackLaunching] = useState(false)
   const [isGenerationCompleted, setIsGenerationCompleted] = useState(false)
   const launchGenerationTimerRef = useRef<number | null>(null)
-  const isActionDisabled = !canSaveCurrentStep || isSavingCurrentStep || isLaunchingGeneration || isCssFallbackLaunching
+  const isDeletePreviewActive = deletePreviewPhase !== 'idle'
+  const isActionDisabled =
+    !canSaveCurrentStep ||
+    isSavingCurrentStep ||
+    isLaunchingGeneration ||
+    isCssFallbackLaunching ||
+    isDeletePreviewActive
   const actionLabel = currentStep === 'resumeUpload' ? '保存' : primaryActionLabel
   const visibleGenerationState = generationState || pendingGenerationState
 
@@ -645,7 +842,7 @@ export default function PageView({
       return
     }
 
-    if (isJobStep) {
+    if (isJobStep && !isHistoryEditMode) {
       const nextGenerationState = buildPendingGenerationState({
         resumeSummaryState,
         jobDescriptionState,
@@ -694,6 +891,36 @@ export default function PageView({
     await handlePrimaryAction()
   }
 
+  const handleDeleteClick = () => {
+    if (!isHistoryEditMode || isSavingCurrentStep || isDeletePreviewActive || !editingHistoryCard) {
+      return
+    }
+
+    runDeleteCardViewTransition('enter', () => {
+      setDeletePreviewPhase('preview')
+    })
+  }
+
+  const handleReturnToEdit = () => {
+    if (deletePreviewPhase !== 'preview') {
+      return
+    }
+
+    runDeleteCardViewTransition('return', () => {
+      setDeletePreviewPhase('idle')
+    })
+  }
+
+  const handleCommitDelete = async () => {
+    if (deletePreviewPhase === 'deleting') {
+      return
+    }
+
+    setDeletePreviewPhase('deleting')
+    await handleDeleteHistoryResume()
+    setDeletePreviewPhase('idle')
+  }
+
   const handleGenerationCancelClick = () => {
     if (!visibleGenerationState || isReturningFromGeneration) {
       return
@@ -735,6 +962,8 @@ export default function PageView({
         'reffo-create--launching-generation': isLaunchingGeneration,
         'reffo-create--returning-generation': isReturningFromGeneration,
         'reffo-create--generation-completed': isGenerationCompleted,
+        'reffo-create--history-edit': isHistoryEditMode,
+        'reffo-create--delete-preview': isDeletePreviewActive,
       })}
     >
       <CreateBackdrop variant={isJobStep ? 'warm' : 'cool'} />
@@ -776,10 +1005,15 @@ export default function PageView({
               onContentChange={handleJobDescriptionChange}
               onPickAttachment={handlePickJobAttachment}
               isExiting={isLaunchingGeneration}
+              isDescriptionReadOnly={isHistoryEditMode}
             />
           ) : null}
         </View>
-        <View className='reffo-create__footer'>
+        <View
+          className={classNames('reffo-create__footer', {
+            'reffo-create__footer--edit': isHistoryEditMode && isJobStep,
+          })}
+        >
           <View
             className={classNames('reffo-create__primary', {
               'reffo-create__primary--warm': isJobStep,
@@ -799,12 +1033,35 @@ export default function PageView({
             ) : null}
             <Text>{isSavingCurrentStep ? '处理中...' : actionLabel}</Text>
           </View>
+          {isHistoryEditMode && isJobStep ? (
+            <View
+              className={classNames('reffo-create__delete-action', {
+                'reffo-create__delete-action--disabled': isSavingCurrentStep || isDeletePreviewActive,
+              })}
+              onClick={handleDeleteClick}
+              role='button'
+              aria-disabled={isSavingCurrentStep || isDeletePreviewActive}
+              data-testid='create-flow-delete-history'
+            >
+              <Image className='reffo-create__delete-icon' src={DELETE_ICON} mode='aspectFit' />
+              <Text>删除简历</Text>
+            </View>
+          ) : null}
         </View>
       </View>
       {visibleGenerationState ? (
         <GenerationOverlay
           state={visibleGenerationState}
           onCancelGeneration={handleGenerationCancelClick}
+        />
+      ) : null}
+      {isDeletePreviewActive ? (
+        <DeleteResumeOverlay
+          card={editingHistoryCard}
+          phase={deletePreviewPhase}
+          onCommitDelete={handleCommitDelete}
+          onClose={handleClose}
+          onReturnToEdit={handleReturnToEdit}
         />
       ) : null}
     </View>

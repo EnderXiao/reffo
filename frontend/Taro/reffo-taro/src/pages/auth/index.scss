@@ -1,0 +1,88 @@
+.reffo-auth {
+  min-height: 100vh;
+  padding: calc(env(safe-area-inset-top) + 40px) 24px 40px;
+  background: #f7f4ef;
+  color: #202124;
+  box-sizing: border-box;
+}
+
+.reffo-auth__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.reffo-auth__title {
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 700;
+  color: #181818;
+}
+
+.reffo-auth__subtitle {
+  font-size: 15px;
+  line-height: 22px;
+  color: #68625b;
+}
+
+.reffo-auth__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reffo-auth__label {
+  font-size: 14px;
+  line-height: 20px;
+  color: #514d47;
+}
+
+.reffo-auth__input {
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(32, 33, 36, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #202124;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.reffo-auth__error {
+  font-size: 13px;
+  line-height: 18px;
+  color: #b3261e;
+}
+
+.reffo-auth__primary,
+.reffo-auth__secondary {
+  height: 48px;
+  margin-top: 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  line-height: 48px;
+}
+
+.reffo-auth__primary {
+  background: #202124;
+  color: #ffffff;
+}
+
+.reffo-auth__secondary {
+  border: 1px solid rgba(32, 33, 36, 0.18);
+  background: #ffffff;
+  color: #202124;
+}
+
+.reffo-auth__email {
+  min-height: 48px;
+  padding: 13px 14px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #202124;
+  font-size: 15px;
+  line-height: 22px;
+  box-sizing: border-box;
+  word-break: break-all;
+}
