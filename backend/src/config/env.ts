@@ -35,8 +35,6 @@ export const env = {
     .split(',')
     .map((model) => model.trim())
     .filter(Boolean),
-  PROMPT_VARIANT: process.env.PROMPT_VARIANT || 'v1',
-
   // GLM-OCR Configuration
   GLM_API_KEY: process.env.GLM_API_KEY || '',
   GLM_ENDPOINT: process.env.GLM_ENDPOINT || '',

@@ -150,6 +150,123 @@ describe('ResumeApi', () => {
     });
   });
 
+  describe('step endpoint contracts', () => {
+    const structuredResume: StructuredResume = {
+      personal_info: {name: '张三'},
+      education: [],
+      experience: [{
+        company: '示例公司',
+        position: '产品经理',
+        time_range: '2023-至今',
+        responsibilities: ['负责用户调研'],
+        achievements: ['推动产品上线'],
+      }],
+      projects: [],
+      skills: {hard_skills: ['用户调研'], soft_skills: []},
+    };
+    const analysis: ResumeAnalysis = {
+      quality_score: 75,
+      strengths: [],
+      weaknesses: [],
+      suggestions: [],
+      capability_summary: '具备产品经验',
+      structured_resume: structuredResume,
+    };
+    const jdStructure = {
+      basic_info: {title: '产品经理', company: '目标公司', location: '长沙'},
+      hard_requirements: {required_skills: ['用户调研']},
+      responsibilities: ['负责需求分析'],
+      tasks: ['访谈客户'],
+      soft_skills: ['跨团队协作'],
+      nice_to_have: [],
+      company_context: {
+        explicit_signals: ['服务海外客户'],
+        inferred_talent_preferences: ['重视客户洞察'],
+        inference_basis: ['JD 明示服务海外客户'],
+        confidence: 'medium' as const,
+      },
+    };
+
+    test('normalizes final-v3 matching fields for the result pages', async () => {
+      mockPost.mockResolvedValue({
+        match_score: 82,
+        hard_requirements_match: {'用户调研': true},
+        skill_match: {matched: ['用户调研'], missing: []},
+        experience_match: '具备用户调研经验',
+        soft_skills_match: '协作能力需要面试确认',
+        strengths: ['用户调研经验'],
+        weaknesses: ['跨团队协作证据不足'],
+        weakness_details: [{
+          weakness: '跨团队协作证据不足',
+          evidence_type: 'wording_gap',
+          evidence: '源简历未显式描述协作对象',
+          suggestion: '仅在有真实证据时补充协作对象',
+        }],
+        positioning_strategy: '突出用户调研到产品落地的链路',
+        optimization_suggestions: ['前置用户调研证据'],
+        context_fit: {
+          company_alignment: '客户洞察方向相关',
+          location_alignment: '待面试确认',
+          hypotheses_used: ['重视客户洞察'],
+        },
+        jd_structure: jdStructure,
+      });
+
+      const result = await resumeApi.matchResume(
+        analysis,
+        '目标岗位负责用户调研、需求分析和产品方案落地',
+      );
+
+      expect(result.positioning_strategy).toBe('突出用户调研到产品落地的链路');
+      expect(result.optimization_suggestions).toEqual(['前置用户调研证据']);
+      expect(result.context_fit?.hypotheses_used).toEqual(['重视客户洞察']);
+      expect(result.jd_structure?.company_context?.confidence).toBe('medium');
+    });
+
+    test('converts normalized matching data back to the backend contract', async () => {
+      const matching: MatchingResult = {
+        match_score: 82,
+        hard_requirements_match: [{requirement: '用户调研', matched: true}],
+        skill_match: {
+          matched_skills: ['用户调研'],
+          missing_skills: [],
+          match_percentage: 82,
+        },
+        experience_match: {
+          years_required: 0,
+          years_actual: 0,
+          relevant_experience: ['具备用户调研经验'],
+          match_percentage: 82,
+        },
+        optimization_suggestions: ['前置用户调研证据'],
+        positioning_strategy: '突出用户调研到产品落地的链路',
+        jd_structure: jdStructure,
+      };
+      mockPost.mockResolvedValue({
+        optimized_resume: '# 张三\n\n## 工作经历\n...',
+        changes_summary: [],
+        improvement_score: 7,
+      });
+
+      await resumeApi.generateOptimizedResume(analysis, matching);
+
+      expect(mockPost).toHaveBeenCalledWith(
+        '/mvp/generate',
+        {
+          structured_resume: structuredResume,
+          matching: expect.objectContaining({
+            hard_requirements_match: {'用户调研': true},
+            skill_match: {matched: ['用户调研'], missing: []},
+            experience_match: '具备用户调研经验',
+            positioning_strategy: '突出用户调研到产品落地的链路',
+            jd_structure: jdStructure,
+          }),
+        },
+        {timeout: 90000},
+      );
+    });
+  });
+
   describe('processResume', () => {
     const sampleResume = `# 张三
 

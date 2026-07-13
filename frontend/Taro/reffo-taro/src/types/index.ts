@@ -72,9 +72,11 @@ export interface StructuredResume {
 
 export interface PersonalInfo {
   name: string;
+  contact?: string;
   email?: string;
   phone?: string;
   location?: string;
+  current_position?: string;
   github?: string;
   linkedin?: string;
 }
@@ -83,8 +85,9 @@ export interface Education {
   school: string;
   degree: string;
   major: string;
-  start_date: string;
-  end_date: string;
+  time_range?: string;
+  start_date?: string;
+  end_date?: string;
   gpa?: string;
   achievements?: string[];
 }
@@ -92,8 +95,9 @@ export interface Education {
 export interface WorkExperience {
   company: string;
   position: string;
-  start_date: string;
-  end_date: string;
+  time_range?: string;
+  start_date?: string;
+  end_date?: string;
   responsibilities: string[];
   achievements: string[];
 }
@@ -116,19 +120,69 @@ export interface Skills {
 
 // ============ 匹配结果 ============
 
+export type ContextConfidence = 'high' | 'medium' | 'low' | 'unknown';
+
+export interface JobDescriptionStructure {
+  basic_info: {
+    title: string;
+    company?: string;
+    location?: string;
+  };
+  hard_requirements: {
+    education?: string;
+    experience_years?: string;
+    required_skills: string[];
+  };
+  responsibilities: string[];
+  tasks: string[];
+  soft_skills: string[];
+  nice_to_have: string[];
+  requirement_hierarchy?: {
+    must_have: string[];
+    core_outcomes: string[];
+    differentiators: string[];
+  };
+  company_context?: {
+    explicit_signals: string[];
+    inferred_talent_preferences: string[];
+    inference_basis: string[];
+    confidence: ContextConfidence;
+  };
+  location_context?: {
+    explicit_signals: string[];
+    inferred_role_implications: string[];
+    inference_basis: string[];
+    confidence: ContextConfidence;
+  };
+  uncertainties?: string[];
+}
+
+export type WeaknessEvidenceType = 'direct_missing' | 'implicit_evidence' | 'wording_gap';
+
+export interface MatchWeaknessDetail {
+  weakness: string;
+  evidence_type: WeaknessEvidenceType;
+  evidence: string;
+  suggestion: string;
+}
+
 export interface MatchingResult {
   match_score: number;
   hard_requirements_match: HardRequirement[];
   skill_match: SkillMatch;
   experience_match: ExperienceMatch;
   optimization_suggestions: string[];
-  jd_structure?: {
-    basic_info?: {
-      title?: string;
-      company?: string;
-      location?: string;
-    };
+  strengths?: string[];
+  weaknesses?: string[];
+  weakness_details?: MatchWeaknessDetail[];
+  soft_skills_match?: string;
+  positioning_strategy?: string;
+  context_fit?: {
+    company_alignment: string;
+    location_alignment: string;
+    hypotheses_used: string[];
   };
+  jd_structure?: JobDescriptionStructure;
 }
 
 export interface HardRequirement {

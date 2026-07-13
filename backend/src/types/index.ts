@@ -59,6 +59,8 @@ export interface ResumeAnalysis {
 /**
  * JD 结构化数据
  */
+export type ContextConfidence = 'high' | 'medium' | 'low' | 'unknown'
+
 export interface JDStructure {
   basic_info: {
     title: string
@@ -74,6 +76,24 @@ export interface JDStructure {
   tasks: string[]
   soft_skills: string[]
   nice_to_have: string[]
+  requirement_hierarchy?: {
+    must_have: string[]
+    core_outcomes: string[]
+    differentiators: string[]
+  }
+  company_context?: {
+    explicit_signals: string[]
+    inferred_talent_preferences: string[]
+    inference_basis: string[]
+    confidence: ContextConfidence
+  }
+  location_context?: {
+    explicit_signals: string[]
+    inferred_role_implications: string[]
+    inference_basis: string[]
+    confidence: ContextConfidence
+  }
+  uncertainties?: string[]
 }
 
 /**
@@ -100,6 +120,13 @@ export interface MatchAnalysis {
   strengths: string[]
   weaknesses: string[]
   weakness_details?: MatchWeaknessDetail[]
+  positioning_strategy?: string
+  optimization_suggestions?: string[]
+  context_fit?: {
+    company_alignment: string
+    location_alignment: string
+    hypotheses_used: string[]
+  }
   jd_structure: JDStructure
 }
 
