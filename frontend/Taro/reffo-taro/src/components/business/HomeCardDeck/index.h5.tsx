@@ -110,6 +110,7 @@ export default function HomeCardDeck({
   cards,
   initialIndex,
   enteringCardId,
+  returningCardId,
   isCreateMode = false,
   onCreateCardPress,
   onCardPress,
@@ -376,6 +377,7 @@ export default function HomeCardDeck({
                   'reffo-home-card--tail-enter': isTailEntering,
                   'reffo-home-card--recycling': isRecycling,
                   'reffo-home-card--new-entry': card.id === enteringCardId,
+                  'reffo-home-card--return-target': card.id === returningCardId,
                   'reffo-home-card--pressable': isPressable,
                 })}
                 onClick={isPressable ? () => playCardOpenTransition(card) : undefined}

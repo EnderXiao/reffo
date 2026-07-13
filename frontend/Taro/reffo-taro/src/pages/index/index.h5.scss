@@ -89,10 +89,12 @@ html[data-reffo-return-home-pending] .reffo-home__header,
 html[data-reffo-return-home-pending] .reffo-home__hero,
 html[data-reffo-return-home-pending] .reffo-home__progress,
 html[data-reffo-return-home-pending] .reffo-home__footer,
+html[data-reffo-return-home-pending] .reffo-home-deck__rail,
 .reffo-home--returning-from-result .reffo-home__header,
 .reffo-home--returning-from-result .reffo-home__hero,
 .reffo-home--returning-from-result .reffo-home__progress,
-.reffo-home--returning-from-result .reffo-home__footer {
+.reffo-home--returning-from-result .reffo-home__footer,
+.reffo-home--returning-from-result .reffo-home-deck__rail {
   will-change: opacity, transform;
 }
 
@@ -104,11 +106,15 @@ html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from
   transform: translate3d(var(--reffo-home-return-x, 0px), var(--reffo-home-return-y, 8px), 0);
 }
 
+html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from-result) .reffo-home-deck__rail {
+  transform: translate3d(max(112px, 28vw), -50%, 0);
+}
+
 .reffo-home--returning-from-result .reffo-home__header,
 .reffo-home--returning-from-result .reffo-home__hero,
 .reffo-home--returning-from-result .reffo-home__progress,
 .reffo-home--returning-from-result .reffo-home__footer {
-  animation: reffo-home-return-content-fade-in 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: reffo-home-return-content-fade-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 html[data-reffo-return-home-pending] .reffo-home__header,
@@ -136,15 +142,79 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
 }
 
 .reffo-home--returning-from-result .reffo-home__hero {
-  animation-delay: 28ms;
+  animation-delay: 560ms;
 }
 
 .reffo-home--returning-from-result .reffo-home__progress {
-  animation-delay: 44ms;
+  animation-delay: 600ms;
 }
 
 .reffo-home--returning-from-result .reffo-home__footer {
-  animation-delay: 64ms;
+  animation-delay: 640ms;
+}
+
+.reffo-home--returning-from-result .reffo-home__header {
+  animation-delay: 520ms;
+}
+
+.reffo-home--returning-from-result .reffo-home-deck__rail {
+  animation: reffo-home-return-rail-in 460ms cubic-bezier(0.16, 1, 0.3, 1) 580ms both;
+}
+
+.reffo-home__return-layer {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  pointer-events: none;
+}
+
+.reffo-home__return-backdrop {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #f8f9fb;
+  animation: reffo-home-return-backdrop-out 980ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-home__return-backdrop::before {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #dce9f9 0%, #eef4fb 33%, #f8f9fb 58%, #ffffff 100%);
+  content: '';
+}
+
+.reffo-home__return-layer--view-transition .reffo-home__return-backdrop {
+  opacity: 0;
+  animation: none;
+}
+
+.reffo-home__return-card-stage {
+  --card-design-width: 210px;
+  --card-design-height: 332px;
+
+  position: fixed;
+  z-index: 2;
+  top: var(--reffo-home-return-top, 154px);
+  left: var(--reffo-home-return-left, calc(50vw - 105px));
+  width: var(--reffo-home-return-width, calc(var(--card-design-width) * var(--card-responsive-scale, 1)));
+  height: var(--reffo-home-return-height, calc(var(--card-design-height) * var(--card-responsive-scale, 1)));
+  opacity: 1;
+  transform-origin: center center;
+  will-change: transform, opacity;
+  animation: reffo-home-return-card-land 980ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-home__return-card-stage--view-transition {
+  animation: none;
+}
+
+html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-transition {
+  view-transition-name: reffo-result-card-return;
+  contain: paint;
+}
+
+.reffo-home__return-card {
+  filter: drop-shadow(0 18PX 26PX rgba(21, 30, 46, 0.2));
 }
 
 @keyframes reffo-home-return-fade-in {
@@ -168,6 +238,73 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-home-return-rail-in {
+  0% {
+    opacity: 1;
+    transform: translate3d(max(112px, 28vw), -50%, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, -50%, 0);
+  }
+}
+
+@keyframes reffo-home-return-backdrop-out {
+  0%,
+  46% {
+    opacity: 1;
+  }
+
+  78% {
+    opacity: 0.18;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes reffo-home-return-card-land {
+  0% {
+    opacity: 1;
+    transform:
+      translate3d(
+        var(--reffo-home-return-start-x, 0px),
+        var(--reffo-home-return-start-y, 0px),
+        0
+      )
+      scale(var(--reffo-home-return-start-scale, 2.7))
+      rotate(0deg);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translate3d(0, -4px, 0) scale(1.018) rotate(0.4deg);
+  }
+
+  86% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes reffo-home-return-target-reveal {
+  0%,
+  40% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: var(--card-opacity);
   }
 }
 
@@ -473,6 +610,10 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
 
 .reffo-home-card--new-entry {
   animation: reffo-card-new-entry 920ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-home-card--return-target {
+  transition: none;
 }
 
 .reffo-home-deck__stack--create-mode .reffo-home-card:not(.reffo-home-card--create) {
@@ -1416,7 +1557,7 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
   top: 50%;
   width: 54px;
   height: min(406px, calc(100dvh - 190px));
-  overflow: hidden;
+  overflow: visible;
   z-index: 60;
   pointer-events: auto;
   touch-action: none;
@@ -1487,6 +1628,8 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
 }
 
 .reffo-home-deck__rail-label {
+  --reffo-rail-label-enter-x: max(112px, 46vw);
+
   flex: 0 0 18px;
   margin-right: 7px;
   color: #c7cbd3;
@@ -1494,7 +1637,14 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
   line-height: 10px;
   font-weight: 500;
   text-align: center;
-  transition: color 240ms ease, font-weight 240ms ease;
+  opacity: 0;
+  transform: translate3d(var(--reffo-rail-label-enter-x), 0, 0);
+  transition:
+    color 240ms ease,
+    font-weight 240ms ease,
+    opacity 220ms ease,
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
 }
 
 .reffo-home-deck__rail-item--d0 {
@@ -1533,12 +1683,27 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
 .reffo-home-deck__rail-item--active .reffo-home-deck__rail-label {
   color: #111111;
   font-weight: 700;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  animation: reffo-rail-label-enter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .reffo-home-deck__rail-item--active .reffo-home-deck__rail-tick--major {
   width: 10px;
   height: 2px;
   background: #111111;
+}
+
+@keyframes reffo-rail-label-enter {
+  0% {
+    opacity: 1;
+    transform: translate3d(var(--reffo-rail-label-enter-x), 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .reffo-home__footer {

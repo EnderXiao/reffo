@@ -23,10 +23,66 @@ function parseCorsOrigin(value: string | undefined) {
     .filter(Boolean)
 }
 
+type AppEnv = 'local' | 'nonprod' | 'prod'
+type SupabaseProjectEnv = 'nonprod' | 'prod' | ''
+type DatabaseProvider = 'sqlite' | 'supabase'
+
+function parseAppEnv(value: string | undefined): AppEnv {
+  const normalizedValue = value?.trim().toLowerCase()
+
+  if (normalizedValue === 'nonprod' || normalizedValue === 'prod') {
+    return normalizedValue
+  }
+
+  return 'local'
+}
+
+function parseDatabaseProvider(value: string | undefined): DatabaseProvider {
+  const normalizedValue = value?.trim().toLowerCase()
+
+  if (normalizedValue === 'supabase') {
+    return 'supabase'
+  }
+
+  return 'sqlite'
+}
+
+function parseSupabaseProjectEnv(value: string | undefined): SupabaseProjectEnv {
+  const normalizedValue = value?.trim().toLowerCase()
+
+  if (normalizedValue === 'nonprod' || normalizedValue === 'prod') {
+    return normalizedValue
+  }
+
+  return ''
+}
+
+function parseBoolean(value: string | undefined, fallback: boolean) {
+  const normalizedValue = value?.trim().toLowerCase()
+
+  if (!normalizedValue) {
+    return fallback
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(normalizedValue)
+}
+
 /**
  * 环境变量配置
  */
 export const env = {
+  // Runtime Environment
+  APP_ENV: parseAppEnv(process.env.APP_ENV),
+  DATABASE_PROVIDER: parseDatabaseProvider(process.env.DATABASE_PROVIDER),
+  AUTH_REQUIRED: parseBoolean(process.env.AUTH_REQUIRED, parseAppEnv(process.env.APP_ENV) === 'prod'),
+  DEV_USER_ID: process.env.DEV_USER_ID || '00000000-0000-4000-8000-000000000001',
+
+  // Supabase Configuration
+  SUPABASE_URL: process.env.SUPABASE_URL || '',
+  SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY || '',
+  SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY || '',
+  SUPABASE_PROJECT_ENV: parseSupabaseProjectEnv(process.env.SUPABASE_PROJECT_ENV),
+
   // AI Provider Configuration
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || 'https://api.deepseek.com',
@@ -98,6 +154,44 @@ export function validateEnv() {
 
   if (!Number.isFinite(env.PORT) || env.PORT <= 0) {
     throw new Error('PORT must be a positive number')
+  }
+
+  if (env.APP_ENV === 'prod') {
+    if (env.DATABASE_PROVIDER !== 'supabase') {
+      throw new Error('DATABASE_PROVIDER must be supabase when APP_ENV=prod')
+    }
+
+    if (!env.AUTH_REQUIRED) {
+      throw new Error('AUTH_REQUIRED cannot be false when APP_ENV=prod')
+    }
+
+    if (process.env.DEV_USER_ID) {
+      throw new Error('DEV_USER_ID cannot be set when APP_ENV=prod')
+    }
+
+    if (env.SUPABASE_PROJECT_ENV !== 'prod') {
+      throw new Error('SUPABASE_PROJECT_ENV must be prod when APP_ENV=prod')
+    }
+  }
+
+  if (env.DATABASE_PROVIDER === 'supabase') {
+    const missing = [
+      ['SUPABASE_URL', env.SUPABASE_URL],
+      ['SUPABASE_PUBLISHABLE_KEY', env.SUPABASE_PUBLISHABLE_KEY],
+      ['SUPABASE_SECRET_KEY', env.SUPABASE_SECRET_KEY],
+    ].filter(([, value]) => !value)
+
+    if (missing.length > 0) {
+      throw new Error(`Supabase 配置未完整：缺少 ${missing.map(([name]) => name).join('、')}`)
+    }
+
+    if (!env.SUPABASE_PROJECT_ENV) {
+      throw new Error('Supabase 配置未完整：缺少 SUPABASE_PROJECT_ENV')
+    }
+
+    if (env.APP_ENV === 'nonprod' && env.SUPABASE_PROJECT_ENV !== 'nonprod') {
+      throw new Error('SUPABASE_PROJECT_ENV must be nonprod when APP_ENV=nonprod')
+    }
   }
 
   const ocrStatus = getOcrEnvStatus()

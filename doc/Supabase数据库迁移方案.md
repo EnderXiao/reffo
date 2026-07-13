@@ -94,7 +94,7 @@ Supabase Storage
 - 前端可以使用 Supabase Auth 登录。
 - 核心业务写入仍走我们自己的后端 API。
 - 后端收到用户 token 后，只操作该用户的数据。
-- 生产环境不要把 `service_role` key 暴露给前端。
+- 生产环境不要把 Supabase Secret key 暴露给前端。
 - RLS 作为最后一道防线，但后端代码也要显式按 `user_id` 查询。
 
 ## 数据模型设计
@@ -278,9 +278,9 @@ with check (auth.uid() = user_id);
 
 注意：
 
-- 如果后端使用 `service_role` key，会绕过 RLS。因此生产代码应避免把 service role 用在普通用户数据路径上。
+- 如果后端使用 Supabase Secret key，会绕过普通用户 RLS 语义。因此生产代码应避免把 Secret key 用在普通用户数据路径上。
 - 推荐后端请求级创建 Supabase client，带上用户 `Authorization` token，让 RLS 生效。
-- 只在管理脚本、迁移脚本、后台维护任务里使用 service role。
+- 只在管理脚本、迁移脚本、后台维护任务里使用 Secret key。
 
 ## 后端改造方案
 
@@ -290,9 +290,9 @@ with check (auth.uid() = user_id);
 DATABASE_PROVIDER=sqlite
 
 SUPABASE_URL=
-SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_JWT_SECRET=
+SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=
+SUPABASE_PROJECT_ENV=
 ```
 
 生产：
@@ -300,8 +300,9 @@ SUPABASE_JWT_SECRET=
 ```text
 DATABASE_PROVIDER=supabase
 SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_ANON_KEY=<anon key>
-SUPABASE_SERVICE_ROLE_KEY=<server-only service role key>
+SUPABASE_PUBLISHABLE_KEY=<publishable key>
+SUPABASE_SECRET_KEY=<server-only secret key>
+SUPABASE_PROJECT_ENV=prod
 ```
 
 ### 2. 引入 Supabase client
@@ -429,7 +430,7 @@ users/{user_id}/exports/{history_id}.pdf
 验收：
 
 - 创建 Supabase project。
-- 确认项目 URL、anon key、service role key。
+- 确认项目 URL、Publishable key、Secret key。
 - 本地安装或配置 Supabase CLI。
 - 建立 `supabase/migrations` 目录。
 
@@ -501,7 +502,7 @@ backend/scripts/migrate-sqlite-to-supabase.ts
 ```text
 SQLITE_DATABASE_PATH=backend/data/reffo.sqlite
 SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_SECRET_KEY=
 MIGRATION_USER_ID=
 ```
 
@@ -519,9 +520,9 @@ Supabase 允许前端直接访问数据库，但 Reffo 的核心流程涉及：
 
 所以核心业务仍应走 Bun 后端。前端直连 Supabase 只适合 Auth、Storage 上传或低风险只读配置。
 
-### service role 使用边界
+### Secret key 使用边界
 
-`SUPABASE_SERVICE_ROLE_KEY` 只能放在后端环境变量里。不要进入 Taro、Vercel 前端构建环境或日志。
+`SUPABASE_SECRET_KEY` 只能放在后端环境变量里。不要进入 Taro、Vercel 前端构建环境或日志。
 
 ### RLS 和后端过滤都要做
 

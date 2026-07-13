@@ -134,7 +134,7 @@ export interface ResultPageViewModel {
   handleSave: () => Promise<string | null>
   handleComplete: () => Promise<void>
   handleShare: () => Promise<void>
-  handleBackHome: () => void
+  handleBackHome: () => Promise<void>
   handlePendingStage: () => void
   handleOptimizedResumeChange: (markdown: string) => Promise<void>
 }
@@ -459,11 +459,10 @@ export function usePageModel(): ResultPageViewModel {
   const handleBackHome = () => {
     continuationRef.current += 1
     if (enteredFromCard) {
-      void navigation.returnHome()
-      return
+      return navigation.returnHome()
     }
 
-    void navigation.reLaunch('/pages/index/index')
+    return navigation.reLaunch('/pages/index/index')
   }
 
   const handlePendingStage = () => {

@@ -1,11 +1,13 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import type {CSSProperties} from 'react'
+import type {CSSProperties, TouchEvent} from 'react'
 import {Image, ScrollView, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
 import type {HardRequirement, ProcessResult} from '@/types'
-import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
-import {useVisualTier} from '@/utils'
-import {suppressNextNavigationTransition} from '@/utils/navigation-transition'
+import {FeedbackBubble} from '@/components/common/FeedbackBubble'
+import {
+  startResultCardReturnTransition,
+  suppressNextNavigationTransition,
+} from '@/utils/navigation-transition'
 import {resolveResumeGrade} from '@/utils/score-grade'
 import type {ResultPageViewModel} from './usePageModel'
 import lightIcon from '@/assets/result/light.svg'
@@ -24,14 +26,16 @@ import './index.h5.scss'
 
 type ResultStageKey = 'analysis' | 'resume' | 'interview'
 type VisibleStageStatus = 'ready' | 'generating' | 'pending'
+type StageMotionDirection = 'left' | 'right'
+
 const CARD_OPEN_RECT_STORAGE_KEY = 'reffo.homeCardOpenRect'
-const RESULT_RETURN_HOME_DELAY = 760
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const RESULT_RETURN_HOME_DOM_KEY = 'reffoReturnHomePending'
 const RESULT_EDGE_ENTER_DELAY = 320
-const HOME_CARD_DESIGN_WIDTH = 210
-const HOME_CARD_DESIGN_HEIGHT = 332
-
+const RESULT_STAGE_BUBBLE_DURATION = 2200
+const RESULT_BLOCKED_SHAKE_DURATION = 420
+const RESULT_STAGE_SWIPE_THRESHOLD = 44
+const RESULT_STAGE_SWITCH_DURATION = 520
 interface CardOpenRectSnapshot {
   cardId?: string
   left: number
@@ -49,6 +53,13 @@ interface ResultStage {
   label: string
   subtitle: string
   icon: string
+}
+
+interface StageTransitionState {
+  fromIndex: number
+  toIndex: number
+  direction: StageMotionDirection
+  id: number
 }
 
 const RESULT_STAGES: ResultStage[] = [
@@ -111,62 +122,16 @@ function readCardOpenRect(): CardOpenRectSnapshot | null {
   }
 }
 
-function resolveReturnStyle(): CSSProperties {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    return {}
-  }
-
-  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 393
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 852
-  const snapshot = readCardOpenRect()
-  const widthRatio = snapshot?.viewportWidth ? viewportWidth / snapshot.viewportWidth : 1
-  const heightRatio = snapshot?.viewportHeight ? viewportHeight / snapshot.viewportHeight : 1
-  const targetWidth = Math.max(1, (snapshot?.width ?? Math.min(viewportWidth * 0.55, 218)) * widthRatio)
-  const targetHeight = Math.max(1, (snapshot?.height ?? targetWidth * 1.546) * heightRatio)
-  const targetLeft = snapshot ? snapshot.left * widthRatio : (viewportWidth - targetWidth) / 2
-  const targetTop = snapshot ? snapshot.top * heightRatio : Math.max(96, (viewportHeight - targetHeight) / 2)
-  const targetCenterX = targetLeft + targetWidth / 2
-  const targetCenterY = targetTop + targetHeight / 2
-  const startScale = Math.max(
-    viewportWidth / Math.max(targetWidth, 1),
-    viewportHeight / Math.max(targetHeight, 1),
-  ) * 1.08
-
-  return {
-    '--reffo-result-return-x': `${targetCenterX - viewportWidth / 2}px`,
-    '--reffo-result-return-y': `${targetCenterY - viewportHeight / 2}px`,
-    '--reffo-result-return-start-x': `${viewportWidth / 2 - targetCenterX}px`,
-    '--reffo-result-return-start-y': `${viewportHeight / 2 - targetCenterY}px`,
-    '--reffo-result-return-start-scale': String(startScale),
-    '--reffo-result-return-scale-x': String(targetWidth / viewportWidth),
-    '--reffo-result-return-scale-y': String(targetHeight / viewportHeight),
-    '--reffo-result-return-left': `${targetLeft}px`,
-    '--reffo-result-return-top': `${targetTop}px`,
-    '--reffo-result-return-width': `${targetWidth}px`,
-    '--reffo-result-return-height': `${targetHeight}px`,
-    '--card-responsive-scale': String(targetWidth / HOME_CARD_DESIGN_WIDTH),
-  } as CSSProperties
-}
-
-function clearCardOpenRect() {
+function markReturningHome(cardId?: string | null, transition?: 'view-transition') {
   if (typeof window === 'undefined') {
     return
   }
 
   try {
-    window.sessionStorage?.removeItem(CARD_OPEN_RECT_STORAGE_KEY)
-  } catch (error) {
-    console.warn('清理卡片过渡位置失败:', error)
-  }
-}
-
-function markReturningHome(cardId?: string | null) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    window.sessionStorage?.setItem(RESULT_RETURN_HOME_STORAGE_KEY, JSON.stringify({cardId: cardId ?? null}))
+    window.sessionStorage?.setItem(RESULT_RETURN_HOME_STORAGE_KEY, JSON.stringify({
+      cardId: cardId ?? null,
+      transition,
+    }))
     document.documentElement.dataset[RESULT_RETURN_HOME_DOM_KEY] = '1'
   } catch (error) {
     console.warn('保存首页返回过渡标记失败:', error)
@@ -335,6 +300,30 @@ function SectionTitle({children, icon}: {children: string; icon?: string}) {
       )}
       <Text>{children}</Text>
     </View>
+  )
+}
+
+function ResultStageTitle({stage}: {stage: ResultStage}) {
+  const accentIndex = stage.title.indexOf(stage.accent)
+  const titleBeforeAccent = accentIndex >= 0 ? stage.title.slice(0, accentIndex) : ''
+  const titleAfterAccent = accentIndex >= 0
+    ? stage.title.slice(accentIndex + stage.accent.length)
+    : stage.title.replace(stage.accent, '')
+
+  return (
+    <>
+      {titleBeforeAccent.length > 0 && (
+        <Text className='reffo-result__title-prefix'>{titleBeforeAccent}</Text>
+      )}
+      <Text className='reffo-result__title-accent'>{stage.accent}</Text>
+      {titleAfterAccent.length > 0 && (
+        <Text className='reffo-result__title-prefix'>{titleAfterAccent}</Text>
+      )}
+      <View className='reffo-result__title-spark' aria-hidden='true'>
+        <Text className='reffo-result__title-spark-main'>✦</Text>
+        <Text className='reffo-result__title-spark-small'>✦</Text>
+      </View>
+    </>
   )
 }
 
@@ -668,29 +657,32 @@ export default function PageView({
   loading,
   progress,
   progressPercent,
+  generationError,
   enteredFromCard,
   returnCard,
   handleComplete,
   handleBackHome,
-  handlePendingStage,
   handleOptimizedResumeChange,
 }: ResultPageViewModel) {
-  const visualCapability = useVisualTier({benchmark: true})
   const [stageIndex, setStageIndex] = useState(0)
   const [isFromCardReady, setIsFromCardReady] = useState(!enteredFromCard)
   const [isEdgeEnterReady, setIsEdgeEnterReady] = useState(!enteredFromCard)
   const [isReturningHome, setIsReturningHome] = useState(false)
-  const [returnStyle, setReturnStyle] = useState<CSSProperties>({})
+  const [blockedBubble, setBlockedBubble] = useState<{
+    stageKey: ResultStageKey
+    message: string
+  } | null>(null)
+  const [isBlockedShaking, setIsBlockedShaking] = useState(false)
+  const [stageTransition, setStageTransition] = useState<StageTransitionState | null>(null)
   const rootRef = useRef<HTMLElement | null>(null)
   const returnTimerRef = useRef<number | null>(null)
   const edgeEnterTimerRef = useRef<number | null>(null)
-  const activeStage = RESULT_STAGES[stageIndex]
-  const subtitle = activeStage.subtitle
-  const accentIndex = activeStage.title.indexOf(activeStage.accent)
-  const titleBeforeAccent = accentIndex >= 0 ? activeStage.title.slice(0, accentIndex) : ''
-  const titleAfterAccent = accentIndex >= 0
-    ? activeStage.title.slice(accentIndex + activeStage.accent.length)
-    : activeStage.title.replace(activeStage.accent, '')
+  const bubbleTimerRef = useRef<number | null>(null)
+  const shakeTimerRef = useRef<number | null>(null)
+  const stageTransitionTimerRef = useRef<number | null>(null)
+  const stageTransitionIdRef = useRef(0)
+  const touchStartRef = useRef<{x: number; y: number} | null>(null)
+  const activeStage = RESULT_STAGES[stageIndex] ?? RESULT_STAGES[0]
   const backgroundProgress = useMemo(
     () => enteredFromCard ? '100%' : `${progressPercent}%`,
     [enteredFromCard, progressPercent],
@@ -700,12 +692,14 @@ export default function PageView({
     resume: progress.optimized === 'done',
     interview: progress.interview === 'done',
   }
+  const readyStages = RESULT_STAGES.filter(stage => stageAvailability[stage.key])
+  const blockedStages = RESULT_STAGES.filter(stage => !stageAvailability[stage.key])
+  const activeReadyIndex = Math.max(0, readyStages.findIndex(stage => stage.key === activeStage.key))
   const isComplete = progress.interview === 'done'
   const hasRenderableResult = Boolean(result)
   const resultStyle = useMemo(() => ({
     '--reffo-result-progress': backgroundProgress,
-    ...returnStyle,
-  }) as CSSProperties, [backgroundProgress, returnStyle])
+  }) as CSSProperties, [backgroundProgress])
 
   useEffect(() => {
     let firstFrame = 0
@@ -771,6 +765,145 @@ export default function PageView({
     if (returnTimerRef.current != null) {
       window.clearTimeout(returnTimerRef.current)
     }
+    if (bubbleTimerRef.current != null) {
+      window.clearTimeout(bubbleTimerRef.current)
+    }
+    if (shakeTimerRef.current != null) {
+      window.clearTimeout(shakeTimerRef.current)
+    }
+    if (stageTransitionTimerRef.current != null) {
+      window.clearTimeout(stageTransitionTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (stageAvailability[RESULT_STAGES[stageIndex].key]) {
+      return
+    }
+
+    for (let index = RESULT_STAGES.length - 1; index >= 0; index -= 1) {
+      if (stageAvailability[RESULT_STAGES[index].key]) {
+        setStageIndex(index)
+        return
+      }
+    }
+
+    setStageIndex(0)
+  }, [progress.analysis, progress.optimized, progress.interview, stageIndex])
+
+  const showBlockedBubble = useCallback((
+    stageKey: ResultStageKey,
+    options: {shake?: boolean} = {},
+  ) => {
+    const stageStatus = getVisibleStageStatus(stageKey, progress)
+    const message = generationError ||
+      (stageStatus === 'generating' ? '步骤正在生成中' : '等待前置步骤完成')
+
+    setBlockedBubble({stageKey, message})
+
+    if (bubbleTimerRef.current != null) {
+      window.clearTimeout(bubbleTimerRef.current)
+    }
+
+    bubbleTimerRef.current = window.setTimeout(() => {
+      bubbleTimerRef.current = null
+      setBlockedBubble(current => current?.stageKey === stageKey ? null : current)
+    }, RESULT_STAGE_BUBBLE_DURATION)
+
+    if (!options.shake) {
+      return
+    }
+
+    setIsBlockedShaking(false)
+    window.requestAnimationFrame(() => {
+      setIsBlockedShaking(true)
+    })
+
+    if (shakeTimerRef.current != null) {
+      window.clearTimeout(shakeTimerRef.current)
+    }
+
+    shakeTimerRef.current = window.setTimeout(() => {
+      shakeTimerRef.current = null
+      setIsBlockedShaking(false)
+    }, RESULT_BLOCKED_SHAKE_DURATION)
+  }, [generationError, progress])
+
+  const requestStageSwitch = useCallback((
+    nextIndex: number,
+    options: {shake?: boolean; direction?: StageMotionDirection} = {},
+  ) => {
+    const nextStage = RESULT_STAGES[nextIndex]
+
+    if (!nextStage || nextIndex === stageIndex) {
+      return
+    }
+
+    if (!stageAvailability[nextStage.key]) {
+      showBlockedBubble(nextStage.key, options)
+      return
+    }
+
+    setBlockedBubble(null)
+    stageTransitionIdRef.current += 1
+    setStageTransition({
+      fromIndex: stageIndex,
+      toIndex: nextIndex,
+      direction: options.direction ?? (nextIndex > stageIndex ? 'left' : 'right'),
+      id: stageTransitionIdRef.current,
+    })
+    setStageIndex(nextIndex)
+
+    if (stageTransitionTimerRef.current != null) {
+      window.clearTimeout(stageTransitionTimerRef.current)
+    }
+
+    stageTransitionTimerRef.current = window.setTimeout(() => {
+      stageTransitionTimerRef.current = null
+      setStageTransition(current => current?.toIndex === nextIndex ? null : current)
+    }, RESULT_STAGE_SWITCH_DURATION)
+  }, [showBlockedBubble, stageAvailability, stageIndex])
+
+  const handleStageTouchStart = useCallback((event: TouchEvent) => {
+    const touch = event.touches[0] ?? event.changedTouches[0]
+
+    if (!touch) {
+      touchStartRef.current = null
+      return
+    }
+
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+    }
+  }, [])
+
+  const handleStageTouchEnd = useCallback((event: TouchEvent) => {
+    const start = touchStartRef.current
+    const touch = event.changedTouches[0]
+    touchStartRef.current = null
+
+    if (!start || !touch) {
+      return
+    }
+
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+    const absX = Math.abs(deltaX)
+    const absY = Math.abs(deltaY)
+
+    if (absX < RESULT_STAGE_SWIPE_THRESHOLD || absX < absY * 1.25) {
+      return
+    }
+
+    requestStageSwitch(stageIndex + (deltaX < 0 ? 1 : -1), {
+      shake: true,
+      direction: deltaX < 0 ? 'left' : 'right',
+    })
+  }, [requestStageSwitch, stageIndex])
+
+  const handleStageTouchCancel = useCallback(() => {
+    touchStartRef.current = null
   }, [])
 
   const handleReturnHome = useCallback(() => {
@@ -785,7 +918,6 @@ export default function PageView({
 
     const cardOpenSnapshot = readCardOpenRect()
     const returningCardId = returnCard?.id ?? cardOpenSnapshot?.cardId ?? null
-    const nextReturnStyle = resolveReturnStyle()
     const rootElement = rootRef.current
     const shellElement = rootElement?.querySelector('.reffo-result__shell') as HTMLElement | null
     const chromeElement = rootElement?.querySelector('.reffo-result__chrome') as HTMLElement | null
@@ -801,20 +933,27 @@ export default function PageView({
         window.clearTimeout(returnTimerRef.current)
         returnTimerRef.current = null
       }
-      clearCardOpenRect()
       suppressNextNavigationTransition()
       handleBackHome()
     }
 
+    const didStartViewTransition = startResultCardReturnTransition(() => {
+      markReturningHome(returningCardId, 'view-transition')
+      return handleBackHome()
+    }, rootElement)
+
+    if (didStartViewTransition) {
+      return
+    }
+
     markReturningHome(returningCardId)
-    setReturnStyle(nextReturnStyle)
     setIsReturningHome(true)
 
     if (returnTimerRef.current != null) {
       window.clearTimeout(returnTimerRef.current)
     }
 
-    returnTimerRef.current = window.setTimeout(finishReturn, RESULT_RETURN_HOME_DELAY + 80)
+    returnTimerRef.current = window.setTimeout(finishReturn, 48)
 
     const fadingElements = [shellElement, chromeElement]
 
@@ -855,7 +994,6 @@ export default function PageView({
           'reffo-result--from-card-ready': enteredFromCard && isFromCardReady,
           'reffo-result--returning-home': isReturningHome,
         })}
-        style={returnStyle}
       >
         <Text className='reffo-result__loading-text'>{loading ? '加载中...' : '未找到结果'}</Text>
       </View>
@@ -871,26 +1009,13 @@ export default function PageView({
         'reffo-result--from-card-ready': enteredFromCard && isFromCardReady,
         'reffo-result--edge-enter-ready': enteredFromCard && isEdgeEnterReady,
         'reffo-result--returning-home': isReturningHome,
+        'reffo-result--blocked-shake': isBlockedShaking,
       })}
       style={resultStyle}
+      onTouchStart={handleStageTouchStart}
+      onTouchEnd={handleStageTouchEnd}
+      onTouchCancel={handleStageTouchCancel}
     >
-      {isReturningHome ? (
-        <View className='reffo-result__return-layer' style={returnStyle}>
-          <View className='reffo-result__return-home-backdrop' />
-          {returnCard ? (
-            <View className='reffo-result__return-card-stage'>
-              <HomeScoreCard
-                card={returnCard}
-                depth={0}
-                active
-                visualTier={visualCapability.tier}
-                className='reffo-result__return-card'
-              />
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-
       {enteredFromCard ? (
         <View className='reffo-result__chrome reffo-result__chrome--back'>
           <View className='reffo-result__action reffo-result__action--back' onClick={handleReturnHome}>
@@ -912,46 +1037,90 @@ export default function PageView({
       <View className='reffo-result__shell'>
         <View className='reffo-result__content'>
           <View className='reffo-result__header'>
-            <View>
-              {titleBeforeAccent.length > 0 && (
-                <Text className='reffo-result__title-prefix'>{titleBeforeAccent}</Text>
+            <View className='reffo-result__title-viewport'>
+              {stageTransition ? (
+                <>
+                  <View
+                    key={`stage-title-${stageTransition.id}-from-${stageTransition.fromIndex}`}
+                    className={classNames(
+                      'reffo-result__motion-item',
+                      'reffo-result__motion-item--exit',
+                      `reffo-result__motion-item--to-${stageTransition.direction}`,
+                    )}
+                  >
+                    <ResultStageTitle stage={RESULT_STAGES[stageTransition.fromIndex] ?? activeStage} />
+                  </View>
+                  <View
+                    key={`stage-title-${stageTransition.id}-to-${stageTransition.toIndex}`}
+                    className={classNames(
+                      'reffo-result__motion-item',
+                      'reffo-result__motion-item--enter',
+                      `reffo-result__motion-item--to-${stageTransition.direction}`,
+                    )}
+                  >
+                    <ResultStageTitle stage={RESULT_STAGES[stageTransition.toIndex] ?? activeStage} />
+                  </View>
+                </>
+              ) : (
+                <View
+                  key={`stage-title-stable-${activeStage.key}`}
+                  className='reffo-result__motion-item reffo-result__motion-item--stable'
+                >
+                  <ResultStageTitle stage={activeStage} />
+                </View>
               )}
-              <Text className='reffo-result__title-accent'>{activeStage.accent}</Text>
-              {titleAfterAccent.length > 0 && (
-                <Text className='reffo-result__title-prefix'>{titleAfterAccent}</Text>
-              )}
-              <View className='reffo-result__title-spark' aria-hidden='true'>
-                <Text className='reffo-result__title-spark-main'>✦</Text>
-                <Text className='reffo-result__title-spark-small'>✦</Text>
-              </View>
             </View>
-            <View
-              className='reffo-result__tabs'
-              style={{'--reffo-result-tab-offset': `${stageIndex * 100}%`} as CSSProperties}
-            >
-              <View className='reffo-result__tab-indicator' />
-              {RESULT_STAGES.map((stage, index) => {
+            <View className='reffo-result__stage-switcher'>
+              {readyStages.length > 0 ? (
+                <View
+                  className='reffo-result__tabs'
+                  style={{
+                    '--reffo-result-ready-count': readyStages.length,
+                    '--reffo-result-active-ready-offset': `${activeReadyIndex * 100}%`,
+                    '--reffo-result-tabs-width': `${readyStages.length * 55 + 8}px`,
+                  } as CSSProperties}
+                >
+                  <View className='reffo-result__tab-indicator' />
+                  {readyStages.map(stage => {
+                    const index = RESULT_STAGES.findIndex(item => item.key === stage.key)
+                    const stageStatus = getVisibleStageStatus(stage.key, progress)
+
+                    return (
+                      <View
+                        key={stage.key}
+                        className={classNames('reffo-result__tab', {
+                          [`reffo-result__tab--${stage.key}`]: true,
+                          'reffo-result__tab--active': index === stageIndex,
+                          'reffo-result__tab--ready': stageStatus === 'ready' && index !== stageIndex,
+                        })}
+                        onClick={() => requestStageSwitch(index)}
+                        aria-label={stage.label}
+                      >
+                        <Image
+                          className='reffo-result__tab-icon'
+                          src={stage.icon}
+                          mode='aspectFit'
+                        />
+                      </View>
+                    )
+                  })}
+                </View>
+              ) : null}
+
+              {blockedStages.map(stage => {
+                const index = RESULT_STAGES.findIndex(item => item.key === stage.key)
                 const stageStatus = getVisibleStageStatus(stage.key, progress)
 
                 return (
                   <View
                     key={stage.key}
-                    className={classNames('reffo-result__tab', {
+                    className={classNames('reffo-result__tab', 'reffo-result__tab--outside', {
                       [`reffo-result__tab--${stage.key}`]: true,
-                      'reffo-result__tab--active': index === stageIndex,
-                      'reffo-result__tab--ready': stageStatus === 'ready' && index !== stageIndex,
-                      'reffo-result__tab--generating': stageStatus === 'generating' && index !== stageIndex,
-                      'reffo-result__tab--pending': stageStatus === 'pending' && index !== stageIndex,
-                      'reffo-result__tab--disabled': !stageAvailability[stage.key],
+                      'reffo-result__tab--generating': stageStatus === 'generating',
+                      'reffo-result__tab--pending': stageStatus === 'pending',
+                      'reffo-result__tab--blocked-bubble': blockedBubble?.stageKey === stage.key,
                     })}
-                    onClick={() => {
-                      if (!stageAvailability[stage.key]) {
-                        handlePendingStage()
-                        return
-                      }
-
-                      setStageIndex(index)
-                    }}
+                    onClick={() => requestStageSwitch(index)}
                     aria-label={stage.label}
                   >
                     <Image
@@ -959,15 +1128,56 @@ export default function PageView({
                       src={stage.icon}
                       mode='aspectFit'
                     />
+                    {blockedBubble?.stageKey === stage.key ? (
+                      <FeedbackBubble placement='bottom' arrow='top-right'>
+                        {blockedBubble.message}
+                      </FeedbackBubble>
+                    ) : null}
                   </View>
                 )
               })}
             </View>
           </View>
 
-          <Text className='reffo-result__subtitle'>
-            {subtitle}
-          </Text>
+          <View className='reffo-result__subtitle-viewport'>
+            {stageTransition ? (
+              <>
+                <View
+                  key={`stage-subtitle-${stageTransition.id}-from-${stageTransition.fromIndex}`}
+                  className={classNames(
+                    'reffo-result__motion-item',
+                    'reffo-result__motion-item--exit',
+                    `reffo-result__motion-item--to-${stageTransition.direction}`,
+                  )}
+                >
+                  <Text className='reffo-result__subtitle'>
+                    {(RESULT_STAGES[stageTransition.fromIndex] ?? activeStage).subtitle}
+                  </Text>
+                </View>
+                <View
+                  key={`stage-subtitle-${stageTransition.id}-to-${stageTransition.toIndex}`}
+                  className={classNames(
+                    'reffo-result__motion-item',
+                    'reffo-result__motion-item--enter',
+                    `reffo-result__motion-item--to-${stageTransition.direction}`,
+                  )}
+                >
+                  <Text className='reffo-result__subtitle'>
+                    {(RESULT_STAGES[stageTransition.toIndex] ?? activeStage).subtitle}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <View
+                key={`stage-subtitle-stable-${activeStage.key}`}
+                className='reffo-result__motion-item reffo-result__motion-item--stable'
+              >
+                <Text className='reffo-result__subtitle'>
+                  {activeStage.subtitle}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         <View className='reffo-result__scroll-shell'>
@@ -975,11 +1185,51 @@ export default function PageView({
           <View className='reffo-result__scroll-bottom-fade' />
           <ScrollView scrollY className='reffo-result__scroll'>
             <View className='reffo-result__body'>
-              <ResultContent
-                stage={activeStage.key}
-                result={result}
-                onOptimizedResumeChange={handleOptimizedResumeChange}
-              />
+              <View className='reffo-result__stage-panel-viewport'>
+                {stageTransition ? (
+                  <>
+                    <View
+                      key={`stage-${stageTransition.id}-from-${stageTransition.fromIndex}`}
+                      className={classNames(
+                        'reffo-result__stage-panel',
+                        'reffo-result__stage-panel--exit',
+                        `reffo-result__stage-panel--to-${stageTransition.direction}`,
+                      )}
+                    >
+                      <ResultContent
+                        stage={RESULT_STAGES[stageTransition.fromIndex]?.key ?? activeStage.key}
+                        result={result}
+                        onOptimizedResumeChange={handleOptimizedResumeChange}
+                      />
+                    </View>
+                    <View
+                      key={`stage-${stageTransition.id}-to-${stageTransition.toIndex}`}
+                      className={classNames(
+                        'reffo-result__stage-panel',
+                        'reffo-result__stage-panel--enter',
+                        `reffo-result__stage-panel--to-${stageTransition.direction}`,
+                      )}
+                    >
+                      <ResultContent
+                        stage={RESULT_STAGES[stageTransition.toIndex]?.key ?? activeStage.key}
+                        result={result}
+                        onOptimizedResumeChange={handleOptimizedResumeChange}
+                      />
+                    </View>
+                  </>
+                ) : (
+                  <View
+                    key={`stage-stable-${activeStage.key}`}
+                    className='reffo-result__stage-panel reffo-result__stage-panel--stable'
+                  >
+                    <ResultContent
+                      stage={activeStage.key}
+                      result={result}
+                      onOptimizedResumeChange={handleOptimizedResumeChange}
+                    />
+                  </View>
+                )}
+              </View>
 
               <Text className='reffo-result__disclaimer'>*内容由人工智能生成，请仔细检查</Text>
             </View>

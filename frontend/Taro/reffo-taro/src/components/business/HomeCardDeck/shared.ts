@@ -21,6 +21,7 @@ export interface HomeCardDeckProps {
   cards: HomeCardItem[]
   initialIndex?: number
   enteringCardId?: string | null
+  returningCardId?: string | null
   isCreateMode?: boolean
   onCreateCardPress?: () => void
   onCardPress?: (card: HomeCardItem) => void | Promise<void>

@@ -24,6 +24,7 @@ jest.mock('@/store/sourceResumeStore')
 
 const mockUseHistoryStore = useHistoryStore as jest.MockedFunction<typeof useHistoryStore>
 const mockUseJDStoreGetState = useJDStore.getState as jest.Mock
+const mockUseRouter = (Taro as any).useRouter as jest.Mock
 const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
 >
@@ -67,7 +68,9 @@ describe('usePageModel', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
+    window.history.replaceState(null, '', '/')
     window.sessionStorage.removeItem(RESULT_RETURN_HOME_STORAGE_KEY)
+    mockUseRouter.mockReturnValue({params: {}})
     mockUseJDStoreGetState.mockReturnValue({
       reset: mockResetJDStore,
     })
@@ -293,6 +296,50 @@ describe('usePageModel', () => {
     expect((screen.getByTestId('card-id') as any).textContent).toBe('JD2026070700002')
     expect(mockLoadHistories).not.toHaveBeenCalled()
     expect(mockLoadLatestSourceResume).not.toHaveBeenCalled()
+  })
+
+  test('从完成页回首页时消费 newCardId 并清理 URL 参数', () => {
+    const histories: ResumeHistory[] = [
+      {
+        id: 'JD2026070700001',
+        position: '前端工程师',
+        company: 'ABC 公司',
+        name: '张三',
+        createdAt: '2026-07-07T12:00:00.000Z',
+        qualityScore: 88,
+        matchScore: 92,
+        tags: ['React', 'TypeScript'],
+        resumeContent: '# 张三',
+        jdContent: '岗位职责：...',
+        optimizedContent: '# 张三（优化版）',
+      },
+      {
+        id: 'JD2026070700002',
+        position: '产品经理',
+        company: 'XYZ 公司',
+        name: '李四',
+        createdAt: '2026-07-08T12:00:00.000Z',
+        qualityScore: 86,
+        matchScore: 89,
+        tags: ['AI', '增长'],
+        resumeContent: '# 李四',
+        jdContent: '岗位职责：...',
+        optimizedContent: '# 李四（优化版）',
+      },
+    ]
+
+    window.history.replaceState(null, '', '/#/pages/index/index?newCardId=JD2026070700002')
+    mockUseRouter.mockReturnValue({params: {newCardId: 'JD2026070700002'}})
+    mockUseHistoryStore.mockReturnValue({
+      histories,
+      loading: {isLoading: false, error: null},
+      loadHistories: mockLoadHistories,
+    } as ReturnType<typeof useHistoryStore>)
+
+    render(<HookProbe />)
+
+    expect((screen.getByTestId('card-id') as any).textContent).toBe('JD2026070700002')
+    expect(window.location.hash).toBe('#/pages/index/index')
   })
 
   test('点击示例卡片时不打开结果页', () => {

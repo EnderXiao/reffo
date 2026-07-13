@@ -1,8 +1,11 @@
 import {Image, Text, View} from '@tarojs/components'
 import HomeCardDeck from '@/components/business/HomeCardDeck'
+import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import classNames from 'classnames'
 import {useEffect, useMemo, useRef, useState} from 'react'
+import type {CSSProperties} from 'react'
 import {useDidShow} from '@tarojs/taro'
+import {useVisualTier} from '@/utils'
 import type {IndexPageViewModel} from './model/usePageModel'
 import {HOME_PAGE_CONTENT} from './constants/content'
 import githubIcon from '@/assets/home/github.svg'
@@ -11,20 +14,119 @@ import './index.h5.scss'
 type HeroMode = 'brand' | 'strategy' | 'create'
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const RESULT_RETURN_HOME_DOM_KEY = 'reffoReturnHomePending'
-const HOME_RETURN_FADE_MS = 460
+const CARD_OPEN_RECT_STORAGE_KEY = 'reffo.homeCardOpenRect'
+const HOME_RETURN_FLIP_MS = 1080
+const HOME_CARD_DESIGN_WIDTH = 210
 
-function hasReturnHomeMarker() {
+interface ReturningHomePayload {
+  cardId: string | null
+  transition?: 'view-transition' | null
+}
+
+interface CardOpenRectSnapshot {
+  cardId?: string
+  left: number
+  top: number
+  width: number
+  height: number
+  viewportWidth?: number
+  viewportHeight?: number
+}
+
+function readReturnHomeMarker(): ReturningHomePayload | null {
   if (typeof window === 'undefined') {
-    return false
+    return null
   }
 
   try {
     const raw = window.sessionStorage?.getItem(RESULT_RETURN_HOME_STORAGE_KEY)
 
-    return Boolean(raw)
+    if (!raw) {
+      return null
+    }
+
+    if (raw === '1') {
+      return {cardId: null}
+    }
+
+    const parsed = JSON.parse(raw) as {cardId?: unknown; transition?: unknown}
+    return {
+      cardId: typeof parsed.cardId === 'string' && parsed.cardId.length > 0
+        ? parsed.cardId
+        : null,
+      transition: parsed.transition === 'view-transition' ? 'view-transition' : null,
+    }
   } catch (error) {
     console.warn('读取首页返回过渡标记失败:', error)
-    return false
+    return null
+  }
+}
+
+function readCardOpenRect(): CardOpenRectSnapshot | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.sessionStorage?.getItem(CARD_OPEN_RECT_STORAGE_KEY)
+
+    if (!raw) {
+      return null
+    }
+
+    const parsed = JSON.parse(raw) as Partial<CardOpenRectSnapshot>
+    const isValid = [parsed.left, parsed.top, parsed.width, parsed.height].every(value => (
+      typeof value === 'number' && Number.isFinite(value)
+    ))
+
+    return isValid ? parsed as CardOpenRectSnapshot : null
+  } catch (error) {
+    console.warn('读取卡片过渡位置失败:', error)
+    return null
+  }
+}
+
+function resolveReturnCardStyle(snapshot: CardOpenRectSnapshot | null): CSSProperties {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return {}
+  }
+
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 393
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 852
+  const widthRatio = snapshot?.viewportWidth ? viewportWidth / snapshot.viewportWidth : 1
+  const heightRatio = snapshot?.viewportHeight ? viewportHeight / snapshot.viewportHeight : 1
+  const targetWidth = Math.max(1, (snapshot?.width ?? Math.min(viewportWidth * 0.55, 218)) * widthRatio)
+  const targetHeight = Math.max(1, (snapshot?.height ?? targetWidth * 1.546) * heightRatio)
+  const targetLeft = snapshot ? snapshot.left * widthRatio : (viewportWidth - targetWidth) / 2
+  const targetTop = snapshot ? snapshot.top * heightRatio : Math.max(96, (viewportHeight - targetHeight) / 2)
+  const targetCenterX = targetLeft + targetWidth / 2
+  const targetCenterY = targetTop + targetHeight / 2
+  const startScale = Math.max(
+    viewportWidth / Math.max(targetWidth, 1),
+    viewportHeight / Math.max(targetHeight, 1),
+  ) * 1.08
+
+  return {
+    '--reffo-home-return-start-x': `${viewportWidth / 2 - targetCenterX}px`,
+    '--reffo-home-return-start-y': `${viewportHeight / 2 - targetCenterY}px`,
+    '--reffo-home-return-start-scale': String(startScale),
+    '--reffo-home-return-left': `${targetLeft}px`,
+    '--reffo-home-return-top': `${targetTop}px`,
+    '--reffo-home-return-width': `${targetWidth}px`,
+    '--reffo-home-return-height': `${targetHeight}px`,
+    '--card-responsive-scale': String(targetWidth / HOME_CARD_DESIGN_WIDTH),
+  } as CSSProperties
+}
+
+function clearCardOpenRect() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.sessionStorage?.removeItem(CARD_OPEN_RECT_STORAGE_KEY)
+  } catch (error) {
+    console.warn('清理卡片过渡位置失败:', error)
   }
 }
 
@@ -35,6 +137,7 @@ function clearReturnHomeMarker() {
 
   try {
     window.sessionStorage?.removeItem(RESULT_RETURN_HOME_STORAGE_KEY)
+    clearCardOpenRect()
     delete document.documentElement.dataset[RESULT_RETURN_HOME_DOM_KEY]
   } catch (error) {
     console.warn('清理首页返回过渡标记失败:', error)
@@ -190,46 +293,49 @@ export default function PageView({
   handleDeckFirstInteraction,
   logoSource,
 }: IndexPageViewModel) {
+  const visualCapability = useVisualTier({benchmark: true})
   const sourceLabel = hasSourceResume && sourceResumeTitle ? sourceResumeTitle : '源简历'
-  const [isReturningFromResult, setIsReturningFromResult] = useState(false)
+  const [returnHomePayload, setReturnHomePayload] = useState<ReturningHomePayload | null>(() => readReturnHomeMarker())
+  const [isReturningFromResult, setIsReturningFromResult] = useState(() => Boolean(readReturnHomeMarker()))
+  const [returnTransitionKey, setReturnTransitionKey] = useState(0)
   const returnFadeTimerRef = useRef<number | null>(null)
-  const returnFadeFrameRef = useRef<number | null>(null)
   const isReturnHomeTransition = isReturningFromResult
+  const returningCardId = returnHomePayload?.cardId ?? null
+  const isViewTransitionReturn = returnHomePayload?.transition === 'view-transition'
+  const returnCard = useMemo(() => (
+    returningCardId ? cardItems.find(card => card.id === returningCardId) ?? currentCard : currentCard
+  ), [cardItems, currentCard, returningCardId])
+  const returnCardStyle = useMemo(
+    () => resolveReturnCardStyle(readCardOpenRect()),
+    [returnTransitionKey],
+  )
 
   useDidShow(() => {
     if (typeof window === 'undefined') {
       return
     }
 
-    const shouldAnimate = hasReturnHomeMarker()
+    const payload = readReturnHomeMarker()
 
-    if (!shouldAnimate) {
+    if (!payload) {
       return
     }
 
-    setIsReturningFromResult(false)
-    if (returnFadeFrameRef.current != null) {
-      window.cancelAnimationFrame(returnFadeFrameRef.current)
-    }
-    returnFadeFrameRef.current = window.requestAnimationFrame(() => {
-      returnFadeFrameRef.current = null
-      setIsReturningFromResult(true)
-    })
+    setReturnHomePayload(payload)
+    setReturnTransitionKey(key => key + 1)
+    setIsReturningFromResult(true)
     if (returnFadeTimerRef.current != null) {
       window.clearTimeout(returnFadeTimerRef.current)
     }
     returnFadeTimerRef.current = window.setTimeout(() => {
       returnFadeTimerRef.current = null
       clearReturnHomeMarker()
+      setReturnHomePayload(null)
       setIsReturningFromResult(false)
-    }, HOME_RETURN_FADE_MS)
+    }, HOME_RETURN_FLIP_MS)
   })
 
   useEffect(() => () => {
-    if (returnFadeFrameRef.current != null) {
-      window.cancelAnimationFrame(returnFadeFrameRef.current)
-      returnFadeFrameRef.current = null
-    }
     if (returnFadeTimerRef.current != null) {
       window.clearTimeout(returnFadeTimerRef.current)
       clearReturnHomeMarker()
@@ -242,6 +348,30 @@ export default function PageView({
         'reffo-home--returning-from-result': isReturnHomeTransition,
       })}
     >
+      {isReturnHomeTransition && returnCard ? (
+        <View
+          key={returnTransitionKey}
+          className={classNames('reffo-home__return-layer', {
+            'reffo-home__return-layer--view-transition': isViewTransitionReturn,
+          })}
+        >
+          <View className='reffo-home__return-backdrop' />
+          <View
+            className={classNames('reffo-home__return-card-stage', {
+              'reffo-home__return-card-stage--view-transition': isViewTransitionReturn,
+            })}
+            style={returnCardStyle}
+          >
+            <HomeScoreCard
+              card={returnCard}
+              depth={0}
+              active
+              visualTier={visualCapability.tier}
+              className='reffo-home__return-card'
+            />
+          </View>
+        </View>
+      ) : null}
       <View className='reffo-home__backdrop' />
       <View className='reffo-home__frame'>
         <View className='reffo-home__header'>
@@ -279,6 +409,7 @@ export default function PageView({
           cards={cardItems}
           initialIndex={initialCardIndex}
           enteringCardId={enteringCardId}
+          returningCardId={isReturnHomeTransition ? returningCardId : null}
           isCreateMode={isCreateMode}
           onCreateCardPress={handleConfirmCreate}
           onCardPress={hasHistories ? handleCardPress : undefined}
