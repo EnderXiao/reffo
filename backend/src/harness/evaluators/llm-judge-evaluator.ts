@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { parseJsonOutput } from '@/harness/json-output'
 import { getPromptVersion, resolvePromptVariant } from '@/harness/prompt-variant'
-import { buildResumeJudgeMessages } from '@/prompts/final-prompts'
+import { buildResumeJudgeMessages } from '@/prompts/prompts'
 import type { HarnessEventBus } from '@/harness/event-bus'
 import type { StepExecutionContext } from '@/harness/run-context'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'

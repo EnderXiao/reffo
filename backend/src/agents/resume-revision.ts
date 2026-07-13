@@ -1,5 +1,5 @@
 import { getPromptVersion, resolvePromptVariant } from '@/harness/prompt-variant'
-import { buildResumeRevisionMessages } from '@/prompts/final-prompts'
+import { buildResumeRevisionMessages } from '@/prompts/prompts'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'
 import type { LlmProvider } from '@/providers/llm-provider'
 import type { AgentExecutionOptions } from '@/agents/types'

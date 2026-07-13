@@ -1,6 +1,6 @@
 import { parseJsonOutput } from '@/harness/json-output'
 import { getPromptVersion, resolvePromptVariant } from '@/harness/prompt-variant'
-import { buildJdParsingMessages, buildJsonRepairMessages } from '@/prompts/final-prompts'
+import { buildJdParsingMessages, buildJsonRepairMessages } from '@/prompts/prompts'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'
 import type { LlmProvider } from '@/providers/llm-provider'
 import { isJDStructure, jdStructureSchema } from '@/schemas/match-analysis'

@@ -1,6 +1,6 @@
 import { parseJsonOutput } from '@/harness/json-output'
 import { getPromptVersion, resolvePromptVariant } from '@/harness/prompt-variant'
-import { buildInterviewAdviceMessages, buildJsonRepairMessages } from '@/prompts/final-prompts'
+import { buildInterviewAdviceMessages, buildJsonRepairMessages } from '@/prompts/prompts'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'
 import type { LlmProvider } from '@/providers/llm-provider'
 import { isInterviewSuggestions, parseInterviewSuggestions } from '@/schemas/interview-suggestions'

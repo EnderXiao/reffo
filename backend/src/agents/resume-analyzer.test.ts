@@ -1,16 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import { inferResumeNameFromMarkdown, ResumeAnalyzerAgent } from '@/agents/resume-analyzer'
+import { ResumeAnalyzerAgent } from '@/agents/resume-analyzer'
 import type { LlmProvider } from '@/providers/llm-provider'
 
-describe('ResumeAnalyzerAgent name recovery', () => {
-  test('extracts a person name from the first Markdown heading', () => {
-    expect(inferResumeNameFromMarkdown('# 张三\n\n## 工作经历')).toBe('张三')
-    expect(inferResumeNameFromMarkdown('# Jane Doe | Product Manager')).toBe('Jane Doe')
-    expect(inferResumeNameFromMarkdown('# 个人简历\n\n正文')).toBe('')
-    expect(inferResumeNameFromMarkdown('# 产品经理\n\n正文')).toBe('')
-  })
-
-  test('restores a heading name when the model leaves personal_info.name empty', async () => {
+describe('ResumeAnalyzerAgent name handling', () => {
+  test('keeps the name empty when the model cannot identify a person name', async () => {
     const provider: LlmProvider = {
       complete: async () => ({
         provider: 'fake',
@@ -40,9 +33,9 @@ describe('ResumeAnalyzerAgent name recovery', () => {
     }
 
     const result = await new ResumeAnalyzerAgent(provider).analyze(
-      '# 测试用户\n\n## 工作经历\n\n负责用户调研'
+      '# 产品经理\n\n## 工作经历\n\n负责用户调研'
     )
 
-    expect(result.structured_resume.personal_info.name).toBe('测试用户')
+    expect(result.structured_resume.personal_info.name).toBe('')
   })
 })

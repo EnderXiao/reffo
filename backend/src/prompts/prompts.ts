@@ -7,8 +7,8 @@ import type {
   ResumeStructure,
 } from '@/types'
 
-export const FINAL_PROMPT_VERSION = '3.0.0'
-export const FINAL_PROMPT_VARIANT = 'final-v3' as const
+export const PROMPT_VERSION = '3.0.0'
+export const PROMPT_VARIANT = 'final-v3' as const
 
 const FACT_SAFETY_CONTRACT = `
 事实与推断契约（不可违反）：
@@ -81,7 +81,7 @@ export function buildResumeAnalysisMessages(resumeMarkdown: string): ChatMessage
 
 执行标准：
 - 结构化提取尽量保留原文的专有名词、时间、数字和强弱程度；不要把多段不同经历合并成一段。
-- 一级标题若是自然人姓名，应写入 personal_info.name；“个人简历/求职简历/Resume”等通用标题不是姓名。不得用当前职位替代姓名。
+- 由你结合源简历语义判断姓名与当前职位，不依赖任何预设职业或岗位词表。一级标题若能明确识别为自然人姓名，应写入 personal_info.name；通用简历标题、职业/岗位名称均不得作为姓名。无法可靠区分时将 name 留空，不得猜测。
 - responsibilities 只放职责/行动，achievements 只放源文明确表达的成果；不能把职责自动改判为成果。
 - hard_skills 只收录源文明确出现或由具体工作对象直接证明的技能；soft_skills 不从空泛自我评价中扩写。
 - quality_score 使用同一标尺：信息完整性 25、事实证据与成果 25、表达清晰度 20、结构一致性 15、岗位材料可用性 15。缺失不等于能力不足。
@@ -320,7 +320,7 @@ export function buildResumeJudgeMessages(input: {
 输出结构必须为：
 {
   "evaluatorName": "llm-resume-judge",
-  "evaluatorVersion": "${FINAL_PROMPT_VERSION}",
+  "evaluatorVersion": "${PROMPT_VERSION}",
   "passed": false,
   "score": 0,
   "issues": [

@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  FINAL_PROMPT_VARIANT,
-  FINAL_PROMPT_VERSION,
+  PROMPT_VARIANT,
+  PROMPT_VERSION,
   buildInterviewAdviceMessages,
   buildJdParsingMessages,
   buildJsonRepairMessages,
   buildMatchingMessages,
   buildResumeAnalysisMessages,
   buildResumeGenerationMessages,
-} from '@/prompts/final-prompts'
+} from '@/prompts/prompts'
 import { resolvePromptVariant } from '@/harness/prompt-variant'
 import type { JDStructure, MatchAnalysis, ResumeAnalysis, ResumeStructure } from '@/types'
 
@@ -75,12 +75,19 @@ function promptText(messages: ReturnType<typeof buildResumeAnalysisMessages>) {
   return messages.map(message => message.content).join('\n')
 }
 
-describe('final prompt suite', () => {
-  test('uses the final prompt version for every legacy selector', () => {
-    expect(FINAL_PROMPT_VERSION).toBe('3.0.0')
-    expect(resolvePromptVariant()).toBe(FINAL_PROMPT_VARIANT)
-    expect(resolvePromptVariant('v1')).toBe(FINAL_PROMPT_VARIANT)
-    expect(resolvePromptVariant('v2')).toBe(FINAL_PROMPT_VARIANT)
+describe('prompt suite', () => {
+  test('uses the current prompt version for every legacy selector', () => {
+    expect(PROMPT_VERSION).toBe('3.0.0')
+    expect(resolvePromptVariant()).toBe(PROMPT_VARIANT)
+    expect(resolvePromptVariant('v1')).toBe(PROMPT_VARIANT)
+    expect(resolvePromptVariant('v2')).toBe(PROMPT_VARIANT)
+  })
+
+  test('lets the model identify names without a preset occupation list', () => {
+    const resumePrompt = promptText(buildResumeAnalysisMessages('# 产品经理\n\n张三'))
+
+    expect(resumePrompt).toContain('不依赖任何预设职业或岗位词表')
+    expect(resumePrompt).toContain('无法可靠区分时将 name 留空')
   })
 
   test('keeps uploaded content in user messages and protects the system layer', () => {
