@@ -124,6 +124,8 @@ function buildContextFromHistory(history: ResumeHistory): LatestResultSessionCon
 
 export interface ResultPageViewModel {
   result: ProcessResult | null
+  resumeContent: string
+  jdContent: string
   loading: boolean
   saved: boolean
   progress: LatestResultSessionProgress
@@ -510,6 +512,8 @@ export function usePageModel(): ResultPageViewModel {
 
   return {
     result,
+    resumeContent: resultContext?.resumeContent || '',
+    jdContent: resultContext?.jdContent || '',
     loading,
     saved,
     progress,

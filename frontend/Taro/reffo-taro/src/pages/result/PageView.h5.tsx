@@ -10,6 +10,7 @@ import {
 } from '@/utils/navigation-transition'
 import {resolveResumeGrade} from '@/utils/score-grade'
 import type {ResultPageViewModel} from './usePageModel'
+import {buildInterviewStoryViewItems} from './model/interviewReferences'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
 import suggestionIcon from '@/assets/result/suggestion.svg'
@@ -556,24 +557,24 @@ function ResumePanel({
   )
 }
 
-function InterviewPanel({result}: {result: ProcessResult}) {
+function InterviewPanel({
+  result,
+  resumeContent,
+  jdContent,
+}: {
+  result: ProcessResult
+  resumeContent: string
+  jdContent: string
+}) {
   const missingSkills = normalizeItems(result.matching.skill_match.missing_skills, 3)
   const unmatchedRequirements = getUnmatchedRequirements(result.matching.hard_requirements_match)
-  const strengths = normalizeItems(result.analysis.strengths, 3)
   const generatedQuestions = normalizeItems(result.interview?.questions, 4)
   const fallbackQuestions = [
     ...missingSkills.map(item => `你会如何补齐「${item}」相关经验？`),
     ...unmatchedRequirements.map(item => `针对「${item}」，你准备用什么项目证据回应？`),
   ].slice(0, 2)
   const questions = generatedQuestions.length > 0 ? generatedQuestions : fallbackQuestions
-  const story = result.interview?.story_recommendations?.[0]
-  const secondaryStory = result.interview?.story_recommendations?.[1]
-  const storyTitle = story?.title || strengths[0] || '高匹配项目经历'
-  const storyBody = story?.background || strengths[1] || result.analysis.capability_summary || '围绕目标岗位要求，选择最能证明能力迁移的项目经历展开。'
-  const storyResult = story?.result || result.optimized.changes_summary[0] || '用量化结果和职责边界说明你的贡献，避免只描述过程。'
-  const secondaryStoryTitle = secondaryStory?.title || '补齐短板的备选故事'
-  const secondaryStoryBody = secondaryStory?.background || '选择一段能回应岗位关键短板的经历，说明你如何快速学习、协作推进或补齐经验。'
-  const secondaryStoryResult = secondaryStory?.result || '强调可验证的交付结果、复盘沉淀或能力迁移，避免只描述主观态度。'
+  const storyItems = buildInterviewStoryViewItems(result, resumeContent, jdContent)
   const generatedFollowUps = normalizeItems(result.interview?.follow_up_questions, 3)
   const followUps = generatedFollowUps.length > 0
     ? generatedFollowUps
@@ -592,17 +593,14 @@ function InterviewPanel({result}: {result: ProcessResult}) {
 
       <SectionTitle>明星故事推荐</SectionTitle>
       <View className='reffo-result__story-list'>
-        {[
-          {title: storyTitle, background: storyBody, result: storyResult},
-          {title: secondaryStoryTitle, background: secondaryStoryBody, result: secondaryStoryResult},
-        ].map((item, index) => (
+        {storyItems.map((item, index) => (
           <View key={`${item.title}-${index}`} className='reffo-result__story-block'>
             <Text className='reffo-result__story-title'>{item.title}</Text>
             <Text className='reffo-result__story-source'>
               来自源简历
-              <Text className='reffo-result__story-reference'>【引用源简历内容】</Text>
+              <Text className='reffo-result__story-reference'>{item.resumeQuote || '暂无可引用原文'}</Text>
               和岗位描述
-              <Text className='reffo-result__story-reference'>【引用岗位描述原文内容】</Text>
+              <Text className='reffo-result__story-reference'>{item.jdQuote || '暂无可引用原文'}</Text>
               。
             </Text>
 
@@ -615,10 +613,10 @@ function InterviewPanel({result}: {result: ProcessResult}) {
             <Text className='reffo-result__story-label'>讲述思路：</Text>
             <View className='reffo-result__story-bullets'>
               <Text className='reffo-result__story-bullet'>
-                • 从岗位描述中 <Text className='reffo-result__story-reference'>【引用岗位描述原文内容】</Text> 推测招聘方看重标准建立能力和处理思路，建议重点阐述。
+                • 从岗位描述中 <Text className='reffo-result__story-reference'>{item.jdQuote || '暂无可引用原文'}</Text> 对齐讲述重点，优先说明这段经历如何回应岗位要求。
               </Text>
               <Text className='reffo-result__story-bullet'>
-                • 从岗位描述中 <Text className='reffo-result__story-reference'>【引用岗位描述引用引用原文内容】</Text> 推测招聘方不希望候选人不懂业务，建议避开此类描述。
+                • 从源简历中 <Text className='reffo-result__story-reference'>{item.resumeQuote || '暂无可引用原文'}</Text> 回到可核验事实，避免把岗位要求包装成自己已经做过的经历。
               </Text>
             </View>
           </View>
@@ -634,10 +632,14 @@ function InterviewPanel({result}: {result: ProcessResult}) {
 function ResultContent({
   stage,
   result,
+  resumeContent,
+  jdContent,
   onOptimizedResumeChange,
 }: {
   stage: ResultStageKey
   result: ProcessResult
+  resumeContent: string
+  jdContent: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
 }) {
   if (stage === 'analysis') return <AnalysisPanel result={result} />
@@ -649,11 +651,13 @@ function ResultContent({
       />
     )
   }
-  return <InterviewPanel result={result} />
+  return <InterviewPanel result={result} resumeContent={resumeContent} jdContent={jdContent} />
 }
 
 export default function PageView({
   result,
+  resumeContent,
+  jdContent,
   loading,
   progress,
   progressPercent,
@@ -1227,6 +1231,8 @@ export default function PageView({
                       <ResultContent
                         stage={RESULT_STAGES[stageTransition.fromIndex]?.key ?? activeStage.key}
                         result={result}
+                        resumeContent={resumeContent}
+                        jdContent={jdContent}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
                       />
                     </View>
@@ -1241,6 +1247,8 @@ export default function PageView({
                       <ResultContent
                         stage={RESULT_STAGES[stageTransition.toIndex]?.key ?? activeStage.key}
                         result={result}
+                        resumeContent={resumeContent}
+                        jdContent={jdContent}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
                       />
                     </View>
@@ -1253,6 +1261,8 @@ export default function PageView({
                     <ResultContent
                       stage={activeStage.key}
                       result={result}
+                      resumeContent={resumeContent}
+                      jdContent={jdContent}
                       onOptimizedResumeChange={handleOptimizedResumeChange}
                     />
                   </View>
