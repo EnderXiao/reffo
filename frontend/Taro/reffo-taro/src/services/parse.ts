@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro'
 import * as FileSystem from 'expo-file-system'
 import {apiClient} from './api'
 import {authApi, type AuthSession} from './auth'
+import {getSupabasePublicConfig} from './runtime-config'
 import type {BrowserPickedFile} from '@/utils/web-file'
 
 export interface OcrUsage {
@@ -96,18 +97,6 @@ async function readPickedFileAsBase64(file: BrowserPickedFile) {
   }
 }
 
-function getSupabaseStorageConfig() {
-  const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, '') || ''
-  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || ''
-  const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'user-files'
-
-  if (!supabaseUrl || !publishableKey) {
-    return null
-  }
-
-  return {supabaseUrl, publishableKey, bucket}
-}
-
 function sanitizeStorageFileName(fileName: string) {
   return fileName
     .trim()
@@ -133,16 +122,18 @@ async function uploadToSupabaseStorage(input: {
   purpose: 'resume' | 'jobDescription'
   session: AuthSession
 }) {
-  const config = getSupabaseStorageConfig()
+  let config
 
-  if (!config) {
+  try {
+    config = await getSupabasePublicConfig()
+  } catch (error) {
     return null
   }
 
   const safeName = sanitizeStorageFileName(input.file.name)
   const storagePath = `${input.session.user.id}/${input.purpose}/${Date.now()}-${safeName}`
   const response = await fetch(
-    `${config.supabaseUrl}/storage/v1/object/${config.bucket}/${storagePath}`,
+    `${config.url}/storage/v1/object/${config.storageBucket}/${storagePath}`,
     {
       method: 'POST',
       headers: {
@@ -160,7 +151,7 @@ async function uploadToSupabaseStorage(input: {
   }
 
   return {
-    bucket: config.bucket,
+    bucket: config.storageBucket,
     storage_path: storagePath,
     size_bytes: Math.ceil(input.base64.length * 0.75),
   }

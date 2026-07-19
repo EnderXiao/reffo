@@ -8,6 +8,7 @@ import PDF_FILE_ICON from '@/assets/create/pdf-file.svg'
 import UPLOAD_ERROR_ICON from '@/assets/create/upload-error.svg'
 import UPLOAD_FILE_ICON from '@/assets/create/upload-file.svg'
 import {Card} from '@/components/Card'
+import DeleteBreakCard from '@/components/business/DeleteBreakCard/index.h5'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
@@ -32,8 +33,24 @@ type DocumentWithViewTransition = Document & {
   }
 }
 
-type DeletePreviewPhase = 'idle' | 'preview' | 'deleting'
+type DeletePreviewPhase = 'idle' | 'preview' | 'deleting' | 'breaking'
 type DeleteCardTransitionDirection = 'enter' | 'return'
+
+const DELETE_LOADING_MESSAGES = [
+  '掰掰就拜拜',
+  '把简历扔进垃圾桶吧！',
+  '不当牛马了！',
+  '这份简历下班了',
+]
+
+const DELETE_LAY_ANIMATION_MS = 620
+const DELETE_WAIT_ANIMATION_MS = 2000
+const DELETE_REQUEST_MIN_MS = DELETE_LAY_ANIMATION_MS + DELETE_WAIT_ANIMATION_MS
+const DELETE_BREAK_ANIMATION_MS = 1180
+const DELETE_SWIPE_RIGHT_THRESHOLD = 78
+const DELETE_SWIPE_DOWN_THRESHOLD = 86
+const DELETE_SWIPE_DIRECTION_RATIO = 1.16
+const DELETE_GESTURE_RETURN_MS = 240
 
 function canUseViewTransition() {
   return typeof document !== 'undefined'
@@ -68,6 +85,16 @@ function runDeleteCardViewTransition(
   void transition.finished.finally(() => {
     root.classList.remove(transitionClass)
   })
+}
+
+function waitForDeleteMotion(duration: number) {
+  return new Promise<void>(resolve => {
+    window.setTimeout(resolve, duration)
+  })
+}
+
+function clampGestureValue(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
 function buildPendingGenerationState({
@@ -652,9 +679,78 @@ function DeleteResumeOverlay({
 }) {
   const {tier: visualTier} = useVisualTier({benchmark: false})
   const touchStartRef = useRef<{x: number; y: number} | null>(null)
+  const gestureReturnTimerRef = useRef<number | null>(null)
   const isDeleting = phase === 'deleting'
+  const isBreaking = phase === 'breaking'
+  const isProcessing = isDeleting || isBreaking
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+  const [dragFeedback, setDragFeedback] = useState({
+    x: 0,
+    y: 0,
+    progressX: 0,
+    progressY: 0,
+    isActive: false,
+  })
+
+  useEffect(() => {
+    return () => {
+      if (gestureReturnTimerRef.current != null) {
+        window.clearTimeout(gestureReturnTimerRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isDeleting) {
+      setLoadingMessageIndex(0)
+      return undefined
+    }
+
+    const timer = window.setInterval(() => {
+      setLoadingMessageIndex(index => (index + 1) % DELETE_LOADING_MESSAGES.length)
+    }, 920)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [isDeleting])
+
+  const resetDragFeedback = () => {
+    setDragFeedback(previous => previous.isActive || previous.x || previous.y || previous.progressX || previous.progressY
+      ? {
+          x: 0,
+          y: 0,
+          progressX: 0,
+          progressY: 0,
+          isActive: false,
+        }
+      : previous)
+  }
+
+  const scheduleGestureAction = (action: 'return' | 'delete') => {
+    if (gestureReturnTimerRef.current != null) {
+      return
+    }
+
+    gestureReturnTimerRef.current = window.setTimeout(() => {
+      gestureReturnTimerRef.current = null
+
+      if (action === 'return') {
+        onReturnToEdit()
+        return
+      }
+
+      void onCommitDelete()
+    }, DELETE_GESTURE_RETURN_MS)
+  }
 
   const handleTouchStart = (event: any) => {
+    if (isProcessing || gestureReturnTimerRef.current != null) {
+      touchStartRef.current = null
+      resetDragFeedback()
+      return
+    }
+
     const touch = event.touches[0] ?? event.changedTouches[0]
     touchStartRef.current = touch
       ? {
@@ -662,16 +758,52 @@ function DeleteResumeOverlay({
           y: touch.clientY,
         }
       : null
+    setDragFeedback({
+      x: 0,
+      y: 0,
+      progressX: 0,
+      progressY: 0,
+      isActive: true,
+    })
+  }
+
+  const handleTouchMove = (event: any) => {
+    if (phase !== 'preview') {
+      return
+    }
+
+    const start = touchStartRef.current
+    const touch = event.touches[0] ?? event.changedTouches[0]
+
+    if (!start || !touch) {
+      return
+    }
+
+    const deltaX = Math.max(0, touch.clientX - start.x)
+    const deltaY = Math.max(0, touch.clientY - start.y)
+    const isHorizontal = deltaX > deltaY * DELETE_SWIPE_DIRECTION_RATIO
+    const isVertical = deltaY > deltaX * DELETE_SWIPE_DIRECTION_RATIO
+    const dampedX = isHorizontal ? clampGestureValue(deltaX * 0.72, 0, 92) : 0
+    const dampedY = isVertical ? clampGestureValue(deltaY * 0.58, 0, 94) : 0
+
+    setDragFeedback({
+      x: dampedX,
+      y: dampedY,
+      progressX: isHorizontal ? clampGestureValue(deltaX / DELETE_SWIPE_RIGHT_THRESHOLD, 0, 1) : 0,
+      progressY: isVertical ? clampGestureValue(deltaY / DELETE_SWIPE_DOWN_THRESHOLD, 0, 1) : 0,
+      isActive: true,
+    })
   }
 
   const handleTouchEnd = (event: any) => {
-    if (isDeleting) {
+    if (phase !== 'preview') {
       return
     }
 
     const start = touchStartRef.current
     const touch = event.changedTouches[0]
     touchStartRef.current = null
+    resetDragFeedback()
 
     if (!start || !touch) {
       return
@@ -679,69 +811,98 @@ function DeleteResumeOverlay({
 
     const deltaX = touch.clientX - start.x
     const deltaY = touch.clientY - start.y
+    const absoluteDeltaX = Math.abs(deltaX)
+    const absoluteDeltaY = Math.abs(deltaY)
 
-    if (deltaX > 58 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
-      onReturnToEdit()
+    if (deltaX >= DELETE_SWIPE_RIGHT_THRESHOLD && absoluteDeltaX > absoluteDeltaY * DELETE_SWIPE_DIRECTION_RATIO) {
+      scheduleGestureAction('return')
       return
     }
 
-    if (deltaY < 58 || Math.abs(deltaY) < Math.abs(deltaX) * 1.2) {
+    if (deltaY < DELETE_SWIPE_DOWN_THRESHOLD || absoluteDeltaY < absoluteDeltaX * DELETE_SWIPE_DIRECTION_RATIO) {
+      return
+    }
+
+    scheduleGestureAction('delete')
+  }
+
+  const handleFooterClick = () => {
+    if (phase !== 'preview') {
       return
     }
 
     void onCommitDelete()
   }
 
+  const handleReturnClick = () => {
+    if (phase !== 'preview') {
+      return
+    }
+
+    onReturnToEdit()
+  }
+
   if (!card) {
     return null
   }
+
+  const dragStyle = {
+    '--delete-drag-x': `${dragFeedback.x}px`,
+    '--delete-drag-y': `${dragFeedback.y}px`,
+    '--delete-drag-progress-x': dragFeedback.progressX,
+    '--delete-drag-progress-y': dragFeedback.progressY,
+  } as any
 
   return (
     <View
       className={classNames('reffo-create-delete', {
         'reffo-create-delete--deleting': isDeleting,
+        'reffo-create-delete--breaking': isBreaking,
+        'reffo-create-delete--dragging': dragFeedback.isActive,
       })}
+      style={dragStyle}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={() => {
+        touchStartRef.current = null
+        resetDragFeedback()
+      }}
     >
       <View className='reffo-create-delete__backdrop' />
       <View className='reffo-create-delete__content'>
         <View className='reffo-create-delete__close' onClick={onClose} role='button' aria-label='关闭编辑简历'>
           <Text>×</Text>
         </View>
-        <View className='reffo-create-delete__card-stage reffo-home-deck-wrap--enhanced'>
-          <View className='reffo-create-delete__flipper'>
-            <View className='reffo-create-delete__face reffo-create-delete__face--front'>
-              <View className='reffo-create-delete__front-card'>
-                <View className='reffo-create-job__hardware' />
-                <View className='reffo-create-job__ribbon'>
-                  <Text>申请信息</Text>
-                </View>
-                <View className='reffo-create-delete__front-field'>
-                  <Text className='reffo-create-delete__front-label'>公司</Text>
-                  <Text className='reffo-create-delete__front-value'>{card.company}</Text>
-                </View>
-                <View className='reffo-create-delete__front-field'>
-                  <Text className='reffo-create-delete__front-label'>岗位</Text>
-                  <Text className='reffo-create-delete__front-value'>{card.role}</Text>
-                </View>
-                <View className='reffo-create-delete__front-field'>
-                  <Text className='reffo-create-delete__front-label'>工作地</Text>
-                  <Text className='reffo-create-delete__front-value'>{card.location}</Text>
-                </View>
+        <DeleteBreakCard
+          card={card}
+          phase={phase === 'preview' ? 'idle' : phase}
+          visualTier={visualTier}
+          className='reffo-create-delete__card-stage reffo-home-deck-wrap--enhanced'
+          cardClassName='reffo-create-delete__home-card'
+          pieceCardClassName='reffo-create-delete__home-card--piece'
+          style={dragStyle}
+          front={(
+            <View className='reffo-create-delete__front-card'>
+              <View className='reffo-create-job__hardware' />
+              <View className='reffo-create-job__ribbon'>
+                <Text>申请信息</Text>
+              </View>
+              <View className='reffo-create-delete__front-field'>
+                <Text className='reffo-create-delete__front-label'>公司</Text>
+                <Text className='reffo-create-delete__front-value'>{card.company}</Text>
+              </View>
+              <View className='reffo-create-delete__front-field'>
+                <Text className='reffo-create-delete__front-label'>岗位</Text>
+                <Text className='reffo-create-delete__front-value'>{card.role}</Text>
+              </View>
+              <View className='reffo-create-delete__front-field'>
+                <Text className='reffo-create-delete__front-label'>工作地</Text>
+                <Text className='reffo-create-delete__front-value'>{card.location}</Text>
               </View>
             </View>
-            <View className='reffo-create-delete__face reffo-create-delete__face--back'>
-              <HomeScoreCard
-                card={card}
-                depth={0}
-                active
-                visualTier={visualTier}
-                className='reffo-create-delete__home-card'
-              />
-            </View>
-          </View>
-        </View>
+          )}
+        />
 
         <View className='reffo-create-delete__copy'>
           <View className='reffo-create-delete__title'>
@@ -753,26 +914,32 @@ function DeleteResumeOverlay({
           </Text>
         </View>
 
-        <View className='reffo-create-delete__footer'>
-          {!isDeleting ? (
+        <View
+          className='reffo-create-delete__footer'
+          onClick={handleFooterClick}
+          role='button'
+          aria-disabled={phase !== 'preview'}
+        >
+          {!isProcessing ? (
             <Text className='reffo-create-delete__footer-arrow'>↓</Text>
           ) : null}
-          <Text className='reffo-create-delete__footer-text'>{isDeleting ? '删除中...' : '下滑删除'}</Text>
-          {!isDeleting ? (
+          <Text className='reffo-create-delete__footer-text'>
+            {isBreaking ? '拜拜' : isProcessing ? DELETE_LOADING_MESSAGES[loadingMessageIndex] : '下滑删除'}
+          </Text>
+          {!isProcessing ? (
             <Text className='reffo-create-delete__footer-arrow'>↓</Text>
           ) : null}
         </View>
-        {!isDeleting ? (
-          <View
-            className='reffo-create-delete__cancel-hint'
-            onClick={onReturnToEdit}
-            role='button'
-            aria-label='返回编辑简历'
-          >
-            <Text className='reffo-create-delete__cancel-text'>右滑返回</Text>
-            <Text className='reffo-create-delete__cancel-arrow'>→</Text>
-          </View>
-        ) : null}
+        <View
+          className='reffo-create-delete__cancel-hint'
+          onClick={handleReturnClick}
+          role='button'
+          aria-disabled={phase !== 'preview'}
+          aria-label='返回编辑简历'
+        >
+          <Text className='reffo-create-delete__cancel-text'>右滑返回</Text>
+          <Text className='reffo-create-delete__cancel-arrow'>→</Text>
+        </View>
       </View>
     </View>
   )
@@ -802,17 +969,20 @@ export default function PageView({
   handlePickJobAttachment,
   handlePrimaryAction,
   handleDeleteHistoryResume,
+  handleReturnHome,
   handleCancelGeneration,
   handleClose,
 }: CreatePageViewModel) {
   const isJobStep = currentStep === 'jobDescription'
   const [pendingGenerationState, setPendingGenerationState] = useState<CreateGenerationState | null>(null)
   const [deletePreviewPhase, setDeletePreviewPhase] = useState<DeletePreviewPhase>('idle')
+  const [deletePreviewCard, setDeletePreviewCard] = useState<HomeCardItem | null>(null)
   const [isLaunchingGeneration, setIsLaunchingGeneration] = useState(false)
   const [isReturningFromGeneration, setIsReturningFromGeneration] = useState(false)
   const [isCssFallbackLaunching, setIsCssFallbackLaunching] = useState(false)
   const [isGenerationCompleted, setIsGenerationCompleted] = useState(false)
   const launchGenerationTimerRef = useRef<number | null>(null)
+  const deleteBreakTimerRef = useRef<number | null>(null)
   const isDeletePreviewActive = deletePreviewPhase !== 'idle'
   const isActionDisabled =
     !canSaveCurrentStep ||
@@ -827,6 +997,9 @@ export default function PageView({
     return () => {
       if (launchGenerationTimerRef.current != null) {
         window.clearTimeout(launchGenerationTimerRef.current)
+      }
+      if (deleteBreakTimerRef.current != null) {
+        window.clearTimeout(deleteBreakTimerRef.current)
       }
     }
   }, [])
@@ -897,6 +1070,7 @@ export default function PageView({
     }
 
     runDeleteCardViewTransition('enter', () => {
+      setDeletePreviewCard(editingHistoryCard)
       setDeletePreviewPhase('preview')
     })
   }
@@ -908,17 +1082,31 @@ export default function PageView({
 
     runDeleteCardViewTransition('return', () => {
       setDeletePreviewPhase('idle')
+      setDeletePreviewCard(null)
     })
   }
 
   const handleCommitDelete = async () => {
-    if (deletePreviewPhase === 'deleting') {
+    if (deletePreviewPhase !== 'preview') {
       return
     }
 
     setDeletePreviewPhase('deleting')
-    await handleDeleteHistoryResume()
-    setDeletePreviewPhase('idle')
+    const [isDeleted] = await Promise.all([
+      handleDeleteHistoryResume(),
+      waitForDeleteMotion(DELETE_REQUEST_MIN_MS),
+    ])
+
+    if (!isDeleted) {
+      setDeletePreviewPhase('preview')
+      return
+    }
+
+    setDeletePreviewPhase('breaking')
+    deleteBreakTimerRef.current = window.setTimeout(() => {
+      deleteBreakTimerRef.current = null
+      void handleReturnHome()
+    }, DELETE_BREAK_ANIMATION_MS)
   }
 
   const handleGenerationCancelClick = () => {
@@ -1057,7 +1245,7 @@ export default function PageView({
       ) : null}
       {isDeletePreviewActive ? (
         <DeleteResumeOverlay
-          card={editingHistoryCard}
+          card={deletePreviewCard || editingHistoryCard}
           phase={deletePreviewPhase}
           onCommitDelete={handleCommitDelete}
           onClose={handleClose}

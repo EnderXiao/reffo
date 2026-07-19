@@ -76,13 +76,15 @@ bunx supabase migration list
 curl https://<prod-api-domain>/api/v1/mvp/health
 ```
 
-7. 完成生产 smoke：
+7. 完成正式环境基础 smoke：
 
 - 登录正式用户。
 - 保存源简历。
-- 发起生成流程。
+- 不发起真实 AI 生成流程。
 - 查看生成历史。
 - 删除测试生成历史。
+
+真实 AI 生成链路 smoke 固定在非生产环境执行，避免正式环境产生模型调用费用和测试数据。
 
 ## 备份策略
 
@@ -153,7 +155,7 @@ project ref：
 migration list：
 备份方式：
 健康检查结果：
-生产 smoke 结果：
+正式环境基础 smoke 结果：
 异常和处理：
 ```
 
@@ -178,13 +180,13 @@ migration list：
   - 四张 public 表 RLS 均为 true。
   - public 表 owner policy 存在，storage.objects 的 user-files owner select/insert/update/delete policy 存在。
   - storage.buckets 中 user-files 存在且 public=false。
-生产 smoke 结果：
+正式环境基础 smoke 结果：
   - schema、RLS、policy、后端健康检查已通过。
   - 正式测试账号登录已通过。
   - 源简历保存、读取、删除已通过。
   - 生成历史创建、列表、详情、更新、删除已通过。
   - Storage 私有 bucket 用户态上传、下载、删除已通过。
-  - 真实 AI 生成链路未执行，待确认可产生模型调用费用后继续。
+  - 真实 AI 生成链路按当前策略不在正式环境执行；完整 AI 主链路 smoke 改在非生产环境完成。
 异常和处理：
   - Storage 管理 API 使用新 SUPABASE_SECRET_KEY 查询 bucket 返回 Bucket not found，但 SQL 确认 storage.buckets row 存在。
   - 新 secret key 不是 legacy JWT，不能直接调用 Auth admin 创建用户；不切回 legacy key，后续使用真实登录用户做 smoke。

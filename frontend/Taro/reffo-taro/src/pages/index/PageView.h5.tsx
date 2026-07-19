@@ -433,10 +433,12 @@ export default function PageView({
                 <Text className='reffo-home__inline-icon'>↗</Text>
                 <Text>点击以开始</Text>
               </View>
-              <View className='reffo-home__inline-action reffo-home__inline-action--cancel' onClick={handleCancelCreate}>
-                <Text className='reffo-home__inline-icon'>×</Text>
-                <Text>取消</Text>
-              </View>
+              {hasHistories ? (
+                <View className='reffo-home__inline-action reffo-home__inline-action--cancel' onClick={handleCancelCreate}>
+                  <Text className='reffo-home__inline-icon'>×</Text>
+                  <Text>取消</Text>
+                </View>
+              ) : null}
             </View>
           )}
           <Text className='reffo-home__disclaimer'>*内容由人工智能生成，请仔细检查</Text>

@@ -54,6 +54,24 @@ corepack pnpm@10.33.2 build:h5
 corepack pnpm@10.33.2 dev:h5
 ```
 
+后端环境由后端启动脚本决定：
+
+```bash
+cd backend
+bun run dev:local
+bun run dev:nonprod
+bun run start:prod
+```
+
+Taro H5 只选择要连接的后端 API 环境，Supabase public 配置由后端 `/api/v1/system/public-config` 返回：
+
+```bash
+cd frontend/Taro/reffo-taro
+corepack pnpm@10.33.2 dev:h5:local
+corepack pnpm@10.33.2 dev:h5:nonprod
+corepack pnpm@10.33.2 build:h5:prod
+```
+
 ### 📚 详细文档
 
 - **[Agent 开发手册](AGENTS.md)** - 面向开发 agent 的项目结构、技术栈、代码规范、设计规范和验证流程

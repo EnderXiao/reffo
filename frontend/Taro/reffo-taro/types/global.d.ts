@@ -21,11 +21,11 @@ declare namespace NodeJS {
      * 当前构建的小程序 appid
      * @description 若不同环境有不同的小程序，可通过在 env 文件中配置环境变量`TARO_APP_ID`来方便快速切换 appid， 而不必手动去修改 dist/project.config.json 文件
      * @see https://taro-docs.jd.com/docs/next/env-mode-config#特殊环境变量-taro_app_id
-     */
+    */
     TARO_APP_ID: string
+    /** Reffo 运行环境，不等同于 NODE_ENV */
+    REFFO_ENV?: 'local' | 'nonprod' | 'prod'
     API_BASE_URL?: string
-    SUPABASE_URL?: string
-    SUPABASE_PUBLISHABLE_KEY?: string
-    SUPABASE_STORAGE_BUCKET?: string
+    API_PROXY_TARGET?: string
   }
 }

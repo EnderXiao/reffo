@@ -62,6 +62,8 @@ bun run migrate:sqlite-to-supabase:prod
 
 `.env.prod` 必须设置 `APP_ENV=prod`、`DATABASE_PROVIDER=supabase`、`AUTH_REQUIRED=true`、`SUPABASE_PROJECT_ENV=prod`，并使用正式 Supabase project 的新 API key。
 
+前端只需要选择后端 API 域名，不直接配置 Supabase URL 或 Publishable key。后端通过 `GET /api/v1/system/public-config` 返回当前环境的公开配置，避免前端 API 域名和 Supabase project 错配。
+
 ## 核心 API
 
 ### `POST /api/v1/mvp/process`
@@ -93,6 +95,7 @@ bun run migrate:sqlite-to-supabase:prod
 
 ### OCR 与持久化接口
 
+- `GET /api/v1/system/public-config`: 前端运行时公开配置。
 - `GET /api/v1/parse/health`: OCR 配置状态。
 - `POST /api/v1/parse/resume-file`: 使用 GLM-OCR 解析简历 PDF。
 - `POST /api/v1/parse/jd-image`: 使用 GLM-OCR 解析 JD 图片。

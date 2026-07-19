@@ -72,7 +72,8 @@ export interface CreatePageViewModel {
   handleJobInputModeChange: (mode: JobDescriptionInputMode) => void
   handlePickJobAttachment: () => Promise<void>
   handlePrimaryAction: () => Promise<boolean>
-  handleDeleteHistoryResume: () => Promise<void>
+  handleDeleteHistoryResume: () => Promise<boolean>
+  handleReturnHome: () => Promise<void>
   handleCancelGeneration: () => void
   handleClose: () => void
 }
@@ -1407,7 +1408,7 @@ export function usePageModel(): CreatePageViewModel {
 
   const handleDeleteHistoryResume = async () => {
     if (!isHistoryEditMode || !editHistoryId) {
-      return
+      return false
     }
 
     setIsSavingCurrentStep(true)
@@ -1415,13 +1416,18 @@ export function usePageModel(): CreatePageViewModel {
     try {
       await useHistoryStore.getState().deleteHistory(editHistoryId)
       feedback.success('简历已删除', {duration: 1200})
-      await navigation.returnHome()
+      return true
     } catch (error) {
       console.error('delete history resume failed', error)
       feedback.error(error instanceof Error ? error.message : '删除简历失败，请重试')
+      return false
     } finally {
       setIsSavingCurrentStep(false)
     }
+  }
+
+  const handleReturnHome = () => {
+    return navigation.reLaunch('/pages/index/index')
   }
 
   const handleClose = () => {
@@ -1463,6 +1469,7 @@ export function usePageModel(): CreatePageViewModel {
     handlePickJobAttachment,
     handlePrimaryAction,
     handleDeleteHistoryResume,
+    handleReturnHome,
     handleCancelGeneration,
     handleClose,
   }

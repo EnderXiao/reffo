@@ -1,7 +1,12 @@
 import {apiClient} from './api';
+import {getSupabasePublicConfig} from './runtime-config';
 import {getJSON, setJSON, storage} from '@/utils/storage';
 
-const AUTH_SESSION_STORAGE_KEY = 'reffo.auth.session';
+function getAuthSessionStorageKey() {
+  const env = process.env.REFFO_ENV?.trim() || process.env.API_BASE_URL?.trim() || 'local';
+
+  return `reffo.auth.session.${env}`;
+}
 
 interface SupabaseAuthUser {
   id: string;
@@ -36,20 +41,6 @@ export interface SignInWithPasswordInput {
   password: string;
 }
 
-function getSupabaseUrl() {
-  return process.env.SUPABASE_URL?.replace(/\/+$/, '') || '';
-}
-
-function getSupabasePublishableKey() {
-  return process.env.SUPABASE_PUBLISHABLE_KEY || '';
-}
-
-function assertSupabaseAuthConfigured() {
-  if (!getSupabaseUrl() || !getSupabasePublishableKey()) {
-    throw new Error('Supabase Auth 未配置');
-  }
-}
-
 function mapAuthResponse(response: SupabasePasswordResponse): AuthSession {
   return {
     accessToken: response.access_token,
@@ -69,12 +60,12 @@ function getSupabaseErrorMessage(payload: unknown) {
 }
 
 async function requestSupabaseAuth<T>(path: string, body?: unknown): Promise<T> {
-  assertSupabaseAuthConfigured();
+  const config = await getSupabasePublicConfig();
 
-  const response = await fetch(`${getSupabaseUrl()}${path}`, {
+  const response = await fetch(`${config.url}${path}`, {
     method: 'POST',
     headers: {
-      apikey: getSupabasePublishableKey(),
+      apikey: config.publishableKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -105,7 +96,7 @@ export class AuthApi {
   }
 
   async restoreSession(): Promise<AuthSession | null> {
-    const session = await getJSON<AuthSession>(AUTH_SESSION_STORAGE_KEY);
+    const session = await getJSON<AuthSession>(getAuthSessionStorageKey());
 
     if (!session?.accessToken) {
       apiClient.setAuthToken(null);
@@ -117,12 +108,12 @@ export class AuthApi {
   }
 
   async persistSession(session: AuthSession): Promise<void> {
-    await setJSON(AUTH_SESSION_STORAGE_KEY, session);
+    await setJSON(getAuthSessionStorageKey(), session);
     apiClient.setAuthToken(session.accessToken);
   }
 
   async signOut(): Promise<void> {
-    await storage.removeItem(AUTH_SESSION_STORAGE_KEY);
+    await storage.removeItem(getAuthSessionStorageKey());
     apiClient.setAuthToken(null);
   }
 }

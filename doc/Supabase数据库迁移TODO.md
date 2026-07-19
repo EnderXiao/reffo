@@ -58,7 +58,7 @@
 | SB-23 | done | P0 | 前端 API 请求注入 Bearer token | SB-22 | `source-resume`、生成流程、历史相关请求都能携带 token；无登录态时有明确处理。 |
 | SB-24 | done | P0 | 多用户隔离端到端验证 | SB-18, SB-19, SB-23 | 用户 A 和用户 B 分别创建源简历和历史后，互相无法通过接口读取、更新或删除。 |
 | SB-25 | done | P1 | 准备非生产和正式部署配置 | SB-10, SB-15, SB-17 | 非生产、正式后端已分别使用 `.env.nonprod` / `.env.prod` 注入对应 Supabase project 环境变量；正式环境设置 `APP_ENV=prod`、`DATABASE_PROVIDER=supabase`、`AUTH_REQUIRED=true`、`SUPABASE_PROJECT_ENV=prod`。 |
-| SB-26 | blocked | P1 | 上线前 smoke 验证 | SB-24, SB-25 | 正式 migration 已执行；migration list、表访问、RLS/policy、Storage bucket SQL row、prod 后端健康检查、正式账号登录、源简历保存/读取/删除、历史创建/列表/详情/更新/删除、Storage 上传/下载/删除均已通过。真实 AI 生成链路未执行，待确认可产生模型调用费用后继续。 |
+| SB-26 | done | P1 | 上线前 smoke 验证 | SB-24, SB-25 | 上线前完整 AI 主链路 smoke 调整为只在非生产环境执行；非生产环境已完成登录、保存源简历、生成简历、查看历史、删除历史 smoke。正式环境不再执行真实 AI 生成，只保留 migration、schema/RLS/policy、Storage、健康检查和非 AI 用户态写读删验证。 |
 | SB-27 | done | P2 | 迁移文件上传到 Supabase Storage | SB-22 | PDF / JD 图片写入各环境私有 bucket；后端按用户权限读取文件并调用 OCR；删除策略明确。已完成私有 bucket migration、前端登录态上传、后端 token 读取、`user_files` 记录和 storage 分支单测。 |
 | SB-28 | done | P2 | Harness 拆到独立 SQLite 运行时库 | 无 | Harness 表不再混用主业务 SQLite；支持 `HARNESS_DATABASE_PATH`、保留天数和最大 run 数。 |
 | SB-29 | done | P2 | 增加数据库备份、回滚和清理说明 | SB-9, SB-25 | 文档说明非生产和正式各自备份策略、migration 回滚或前滚修复方案、SQLite 导入脚本回滚方式。 |
@@ -124,17 +124,25 @@ SUPABASE_SECRET_KEY=
 SUPABASE_PROJECT_ENV=nonprod
 ```
 
+前端环境选择只通过后端 API 域名完成，不直接在前端构建环境注入 Supabase URL 或 Publishable key：
+
+```bash
+cd frontend/Taro/reffo-taro
+REFFO_ENV=nonprod corepack pnpm@10.33.2 dev:h5
+```
+
+前端会请求对应后端的 `GET /api/v1/system/public-config` 获取 Supabase public 配置。
+
 ## 当前阻塞项
 
-截至当前迁移进度，代码侧和数据库 schema 侧已完成；剩余阻塞是正式用户态 smoke：
-
-- `SB-26`: 正式测试账号登录和非 AI 主链路 smoke 已通过；真实 AI 生成链路未执行，待确认可产生模型调用费用后继续。
+截至当前迁移进度，Supabase 迁移 TODO 已无阻塞项。完整 AI 主链路 smoke 的执行环境调整为非生产环境；正式环境不执行真实 AI 生成 smoke，避免产生正式环境模型调用费用和测试数据。
 
 ## 风险检查
 
 - 普通用户请求不能使用 Supabase Secret key 绕过 RLS。
 - repository 查询必须显式带 `userId`，不能只依赖 RLS。
 - 前端构建环境不能出现 `SUPABASE_SECRET_KEY`。
+- 前端构建环境不直接注入 `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`，避免 API 域名和 Supabase project 错配；统一通过后端 public-config 获取。
 - 非生产、正式必须使用各自的 Supabase URL 和 key，禁止跨环境复用。
 - 正式环境必须有启动保护，避免误连非生产库或启用本地 dev user。
 - `resume_histories` 的 JSON 字段写入 Supabase 时必须保持对象/数组结构，不要二次字符串化。

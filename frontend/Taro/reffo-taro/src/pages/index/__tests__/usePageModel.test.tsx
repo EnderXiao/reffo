@@ -95,10 +95,30 @@ describe('usePageModel', () => {
   })
 
   test('2 秒后自动切到策略文案', () => {
+    const history: ResumeHistory = {
+      id: 'JD2026070700001',
+      position: '前端工程师',
+      company: 'ABC 公司',
+      name: '张三',
+      createdAt: '2026-07-07T12:00:00.000Z',
+      qualityScore: 88,
+      matchScore: 92,
+      tags: ['React', 'TypeScript'],
+      resumeContent: '# 张三',
+      jdContent: '岗位职责：...',
+      optimizedContent: '# 张三（优化版）',
+    }
+
+    mockUseHistoryStore.mockReturnValue({
+      histories: [history],
+      loading: {isLoading: false, error: null},
+      loadHistories: mockLoadHistories,
+    } as ReturnType<typeof useHistoryStore>)
+
     render(<HookProbe />)
 
     expect((screen.getByTestId('strategy') as any).textContent).toBe('no')
-    expect((screen.getByTestId('card-id') as any).textContent).toBe('demo-x')
+    expect((screen.getByTestId('card-id') as any).textContent).toBe('JD2026070700001')
 
     act(() => {
       jest.advanceTimersByTime(1999)
@@ -113,7 +133,43 @@ describe('usePageModel', () => {
     expect(mockLoadLatestSourceResume).toHaveBeenCalledTimes(1)
   })
 
+  test('没有历史简历时不展示示例卡片并直接进入新申请创建态', () => {
+    render(<HookProbe />)
+
+    expect((screen.getByTestId('card-id') as any).textContent).toBe('none')
+    expect((screen.getByTestId('create-mode') as any).textContent).toBe('yes')
+    expect((screen.getByTestId('strategy') as any).textContent).toBe('no')
+
+    act(() => {
+      jest.advanceTimersByTime(2200)
+    })
+
+    expect((screen.getByTestId('card-id') as any).textContent).toBe('none')
+    expect((screen.getByTestId('create-mode') as any).textContent).toBe('yes')
+    expect((screen.getByTestId('strategy') as any).textContent).toBe('no')
+  })
+
   test('首次触摸卡片时立即切到策略文案', () => {
+    const history: ResumeHistory = {
+      id: 'JD2026070700001',
+      position: '前端工程师',
+      company: 'ABC 公司',
+      name: '张三',
+      createdAt: '2026-07-07T12:00:00.000Z',
+      qualityScore: 88,
+      matchScore: 92,
+      tags: ['React', 'TypeScript'],
+      resumeContent: '# 张三',
+      jdContent: '岗位职责：...',
+      optimizedContent: '# 张三（优化版）',
+    }
+
+    mockUseHistoryStore.mockReturnValue({
+      histories: [history],
+      loading: {isLoading: false, error: null},
+      loadHistories: mockLoadHistories,
+    } as ReturnType<typeof useHistoryStore>)
+
     render(<HookProbe />)
 
     fireEvent.click(screen.getByRole('button', {name: 'touch'}))
@@ -127,6 +183,26 @@ describe('usePageModel', () => {
   })
 
   test('进入创建态后暂停自动策略切换，取消后恢复预览态', () => {
+    const history: ResumeHistory = {
+      id: 'JD2026070700001',
+      position: '前端工程师',
+      company: 'ABC 公司',
+      name: '张三',
+      createdAt: '2026-07-07T12:00:00.000Z',
+      qualityScore: 88,
+      matchScore: 92,
+      tags: ['React', 'TypeScript'],
+      resumeContent: '# 张三',
+      jdContent: '岗位职责：...',
+      optimizedContent: '# 张三（优化版）',
+    }
+
+    mockUseHistoryStore.mockReturnValue({
+      histories: [history],
+      loading: {isLoading: false, error: null},
+      loadHistories: mockLoadHistories,
+    } as ReturnType<typeof useHistoryStore>)
+
     render(<HookProbe />)
 
     fireEvent.click(screen.getByRole('button', {name: 'enter-create'}))
@@ -342,7 +418,7 @@ describe('usePageModel', () => {
     expect(window.location.hash).toBe('#/pages/index/index')
   })
 
-  test('点击示例卡片时不打开结果页', () => {
+  test('没有历史简历时点击卡片入口不会打开结果页', () => {
     render(<HookProbe />)
 
     fireEvent.click(screen.getByRole('button', {name: 'open-card'}))

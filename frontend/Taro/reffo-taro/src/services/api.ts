@@ -36,6 +36,8 @@ export interface ApiConfig {
   retry?: RetryOptions | false;
 }
 
+type ReffoEnv = 'local' | 'nonprod' | 'prod';
+
 /**
  * API 客户端基类
  *
@@ -402,6 +404,36 @@ function getLocalPreviewApiBaseURL(): string | undefined {
     : undefined;
 }
 
+function getH5DevServerApiBaseURL(): string | undefined {
+  if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development') {
+    return undefined;
+  }
+
+  return '/api/v1';
+}
+
+function getReffoEnv(): ReffoEnv {
+  const env = process.env.REFFO_ENV?.trim().toLowerCase();
+
+  if (env === 'nonprod' || env === 'prod') {
+    return env;
+  }
+
+  return 'local';
+}
+
+function getApiBaseURLByReffoEnv(reffoEnv: ReffoEnv): string {
+  if (reffoEnv === 'nonprod') {
+    return 'https://api-nonprod.reffo.app/api/v1';
+  }
+
+  if (reffoEnv === 'prod') {
+    return 'https://api.reffo.app/api/v1';
+  }
+
+  return 'http://127.0.0.1:3000/api/v1';
+}
+
 function getApiBaseURL(): string {
   // 优先使用环境变量
   const configuredBaseURL = getConfiguredApiBaseURL();
@@ -409,19 +441,21 @@ function getApiBaseURL(): string {
     return configuredBaseURL;
   }
 
-  // 开发环境默认值
-  if (process.env.NODE_ENV === 'development') {
-    return '/api/v1';
+  const reffoEnv = getReffoEnv();
+
+  // H5 dev server 通过 config/dev.ts 的 proxy 转发，保持浏览器请求同源，避免 CORS。
+  const h5DevServerBaseURL = getH5DevServerApiBaseURL();
+  if (h5DevServerBaseURL) {
+    return h5DevServerBaseURL;
   }
 
   // 本地预览生产构建时，避免误打不可用的线上 API 域名
-  const localPreviewBaseURL = getLocalPreviewApiBaseURL();
+  const localPreviewBaseURL = reffoEnv === 'local' ? getLocalPreviewApiBaseURL() : undefined;
   if (localPreviewBaseURL) {
     return localPreviewBaseURL;
   }
 
-  // 生产环境默认值
-  return 'https://api.reffo.app/api/v1';
+  return getApiBaseURLByReffoEnv(reffoEnv);
 }
 
 /**

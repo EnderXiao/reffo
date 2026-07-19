@@ -12,6 +12,14 @@ export type {ApiResponse, ApiConfig} from './api';
 export {AuthApi, authApi} from './auth';
 export type {AuthSession, SignInWithPasswordInput} from './auth';
 
+// 运行时公开配置
+export {
+  getPublicRuntimeConfig,
+  getSupabasePublicConfig,
+  resetPublicRuntimeConfigCache,
+} from './runtime-config';
+export type {PublicRuntimeConfig, SupabasePublicConfig} from './runtime-config';
+
 // 简历 API
 export {ResumeApi, resumeApi} from './resume';
 export type {

@@ -1,5 +1,12 @@
 export default {
-  pages: ['pages/index/index', 'pages/create/index', 'pages/result/index', 'pages/complete/index', 'pages/auth/index'],
+  pages: [
+    'pages/index/index',
+    'pages/create/index',
+    'pages/debug/delete-break/index',
+    'pages/result/index',
+    'pages/complete/index',
+    'pages/auth/index',
+  ],
   window: {
     backgroundTextStyle: 'light',
     navigationStyle: 'custom',
