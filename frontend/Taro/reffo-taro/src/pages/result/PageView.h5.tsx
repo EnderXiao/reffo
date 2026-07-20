@@ -8,6 +8,7 @@ import {
   startResultCardReturnTransition,
   suppressNextNavigationTransition,
 } from '@/utils/navigation-transition'
+import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
 import type {ResultPageViewModel} from './usePageModel'
 import {buildInterviewStoryViewItems} from './model/interviewReferences'
@@ -37,6 +38,8 @@ const RESULT_STAGE_BUBBLE_DURATION = 2200
 const RESULT_BLOCKED_SHAKE_DURATION = 420
 const RESULT_STAGE_SWIPE_THRESHOLD = 44
 const RESULT_STAGE_SWITCH_DURATION = 520
+const RESULT_BLOCKED_DRAG_LIMIT = 128
+const RESULT_BLOCKED_DRAG_SETTLE_MS = 340
 interface CardOpenRectSnapshot {
   cardId?: string
   left: number
@@ -61,6 +64,15 @@ interface StageTransitionState {
   toIndex: number
   direction: StageMotionDirection
   id: number
+}
+
+interface BlockedStagePreviewState {
+  stageKey: ResultStageKey
+  message: string
+  direction: StageMotionDirection
+  phase: 'dragging' | 'settling'
+  offsetX: number
+  progress: number
 }
 
 const RESULT_STAGES: ResultStage[] = [
@@ -120,6 +132,21 @@ function readCardOpenRect(): CardOpenRectSnapshot | null {
   } catch (error) {
     console.warn('读取卡片过渡位置失败:', error)
     return null
+  }
+}
+
+function getBlockedStageMessage(
+  stageKey: ResultStageKey,
+  progress: LatestResultSessionProgress,
+  generationError?: string,
+) {
+  const stageStatus = getVisibleStageStatus(stageKey, progress)
+  const message = generationError ||
+    (stageStatus === 'generating' ? '步骤正在生成中' : '等待前置步骤完成')
+
+  return {
+    stageStatus,
+    message,
   }
 }
 
@@ -680,15 +707,21 @@ export default function PageView({
   } | null>(null)
   const [isBlockedShaking, setIsBlockedShaking] = useState(false)
   const [stageTransition, setStageTransition] = useState<StageTransitionState | null>(null)
+  const [blockedPreview, setBlockedPreview] = useState<BlockedStagePreviewState | null>(null)
   const rootRef = useRef<HTMLElement | null>(null)
   const returnTimerRef = useRef<number | null>(null)
   const edgeEnterTimerRef = useRef<number | null>(null)
   const bubbleTimerRef = useRef<number | null>(null)
   const shakeTimerRef = useRef<number | null>(null)
   const stageTransitionTimerRef = useRef<number | null>(null)
+  const blockedPreviewTimerRef = useRef<number | null>(null)
   const stageTransitionIdRef = useRef(0)
   const touchStartRef = useRef<{x: number; y: number} | null>(null)
+  const blockedPreviewRef = useRef<BlockedStagePreviewState | null>(null)
   const activeStage = RESULT_STAGES[stageIndex] ?? RESULT_STAGES[0]
+  const blockedPreviewStage = blockedPreview
+    ? RESULT_STAGES.find(stage => stage.key === blockedPreview.stageKey) ?? null
+    : null
   const backgroundProgress = useMemo(
     () => enteredFromCard ? '100%' : `${progressPercent}%`,
     [enteredFromCard, progressPercent],
@@ -705,7 +738,16 @@ export default function PageView({
   const hasRenderableResult = Boolean(result)
   const resultStyle = useMemo(() => ({
     '--reffo-result-progress': backgroundProgress,
-  }) as CSSProperties, [backgroundProgress])
+    '--reffo-result-blocked-drag-x': `${blockedPreview?.offsetX ?? 0}px`,
+    '--reffo-result-blocked-preview-progress': blockedPreview?.progress ?? 0,
+    '--reffo-result-blocked-preview-scale': blockedPreview
+      ? (0.92 + blockedPreview.progress * 0.08).toFixed(3)
+      : 0.92,
+  }) as CSSProperties, [backgroundProgress, blockedPreview])
+
+  useEffect(() => {
+    blockedPreviewRef.current = blockedPreview
+  }, [blockedPreview])
 
   useEffect(() => {
     let firstFrame = 0
@@ -780,6 +822,9 @@ export default function PageView({
     if (stageTransitionTimerRef.current != null) {
       window.clearTimeout(stageTransitionTimerRef.current)
     }
+    if (blockedPreviewTimerRef.current != null) {
+      window.clearTimeout(blockedPreviewTimerRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -801,10 +846,7 @@ export default function PageView({
     stageKey: ResultStageKey,
     options: {shake?: boolean} = {},
   ) => {
-    const stageStatus = getVisibleStageStatus(stageKey, progress)
-    const message = generationError ||
-      (stageStatus === 'generating' ? '步骤正在生成中' : '等待前置步骤完成')
-
+    const {message} = getBlockedStageMessage(stageKey, progress, generationError)
     setBlockedBubble({stageKey, message})
 
     if (bubbleTimerRef.current != null) {
@@ -835,9 +877,37 @@ export default function PageView({
     }, RESULT_BLOCKED_SHAKE_DURATION)
   }, [generationError, progress])
 
+  const settleBlockedPreview = useCallback((
+    stageKey: ResultStageKey,
+    direction: StageMotionDirection,
+  ) => {
+    const {message} = getBlockedStageMessage(stageKey, progress, generationError)
+
+    if (blockedPreviewTimerRef.current != null) {
+      window.clearTimeout(blockedPreviewTimerRef.current)
+      blockedPreviewTimerRef.current = null
+    }
+
+    setBlockedPreview({
+      stageKey,
+      message,
+      direction,
+      phase: 'settling',
+      offsetX: 0,
+      progress: 0,
+    })
+
+    blockedPreviewTimerRef.current = window.setTimeout(() => {
+      blockedPreviewTimerRef.current = null
+      setBlockedPreview(current => (
+        current?.stageKey === stageKey && current.phase === 'settling' ? null : current
+      ))
+    }, RESULT_BLOCKED_DRAG_SETTLE_MS)
+  }, [generationError, progress])
+
   const requestStageSwitch = useCallback((
     nextIndex: number,
-    options: {shake?: boolean; direction?: StageMotionDirection} = {},
+    options: {shake?: boolean; direction?: StageMotionDirection; showBubble?: boolean} = {},
   ) => {
     const nextStage = RESULT_STAGES[nextIndex]
 
@@ -846,7 +916,9 @@ export default function PageView({
     }
 
     if (!stageAvailability[nextStage.key]) {
-      showBlockedBubble(nextStage.key, options)
+      if (options.showBubble !== false) {
+        showBlockedBubble(nextStage.key, options)
+      }
       return
     }
 
@@ -884,10 +956,9 @@ export default function PageView({
     }
   }, [])
 
-  const handleStageTouchEnd = useCallback((event: TouchEvent) => {
+  const handleStageTouchMove = useCallback((event: TouchEvent) => {
     const start = touchStartRef.current
-    const touch = event.changedTouches[0]
-    touchStartRef.current = null
+    const touch = event.touches[0] ?? event.changedTouches[0]
 
     if (!start || !touch) {
       return
@@ -898,19 +969,97 @@ export default function PageView({
     const absX = Math.abs(deltaX)
     const absY = Math.abs(deltaY)
 
-    if (absX < RESULT_STAGE_SWIPE_THRESHOLD || absX < absY * 1.25) {
+    if (absX < 8 || absX < absY * 1.15) {
+      if (blockedPreviewRef.current?.phase === 'dragging') {
+        setBlockedPreview(null)
+      }
       return
     }
 
-    requestStageSwitch(stageIndex + (deltaX < 0 ? 1 : -1), {
-      shake: true,
-      direction: deltaX < 0 ? 'left' : 'right',
+    const direction: StageMotionDirection = deltaX < 0 ? 'left' : 'right'
+    const nextIndex = stageIndex + (direction === 'left' ? 1 : -1)
+    const nextStage = RESULT_STAGES[nextIndex]
+
+    if (!nextStage || stageAvailability[nextStage.key]) {
+      if (blockedPreviewRef.current?.phase === 'dragging') {
+        setBlockedPreview(null)
+      }
+      return
+    }
+
+    event.preventDefault()
+
+    if (blockedPreviewTimerRef.current != null) {
+      window.clearTimeout(blockedPreviewTimerRef.current)
+      blockedPreviewTimerRef.current = null
+    }
+
+    const {message} = getBlockedStageMessage(nextStage.key, progress, generationError)
+    const dragMagnitude = Math.min(1, Math.max(0, (absX - 8) / (RESULT_BLOCKED_DRAG_LIMIT - 8)))
+    const offsetX = (direction === 'left' ? -1 : 1) *
+      Math.min(RESULT_BLOCKED_DRAG_LIMIT, absX * 0.48)
+
+    setBlockedPreview({
+      stageKey: nextStage.key,
+      message,
+      direction,
+      phase: 'dragging',
+      offsetX,
+      progress: dragMagnitude,
     })
-  }, [requestStageSwitch, stageIndex])
+  }, [generationError, progress, stageAvailability, stageIndex])
+
+  const handleStageTouchEnd = useCallback((event: TouchEvent) => {
+    const start = touchStartRef.current
+    const touch = event.changedTouches[0]
+    const preview = blockedPreviewRef.current
+    touchStartRef.current = null
+
+    if (!start || !touch) {
+      if (preview?.phase === 'dragging') {
+        settleBlockedPreview(preview.stageKey, preview.direction)
+      }
+      return
+    }
+
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+    const absX = Math.abs(deltaX)
+    const absY = Math.abs(deltaY)
+
+    if (absX < RESULT_STAGE_SWIPE_THRESHOLD || absX < absY * 1.25) {
+      if (preview?.phase === 'dragging') {
+        settleBlockedPreview(preview.stageKey, preview.direction)
+      }
+      return
+    }
+
+    const direction: StageMotionDirection = deltaX < 0 ? 'left' : 'right'
+    const nextIndex = stageIndex + (direction === 'left' ? 1 : -1)
+    const nextStage = RESULT_STAGES[nextIndex]
+
+    if (nextStage && !stageAvailability[nextStage.key]) {
+      settleBlockedPreview(nextStage.key, direction)
+      requestStageSwitch(nextIndex, {
+        direction,
+        showBubble: false,
+      })
+      return
+    }
+
+    requestStageSwitch(nextIndex, {
+      shake: true,
+      direction,
+    })
+  }, [requestStageSwitch, settleBlockedPreview, stageAvailability, stageIndex])
 
   const handleStageTouchCancel = useCallback(() => {
     touchStartRef.current = null
-  }, [])
+    const preview = blockedPreviewRef.current
+    if (preview?.phase === 'dragging') {
+      settleBlockedPreview(preview.stageKey, preview.direction)
+    }
+  }, [settleBlockedPreview])
 
   const handleReturnHome = useCallback(() => {
     if (!enteredFromCard) {
@@ -1016,9 +1165,14 @@ export default function PageView({
         'reffo-result--edge-enter-ready': enteredFromCard && isEdgeEnterReady,
         'reffo-result--returning-home': isReturningHome,
         'reffo-result--blocked-shake': isBlockedShaking,
+        'reffo-result--blocked-preview': Boolean(blockedPreview),
+        'reffo-result--blocked-dragging': blockedPreview?.phase === 'dragging',
+        'reffo-result--blocked-settling': blockedPreview?.phase === 'settling',
+        [`reffo-result--blocked-to-${blockedPreview?.direction}`]: Boolean(blockedPreview),
       })}
       style={resultStyle}
       onTouchStart={handleStageTouchStart}
+      onTouchMove={handleStageTouchMove}
       onTouchEnd={handleStageTouchEnd}
       onTouchCancel={handleStageTouchCancel}
     >
@@ -1065,6 +1219,20 @@ export default function PageView({
           </View>
         </View>
       )}
+
+      <View className='reffo-result__blocked-underlay' aria-hidden='true'>
+        <View className='reffo-result__blocked-card'>
+          <View className='reffo-result__blocked-loader'>
+            <View className='reffo-result__blocked-loader-dot' />
+          </View>
+          <Text className='reffo-result__blocked-stage'>
+            {blockedPreviewStage?.label ?? '下一步'}
+          </Text>
+          <Text className='reffo-result__blocked-message'>
+            {blockedPreview?.message ?? '步骤正在生成中'}
+          </Text>
+        </View>
+      </View>
 
       <View className='reffo-result__shell'>
         <View className='reffo-result__content'>
@@ -1215,7 +1383,14 @@ export default function PageView({
         <View className='reffo-result__scroll-shell'>
           <View className='reffo-result__scroll-fade' />
           <View className='reffo-result__scroll-bottom-fade' />
-          <ScrollView scrollY className='reffo-result__scroll'>
+          <ScrollView
+            scrollY
+            className='reffo-result__scroll'
+            onTouchStart={handleStageTouchStart}
+            onTouchMove={handleStageTouchMove}
+            onTouchEnd={handleStageTouchEnd}
+            onTouchCancel={handleStageTouchCancel}
+          >
             <View className='reffo-result__body'>
               <View className='reffo-result__stage-panel-viewport'>
                 {stageTransition ? (

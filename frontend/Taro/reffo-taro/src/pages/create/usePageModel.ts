@@ -864,15 +864,19 @@ export function usePageModel(): CreatePageViewModel {
       return
     }
 
-    const confirmResult = await Taro.showModal({
-      title: '删除源简历？',
-      content: '删除后需要重新上传或填写源简历，之后才能继续生成。',
-      cancelText: '取消',
-      confirmText: '删除',
-      confirmColor: '#ef4444',
+    const confirmed = await new Promise<boolean>(resolve => {
+      feedback.modal({
+        title: '删除源简历？',
+        content: '删除后需要重新上传或填写源简历，之后才能继续生成。',
+        cancelText: '取消',
+        confirmText: '删除',
+        tone: 'danger',
+        onConfirm: () => resolve(true),
+        onCancel: () => resolve(false),
+      })
     })
 
-    if (!confirmResult.confirm) {
+    if (!confirmed) {
       return
     }
 

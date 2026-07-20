@@ -225,7 +225,10 @@ describe('CreatePage', () => {
     mockExpoImagePicker.launchImageLibraryAsync.mockReset()
     mockExpoFileSystem.getInfoAsync.mockReset()
     mockGetLatestSourceResume.mockResolvedValue(null)
-    mockShowModal.mockResolvedValue({confirm: true, cancel: false})
+    mockShowModal.mockImplementation(options => {
+      options.success?.({confirm: true, cancel: false})
+      return Promise.resolve({confirm: true, cancel: false})
+    })
     mockDeleteSourceResume.mockResolvedValue(undefined)
     mockParseJobDescriptionImage.mockResolvedValue({
       provider: 'glm-ocr',

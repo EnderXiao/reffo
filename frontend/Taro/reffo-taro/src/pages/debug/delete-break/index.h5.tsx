@@ -89,7 +89,7 @@ const DEFAULT_DELETE_CARD_BREAK_PARAMS: DeleteCardBreakParams = {
   pieceFallEaseY1: 0.74,
   pieceFallEaseX2: 0.18,
   pieceFallEaseY2: 1,
-  shardCount: 18,
+  shardCount: 30,
   shardGroupLeftPct: 61,
   shardGroupTopPct: 49,
   shardMinWidth: 14,
@@ -166,7 +166,7 @@ const MOTION_PARAM_CONTROLS: DeleteCardBreakParamControl[] = [
 ]
 
 const SHARD_PARAM_CONTROLS: DeleteCardBreakParamControl[] = [
-  {key: 'shardCount', label: '碎片数量', min: 4, max: 28, step: 1, unit: ''},
+  {key: 'shardCount', label: '碎片数量', min: 4, max: 48, step: 1, unit: ''},
   {key: 'shardGroupLeftPct', label: '碎片基准X', min: 35, max: 65, step: 0.5, unit: '%'},
   {key: 'shardGroupTopPct', label: '碎片基准Y', min: 35, max: 62, step: 0.5, unit: '%'},
   {key: 'shardMinWidth', label: '线条最小宽', min: 6, max: 42, step: 1, unit: 'px'},

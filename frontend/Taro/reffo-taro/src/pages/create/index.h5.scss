@@ -1416,7 +1416,7 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
 .reffo-create-generation__title-reel-track {
   display: flex;
   flex-direction: column;
-  animation: reffo-generation-title-reel 6000ms linear infinite;
+  animation: reffo-generation-title-reel 8000ms linear infinite;
   will-change: transform;
 }
 
@@ -2338,25 +2338,35 @@ html.reffo-delete-vt-return::view-transition-new(reffo-delete-jd-card) {
 
 @keyframes reffo-generation-title-reel {
   0%,
-  15.333% {
+  11.5% {
     transform: translate3d(0, 0, 0);
     animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
   }
 
-  33.333%,
-  48.666% {
+  25%,
+  36.5% {
     transform: translate3d(0, -30px, 0);
     animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
   }
 
-  66.666%,
-  82% {
+  50%,
+  61.5% {
     transform: translate3d(0, -60px, 0);
     animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
   }
 
-  100% {
+  75%,
+  86.5% {
     transform: translate3d(0, -90px, 0);
+    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
+  }
+
+  99.999% {
+    transform: translate3d(0, -120px, 0);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
   }
 }
 

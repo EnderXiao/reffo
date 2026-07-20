@@ -23,7 +23,7 @@ export interface DeleteBreakCardShardConfig {
 }
 
 const DEFAULT_SHARD_CONFIG: Required<DeleteBreakCardShardConfig> = {
-  count: 18,
+  count: 30,
   minWidth: 14,
   maxWidth: 32,
   minHeight: 2,
@@ -35,6 +35,15 @@ const DEFAULT_SHARD_CONFIG: Required<DeleteBreakCardShardConfig> = {
   maxDurationMs: 520,
   maxDelayMs: 80,
 }
+
+const SHARD_DIRECTIONS = [
+  180,
+  0,
+  225,
+  135,
+  315,
+  45,
+].map(angle => angle * Math.PI / 180)
 
 interface DeleteBreakCardProps {
   card: HomeCardItem
@@ -75,16 +84,33 @@ export default function DeleteBreakCard({
     maxDelayMs: shardConfig?.maxDelayMs ?? DEFAULT_SHARD_CONFIG.maxDelayMs,
   }
   const shards = useMemo(() => {
-    const count = Math.max(0, Math.min(36, Math.round(resolvedShardConfig.count)))
+    const count = Math.max(0, Math.min(48, Math.round(resolvedShardConfig.count)))
     const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
+    const directionCount = SHARD_DIRECTIONS.length
+    const laneCount = Math.max(1, Math.ceil(count / directionCount))
+    const startBand = Math.max(10, resolvedShardConfig.startSpread * 1.28)
+    const startDepth = Math.max(5, resolvedShardConfig.startSpread * 0.34)
 
     return Array.from({length: count}, (_, index) => {
-      const startAngle = randomBetween(0, Math.PI * 2)
-      const startRadius = randomBetween(0, resolvedShardConfig.startSpread)
-      const travelAngle = randomBetween(0, Math.PI * 2)
-      const travel = randomBetween(resolvedShardConfig.minTravel, resolvedShardConfig.maxTravel)
+      const directionIndex = index % directionCount
+      const laneIndex = Math.floor(index / directionCount)
+      const laneRatio = laneCount === 1 ? 0.5 : laneIndex / (laneCount - 1)
+      const baseAngle = SHARD_DIRECTIONS[directionIndex]
+      const laneAngleNudge = ((laneIndex % 3) - 1) * 0.045
+      const travelAngle = baseAngle + laneAngleNudge + randomBetween(-0.035, 0.035)
+      const travelRatio = (laneIndex + 0.35 + randomBetween(0, 0.5)) / (laneCount + 0.65)
+      const travelRange = resolvedShardConfig.maxTravel - resolvedShardConfig.minTravel
+      const travel = resolvedShardConfig.minTravel + travelRange * Math.min(1, travelRatio)
       const width = randomBetween(resolvedShardConfig.minWidth, resolvedShardConfig.maxWidth)
       const height = randomBetween(resolvedShardConfig.minHeight, resolvedShardConfig.maxHeight)
+      const normalAngle = baseAngle + Math.PI / 2
+      const normalOffset = (laneRatio - 0.5) * startBand + randomBetween(-1.4, 1.4)
+      const tangentOffset = randomBetween(-startDepth, startDepth)
+      const popX = Math.cos(normalAngle) * normalOffset + Math.cos(baseAngle) * tangentOffset
+      const popY = Math.sin(normalAngle) * normalOffset + Math.sin(baseAngle) * tangentOffset
+      const endX = Math.cos(travelAngle) * travel + Math.cos(normalAngle) * normalOffset * 0.22
+      const endY = Math.sin(travelAngle) * travel + Math.sin(normalAngle) * normalOffset * 0.22
+      const rotate = travelAngle * 180 / Math.PI + randomBetween(-6, 6)
 
       return {
         id: `${index}-${Math.round(width * 10)}-${Math.round(height * 10)}`,
@@ -92,11 +118,11 @@ export default function DeleteBreakCard({
         style: {
           '--delete-break-card-shard-width': `${width.toFixed(1)}px`,
           '--delete-break-card-shard-height': `${height.toFixed(1)}px`,
-          '--delete-break-card-shard-pop-x': `${(Math.cos(startAngle) * startRadius).toFixed(1)}px`,
-          '--delete-break-card-shard-pop-y': `${(Math.sin(startAngle) * startRadius).toFixed(1)}px`,
-          '--delete-break-card-shard-end-x': `${(Math.cos(travelAngle) * travel).toFixed(1)}px`,
-          '--delete-break-card-shard-end-y': `${(Math.sin(travelAngle) * travel).toFixed(1)}px`,
-          '--delete-break-card-shard-rotate': `${randomBetween(-42, 42).toFixed(1)}deg`,
+          '--delete-break-card-shard-pop-x': `${popX.toFixed(1)}px`,
+          '--delete-break-card-shard-pop-y': `${popY.toFixed(1)}px`,
+          '--delete-break-card-shard-end-x': `${endX.toFixed(1)}px`,
+          '--delete-break-card-shard-end-y': `${endY.toFixed(1)}px`,
+          '--delete-break-card-shard-rotate': `${rotate.toFixed(1)}deg`,
           '--delete-break-card-shard-scale': randomBetween(0.82, 1.18).toFixed(2),
           '--delete-break-card-shard-duration': `${randomBetween(
             resolvedShardConfig.minDurationMs,
