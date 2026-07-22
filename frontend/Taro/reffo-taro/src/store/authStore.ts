@@ -12,24 +12,40 @@ interface AuthState {
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+let restoreSessionPromise: Promise<AuthSession | null> | null = null;
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   initialized: false,
   loading: false,
   error: null,
 
   restoreSession: async () => {
+    if (get().initialized) {
+      return get().session;
+    }
+
+    if (restoreSessionPromise) {
+      return restoreSessionPromise;
+    }
+
     set({loading: true, error: null});
 
-    try {
-      const session = await authApi.restoreSession();
-      set({session, initialized: true, loading: false});
-      return session;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '恢复登录态失败';
-      set({session: null, initialized: true, loading: false, error: message});
-      return null;
-    }
+    restoreSessionPromise = (async () => {
+      try {
+        const session = await authApi.restoreSession();
+        set({session, initialized: true, loading: false});
+        return session;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '恢复登录态失败';
+        set({session: null, initialized: true, loading: false, error: message});
+        return null;
+      }
+    })().finally(() => {
+      restoreSessionPromise = null;
+    });
+
+    return restoreSessionPromise;
   },
 
   signInWithPassword: async (input: SignInWithPasswordInput) => {
@@ -37,6 +53,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const session = await authApi.signInWithPassword(input);
+      restoreSessionPromise = null;
       set({session, initialized: true, loading: false});
       return session;
     } catch (error) {
@@ -51,6 +68,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       await authApi.signOut();
+      restoreSessionPromise = null;
       set({session: null, initialized: true, loading: false});
     } catch (error) {
       const message = error instanceof Error ? error.message : '退出登录失败';

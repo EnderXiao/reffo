@@ -2,10 +2,16 @@ import {Image, Text, View} from '@tarojs/components'
 import HomeCardDeck from '@/components/business/HomeCardDeck'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import classNames from 'classnames'
-import {useEffect, useMemo, useRef, useState} from 'react'
+import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import type {CSSProperties} from 'react'
 import {useDidShow} from '@tarojs/taro'
 import {useVisualTier} from '@/utils'
+import {
+  clearSharedElementSnapshot,
+  readSharedElementSnapshot,
+  scaleSharedElementSnapshot,
+  type SharedElementSnapshot,
+} from '@/utils/shared-element-transition'
 import type {IndexPageViewModel} from './model/usePageModel'
 import {HOME_PAGE_CONTENT} from './constants/content'
 import githubIcon from '@/assets/home/github.svg'
@@ -15,7 +21,9 @@ type HeroMode = 'brand' | 'strategy' | 'create'
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const RESULT_RETURN_HOME_DOM_KEY = 'reffoReturnHomePending'
 const CARD_OPEN_RECT_STORAGE_KEY = 'reffo.homeCardOpenRect'
+const LANDING_TO_HOME_STORAGE_KEY = 'reffo.landingToHome'
 const HOME_RETURN_FLIP_MS = 1080
+const HOME_LANDING_ENTRY_MS = HOME_RETURN_FLIP_MS
 const HOME_CARD_DESIGN_WIDTH = 210
 
 interface ReturningHomePayload {
@@ -23,14 +31,49 @@ interface ReturningHomePayload {
   transition?: 'view-transition' | null
 }
 
-interface CardOpenRectSnapshot {
+interface CardOpenRectSnapshot extends SharedElementSnapshot {
   cardId?: string
-  left: number
-  top: number
-  width: number
-  height: number
-  viewportWidth?: number
-  viewportHeight?: number
+}
+
+type LandingLogoSnapshot = SharedElementSnapshot
+
+function readLandingToHomeSnapshot(): LandingLogoSnapshot | null {
+  return readSharedElementSnapshot<LandingLogoSnapshot>(LANDING_TO_HOME_STORAGE_KEY, '封面到首页 logo')
+}
+
+function clearLandingToHomeSnapshot() {
+  clearSharedElementSnapshot(LANDING_TO_HOME_STORAGE_KEY, '封面到首页 logo')
+}
+
+function resolveLandingLogoTransitionStyle(snapshot: LandingLogoSnapshot | null): CSSProperties | null {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return null
+  }
+
+  const targetLogo = document.querySelector('.reffo-home__logo-anchor')
+  const targetRect = targetLogo?.getBoundingClientRect()
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 393
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 852
+  const pagePadX = Math.min(Math.max(viewportWidth * 0.076, 24), 31)
+  const targetWidth = targetRect && targetRect.width > 0 ? targetRect.width : 99
+  const targetLeft = targetRect && targetRect.width > 0 ? targetRect.left : pagePadX
+  const targetTop = targetRect && targetRect.height > 0 ? targetRect.top : 89
+  const startSnapshot = scaleSharedElementSnapshot(snapshot, {
+    left: (viewportWidth - 160) / 2,
+    top: (viewportHeight - 42) / 2,
+    width: 160,
+    height: 42,
+  })
+
+  return {
+    '--reffo-landing-logo-start-x': `${startSnapshot.left}px`,
+    '--reffo-landing-logo-start-y': `${startSnapshot.top}px`,
+    '--reffo-landing-logo-start-width': `${startSnapshot.width}px`,
+    '--reffo-landing-logo-start-height': `${startSnapshot.height}px`,
+    '--reffo-landing-logo-target-x': `${targetLeft}px`,
+    '--reffo-landing-logo-target-y': `${targetTop}px`,
+    '--reffo-landing-logo-target-scale': String(targetWidth / startSnapshot.width),
+  } as CSSProperties
 }
 
 function readReturnHomeMarker(): ReturningHomePayload | null {
@@ -63,27 +106,7 @@ function readReturnHomeMarker(): ReturningHomePayload | null {
 }
 
 function readCardOpenRect(): CardOpenRectSnapshot | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  try {
-    const raw = window.sessionStorage?.getItem(CARD_OPEN_RECT_STORAGE_KEY)
-
-    if (!raw) {
-      return null
-    }
-
-    const parsed = JSON.parse(raw) as Partial<CardOpenRectSnapshot>
-    const isValid = [parsed.left, parsed.top, parsed.width, parsed.height].every(value => (
-      typeof value === 'number' && Number.isFinite(value)
-    ))
-
-    return isValid ? parsed as CardOpenRectSnapshot : null
-  } catch (error) {
-    console.warn('读取卡片过渡位置失败:', error)
-    return null
-  }
+  return readSharedElementSnapshot<CardOpenRectSnapshot>(CARD_OPEN_RECT_STORAGE_KEY, '卡片')
 }
 
 function resolveReturnCardStyle(snapshot: CardOpenRectSnapshot | null): CSSProperties {
@@ -93,41 +116,34 @@ function resolveReturnCardStyle(snapshot: CardOpenRectSnapshot | null): CSSPrope
 
   const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 393
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 852
-  const widthRatio = snapshot?.viewportWidth ? viewportWidth / snapshot.viewportWidth : 1
-  const heightRatio = snapshot?.viewportHeight ? viewportHeight / snapshot.viewportHeight : 1
-  const targetWidth = Math.max(1, (snapshot?.width ?? Math.min(viewportWidth * 0.55, 218)) * widthRatio)
-  const targetHeight = Math.max(1, (snapshot?.height ?? targetWidth * 1.546) * heightRatio)
-  const targetLeft = snapshot ? snapshot.left * widthRatio : (viewportWidth - targetWidth) / 2
-  const targetTop = snapshot ? snapshot.top * heightRatio : Math.max(96, (viewportHeight - targetHeight) / 2)
-  const targetCenterX = targetLeft + targetWidth / 2
-  const targetCenterY = targetTop + targetHeight / 2
+  const fallbackWidth = Math.min(viewportWidth * 0.55, 218)
+  const targetSnapshot = scaleSharedElementSnapshot(snapshot, {
+    left: (viewportWidth - fallbackWidth) / 2,
+    top: Math.max(96, (viewportHeight - fallbackWidth * 1.546) / 2),
+    width: fallbackWidth,
+    height: fallbackWidth * 1.546,
+  })
+  const targetCenterX = targetSnapshot.left + targetSnapshot.width / 2
+  const targetCenterY = targetSnapshot.top + targetSnapshot.height / 2
   const startScale = Math.max(
-    viewportWidth / Math.max(targetWidth, 1),
-    viewportHeight / Math.max(targetHeight, 1),
+    viewportWidth / Math.max(targetSnapshot.width, 1),
+    viewportHeight / Math.max(targetSnapshot.height, 1),
   ) * 1.08
 
   return {
     '--reffo-home-return-start-x': `${viewportWidth / 2 - targetCenterX}px`,
     '--reffo-home-return-start-y': `${viewportHeight / 2 - targetCenterY}px`,
     '--reffo-home-return-start-scale': String(startScale),
-    '--reffo-home-return-left': `${targetLeft}px`,
-    '--reffo-home-return-top': `${targetTop}px`,
-    '--reffo-home-return-width': `${targetWidth}px`,
-    '--reffo-home-return-height': `${targetHeight}px`,
-    '--card-responsive-scale': String(targetWidth / HOME_CARD_DESIGN_WIDTH),
+    '--reffo-home-return-left': `${targetSnapshot.left}px`,
+    '--reffo-home-return-top': `${targetSnapshot.top}px`,
+    '--reffo-home-return-width': `${targetSnapshot.width}px`,
+    '--reffo-home-return-height': `${targetSnapshot.height}px`,
+    '--card-responsive-scale': String(targetSnapshot.width / HOME_CARD_DESIGN_WIDTH),
   } as CSSProperties
 }
 
 function clearCardOpenRect() {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    window.sessionStorage?.removeItem(CARD_OPEN_RECT_STORAGE_KEY)
-  } catch (error) {
-    console.warn('清理卡片过渡位置失败:', error)
-  }
+  clearSharedElementSnapshot(CARD_OPEN_RECT_STORAGE_KEY, '卡片')
 }
 
 function clearReturnHomeMarker() {
@@ -232,7 +248,9 @@ function HomeHeroH5({
       >
         {renderMode === 'brand' ? (
           <View className='reffo-home__hero-brand'>
-            <Image src={logoSource} className='reffo-home__logo' mode='aspectFit' />
+            <View className='reffo-home__logo-anchor'>
+              <img src={logoSource} className='reffo-home__logo' alt='Reffo' />
+            </View>
             <Text className='reffo-home__title'>
               {HOME_PAGE_CONTENT.hero.titlePrefix}
               <Text className='reffo-home__title-accent'>{HOME_PAGE_CONTENT.hero.titleAccentOne}</Text>
@@ -298,8 +316,15 @@ export default function PageView({
   const [returnHomePayload, setReturnHomePayload] = useState<ReturningHomePayload | null>(() => readReturnHomeMarker())
   const [isReturningFromResult, setIsReturningFromResult] = useState(() => Boolean(readReturnHomeMarker()))
   const [returnTransitionKey, setReturnTransitionKey] = useState(0)
+  const [landingLogoSnapshot, setLandingLogoSnapshot] = useState<LandingLogoSnapshot | null>(
+    () => readLandingToHomeSnapshot(),
+  )
+  const [landingLogoStyle, setLandingLogoStyle] = useState<CSSProperties | null>(null)
   const returnFadeTimerRef = useRef<number | null>(null)
+  const landingEntryTimerRef = useRef<number | null>(null)
   const isReturnHomeTransition = isReturningFromResult
+  const isLandingEntryTransition = Boolean(landingLogoSnapshot)
+  const isHomeEntryTransition = isReturnHomeTransition || isLandingEntryTransition
   const returningCardId = returnHomePayload?.cardId ?? null
   const isViewTransitionReturn = returnHomePayload?.transition === 'view-transition'
   const returnCard = useMemo(() => (
@@ -335,19 +360,70 @@ export default function PageView({
     }, HOME_RETURN_FLIP_MS)
   })
 
+  useLayoutEffect(() => {
+    if (!landingLogoSnapshot) {
+      return undefined
+    }
+
+    const updateLogoTransition = () => {
+      const nextStyle = resolveLandingLogoTransitionStyle(landingLogoSnapshot)
+      if (nextStyle) {
+        setLandingLogoStyle(nextStyle)
+      }
+    }
+
+    updateLogoTransition()
+    const raf = window.requestAnimationFrame(updateLogoTransition)
+
+    if (landingEntryTimerRef.current != null) {
+      window.clearTimeout(landingEntryTimerRef.current)
+    }
+
+    landingEntryTimerRef.current = window.setTimeout(() => {
+      landingEntryTimerRef.current = null
+      clearLandingToHomeSnapshot()
+      setLandingLogoSnapshot(null)
+      setLandingLogoStyle(null)
+    }, HOME_LANDING_ENTRY_MS)
+
+    return () => {
+      window.cancelAnimationFrame(raf)
+      if (landingEntryTimerRef.current != null) {
+        window.clearTimeout(landingEntryTimerRef.current)
+        landingEntryTimerRef.current = null
+      }
+    }
+  }, [landingLogoSnapshot])
+
   useEffect(() => () => {
     if (returnFadeTimerRef.current != null) {
       window.clearTimeout(returnFadeTimerRef.current)
       clearReturnHomeMarker()
+    }
+    if (landingEntryTimerRef.current != null) {
+      window.clearTimeout(landingEntryTimerRef.current)
+      clearLandingToHomeSnapshot()
     }
   }, [])
 
   return (
     <View
       className={classNames('reffo-home', {
+        'reffo-home--entry-active': isHomeEntryTransition,
         'reffo-home--returning-from-result': isReturnHomeTransition,
+        'reffo-home--landing-entry': isLandingEntryTransition,
       })}
     >
+      {isLandingEntryTransition && landingLogoStyle ? (
+        <View className='reffo-home__landing-logo-layer'>
+          <img
+            src={logoSource}
+            className='reffo-home__landing-logo'
+            style={landingLogoStyle}
+            alt='Reffo'
+          />
+        </View>
+      ) : null}
       {isReturnHomeTransition && returnCard ? (
         <View
           key={returnTransitionKey}

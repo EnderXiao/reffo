@@ -65,8 +65,8 @@ taro-page-core,
 }
 
 html[data-reffo-return-home-pending] .reffo-home__backdrop,
-.reffo-home--returning-from-result .reffo-home__backdrop,
-.reffo-home--returning-from-result .reffo-home__frame {
+.reffo-home--entry-active .reffo-home__backdrop,
+.reffo-home--entry-active .reffo-home__frame {
   will-change: opacity, transform;
 }
 
@@ -76,13 +76,18 @@ html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from
   transform: scale(1.006) translate3d(0, -8px, 0);
 }
 
-.reffo-home--returning-from-result .reffo-home__backdrop,
-.reffo-home--returning-from-result .reffo-home__frame {
+.reffo-home--entry-active .reffo-home__backdrop,
+.reffo-home--entry-active .reffo-home__frame {
   animation: reffo-home-return-fade-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.reffo-home--returning-from-result .reffo-home__frame {
+.reffo-home--entry-active .reffo-home__frame {
   animation-delay: 24ms;
+}
+
+.reffo-home--landing-entry .reffo-home__backdrop,
+.reffo-home--landing-entry .reffo-home__frame {
+  animation-name: reffo-home-landing-entry-fade-in;
 }
 
 html[data-reffo-return-home-pending] .reffo-home__header,
@@ -90,11 +95,11 @@ html[data-reffo-return-home-pending] .reffo-home__hero,
 html[data-reffo-return-home-pending] .reffo-home__progress,
 html[data-reffo-return-home-pending] .reffo-home__footer,
 html[data-reffo-return-home-pending] .reffo-home-deck__rail,
-.reffo-home--returning-from-result .reffo-home__header,
-.reffo-home--returning-from-result .reffo-home__hero,
-.reffo-home--returning-from-result .reffo-home__progress,
-.reffo-home--returning-from-result .reffo-home__footer,
-.reffo-home--returning-from-result .reffo-home-deck__rail {
+.reffo-home--entry-active .reffo-home__header,
+.reffo-home--entry-active .reffo-home__hero,
+.reffo-home--entry-active .reffo-home__progress,
+.reffo-home--entry-active .reffo-home__footer,
+.reffo-home--entry-active .reffo-home-deck__rail {
   will-change: opacity, transform;
 }
 
@@ -110,54 +115,63 @@ html[data-reffo-return-home-pending] .reffo-home:not(.reffo-home--returning-from
   transform: translate3d(max(112px, 28vw), -50%, 0);
 }
 
-.reffo-home--returning-from-result .reffo-home__header,
-.reffo-home--returning-from-result .reffo-home__hero,
-.reffo-home--returning-from-result .reffo-home__progress,
-.reffo-home--returning-from-result .reffo-home__footer {
+.reffo-home--entry-active .reffo-home__header,
+.reffo-home--entry-active .reffo-home__hero,
+.reffo-home--entry-active .reffo-home__progress,
+.reffo-home--entry-active .reffo-home__footer {
   animation: reffo-home-return-content-fade-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+.reffo-home--landing-entry .reffo-home__header,
+.reffo-home--landing-entry .reffo-home__hero,
+.reffo-home--landing-entry .reffo-home__progress,
+.reffo-home--landing-entry .reffo-home__footer {
+  --reffo-home-return-x: 0px;
+  --reffo-home-return-y: 0px;
+  animation-name: reffo-home-landing-entry-content-fade-in;
+}
+
 html[data-reffo-return-home-pending] .reffo-home__header,
-.reffo-home--returning-from-result .reffo-home__header {
+.reffo-home--entry-active .reffo-home__header {
   --reffo-home-return-x: 0px;
   --reffo-home-return-y: -14px;
 }
 
 html[data-reffo-return-home-pending] .reffo-home__hero,
-.reffo-home--returning-from-result .reffo-home__hero {
+.reffo-home--entry-active .reffo-home__hero {
   --reffo-home-return-x: -18px;
   --reffo-home-return-y: 0px;
 }
 
 html[data-reffo-return-home-pending] .reffo-home__progress,
-.reffo-home--returning-from-result .reffo-home__progress {
+.reffo-home--entry-active .reffo-home__progress {
   --reffo-home-return-x: -12px;
   --reffo-home-return-y: 0px;
 }
 
 html[data-reffo-return-home-pending] .reffo-home__footer,
-.reffo-home--returning-from-result .reffo-home__footer {
+.reffo-home--entry-active .reffo-home__footer {
   --reffo-home-return-x: 0px;
   --reffo-home-return-y: 18px;
 }
 
-.reffo-home--returning-from-result .reffo-home__hero {
+.reffo-home--entry-active .reffo-home__hero {
   animation-delay: 560ms;
 }
 
-.reffo-home--returning-from-result .reffo-home__progress {
+.reffo-home--entry-active .reffo-home__progress {
   animation-delay: 600ms;
 }
 
-.reffo-home--returning-from-result .reffo-home__footer {
+.reffo-home--entry-active .reffo-home__footer {
   animation-delay: 640ms;
 }
 
-.reffo-home--returning-from-result .reffo-home__header {
+.reffo-home--entry-active .reffo-home__header {
   animation-delay: 520ms;
 }
 
-.reffo-home--returning-from-result .reffo-home-deck__rail {
+.reffo-home--entry-active .reffo-home-deck__rail {
   animation: reffo-home-return-rail-in 460ms cubic-bezier(0.16, 1, 0.3, 1) 580ms both;
 }
 
@@ -217,6 +231,29 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   filter: drop-shadow(0 18PX 26PX rgba(21, 30, 46, 0.2));
 }
 
+.reffo-home__landing-logo-layer {
+  position: fixed;
+  z-index: 140;
+  inset: 0;
+  pointer-events: none;
+}
+
+.reffo-home__landing-logo {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: var(--reffo-landing-logo-start-width, 160px);
+  height: var(--reffo-landing-logo-start-height, 42px);
+  display: block;
+  transform-origin: 0 0;
+  will-change: transform;
+  animation: reffo-home-landing-logo-land 820ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-home--landing-entry .reffo-home__logo-anchor {
+  opacity: 0;
+}
+
 @keyframes reffo-home-return-fade-in {
   0% {
     opacity: 0;
@@ -238,6 +275,30 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-home-landing-entry-fade-in {
+  0% {
+    opacity: 0;
+    transform: none;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes reffo-home-landing-entry-content-fade-in {
+  0% {
+    opacity: 0;
+    transform: none;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -305,6 +366,60 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
 
   100% {
     opacity: var(--card-opacity);
+  }
+}
+
+@keyframes reffo-home-landing-logo-land {
+  0% {
+    transform:
+      translate3d(
+        var(--reffo-landing-logo-start-x, calc(50vw - 80px)),
+        var(--reffo-landing-logo-start-y, calc(50dvh - 21px)),
+        0
+      )
+      scale(1);
+  }
+
+  72% {
+    transform:
+      translate3d(
+        var(--reffo-landing-logo-target-x, 24px),
+        calc(var(--reffo-landing-logo-target-y, 89px) - 2px),
+        0
+      )
+      scale(calc(var(--reffo-landing-logo-target-scale, 0.618) * 1.018));
+  }
+
+  100% {
+    transform:
+      translate3d(
+        var(--reffo-landing-logo-target-x, 24px),
+        var(--reffo-landing-logo-target-y, 89px),
+        0
+      )
+      scale(var(--reffo-landing-logo-target-scale, 0.618));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reffo-home--landing-entry .reffo-home__landing-logo-layer {
+    display: none;
+  }
+
+  .reffo-home--landing-entry .reffo-home__logo-anchor {
+    opacity: 1;
+  }
+
+  .reffo-home--entry-active .reffo-home__backdrop,
+  .reffo-home--entry-active .reffo-home__frame,
+  .reffo-home--entry-active .reffo-home__header,
+  .reffo-home--entry-active .reffo-home__hero,
+  .reffo-home--entry-active .reffo-home__progress,
+  .reffo-home--entry-active .reffo-home__footer,
+  .reffo-home--entry-active .reffo-home-deck__rail {
+    opacity: 1;
+    transform: none;
+    animation: none;
   }
 }
 
@@ -410,6 +525,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   justify-content: flex-start;
 }
 
+.reffo-home__logo-anchor,
 .reffo-home__logo {
   width: 99px;
   height: 26px;

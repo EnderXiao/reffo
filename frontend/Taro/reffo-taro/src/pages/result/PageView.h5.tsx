@@ -8,6 +8,10 @@ import {
   startResultCardReturnTransition,
   suppressNextNavigationTransition,
 } from '@/utils/navigation-transition'
+import {
+  readSharedElementSnapshot,
+  type SharedElementSnapshot,
+} from '@/utils/shared-element-transition'
 import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
 import type {ResultPageViewModel} from './usePageModel'
@@ -40,14 +44,8 @@ const RESULT_STAGE_SWIPE_THRESHOLD = 44
 const RESULT_STAGE_SWITCH_DURATION = 520
 const RESULT_BLOCKED_DRAG_LIMIT = 128
 const RESULT_BLOCKED_DRAG_SETTLE_MS = 340
-interface CardOpenRectSnapshot {
+interface CardOpenRectSnapshot extends SharedElementSnapshot {
   cardId?: string
-  left: number
-  top: number
-  width: number
-  height: number
-  viewportWidth?: number
-  viewportHeight?: number
 }
 
 interface ResultStage {
@@ -112,27 +110,7 @@ function normalizeItems(value: unknown, limit = 4): string[] {
 }
 
 function readCardOpenRect(): CardOpenRectSnapshot | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  try {
-    const raw = window.sessionStorage?.getItem(CARD_OPEN_RECT_STORAGE_KEY)
-
-    if (!raw) {
-      return null
-    }
-
-    const parsed = JSON.parse(raw) as Partial<CardOpenRectSnapshot>
-    const isValid = [parsed.left, parsed.top, parsed.width, parsed.height].every(value => (
-      typeof value === 'number' && Number.isFinite(value)
-    ))
-
-    return isValid ? parsed as CardOpenRectSnapshot : null
-  } catch (error) {
-    console.warn('读取卡片过渡位置失败:', error)
-    return null
-  }
+  return readSharedElementSnapshot<CardOpenRectSnapshot>(CARD_OPEN_RECT_STORAGE_KEY, '卡片')
 }
 
 function getBlockedStageMessage(

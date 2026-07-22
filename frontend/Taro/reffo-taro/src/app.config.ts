@@ -1,5 +1,6 @@
 export default {
   pages: [
+    'pages/landing/index',
     'pages/index/index',
     'pages/create/index',
     'pages/debug/delete-break/index',

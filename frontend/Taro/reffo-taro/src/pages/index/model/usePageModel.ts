@@ -117,8 +117,8 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
       return
     }
 
-    loadHistories()
-    loadLatestSourceResume()
+    loadHistories({skipIfLoaded: true})
+    loadLatestSourceResume({skipIfLoaded: true})
   }, [initialReturningHomeState.isReturning, loadHistories, loadLatestSourceResume])
 
   useEffect(() => {
@@ -172,8 +172,8 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
       setIsStrategyVisible(true)
     }
     if (!returningHomeState.isReturning) {
-      loadHistories()
-      loadLatestSourceResume()
+      loadHistories({skipIfLoaded: isFirstHomeShow})
+      loadLatestSourceResume({skipIfLoaded: isFirstHomeShow})
     }
   })
 

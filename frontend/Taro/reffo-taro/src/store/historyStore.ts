@@ -44,7 +44,7 @@
  */
 
 import {create} from 'zustand';
-import type {HistoryState} from './types';
+import type {HistoryState, LoadOptions} from './types';
 import type {ResumeHistory} from '@/types';
 import {resumeHistoryApi} from '@/services/resumeHistory';
 import {getJSON, setJSON} from '@/utils/storage';
@@ -56,6 +56,7 @@ const STORAGE_KEY = 'resume_histories';
 const HISTORY_ID_PREFIX = 'JD';
 const HISTORY_ID_SEQUENCE_LENGTH = 5;
 const HISTORY_ID_MAX_SEQUENCE = 99999;
+let loadHistoriesPromise: Promise<void> | null = null;
 
 function padDatePart(value: number) {
   return String(value).padStart(2, '0');
@@ -152,6 +153,7 @@ const initialState = {
     isLoading: false,
     error: null,
   },
+  initialized: false,
 };
 
 /**
@@ -179,54 +181,70 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
    * await loadHistories();
    * ```
    */
-  loadHistories: async () => {
-    set(state => ({
-      loading: {
-        ...state.loading,
-        isLoading: true,
-        error: null,
-      },
-    }));
-
-    let cachedHistories: ResumeHistory[] = [];
-
-    try {
-      cachedHistories = await getJSON<ResumeHistory[]>(STORAGE_KEY) || [];
-
-      if (cachedHistories.length > 0) {
-        set({histories: sortHistories(cachedHistories)});
-      }
-    } catch (error) {
-      console.warn('[HistoryStore] Failed to read cached histories:', error);
+  loadHistories: async (options: LoadOptions = {}) => {
+    if (options.skipIfLoaded && get().initialized && !options.force) {
+      return;
     }
 
-    try {
-      const remoteHistories = await resumeHistoryApi.getHistories();
-      const histories = await syncMissingLocalHistories(remoteHistories, cachedHistories);
+    if (loadHistoriesPromise && !options.force) {
+      return loadHistoriesPromise;
+    }
 
-      await setJSON(STORAGE_KEY, histories);
-
-      set({
-        histories,
-        loading: {
-          isLoading: false,
-          error: null,
-        },
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '加载历史记录失败';
-
+    loadHistoriesPromise = (async () => {
       set(state => ({
-        histories: cachedHistories.length > 0 ? sortHistories(cachedHistories) : state.histories,
         loading: {
           ...state.loading,
-          isLoading: false,
-          error: cachedHistories.length > 0 ? null : errorMessage,
+          isLoading: true,
+          error: null,
         },
       }));
 
-      console.error('[HistoryStore] Failed to load histories:', error);
-    }
+      let cachedHistories: ResumeHistory[] = [];
+
+      try {
+        cachedHistories = await getJSON<ResumeHistory[]>(STORAGE_KEY) || [];
+
+        if (cachedHistories.length > 0) {
+          set({histories: sortHistories(cachedHistories)});
+        }
+      } catch (error) {
+        console.warn('[HistoryStore] Failed to read cached histories:', error);
+      }
+
+      try {
+        const remoteHistories = await resumeHistoryApi.getHistories();
+        const histories = await syncMissingLocalHistories(remoteHistories, cachedHistories);
+
+        await setJSON(STORAGE_KEY, histories);
+
+        set({
+          histories,
+          loading: {
+            isLoading: false,
+            error: null,
+          },
+          initialized: true,
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '加载历史记录失败';
+
+        set(state => ({
+          histories: cachedHistories.length > 0 ? sortHistories(cachedHistories) : state.histories,
+          loading: {
+            ...state.loading,
+            isLoading: false,
+            error: cachedHistories.length > 0 ? null : errorMessage,
+          },
+          initialized: true,
+        }));
+
+        console.error('[HistoryStore] Failed to load histories:', error);
+      }
+    })().finally(() => {
+      loadHistoriesPromise = null;
+    });
+
+    return loadHistoriesPromise;
   },
 
   /**
@@ -294,6 +312,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           isLoading: false,
           error: null,
         },
+        initialized: true,
       });
 
       return savedHistory.id;
@@ -372,6 +391,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           isLoading: false,
           error: null,
         },
+        initialized: true,
       });
     } catch (error) {
       const errorMessage =
@@ -436,6 +456,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           isLoading: false,
           error: null,
         },
+        initialized: true,
       });
     } catch (error) {
       const errorMessage =
@@ -493,6 +514,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           isLoading: false,
           error: null,
         },
+        initialized: true,
       });
     } catch (error) {
       const errorMessage =
@@ -542,6 +564,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
    * ```
    */
   reset: () => {
+    loadHistoriesPromise = null;
     set(initialState);
   },
 }));

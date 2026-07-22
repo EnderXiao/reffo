@@ -17,6 +17,11 @@ export interface LoadingState {
   error: string | null;
 }
 
+export interface LoadOptions {
+  skipIfLoaded?: boolean;
+  force?: boolean;
+}
+
 // ============ Resume Store ============
 
 export interface ResumeState {
@@ -85,8 +90,11 @@ export interface HistoryState {
   // 加载状态
   loading: LoadingState;
 
+  // 是否完成过一次加载尝试
+  initialized: boolean;
+
   // Actions
-  loadHistories: () => Promise<void>;
+  loadHistories: (options?: LoadOptions) => Promise<void>;
   addHistory: (history: ResumeHistory) => Promise<string>;
   updateHistory: (id: string, history: Partial<ResumeHistory>) => Promise<void>;
   deleteHistory: (id: string) => Promise<void>;
@@ -98,7 +106,8 @@ export interface HistoryState {
 export interface SourceResumeState {
   latestSourceResume: SourceResumeSummary | null;
   loading: LoadingState;
-  loadLatestSourceResume: () => Promise<void>;
+  initialized: boolean;
+  loadLatestSourceResume: (options?: LoadOptions) => Promise<void>;
   setLatestSourceResume: (resume: SourceResumeSummary | null) => Promise<void>;
   deleteLatestSourceResume: (id: string) => Promise<void>;
   clearLatestSourceResume: () => Promise<void>;
