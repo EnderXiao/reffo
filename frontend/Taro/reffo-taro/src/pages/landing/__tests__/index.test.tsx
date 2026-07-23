@@ -114,7 +114,7 @@ describe('启动封页', () => {
     expect(mockReLaunch).toHaveBeenCalledWith('/pages/index/index')
   })
 
-  test('未看过 landing 时预取后停留在第二步引导页', async () => {
+  test('未看过 landing 时预取后停留在第一步引导页', async () => {
     mockStorageGetItem.mockResolvedValue(null)
 
     render(<LandingPage />)
@@ -135,7 +135,7 @@ describe('启动封页', () => {
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
 
-  test('带 startLanding=true 时即使已看过也停留在第二步引导页', async () => {
+  test('带 startLanding=true 时即使已看过也停留在第一步引导页', async () => {
     window.history.pushState({}, '', '/#/pages/landing/index?startLanding=true')
 
     render(<LandingPage />)
@@ -157,7 +157,7 @@ describe('启动封页', () => {
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
 
-  test('未看过 landing 时右滑完成引导并进入首页', async () => {
+  test('未看过 landing 时右滑进入第二步引导页', async () => {
     mockStorageGetItem.mockResolvedValue(null)
 
     const {container} = render(<LandingPage />)
@@ -168,6 +168,48 @@ describe('启动封页', () => {
 
     await act(async () => {
       jest.advanceTimersByTime(880)
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 80, clientY: 620}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 168, clientY: 626}],
+      })
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('全新体验')).not.toBeNull()
+    expect(screen.getByText('reffo会结合工作经历和目标岗位，重新组织简历重点，并准备针对性的面试建议。')).not.toBeNull()
+    expect(screen.getByText('跳过')).not.toBeNull()
+    expect(screen.getByText('进入教程')).not.toBeNull()
+    expect(mockStorageSetItem).not.toHaveBeenCalled()
+    expect(mockReLaunch).not.toHaveBeenCalled()
+  })
+
+  test('第二步右滑完成引导并进入首页', async () => {
+    mockStorageGetItem.mockResolvedValue(null)
+
+    const {container} = render(<LandingPage />)
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(880)
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 80, clientY: 620}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 168, clientY: 626}],
+      })
       await Promise.resolve()
     })
 

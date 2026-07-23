@@ -84,7 +84,7 @@
   pointer-events: none;
   perspective: 520PX;
   perspective-origin: 50% 46%;
-  transform-style: preserve-3d;
+  transform-style: flat;
 }
 
 .reffo-landing-onboarding__card {
@@ -99,18 +99,47 @@
   will-change: transform, opacity;
 }
 
-.reffo-landing-onboarding__card--left {
+.reffo-landing-onboarding__card--experience-left {
+  z-index: 1;
   left: 6px;
   top: min(33.8dvh, 290px);
   transform: translate3d(65px, 60px, 46PX) rotateZ(-11deg) rotateY(40deg) rotateX(12deg);
-  animation: reffo-landing-onboarding-card-left-in 820ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+  opacity: 0;
 }
 
-.reffo-landing-onboarding__card--right {
+.reffo-landing-onboarding__card--target {
+  z-index: 3;
+  left: 6px;
+  top: min(33.8dvh, 290px);
+  transform: translate3d(65px, 60px, 46PX) rotateZ(-11deg) rotateY(40deg) rotateX(12deg);
+  animation: reffo-landing-onboarding-card-target-in 820ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+}
+
+.reffo-landing-onboarding__card--experience-right {
+  z-index: 9;
   right: 6px;
   top: min(22.4dvh, 192px);
   transform: translate3d(0, 0, 46PX) rotateZ(10deg) rotateY(-40deg) rotateX(12deg);
-  animation: reffo-landing-onboarding-card-right-in 840ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
+  animation: reffo-landing-onboarding-card-experience-right-in 840ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
+}
+
+.reffo-landing-onboarding--step-experience .reffo-landing-onboarding__cards {
+  perspective-origin: 50% 52%;
+}
+
+.reffo-landing-onboarding--step-experience .reffo-landing-onboarding__card--experience-left {
+  z-index: 1;
+  animation: reffo-landing-onboarding-card-experience-left-out 880ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-landing-onboarding--step-experience .reffo-landing-onboarding__card--target {
+  z-index: 3;
+  animation: reffo-landing-onboarding-card-target-to-experience 880ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-landing-onboarding--step-experience .reffo-landing-onboarding__card--experience-right {
+  z-index: 9;
+  animation: reffo-landing-onboarding-card-right-to-experience 880ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .reffo-landing-onboarding__home-card {
@@ -133,12 +162,66 @@
   letter-spacing: 0;
   text-align: center;
   white-space: pre-line;
-  animation: reffo-landing-onboarding-copy-in 620ms cubic-bezier(0.16, 1, 0.3, 1) 420ms both;
 }
 
 .reffo-landing-onboarding__accent {
   color: #0b70f5;
   font-weight: 600;
+}
+
+.reffo-landing-onboarding__headline--target {
+  animation: reffo-landing-onboarding-copy-in 620ms cubic-bezier(0.16, 1, 0.3, 1) 420ms both;
+}
+
+.reffo-landing-onboarding__headline--experience {
+  top: min(27dvh, 230px);
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+}
+
+.reffo-landing-onboarding--step-experience .reffo-landing-onboarding__headline--target {
+  animation: reffo-landing-onboarding-target-copy-out 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-landing-onboarding--step-experience .reffo-landing-onboarding__headline--experience {
+  animation: reffo-landing-onboarding-experience-copy-in 520ms cubic-bezier(0.16, 1, 0.3, 1) 620ms both;
+}
+
+.reffo-landing-onboarding__body {
+  position: absolute;
+  z-index: 3;
+  left: 32px;
+  right: 32px;
+  top: min(33dvh, 282px);
+  color: #111111;
+  font-size: 16px;
+  line-height: 30px;
+  font-weight: 400;
+  letter-spacing: 0;
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+}
+
+.reffo-landing-onboarding--step-experience .reffo-landing-onboarding__body {
+  animation: reffo-landing-onboarding-body-in 540ms cubic-bezier(0.16, 1, 0.3, 1) 720ms both;
+}
+
+.reffo-landing-onboarding__skip {
+  position: absolute;
+  z-index: 5;
+  left: 31px;
+  bottom: max(34px, calc(env(safe-area-inset-bottom) + 34px));
+  min-width: 56px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: rgba(17, 17, 17, 0.34);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 400;
+  cursor: pointer;
+  animation: reffo-landing-onboarding-skip-in 420ms cubic-bezier(0.16, 1, 0.3, 1) 500ms both;
 }
 
 .reffo-landing-onboarding__continue {
@@ -159,7 +242,56 @@
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+  overflow: hidden;
   animation: reffo-landing-onboarding-continue-in 560ms cubic-bezier(0.16, 1, 0.3, 1) 660ms both;
+}
+
+.reffo-landing-onboarding__continue-label {
+  position: relative;
+  min-width: 70px;
+  height: 20px;
+  display: block;
+}
+
+.reffo-landing-onboarding__continue-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  white-space: nowrap;
+  color: transparent;
+  background:
+    linear-gradient(
+      105deg,
+      #111111 0%,
+      #111111 37%,
+      #ffffff 48%,
+      #111111 59%,
+      #111111 100%
+    );
+  background-size: 260% 100%;
+  background-position: 140% 50%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: reffo-landing-onboarding-continue-text-shine 1800ms linear infinite;
+}
+
+.reffo-landing-onboarding__continue-text--experience {
+  opacity: 0;
+  transform: translate3d(-16px, 0, 0);
+}
+
+.reffo-landing-onboarding--step-experience .reffo-landing-onboarding__continue-text--target {
+  animation:
+    reffo-landing-onboarding-continue-target-out 520ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    reffo-landing-onboarding-continue-text-shine 1800ms linear infinite;
+}
+
+.reffo-landing-onboarding--step-experience .reffo-landing-onboarding__continue-text--experience {
+  animation:
+    reffo-landing-onboarding-continue-experience-in 520ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both,
+    reffo-landing-onboarding-continue-text-shine 1800ms linear infinite;
 }
 
 .reffo-landing-onboarding__arrow {
@@ -297,7 +429,7 @@
   }
 }
 
-@keyframes reffo-landing-onboarding-card-left-in {
+@keyframes reffo-landing-onboarding-card-target-in {
   from {
     opacity: 0;
     transform:
@@ -318,7 +450,7 @@
   }
 }
 
-@keyframes reffo-landing-onboarding-card-right-in {
+@keyframes reffo-landing-onboarding-card-experience-right-in {
   from {
     opacity: 0;
     transform:
@@ -340,10 +472,142 @@
   }
 }
 
+@keyframes reffo-landing-onboarding-card-target-to-experience {
+  0% {
+    opacity: 1;
+    left: 6px;
+    top: min(33.8dvh, 290px);
+    transform: translate3d(65px, 60px, 46PX) rotateZ(-11deg) rotateY(40deg) rotateX(12deg) scale(1);
+  }
+
+  76% {
+    opacity: 1;
+    left: 54%;
+    top: min(47dvh, 400px);
+    transform: translate3d(-50%, -4px, 72PX) rotateZ(1.8deg) rotateY(3deg) rotateX(2deg) scale(1.026);
+  }
+
+  100% {
+    opacity: 1;
+    left: 54%;
+    top: min(47dvh, 400px);
+    transform: translate3d(-50%, 0, 72PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(1);
+  }
+}
+
+@keyframes reffo-landing-onboarding-card-right-to-experience {
+  0% {
+    opacity: 1;
+    right: 6px;
+    top: min(22.4dvh, 192px);
+    transform: translate3d(0, 0, 46PX) rotateZ(10deg) rotateY(-40deg) rotateX(12deg) scale(1);
+  }
+
+  76% {
+    opacity: 1;
+    right: 23px;
+    top: min(54dvh, 462px);
+    transform: translate3d(2px, -2px, 82PX) rotateZ(14deg) rotateY(-4deg) rotateX(2deg) scale(1.026);
+  }
+
+  100% {
+    opacity: 1;
+    right: 23px;
+    top: min(54dvh, 462px);
+    transform: translate3d(0, 0, 82PX) rotateZ(14deg) rotateY(0deg) rotateX(0deg) scale(1);
+  }
+}
+
+@keyframes reffo-landing-onboarding-card-experience-left-out {
+  0% {
+    opacity: 0;
+    left: 50%;
+    top: min(47dvh, 400px);
+    transform: translate3d(-50%, 0, 34PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(0.995);
+  }
+
+  18% {
+    opacity: 1;
+    left: 50%;
+    top: min(47dvh, 400px);
+    transform: translate3d(-50%, 0, 34PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(0.995);
+  }
+
+  76% {
+    opacity: 1;
+    left: 66px;
+    top: min(49dvh, 418px);
+    transform: translate3d(-5px, -3px, 40PX) rotateZ(-14deg) rotateY(3deg) rotateX(2deg) scale(1.02);
+  }
+
+  100% {
+    opacity: 1;
+    left: 66px;
+    top: min(49dvh, 418px);
+    transform: translate3d(0, 0, 40PX) rotateZ(-14deg) rotateY(0deg) rotateX(0deg) scale(1);
+  }
+}
+
 @keyframes reffo-landing-onboarding-copy-in {
   from {
     opacity: 0;
     transform: translate3d(0, 22px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-landing-onboarding-target-copy-out {
+  0% {
+    opacity: 1;
+    top: min(39dvh, 338px);
+    transform: translate3d(0, 0, 0);
+  }
+
+  62% {
+    opacity: 1;
+    top: min(27dvh, 230px);
+    transform: translate3d(0, -6px, 0);
+  }
+
+  100% {
+    opacity: 0;
+    top: min(20dvh, 170px);
+    transform: translate3d(0, -18px, 0);
+  }
+}
+
+@keyframes reffo-landing-onboarding-experience-copy-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-landing-onboarding-body-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-landing-onboarding-skip-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-10px, 0, 0);
   }
 
   to {
@@ -364,6 +628,40 @@
   }
 }
 
+@keyframes reffo-landing-onboarding-continue-text-shine {
+  from {
+    background-position: 140% 50%;
+  }
+
+  to {
+    background-position: -140% 50%;
+  }
+}
+
+@keyframes reffo-landing-onboarding-continue-target-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(16px, 0, 0);
+  }
+}
+
+@keyframes reffo-landing-onboarding-continue-experience-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-16px, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reffo-landing,
   .reffo-landing__logo,
@@ -372,10 +670,19 @@
   .reffo-landing-onboarding__logo,
   .reffo-landing-onboarding__logo-flight,
   .reffo-landing-onboarding__card,
+  .reffo-landing-onboarding__body,
   .reffo-landing-onboarding__headline,
-  .reffo-landing-onboarding__continue {
+  .reffo-landing-onboarding__skip,
+  .reffo-landing-onboarding__continue,
+  .reffo-landing-onboarding__continue-text {
     transition: none;
     animation: none;
+  }
+
+  .reffo-landing-onboarding__continue-text {
+    color: #111111;
+    background: none;
+    -webkit-text-fill-color: currentColor;
   }
 
   .reffo-landing-onboarding--logo-transition .reffo-landing-onboarding__logo {
@@ -384,5 +691,21 @@
 
   .reffo-landing-onboarding__logo-flight {
     display: none;
+  }
+
+  .reffo-landing-onboarding--step-target .reffo-landing-onboarding__card--experience-left,
+  .reffo-landing-onboarding--step-target .reffo-landing-onboarding__headline--experience,
+  .reffo-landing-onboarding--step-target .reffo-landing-onboarding__body,
+  .reffo-landing-onboarding--step-target .reffo-landing-onboarding__continue-text--experience,
+  .reffo-landing-onboarding--step-experience .reffo-landing-onboarding__headline--target,
+  .reffo-landing-onboarding--step-experience .reffo-landing-onboarding__continue-text--target {
+    opacity: 0;
+  }
+
+  .reffo-landing-onboarding--step-experience .reffo-landing-onboarding__headline--experience,
+  .reffo-landing-onboarding--step-experience .reffo-landing-onboarding__body,
+  .reffo-landing-onboarding--step-experience .reffo-landing-onboarding__continue-text--experience {
+    opacity: 1;
+    transform: none;
   }
 }

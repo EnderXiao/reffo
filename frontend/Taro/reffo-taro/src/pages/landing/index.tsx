@@ -32,10 +32,12 @@ const ONBOARDING_SWIPE_THRESHOLD = 54
 const ONBOARDING_SWIPE_DIRECTION_RATIO = 1.35
 
 type LandingPhase = 'splash' | 'onboarding'
+type OnboardingStep = 'target' | 'experience'
 
 const ONBOARDING_CARD_SEEDS = {
-  left: '#B95CFF',
-  right: '#F0D45F',
+  experienceLeft: '#74D7A7',
+  target: '#B95CFF',
+  experienceRight: '#F0D45F',
 }
 
 function createOnboardingCard(
@@ -58,7 +60,16 @@ function createOnboardingCard(
 }
 
 const ONBOARDING_CARDS: HomeCardItem[] = [
-  createOnboardingCard('landing-card-product', ONBOARDING_CARD_SEEDS.left, {
+  createOnboardingCard('landing-card-network', ONBOARDING_CARD_SEEDS.experienceLeft, {
+    company: 'Reffo',
+    indexLabel: '03',
+    location: 'Remote',
+    role: 'Career Coach',
+    dateLabel: '2026.07',
+    score: 90,
+    strategyBody: '',
+  }),
+  createOnboardingCard('landing-card-product', ONBOARDING_CARD_SEEDS.target, {
     company: 'Reffo',
     indexLabel: '01',
     location: 'Remote',
@@ -67,7 +78,7 @@ const ONBOARDING_CARDS: HomeCardItem[] = [
     score: 92,
     strategyBody: '',
   }),
-  createOnboardingCard('landing-card-growth', ONBOARDING_CARD_SEEDS.right, {
+  createOnboardingCard('landing-card-growth', ONBOARDING_CARD_SEEDS.experienceRight, {
     company: 'Reffo',
     indexLabel: '02',
     location: 'Shanghai',
@@ -220,6 +231,7 @@ async function enterHome(selector?: string) {
 
 export default function LandingPage() {
   const [phase, setPhase] = useState<LandingPhase>('splash')
+  const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('target')
   const [isLeaving, setIsLeaving] = useState(false)
   const [shouldForceStartLanding] = useState(() => shouldStartLandingByQuery())
   const [onboardingLogoSnapshot, setOnboardingLogoSnapshot] = useState<SharedElementSnapshot | null>(null)
@@ -250,6 +262,7 @@ export default function LandingPage() {
       }
 
       setHasOnboardingLogoSettled(false)
+      setOnboardingStep('target')
       setOnboardingLogoSnapshot(captureLogoSnapshot())
       setPhase('onboarding')
     }
@@ -312,6 +325,19 @@ export default function LandingPage() {
     await enterHome('.reffo-landing-onboarding__logo')
   }
 
+  const advanceOnboarding = () => {
+    if (phase !== 'onboarding' || isLeaving) {
+      return
+    }
+
+    if (onboardingStep === 'target') {
+      setOnboardingStep('experience')
+      return
+    }
+
+    void completeOnboarding()
+  }
+
   const handleTouchStart = (event: any) => {
     if (phase !== 'onboarding') {
       return
@@ -349,7 +375,7 @@ export default function LandingPage() {
       deltaX >= ONBOARDING_SWIPE_THRESHOLD &&
       Math.abs(deltaX) > Math.abs(deltaY) * ONBOARDING_SWIPE_DIRECTION_RATIO
     ) {
-      void completeOnboarding()
+      advanceOnboarding()
     }
   }
 
@@ -360,6 +386,8 @@ export default function LandingPage() {
           'reffo-landing-onboarding--leaving': isLeaving,
           'reffo-landing-onboarding--logo-transition': Boolean(onboardingLogoSnapshot),
           'reffo-landing-onboarding--logo-settled': hasOnboardingLogoSettled,
+          'reffo-landing-onboarding--step-target': onboardingStep === 'target',
+          'reffo-landing-onboarding--step-experience': onboardingStep === 'experience',
         })}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -379,10 +407,29 @@ export default function LandingPage() {
 
         <View className='reffo-landing-onboarding__cards reffo-home-deck-wrap--enhanced'>
           <View
-            className='reffo-landing-onboarding__card reffo-landing-onboarding__card--left'
+            className='reffo-landing-onboarding__card reffo-landing-onboarding__card--experience-left'
           >
             <HomeScoreCard
               card={ONBOARDING_CARDS[0]}
+              depth={0}
+              active={false}
+              visualTier='enhanced'
+              className='reffo-landing-onboarding__home-card'
+              style={{
+                '--card-responsive-scale': 0.72,
+                '--card-left': '0px',
+                '--card-top': '0px',
+                '--card-rotate': '0deg',
+                '--card-depth-scale': 1,
+                zIndex: 1,
+              }}
+            />
+          </View>
+          <View
+            className='reffo-landing-onboarding__card reffo-landing-onboarding__card--target'
+          >
+            <HomeScoreCard
+              card={ONBOARDING_CARDS[1]}
               depth={0}
               active={false}
               visualTier='enhanced'
@@ -398,10 +445,10 @@ export default function LandingPage() {
             />
           </View>
           <View
-            className='reffo-landing-onboarding__card reffo-landing-onboarding__card--right'
+            className='reffo-landing-onboarding__card reffo-landing-onboarding__card--experience-right'
           >
             <HomeScoreCard
-              card={ONBOARDING_CARDS[1]}
+              card={ONBOARDING_CARDS[2]}
               depth={0}
               active={false}
               visualTier='enhanced'
@@ -412,26 +459,53 @@ export default function LandingPage() {
                 '--card-top': '0px',
                 '--card-rotate': '0deg',
                 '--card-depth-scale': 1,
-                zIndex: 1,
+                zIndex: 5,
               }}
             />
           </View>
         </View>
 
-        <View className='reffo-landing-onboarding__headline'>
+        <View className='reffo-landing-onboarding__headline reffo-landing-onboarding__headline--target'>
           <Text>一个</Text>
           <Text className='reffo-landing-onboarding__accent'>岗位</Text>
           <Text>{'\n'}一份专门准备的</Text>
           <Text className='reffo-landing-onboarding__accent'>简历</Text>
         </View>
 
+        <View className='reffo-landing-onboarding__headline reffo-landing-onboarding__headline--experience'>
+          <Text>开启</Text>
+          <Text className='reffo-landing-onboarding__accent'>全新体验</Text>
+        </View>
+
+        <View className='reffo-landing-onboarding__body'>
+          <Text>reffo会结合工作经历和目标岗位，重新组织简历重点，并准备针对性的面试建议。</Text>
+        </View>
+
+        {onboardingStep === 'experience' ? (
+          <View
+            className='reffo-landing-onboarding__skip'
+            onClick={() => {
+              void completeOnboarding()
+            }}
+          >
+            <Text>跳过</Text>
+          </View>
+        ) : null}
+
         <View
           className='reffo-landing-onboarding__continue'
           onClick={() => {
-            void completeOnboarding()
+            advanceOnboarding()
           }}
         >
-          <Text>右滑 继续</Text>
+          <View className='reffo-landing-onboarding__continue-label'>
+            <Text className='reffo-landing-onboarding__continue-text reffo-landing-onboarding__continue-text--target'>
+              右滑 继续
+            </Text>
+            <Text className='reffo-landing-onboarding__continue-text reffo-landing-onboarding__continue-text--experience'>
+              进入教程
+            </Text>
+          </View>
           <Text className='reffo-landing-onboarding__arrow'>→</Text>
         </View>
       </View>
