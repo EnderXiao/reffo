@@ -189,7 +189,7 @@ describe('启动封页', () => {
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
 
-  test('第二步右滑完成引导并进入首页', async () => {
+  test('第二步右滑进入第三步引导页', async () => {
     mockStorageGetItem.mockResolvedValue(null)
 
     const {container} = render(<LandingPage />)
@@ -220,6 +220,108 @@ describe('启动封页', () => {
       fireEvent.touchEnd(container.firstElementChild as Element, {
         changedTouches: [{clientX: 168, clientY: 626}],
       })
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('谁是')).not.toBeNull()
+    expect(screen.getByText('求职者')).not.toBeNull()
+    expect(screen.getByText('跳过教程')).not.toBeNull()
+    expect(screen.getByText('Frontend Engineer')).not.toBeNull()
+    expect(screen.getByText('Brand Strategist')).not.toBeNull()
+    expect(mockStorageSetItem).not.toHaveBeenCalled()
+    expect(mockReLaunch).not.toHaveBeenCalled()
+  })
+
+  test('第三步右滑完成引导并进入首页', async () => {
+    mockStorageGetItem.mockResolvedValue(null)
+
+    const {container} = render(<LandingPage />)
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(880)
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 80, clientY: 620}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 168, clientY: 626}],
+      })
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 80, clientY: 620}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 168, clientY: 626}],
+      })
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 80, clientY: 620}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 168, clientY: 626}],
+      })
+      await Promise.resolve()
+    })
+
+    expect(mockStorageSetItem).toHaveBeenCalledWith('reffo.landing.seen', '1')
+
+    await act(async () => {
+      jest.advanceTimersByTime(80)
+      await Promise.resolve()
+    })
+
+    expect(mockReLaunch).toHaveBeenCalledWith('/pages/index/index')
+  })
+
+  test('第三步点击跳过教程完成引导并进入首页', async () => {
+    mockStorageGetItem.mockResolvedValue(null)
+
+    const {container} = render(<LandingPage />)
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(880)
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 80, clientY: 620}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 168, clientY: 626}],
+      })
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 80, clientY: 620}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 168, clientY: 626}],
+      })
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('跳过教程'))
       await Promise.resolve()
     })
 

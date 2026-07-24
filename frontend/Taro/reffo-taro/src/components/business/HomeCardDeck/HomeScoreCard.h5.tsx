@@ -33,6 +33,7 @@ interface HomeScoreCardProps {
   active: boolean
   visualTier: VisualTier
   variant?: 'score' | 'create' | 'generating'
+  presentation?: 'default' | 'queue3d'
   className?: string
   style?: Record<string, string | number>
   onClick?: () => void
@@ -169,6 +170,7 @@ export default function HomeScoreCard({
   active,
   visualTier,
   variant = 'score',
+  presentation = 'default',
   className,
   style,
   onClick,
@@ -199,6 +201,7 @@ export default function HomeScoreCard({
   const isDark = card.tone === 'dark'
   const isCreate = variant === 'create'
   const isGenerating = variant === 'generating'
+  const isQueue3d = presentation === 'queue3d'
   const hasWrappedCompanyName = !isCreate && !isGenerating && isLikelyWrappedCompanyName(card.company)
   const scoreGrade = resolveResumeGrade(card.score)
   const scoreGradeClass = scoreGrade === 'A+' ? 'a' : scoreGrade.toLowerCase()
@@ -231,6 +234,7 @@ export default function HomeScoreCard({
           'reffo-home-card--active': active,
           'reffo-home-card--create': isCreate,
           'reffo-home-card--generating': isGenerating,
+          'reffo-home-card--queue3d': isQueue3d,
           'reffo-home-card--company-wrap': hasWrappedCompanyName,
         },
         className,
@@ -238,6 +242,14 @@ export default function HomeScoreCard({
       style={cssVars}
       onClick={onClick}
     >
+      {isQueue3d ? (
+        <View className='reffo-home-card__thickness' aria-hidden='true'>
+          <View className='reffo-home-card__thickness-plate reffo-home-card__thickness-plate--solid' />
+          <View className='reffo-home-card__thickness-plate reffo-home-card__thickness-plate--outline' />
+          <View className='reffo-home-card__thickness-foreground-shadow' />
+          <View className='reffo-home-card__thickness-surface-shadow' />
+        </View>
+      ) : null}
       <View className='reffo-home-card__surface'>
         {visualTier === 'premium' ? (
           <Suspense fallback={null}>

@@ -30,14 +30,34 @@ const EXIT_TRANSITION_MS = 80
 const ONBOARDING_LOGO_TRANSITION_MS = 780
 const ONBOARDING_SWIPE_THRESHOLD = 54
 const ONBOARDING_SWIPE_DIRECTION_RATIO = 1.35
+const ONBOARDING_QUEUE_ENTRY_MS = 960
+const ONBOARDING_QUEUE_FAST_MS = 1100
+const ONBOARDING_QUEUE_FAST_CYCLE_MS = 320
+const ONBOARDING_QUEUE_DECEL_MS = 2800
+const ONBOARDING_QUEUE_SPIN_TOTAL_MS = ONBOARDING_QUEUE_FAST_MS + ONBOARDING_QUEUE_DECEL_MS
+const ONBOARDING_QUEUE_STEADY_CYCLE_MS = 11000
+const ONBOARDING_QUEUE_MAX_MOTION_BLUR = 1.35
+const ONBOARDING_QUEUE_CARD_ROTATE_X = '0deg'
+const ONBOARDING_QUEUE_CARD_ROTATE_Y = '-15deg'
+const ONBOARDING_QUEUE_CARD_ROTATE_Z = '0deg'
 
 type LandingPhase = 'splash' | 'onboarding'
-type OnboardingStep = 'target' | 'experience'
+type OnboardingStep = 'target' | 'experience' | 'queue'
+type QueueMotionPhase = 'idle' | 'entry' | 'spin' | 'steady'
+type QueueSlotKind = 'slot-0' | 'slot-1' | 'slot-2' | 'slot-3' | 'slot-4' | 'slot-5'
+
+interface QueueSlot {
+  kind: QueueSlotKind
+  offset: number
+  cardIndex?: number
+}
 
 const ONBOARDING_CARD_SEEDS = {
   experienceLeft: '#74D7A7',
   target: '#B95CFF',
   experienceRight: '#F0D45F',
+  queueIncoming: '#6DA9FF',
+  queueFar: '#C4E1FF',
 }
 
 function createOnboardingCard(
@@ -89,10 +109,146 @@ const ONBOARDING_CARDS: HomeCardItem[] = [
   }),
 ]
 
+const ONBOARDING_QUEUE_CARDS: HomeCardItem[] = [
+  ...ONBOARDING_CARDS,
+  createOnboardingCard('landing-card-frontend', ONBOARDING_CARD_SEEDS.queueIncoming, {
+    company: 'Reffo',
+    indexLabel: '04',
+    location: 'Hangzhou',
+    role: 'Frontend Engineer',
+    dateLabel: '2026.07',
+    score: 91,
+    strategyBody: '',
+  }),
+  createOnboardingCard('landing-card-brand', ONBOARDING_CARD_SEEDS.queueFar, {
+    company: 'Reffo',
+    indexLabel: '05',
+    location: 'Shenzhen',
+    role: 'Brand Strategist',
+    dateLabel: '2026.07',
+    score: 87,
+    strategyBody: '',
+  }),
+]
+
+interface QueueTrackFrame {
+  phase: number
+  x: number
+  y: number
+  z: number
+  scale: number
+  opacity: number
+  zIndex: number
+}
+
+const ONBOARDING_QUEUE_ENTRY_SLOTS: QueueSlot[] = [
+  {kind: 'slot-0', offset: 0, cardIndex: 0},
+  {kind: 'slot-1', offset: 1, cardIndex: 1},
+  {kind: 'slot-2', offset: 2, cardIndex: 2},
+  {kind: 'slot-3', offset: 3, cardIndex: 3},
+  {kind: 'slot-4', offset: 4, cardIndex: 4},
+]
+const ONBOARDING_QUEUE_FLOW_SLOTS: QueueSlot[] = [
+  ...ONBOARDING_QUEUE_ENTRY_SLOTS,
+  {kind: 'slot-5', offset: 5},
+]
+const ONBOARDING_QUEUE_TRACK: QueueTrackFrame[] = [
+  {phase: 0, x: 238, y: -156, z: -150, scale: 0.868, opacity: 1, zIndex: 5},
+  {phase: 0.166667, x: 136, y: -118, z: -110, scale: 0.858, opacity: 1, zIndex: 5},
+  {phase: 0.333333, x: 34, y: -80, z: -50, scale: 0.84, opacity: 1, zIndex: 6},
+  {phase: 0.5, x: -68, y: -42, z: 10, scale: 0.816, opacity: 1, zIndex: 7},
+  {phase: 0.666667, x: -170, y: -4, z: 68, scale: 0.788, opacity: 1, zIndex: 8},
+  {phase: 0.833333, x: -272, y: 34, z: 124, scale: 0.756, opacity: 1, zIndex: 9},
+  {phase: 1, x: -374, y: 72, z: 176, scale: 0.722, opacity: 1, zIndex: 10},
+]
+
 function wait(ms: number) {
   return new Promise(resolve => {
     setTimeout(resolve, ms)
   })
+}
+
+function interpolateQueueValue(from: number, to: number, progress: number) {
+  return from + (to - from) * progress
+}
+
+function resolveQueueLaneFrame(index: number, progress: number): QueueTrackFrame {
+  const from = ONBOARDING_QUEUE_TRACK[index]
+  const to = ONBOARDING_QUEUE_TRACK[index + 1] ?? from
+
+  return {
+    phase: progress,
+    x: interpolateQueueValue(from.x, to.x, progress),
+    y: interpolateQueueValue(from.y, to.y, progress),
+    z: interpolateQueueValue(from.z, to.z, progress),
+    scale: interpolateQueueValue(from.scale, to.scale, progress),
+    opacity: interpolateQueueValue(from.opacity, to.opacity, progress),
+    zIndex: Math.round(interpolateQueueValue(from.zIndex, to.zIndex, progress)),
+  }
+}
+
+function resolveQueueTransform(frame: QueueTrackFrame) {
+  return `translate3d(${frame.x}px, ${frame.y}px, ${frame.z}PX) rotateZ(var(--queue-rotate-z, -1deg)) rotateY(var(--queue-rotate-y, -6deg)) rotateX(var(--queue-rotate-x, 0deg)) scale(${frame.scale})`
+}
+
+function resolveQueueProgress(elapsedMs: number) {
+  const fastSpeed = 1 / ONBOARDING_QUEUE_FAST_CYCLE_MS
+  const steadySpeed = 1 / ONBOARDING_QUEUE_STEADY_CYCLE_MS
+
+  if (elapsedMs <= ONBOARDING_QUEUE_FAST_MS) {
+    return elapsedMs * fastSpeed
+  }
+
+  const fastProgress = ONBOARDING_QUEUE_FAST_MS * fastSpeed
+  const decelElapsed = Math.min(elapsedMs - ONBOARDING_QUEUE_FAST_MS, ONBOARDING_QUEUE_DECEL_MS)
+
+  if (elapsedMs <= ONBOARDING_QUEUE_SPIN_TOTAL_MS) {
+    const decelProgress = decelElapsed / ONBOARDING_QUEUE_DECEL_MS
+    const easedDistance = (1 - Math.pow(1 - decelProgress, 4)) / 4
+
+    return fastProgress
+      + (decelElapsed * steadySpeed)
+      + ((fastSpeed - steadySpeed) * ONBOARDING_QUEUE_DECEL_MS * easedDistance)
+  }
+
+  const spinProgress = fastProgress
+    + (ONBOARDING_QUEUE_DECEL_MS * steadySpeed)
+    + ((fastSpeed - steadySpeed) * ONBOARDING_QUEUE_DECEL_MS / 4)
+
+  return spinProgress
+    + ((elapsedMs - ONBOARDING_QUEUE_SPIN_TOTAL_MS) / ONBOARDING_QUEUE_STEADY_CYCLE_MS)
+}
+
+function resolveQueueMotionBlur(elapsedMs: number) {
+  if (elapsedMs <= ONBOARDING_QUEUE_FAST_MS) {
+    return ONBOARDING_QUEUE_MAX_MOTION_BLUR
+  }
+
+  if (elapsedMs <= ONBOARDING_QUEUE_SPIN_TOTAL_MS) {
+    const decelProgress = (elapsedMs - ONBOARDING_QUEUE_FAST_MS) / ONBOARDING_QUEUE_DECEL_MS
+
+    return ONBOARDING_QUEUE_MAX_MOTION_BLUR * Math.pow(1 - decelProgress, 3)
+  }
+
+  return 0
+}
+
+function resolveQueueCardStyle(offset: number, progress = 0): CSSProperties {
+  const frame = resolveQueueLaneFrame(offset, progress)
+
+  return {
+    opacity: frame.opacity,
+    zIndex: frame.zIndex,
+    transform: resolveQueueTransform(frame),
+  }
+}
+
+function positiveModulo(value: number, divisor: number) {
+  return ((value % divisor) + divisor) % divisor
+}
+
+function resolveQueueFlowCardIndex(cursor: number, offset: number) {
+  return positiveModulo(offset - cursor, ONBOARDING_QUEUE_CARDS.length)
 }
 
 async function hasSeenLanding() {
@@ -237,8 +393,27 @@ export default function LandingPage() {
   const [onboardingLogoSnapshot, setOnboardingLogoSnapshot] = useState<SharedElementSnapshot | null>(null)
   const [onboardingLogoStyle, setOnboardingLogoStyle] = useState<CSSProperties | null>(null)
   const [hasOnboardingLogoSettled, setHasOnboardingLogoSettled] = useState(false)
+  const [queueMotionPhase, setQueueMotionPhase] = useState<QueueMotionPhase>('idle')
+  const [queueCursor, setQueueCursor] = useState(0)
   const touchStartRef = useRef<{x: number; y: number} | null>(null)
   const onboardingLogoTimerRef = useRef<number | null>(null)
+  const queueTimersRef = useRef<number[]>([])
+  const queueAnimationFrameRef = useRef<number | null>(null)
+  const queueCursorRef = useRef(0)
+
+  const clearQueueTimers = () => {
+    queueTimersRef.current.forEach(timer => {
+      window.clearTimeout(timer)
+    })
+    queueTimersRef.current = []
+  }
+
+  const clearQueueAnimationFrame = () => {
+    if (queueAnimationFrameRef.current != null) {
+      window.cancelAnimationFrame(queueAnimationFrameRef.current)
+      queueAnimationFrameRef.current = null
+    }
+  }
 
   useEffect(() => {
     let mounted = true
@@ -263,6 +438,9 @@ export default function LandingPage() {
 
       setHasOnboardingLogoSettled(false)
       setOnboardingStep('target')
+      setQueueMotionPhase('idle')
+      queueCursorRef.current = 0
+      setQueueCursor(0)
       setOnboardingLogoSnapshot(captureLogoSnapshot())
       setPhase('onboarding')
     }
@@ -313,7 +491,73 @@ export default function LandingPage() {
     if (onboardingLogoTimerRef.current != null) {
       window.clearTimeout(onboardingLogoTimerRef.current)
     }
+    clearQueueTimers()
+    clearQueueAnimationFrame()
   }, [])
+
+  useEffect(() => {
+    clearQueueTimers()
+    clearQueueAnimationFrame()
+
+    if (phase !== 'onboarding' || onboardingStep !== 'queue' || isLeaving) {
+      setQueueMotionPhase('idle')
+      queueCursorRef.current = 0
+      setQueueCursor(0)
+      return undefined
+    }
+
+    setQueueMotionPhase('entry')
+    queueCursorRef.current = 0
+    setQueueCursor(0)
+
+    const entryTimer = window.setTimeout(() => {
+      setQueueMotionPhase('spin')
+
+      const startedAt = performance.now()
+      const tick = (timestamp: number) => {
+        const elapsedMs = timestamp - startedAt
+        const progress = resolveQueueProgress(elapsedMs)
+        const nextCursor = Math.floor(progress)
+        const laneProgress = progress - nextCursor
+        const motionBlur = resolveQueueMotionBlur(elapsedMs)
+        const filter = motionBlur > 0.02 ? `blur(${motionBlur.toFixed(3)}PX)` : 'none'
+        const queueCards = typeof document === 'undefined'
+          ? []
+          : Array.from(document.querySelectorAll<HTMLElement>('[data-queue-offset]'))
+
+        if (queueCursorRef.current !== nextCursor) {
+          queueCursorRef.current = nextCursor
+          setQueueCursor(nextCursor)
+        }
+
+        queueCards.forEach(element => {
+          const offset = Number(element.dataset.queueOffset ?? 0)
+          const frameStyle = resolveQueueCardStyle(offset, laneProgress)
+          element.style.opacity = String(frameStyle.opacity ?? 1)
+          element.style.zIndex = String(frameStyle.zIndex ?? 1)
+          element.style.transform = String(frameStyle.transform ?? '')
+          element.style.filter = filter
+        })
+
+        queueAnimationFrameRef.current = window.requestAnimationFrame(tick)
+      }
+
+      queueAnimationFrameRef.current = window.requestAnimationFrame(tick)
+
+      const steadyStartTimer = window.setTimeout(() => {
+        setQueueMotionPhase('steady')
+      }, ONBOARDING_QUEUE_SPIN_TOTAL_MS)
+
+      queueTimersRef.current.push(steadyStartTimer)
+    }, ONBOARDING_QUEUE_ENTRY_MS)
+
+    queueTimersRef.current.push(entryTimer)
+
+    return () => {
+      clearQueueTimers()
+      clearQueueAnimationFrame()
+    }
+  }, [isLeaving, onboardingStep, phase])
 
   const completeOnboarding = async () => {
     if (phase !== 'onboarding' || isLeaving) {
@@ -332,6 +576,11 @@ export default function LandingPage() {
 
     if (onboardingStep === 'target') {
       setOnboardingStep('experience')
+      return
+    }
+
+    if (onboardingStep === 'experience') {
+      setOnboardingStep('queue')
       return
     }
 
@@ -380,6 +629,17 @@ export default function LandingPage() {
   }
 
   if (phase === 'onboarding') {
+    const isQueueStep = onboardingStep === 'queue'
+    const isQueueFlow = queueMotionPhase === 'spin' || queueMotionPhase === 'steady'
+    const queueCycleStyle = isQueueStep
+      ? ({
+        '--queue-rotate-x': ONBOARDING_QUEUE_CARD_ROTATE_X,
+        '--queue-rotate-y': ONBOARDING_QUEUE_CARD_ROTATE_Y,
+        '--queue-rotate-z': ONBOARDING_QUEUE_CARD_ROTATE_Z,
+      } as CSSProperties)
+      : undefined
+    const queueSlots = isQueueFlow ? ONBOARDING_QUEUE_FLOW_SLOTS : ONBOARDING_QUEUE_ENTRY_SLOTS
+
     return (
       <View
         className={classNames('reffo-landing-onboarding', {
@@ -388,7 +648,12 @@ export default function LandingPage() {
           'reffo-landing-onboarding--logo-settled': hasOnboardingLogoSettled,
           'reffo-landing-onboarding--step-target': onboardingStep === 'target',
           'reffo-landing-onboarding--step-experience': onboardingStep === 'experience',
+          'reffo-landing-onboarding--step-queue': onboardingStep === 'queue',
+          'reffo-landing-onboarding--queue-entry': queueMotionPhase === 'entry',
+          'reffo-landing-onboarding--queue-spin': queueMotionPhase === 'spin',
+          'reffo-landing-onboarding--queue-steady': queueMotionPhase === 'steady',
         })}
+        style={queueCycleStyle}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={() => {
@@ -406,71 +671,108 @@ export default function LandingPage() {
         ) : null}
 
         <View className='reffo-landing-onboarding__cards reffo-home-deck-wrap--enhanced'>
+          {isQueueStep ? (
+            queueSlots.map(({kind, offset, cardIndex}) => {
+              const resolvedCardIndex = isQueueFlow
+                ? resolveQueueFlowCardIndex(queueCursor, offset)
+                : cardIndex ?? offset
+              const card = ONBOARDING_QUEUE_CARDS[resolvedCardIndex]
+
+              return (
+                <View
+                  key={`${isQueueFlow ? 'flow' : 'entry'}-${kind}`}
+                  data-queue-offset={isQueueFlow ? offset : undefined}
+                  className={classNames(
+                    'reffo-landing-onboarding__card',
+                    'reffo-landing-onboarding__card--queue',
+                    {
+                      'reffo-landing-onboarding__card--queue-flow': isQueueFlow,
+                      [`reffo-landing-onboarding__card--queue-flow-${offset}`]: isQueueFlow,
+                      [`reffo-landing-onboarding__card--queue-${kind}`]: !isQueueFlow,
+                    },
+                  )}
+                  style={isQueueFlow ? resolveQueueCardStyle(offset) : undefined}
+                >
+                  <HomeScoreCard
+                    card={card}
+                    depth={0}
+                    active={false}
+                    visualTier='enhanced'
+                    presentation='queue3d'
+                    className='reffo-landing-onboarding__home-card'
+                    style={{
+                      '--card-responsive-scale': 1,
+                      '--card-left': '0px',
+                      '--card-top': '0px',
+                      '--card-rotate': '0deg',
+                      '--card-depth-scale': 1,
+                      zIndex: 1,
+                    }}
+                  />
+                </View>
+              )
+            })
+          ) : (
+            ONBOARDING_CARDS.map((card, cardIndex) => {
+              const legacyClass = cardIndex === 0
+                ? 'reffo-landing-onboarding__card--experience-left'
+                : cardIndex === 1
+                  ? 'reffo-landing-onboarding__card--target'
+                  : 'reffo-landing-onboarding__card--experience-right'
+
+              return (
+                <View
+                  key={card.id}
+                  className={classNames(
+                    'reffo-landing-onboarding__card',
+                    legacyClass,
+                  )}
+                >
+                  <HomeScoreCard
+                    card={card}
+                    depth={0}
+                    active={false}
+                    visualTier='enhanced'
+                    className='reffo-landing-onboarding__home-card'
+                    style={{
+                      '--card-responsive-scale': cardIndex === 0 ? 0.72 : 0.7,
+                      '--card-left': '0px',
+                      '--card-top': '0px',
+                      '--card-rotate': '0deg',
+                      '--card-depth-scale': 1,
+                      zIndex: cardIndex === 2 ? 5 : cardIndex + 1,
+                    }}
+                  />
+                </View>
+              )
+            })
+          )}
+        </View>
+
+        <View className='reffo-landing-onboarding__queue-top'>
           <View
-            className='reffo-landing-onboarding__card reffo-landing-onboarding__card--experience-left'
+            className='reffo-landing-onboarding__skip reffo-landing-onboarding__skip--queue'
+            onClick={() => {
+              void completeOnboarding()
+            }}
           >
-            <HomeScoreCard
-              card={ONBOARDING_CARDS[0]}
-              depth={0}
-              active={false}
-              visualTier='enhanced'
-              className='reffo-landing-onboarding__home-card'
-              style={{
-                '--card-responsive-scale': 0.72,
-                '--card-left': '0px',
-                '--card-top': '0px',
-                '--card-rotate': '0deg',
-                '--card-depth-scale': 1,
-                zIndex: 1,
-              }}
-            />
+            <Text>跳过教程</Text>
           </View>
-          <View
-            className='reffo-landing-onboarding__card reffo-landing-onboarding__card--target'
-          >
-            <HomeScoreCard
-              card={ONBOARDING_CARDS[1]}
-              depth={0}
-              active={false}
-              visualTier='enhanced'
-              className='reffo-landing-onboarding__home-card'
-              style={{
-                '--card-responsive-scale': 0.7,
-                '--card-left': '0px',
-                '--card-top': '0px',
-                '--card-rotate': '0deg',
-                '--card-depth-scale': 1,
-                zIndex: 2,
-              }}
-            />
-          </View>
-          <View
-            className='reffo-landing-onboarding__card reffo-landing-onboarding__card--experience-right'
-          >
-            <HomeScoreCard
-              card={ONBOARDING_CARDS[2]}
-              depth={0}
-              active={false}
-              visualTier='enhanced'
-              className='reffo-landing-onboarding__home-card'
-              style={{
-                '--card-responsive-scale': 0.7,
-                '--card-left': '0px',
-                '--card-top': '0px',
-                '--card-rotate': '0deg',
-                '--card-depth-scale': 1,
-                zIndex: 5,
-              }}
-            />
+          <View className='reffo-landing-onboarding__pager' aria-label='教程页码'>
+            <View className='reffo-landing-onboarding__pager-dot reffo-landing-onboarding__pager-dot--active' />
+            <View className='reffo-landing-onboarding__pager-dot' />
+            <View className='reffo-landing-onboarding__pager-dot' />
           </View>
         </View>
 
-        <View className='reffo-landing-onboarding__headline reffo-landing-onboarding__headline--target'>
-          <Text>一个</Text>
-          <Text className='reffo-landing-onboarding__accent'>岗位</Text>
-          <Text>{'\n'}一份专门准备的</Text>
-          <Text className='reffo-landing-onboarding__accent'>简历</Text>
-        </View>
+        {onboardingStep !== 'queue' ? (
+          <View className='reffo-landing-onboarding__headline reffo-landing-onboarding__headline--target'>
+            <Text>一个</Text>
+            <Text className='reffo-landing-onboarding__accent'>岗位</Text>
+            <Text>{'\n'}一份专门准备的</Text>
+            <Text className='reffo-landing-onboarding__accent'>简历</Text>
+          </View>
+        ) : null}
 
         <View className='reffo-landing-onboarding__headline reffo-landing-onboarding__headline--experience'>
           <Text>开启</Text>
@@ -481,16 +783,24 @@ export default function LandingPage() {
           <Text>reffo会结合工作经历和目标岗位，重新组织简历重点，并准备针对性的面试建议。</Text>
         </View>
 
-        {onboardingStep === 'experience' ? (
-          <View
-            className='reffo-landing-onboarding__skip'
-            onClick={() => {
+        <View
+          className='reffo-landing-onboarding__headline reffo-landing-onboarding__headline--queue'
+        >
+          <Text>谁是</Text>
+          <Text className='reffo-landing-onboarding__accent'>求职者</Text>
+          <Text>?</Text>
+        </View>
+
+        <View
+          className='reffo-landing-onboarding__skip reffo-landing-onboarding__skip--experience'
+          onClick={() => {
+            if (onboardingStep === 'experience') {
               void completeOnboarding()
-            }}
-          >
-            <Text>跳过</Text>
-          </View>
-        ) : null}
+            }
+          }}
+        >
+          <Text>跳过</Text>
+        </View>
 
         <View
           className='reffo-landing-onboarding__continue'
@@ -507,6 +817,15 @@ export default function LandingPage() {
             </Text>
           </View>
           <Text className='reffo-landing-onboarding__arrow'>→</Text>
+        </View>
+
+        <View
+          className='reffo-landing-onboarding__queue-next'
+          onClick={() => {
+            advanceOnboarding()
+          }}
+        >
+          <Text className='reffo-landing-onboarding__queue-arrow'>↑</Text>
         </View>
       </View>
     )

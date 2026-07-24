@@ -690,6 +690,15 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   --card-logo: #b8d7ff;
   --card-border: rgba(255, 255, 255, 0.72);
   --card-opacity: 1;
+  --card-radius: 10px;
+  --card-queue-thickness: 4px;
+  --card-queue-outline-grow: 8px;
+  --card-queue-solid-grow: 6px;
+  --card-queue-stack-x: 7px;
+  --card-queue-stack-y: -7px;
+  --card-queue-outline-x: 0px;
+  --card-queue-outline-y: 0px;
+  --card-queue-background-radius: calc(var(--card-radius) + var(--card-queue-outline-grow));
   position: absolute;
   left: 0;
   top: 0;
@@ -701,12 +710,102 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
     scale(calc(var(--card-responsive-scale) * var(--card-depth-scale)));
   opacity: var(--card-opacity);
   transform-origin: 0 0;
-  border-radius: 10px;
+  border-radius: var(--card-radius);
   filter: drop-shadow(0 12px 18px rgba(21, 30, 46, 0.16));
   will-change: transform, opacity;
   transition:
     transform 280ms cubic-bezier(0.2, 0.92, 0.28, 1),
     opacity 220ms ease;
+}
+
+.reffo-home-card--queue3d {
+  overflow: visible;
+  transform-style: preserve-3d;
+}
+
+.reffo-home-card__thickness {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--card-radius);
+  pointer-events: none;
+}
+
+.reffo-home-card__thickness-plate {
+  position: absolute;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+.reffo-home-card__thickness-plate--solid {
+  z-index: 0;
+  inset: calc(var(--card-queue-solid-grow) * -1);
+  border-radius: var(--card-queue-background-radius);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 88%, #ffffff 12%), color-mix(in srgb, var(--card-accent) 90%, #0a3f98 10%));
+  box-shadow: 4PX 14PX 24PX rgba(28, 92, 180, 0.18);
+  transform: translate3d(var(--card-queue-stack-x), var(--card-queue-stack-y), -2PX);
+}
+
+.reffo-home-card__thickness-plate--outline {
+  z-index: 1;
+  inset: calc(var(--card-queue-outline-grow) * -1);
+  border-radius: var(--card-queue-background-radius);
+  background: color-mix(in srgb, var(--card-bg) 14%, #ffffff 86%);
+  border: 1px solid rgba(137, 148, 164, 0.68);
+  box-shadow:
+    inset 0 0 0 var(--card-queue-thickness) var(--card-accent),
+    inset 0 0 0 calc(var(--card-queue-thickness) + 2px) rgba(255, 255, 255, 0.82),
+    2PX 8PX 14PX rgba(34, 66, 110, 0.12);
+  transform: translate3d(var(--card-queue-outline-x), var(--card-queue-outline-y), -1PX);
+}
+
+.reffo-home-card__thickness-foreground-shadow,
+.reffo-home-card__thickness-surface-shadow {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  pointer-events: none;
+}
+
+.reffo-home-card__thickness-foreground-shadow {
+  z-index: 2;
+  box-shadow:
+    0 4PX 9PX rgba(16, 26, 44, 0.16),
+    5PX 7PX 14PX rgba(20, 58, 120, 0.18);
+  opacity: 0.9;
+  transform: translate3d(1px, 2px, -0.92PX);
+}
+
+.reffo-home-card__thickness-surface-shadow {
+  z-index: 3;
+  box-shadow:
+    inset 0 -2PX 4PX rgba(20, 32, 54, 0.1),
+    inset 4PX 0 8PX rgba(23, 71, 142, 0.08);
+  opacity: 0.72;
+  transform: translate3d(2px, 2px, -0.5PX);
+}
+
+.reffo-home-card--queue3d .reffo-home-card__surface {
+  z-index: 2;
+  box-shadow:
+    1PX 0 0 color-mix(in srgb, var(--card-bg) 58%, #6c829f 42%),
+    0 1PX 0 color-mix(in srgb, var(--card-bg) 58%, #6c829f 42%),
+    -2PX 3PX 0 rgba(255, 255, 255, 0.56),
+    0 7PX 13PX rgba(25, 43, 72, 0.22),
+    8PX 10PX 18PX rgba(25, 76, 148, 0.18);
+}
+
+.reffo-home-card--queue3d .reffo-home-card__glass {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 68%, #ffffff 32%), color-mix(in srgb, var(--card-bg) 78%, #ffffff 22%));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-top: 1px solid color-mix(in srgb, var(--card-bg) 64%, #ffffff 36%);
+}
+
+.reffo-home-card--queue3d .reffo-home-card__glass::before {
+  opacity: 0.08;
 }
 
 .reffo-home-deck__stack--exiting .reffo-home-card {
@@ -824,7 +923,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   content: "";
   position: absolute;
   inset: -2px;
-  border-radius: 12px;
+  border-radius: calc(var(--card-radius) + 2px);
   opacity: 0;
   pointer-events: none;
   transform: translateZ(0);
@@ -865,7 +964,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
 .reffo-home-card::after {
   z-index: 2;
   inset: -1px;
-  border-radius: 12px;
+  border-radius: calc(var(--card-radius) + 2px);
   background:
     radial-gradient(
       circle at var(--card-highlight-x, 50%) var(--card-highlight-y, 50%),
@@ -1069,8 +1168,8 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   inset: 0;
   overflow: hidden;
   border: 1px solid var(--card-border);
-  border-radius: 10px;
-  clip-path: inset(0 round 10px);
+  border-radius: var(--card-radius);
+  clip-path: inset(0 round var(--card-radius));
   isolation: isolate;
   z-index: 1;
   background:
