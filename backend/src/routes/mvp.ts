@@ -7,6 +7,11 @@ import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
 import { ResumeRevisionAgent } from '@/agents/resume-revision'
 import { createHarnessEvent } from '@/harness/events'
 import {
+  assertBusinessEvaluationPassed,
+  evaluateWithBusinessRecovery,
+  getBusinessEvaluationErrorDetails,
+} from '@/harness/business-recovery'
+import {
   evaluateInterviewSuggestionsBusiness,
   evaluateMatchAnalysisBusiness,
   evaluateResumeAnalysisBusiness,
@@ -24,6 +29,14 @@ import type { ApiResponse, MvpProcessResponse } from '@/types'
 
 function getHarnessRunRepository() {
   return new HarnessRunRepository()
+}
+
+function buildErrorPayload(code: string, fallbackMessage: string, error: unknown): ApiResponse<never>['error'] {
+  return {
+    code,
+    message: error instanceof Error ? error.message : fallbackMessage,
+    details: getBusinessEvaluationErrorDetails(error),
+  }
 }
 
 /**
@@ -58,10 +71,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'PROCESS_FAILED',
-            message: error instanceof Error ? error.message : '处理失败',
-          },
+          error: buildErrorPayload('PROCESS_FAILED', '处理失败', error),
         }
 
         return response
@@ -81,8 +91,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           t.Literal('v1'),
           t.Literal('v2'),
           t.Literal('final-v3'),
+          t.Literal('scope-aware-v4.2'),
         ], {
-          description: '兼容旧客户端的提示词版本字段；服务端统一使用 final-v3',
+          description: '兼容旧客户端的提示词版本字段；服务端统一使用 scope-aware-v4.2（v4.2.1）',
         })),
         enable_llm_judge: t.Optional(t.Boolean({
           description: '是否异步触发 LLM Judge，不默认阻塞主链路',
@@ -262,7 +273,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const resumeMarkdown = normalizeMarkdownText(body.resume_markdown)
         const analyzer = new ResumeAnalyzerAgent()
         const { result, meta } = await runHarnessedStep({
-          workflowVersion: 'single:v2:analyze_resume',
+          workflowVersion: 'single:v4.2:analyze_resume',
           stepName: 'analyze_resume',
           inputDigestSource: { resume_markdown: resumeMarkdown },
           stepTimeoutMs: 120000,
@@ -271,14 +282,24 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
               eventBus,
               stepContext,
             })
-            await assertBusinessEvaluation({
+            const recovered = await evaluateWithBusinessRecovery({
               eventBus,
               stepContext,
-              evaluation: evaluateResumeAnalysisBusiness(analysis),
+              outputName: 'ResumeAnalysis',
+              currentOutput: analysis,
+              evaluate: evaluateResumeAnalysisBusiness,
+              repair: ({ currentOutput, evaluation }) =>
+                analyzer.repairBusinessOutput(resumeMarkdown, currentOutput, evaluation, {
+                  eventBus,
+                  stepContext,
+                }),
+            })
+            assertBusinessEvaluationPassed({
+              evaluation: recovered.evaluation,
               errorPrefix: '简历分析业务校验失败',
             })
 
-            return analysis
+            return recovered.output
           },
         })
 
@@ -295,10 +316,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'ANALYSIS_FAILED',
-            message: error instanceof Error ? error.message : '分析失败',
-          },
+          error: buildErrorPayload('ANALYSIS_FAILED', '分析失败', error),
         }
 
         return response
@@ -331,7 +349,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const parser = new JDParserAgent()
         const matcher = new MatchingAgent()
         const { result, meta } = await runHarnessedRequest({
-          workflowVersion: 'single:v2:match_resume_to_jd',
+          workflowVersion: 'single:v4.2:match_resume_to_jd',
           inputDigestSource: {
             structured_resume: body.structured_resume,
             jd_text: jdText,
@@ -360,14 +378,24 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
                   eventBus,
                   stepContext,
                 })
-                await assertBusinessEvaluation({
+                const recovered = await evaluateWithBusinessRecovery({
                   eventBus,
                   stepContext,
-                  evaluation: evaluateMatchAnalysisBusiness(matchAnalysis),
+                  outputName: 'MatchAnalysis',
+                  currentOutput: matchAnalysis,
+                  evaluate: evaluateMatchAnalysisBusiness,
+                  repair: ({ currentOutput, evaluation }) =>
+                    matcher.repairBusinessOutput(body.structured_resume, jdStep.result, currentOutput, evaluation, {
+                      eventBus,
+                      stepContext,
+                    }),
+                })
+                assertBusinessEvaluationPassed({
+                  evaluation: recovered.evaluation,
                   errorPrefix: '匹配分析业务校验失败',
                 })
 
-                return matchAnalysis
+                return recovered.output
               },
             })
             steps.push(matchingStep.step)
@@ -389,10 +417,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'MATCH_FAILED',
-            message: error instanceof Error ? error.message : '匹配分析失败',
-          },
+          error: buildErrorPayload('MATCH_FAILED', '匹配分析失败', error),
         }
 
         return response
@@ -427,7 +452,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const generator = new ResumeGeneratorAgent()
         const reviser = new ResumeRevisionAgent()
         const { result: optimizedResume, meta } = await runHarnessedRequest({
-          workflowVersion: 'single:v2:generate_resume',
+          workflowVersion: 'single:v4.2:generate_resume',
           inputDigestSource: {
             structured_resume: body.structured_resume,
             matching: body.matching,
@@ -602,10 +627,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'GENERATE_FAILED',
-            message: error instanceof Error ? error.message : '简历生成失败',
-          },
+          error: buildErrorPayload('GENERATE_FAILED', '简历生成失败', error),
         }
 
         return response
@@ -638,7 +660,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       try {
         const advisor = new InterviewAdvisorAgent()
         const { result, meta } = await runHarnessedStep({
-          workflowVersion: 'single:v2:generate_interview_advice',
+          workflowVersion: 'single:v4.2:generate_interview_advice',
           stepName: 'generate_interview_advice',
           inputDigestSource: {
             analysis: body.analysis,
@@ -656,14 +678,31 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
                 stepContext,
               }
             )
-            await assertBusinessEvaluation({
+            const recovered = await evaluateWithBusinessRecovery({
               eventBus,
               stepContext,
-              evaluation: evaluateInterviewSuggestionsBusiness(suggestions),
+              outputName: 'InterviewSuggestions',
+              currentOutput: suggestions,
+              evaluate: evaluateInterviewSuggestionsBusiness,
+              repair: ({ currentOutput, evaluation }) =>
+                advisor.repairBusinessOutput(
+                  body.analysis,
+                  body.matching,
+                  body.optimized_resume,
+                  currentOutput,
+                  evaluation,
+                  {
+                    eventBus,
+                    stepContext,
+                  }
+                ),
+            })
+            assertBusinessEvaluationPassed({
+              evaluation: recovered.evaluation,
               errorPrefix: '面试建议业务校验失败',
             })
 
-            return suggestions
+            return recovered.output
           },
         })
 
@@ -680,10 +719,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'INTERVIEW_FAILED',
-            message: error instanceof Error ? error.message : '面试建议生成失败',
-          },
+          error: buildErrorPayload('INTERVIEW_FAILED', '面试建议生成失败', error),
         }
 
         return response
