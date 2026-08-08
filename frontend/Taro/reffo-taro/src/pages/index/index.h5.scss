@@ -744,7 +744,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 88%, #ffffff 12%), color-mix(in srgb, var(--card-accent) 90%, #0a3f98 10%));
   box-shadow: 4PX 14PX 24PX rgba(28, 92, 180, 0.18);
-  transform: translate3d(var(--card-queue-stack-x), var(--card-queue-stack-y), -2PX);
+  transform: translate(var(--card-queue-stack-x), var(--card-queue-stack-y));
 }
 
 .reffo-home-card__thickness-plate--outline {
@@ -757,7 +757,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
     inset 0 0 0 var(--card-queue-thickness) var(--card-accent),
     inset 0 0 0 calc(var(--card-queue-thickness) + 2px) rgba(255, 255, 255, 0.82),
     2PX 8PX 14PX rgba(34, 66, 110, 0.12);
-  transform: translate3d(var(--card-queue-outline-x), var(--card-queue-outline-y), -1PX);
+  transform: translate(var(--card-queue-outline-x), var(--card-queue-outline-y));
 }
 
 .reffo-home-card__thickness-foreground-shadow,
@@ -774,7 +774,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
     0 4PX 9PX rgba(16, 26, 44, 0.16),
     5PX 7PX 14PX rgba(20, 58, 120, 0.18);
   opacity: 0.9;
-  transform: translate3d(1px, 2px, -0.92PX);
+  transform: translate(1px, 2px);
 }
 
 .reffo-home-card__thickness-surface-shadow {
@@ -783,7 +783,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
     inset 0 -2PX 4PX rgba(20, 32, 54, 0.1),
     inset 4PX 0 8PX rgba(23, 71, 142, 0.08);
   opacity: 0.72;
-  transform: translate3d(2px, 2px, -0.5PX);
+  transform: translate(2px, 2px);
 }
 
 .reffo-home-card--queue3d .reffo-home-card__surface {

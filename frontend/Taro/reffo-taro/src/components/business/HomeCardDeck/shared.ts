@@ -2,6 +2,7 @@ import type {CardTone} from './palette'
 
 export interface HomeCardItem {
   id: string
+  queueCardKind?: 'resume' | 'upload'
   company: string
   indexLabel: string
   location: string
@@ -15,6 +16,16 @@ export interface HomeCardItem {
   borderColor: string
   tone: CardTone
   strategyBody: string
+  resumeProfile?: {
+    name: string
+    age: number
+    gender: '男' | '女'
+    avatarPrimary: string
+    avatarAccent: string
+    avatarVariant: number
+    tags: string[]
+    summary: string
+  }
 }
 
 export interface HomeCardDeckProps {

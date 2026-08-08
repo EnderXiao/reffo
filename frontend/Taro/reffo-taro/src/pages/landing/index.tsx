@@ -36,14 +36,37 @@ const ONBOARDING_QUEUE_FAST_CYCLE_MS = 320
 const ONBOARDING_QUEUE_DECEL_MS = 2800
 const ONBOARDING_QUEUE_SPIN_TOTAL_MS = ONBOARDING_QUEUE_FAST_MS + ONBOARDING_QUEUE_DECEL_MS
 const ONBOARDING_QUEUE_STEADY_CYCLE_MS = 11000
-const ONBOARDING_QUEUE_MAX_MOTION_BLUR = 1.35
+const ONBOARDING_QUEUE_DRAG_ACTIVATE_PX = 8
+const ONBOARDING_QUEUE_DRAG_DIRECTION_RATIO = 1.18
+const ONBOARDING_QUEUE_DRAG_PROGRESS_PER_PX = 1 / 118
+const ONBOARDING_QUEUE_SELECT_SWIPE_THRESHOLD = 48
+const ONBOARDING_QUEUE_SNAP_LANE_INDEX = 3
+const ONBOARDING_QUEUE_INERTIA_MS = 420
+const ONBOARDING_QUEUE_SNAP_MS = 520
+const ONBOARDING_QUEUE_MAX_INERTIA_PROGRESS = 1.32
+const ONBOARDING_QUEUE_DISMISS_SELECTED_MIN_MS = 260
+const ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS = 460
+const ONBOARDING_QUEUE_DETAIL_EXIT_MS = 420
+const ONBOARDING_QUEUE_SELECTED_CLEARANCE_LEFT_X = 156
+const ONBOARDING_QUEUE_SELECTED_CLEARANCE_RIGHT_X = 126
+const ONBOARDING_QUEUE_SELECTED_CLEARANCE_Y = 28
+const ONBOARDING_QUEUE_SELECTED_CLEARANCE_Z = -18
+const ONBOARDING_QUEUE_SELECTED_CLEARANCE_SCALE = 0.84
+const ONBOARDING_QUEUE_SELECTED_X = -118
+const ONBOARDING_QUEUE_SELECTED_Z = 170
+const ONBOARDING_QUEUE_SELECTED_SCALE = 0.832
+const ONBOARDING_QUEUE_SELECTED_CENTER_Y = 191
+const ONBOARDING_QUEUE_DETAIL_SCALE = 0.72
+const ONBOARDING_QUEUE_DETAIL_Z = 210
+const ONBOARDING_QUEUE_DETAIL_DROP_Y = 44
 const ONBOARDING_QUEUE_CARD_ROTATE_X = '0deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Y = '-15deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Z = '0deg'
 
 type LandingPhase = 'splash' | 'onboarding'
 type OnboardingStep = 'target' | 'experience' | 'queue'
-type QueueMotionPhase = 'idle' | 'entry' | 'spin' | 'steady'
+type QueueMotionPhase = 'idle' | 'entry' | 'spin' | 'steady' | 'manual' | 'settling' | 'selected' | 'detail' | 'dismissing'
+type QueueDetailMode = 'resume' | 'upload'
 type QueueSlotKind = 'slot-0' | 'slot-1' | 'slot-2' | 'slot-3' | 'slot-4' | 'slot-5'
 
 interface QueueSlot {
@@ -53,17 +76,22 @@ interface QueueSlot {
 }
 
 const ONBOARDING_CARD_SEEDS = {
-  experienceLeft: '#74D7A7',
-  target: '#B95CFF',
-  experienceRight: '#F0D45F',
-  queueIncoming: '#6DA9FF',
-  queueFar: '#C4E1FF',
+  design: '#F0D45F',
+  engineer: '#6DA9FF',
+  medical: '#74D7A7',
+  science: '#B95CFF',
+  writing: '#FF8CA3',
+  math: '#5ED1C6',
+  product: '#8EA2FF',
+  upload: '#1C77EB',
 }
 
 function createOnboardingCard(
   id: string,
   seedColor: string,
-  input: Pick<HomeCardItem, 'company' | 'indexLabel' | 'location' | 'role' | 'dateLabel' | 'score' | 'strategyBody'>,
+  input: Pick<HomeCardItem, 'company' | 'indexLabel' | 'location' | 'role' | 'dateLabel' | 'score' | 'strategyBody'>
+    & Pick<HomeCardItem, 'queueCardKind'>
+    & Pick<HomeCardItem, 'resumeProfile'>,
 ): HomeCardItem {
   const palette = deriveCardPalette(seedColor)
 
@@ -80,54 +108,160 @@ function createOnboardingCard(
 }
 
 const ONBOARDING_CARDS: HomeCardItem[] = [
-  createOnboardingCard('landing-card-network', ONBOARDING_CARD_SEEDS.experienceLeft, {
-    company: 'Reffo',
-    indexLabel: '03',
-    location: 'Remote',
-    role: 'Career Coach',
-    dateLabel: '2026.07',
-    score: 90,
-    strategyBody: '',
-  }),
-  createOnboardingCard('landing-card-product', ONBOARDING_CARD_SEEDS.target, {
-    company: 'Reffo',
+  createOnboardingCard('landing-resume-design', ONBOARDING_CARD_SEEDS.design, {
+    queueCardKind: 'resume',
+    company: '预设简历',
     indexLabel: '01',
-    location: 'Remote',
-    role: 'Product Designer',
+    location: '应届生',
+    role: '视觉传达设计',
     dateLabel: '2026.07',
-    score: 92,
-    strategyBody: '',
+    score: 86,
+    strategyBody: '校园品牌项目和插画实践经历较集中，适合设计助理、品牌视觉等岗位。',
+    resumeProfile: {
+      name: '小A',
+      age: 22,
+      gender: '女',
+      avatarPrimary: '#ffd96a',
+      avatarAccent: '#f4b53f',
+      avatarVariant: 0,
+      tags: ['本科学历', '视觉传达设计', '有实习', '插画/品牌'],
+      summary: '参与校园视觉系统和公益海报项目，审美敏感，表达直接，适合从作品集切入。',
+    },
   }),
-  createOnboardingCard('landing-card-growth', ONBOARDING_CARD_SEEDS.experienceRight, {
-    company: 'Reffo',
+  createOnboardingCard('landing-resume-engineer', ONBOARDING_CARD_SEEDS.engineer, {
+    queueCardKind: 'resume',
+    company: '预设简历',
     indexLabel: '02',
-    location: 'Shanghai',
-    role: 'Growth Analyst',
+    location: '应届生',
+    role: '计算机科学',
     dateLabel: '2026.07',
-    score: 88,
-    strategyBody: '',
+    score: 91,
+    strategyBody: '有前端实习和开源组件实践，工程习惯较好，适合前端研发、全栈实习转正岗位。',
+    resumeProfile: {
+      name: '小B',
+      age: 24,
+      gender: '男',
+      avatarPrimary: '#7bb7ff',
+      avatarAccent: '#1c77eb',
+      avatarVariant: 1,
+      tags: ['硕士学历', '计算机科学', '有实习', '工程化/全栈'],
+      summary: '做过低代码组件和数据看板，喜欢拆解复杂问题，代码风格稳定，沟通偏结果导向。',
+    },
+  }),
+  createOnboardingCard('landing-resume-medical', ONBOARDING_CARD_SEEDS.medical, {
+    queueCardKind: 'resume',
+    company: '预设简历',
+    indexLabel: '03',
+    location: '社招生',
+    role: '临床医学',
+    dateLabel: '2026.07',
+    score: 89,
+    strategyBody: '临床轮转和科室协作经历完整，适合医疗运营、临床项目协调、医学内容岗位。',
+    resumeProfile: {
+      name: '小C',
+      age: 27,
+      gender: '女',
+      avatarPrimary: '#7ee0ad',
+      avatarAccent: '#28b879',
+      avatarVariant: 2,
+      tags: ['硕士学历', '临床医学', '规培经历', '细致/共情'],
+      summary: '完成三甲医院轮转和病例随访项目，耐心细致，能把专业信息转成用户可理解表达。',
+    },
   }),
 ]
 
 const ONBOARDING_QUEUE_CARDS: HomeCardItem[] = [
   ...ONBOARDING_CARDS,
-  createOnboardingCard('landing-card-frontend', ONBOARDING_CARD_SEEDS.queueIncoming, {
-    company: 'Reffo',
+  createOnboardingCard('landing-resume-biology', ONBOARDING_CARD_SEEDS.science, {
+    queueCardKind: 'resume',
+    company: '预设简历',
     indexLabel: '04',
-    location: 'Hangzhou',
-    role: 'Frontend Engineer',
+    location: '社招生',
+    role: '生物统计',
     dateLabel: '2026.07',
-    score: 91,
-    strategyBody: '',
+    score: 93,
+    strategyBody: '科研论文、临床数据分析和统计建模经验扎实，适合医药数据分析、生统岗位。',
+    resumeProfile: {
+      name: '小D',
+      age: 31,
+      gender: '男',
+      avatarPrimary: '#c990ff',
+      avatarAccent: '#7d32e8',
+      avatarVariant: 0,
+      tags: ['博士学历', '生物统计', '科研项目', '建模/严谨'],
+      summary: '主导真实世界研究数据清洗和模型验证，习惯用证据说话，文档和复盘能力强。',
+    },
   }),
-  createOnboardingCard('landing-card-brand', ONBOARDING_CARD_SEEDS.queueFar, {
-    company: 'Reffo',
+  createOnboardingCard('landing-resume-writing', ONBOARDING_CARD_SEEDS.writing, {
+    queueCardKind: 'resume',
+    company: '预设简历',
     indexLabel: '05',
-    location: 'Shenzhen',
-    role: 'Brand Strategist',
+    location: '社招生',
+    role: '汉语言文学',
     dateLabel: '2026.07',
     score: 87,
-    strategyBody: '',
+    strategyBody: '内容策划、社群活动和知识库搭建经验丰富，适合品牌内容、用户运营岗位。',
+    resumeProfile: {
+      name: '小E',
+      age: 35,
+      gender: '女',
+      avatarPrimary: '#ff9bb2',
+      avatarAccent: '#ef5d7a',
+      avatarVariant: 1,
+      tags: ['本科学历', '汉语言文学', '社招经验', '内容/组织'],
+      summary: '做过年度栏目策划和用户访谈沉淀，文字敏感，推进稳，擅长把松散信息组织成体系。',
+    },
+  }),
+  createOnboardingCard('landing-resume-math', ONBOARDING_CARD_SEEDS.math, {
+    queueCardKind: 'resume',
+    company: '预设简历',
+    indexLabel: '06',
+    location: '社招生',
+    role: '应用数学',
+    dateLabel: '2026.07',
+    score: 90,
+    strategyBody: '推荐系统实验和指标分析经验较完整，适合数据分析、策略产品、算法工程方向。',
+    resumeProfile: {
+      name: '小F',
+      age: 29,
+      gender: '男',
+      avatarPrimary: '#76ddd3',
+      avatarAccent: '#21a8a0',
+      avatarVariant: 2,
+      tags: ['硕士学历', '应用数学', '社招经验', '抽象/建模'],
+      summary: '参与推荐实验和经营指标拆解，逻辑强，偏安静型协作，适合复杂业务中的分析任务。',
+    },
+  }),
+  createOnboardingCard('landing-resume-product', ONBOARDING_CARD_SEEDS.product, {
+    queueCardKind: 'resume',
+    company: '预设简历',
+    indexLabel: '07',
+    location: '社招生',
+    role: '工业设计',
+    dateLabel: '2026.07',
+    score: 92,
+    strategyBody: '硬件产品、用户研究和跨团队项目管理经验完整，适合产品经理、体验策略岗位。',
+    resumeProfile: {
+      name: '小G',
+      age: 41,
+      gender: '女',
+      avatarPrimary: '#9baaff',
+      avatarAccent: '#5967d8',
+      avatarVariant: 0,
+      tags: ['MBA学历', '工业设计', '社招经验', '产品/协同'],
+      summary: '从工业设计转到产品管理，带过从调研到量产的项目，判断稳，擅长跨团队推进。',
+    },
+  }),
+  createOnboardingCard('landing-resume-upload', ONBOARDING_CARD_SEEDS.upload, {
+    queueCardKind: 'upload',
+    company: '上传简历',
+    indexLabel: '08',
+    location: '自定义',
+    role: '新的申请',
+    dateLabel: '2026.07',
+    score: 88,
+    strategyBody: '上传自己的简历后，Reffo 会基于真实经历生成更贴近目标岗位的版本。',
+    resumeProfile: undefined,
   }),
 ]
 
@@ -139,6 +273,13 @@ interface QueueTrackFrame {
   scale: number
   opacity: number
   zIndex: number
+}
+
+interface QueueCardStyleOptions {
+  selectedSourceOffset?: number | null
+  clearanceSourceOffset?: number | null
+  isSelectedExpanded?: boolean
+  isSelectedDetail?: boolean
 }
 
 const ONBOARDING_QUEUE_ENTRY_SLOTS: QueueSlot[] = [
@@ -159,7 +300,9 @@ const ONBOARDING_QUEUE_TRACK: QueueTrackFrame[] = [
   {phase: 0.5, x: -68, y: -42, z: 10, scale: 0.816, opacity: 1, zIndex: 7},
   {phase: 0.666667, x: -170, y: -4, z: 68, scale: 0.788, opacity: 1, zIndex: 8},
   {phase: 0.833333, x: -272, y: 34, z: 124, scale: 0.756, opacity: 1, zIndex: 9},
-  {phase: 1, x: -374, y: 72, z: 176, scale: 0.722, opacity: 1, zIndex: 10},
+  {phase: 1, x: -374, y: 72, z: 176, scale: 0.722, opacity: 0, zIndex: 1},
+  {phase: 1.166667, x: -476, y: 110, z: 220, scale: 0.692, opacity: 0, zIndex: 1},
+  {phase: 1.333333, x: 320, y: -184, z: -190, scale: 0.884, opacity: 0, zIndex: 1},
 ]
 
 function wait(ms: number) {
@@ -172,15 +315,19 @@ function interpolateQueueValue(from: number, to: number, progress: number) {
   return from + (to - from) * progress
 }
 
+function quantizeQueueValue(value: number, step = 0.5) {
+  return Math.round(value / step) * step
+}
+
 function resolveQueueLaneFrame(index: number, progress: number): QueueTrackFrame {
   const from = ONBOARDING_QUEUE_TRACK[index]
   const to = ONBOARDING_QUEUE_TRACK[index + 1] ?? from
 
   return {
     phase: progress,
-    x: interpolateQueueValue(from.x, to.x, progress),
-    y: interpolateQueueValue(from.y, to.y, progress),
-    z: interpolateQueueValue(from.z, to.z, progress),
+    x: quantizeQueueValue(interpolateQueueValue(from.x, to.x, progress)),
+    y: quantizeQueueValue(interpolateQueueValue(from.y, to.y, progress)),
+    z: quantizeQueueValue(interpolateQueueValue(from.z, to.z, progress), 1),
     scale: interpolateQueueValue(from.scale, to.scale, progress),
     opacity: interpolateQueueValue(from.opacity, to.opacity, progress),
     zIndex: Math.round(interpolateQueueValue(from.zIndex, to.zIndex, progress)),
@@ -189,6 +336,25 @@ function resolveQueueLaneFrame(index: number, progress: number): QueueTrackFrame
 
 function resolveQueueTransform(frame: QueueTrackFrame) {
   return `translate3d(${frame.x}px, ${frame.y}px, ${frame.z}PX) rotateZ(var(--queue-rotate-z, -1deg)) rotateY(var(--queue-rotate-y, -6deg)) rotateX(var(--queue-rotate-x, 0deg)) scale(${frame.scale})`
+}
+
+function resolveSelectedQueueY() {
+  const viewportHeight = typeof window === 'undefined'
+    ? 852
+    : window.innerHeight || document.documentElement.clientHeight || 852
+  const queueBaseTop = Math.min(viewportHeight * 0.412, 352)
+
+  return quantizeQueueValue((viewportHeight / 2) - queueBaseTop - ONBOARDING_QUEUE_SELECTED_CENTER_Y)
+}
+
+function resolveSelectedQueueTransform() {
+  return `translate3d(${ONBOARDING_QUEUE_SELECTED_X}px, ${resolveSelectedQueueY()}px, ${ONBOARDING_QUEUE_SELECTED_Z}PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(${ONBOARDING_QUEUE_SELECTED_SCALE})`
+}
+
+function resolveSelectedDetailQueueTransform() {
+  const detailY = resolveSelectedQueueY() + ONBOARDING_QUEUE_DETAIL_DROP_Y
+
+  return `translate3d(${ONBOARDING_QUEUE_SELECTED_X}px, ${detailY}px, ${ONBOARDING_QUEUE_DETAIL_Z}PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(${ONBOARDING_QUEUE_DETAIL_SCALE})`
 }
 
 function resolveQueueProgress(elapsedMs: number) {
@@ -219,27 +385,71 @@ function resolveQueueProgress(elapsedMs: number) {
     + ((elapsedMs - ONBOARDING_QUEUE_SPIN_TOTAL_MS) / ONBOARDING_QUEUE_STEADY_CYCLE_MS)
 }
 
-function resolveQueueMotionBlur(elapsedMs: number) {
-  if (elapsedMs <= ONBOARDING_QUEUE_FAST_MS) {
-    return ONBOARDING_QUEUE_MAX_MOTION_BLUR
-  }
-
-  if (elapsedMs <= ONBOARDING_QUEUE_SPIN_TOTAL_MS) {
-    const decelProgress = (elapsedMs - ONBOARDING_QUEUE_FAST_MS) / ONBOARDING_QUEUE_DECEL_MS
-
-    return ONBOARDING_QUEUE_MAX_MOTION_BLUR * Math.pow(1 - decelProgress, 3)
-  }
-
-  return 0
-}
-
-function resolveQueueCardStyle(offset: number, progress = 0): CSSProperties {
+function resolveQueueCardStyle(
+  offset: number,
+  progress = 0,
+  options: QueueCardStyleOptions = {},
+): CSSProperties {
+  const {
+    selectedSourceOffset = null,
+    clearanceSourceOffset = selectedSourceOffset,
+    isSelectedExpanded = false,
+    isSelectedDetail = false,
+  } = options
   const frame = resolveQueueLaneFrame(offset, progress)
+  const selectedFrame = clearanceSourceOffset == null
+    ? null
+    : resolveQueueLaneFrame(clearanceSourceOffset, progress)
+  const shouldClearSelectedCard = selectedFrame && offset !== clearanceSourceOffset
+  const clearanceDirection = shouldClearSelectedCard
+    ? frame.x < selectedFrame.x ? -1 : 1
+    : 0
+  const isSelectedSourceCard = isSelectedExpanded
+    && selectedSourceOffset != null
+    && offset === selectedSourceOffset
+  const isSelectedDetailCard = isSelectedDetail
+    && selectedSourceOffset != null
+    && offset === selectedSourceOffset
+  const detailFrameStyle = shouldClearSelectedCard
+    ? {
+      ...frame,
+      x: frame.x + (clearanceDirection < 0 ? -680 : 680),
+      y: frame.y + (clearanceDirection < 0 ? 86 : -96),
+      z: frame.z - 120,
+      scale: frame.scale * 0.68,
+      opacity: 0,
+    }
+    : frame
+  const selectedFrameStyle = shouldClearSelectedCard
+    ? {
+      ...frame,
+      x: frame.x + (clearanceDirection < 0
+        ? -ONBOARDING_QUEUE_SELECTED_CLEARANCE_LEFT_X
+        : ONBOARDING_QUEUE_SELECTED_CLEARANCE_RIGHT_X),
+      y: frame.y - (clearanceDirection * ONBOARDING_QUEUE_SELECTED_CLEARANCE_Y),
+      z: frame.z + ONBOARDING_QUEUE_SELECTED_CLEARANCE_Z,
+      scale: frame.scale * ONBOARDING_QUEUE_SELECTED_CLEARANCE_SCALE,
+    }
+    : frame
+  const resolvedFrameStyle = isSelectedDetailCard
+    ? {
+      ...detailFrameStyle,
+      transform: resolveSelectedDetailQueueTransform(),
+      opacity: 1,
+      zIndex: 17,
+    }
+    : isSelectedDetail
+      ? detailFrameStyle
+      : selectedFrameStyle
 
   return {
-    opacity: frame.opacity,
-    zIndex: frame.zIndex,
-    transform: resolveQueueTransform(frame),
+    opacity: isSelectedDetailCard ? 1 : isSelectedSourceCard ? 1 : resolvedFrameStyle.opacity,
+    zIndex: isSelectedDetailCard ? 17 : isSelectedSourceCard ? 16 : resolvedFrameStyle.zIndex,
+    transform: isSelectedDetailCard
+      ? resolveSelectedDetailQueueTransform()
+      : isSelectedSourceCard
+        ? resolveSelectedQueueTransform()
+        : resolveQueueTransform(resolvedFrameStyle),
   }
 }
 
@@ -249,6 +459,57 @@ function positiveModulo(value: number, divisor: number) {
 
 function resolveQueueFlowCardIndex(cursor: number, offset: number) {
   return positiveModulo(offset - cursor, ONBOARDING_QUEUE_CARDS.length)
+}
+
+function resolveQueueFlowCardPosition(cardIndex: number, progress: number) {
+  const lanePosition = positiveModulo(cardIndex + progress, ONBOARDING_QUEUE_CARDS.length)
+  const offset = Math.floor(lanePosition)
+
+  return {
+    offset,
+    progress: lanePosition - offset,
+  }
+}
+
+function clampQueueValue(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function resolveSelectedDismissDurationMs(pixelVelocity: number) {
+  const normalizedVelocity = clampQueueValue(pixelVelocity, 0, 2.4) / 2.4
+
+  return Math.round(
+    ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS
+    - ((ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS - ONBOARDING_QUEUE_DISMISS_SELECTED_MIN_MS) * normalizedVelocity),
+  )
+}
+
+function easeOutQueueValue(progress: number) {
+  return 1 - Math.pow(1 - progress, 3)
+}
+
+function easeInOutQueueValue(progress: number) {
+  return progress < 0.5
+    ? 4 * progress * progress * progress
+    : 1 - Math.pow(-2 * progress + 2, 3) / 2
+}
+
+function resolveClosestQueueOffset(progress: number) {
+  const laneProgress = progress - Math.floor(progress)
+
+  return ONBOARDING_QUEUE_FLOW_SLOTS.reduce((closestOffset, slot) => {
+    const currentDistance = Math.abs((slot.offset + laneProgress) - ONBOARDING_QUEUE_SNAP_LANE_INDEX)
+    const closestDistance = Math.abs((closestOffset + laneProgress) - ONBOARDING_QUEUE_SNAP_LANE_INDEX)
+
+    return currentDistance < closestDistance ? slot.offset : closestOffset
+  }, ONBOARDING_QUEUE_FLOW_SLOTS[0].offset)
+}
+
+function resolveQueueSnapTargetProgress(progress: number) {
+  const cursor = Math.floor(progress)
+  const closestOffset = resolveClosestQueueOffset(progress)
+
+  return cursor + ONBOARDING_QUEUE_SNAP_LANE_INDEX - closestOffset
 }
 
 async function hasSeenLanding() {
@@ -394,12 +655,36 @@ export default function LandingPage() {
   const [onboardingLogoStyle, setOnboardingLogoStyle] = useState<CSSProperties | null>(null)
   const [hasOnboardingLogoSettled, setHasOnboardingLogoSettled] = useState(false)
   const [queueMotionPhase, setQueueMotionPhase] = useState<QueueMotionPhase>('idle')
-  const [queueCursor, setQueueCursor] = useState(0)
+  const [selectedQueueCardIndex, setSelectedQueueCardIndex] = useState<number | null>(null)
+  const [selectedQueueSourceOffset, setSelectedQueueSourceOffset] = useState<number | null>(null)
+  const [queueClearanceSourceOffset, setQueueClearanceSourceOffset] = useState<number | null>(null)
+  const [isQueueSelectionExpanded, setIsQueueSelectionExpanded] = useState(false)
+  const [isQueueSelectionDetail, setIsQueueSelectionDetail] = useState(false)
+  const [isQueueDetailLeaving, setIsQueueDetailLeaving] = useState(false)
+  const [selectedQueueDetailMode, setSelectedQueueDetailMode] = useState<QueueDetailMode | null>(null)
+  const [isQueueUploadComplete, setIsQueueUploadComplete] = useState(false)
+  const [selectedDismissDurationMs, setSelectedDismissDurationMs] = useState(ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS)
   const touchStartRef = useRef<{x: number; y: number} | null>(null)
   const onboardingLogoTimerRef = useRef<number | null>(null)
   const queueTimersRef = useRef<number[]>([])
   const queueAnimationFrameRef = useRef<number | null>(null)
-  const queueCursorRef = useRef(0)
+  const queueSelectionExpandFrameRef = useRef<number | null>(null)
+  const queueProgressRef = useRef(0)
+  const queueDragRef = useRef<{
+    startX: number
+    startY: number
+    startProgress: number
+    lastProgress: number
+    lastTimestamp: number
+    velocity: number
+    isDraggingQueue: boolean
+    dismissedSelected: boolean
+  } | null>(null)
+  const queueSuppressClickUntilRef = useRef(0)
+  const selectedDismissTimerRef = useRef<number | null>(null)
+  const queueDetailExitTimerRef = useRef<number | null>(null)
+  const selectedDismissStartedAtRef = useRef<number | null>(null)
+  const selectedDismissDurationMsRef = useRef(ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS)
 
   const clearQueueTimers = () => {
     queueTimersRef.current.forEach(timer => {
@@ -413,6 +698,252 @@ export default function LandingPage() {
       window.cancelAnimationFrame(queueAnimationFrameRef.current)
       queueAnimationFrameRef.current = null
     }
+  }
+
+  const clearQueueSelectionExpandFrame = () => {
+    if (queueSelectionExpandFrameRef.current != null) {
+      window.cancelAnimationFrame(queueSelectionExpandFrameRef.current)
+      queueSelectionExpandFrameRef.current = null
+    }
+  }
+
+  const clearSelectedDismissTimer = () => {
+    if (selectedDismissTimerRef.current != null) {
+      window.clearTimeout(selectedDismissTimerRef.current)
+      selectedDismissTimerRef.current = null
+    }
+  }
+
+  const clearQueueDetailExitTimer = () => {
+    if (queueDetailExitTimerRef.current != null) {
+      window.clearTimeout(queueDetailExitTimerRef.current)
+      queueDetailExitTimerRef.current = null
+    }
+  }
+
+  const hasSelectedDismissFinished = () => {
+    if (!selectedDismissStartedAtRef.current) {
+      return true
+    }
+
+    return performance.now() - selectedDismissStartedAtRef.current >= selectedDismissDurationMsRef.current
+  }
+
+  const finishSelectedDismiss = (nextPhase?: QueueMotionPhase) => {
+    clearSelectedDismissTimer()
+    selectedDismissStartedAtRef.current = null
+    setSelectedQueueCardIndex(null)
+    setSelectedQueueSourceOffset(null)
+    setQueueClearanceSourceOffset(null)
+    setIsQueueSelectionExpanded(false)
+    setIsQueueSelectionDetail(false)
+    setIsQueueDetailLeaving(false)
+    setSelectedQueueDetailMode(null)
+    setIsQueueUploadComplete(false)
+
+    if (nextPhase) {
+      setQueueMotionPhase(currentPhase => currentPhase === 'dismissing' ? nextPhase : currentPhase)
+    }
+  }
+
+  const enterSelectedQueueDetail = (detailMode: QueueDetailMode) => {
+    if (selectedQueueSourceOffset == null || selectedQueueCardIndex == null) {
+      return
+    }
+
+    clearQueueTimers()
+    clearQueueAnimationFrame()
+    clearQueueSelectionExpandFrame()
+    clearQueueDetailExitTimer()
+    setSelectedQueueDetailMode(detailMode)
+    setIsQueueUploadComplete(false)
+    setIsQueueSelectionDetail(true)
+    setIsQueueDetailLeaving(false)
+    setIsQueueSelectionExpanded(false)
+    setQueueMotionPhase('detail')
+    applyQueueProgress(queueProgressRef.current, {
+      selectedSourceOffset: selectedQueueSourceOffset,
+      clearanceSourceOffset: selectedQueueSourceOffset,
+      isSelectedExpanded: false,
+      isSelectedDetail: true,
+    })
+  }
+
+  const exitSelectedQueueDetail = () => {
+    if (selectedQueueSourceOffset == null) {
+      return
+    }
+
+    clearQueueSelectionExpandFrame()
+    clearQueueDetailExitTimer()
+    setIsQueueSelectionDetail(false)
+    setIsQueueDetailLeaving(true)
+    setIsQueueSelectionExpanded(true)
+    setQueueClearanceSourceOffset(selectedQueueSourceOffset)
+    setQueueMotionPhase('selected')
+    applyQueueProgress(queueProgressRef.current, {
+      selectedSourceOffset: selectedQueueSourceOffset,
+      clearanceSourceOffset: selectedQueueSourceOffset,
+      isSelectedExpanded: true,
+      isSelectedDetail: false,
+    })
+
+    queueDetailExitTimerRef.current = window.setTimeout(() => {
+      queueDetailExitTimerRef.current = null
+      setIsQueueDetailLeaving(false)
+      setSelectedQueueDetailMode(null)
+      setIsQueueUploadComplete(false)
+    }, ONBOARDING_QUEUE_DETAIL_EXIT_MS)
+  }
+
+  const applyQueueProgress = (
+    progress: number,
+    styleOptions: QueueCardStyleOptions = {
+      selectedSourceOffset: selectedQueueSourceOffset,
+      clearanceSourceOffset: queueClearanceSourceOffset,
+      isSelectedExpanded: queueMotionPhase === 'selected' && isQueueSelectionExpanded,
+      isSelectedDetail: queueMotionPhase === 'detail' && isQueueSelectionDetail,
+    },
+  ) => {
+    queueProgressRef.current = progress
+    const queueCards = typeof document === 'undefined'
+      ? []
+      : Array.from(document.querySelectorAll<HTMLElement>('[data-queue-card-index]'))
+
+    queueCards.forEach(element => {
+      const cardIndex = Number(element.dataset.queueCardIndex ?? 0)
+      const position = resolveQueueFlowCardPosition(cardIndex, progress)
+      const frameStyle = resolveQueueCardStyle(position.offset, position.progress, styleOptions)
+
+      element.dataset.queueOffset = String(position.offset)
+      element.style.opacity = String(frameStyle.opacity ?? 1)
+      element.style.zIndex = String(frameStyle.zIndex ?? 1)
+      element.style.transform = String(frameStyle.transform ?? '')
+    })
+  }
+
+  const stopQueueAutoMotion = () => {
+    clearQueueTimers()
+    clearQueueAnimationFrame()
+    clearQueueSelectionExpandFrame()
+    clearSelectedDismissTimer()
+    clearQueueDetailExitTimer()
+    setQueueMotionPhase('manual')
+    applyQueueProgress(queueProgressRef.current)
+  }
+
+  const dismissSelectedQueueCard = (pixelVelocity = 0) => {
+    if (selectedQueueCardIndex == null && selectedQueueSourceOffset == null) {
+      return false
+    }
+
+    const dismissDurationMs = resolveSelectedDismissDurationMs(pixelVelocity)
+
+    clearQueueTimers()
+    clearQueueAnimationFrame()
+    clearQueueSelectionExpandFrame()
+    clearSelectedDismissTimer()
+    selectedDismissDurationMsRef.current = dismissDurationMs
+    selectedDismissStartedAtRef.current = performance.now()
+    setSelectedDismissDurationMs(dismissDurationMs)
+    setQueueMotionPhase('dismissing')
+    setQueueClearanceSourceOffset(null)
+    setIsQueueSelectionExpanded(false)
+    setIsQueueSelectionDetail(false)
+    setIsQueueDetailLeaving(false)
+    applyQueueProgress(queueProgressRef.current, {
+      selectedSourceOffset: selectedQueueSourceOffset,
+      clearanceSourceOffset: null,
+      isSelectedExpanded: false,
+      isSelectedDetail: false,
+    })
+
+    selectedDismissTimerRef.current = window.setTimeout(() => {
+      finishSelectedDismiss('manual')
+    }, dismissDurationMs)
+
+    return true
+  }
+
+  const animateQueueProgress = (
+    fromProgress: number,
+    toProgress: number,
+    durationMs: number,
+    easing: (progress: number) => number,
+    onComplete?: () => void,
+  ) => {
+    clearQueueAnimationFrame()
+
+    const startedAt = performance.now()
+    const tick = (timestamp: number) => {
+      const elapsed = timestamp - startedAt
+      const progress = clampQueueValue(elapsed / durationMs, 0, 1)
+      const easedProgress = easing(progress)
+
+      applyQueueProgress(fromProgress + ((toProgress - fromProgress) * easedProgress))
+
+      if (progress < 1) {
+        queueAnimationFrameRef.current = window.requestAnimationFrame(tick)
+        return
+      }
+
+      queueAnimationFrameRef.current = null
+      onComplete?.()
+    }
+
+    queueAnimationFrameRef.current = window.requestAnimationFrame(tick)
+  }
+
+  const selectQueueCardAtProgress = (progress: number) => {
+    const cursor = Math.floor(progress)
+    const selectedCardIndex = resolveQueueFlowCardIndex(cursor, ONBOARDING_QUEUE_SNAP_LANE_INDEX)
+
+    queueProgressRef.current = progress
+    setSelectedQueueCardIndex(selectedCardIndex)
+    setSelectedQueueSourceOffset(ONBOARDING_QUEUE_SNAP_LANE_INDEX)
+    setQueueClearanceSourceOffset(null)
+    setIsQueueSelectionExpanded(false)
+    setQueueMotionPhase('selected')
+    applyQueueProgress(progress, {
+      selectedSourceOffset: ONBOARDING_QUEUE_SNAP_LANE_INDEX,
+      clearanceSourceOffset: null,
+      isSelectedExpanded: false,
+    })
+
+    clearQueueSelectionExpandFrame()
+    queueSelectionExpandFrameRef.current = window.requestAnimationFrame(() => {
+      queueSelectionExpandFrameRef.current = window.requestAnimationFrame(() => {
+        queueSelectionExpandFrameRef.current = null
+        setQueueClearanceSourceOffset(ONBOARDING_QUEUE_SNAP_LANE_INDEX)
+        setIsQueueSelectionExpanded(true)
+        applyQueueProgress(progress, {
+          selectedSourceOffset: ONBOARDING_QUEUE_SNAP_LANE_INDEX,
+          clearanceSourceOffset: ONBOARDING_QUEUE_SNAP_LANE_INDEX,
+          isSelectedExpanded: true,
+        })
+      })
+    })
+  }
+
+  const settleQueueToSelection = (velocity = 0, sourceProgress = queueProgressRef.current) => {
+    clearQueueTimers()
+    clearQueueAnimationFrame()
+    setQueueMotionPhase('settling')
+
+    const inertiaDistance = clampQueueValue(
+      velocity * ONBOARDING_QUEUE_INERTIA_MS,
+      -ONBOARDING_QUEUE_MAX_INERTIA_PROGRESS,
+      ONBOARDING_QUEUE_MAX_INERTIA_PROGRESS,
+    )
+    const inertiaTarget = sourceProgress + inertiaDistance
+    const snapTarget = resolveQueueSnapTargetProgress(inertiaTarget)
+
+    animateQueueProgress(sourceProgress, inertiaTarget, ONBOARDING_QUEUE_INERTIA_MS, easeOutQueueValue, () => {
+      animateQueueProgress(inertiaTarget, snapTarget, ONBOARDING_QUEUE_SNAP_MS, easeInOutQueueValue, () => {
+        applyQueueProgress(snapTarget)
+        selectQueueCardAtProgress(snapTarget)
+      })
+    })
   }
 
   useEffect(() => {
@@ -439,8 +970,15 @@ export default function LandingPage() {
       setHasOnboardingLogoSettled(false)
       setOnboardingStep('target')
       setQueueMotionPhase('idle')
-      queueCursorRef.current = 0
-      setQueueCursor(0)
+      setSelectedQueueCardIndex(null)
+      setSelectedQueueSourceOffset(null)
+      setQueueClearanceSourceOffset(null)
+      setIsQueueSelectionExpanded(false)
+      setIsQueueSelectionDetail(false)
+      setIsQueueDetailLeaving(false)
+      setSelectedQueueDetailMode(null)
+      setIsQueueUploadComplete(false)
+      queueProgressRef.current = 0
       setOnboardingLogoSnapshot(captureLogoSnapshot())
       setPhase('onboarding')
     }
@@ -493,22 +1031,42 @@ export default function LandingPage() {
     }
     clearQueueTimers()
     clearQueueAnimationFrame()
+    clearQueueSelectionExpandFrame()
+    clearSelectedDismissTimer()
+    clearQueueDetailExitTimer()
   }, [])
 
   useEffect(() => {
     clearQueueTimers()
     clearQueueAnimationFrame()
+    clearQueueSelectionExpandFrame()
+    clearSelectedDismissTimer()
+    clearQueueDetailExitTimer()
 
     if (phase !== 'onboarding' || onboardingStep !== 'queue' || isLeaving) {
       setQueueMotionPhase('idle')
-      queueCursorRef.current = 0
-      setQueueCursor(0)
+      setSelectedQueueCardIndex(null)
+      setSelectedQueueSourceOffset(null)
+      setQueueClearanceSourceOffset(null)
+      setIsQueueSelectionExpanded(false)
+      setIsQueueSelectionDetail(false)
+      setIsQueueDetailLeaving(false)
+      setSelectedQueueDetailMode(null)
+      setIsQueueUploadComplete(false)
+      queueProgressRef.current = 0
       return undefined
     }
 
     setQueueMotionPhase('entry')
-    queueCursorRef.current = 0
-    setQueueCursor(0)
+    setSelectedQueueCardIndex(null)
+    setSelectedQueueSourceOffset(null)
+    setQueueClearanceSourceOffset(null)
+    setIsQueueSelectionExpanded(false)
+    setIsQueueSelectionDetail(false)
+    setIsQueueDetailLeaving(false)
+    setSelectedQueueDetailMode(null)
+    setIsQueueUploadComplete(false)
+    queueProgressRef.current = 0
 
     const entryTimer = window.setTimeout(() => {
       setQueueMotionPhase('spin')
@@ -517,27 +1075,7 @@ export default function LandingPage() {
       const tick = (timestamp: number) => {
         const elapsedMs = timestamp - startedAt
         const progress = resolveQueueProgress(elapsedMs)
-        const nextCursor = Math.floor(progress)
-        const laneProgress = progress - nextCursor
-        const motionBlur = resolveQueueMotionBlur(elapsedMs)
-        const filter = motionBlur > 0.02 ? `blur(${motionBlur.toFixed(3)}PX)` : 'none'
-        const queueCards = typeof document === 'undefined'
-          ? []
-          : Array.from(document.querySelectorAll<HTMLElement>('[data-queue-offset]'))
-
-        if (queueCursorRef.current !== nextCursor) {
-          queueCursorRef.current = nextCursor
-          setQueueCursor(nextCursor)
-        }
-
-        queueCards.forEach(element => {
-          const offset = Number(element.dataset.queueOffset ?? 0)
-          const frameStyle = resolveQueueCardStyle(offset, laneProgress)
-          element.style.opacity = String(frameStyle.opacity ?? 1)
-          element.style.zIndex = String(frameStyle.zIndex ?? 1)
-          element.style.transform = String(frameStyle.transform ?? '')
-          element.style.filter = filter
-        })
+        applyQueueProgress(progress)
 
         queueAnimationFrameRef.current = window.requestAnimationFrame(tick)
       }
@@ -556,8 +1094,34 @@ export default function LandingPage() {
     return () => {
       clearQueueTimers()
       clearQueueAnimationFrame()
+      clearQueueSelectionExpandFrame()
     }
   }, [isLeaving, onboardingStep, phase])
+
+  useLayoutEffect(() => {
+    const isQueueFlowPhase = queueMotionPhase === 'spin'
+      || queueMotionPhase === 'steady'
+      || queueMotionPhase === 'manual'
+      || queueMotionPhase === 'settling'
+      || queueMotionPhase === 'selected'
+      || queueMotionPhase === 'detail'
+      || queueMotionPhase === 'dismissing'
+
+    if (phase !== 'onboarding' || onboardingStep !== 'queue' || !isQueueFlowPhase) {
+      return
+    }
+
+    applyQueueProgress(queueProgressRef.current)
+  }, [
+    isQueueSelectionExpanded,
+    onboardingStep,
+    phase,
+    queueMotionPhase,
+    selectedQueueSourceOffset,
+    queueClearanceSourceOffset,
+    isQueueSelectionDetail,
+    isQueueDetailLeaving,
+  ])
 
   const completeOnboarding = async () => {
     if (phase !== 'onboarding' || isLeaving) {
@@ -602,6 +1166,93 @@ export default function LandingPage() {
       x: touch.clientX,
       y: touch.clientY,
     }
+
+    queueDragRef.current = onboardingStep === 'queue'
+      ? {
+        startX: touch.clientX,
+        startY: touch.clientY,
+        startProgress: queueProgressRef.current,
+        lastProgress: queueProgressRef.current,
+        lastTimestamp: performance.now(),
+        velocity: 0,
+        isDraggingQueue: false,
+        dismissedSelected: false,
+      }
+      : null
+  }
+
+  const handleTouchMove = (event: any) => {
+    if (phase !== 'onboarding' || onboardingStep !== 'queue') {
+      return
+    }
+
+    const touch = event.touches?.[0] ?? event.changedTouches?.[0]
+    const drag = queueDragRef.current
+
+    if (!touch || !drag) {
+      return
+    }
+
+    if (queueMotionPhase === 'detail' || isQueueDetailLeaving) {
+      event.preventDefault?.()
+      return
+    }
+
+    const deltaX = touch.clientX - drag.startX
+    const deltaY = touch.clientY - drag.startY
+    const timestamp = performance.now()
+    const elapsed = Math.max(1, timestamp - drag.lastTimestamp)
+    const isHorizontalDrag = Math.abs(deltaX) >= ONBOARDING_QUEUE_DRAG_ACTIVATE_PX
+      && Math.abs(deltaX) > Math.abs(deltaY) * ONBOARDING_QUEUE_DRAG_DIRECTION_RATIO
+
+    if (!drag.isDraggingQueue && !isHorizontalDrag) {
+      return
+    }
+
+    if (!drag.isDraggingQueue) {
+      drag.isDraggingQueue = true
+      drag.dismissedSelected = dismissSelectedQueueCard(Math.abs(deltaX) / elapsed)
+
+      if (drag.dismissedSelected) {
+        event.preventDefault?.()
+        drag.lastTimestamp = timestamp
+        return
+      }
+
+      if (!drag.dismissedSelected) {
+        setSelectedQueueCardIndex(null)
+        setSelectedQueueSourceOffset(null)
+        setIsQueueSelectionExpanded(false)
+        stopQueueAutoMotion()
+      }
+    }
+
+    event.preventDefault?.()
+
+    if (drag.dismissedSelected) {
+      if (!hasSelectedDismissFinished()) {
+        drag.lastTimestamp = timestamp
+        return
+      }
+
+      finishSelectedDismiss('manual')
+      drag.dismissedSelected = false
+      drag.isDraggingQueue = false
+      drag.startX = touch.clientX
+      drag.startY = touch.clientY
+      drag.startProgress = queueProgressRef.current
+      drag.lastProgress = queueProgressRef.current
+      drag.lastTimestamp = timestamp
+      drag.velocity = 0
+      return
+    }
+
+    const nextProgress = drag.startProgress - (deltaX * ONBOARDING_QUEUE_DRAG_PROGRESS_PER_PX)
+
+    drag.velocity = (nextProgress - drag.lastProgress) / elapsed
+    drag.lastProgress = nextProgress
+    drag.lastTimestamp = timestamp
+    applyQueueProgress(nextProgress)
   }
 
   const handleTouchEnd = (event: any) => {
@@ -609,8 +1260,75 @@ export default function LandingPage() {
       return
     }
 
+    const queueDrag = queueDragRef.current
     const start = touchStartRef.current
     const touch = event.changedTouches?.[0]
+    queueDragRef.current = null
+
+    if (onboardingStep === 'queue') {
+      touchStartRef.current = null
+      if ((queueMotionPhase === 'detail' || isQueueDetailLeaving) && start && touch) {
+        const deltaX = touch.clientX - start.x
+        const deltaY = touch.clientY - start.y
+        const isHorizontalBackSwipe = Math.abs(deltaX) >= ONBOARDING_QUEUE_SELECT_SWIPE_THRESHOLD
+          && Math.abs(deltaX) > Math.abs(deltaY) * ONBOARDING_QUEUE_DRAG_DIRECTION_RATIO
+
+        if (isHorizontalBackSwipe && !isQueueDetailLeaving) {
+          event.preventDefault?.()
+          exitSelectedQueueDetail()
+          return
+        }
+
+        return
+      }
+
+      if (queueDrag?.isDraggingQueue) {
+        queueSuppressClickUntilRef.current = performance.now() + 420
+        if (queueDrag.dismissedSelected) {
+          queueSuppressClickUntilRef.current = performance.now() + selectedDismissDurationMsRef.current
+        } else {
+          settleQueueToSelection(queueDrag.velocity, queueProgressRef.current)
+        }
+        return
+      }
+
+      if (start && touch) {
+        const deltaX = touch.clientX - start.x
+        const deltaY = touch.clientY - start.y
+        const isDownSelectSwipe = deltaY >= ONBOARDING_QUEUE_SELECT_SWIPE_THRESHOLD
+          && Math.abs(deltaY) > Math.abs(deltaX) * ONBOARDING_QUEUE_DRAG_DIRECTION_RATIO
+
+        if (isDownSelectSwipe && selectedQueueCardIndex == null) {
+          event.preventDefault?.()
+          stopQueueAutoMotion()
+
+          const currentProgress = queueProgressRef.current
+          const targetProgress = resolveQueueSnapTargetProgress(currentProgress)
+
+          setQueueMotionPhase('settling')
+          animateQueueProgress(currentProgress, targetProgress, ONBOARDING_QUEUE_SNAP_MS, easeInOutQueueValue, () => {
+            applyQueueProgress(targetProgress)
+            selectQueueCardAtProgress(targetProgress)
+          })
+          return
+        }
+
+        if (
+          isDownSelectSwipe
+          && selectedQueueCardIndex != null
+          && !isQueueSelectionDetail
+          && !isQueueDetailLeaving
+        ) {
+          event.preventDefault?.()
+          const selectedCard = ONBOARDING_QUEUE_CARDS[selectedQueueCardIndex]
+          enterSelectedQueueDetail(
+            selectedCard?.queueCardKind === 'upload' ? 'upload' : 'resume',
+          )
+        }
+      }
+      return
+    }
+
     touchStartRef.current = null
 
     if (!start || !touch) {
@@ -630,15 +1348,37 @@ export default function LandingPage() {
 
   if (phase === 'onboarding') {
     const isQueueStep = onboardingStep === 'queue'
-    const isQueueFlow = queueMotionPhase === 'spin' || queueMotionPhase === 'steady'
+    const isQueueFlow = queueMotionPhase === 'spin'
+      || queueMotionPhase === 'steady'
+      || queueMotionPhase === 'manual'
+      || queueMotionPhase === 'settling'
+      || queueMotionPhase === 'selected'
+      || queueMotionPhase === 'detail'
+      || queueMotionPhase === 'dismissing'
+    const selectedQueueCard = selectedQueueCardIndex == null ? null : ONBOARDING_QUEUE_CARDS[selectedQueueCardIndex]
     const queueCycleStyle = isQueueStep
       ? ({
         '--queue-rotate-x': ONBOARDING_QUEUE_CARD_ROTATE_X,
         '--queue-rotate-y': ONBOARDING_QUEUE_CARD_ROTATE_Y,
         '--queue-rotate-z': ONBOARDING_QUEUE_CARD_ROTATE_Z,
+        '--queue-dismiss-ms': `${selectedDismissDurationMs}ms`,
       } as CSSProperties)
       : undefined
-    const queueSlots = isQueueFlow ? ONBOARDING_QUEUE_FLOW_SLOTS : ONBOARDING_QUEUE_ENTRY_SLOTS
+    const queueCards = isQueueFlow
+      ? ONBOARDING_QUEUE_CARDS.map((card, cardIndex) => ({
+        key: `flow-${card.id}`,
+        card,
+        cardIndex,
+        kind: null,
+        position: resolveQueueFlowCardPosition(cardIndex, queueProgressRef.current),
+      }))
+      : ONBOARDING_QUEUE_ENTRY_SLOTS.map(({kind, offset, cardIndex}) => ({
+        key: `entry-${kind}`,
+        card: ONBOARDING_QUEUE_CARDS[cardIndex ?? offset],
+        cardIndex: cardIndex ?? offset,
+        kind,
+        position: null,
+      }))
 
     return (
       <View
@@ -652,12 +1392,21 @@ export default function LandingPage() {
           'reffo-landing-onboarding--queue-entry': queueMotionPhase === 'entry',
           'reffo-landing-onboarding--queue-spin': queueMotionPhase === 'spin',
           'reffo-landing-onboarding--queue-steady': queueMotionPhase === 'steady',
+          'reffo-landing-onboarding--queue-manual': queueMotionPhase === 'manual',
+          'reffo-landing-onboarding--queue-settling': queueMotionPhase === 'settling',
+          'reffo-landing-onboarding--queue-selected': queueMotionPhase === 'selected',
+          'reffo-landing-onboarding--queue-detail': queueMotionPhase === 'detail',
+          'reffo-landing-onboarding--queue-detail-leaving': isQueueDetailLeaving,
+          'reffo-landing-onboarding--queue-detail-uploaded': isQueueUploadComplete,
+          'reffo-landing-onboarding--queue-dismissing': queueMotionPhase === 'dismissing',
         })}
         style={queueCycleStyle}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={() => {
           touchStartRef.current = null
+          queueDragRef.current = null
         }}
       >
         <Image src={REFFO_LOGO} className='reffo-landing-onboarding__logo' mode='aspectFit' />
@@ -672,43 +1421,106 @@ export default function LandingPage() {
 
         <View className='reffo-landing-onboarding__cards reffo-home-deck-wrap--enhanced'>
           {isQueueStep ? (
-            queueSlots.map(({kind, offset, cardIndex}) => {
-              const resolvedCardIndex = isQueueFlow
-                ? resolveQueueFlowCardIndex(queueCursor, offset)
-                : cardIndex ?? offset
-              const card = ONBOARDING_QUEUE_CARDS[resolvedCardIndex]
+            queueCards.map(({key, card, cardIndex, kind, position}) => {
+              const isSelectedSourceCard = isQueueFlow
+                && selectedQueueCardIndex === cardIndex
+                && selectedQueueCard != null
 
               return (
                 <View
-                  key={`${isQueueFlow ? 'flow' : 'entry'}-${kind}`}
-                  data-queue-offset={isQueueFlow ? offset : undefined}
+                  key={key}
+                  data-queue-offset={isQueueFlow ? position?.offset : undefined}
+                  data-queue-card-index={isQueueFlow ? cardIndex : undefined}
                   className={classNames(
                     'reffo-landing-onboarding__card',
                     'reffo-landing-onboarding__card--queue',
                     {
                       'reffo-landing-onboarding__card--queue-flow': isQueueFlow,
-                      [`reffo-landing-onboarding__card--queue-flow-${offset}`]: isQueueFlow,
-                      [`reffo-landing-onboarding__card--queue-${kind}`]: !isQueueFlow,
+                      'reffo-landing-onboarding__card--queue-selected-source':
+                        isSelectedSourceCard,
+                      'reffo-landing-onboarding__card--queue-detail-source':
+                        isSelectedSourceCard && (isQueueSelectionDetail || isQueueDetailLeaving),
+                      [`reffo-landing-onboarding__card--queue-flow-${position?.offset}`]: isQueueFlow,
+                      [`reffo-landing-onboarding__card--queue-${kind}`]: !isQueueFlow && kind != null,
                     },
                   )}
-                  style={isQueueFlow ? resolveQueueCardStyle(offset) : undefined}
+                  style={isQueueFlow && position
+                    ? resolveQueueCardStyle(position.offset, position.progress, {
+                      selectedSourceOffset: selectedQueueSourceOffset,
+                      clearanceSourceOffset: queueClearanceSourceOffset,
+                      isSelectedExpanded: queueMotionPhase === 'selected' && isQueueSelectionExpanded,
+                      isSelectedDetail: queueMotionPhase === 'detail' && isQueueSelectionDetail,
+                    })
+                    : undefined}
                 >
-                  <HomeScoreCard
-                    card={card}
-                    depth={0}
-                    active={false}
-                    visualTier='enhanced'
-                    presentation='queue3d'
-                    className='reffo-landing-onboarding__home-card'
-                    style={{
-                      '--card-responsive-scale': 1,
-                      '--card-left': '0px',
-                      '--card-top': '0px',
-                      '--card-rotate': '0deg',
-                      '--card-depth-scale': 1,
-                      zIndex: 1,
-                    }}
-                  />
+                  <View className='reffo-landing-onboarding__queue-flipper'>
+                    <View className='reffo-landing-onboarding__queue-original'>
+                      <HomeScoreCard
+                        card={card}
+                        depth={0}
+                        active={false}
+                        visualTier='enhanced'
+                        presentation='queue3d'
+                        className='reffo-landing-onboarding__home-card'
+                        style={{
+                          '--card-responsive-scale': 1,
+                          '--card-left': '0px',
+                          '--card-top': '0px',
+                          '--card-rotate': '0deg',
+                          '--card-depth-scale': 1,
+                          zIndex: 1,
+                        }}
+                      />
+                    </View>
+                    {isSelectedSourceCard
+                    && (isQueueSelectionDetail || isQueueDetailLeaving)
+                    && selectedQueueDetailMode ? (
+                      <View
+                        className={classNames(
+                          'reffo-landing-onboarding__detail-card',
+                          `reffo-landing-onboarding__detail-card--${selectedQueueDetailMode}`,
+                          {
+                            'reffo-landing-onboarding__detail-card--uploaded': isQueueUploadComplete,
+                          },
+                        )}
+                      >
+                        {selectedQueueDetailMode === 'upload' ? (
+                          <View className='reffo-landing-onboarding__detail-upload'>
+                            <View className='reffo-landing-onboarding__detail-file-icon' />
+                            <Text className='reffo-landing-onboarding__detail-file-title'>
+                              {isQueueUploadComplete ? '已读取简历' : '上传简历'}
+                            </Text>
+                            <Text className='reffo-landing-onboarding__detail-file-size'>
+                              {isQueueUploadComplete ? 'Resume_MelvinKuffour.pdf' : 'PDF / DOCX'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View className='reffo-landing-onboarding__detail-resume'>
+                            <Text className='reffo-landing-onboarding__detail-name'>
+                              {selectedQueueCard?.resumeProfile?.name}
+                            </Text>
+                            <Text className='reffo-landing-onboarding__detail-meta'>
+                              {selectedQueueCard?.resumeProfile?.age}岁 · {selectedQueueCard?.resumeProfile?.gender}
+                            </Text>
+                            <View className='reffo-landing-onboarding__detail-tags'>
+                              {(selectedQueueCard?.resumeProfile?.tags ?? []).map(tag => (
+                                <Text key={tag} className='reffo-landing-onboarding__detail-tag'>{tag}</Text>
+                              ))}
+                            </View>
+                            <Text className='reffo-landing-onboarding__detail-summary'>
+                              {selectedQueueCard?.resumeProfile?.summary}
+                            </Text>
+                            <Text className='reffo-landing-onboarding__detail-experience'>
+                              {selectedQueueCard?.strategyBody}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    ) : null}
+                  </View>
+                  {isSelectedSourceCard ? (
+                    <View className='reffo-landing-onboarding__selected-shadow' />
+                  ) : null}
                 </View>
               )
             })
@@ -765,6 +1577,72 @@ export default function LandingPage() {
           </View>
         </View>
 
+        {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
+          <>
+            <View className='reffo-landing-onboarding__detail-chrome'>
+              <View
+                className='reffo-landing-onboarding__detail-return'
+                onClick={() => {
+                  exitSelectedQueueDetail()
+                }}
+              >
+                <Text>返回</Text>
+              </View>
+            </View>
+            <View
+              className={classNames(
+                'reffo-landing-onboarding__detail-folder',
+                {
+                  'reffo-landing-onboarding__detail-folder--upload':
+                    selectedQueueDetailMode === 'upload' && !isQueueUploadComplete,
+                  'reffo-landing-onboarding__detail-folder--ready':
+                    selectedQueueDetailMode === 'resume' || isQueueUploadComplete,
+                },
+              )}
+            >
+              {selectedQueueDetailMode === 'upload' && !isQueueUploadComplete ? (
+                <>
+                  <View
+                    className='reffo-landing-onboarding__detail-upload-row'
+                    onClick={() => {
+                      setIsQueueUploadComplete(true)
+                    }}
+                  >
+                    <View className='reffo-landing-onboarding__detail-upload-row-icon' />
+                    <View className='reffo-landing-onboarding__detail-upload-copy'>
+                      <Text className='reffo-landing-onboarding__detail-upload-title'>上传文件</Text>
+                      <Text className='reffo-landing-onboarding__detail-upload-subtitle'>选择 PDF / DOCX 简历进入下一步</Text>
+                    </View>
+                  </View>
+                  <Text className='reffo-landing-onboarding__detail-folder-next'>上传文件以下一步</Text>
+                </>
+              ) : (
+                <>
+                  <Text className='reffo-landing-onboarding__detail-folder-kicker'>
+                    {selectedQueueDetailMode === 'upload' ? '我的简历' : '预设简历'}
+                  </Text>
+                  <Text className='reffo-landing-onboarding__detail-folder-title'>
+                    {selectedQueueDetailMode === 'upload'
+                      ? 'Resume_MelvinKuffour.pdf'
+                      : `${selectedQueueCard?.resumeProfile?.name ?? '求职者'}的体验简历`}
+                  </Text>
+                  <Text className='reffo-landing-onboarding__detail-folder-subtitle'>
+                    已准备好进入岗位匹配与简历优化流程
+                  </Text>
+                  <View
+                    className='reffo-landing-onboarding__detail-folder-action'
+                    onClick={() => {
+                      void completeOnboarding()
+                    }}
+                  >
+                    <Text>下一步</Text>
+                  </View>
+                </>
+              )}
+            </View>
+          </>
+        ) : null}
+
         {onboardingStep !== 'queue' ? (
           <View className='reffo-landing-onboarding__headline reffo-landing-onboarding__headline--target'>
             <Text>一个</Text>
@@ -819,14 +1697,19 @@ export default function LandingPage() {
           <Text className='reffo-landing-onboarding__arrow'>→</Text>
         </View>
 
-        <View
-          className='reffo-landing-onboarding__queue-next'
-          onClick={() => {
-            advanceOnboarding()
-          }}
-        >
-          <Text className='reffo-landing-onboarding__queue-arrow'>↑</Text>
-        </View>
+        {selectedQueueCard && !isQueueSelectionDetail && !isQueueDetailLeaving ? (
+          <View
+            className='reffo-landing-onboarding__queue-next'
+            onClick={() => {
+              advanceOnboarding()
+            }}
+          >
+            <View className='reffo-landing-onboarding__selected-next-copy'>
+              <Text className='reffo-landing-onboarding__selected-next-title'>还没准备好简历？</Text>
+              <Text className='reffo-landing-onboarding__selected-next-subtitle'>下滑选择本次体验的求职者</Text>
+            </View>
+          </View>
+        ) : null}
       </View>
     )
   }

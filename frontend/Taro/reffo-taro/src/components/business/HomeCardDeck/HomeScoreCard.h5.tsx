@@ -1,4 +1,4 @@
-import {Text, View} from '@tarojs/components'
+import {Image, Text, View} from '@tarojs/components'
 import type {VisualTier} from '@/utils'
 import {resolveResumeGrade} from '@/utils/score-grade'
 import type {HomeCardItem} from './shared'
@@ -164,6 +164,41 @@ function renderCardValue(value: string, className: string, isMarqueeActive: bool
   )
 }
 
+function buildQueueAvatarSrc(card: HomeCardItem) {
+  const profile = card.resumeProfile
+
+  if (!profile) {
+    return ''
+  }
+
+  const hairVariants = [
+    'M54 62c0-22 18-38 42-38s42 16 42 38v20H54V62Z',
+    'M50 68c2-26 20-45 46-45s43 19 46 45c-12-9-22-13-46-13s-34 4-46 13Z',
+    'M58 60c4-23 17-36 38-36 22 0 36 13 40 36l-13 17H71L58 60Z',
+  ]
+  const hair = hairVariants[profile.avatarVariant % hairVariants.length]
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+      <defs>
+        <linearGradient id="bg" x1="34" y1="18" x2="160" y2="176" gradientUnits="userSpaceOnUse">
+          <stop stop-color="${profile.avatarPrimary}"/>
+          <stop offset="1" stop-color="${profile.avatarAccent}"/>
+        </linearGradient>
+      </defs>
+      <rect width="192" height="192" rx="96" fill="url(#bg)"/>
+      <circle cx="96" cy="88" r="42" fill="#ffe3d0"/>
+      <path d="${hair}" fill="#273142"/>
+      <circle cx="81" cy="92" r="5" fill="#263344"/>
+      <circle cx="111" cy="92" r="5" fill="#263344"/>
+      <path d="M82 114c8 8 20 8 28 0" fill="none" stroke="#bd6f66" stroke-width="5" stroke-linecap="round"/>
+      <path d="M43 166c10-28 29-42 53-42s43 14 53 42" fill="#ffffff" opacity=".86"/>
+      <path d="M57 157c9-16 22-24 39-24s30 8 39 24" fill="${card.primaryColor}" opacity=".9"/>
+    </svg>
+  `
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
 export default function HomeScoreCard({
   card: inputCard,
   depth,
@@ -202,6 +237,8 @@ export default function HomeScoreCard({
   const isCreate = variant === 'create'
   const isGenerating = variant === 'generating'
   const isQueue3d = presentation === 'queue3d'
+  const isQueueUpload = isQueue3d && card.queueCardKind === 'upload'
+  const isQueueResume = isQueue3d && card.queueCardKind === 'resume' && card.resumeProfile
   const hasWrappedCompanyName = !isCreate && !isGenerating && isLikelyWrappedCompanyName(card.company)
   const scoreGrade = resolveResumeGrade(card.score)
   const scoreGradeClass = scoreGrade === 'A+' ? 'a' : scoreGrade.toLowerCase()
@@ -209,6 +246,7 @@ export default function HomeScoreCard({
   const glyphStyle = useMemo(() => resolveGlyphStyle(card), [card])
   const textureMode = useMemo(() => resolveTextureMode(card), [card])
   const repeatTiles = useMemo(() => buildRepeatTiles(card), [card])
+  const queueAvatarSrc = useMemo(() => buildQueueAvatarSrc(card), [card])
   const cssVars = {
     '--card-left': `${resolveDeckStepX(depth)}px`,
     '--card-top': `${resolveDeckStepY(depth)}px`,
@@ -235,6 +273,8 @@ export default function HomeScoreCard({
           'reffo-home-card--create': isCreate,
           'reffo-home-card--generating': isGenerating,
           'reffo-home-card--queue3d': isQueue3d,
+          'reffo-home-card--queue-upload': isQueueUpload,
+          'reffo-home-card--queue-resume': isQueueResume,
           'reffo-home-card--company-wrap': hasWrappedCompanyName,
         },
         className,
@@ -277,7 +317,24 @@ export default function HomeScoreCard({
           )}
           <View className='reffo-home-card__theme-wash' />
         </View>
-        {isGenerating ? (
+        {isQueueUpload ? (
+          <View className='reffo-home-card__queue-face-stack'>
+            <View className='reffo-home-card__queue-face reffo-home-card__queue-face--front reffo-home-card__upload-front'>
+              <Text className='reffo-home-card__upload-title'>新的申请</Text>
+              <View className='reffo-home-card__upload-copy'>
+                <Text className='reffo-home-card__upload-subtitle'>上传我自己的简历</Text>
+                <Text className='reffo-home-card__upload-action'>开始</Text>
+              </View>
+            </View>
+            <View className='reffo-home-card__queue-face reffo-home-card__queue-face--back reffo-home-card__upload-back'>
+              <View className='reffo-home-card__upload-file-icon'>
+                <View className='reffo-home-card__upload-file-corner' />
+                <Text className='reffo-home-card__upload-file-arrow'>↑</Text>
+              </View>
+              <Text className='reffo-home-card__upload-back-copy'>上传文件</Text>
+            </View>
+          </View>
+        ) : isGenerating ? (
           <View className='reffo-home-card__generating'>
             <View className='reffo-home-card__generating-flipper'>
               <View className='reffo-home-card__generating-face reffo-home-card__generating-face--front'>
@@ -311,28 +368,51 @@ export default function HomeScoreCard({
           </>
         ) : (
           <>
-            <View className='reffo-home-card__score'>
-              <Text className='reffo-home-card__grade-letter'>{scoreGrade}</Text>
-              <Text className='reffo-home-card__grade-meta'>评级</Text>
-            </View>
-            <View className='reffo-home-card__glass'>
-              <View className='reffo-home-card__field'>
-                <Text className='reffo-home-card__label'>公司</Text>
-                <Text className='reffo-home-card__value reffo-home-card__company'>{card.company}</Text>
-              </View>
-              <View className='reffo-home-card__field'>
-                <Text className='reffo-home-card__label'>岗位</Text>
-                {renderCardValue(card.role, 'reffo-home-card__role', isValueMarqueeReady)}
-              </View>
-              <View className='reffo-home-card__field'>
-                <Text className='reffo-home-card__label'>工作地</Text>
-                {renderCardValue(card.location, 'reffo-home-card__location', isValueMarqueeReady)}
-              </View>
-              <View className='reffo-home-card__date-row'>
-                <Text className='reffo-home-card__date-label'>生成日期</Text>
-                <Text className='reffo-home-card__date'>{card.dateLabel}</Text>
-              </View>
-            </View>
+            {isQueueResume && card.resumeProfile ? (
+              <>
+                <View className='reffo-home-card__score reffo-home-card__resume-score'>
+                  <Image className='reffo-home-card__resume-avatar' src={queueAvatarSrc} mode='aspectFill' />
+                  <View className='reffo-home-card__resume-person'>
+                    <Text className='reffo-home-card__resume-name'>{card.resumeProfile.name}</Text>
+                    <Text className='reffo-home-card__resume-meta'>
+                      {card.resumeProfile.age}岁 · {card.resumeProfile.gender}
+                    </Text>
+                  </View>
+                </View>
+                <View className='reffo-home-card__glass reffo-home-card__resume-glass'>
+                  <View className='reffo-home-card__resume-tags'>
+                    {card.resumeProfile.tags.map(tag => (
+                      <Text key={tag} className='reffo-home-card__resume-tag'>{tag}</Text>
+                    ))}
+                  </View>
+                </View>
+              </>
+            ) : (
+              <>
+                <View className='reffo-home-card__score'>
+                  <Text className='reffo-home-card__grade-letter'>{scoreGrade}</Text>
+                  <Text className='reffo-home-card__grade-meta'>评级</Text>
+                </View>
+                <View className='reffo-home-card__glass'>
+                  <View className='reffo-home-card__field'>
+                    <Text className='reffo-home-card__label'>公司</Text>
+                    <Text className='reffo-home-card__value reffo-home-card__company'>{card.company}</Text>
+                  </View>
+                  <View className='reffo-home-card__field'>
+                    <Text className='reffo-home-card__label'>岗位</Text>
+                    {renderCardValue(card.role, 'reffo-home-card__role', isValueMarqueeReady)}
+                  </View>
+                  <View className='reffo-home-card__field'>
+                    <Text className='reffo-home-card__label'>工作地</Text>
+                    {renderCardValue(card.location, 'reffo-home-card__location', isValueMarqueeReady)}
+                  </View>
+                  <View className='reffo-home-card__date-row'>
+                    <Text className='reffo-home-card__date-label'>生成日期</Text>
+                    <Text className='reffo-home-card__date'>{card.dateLabel}</Text>
+                  </View>
+                </View>
+              </>
+            )}
           </>
         )}
       </View>
