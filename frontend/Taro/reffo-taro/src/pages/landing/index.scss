@@ -1640,16 +1640,16 @@
   }
 
   29% {
-    transform: translate3d(var(--queue-selected-x), calc(var(--queue-selected-y) + 92px), var(--queue-selected-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(calc(var(--queue-selected-scale) * 0.96));
+    transform: translate3d(var(--queue-selected-x), calc(var(--queue-selected-y) + 92px), var(--queue-selected-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-selected-scale));
   }
 
   43% {
-    transform: translate3d(var(--queue-selected-x), calc(var(--queue-detail-y) + 26px), var(--queue-detail-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-detail-scale));
+    transform: translate3d(var(--queue-selected-x), calc(var(--queue-selected-y) + 28px), var(--queue-selected-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-selected-scale));
   }
 
   68%,
   100% {
-    transform: translate3d(var(--queue-selected-x), var(--queue-detail-y), var(--queue-detail-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-detail-scale));
+    transform: translate3d(var(--queue-selected-x), var(--queue-selected-y), var(--queue-selected-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-selected-scale));
   }
 }
 

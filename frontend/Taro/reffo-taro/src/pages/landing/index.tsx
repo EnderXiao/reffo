@@ -1365,9 +1365,6 @@ export default function LandingPage() {
         '--queue-selected-y': `${resolveSelectedQueueY()}px`,
         '--queue-selected-z': `${ONBOARDING_QUEUE_SELECTED_Z}PX`,
         '--queue-selected-scale': ONBOARDING_QUEUE_SELECTED_SCALE,
-        '--queue-detail-y': `${resolveSelectedQueueY() + ONBOARDING_QUEUE_DETAIL_DROP_Y}px`,
-        '--queue-detail-z': `${ONBOARDING_QUEUE_DETAIL_Z}PX`,
-        '--queue-detail-scale': ONBOARDING_QUEUE_DETAIL_SCALE,
         '--queue-dismiss-ms': `${selectedDismissDurationMs}ms`,
       } as CSSProperties)
       : undefined
