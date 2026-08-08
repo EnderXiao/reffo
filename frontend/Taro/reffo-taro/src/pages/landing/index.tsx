@@ -1272,10 +1272,18 @@ export default function LandingPage() {
         const deltaY = touch.clientY - start.y
         const isHorizontalBackSwipe = Math.abs(deltaX) >= ONBOARDING_QUEUE_SELECT_SWIPE_THRESHOLD
           && Math.abs(deltaX) > Math.abs(deltaY) * ONBOARDING_QUEUE_DRAG_DIRECTION_RATIO
+        const isDownDetailSwipe = deltaY >= ONBOARDING_QUEUE_SELECT_SWIPE_THRESHOLD
+          && Math.abs(deltaY) > Math.abs(deltaX) * ONBOARDING_QUEUE_DRAG_DIRECTION_RATIO
 
         if (isHorizontalBackSwipe && !isQueueDetailLeaving) {
           event.preventDefault?.()
           exitSelectedQueueDetail()
+          return
+        }
+
+        if (isDownDetailSwipe && !isQueueDetailLeaving) {
+          event.preventDefault?.()
+          void completeOnboarding()
           return
         }
 
@@ -1594,55 +1602,9 @@ export default function LandingPage() {
               </View>
             </View>
             <View
-              className={classNames(
-                'reffo-landing-onboarding__detail-folder',
-                {
-                  'reffo-landing-onboarding__detail-folder--upload':
-                    selectedQueueDetailMode === 'upload' && !isQueueUploadComplete,
-                  'reffo-landing-onboarding__detail-folder--ready':
-                    selectedQueueDetailMode === 'resume' || isQueueUploadComplete,
-                },
-              )}
+              className='reffo-landing-onboarding__detail-folder'
             >
-              {selectedQueueDetailMode === 'upload' && !isQueueUploadComplete ? (
-                <>
-                  <View
-                    className='reffo-landing-onboarding__detail-upload-row'
-                    onClick={() => {
-                      setIsQueueUploadComplete(true)
-                    }}
-                  >
-                    <View className='reffo-landing-onboarding__detail-upload-row-icon' />
-                    <View className='reffo-landing-onboarding__detail-upload-copy'>
-                      <Text className='reffo-landing-onboarding__detail-upload-title'>上传文件</Text>
-                      <Text className='reffo-landing-onboarding__detail-upload-subtitle'>选择 PDF / DOCX 简历进入下一步</Text>
-                    </View>
-                  </View>
-                  <Text className='reffo-landing-onboarding__detail-folder-next'>上传文件以下一步</Text>
-                </>
-              ) : (
-                <>
-                  <Text className='reffo-landing-onboarding__detail-folder-kicker'>
-                    {selectedQueueDetailMode === 'upload' ? '我的简历' : '预设简历'}
-                  </Text>
-                  <Text className='reffo-landing-onboarding__detail-folder-title'>
-                    {selectedQueueDetailMode === 'upload'
-                      ? 'Resume_MelvinKuffour.pdf'
-                      : `${selectedQueueCard?.resumeProfile?.name ?? '求职者'}的体验简历`}
-                  </Text>
-                  <Text className='reffo-landing-onboarding__detail-folder-subtitle'>
-                    已准备好进入岗位匹配与简历优化流程
-                  </Text>
-                  <View
-                    className='reffo-landing-onboarding__detail-folder-action'
-                    onClick={() => {
-                      void completeOnboarding()
-                    }}
-                  >
-                    <Text>下一步</Text>
-                  </View>
-                </>
-              )}
+              <View className='reffo-landing-onboarding__detail-folder-arrow' />
             </View>
           </>
         ) : null}

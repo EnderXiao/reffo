@@ -935,36 +935,26 @@
 .reffo-landing-onboarding__detail-folder {
   position: absolute;
   z-index: 11;
-  left: 22px;
-  right: 22px;
-  bottom: max(24px, calc(env(safe-area-inset-bottom) + 18px));
-  min-height: 146px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 27px 21px 18px;
-  border: 1px solid rgba(169, 184, 204, 0.56);
-  border-radius: 18px 18px 14px 14px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(235, 242, 252, 0.98) 100%);
-  box-shadow:
-    0 -4PX 14PX rgba(255, 255, 255, 0.7),
-    0 20PX 34PX rgba(23, 40, 68, 0.16);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 96px;
+  border-radius: 0 48px 0 0;
+  background: #2378e8;
+  box-shadow: 0 -8PX 20PX rgba(14, 93, 202, 0.18);
   opacity: 0;
-  transform: translate3d(0, 34px, 0);
-  animation: reffo-landing-onboarding-detail-folder-in 440ms cubic-bezier(0.16, 1, 0.3, 1) 480ms both;
+  pointer-events: none;
+  animation: reffo-landing-onboarding-detail-folder-in 260ms ease 480ms both;
 }
 
 .reffo-landing-onboarding__detail-folder::before {
   position: absolute;
-  left: 22px;
-  top: -16px;
-  width: 108px;
-  height: 30px;
-  border: 1px solid rgba(169, 184, 204, 0.52);
-  border-bottom: 0;
-  border-radius: 14px 14px 0 0;
-  background: rgba(243, 248, 255, 0.98);
+  left: 0;
+  top: -48px;
+  width: 52%;
+  height: 96px;
+  border-radius: 48px 48px 0 0;
+  background: #2378e8;
   content: '';
 }
 
@@ -972,92 +962,16 @@
   animation: reffo-landing-onboarding-detail-folder-out 280ms ease both;
 }
 
-.reffo-landing-onboarding__detail-upload-row {
-  min-height: 70px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 13px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.68);
-  box-shadow: inset 0 0 0 1px rgba(137, 158, 184, 0.2);
-  cursor: pointer;
-}
-
-.reffo-landing-onboarding__detail-upload-row-icon {
-  position: relative;
-  width: 30px;
-  height: 38px;
-  flex: 0 0 auto;
-  border: 4px solid #9fb2ca;
-  border-radius: 3px;
-}
-
-.reffo-landing-onboarding__detail-upload-row-icon::before {
+.reffo-landing-onboarding__detail-folder-arrow {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 12px;
-  height: 12px;
-  border-left: 4px solid #9fb2ca;
-  border-bottom: 4px solid #9fb2ca;
-  background: #ffffff;
-  content: '';
-}
-
-.reffo-landing-onboarding__detail-upload-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.reffo-landing-onboarding__detail-upload-title {
-  color: #1c77eb;
-  font-size: 15px;
-  line-height: 20px;
-  font-weight: 700;
-}
-
-.reffo-landing-onboarding__detail-upload-subtitle,
-.reffo-landing-onboarding__detail-folder-subtitle,
-.reffo-landing-onboarding__detail-folder-next {
-  color: rgba(17, 24, 39, 0.54);
-  font-size: 12px;
-  line-height: 17px;
-  font-weight: 500;
-}
-
-.reffo-landing-onboarding__detail-folder-kicker {
-  color: rgba(17, 24, 39, 0.42);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 700;
-}
-
-.reffo-landing-onboarding__detail-folder-title {
-  color: #111827;
-  font-size: 17px;
-  line-height: 23px;
-  font-weight: 700;
-}
-
-.reffo-landing-onboarding__detail-folder-action {
-  position: absolute;
-  right: 18px;
-  bottom: 17px;
-  min-width: 72px;
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: #0b70f5;
-  color: #ffffff;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-  box-shadow: 0 8PX 18PX rgba(8, 107, 232, 0.24);
-  cursor: pointer;
+  z-index: 1;
+  top: 28px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border-right: 3px solid #ffffff;
+  border-bottom: 3px solid #ffffff;
+  transform: translateX(-50%) rotate(45deg);
 }
 
 .reffo-landing-onboarding--queue-selected .reffo-landing-onboarding__card--queue-flow {
@@ -1671,12 +1585,10 @@
 @keyframes reffo-landing-onboarding-detail-folder-in {
   from {
     opacity: 0;
-    transform: translate3d(0, 42px, 0) scale(0.985);
   }
 
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -2005,6 +1917,10 @@
 
   .reffo-landing-onboarding__logo-flight {
     display: none;
+  }
+
+  .reffo-landing-onboarding--queue-detail .reffo-landing-onboarding__detail-folder {
+    opacity: 1;
   }
 
   .reffo-landing-onboarding--step-target .reffo-landing-onboarding__card--experience-left,

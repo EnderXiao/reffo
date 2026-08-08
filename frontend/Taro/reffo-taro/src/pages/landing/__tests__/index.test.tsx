@@ -591,7 +591,8 @@ describe('启动封页', () => {
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail')
     expect(container.querySelector('.reffo-landing-onboarding__detail-card')).not.toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
-    expect(screen.getByText('小D的体验简历')).not.toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-folder-arrow')).not.toBeNull()
+    expect(screen.queryByText('小D的体验简历')).toBeNull()
 
     await act(async () => {
       fireEvent.touchStart(container.firstElementChild as Element, {
@@ -617,6 +618,38 @@ describe('启动封页', () => {
       .toContain('reffo-landing-onboarding__card--queue-selected-source')
     expect(mockStorageSetItem).not.toHaveBeenCalled()
     expect(mockReLaunch).not.toHaveBeenCalled()
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 198, clientY: 438}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 200, clientY: 508}],
+      })
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail')
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 198, clientY: 438}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 200, clientY: 508}],
+      })
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--leaving')
+
+    await act(async () => {
+      jest.advanceTimersByTime(80)
+      await Promise.resolve()
+    })
+
+    expect(mockStorageSetItem).toHaveBeenCalledWith('reffo.landing.seen', '1')
+    expect(mockReLaunch).toHaveBeenCalledWith('/pages/index/index')
   })
 
   test('第三步点击跳过教程完成引导并进入首页', async () => {
