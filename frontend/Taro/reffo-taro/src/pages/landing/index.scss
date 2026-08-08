@@ -761,6 +761,16 @@
   transform: rotateY(180deg);
 }
 
+.reffo-landing-onboarding--queue-detail .reffo-landing-onboarding__card--queue-selected-source {
+  animation: reffo-landing-onboarding-detail-card-rebound 920ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: none;
+}
+
+.reffo-landing-onboarding--queue-detail .reffo-landing-onboarding__card--queue-detail-source .reffo-landing-onboarding__queue-flipper {
+  animation: reffo-landing-onboarding-detail-flipper-reveal 920ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: none;
+}
+
 .reffo-landing-onboarding__detail-card {
   position: absolute;
   inset: 0;
@@ -942,7 +952,7 @@
     0 20PX 34PX rgba(23, 40, 68, 0.16);
   opacity: 0;
   transform: translate3d(0, 34px, 0);
-  animation: reffo-landing-onboarding-detail-folder-in 500ms cubic-bezier(0.16, 1, 0.3, 1) 210ms both;
+  animation: reffo-landing-onboarding-detail-folder-in 440ms cubic-bezier(0.16, 1, 0.3, 1) 480ms both;
 }
 
 .reffo-landing-onboarding__detail-folder::before {
@@ -1621,6 +1631,40 @@
   to {
     opacity: 0;
     transform: translate3d(0, -8px, 0);
+  }
+}
+
+@keyframes reffo-landing-onboarding-detail-card-rebound {
+  0% {
+    transform: translate3d(var(--queue-selected-x), var(--queue-selected-y), var(--queue-selected-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-selected-scale));
+  }
+
+  29% {
+    transform: translate3d(var(--queue-selected-x), calc(var(--queue-selected-y) + 92px), var(--queue-selected-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(calc(var(--queue-selected-scale) * 0.96));
+  }
+
+  43% {
+    transform: translate3d(var(--queue-selected-x), calc(var(--queue-detail-y) + 26px), var(--queue-detail-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-detail-scale));
+  }
+
+  68%,
+  100% {
+    transform: translate3d(var(--queue-selected-x), var(--queue-detail-y), var(--queue-detail-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-detail-scale));
+  }
+}
+
+@keyframes reffo-landing-onboarding-detail-flipper-reveal {
+  0%,
+  42% {
+    transform: rotateY(0deg);
+  }
+
+  62% {
+    transform: rotateY(180deg);
+  }
+
+  100% {
+    transform: rotateY(180deg);
   }
 }
 
