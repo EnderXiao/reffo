@@ -108,6 +108,7 @@ export const CREATE_STEP_META: Record<CreateStepId, CreateStepMeta> = {
   },
 }
 
-export const RESUME_FILE_ACCEPT_TYPES = ['.pdf', '.doc', '.docx', '.md', '.txt'] as const
-
-export const RESUME_FILE_MAX_SIZE_MB = 10
+export {
+  RESUME_FILE_ACCEPT_TYPES,
+  RESUME_FILE_MAX_SIZE_MB,
+} from '@/utils/resume-file-upload'

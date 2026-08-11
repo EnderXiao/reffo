@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 147" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="folder-fill" x1="360" y1="0" x2="360" y2="147" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2B7FEC"/>
+      <stop offset="1" stop-color="#2378E8"/>
+    </linearGradient>
+  </defs>
+  <path d="M0 147V60C0 26.9 26.9 0 60 0H276C299 0 312 7.8 328.5 24.5L346.5 42.5C358 54 373.2 59 391 59H651C689.1 59 720 89.9 720 128V147H0Z" fill="url(#folder-fill)"/>
+</svg>

@@ -3,14 +3,23 @@ import type {CSSProperties} from 'react'
 import {Image, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
 import REFFO_LOGO from '@/assets/branding/reffo-logo.png'
+import DETAIL_FOLDER from '@/assets/landing/detail-folder.svg'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
+import {useResumeStore} from '@/store/resumeStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
+import {feedback} from '@/utils/feedback'
 import {storage} from '@/utils/storage'
 import {navigation} from '@/utils/navigation'
+import {
+  formatResumeFileSize,
+  isResumeFileUploadCancelled,
+  pickAndParseResumeFile,
+  type ParsedResumeUploadFile,
+} from '@/utils/resume-file-upload'
 import {
   createFallbackSharedElementSnapshot,
   createSharedElementSnapshot,
@@ -47,6 +56,7 @@ const ONBOARDING_QUEUE_MAX_INERTIA_PROGRESS = 1.32
 const ONBOARDING_QUEUE_DISMISS_SELECTED_MIN_MS = 260
 const ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS = 460
 const ONBOARDING_QUEUE_DETAIL_EXIT_MS = 420
+const ONBOARDING_QUEUE_FOLDER_EXIT_MS = 820
 const ONBOARDING_QUEUE_SELECTED_CLEARANCE_LEFT_X = 156
 const ONBOARDING_QUEUE_SELECTED_CLEARANCE_RIGHT_X = 126
 const ONBOARDING_QUEUE_SELECTED_CLEARANCE_Y = 28
@@ -62,10 +72,9 @@ const ONBOARDING_QUEUE_DETAIL_DROP_Y = 44
 const ONBOARDING_QUEUE_CARD_ROTATE_X = '0deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Y = '-15deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Z = '0deg'
-
 type LandingPhase = 'splash' | 'onboarding'
 type OnboardingStep = 'target' | 'experience' | 'queue'
-type QueueMotionPhase = 'idle' | 'entry' | 'spin' | 'steady' | 'manual' | 'settling' | 'selected' | 'detail' | 'dismissing'
+type QueueMotionPhase = 'idle' | 'entry' | 'spin' | 'steady' | 'manual' | 'settling' | 'selected' | 'detail' | 'folder' | 'folder-returning' | 'dismissing'
 type QueueDetailMode = 'resume' | 'upload'
 type QueueSlotKind = 'slot-0' | 'slot-1' | 'slot-2' | 'slot-3' | 'slot-4' | 'slot-5'
 
@@ -73,6 +82,10 @@ interface QueueSlot {
   kind: QueueSlotKind
   offset: number
   cardIndex?: number
+}
+
+type LandingQueueUploadFile = Omit<ParsedResumeUploadFile, 'extractedText'> & {
+  sizeLabel: string
 }
 
 const ONBOARDING_CARD_SEEDS = {
@@ -264,6 +277,12 @@ const ONBOARDING_QUEUE_CARDS: HomeCardItem[] = [
     resumeProfile: undefined,
   }),
 ]
+
+const ONBOARDING_TARGET_FILES = [
+  {id: 'custom', title: '自定义岗位描述'},
+  {id: 'software', title: '软件工程师'},
+  {id: 'product', title: '互联网产品经理'},
+] as const
 
 interface QueueTrackFrame {
   phase: number
@@ -661,8 +680,12 @@ export default function LandingPage() {
   const [isQueueSelectionExpanded, setIsQueueSelectionExpanded] = useState(false)
   const [isQueueSelectionDetail, setIsQueueSelectionDetail] = useState(false)
   const [isQueueDetailLeaving, setIsQueueDetailLeaving] = useState(false)
+  const [isQueueDetailRestored, setIsQueueDetailRestored] = useState(false)
   const [selectedQueueDetailMode, setSelectedQueueDetailMode] = useState<QueueDetailMode | null>(null)
   const [isQueueUploadComplete, setIsQueueUploadComplete] = useState(false)
+  const [isQueueUploading, setIsQueueUploading] = useState(false)
+  const [queueUploadProgress, setQueueUploadProgress] = useState(0)
+  const [queueUploadedFile, setQueueUploadedFile] = useState<LandingQueueUploadFile | null>(null)
   const [selectedDismissDurationMs, setSelectedDismissDurationMs] = useState(ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS)
   const touchStartRef = useRef<{x: number; y: number} | null>(null)
   const onboardingLogoTimerRef = useRef<number | null>(null)
@@ -683,8 +706,10 @@ export default function LandingPage() {
   const queueSuppressClickUntilRef = useRef(0)
   const selectedDismissTimerRef = useRef<number | null>(null)
   const queueDetailExitTimerRef = useRef<number | null>(null)
+  const queueFolderExitTimerRef = useRef<number | null>(null)
   const selectedDismissStartedAtRef = useRef<number | null>(null)
   const selectedDismissDurationMsRef = useRef(ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS)
+  const queueUploadRequestRef = useRef(0)
 
   const clearQueueTimers = () => {
     queueTimersRef.current.forEach(timer => {
@@ -721,6 +746,13 @@ export default function LandingPage() {
     }
   }
 
+  const clearQueueFolderExitTimer = () => {
+    if (queueFolderExitTimerRef.current != null) {
+      window.clearTimeout(queueFolderExitTimerRef.current)
+      queueFolderExitTimerRef.current = null
+    }
+  }
+
   const hasSelectedDismissFinished = () => {
     if (!selectedDismissStartedAtRef.current) {
       return true
@@ -738,8 +770,8 @@ export default function LandingPage() {
     setIsQueueSelectionExpanded(false)
     setIsQueueSelectionDetail(false)
     setIsQueueDetailLeaving(false)
+    setIsQueueDetailRestored(false)
     setSelectedQueueDetailMode(null)
-    setIsQueueUploadComplete(false)
 
     if (nextPhase) {
       setQueueMotionPhase(currentPhase => currentPhase === 'dismissing' ? nextPhase : currentPhase)
@@ -755,10 +787,11 @@ export default function LandingPage() {
     clearQueueAnimationFrame()
     clearQueueSelectionExpandFrame()
     clearQueueDetailExitTimer()
+    clearQueueFolderExitTimer()
     setSelectedQueueDetailMode(detailMode)
-    setIsQueueUploadComplete(false)
     setIsQueueSelectionDetail(true)
     setIsQueueDetailLeaving(false)
+    setIsQueueDetailRestored(false)
     setIsQueueSelectionExpanded(false)
     setQueueMotionPhase('detail')
     applyQueueProgress(queueProgressRef.current, {
@@ -769,6 +802,54 @@ export default function LandingPage() {
     })
   }
 
+  const enterQueueFolder = () => {
+    if (selectedQueueSourceOffset == null || selectedQueueCardIndex == null) {
+      return
+    }
+
+    if (selectedQueueDetailMode === 'upload' && !isQueueUploadComplete) {
+      return
+    }
+
+    clearQueueTimers()
+    clearQueueAnimationFrame()
+    clearQueueSelectionExpandFrame()
+    clearQueueDetailExitTimer()
+    clearQueueFolderExitTimer()
+    setIsQueueSelectionDetail(true)
+    setIsQueueDetailLeaving(false)
+    setIsQueueDetailRestored(false)
+    setIsQueueSelectionExpanded(false)
+    setQueueMotionPhase('folder')
+    applyQueueProgress(queueProgressRef.current, {
+      selectedSourceOffset: selectedQueueSourceOffset,
+      clearanceSourceOffset: selectedQueueSourceOffset,
+      isSelectedExpanded: false,
+      isSelectedDetail: true,
+    })
+  }
+
+  const exitQueueFolder = () => {
+    if (selectedQueueSourceOffset == null || queueMotionPhase !== 'folder') {
+      return
+    }
+
+    clearQueueFolderExitTimer()
+    setQueueMotionPhase('folder-returning')
+    applyQueueProgress(queueProgressRef.current, {
+      selectedSourceOffset: selectedQueueSourceOffset,
+      clearanceSourceOffset: selectedQueueSourceOffset,
+      isSelectedExpanded: false,
+      isSelectedDetail: true,
+    })
+
+    queueFolderExitTimerRef.current = window.setTimeout(() => {
+      queueFolderExitTimerRef.current = null
+      setIsQueueDetailRestored(true)
+      setQueueMotionPhase('detail')
+    }, ONBOARDING_QUEUE_FOLDER_EXIT_MS)
+  }
+
   const exitSelectedQueueDetail = () => {
     if (selectedQueueSourceOffset == null) {
       return
@@ -776,8 +857,16 @@ export default function LandingPage() {
 
     clearQueueSelectionExpandFrame()
     clearQueueDetailExitTimer()
+    clearQueueFolderExitTimer()
+    if (isQueueUploading) {
+      queueUploadRequestRef.current += 1
+      setIsQueueUploading(false)
+      setQueueUploadProgress(0)
+      setQueueUploadedFile(null)
+    }
     setIsQueueSelectionDetail(false)
     setIsQueueDetailLeaving(true)
+    setIsQueueDetailRestored(false)
     setIsQueueSelectionExpanded(true)
     setQueueClearanceSourceOffset(selectedQueueSourceOffset)
     setQueueMotionPhase('selected')
@@ -792,8 +881,76 @@ export default function LandingPage() {
       queueDetailExitTimerRef.current = null
       setIsQueueDetailLeaving(false)
       setSelectedQueueDetailMode(null)
-      setIsQueueUploadComplete(false)
     }, ONBOARDING_QUEUE_DETAIL_EXIT_MS)
+  }
+
+  const handleRemoveQueueResumeUpload = () => {
+    queueUploadRequestRef.current += 1
+    setIsQueueUploading(false)
+    setIsQueueUploadComplete(false)
+    setQueueUploadProgress(0)
+    setQueueUploadedFile(null)
+    useResumeStore.getState().setResumeContent('')
+  }
+
+  const handleQueueResumeUpload = async () => {
+    if (
+      queueMotionPhase !== 'detail'
+      || selectedQueueDetailMode !== 'upload'
+      || isQueueUploadComplete
+      || isQueueUploading
+    ) {
+      return
+    }
+
+    const requestId = queueUploadRequestRef.current + 1
+    queueUploadRequestRef.current = requestId
+
+    try {
+      const parsedFile = await pickAndParseResumeFile({
+        isActive: () => queueUploadRequestRef.current === requestId,
+        onFileSelected: selectedFile => {
+          setQueueUploadedFile({
+            ...selectedFile,
+            sizeLabel: formatResumeFileSize(selectedFile.size),
+          })
+          setQueueUploadProgress(0)
+          setIsQueueUploading(true)
+        },
+        onProgress: setQueueUploadProgress,
+      })
+
+      if (!parsedFile || queueUploadRequestRef.current !== requestId) {
+        return
+      }
+
+      setQueueUploadedFile({
+        name: parsedFile.name,
+        path: parsedFile.path,
+        size: parsedFile.size,
+        extension: parsedFile.extension,
+        file: parsedFile.file,
+        sizeLabel: formatResumeFileSize(parsedFile.size),
+      })
+      setQueueUploadProgress(100)
+      useResumeStore.getState().setResumeContent(parsedFile.extractedText)
+      setIsQueueUploadComplete(true)
+      feedback.success(`${parsedFile.name} 已上传`)
+    } catch (error) {
+      if (isResumeFileUploadCancelled(error)) {
+        return
+      }
+
+      const message = error instanceof Error ? error.message : '上传失败，请重试'
+      console.error('[LandingPage] Resume upload failed:', error)
+      setQueueUploadProgress(0)
+      setQueueUploadedFile(null)
+      feedback.error(message)
+    } finally {
+      if (queueUploadRequestRef.current === requestId) {
+        setIsQueueUploading(false)
+      }
+    }
   }
 
   const applyQueueProgress = (
@@ -802,7 +959,11 @@ export default function LandingPage() {
       selectedSourceOffset: selectedQueueSourceOffset,
       clearanceSourceOffset: queueClearanceSourceOffset,
       isSelectedExpanded: queueMotionPhase === 'selected' && isQueueSelectionExpanded,
-      isSelectedDetail: queueMotionPhase === 'detail' && isQueueSelectionDetail,
+      isSelectedDetail: (
+        queueMotionPhase === 'detail'
+        || queueMotionPhase === 'folder'
+        || queueMotionPhase === 'folder-returning'
+      ) && isQueueSelectionDetail,
     },
   ) => {
     queueProgressRef.current = progress
@@ -828,6 +989,7 @@ export default function LandingPage() {
     clearQueueSelectionExpandFrame()
     clearSelectedDismissTimer()
     clearQueueDetailExitTimer()
+    clearQueueFolderExitTimer()
     setQueueMotionPhase('manual')
     applyQueueProgress(queueProgressRef.current)
   }
@@ -843,6 +1005,7 @@ export default function LandingPage() {
     clearQueueAnimationFrame()
     clearQueueSelectionExpandFrame()
     clearSelectedDismissTimer()
+    clearQueueFolderExitTimer()
     selectedDismissDurationMsRef.current = dismissDurationMs
     selectedDismissStartedAtRef.current = performance.now()
     setSelectedDismissDurationMs(dismissDurationMs)
@@ -976,8 +1139,8 @@ export default function LandingPage() {
       setIsQueueSelectionExpanded(false)
       setIsQueueSelectionDetail(false)
       setIsQueueDetailLeaving(false)
+      setIsQueueDetailRestored(false)
       setSelectedQueueDetailMode(null)
-      setIsQueueUploadComplete(false)
       queueProgressRef.current = 0
       setOnboardingLogoSnapshot(captureLogoSnapshot())
       setPhase('onboarding')
@@ -1034,6 +1197,8 @@ export default function LandingPage() {
     clearQueueSelectionExpandFrame()
     clearSelectedDismissTimer()
     clearQueueDetailExitTimer()
+    clearQueueFolderExitTimer()
+    queueUploadRequestRef.current += 1
   }, [])
 
   useEffect(() => {
@@ -1042,6 +1207,7 @@ export default function LandingPage() {
     clearQueueSelectionExpandFrame()
     clearSelectedDismissTimer()
     clearQueueDetailExitTimer()
+    clearQueueFolderExitTimer()
 
     if (phase !== 'onboarding' || onboardingStep !== 'queue' || isLeaving) {
       setQueueMotionPhase('idle')
@@ -1051,8 +1217,13 @@ export default function LandingPage() {
       setIsQueueSelectionExpanded(false)
       setIsQueueSelectionDetail(false)
       setIsQueueDetailLeaving(false)
+      setIsQueueDetailRestored(false)
       setSelectedQueueDetailMode(null)
       setIsQueueUploadComplete(false)
+      setIsQueueUploading(false)
+      setQueueUploadProgress(0)
+      setQueueUploadedFile(null)
+      queueUploadRequestRef.current += 1
       queueProgressRef.current = 0
       return undefined
     }
@@ -1064,8 +1235,8 @@ export default function LandingPage() {
     setIsQueueSelectionExpanded(false)
     setIsQueueSelectionDetail(false)
     setIsQueueDetailLeaving(false)
+    setIsQueueDetailRestored(false)
     setSelectedQueueDetailMode(null)
-    setIsQueueUploadComplete(false)
     queueProgressRef.current = 0
 
     const entryTimer = window.setTimeout(() => {
@@ -1105,6 +1276,8 @@ export default function LandingPage() {
       || queueMotionPhase === 'settling'
       || queueMotionPhase === 'selected'
       || queueMotionPhase === 'detail'
+      || queueMotionPhase === 'folder'
+      || queueMotionPhase === 'folder-returning'
       || queueMotionPhase === 'dismissing'
 
     if (phase !== 'onboarding' || onboardingStep !== 'queue' || !isQueueFlowPhase) {
@@ -1193,7 +1366,12 @@ export default function LandingPage() {
       return
     }
 
-    if (queueMotionPhase === 'detail' || isQueueDetailLeaving) {
+    if (
+      queueMotionPhase === 'detail'
+      || queueMotionPhase === 'folder'
+      || queueMotionPhase === 'folder-returning'
+      || isQueueDetailLeaving
+    ) {
       event.preventDefault?.()
       return
     }
@@ -1267,6 +1445,28 @@ export default function LandingPage() {
 
     if (onboardingStep === 'queue') {
       touchStartRef.current = null
+      if ((queueMotionPhase === 'folder' || queueMotionPhase === 'folder-returning') && start && touch) {
+        const deltaX = touch.clientX - start.x
+        const deltaY = touch.clientY - start.y
+        const isHorizontalBackSwipe = Math.abs(deltaX) >= ONBOARDING_QUEUE_SELECT_SWIPE_THRESHOLD
+          && Math.abs(deltaX) > Math.abs(deltaY) * ONBOARDING_QUEUE_DRAG_DIRECTION_RATIO
+        const isDownFolderSwipe = deltaY >= ONBOARDING_QUEUE_SELECT_SWIPE_THRESHOLD
+          && Math.abs(deltaY) > Math.abs(deltaX) * ONBOARDING_QUEUE_DRAG_DIRECTION_RATIO
+
+        if (isHorizontalBackSwipe && queueMotionPhase === 'folder') {
+          event.preventDefault?.()
+          exitQueueFolder()
+          return
+        }
+
+        if (isDownFolderSwipe && queueMotionPhase === 'folder') {
+          event.preventDefault?.()
+          void completeOnboarding()
+        }
+
+        return
+      }
+
       if ((queueMotionPhase === 'detail' || isQueueDetailLeaving) && start && touch) {
         const deltaX = touch.clientX - start.x
         const deltaY = touch.clientY - start.y
@@ -1283,7 +1483,12 @@ export default function LandingPage() {
 
         if (isDownDetailSwipe && !isQueueDetailLeaving) {
           event.preventDefault?.()
-          void completeOnboarding()
+
+          if (selectedQueueDetailMode === 'upload' && !isQueueUploadComplete) {
+            return
+          }
+
+          enterQueueFolder()
           return
         }
 
@@ -1362,8 +1567,17 @@ export default function LandingPage() {
       || queueMotionPhase === 'settling'
       || queueMotionPhase === 'selected'
       || queueMotionPhase === 'detail'
+      || queueMotionPhase === 'folder'
+      || queueMotionPhase === 'folder-returning'
       || queueMotionPhase === 'dismissing'
     const selectedQueueCard = selectedQueueCardIndex == null ? null : ONBOARDING_QUEUE_CARDS[selectedQueueCardIndex]
+    const isQueueFolderStep = queueMotionPhase === 'folder'
+    const isSelectedUploadCard = selectedQueueCard?.queueCardKind === 'upload'
+    const isQueueUploadPending = selectedQueueDetailMode === 'upload' && !isQueueUploadComplete
+    const canActivateQueueUpload = queueMotionPhase === 'detail'
+      && isQueueUploadPending
+      && !isQueueUploading
+    const shouldShowDetailProgress = selectedQueueDetailMode === 'resume' || isQueueUploadComplete
     const queueCycleStyle = isQueueStep
       ? ({
         '--queue-rotate-x': ONBOARDING_QUEUE_CARD_ROTATE_X,
@@ -1408,7 +1622,13 @@ export default function LandingPage() {
           'reffo-landing-onboarding--queue-settling': queueMotionPhase === 'settling',
           'reffo-landing-onboarding--queue-selected': queueMotionPhase === 'selected',
           'reffo-landing-onboarding--queue-detail': queueMotionPhase === 'detail',
+          'reffo-landing-onboarding--queue-folder': queueMotionPhase === 'folder',
+          'reffo-landing-onboarding--queue-folder-returning': queueMotionPhase === 'folder-returning',
+          'reffo-landing-onboarding--queue-detail-restored': isQueueDetailRestored,
           'reffo-landing-onboarding--queue-detail-leaving': isQueueDetailLeaving,
+          'reffo-landing-onboarding--queue-detail-upload': selectedQueueDetailMode === 'upload',
+          'reffo-landing-onboarding--queue-upload-pending': isQueueUploadPending,
+          'reffo-landing-onboarding--queue-uploading': isQueueUploading,
           'reffo-landing-onboarding--queue-detail-uploaded': isQueueUploadComplete,
           'reffo-landing-onboarding--queue-dismissing': queueMotionPhase === 'dismissing',
         })}
@@ -1437,12 +1657,23 @@ export default function LandingPage() {
               const isSelectedSourceCard = isQueueFlow
                 && selectedQueueCardIndex === cardIndex
                 && selectedQueueCard != null
+              const isDetailSourceCard = isSelectedSourceCard
+                && (isQueueSelectionDetail || isQueueDetailLeaving)
+              const queueCardFaceStyle = {
+                '--card-responsive-scale': 1,
+                '--card-left': '0px',
+                '--card-top': '0px',
+                '--card-rotate': '0deg',
+                '--card-depth-scale': 1,
+                zIndex: 1,
+              } as CSSProperties
 
               return (
                 <View
                   key={key}
                   data-queue-offset={isQueueFlow ? position?.offset : undefined}
                   data-queue-card-index={isQueueFlow ? cardIndex : undefined}
+                  data-queue-card-kind={isQueueFlow ? card.queueCardKind : undefined}
                   className={classNames(
                     'reffo-landing-onboarding__card',
                     'reffo-landing-onboarding__card--queue',
@@ -1451,7 +1682,7 @@ export default function LandingPage() {
                       'reffo-landing-onboarding__card--queue-selected-source':
                         isSelectedSourceCard,
                       'reffo-landing-onboarding__card--queue-detail-source':
-                        isSelectedSourceCard && (isQueueSelectionDetail || isQueueDetailLeaving),
+                        isDetailSourceCard,
                       [`reffo-landing-onboarding__card--queue-flow-${position?.offset}`]: isQueueFlow,
                       [`reffo-landing-onboarding__card--queue-${kind}`]: !isQueueFlow && kind != null,
                     },
@@ -1461,7 +1692,11 @@ export default function LandingPage() {
                       selectedSourceOffset: selectedQueueSourceOffset,
                       clearanceSourceOffset: queueClearanceSourceOffset,
                       isSelectedExpanded: queueMotionPhase === 'selected' && isQueueSelectionExpanded,
-                      isSelectedDetail: queueMotionPhase === 'detail' && isQueueSelectionDetail,
+                      isSelectedDetail: (
+                        queueMotionPhase === 'detail'
+                        || queueMotionPhase === 'folder'
+                        || queueMotionPhase === 'folder-returning'
+                      ) && isQueueSelectionDetail,
                     })
                     : undefined}
                 >
@@ -1474,62 +1709,51 @@ export default function LandingPage() {
                         visualTier='enhanced'
                         presentation='queue3d'
                         className='reffo-landing-onboarding__home-card'
-                        style={{
-                          '--card-responsive-scale': 1,
-                          '--card-left': '0px',
-                          '--card-top': '0px',
-                          '--card-rotate': '0deg',
-                          '--card-depth-scale': 1,
-                          zIndex: 1,
-                        }}
+                        style={queueCardFaceStyle}
+                        uploadStatus={isQueueUploadComplete
+                          ? 'success'
+                          : isQueueUploading
+                            ? 'uploading'
+                            : 'idle'}
+                        uploadFile={queueUploadedFile}
+                        uploadProgress={queueUploadProgress}
+                        onUploadRemove={handleRemoveQueueResumeUpload}
                       />
                     </View>
-                    {isSelectedSourceCard
-                    && (isQueueSelectionDetail || isQueueDetailLeaving)
-                    && selectedQueueDetailMode ? (
+                    {isDetailSourceCard ? (
                       <View
-                        className={classNames(
-                          'reffo-landing-onboarding__detail-card',
-                          `reffo-landing-onboarding__detail-card--${selectedQueueDetailMode}`,
-                          {
-                            'reffo-landing-onboarding__detail-card--uploaded': isQueueUploadComplete,
-                          },
-                        )}
+                        className={classNames('reffo-landing-onboarding__queue-detail-back', {
+                          'reffo-landing-onboarding__queue-detail-back--upload-action': canActivateQueueUpload,
+                        })}
+                        role={canActivateQueueUpload ? 'button' : undefined}
+                        aria-label={canActivateQueueUpload ? '上传简历文件' : undefined}
+                        onClick={canActivateQueueUpload ? () => {
+                          void handleQueueResumeUpload()
+                        } : undefined}
                       >
-                        {selectedQueueDetailMode === 'upload' ? (
-                          <View className='reffo-landing-onboarding__detail-upload'>
-                            <View className='reffo-landing-onboarding__detail-file-icon' />
-                            <Text className='reffo-landing-onboarding__detail-file-title'>
-                              {isQueueUploadComplete ? '已读取简历' : '上传简历'}
-                            </Text>
-                            <Text className='reffo-landing-onboarding__detail-file-size'>
-                              {isQueueUploadComplete ? 'Resume_MelvinKuffour.pdf' : 'PDF / DOCX'}
-                            </Text>
-                          </View>
-                        ) : (
-                          <View className='reffo-landing-onboarding__detail-resume'>
-                            <Text className='reffo-landing-onboarding__detail-name'>
-                              {selectedQueueCard?.resumeProfile?.name}
-                            </Text>
-                            <Text className='reffo-landing-onboarding__detail-meta'>
-                              {selectedQueueCard?.resumeProfile?.age}岁 · {selectedQueueCard?.resumeProfile?.gender}
-                            </Text>
-                            <View className='reffo-landing-onboarding__detail-tags'>
-                              {(selectedQueueCard?.resumeProfile?.tags ?? []).map(tag => (
-                                <Text key={tag} className='reffo-landing-onboarding__detail-tag'>{tag}</Text>
-                              ))}
-                            </View>
-                            <Text className='reffo-landing-onboarding__detail-summary'>
-                              {selectedQueueCard?.resumeProfile?.summary}
-                            </Text>
-                            <Text className='reffo-landing-onboarding__detail-experience'>
-                              {selectedQueueCard?.strategyBody}
-                            </Text>
-                          </View>
-                        )}
+                        <HomeScoreCard
+                          card={card}
+                          depth={0}
+                          active={false}
+                          visualTier='enhanced'
+                          presentation='queue3d'
+                          className='reffo-landing-onboarding__home-card'
+                          style={queueCardFaceStyle}
+                          uploadStatus={isQueueUploadComplete
+                            ? 'success'
+                            : isQueueUploading
+                              ? 'uploading'
+                              : 'idle'}
+                          uploadFile={queueUploadedFile}
+                          uploadProgress={queueUploadProgress}
+                          onUploadRemove={handleRemoveQueueResumeUpload}
+                        />
                       </View>
                     ) : null}
                   </View>
+                  {isDetailSourceCard && shouldShowDetailProgress ? (
+                    <View className='reffo-landing-onboarding__detail-card-arrow' />
+                  ) : null}
                   {isSelectedSourceCard ? (
                     <View className='reffo-landing-onboarding__selected-shadow' />
                   ) : null}
@@ -1583,8 +1807,12 @@ export default function LandingPage() {
             <Text>跳过教程</Text>
           </View>
           <View className='reffo-landing-onboarding__pager' aria-label='教程页码'>
-            <View className='reffo-landing-onboarding__pager-dot reffo-landing-onboarding__pager-dot--active' />
-            <View className='reffo-landing-onboarding__pager-dot' />
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': !isQueueFolderStep,
+            })} />
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': isQueueFolderStep,
+            })} />
             <View className='reffo-landing-onboarding__pager-dot' />
           </View>
         </View>
@@ -1595,17 +1823,52 @@ export default function LandingPage() {
               <View
                 className='reffo-landing-onboarding__detail-return'
                 onClick={() => {
-                  exitSelectedQueueDetail()
+                  if (queueMotionPhase === 'folder') {
+                    exitQueueFolder()
+                    return
+                  }
+
+                  if (queueMotionPhase === 'detail') {
+                    exitSelectedQueueDetail()
+                  }
                 }}
               >
                 <Text>返回</Text>
               </View>
             </View>
-            <View
-              className='reffo-landing-onboarding__detail-folder'
-            >
-              <View className='reffo-landing-onboarding__detail-folder-arrow' />
-            </View>
+            {shouldShowDetailProgress ? (
+              <View className='reffo-landing-onboarding__detail-folder'>
+                <View className='reffo-landing-onboarding__detail-folder-front'>
+                  <Image
+                    className='reffo-landing-onboarding__detail-folder-shape'
+                    src={DETAIL_FOLDER}
+                    mode='scaleToFill'
+                  />
+                </View>
+                <View className='reffo-landing-onboarding__target-folder-back' />
+                <View className='reffo-landing-onboarding__target-files'>
+                  {ONBOARDING_TARGET_FILES.map(file => (
+                    <View
+                      key={file.id}
+                      className={`reffo-landing-onboarding__target-file reffo-landing-onboarding__target-file--${file.id}`}
+                    >
+                      <Text className='reffo-landing-onboarding__target-file-title'>{file.title}</Text>
+                      <View className='reffo-landing-onboarding__target-file-line reffo-landing-onboarding__target-file-line--short' />
+                      <View className='reffo-landing-onboarding__target-file-line' />
+                      <View className='reffo-landing-onboarding__target-file-line reffo-landing-onboarding__target-file-line--medium' />
+                    </View>
+                  ))}
+                </View>
+                <View className='reffo-landing-onboarding__target-folder-copy'>
+                  <Text className='reffo-landing-onboarding__target-folder-owner'>我</Text>
+                  <Text className='reffo-landing-onboarding__target-folder-label'>可投递的岗位</Text>
+                  <View className='reffo-landing-onboarding__target-folder-count'>
+                    <Text className='reffo-landing-onboarding__target-folder-count-value'>3</Text>
+                    <Text className='reffo-landing-onboarding__target-folder-count-label'>份岗位描述</Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
           </>
         ) : null}
 
@@ -1633,6 +1896,37 @@ export default function LandingPage() {
           <Text>谁是</Text>
           <Text className='reffo-landing-onboarding__accent'>求职者</Text>
           <Text>?</Text>
+        </View>
+
+        {selectedQueueCard && !isQueueSelectionDetail && !isQueueDetailLeaving ? (
+          <View className='reffo-landing-onboarding__queue-guidance'>
+            <Text>
+              {isSelectedUploadCard
+                ? '已经准备好了简历？可以上传自己的简历以开始。'
+                : '简历还没准备好？可以选择一位虚构的求职者以开始。'}
+            </Text>
+          </View>
+        ) : null}
+
+        {selectedQueueDetailMode
+        && (isQueueSelectionDetail || isQueueDetailLeaving) ? (
+          <View className='reffo-landing-onboarding__queue-detail-guidance'>
+            <Text>
+              {selectedQueueDetailMode === 'upload'
+                ? '上传的信息越详细，reffo 就能为您生成一份与目标职位越契合的简历。'
+                : '选中求职者后，恭喜你现在已经准备好进入下一步！'}
+            </Text>
+          </View>
+        ) : null}
+
+        <View className='reffo-landing-onboarding__folder-copy'>
+          <View className='reffo-landing-onboarding__folder-headline'>
+            <Text>选择</Text>
+            <Text className='reffo-landing-onboarding__folder-accent'>目标岗位</Text>
+          </View>
+          <Text className='reffo-landing-onboarding__folder-description'>
+            选择一份目标岗位，reffo 会重新匹配简历与岗位的价值。
+          </Text>
         </View>
 
         <View
@@ -1663,17 +1957,11 @@ export default function LandingPage() {
           <Text className='reffo-landing-onboarding__arrow'>→</Text>
         </View>
 
-        {selectedQueueCard && !isQueueSelectionDetail && !isQueueDetailLeaving ? (
-          <View
-            className='reffo-landing-onboarding__queue-next'
-            onClick={() => {
-              advanceOnboarding()
-            }}
-          >
-            <View className='reffo-landing-onboarding__selected-next-copy'>
-              <Text className='reffo-landing-onboarding__selected-next-title'>还没准备好简历？</Text>
-              <Text className='reffo-landing-onboarding__selected-next-subtitle'>下滑选择本次体验的求职者</Text>
-            </View>
+        {selectedQueueDetailMode === 'upload'
+        && isQueueUploadPending
+        && (isQueueSelectionDetail || isQueueDetailLeaving) ? (
+          <View className='reffo-landing-onboarding__queue-upload-instruction' aria-busy={isQueueUploading}>
+            <Text>{isQueueUploading ? '正在读取简历...' : '上传文件以下一步'}</Text>
           </View>
         ) : null}
       </View>

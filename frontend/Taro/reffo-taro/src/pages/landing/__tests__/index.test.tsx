@@ -3,9 +3,12 @@ import {act, fireEvent, render, screen} from '@testing-library/react'
 import LandingPage from '../index'
 import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
+import {useResumeStore} from '@/store/resumeStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
+import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
 import {storage} from '@/utils/storage'
+import {pickAndParseResumeFile} from '@/utils/resume-file-upload'
 
 jest.mock('@/store/authStore', () => ({
   useAuthStore: {
@@ -15,6 +18,12 @@ jest.mock('@/store/authStore', () => ({
 
 jest.mock('@/store/historyStore', () => ({
   useHistoryStore: {
+    getState: jest.fn(),
+  },
+}))
+
+jest.mock('@/store/resumeStore', () => ({
+  useResumeStore: {
     getState: jest.fn(),
   },
 }))
@@ -38,27 +47,139 @@ jest.mock('@/utils/storage', () => ({
   },
 }))
 
+jest.mock('@/utils/feedback', () => ({
+  feedback: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
+}))
+
+jest.mock('@/utils/resume-file-upload', () => ({
+  formatResumeFileSize: (size: number) => `${Math.max(1, Math.round(size / 1024))} Kb`,
+  isResumeFileUploadCancelled: (error: unknown) => /cancel|取消/i.test(String(error || '')),
+  pickAndParseResumeFile: jest.fn(),
+}))
+
 jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
   __esModule: true,
-  default: ({card}: {card?: {role?: string; resumeProfile?: {name?: string; tags?: string[]}}}) => (
-    <div className='mock-home-score-card'>
+  default: ({card, onClick, uploadFile, uploadStatus, onUploadRemove}: {
+    card?: {
+      role?: string
+      queueCardKind?: 'resume' | 'upload'
+      resumeProfile?: {name?: string; tags?: string[]}
+    }
+    onClick?: () => void
+    uploadStatus?: 'idle' | 'uploading' | 'success' | 'error'
+    uploadFile?: {name: string; sizeLabel: string} | null
+    onUploadRemove?: () => void
+  }) => (
+    <div className='mock-home-score-card' onClick={onClick}>
       {card?.resumeProfile?.name ?? card?.role}
       {card?.resumeProfile?.tags?.join('')}
+      {card?.resumeProfile ? <div className='reffo-home-card__queue-face--resume-back' /> : null}
+      {card?.queueCardKind === 'upload' ? (
+        <div className='reffo-home-card__upload-back'>
+          {uploadStatus === 'success' && uploadFile ? (
+            <div className='reffo-home-card__upload-complete'>
+              <div className='reffo-home-card__upload-complete-icon' />
+              <span>{uploadFile.name}</span>
+              <span>{uploadFile.sizeLabel}</span>
+              <button
+                type='button'
+                aria-label='删除已上传简历'
+                onClick={event => {
+                  event.stopPropagation()
+                  onUploadRemove?.()
+                }}
+              >
+                删除
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   ),
 }))
 
 const mockUseAuthStoreGetState = useAuthStore.getState as jest.Mock
 const mockUseHistoryStoreGetState = useHistoryStore.getState as jest.Mock
+const mockUseResumeStoreGetState = useResumeStore.getState as jest.Mock
 const mockUseSourceResumeStoreGetState = useSourceResumeStore.getState as jest.Mock
+const mockFeedbackSuccess = feedback.success as jest.Mock
+const mockFeedbackError = feedback.error as jest.Mock
+const mockPickAndParseResumeFile = pickAndParseResumeFile as jest.Mock
 const mockReLaunch = navigation.reLaunch as jest.Mock
 const mockStorageGetItem = storage.getItem as jest.Mock
 const mockStorageSetItem = storage.setItem as jest.Mock
+
+async function enterQueueStep(container: HTMLElement) {
+  await act(async () => {
+    await Promise.resolve()
+  })
+
+  await act(async () => {
+    jest.advanceTimersByTime(880)
+    await Promise.resolve()
+  })
+
+  for (let index = 0; index < 2; index += 1) {
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 80, clientY: 620}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 168, clientY: 626}],
+      })
+      await Promise.resolve()
+    })
+  }
+
+  await act(async () => {
+    jest.advanceTimersByTime(980)
+    await Promise.resolve()
+  })
+}
+
+async function selectUploadQueueCard(container: HTMLElement) {
+  await enterQueueStep(container)
+
+  await act(async () => {
+    fireEvent.touchStart(container.firstElementChild as Element, {
+      touches: [{clientX: 100, clientY: 520}],
+    })
+    fireEvent.touchMove(container.firstElementChild as Element, {
+      touches: [{clientX: 572, clientY: 520}],
+    })
+    jest.advanceTimersByTime(100)
+    fireEvent.touchMove(container.firstElementChild as Element, {
+      touches: [{clientX: 572, clientY: 520}],
+    })
+    fireEvent.touchEnd(container.firstElementChild as Element, {
+      changedTouches: [{clientX: 572, clientY: 520}],
+    })
+    jest.advanceTimersByTime(1200)
+    await Promise.resolve()
+  })
+}
+
+async function swipeSelectedCardDown(container: HTMLElement) {
+  await act(async () => {
+    fireEvent.touchStart(container.firstElementChild as Element, {
+      touches: [{clientX: 198, clientY: 438}],
+    })
+    fireEvent.touchEnd(container.firstElementChild as Element, {
+      changedTouches: [{clientX: 200, clientY: 508}],
+    })
+    await Promise.resolve()
+  })
+}
 
 describe('启动封页', () => {
   const restoreSession = jest.fn()
   const loadHistories = jest.fn()
   const loadLatestSourceResume = jest.fn()
+  const setResumeContent = jest.fn()
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -68,13 +189,16 @@ describe('启动封页', () => {
     restoreSession.mockResolvedValue(null)
     loadHistories.mockResolvedValue(undefined)
     loadLatestSourceResume.mockResolvedValue(undefined)
+    setResumeContent.mockReset()
     mockReLaunch.mockResolvedValue(undefined)
     mockStorageGetItem.mockResolvedValue('1')
     mockStorageSetItem.mockResolvedValue(undefined)
 
     mockUseAuthStoreGetState.mockReturnValue({restoreSession})
     mockUseHistoryStoreGetState.mockReturnValue({loadHistories})
+    mockUseResumeStoreGetState.mockReturnValue({setResumeContent})
     mockUseSourceResumeStoreGetState.mockReturnValue({loadLatestSourceResume})
+    mockPickAndParseResumeFile.mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -528,7 +652,7 @@ describe('启动封页', () => {
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
 
-  test('第三步选中卡片后下滑进入详情并可横滑返回展开态', async () => {
+  test('第三步选中卡片后进入详情，再次下滑进入目标岗位文件夹阶段', async () => {
     mockStorageGetItem.mockResolvedValue(null)
 
     const {container} = render(<LandingPage />)
@@ -578,6 +702,8 @@ describe('启动封页', () => {
       await Promise.resolve()
     })
 
+    expect(screen.getByText('简历还没准备好？可以选择一位虚构的求职者以开始。')).not.toBeNull()
+
     await act(async () => {
       fireEvent.touchStart(container.firstElementChild as Element, {
         touches: [{clientX: 198, clientY: 438}],
@@ -589,9 +715,11 @@ describe('启动封页', () => {
     })
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail')
-    expect(container.querySelector('.reffo-landing-onboarding__detail-card')).not.toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__queue-detail-back')).not.toBeNull()
+    expect(container.querySelector('.reffo-home-card__queue-face--resume-back')).not.toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
-    expect(container.querySelector('.reffo-landing-onboarding__detail-folder-arrow')).not.toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).not.toBeNull()
+    expect(screen.getByText('选中求职者后，恭喜你现在已经准备好进入下一步！')).not.toBeNull()
     expect(screen.queryByText('小D的体验简历')).toBeNull()
 
     await act(async () => {
@@ -605,6 +733,7 @@ describe('启动封页', () => {
     })
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail-leaving')
+    expect(container.querySelector('.reffo-landing-onboarding__queue-detail-back')).not.toBeNull()
 
     await act(async () => {
       jest.advanceTimersByTime(430)
@@ -613,6 +742,7 @@ describe('启动封页', () => {
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-selected')
     expect(container.firstElementChild?.className).not.toContain('reffo-landing-onboarding--queue-detail-leaving')
+    expect(container.querySelector('.reffo-landing-onboarding__queue-detail-back')).toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).toBeNull()
     expect(container.querySelector('[data-queue-offset="3"]')?.className)
       .toContain('reffo-landing-onboarding__card--queue-selected-source')
@@ -641,15 +771,155 @@ describe('启动封页', () => {
       await Promise.resolve()
     })
 
-    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--leaving')
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-folder')
+    expect(screen.getByText('目标岗位')).not.toBeNull()
+    expect(screen.getByText(/重新匹配简历与岗位的价值/)).not.toBeNull()
+    expect(screen.getByText('自定义岗位描述')).not.toBeNull()
+    expect(screen.getByText('软件工程师')).not.toBeNull()
+    expect(screen.getByText('互联网产品经理')).not.toBeNull()
+    expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(3)
+    expect(container.querySelector('.reffo-landing-onboarding__detail-folder-front')).not.toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-folder-shape')).not.toBeNull()
+    expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[1]?.className)
+      .toContain('reffo-landing-onboarding__pager-dot--active')
+    expect(mockStorageSetItem).not.toHaveBeenCalled()
+    expect(mockReLaunch).not.toHaveBeenCalled()
 
     await act(async () => {
-      jest.advanceTimersByTime(80)
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 240, clientY: 500}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 170, clientY: 502}],
+      })
       await Promise.resolve()
     })
 
-    expect(mockStorageSetItem).toHaveBeenCalledWith('reffo.landing.seen', '1')
-    expect(mockReLaunch).toHaveBeenCalledWith('/pages/index/index')
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-folder-returning')
+    expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[0]?.className)
+      .toContain('reffo-landing-onboarding__pager-dot--active')
+
+    await act(async () => {
+      jest.advanceTimersByTime(830)
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail')
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail-restored')
+    expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[0]?.className)
+      .toContain('reffo-landing-onboarding__pager-dot--active')
+    expect(mockStorageSetItem).not.toHaveBeenCalled()
+    expect(mockReLaunch).not.toHaveBeenCalled()
+  })
+
+  test('上传卡片停顿后展示上传说明且不显示额外删除按钮', async () => {
+    mockStorageGetItem.mockResolvedValue(null)
+
+    const {container} = render(<LandingPage />)
+    await selectUploadQueueCard(container)
+
+    const selectedUploadCard = container.querySelector('[data-queue-card-kind="upload"]')
+
+    expect(selectedUploadCard?.className)
+      .toContain('reffo-landing-onboarding__card--queue-selected-source')
+    expect(screen.getByText('已经准备好了简历？可以上传自己的简历以开始。')).not.toBeNull()
+    expect(screen.queryByRole('button', {name: '删除上传简历卡片'})).toBeNull()
+  })
+
+  test('上传卡片翻面后等待文件成功才显示箭头和文件夹', async () => {
+    mockStorageGetItem.mockResolvedValue(null)
+    mockPickAndParseResumeFile.mockImplementation(async ({onFileSelected, onProgress}) => {
+      const file = {
+        name: 'resume.pdf',
+        path: 'blob:resume',
+        size: 128 * 1024,
+        extension: '.pdf',
+        file: {} as File,
+      }
+      onFileSelected?.(file)
+      onProgress?.(52)
+      return {
+        ...file,
+        extractedText: '# Melvin Kuffour\n\n## Experience',
+      }
+    })
+
+    const {container} = render(<LandingPage />)
+    await selectUploadQueueCard(container)
+    await swipeSelectedCardDown(container)
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-detail-upload')
+    expect(screen.getByText('上传的信息越详细，reffo 就能为您生成一份与目标职位越契合的简历。'))
+      .not.toBeNull()
+    expect(screen.getByText('上传文件以下一步')).not.toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).toBeNull()
+
+    await swipeSelectedCardDown(container)
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-detail')
+    expect(container.firstElementChild?.className)
+      .not.toContain('reffo-landing-onboarding--queue-folder')
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', {name: '上传简历文件'}))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockPickAndParseResumeFile).toHaveBeenCalledTimes(1)
+    expect(setResumeContent).toHaveBeenCalledWith('# Melvin Kuffour\n\n## Experience')
+    expect(mockFeedbackSuccess).toHaveBeenCalledWith('resume.pdf 已上传')
+    expect(mockFeedbackError).not.toHaveBeenCalled()
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-detail-uploaded')
+    expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).not.toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
+    expect(screen.queryByText('上传文件以下一步')).toBeNull()
+    expect(screen.getAllByText('resume.pdf').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('128 Kb').length).toBeGreaterThan(0)
+    expect(container.querySelector('.reffo-home-card__upload-complete-icon')).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('返回'))
+      jest.advanceTimersByTime(430)
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-selected')
+
+    await swipeSelectedCardDown(container)
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-detail-uploaded')
+    expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).not.toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
+    expect(mockPickAndParseResumeFile).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', {name: '删除已上传简历'})[0])
+      await Promise.resolve()
+    })
+
+    expect(setResumeContent).toHaveBeenLastCalledWith('')
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-upload-pending')
+    expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).toBeNull()
+    expect(screen.getByText('上传文件以下一步')).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', {name: '上传简历文件'}))
+      await Promise.resolve()
+    })
+
+    await swipeSelectedCardDown(container)
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-folder')
   })
 
   test('第三步点击跳过教程完成引导并进入首页', async () => {

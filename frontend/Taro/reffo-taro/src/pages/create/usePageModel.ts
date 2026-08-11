@@ -21,8 +21,12 @@ import {toHistoryCardItem} from '../index/model/homeCardData'
 import {
   canUseBrowserFilePicker,
   pickBrowserFile,
-  readBrowserTextFile,
 } from '@/utils/web-file'
+import {
+  formatResumeFileSize,
+  isResumeFileUploadCancelled,
+  pickAndParseResumeFile,
+} from '@/utils/resume-file-upload'
 import {
   CREATE_STEP_META,
   CREATE_STEP_SEQUENCE,
@@ -32,8 +36,6 @@ import {
   type JobDescriptionInputMode,
   type JobDescriptionStepState,
   type ResumeSummaryStepState,
-  RESUME_FILE_ACCEPT_TYPES,
-  RESUME_FILE_MAX_SIZE_MB,
   type ResumeUploadStepState,
   type UploadedJobDescriptionFile,
   type UploadedResumeFile,
@@ -78,15 +80,12 @@ export interface CreatePageViewModel {
   handleClose: () => void
 }
 
-const TEXT_FILE_TYPES = new Set(['.md', '.txt'])
 const JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES = [
   '.png',
   '.jpg',
   '.jpeg',
 ] as const
 const JOB_DESCRIPTION_FILE_MAX_SIZE_MB = 10
-const CANCEL_PATTERN = /cancel|取消/i
-const SUPPORTED_RESUME_FILE_TYPES = new Set<string>(RESUME_FILE_ACCEPT_TYPES)
 const SUPPORTED_JOB_DESCRIPTION_FILE_TYPES = new Set<string>(
   JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
 )
@@ -183,61 +182,13 @@ function getFileExtension(fileName: string) {
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : ''
 }
 
-function isSupportedResumeFile(fileName: string) {
-  return SUPPORTED_RESUME_FILE_TYPES.has(getFileExtension(fileName))
-}
-
 function isSupportedJobDescriptionFile(fileName: string) {
   return SUPPORTED_JOB_DESCRIPTION_FILE_TYPES.has(getFileExtension(fileName))
-}
-
-function isTextFile(fileName: string) {
-  return TEXT_FILE_TYPES.has(getFileExtension(fileName))
-}
-
-function isPdfFile(fileName: string) {
-  return getFileExtension(fileName) === '.pdf'
-}
-
-function formatFileSize(size: number) {
-  const sizeInMb = size / (1024 * 1024)
-  if (sizeInMb >= 1) {
-    return `${sizeInMb.toFixed(sizeInMb >= 10 ? 0 : 1)} Mb`
-  }
-
-  return `${Math.max(1, Math.round(size / 1024))} Kb`
-}
-
-function isUserCancelled(error: unknown) {
-  const message =
-    typeof error === 'object' && error !== null
-      ? `${(error as any).message || ''}${(error as any).errMsg || ''}`
-      : String(error || '')
-
-  return CANCEL_PATTERN.test(message)
 }
 
 function wait(duration: number) {
   return new Promise<void>(resolve => {
     setTimeout(() => resolve(), duration)
-  })
-}
-
-function readTextFile(filePath: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const fileManager = Taro.getFileSystemManager?.()
-
-    if (!fileManager?.readFile) {
-      reject(new Error('当前环境暂不支持读取该文件'))
-      return
-    }
-
-    fileManager.readFile({
-      filePath,
-      encoding: 'utf8',
-      success: result => resolve(String(result.data ?? '')),
-      fail: reject,
-    })
   })
 }
 
@@ -900,131 +851,48 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handlePickResumeFile = async () => {
+    const requestId = uploadRequestRef.current + 1
+    uploadRequestRef.current = requestId
+
     try {
-      const canPickBrowserFile = canUseBrowserFilePicker()
-      const browserFile = canPickBrowserFile
-        ? await pickBrowserFile({
-            accept: RESUME_FILE_ACCEPT_TYPES,
-          })
-        : null
+      const parsedFile = await pickAndParseResumeFile({
+        isActive: () => uploadRequestRef.current === requestId,
+        onFileSelected: selectedFile => {
+          const pendingFile: UploadedResumeFile = {
+            name: selectedFile.name,
+            path: selectedFile.path,
+            size: selectedFile.size,
+            sizeLabel: formatResumeFileSize(selectedFile.size),
+            extension: selectedFile.extension,
+          }
 
-      if (canPickBrowserFile && !browserFile) {
-        return
-      }
+          setResumeUploadState(previous => ({
+            ...previous,
+            status: 'uploading',
+            progress: 0,
+            file: pendingFile,
+            errorMessage: null,
+          }))
+        },
+        onProgress: progress => {
+          setResumeUploadState(previous => ({
+            ...previous,
+            progress,
+          }))
+        },
+      })
 
-      const response = browserFile
-        ? {tempFiles: [browserFile]}
-        : await Taro.chooseMessageFile({
-            count: 1,
-            type: 'file',
-            extension: RESUME_FILE_ACCEPT_TYPES.map(type => type.replace('.', '')),
-          })
-
-      const selectedFile = response.tempFiles?.[0]
-      if (!selectedFile) {
-        return
-      }
-
-      if (!isSupportedResumeFile(selectedFile.name)) {
-        setResumeUploadState(previous => ({
-          ...previous,
-          status: 'error',
-          progress: 0,
-          file: null,
-          errorMessage: '上传失败',
-        }))
-        feedback.error('仅支持 PDF、DOC、DOCX、MD、TXT 文件')
-        return
-      }
-
-      if (selectedFile.size > RESUME_FILE_MAX_SIZE_MB * 1024 * 1024) {
-        setResumeUploadState(previous => ({
-          ...previous,
-          status: 'error',
-          progress: 0,
-          file: null,
-          errorMessage: '上传失败',
-        }))
-        feedback.error(`文件不能超过 ${RESUME_FILE_MAX_SIZE_MB}MB`)
-        return
-      }
-
-      const requestId = uploadRequestRef.current + 1
-      uploadRequestRef.current = requestId
-      const pendingFile: UploadedResumeFile = {
-        name: selectedFile.name,
-        path: selectedFile.path,
-        size: selectedFile.size,
-        sizeLabel: formatFileSize(selectedFile.size),
-        extension: getFileExtension(selectedFile.name),
-      }
-
-      setResumeUploadState(previous => ({
-        ...previous,
-        status: 'uploading',
-        progress: 18,
-        file: pendingFile,
-        errorMessage: null,
-      }))
-
-      await wait(120)
-      if (uploadRequestRef.current !== requestId) {
-        return
-      }
-
-      setResumeUploadState(previous => ({
-        ...previous,
-        progress: 52,
-      }))
-
-      let extractedText: string | undefined
-      if (isTextFile(selectedFile.name)) {
-        extractedText = selectedFile.file
-          ? await readBrowserTextFile(selectedFile.file)
-          : await readTextFile(selectedFile.path)
-        if (uploadRequestRef.current !== requestId) {
-          return
-        }
-
-        if (!extractedText.trim()) {
-          throw new Error('文件内容为空')
-        }
-
-        setResumeUploadState(previous => ({
-          ...previous,
-          progress: 84,
-        }))
-      } else if (isPdfFile(selectedFile.name)) {
-        const parsedDocument = await parseApi.parseResumeFile(selectedFile)
-        if (uploadRequestRef.current !== requestId) {
-          return
-        }
-
-        extractedText = parsedDocument.markdown?.trim() || parsedDocument.rawText.trim()
-        if (!extractedText) {
-          throw new Error('PDF 解析结果为空，请上传文本版 PDF 或手动粘贴简历')
-        }
-
-        setResumeUploadState(previous => ({
-          ...previous,
-          progress: 84,
-        }))
-      } else {
-        throw new Error('暂不支持 DOC/DOCX 解析，请另存为 PDF、MD、TXT 或手动粘贴')
-      }
-
-      await wait(120)
-      if (uploadRequestRef.current !== requestId) {
+      if (!parsedFile || uploadRequestRef.current !== requestId) {
         return
       }
 
       const uploadedFile: UploadedResumeFile = {
-        ...pendingFile,
-        extractedText,
-      }
-      const nextMarkdown = extractedText?.trim()
-      if (!nextMarkdown) {
-        throw new Error('文件解析结果为空，请手动粘贴简历')
+        name: parsedFile.name,
+        path: parsedFile.path,
+        size: parsedFile.size,
+        sizeLabel: formatResumeFileSize(parsedFile.size),
+        extension: parsedFile.extension,
+        extractedText: parsedFile.extractedText,
       }
 
       setResumeUploadState(previous => ({
@@ -1032,24 +900,27 @@ export function usePageModel(): CreatePageViewModel {
         status: 'success',
         progress: 100,
         file: uploadedFile,
-        markdown: nextMarkdown,
+        markdown: parsedFile.extractedText,
         errorMessage: null,
       }))
 
-      feedback.success(`${selectedFile.name} 已上传`)
+      feedback.success(`${parsedFile.name} 已上传`)
     } catch (error) {
-      if (isUserCancelled(error)) {
+      if (isResumeFileUploadCancelled(error)) {
         return
       }
 
       const message = error instanceof Error ? error.message : '上传失败，请重试'
+      const uploadCardMessage = message.startsWith('仅支持') || message.startsWith('文件不能超过')
+        ? '上传失败'
+        : message
       console.error('resume upload failed', error)
       setResumeUploadState(previous => ({
         ...previous,
         status: 'error',
         progress: 0,
         file: null,
-        errorMessage: message,
+        errorMessage: uploadCardMessage,
       }))
       feedback.error(message)
     }
@@ -1120,7 +991,7 @@ export function usePageModel(): CreatePageViewModel {
         path: selectedFile.path,
         size: selectedFile.size,
         extension: getFileExtension(selectedFile.name),
-        sizeLabel: formatFileSize(selectedFile.size),
+        sizeLabel: formatResumeFileSize(selectedFile.size),
         previewPath: selectedFile.path,
       }
 
@@ -1170,7 +1041,7 @@ export function usePageModel(): CreatePageViewModel {
 
       feedback.success(`${selectedFile.name} 已解析，可继续编辑`)
     } catch (error) {
-      if (isUserCancelled(error)) {
+      if (isResumeFileUploadCancelled(error)) {
         return
       }
 
@@ -1443,7 +1314,7 @@ export function usePageModel(): CreatePageViewModel {
     file: resumeUploadState.file
       ? {
           ...resumeUploadState.file,
-          sizeLabel: formatFileSize(resumeUploadState.file.size),
+          sizeLabel: formatResumeFileSize(resumeUploadState.file.size),
         }
       : null,
   }

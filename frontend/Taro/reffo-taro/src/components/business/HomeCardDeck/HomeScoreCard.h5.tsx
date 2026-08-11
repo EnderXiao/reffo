@@ -6,6 +6,9 @@ import {deriveCardPalette} from './palette'
 import classNames from 'classnames'
 import {lazy, Suspense, useEffect, useMemo, useState} from 'react'
 import {HOME_PAGE_CONTENT} from '@/pages/index/constants/content'
+import ResumeUploadIcon, {
+  type ResumeUploadIconStatus,
+} from '@/components/business/ResumeUploadIcon/index.h5'
 import ReffoGlyph from './ReffoGlyph.h5'
 
 const PremiumCardEffect = lazy(() => import('./PremiumCardEffect.h5'))
@@ -37,6 +40,14 @@ interface HomeScoreCardProps {
   className?: string
   style?: Record<string, string | number>
   onClick?: () => void
+  uploadStatus?: ResumeUploadIconStatus
+  uploadFile?: {
+    name: string
+    sizeLabel: string
+    extension: string
+  } | null
+  uploadProgress?: number
+  onUploadRemove?: () => void
 }
 
 function resolveGeneratingMark(card: HomeCardItem) {
@@ -209,6 +220,10 @@ export default function HomeScoreCard({
   className,
   style,
   onClick,
+  uploadStatus = 'idle',
+  uploadFile,
+  uploadProgress = 0,
+  onUploadRemove,
 }: HomeScoreCardProps) {
   const [isValueMarqueeReady, setIsValueMarqueeReady] = useState(false)
   const card = variant === 'create' ? CREATE_CARD_ITEM : inputCard
@@ -238,6 +253,8 @@ export default function HomeScoreCard({
   const isGenerating = variant === 'generating'
   const isQueue3d = presentation === 'queue3d'
   const isQueueUpload = isQueue3d && card.queueCardKind === 'upload'
+  const isQueueUploadComplete = isQueueUpload && uploadStatus === 'success' && Boolean(uploadFile)
+  const normalizedUploadProgress = Math.max(0, Math.min(100, uploadProgress))
   const isQueueResume = isQueue3d && card.queueCardKind === 'resume' && card.resumeProfile
   const hasWrappedCompanyName = !isCreate && !isGenerating && isLikelyWrappedCompanyName(card.company)
   const scoreGrade = resolveResumeGrade(card.score)
@@ -326,12 +343,78 @@ export default function HomeScoreCard({
                 <Text className='reffo-home-card__upload-action'>开始</Text>
               </View>
             </View>
-            <View className='reffo-home-card__queue-face reffo-home-card__queue-face--back reffo-home-card__upload-back'>
-              <View className='reffo-home-card__upload-file-icon'>
-                <View className='reffo-home-card__upload-file-corner' />
-                <Text className='reffo-home-card__upload-file-arrow'>↑</Text>
+            <View
+              className={classNames(
+                'reffo-home-card__queue-face',
+                'reffo-home-card__queue-face--back',
+                'reffo-home-card__upload-back',
+                {
+                  'reffo-home-card__upload-back--uploading': uploadStatus === 'uploading',
+                  'reffo-home-card__upload-back--complete': isQueueUploadComplete,
+                },
+              )}
+              style={{
+                '--queue-upload-blob-scale': String(
+                  isQueueUploadComplete ? 1 : 0.42 + (normalizedUploadProgress * 0.0058),
+                ),
+              } as any}
+            >
+              <View
+                className={classNames('reffo-home-card__upload-ambient', {
+                  'reffo-home-card__upload-ambient--visible':
+                    uploadStatus === 'uploading' || isQueueUploadComplete,
+                  'reffo-home-card__upload-ambient--settled': isQueueUploadComplete,
+                })}
+                aria-hidden='true'
+              >
+                <View className='reffo-home-card__upload-ambient-blob'>
+                  <View className='reffo-home-card__upload-ambient-color' />
+                </View>
+                <View className='reffo-home-card__upload-ambient-glass' />
               </View>
-              <Text className='reffo-home-card__upload-back-copy'>上传文件</Text>
+              <View
+                className={classNames('reffo-home-card__upload-loading', {
+                  'reffo-home-card__upload-loading--active': uploadStatus !== 'success',
+                  'reffo-home-card__upload-loading--leaving': isQueueUploadComplete,
+                })}
+              >
+                <ResumeUploadIcon
+                  status={uploadStatus === 'error' ? 'error' : 'uploading'}
+                  extension={uploadFile?.extension}
+                  className='reffo-home-card__upload-pending-icon'
+                />
+                <Text className='reffo-home-card__upload-back-copy'>
+                  {uploadStatus === 'uploading' ? `上传中 ${normalizedUploadProgress}%` : '上传文件'}
+                </Text>
+              </View>
+              {uploadFile ? (
+                <View className={classNames('reffo-home-card__upload-complete', {
+                  'reffo-home-card__upload-complete--visible': isQueueUploadComplete,
+                })}>
+                  <ResumeUploadIcon
+                    status='success'
+                    extension={uploadFile.extension}
+                    className='reffo-home-card__upload-complete-icon'
+                  />
+                  <View className='reffo-home-card__upload-complete-copy'>
+                    <Text className='reffo-home-card__upload-complete-name'>{uploadFile.name}</Text>
+                    <Text className='reffo-home-card__upload-complete-size'>{uploadFile.sizeLabel}</Text>
+                  </View>
+                  <View
+                    className='reffo-home-card__upload-complete-remove'
+                    role='button'
+                    aria-label='删除已上传简历'
+                    onTouchStart={event => event.stopPropagation?.()}
+                    onTouchEnd={event => event.stopPropagation?.()}
+                    onClick={event => {
+                      event.stopPropagation?.()
+                      onUploadRemove?.()
+                    }}
+                  >
+                    <Text>删除</Text>
+                  </View>
+                </View>
+              ) : null}
             </View>
           </View>
         ) : isGenerating ? (
@@ -369,24 +452,47 @@ export default function HomeScoreCard({
         ) : (
           <>
             {isQueueResume && card.resumeProfile ? (
-              <>
-                <View className='reffo-home-card__score reffo-home-card__resume-score'>
-                  <Image className='reffo-home-card__resume-avatar' src={queueAvatarSrc} mode='aspectFill' />
-                  <View className='reffo-home-card__resume-person'>
-                    <Text className='reffo-home-card__resume-name'>{card.resumeProfile.name}</Text>
-                    <Text className='reffo-home-card__resume-meta'>
-                      {card.resumeProfile.age}岁 · {card.resumeProfile.gender}
-                    </Text>
+              <View className='reffo-home-card__queue-face-stack'>
+                <View className='reffo-home-card__queue-face reffo-home-card__queue-face--front'>
+                  <View className='reffo-home-card__score reffo-home-card__resume-score'>
+                    <Image className='reffo-home-card__resume-avatar' src={queueAvatarSrc} mode='aspectFill' />
+                    <View className='reffo-home-card__resume-person'>
+                      <Text className='reffo-home-card__resume-name'>{card.resumeProfile.name}</Text>
+                      <Text className='reffo-home-card__resume-meta'>
+                        {card.resumeProfile.age}岁 · {card.resumeProfile.gender}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className='reffo-home-card__glass reffo-home-card__resume-glass'>
+                    <View className='reffo-home-card__resume-tags'>
+                      {card.resumeProfile.tags.map(tag => (
+                        <Text key={tag} className='reffo-home-card__resume-tag'>{tag}</Text>
+                      ))}
+                    </View>
                   </View>
                 </View>
-                <View className='reffo-home-card__glass reffo-home-card__resume-glass'>
-                  <View className='reffo-home-card__resume-tags'>
-                    {card.resumeProfile.tags.map(tag => (
-                      <Text key={tag} className='reffo-home-card__resume-tag'>{tag}</Text>
-                    ))}
+                <View className='reffo-home-card__queue-face reffo-home-card__queue-face--back reffo-home-card__queue-face--resume-back'>
+                  <View className='reffo-home-card__score reffo-home-card__resume-score'>
+                    <Image className='reffo-home-card__resume-avatar' src={queueAvatarSrc} mode='aspectFill' />
+                    <View className='reffo-home-card__resume-person'>
+                      <Text className='reffo-home-card__resume-name'>{card.resumeProfile.name}</Text>
+                      <Text className='reffo-home-card__resume-meta'>
+                        {card.resumeProfile.age}岁 · {card.resumeProfile.gender}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className='reffo-home-card__glass reffo-home-card__resume-glass reffo-home-card__resume-glass--detail'>
+                    <View className='reffo-home-card__resume-detail-copy'>
+                      <Text className='reffo-home-card__resume-detail-summary'>
+                        {card.resumeProfile.summary}
+                      </Text>
+                      <Text className='reffo-home-card__resume-detail-experience'>
+                        {card.strategyBody}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </>
+              </View>
             ) : (
               <>
                 <View className='reffo-home-card__score'>

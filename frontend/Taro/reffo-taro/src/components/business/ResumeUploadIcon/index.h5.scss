@@ -1,0 +1,71 @@
+.reffo-resume-upload-icon {
+  position: relative;
+  display: flex;
+  width: 27px;
+  height: 35px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.reffo-resume-upload-icon__asset {
+  width: 27px;
+  height: 35px;
+  flex: 0 0 auto;
+}
+
+.reffo-resume-upload-icon__file {
+  position: relative;
+  display: flex;
+  width: 27px;
+  height: 35px;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid #9db0c7;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.reffo-resume-upload-icon__file::after {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 11px;
+  height: 11px;
+  border-bottom: 4px solid #9db0c7;
+  border-left: 4px solid #9db0c7;
+  background: #f8f9fb;
+  box-sizing: border-box;
+  content: '';
+}
+
+.reffo-resume-upload-icon--success .reffo-resume-upload-icon__file {
+  border: 0;
+  background: #1683ff;
+}
+
+.reffo-resume-upload-icon--success .reffo-resume-upload-icon__file::after {
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-bottom: 5px solid #f8f9fb;
+  border-left: 5px solid #f8f9fb;
+}
+
+.reffo-resume-upload-icon__arrow {
+  margin-top: 7px;
+  color: #9db0c7;
+  font-size: 17px;
+  line-height: 17px;
+  font-weight: 700;
+}
+
+.reffo-resume-upload-icon__file-type {
+  margin-top: 11px;
+  color: #ffffff;
+  font-size: 8px;
+  line-height: 10px;
+  font-weight: 700;
+}

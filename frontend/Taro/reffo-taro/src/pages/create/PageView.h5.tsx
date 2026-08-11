@@ -4,14 +4,12 @@ import {Image, Input, Text, Textarea, View} from '@tarojs/components'
 import classNames from 'classnames'
 import CANCEL_ICON from '@/assets/create/cancel.svg'
 import DELETE_ICON from '@/assets/create/delete.svg'
-import PDF_FILE_ICON from '@/assets/create/pdf-file.svg'
-import UPLOAD_ERROR_ICON from '@/assets/create/upload-error.svg'
-import UPLOAD_FILE_ICON from '@/assets/create/upload-file.svg'
 import {Card} from '@/components/Card'
 import DeleteBreakCard from '@/components/business/DeleteBreakCard/index.h5'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
+import ResumeUploadIcon from '@/components/business/ResumeUploadIcon/index.h5'
 import {useVisualTier} from '@/utils'
 import type {CreatePageViewModel} from './usePageModel'
 import type {
@@ -148,56 +146,6 @@ function StepHeader({meta}: {meta: CreateStepMeta}) {
   )
 }
 
-function UploadIcon({
-  status,
-  extension,
-}: {
-  status: ResumeUploadStepState['status']
-  extension?: string
-}) {
-  const isSuccess = status === 'success'
-  const isError = status === 'error'
-  const extensionLabel = extension?.replace('.', '').toUpperCase()
-  const isPdf = extensionLabel === 'PDF'
-  const assetIcon = isError ? UPLOAD_ERROR_ICON : !isSuccess ? UPLOAD_FILE_ICON : isPdf ? PDF_FILE_ICON : null
-
-  if (assetIcon) {
-    return (
-      <Image
-        src={assetIcon}
-        mode='aspectFit'
-        className={classNames('reffo-create-upload__asset-icon', {
-          'reffo-create-upload__asset-icon--pdf': isPdf,
-        })}
-      />
-    )
-  }
-
-  return (
-    <View
-      className={classNames('reffo-create-upload__icon', {
-        'reffo-create-upload__icon--success': isSuccess,
-        'reffo-create-upload__icon--error': isError,
-      })}
-    >
-      <View className='reffo-create-upload__file'>
-        {isSuccess ? (
-          <Text className='reffo-create-upload__file-type'>
-            {extensionLabel === 'PDF' ? 'PDF' : extensionLabel?.slice(0, 3) || 'FILE'}
-          </Text>
-        ) : (
-          <Text className='reffo-create-upload__arrow'>↑</Text>
-        )}
-      </View>
-      {isError ? (
-        <View className='reffo-create-upload__error-badge'>
-          <Text>!</Text>
-        </View>
-      ) : null}
-    </View>
-  )
-}
-
 function ResumeUploadStepH5({
   state,
   onPickFile,
@@ -304,7 +252,7 @@ function ResumeUploadStepH5({
                   : 'resume-upload-trigger'
           }
         >
-          <UploadIcon status={state.status} extension={state.file?.extension} />
+          <ResumeUploadIcon status={state.status} extension={state.file?.extension} />
           <View className='reffo-create-upload__body'>
             <Text className='reffo-create-upload__label'>
               {hasError ? state.errorMessage || '上传失败' : state.file ? state.file.name : '上传文件'}
@@ -376,7 +324,7 @@ function ResumeSummaryStepH5({
           data-testid='resume-summary-card'
         >
           <View className='reffo-create-summary__icon'>
-            <UploadIcon status='success' extension={fileExtension} />
+            <ResumeUploadIcon status='success' extension={fileExtension} />
           </View>
           <View className='reffo-create-summary__body'>
             <Text className='reffo-create-summary__name'>{state.fileName}</Text>
