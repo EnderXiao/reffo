@@ -41,10 +41,11 @@ const ONBOARDING_SWIPE_THRESHOLD = 54
 const ONBOARDING_SWIPE_DIRECTION_RATIO = 1.35
 const ONBOARDING_QUEUE_ENTRY_MS = 960
 const ONBOARDING_QUEUE_FAST_MS = 1100
-const ONBOARDING_QUEUE_FAST_CYCLE_MS = 320
+const ONBOARDING_QUEUE_FAST_CYCLE_MS = 190
+const ONBOARDING_QUEUE_POPULATE_PROGRESS = 1
 const ONBOARDING_QUEUE_DECEL_MS = 2800
 const ONBOARDING_QUEUE_SPIN_TOTAL_MS = ONBOARDING_QUEUE_FAST_MS + ONBOARDING_QUEUE_DECEL_MS
-const ONBOARDING_QUEUE_STEADY_CYCLE_MS = 11000
+const ONBOARDING_QUEUE_STEADY_CYCLE_MS = 7000
 const ONBOARDING_QUEUE_DRAG_ACTIVATE_PX = 8
 const ONBOARDING_QUEUE_DRAG_DIRECTION_RATIO = 1.18
 const ONBOARDING_QUEUE_DRAG_PROGRESS_PER_PX = 1 / 118
@@ -56,6 +57,7 @@ const ONBOARDING_QUEUE_MAX_INERTIA_PROGRESS = 1.32
 const ONBOARDING_QUEUE_DISMISS_SELECTED_MIN_MS = 260
 const ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS = 460
 const ONBOARDING_QUEUE_DETAIL_EXIT_MS = 420
+const ONBOARDING_QUEUE_UPLOAD_REMOVE_MS = 520
 const ONBOARDING_QUEUE_FOLDER_EXIT_MS = 820
 const ONBOARDING_QUEUE_SELECTED_CLEARANCE_LEFT_X = 156
 const ONBOARDING_QUEUE_SELECTED_CLEARANCE_RIGHT_X = 126
@@ -674,6 +676,7 @@ export default function LandingPage() {
   const [onboardingLogoStyle, setOnboardingLogoStyle] = useState<CSSProperties | null>(null)
   const [hasOnboardingLogoSettled, setHasOnboardingLogoSettled] = useState(false)
   const [queueMotionPhase, setQueueMotionPhase] = useState<QueueMotionPhase>('idle')
+  const [isQueueFlowPopulated, setIsQueueFlowPopulated] = useState(false)
   const [selectedQueueCardIndex, setSelectedQueueCardIndex] = useState<number | null>(null)
   const [selectedQueueSourceOffset, setSelectedQueueSourceOffset] = useState<number | null>(null)
   const [queueClearanceSourceOffset, setQueueClearanceSourceOffset] = useState<number | null>(null)
@@ -683,6 +686,7 @@ export default function LandingPage() {
   const [isQueueDetailRestored, setIsQueueDetailRestored] = useState(false)
   const [selectedQueueDetailMode, setSelectedQueueDetailMode] = useState<QueueDetailMode | null>(null)
   const [isQueueUploadComplete, setIsQueueUploadComplete] = useState(false)
+  const [isQueueUploadRemoving, setIsQueueUploadRemoving] = useState(false)
   const [isQueueUploading, setIsQueueUploading] = useState(false)
   const [queueUploadProgress, setQueueUploadProgress] = useState(0)
   const [queueUploadedFile, setQueueUploadedFile] = useState<LandingQueueUploadFile | null>(null)
@@ -693,6 +697,7 @@ export default function LandingPage() {
   const queueAnimationFrameRef = useRef<number | null>(null)
   const queueSelectionExpandFrameRef = useRef<number | null>(null)
   const queueProgressRef = useRef(0)
+  const isQueueFlowPopulatedRef = useRef(false)
   const queueDragRef = useRef<{
     startX: number
     startY: number
@@ -710,6 +715,7 @@ export default function LandingPage() {
   const selectedDismissStartedAtRef = useRef<number | null>(null)
   const selectedDismissDurationMsRef = useRef(ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS)
   const queueUploadRequestRef = useRef(0)
+  const queueUploadRemoveTimerRef = useRef<number | null>(null)
 
   const clearQueueTimers = () => {
     queueTimersRef.current.forEach(timer => {
@@ -750,6 +756,13 @@ export default function LandingPage() {
     if (queueFolderExitTimerRef.current != null) {
       window.clearTimeout(queueFolderExitTimerRef.current)
       queueFolderExitTimerRef.current = null
+    }
+  }
+
+  const clearQueueUploadRemoveTimer = () => {
+    if (queueUploadRemoveTimerRef.current != null) {
+      window.clearTimeout(queueUploadRemoveTimerRef.current)
+      queueUploadRemoveTimerRef.current = null
     }
   }
 
@@ -885,12 +898,23 @@ export default function LandingPage() {
   }
 
   const handleRemoveQueueResumeUpload = () => {
+    if (isQueueUploadRemoving || !queueUploadedFile) {
+      return
+    }
+
     queueUploadRequestRef.current += 1
     setIsQueueUploading(false)
-    setIsQueueUploadComplete(false)
-    setQueueUploadProgress(0)
-    setQueueUploadedFile(null)
+    setIsQueueUploadRemoving(true)
     useResumeStore.getState().setResumeContent('')
+
+    clearQueueUploadRemoveTimer()
+    queueUploadRemoveTimerRef.current = window.setTimeout(() => {
+      queueUploadRemoveTimerRef.current = null
+      setIsQueueUploadRemoving(false)
+      setIsQueueUploadComplete(false)
+      setQueueUploadProgress(0)
+      setQueueUploadedFile(null)
+    }, ONBOARDING_QUEUE_UPLOAD_REMOVE_MS)
   }
 
   const handleQueueResumeUpload = async () => {
@@ -898,6 +922,7 @@ export default function LandingPage() {
       queueMotionPhase !== 'detail'
       || selectedQueueDetailMode !== 'upload'
       || isQueueUploadComplete
+      || isQueueUploadRemoving
       || isQueueUploading
     ) {
       return
@@ -935,6 +960,7 @@ export default function LandingPage() {
       setQueueUploadProgress(100)
       useResumeStore.getState().setResumeContent(parsedFile.extractedText)
       setIsQueueUploadComplete(true)
+      setIsQueueUploadRemoving(false)
       feedback.success(`${parsedFile.name} 已上传`)
     } catch (error) {
       if (isResumeFileUploadCancelled(error)) {
@@ -945,6 +971,7 @@ export default function LandingPage() {
       console.error('[LandingPage] Resume upload failed:', error)
       setQueueUploadProgress(0)
       setQueueUploadedFile(null)
+      setIsQueueUploadRemoving(false)
       feedback.error(message)
     } finally {
       if (queueUploadRequestRef.current === requestId) {
@@ -981,6 +1008,15 @@ export default function LandingPage() {
       element.style.zIndex = String(frameStyle.zIndex ?? 1)
       element.style.transform = String(frameStyle.transform ?? '')
     })
+  }
+
+  const populateQueueFlow = () => {
+    if (isQueueFlowPopulatedRef.current) {
+      return
+    }
+
+    isQueueFlowPopulatedRef.current = true
+    setIsQueueFlowPopulated(true)
   }
 
   const stopQueueAutoMotion = () => {
@@ -1198,6 +1234,7 @@ export default function LandingPage() {
     clearSelectedDismissTimer()
     clearQueueDetailExitTimer()
     clearQueueFolderExitTimer()
+    clearQueueUploadRemoveTimer()
     queueUploadRequestRef.current += 1
   }, [])
 
@@ -1208,6 +1245,7 @@ export default function LandingPage() {
     clearSelectedDismissTimer()
     clearQueueDetailExitTimer()
     clearQueueFolderExitTimer()
+    clearQueueUploadRemoveTimer()
 
     if (phase !== 'onboarding' || onboardingStep !== 'queue' || isLeaving) {
       setQueueMotionPhase('idle')
@@ -1220,11 +1258,14 @@ export default function LandingPage() {
       setIsQueueDetailRestored(false)
       setSelectedQueueDetailMode(null)
       setIsQueueUploadComplete(false)
+      setIsQueueUploadRemoving(false)
       setIsQueueUploading(false)
       setQueueUploadProgress(0)
       setQueueUploadedFile(null)
       queueUploadRequestRef.current += 1
       queueProgressRef.current = 0
+      isQueueFlowPopulatedRef.current = false
+      setIsQueueFlowPopulated(false)
       return undefined
     }
 
@@ -1238,6 +1279,8 @@ export default function LandingPage() {
     setIsQueueDetailRestored(false)
     setSelectedQueueDetailMode(null)
     queueProgressRef.current = 0
+    isQueueFlowPopulatedRef.current = false
+    setIsQueueFlowPopulated(false)
 
     const entryTimer = window.setTimeout(() => {
       setQueueMotionPhase('spin')
@@ -1246,6 +1289,11 @@ export default function LandingPage() {
       const tick = (timestamp: number) => {
         const elapsedMs = timestamp - startedAt
         const progress = resolveQueueProgress(elapsedMs)
+
+        if (progress >= ONBOARDING_QUEUE_POPULATE_PROGRESS) {
+          populateQueueFlow()
+        }
+
         applyQueueProgress(progress)
 
         queueAnimationFrameRef.current = window.requestAnimationFrame(tick)
@@ -1338,6 +1386,13 @@ export default function LandingPage() {
     touchStartRef.current = {
       x: touch.clientX,
       y: touch.clientY,
+    }
+
+    if (
+      onboardingStep === 'queue'
+      && (queueMotionPhase === 'entry' || queueMotionPhase === 'spin' || queueMotionPhase === 'steady')
+    ) {
+      populateQueueFlow()
     }
 
     queueDragRef.current = onboardingStep === 'queue'
@@ -1514,6 +1569,7 @@ export default function LandingPage() {
         if (isDownSelectSwipe && selectedQueueCardIndex == null) {
           event.preventDefault?.()
           stopQueueAutoMotion()
+          populateQueueFlow()
 
           const currentProgress = queueProgressRef.current
           const targetProgress = resolveQueueSnapTargetProgress(currentProgress)
@@ -1573,7 +1629,9 @@ export default function LandingPage() {
     const selectedQueueCard = selectedQueueCardIndex == null ? null : ONBOARDING_QUEUE_CARDS[selectedQueueCardIndex]
     const isQueueFolderStep = queueMotionPhase === 'folder'
     const isSelectedUploadCard = selectedQueueCard?.queueCardKind === 'upload'
-    const isQueueUploadPending = selectedQueueDetailMode === 'upload' && !isQueueUploadComplete
+    const isQueueUploadPending = selectedQueueDetailMode === 'upload'
+      && !isQueueUploadComplete
+      && !isQueueUploadRemoving
     const canActivateQueueUpload = queueMotionPhase === 'detail'
       && isQueueUploadPending
       && !isQueueUploading
@@ -1591,15 +1649,17 @@ export default function LandingPage() {
       } as CSSProperties)
       : undefined
     const queueCards = isQueueFlow
-      ? ONBOARDING_QUEUE_CARDS.map((card, cardIndex) => ({
-        key: `flow-${card.id}`,
-        card,
-        cardIndex,
-        kind: null,
-        position: resolveQueueFlowCardPosition(cardIndex, queueProgressRef.current),
-      }))
+      ? ONBOARDING_QUEUE_CARDS
+        .slice(0, isQueueFlowPopulated ? undefined : ONBOARDING_QUEUE_ENTRY_SLOTS.length)
+        .map((card, cardIndex) => ({
+          key: `queue-${card.id}`,
+          card,
+          cardIndex,
+          kind: null,
+          position: resolveQueueFlowCardPosition(cardIndex, queueProgressRef.current),
+        }))
       : ONBOARDING_QUEUE_ENTRY_SLOTS.map(({kind, offset, cardIndex}) => ({
-        key: `entry-${kind}`,
+        key: `queue-${ONBOARDING_QUEUE_CARDS[cardIndex ?? offset].id}`,
         card: ONBOARDING_QUEUE_CARDS[cardIndex ?? offset],
         cardIndex: cardIndex ?? offset,
         kind,
@@ -1629,6 +1689,7 @@ export default function LandingPage() {
           'reffo-landing-onboarding--queue-detail-upload': selectedQueueDetailMode === 'upload',
           'reffo-landing-onboarding--queue-upload-pending': isQueueUploadPending,
           'reffo-landing-onboarding--queue-uploading': isQueueUploading,
+          'reffo-landing-onboarding--queue-upload-removing': isQueueUploadRemoving,
           'reffo-landing-onboarding--queue-detail-uploaded': isQueueUploadComplete,
           'reffo-landing-onboarding--queue-dismissing': queueMotionPhase === 'dismissing',
         })}
@@ -1717,6 +1778,7 @@ export default function LandingPage() {
                             : 'idle'}
                         uploadFile={queueUploadedFile}
                         uploadProgress={queueUploadProgress}
+                        uploadRemoving={isQueueUploadRemoving}
                         onUploadRemove={handleRemoveQueueResumeUpload}
                       />
                     </View>
@@ -1746,6 +1808,7 @@ export default function LandingPage() {
                               : 'idle'}
                           uploadFile={queueUploadedFile}
                           uploadProgress={queueUploadProgress}
+                          uploadRemoving={isQueueUploadRemoving}
                           onUploadRemove={handleRemoveQueueResumeUpload}
                         />
                       </View>
@@ -1756,6 +1819,12 @@ export default function LandingPage() {
                   ) : null}
                   {isSelectedSourceCard ? (
                     <View className='reffo-landing-onboarding__selected-shadow' />
+                  ) : null}
+                  {isSelectedSourceCard ? (
+                    <View className='reffo-landing-onboarding__selected-card-guide' aria-hidden='true'>
+                      <Text>下滑查看详情</Text>
+                      <View className='reffo-landing-onboarding__selected-card-guide-arrow' />
+                    </View>
                   ) : null}
                 </View>
               )

@@ -426,6 +426,24 @@ describe('启动封页', () => {
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
 
+  test('第三步入场先保持首屏卡片，首轮滚动后再补齐队列', async () => {
+    mockStorageGetItem.mockResolvedValue(null)
+
+    const {container} = render(<LandingPage />)
+    await enterQueueStep(container)
+
+    expect(container.querySelectorAll('[data-queue-card-index]')).toHaveLength(5)
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 196, clientY: 420}],
+      })
+      await Promise.resolve()
+    })
+
+    expect(container.querySelectorAll('[data-queue-card-index]')).toHaveLength(8)
+  })
+
   test('第三步下滑队列后吸附并展开选中卡片', async () => {
     mockStorageGetItem.mockResolvedValue(null)
 
@@ -480,6 +498,7 @@ describe('启动封页', () => {
 
     expect(selectedSourceCard?.className).toContain('reffo-landing-onboarding__card--queue-selected-source')
     expect(selectedSourceCard?.querySelector('.mock-home-score-card')).not.toBeNull()
+    expect(screen.getByText('下滑查看详情')).not.toBeNull()
     expect(mockStorageSetItem).not.toHaveBeenCalled()
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
@@ -905,6 +924,15 @@ describe('启动封页', () => {
     })
 
     expect(setResumeContent).toHaveBeenLastCalledWith('')
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-upload-removing')
+    expect(screen.getAllByText('resume.pdf').length).toBeGreaterThan(0)
+
+    await act(async () => {
+      jest.advanceTimersByTime(560)
+      await Promise.resolve()
+    })
+
     expect(container.firstElementChild?.className)
       .toContain('reffo-landing-onboarding--queue-upload-pending')
     expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).toBeNull()

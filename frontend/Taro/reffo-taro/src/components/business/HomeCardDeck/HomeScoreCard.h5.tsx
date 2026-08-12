@@ -47,6 +47,7 @@ interface HomeScoreCardProps {
     extension: string
   } | null
   uploadProgress?: number
+  uploadRemoving?: boolean
   onUploadRemove?: () => void
 }
 
@@ -223,6 +224,7 @@ export default function HomeScoreCard({
   uploadStatus = 'idle',
   uploadFile,
   uploadProgress = 0,
+  uploadRemoving = false,
   onUploadRemove,
 }: HomeScoreCardProps) {
   const [isValueMarqueeReady, setIsValueMarqueeReady] = useState(false)
@@ -277,6 +279,30 @@ export default function HomeScoreCard({
     zIndex: 20 - depth,
     ...style,
   } as any
+  const renderQueueResumeGlassTexture = () => (
+    <View
+      className={classNames(
+        'reffo-home-card__resume-glass-texture',
+        `reffo-home-card__texture--${textureMode}`,
+      )}
+      aria-hidden='true'
+    >
+      {textureMode === 'repeat' ? (
+        <View className='reffo-home-card__logo-repeat'>
+          {repeatTiles.map(tile => (
+            <View key={tile.key} className='reffo-home-card__logo-tile' style={tile.style}>
+              <ReffoGlyph color={card.logoColor} />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View className='reffo-home-card__logo-mark' style={glyphStyle}>
+          <ReffoGlyph color={card.logoColor} />
+        </View>
+      )}
+      <View className='reffo-home-card__theme-wash' />
+    </View>
+  )
 
   return (
     <View
@@ -351,6 +377,7 @@ export default function HomeScoreCard({
                 {
                   'reffo-home-card__upload-back--uploading': uploadStatus === 'uploading',
                   'reffo-home-card__upload-back--complete': isQueueUploadComplete,
+                  'reffo-home-card__upload-back--removing': uploadRemoving,
                 },
               )}
               style={{
@@ -362,8 +389,9 @@ export default function HomeScoreCard({
               <View
                 className={classNames('reffo-home-card__upload-ambient', {
                   'reffo-home-card__upload-ambient--visible':
-                    uploadStatus === 'uploading' || isQueueUploadComplete,
+                    uploadStatus === 'uploading' || isQueueUploadComplete || uploadRemoving,
                   'reffo-home-card__upload-ambient--settled': isQueueUploadComplete,
+                  'reffo-home-card__upload-ambient--removing': uploadRemoving,
                 })}
                 aria-hidden='true'
               >
@@ -374,8 +402,8 @@ export default function HomeScoreCard({
               </View>
               <View
                 className={classNames('reffo-home-card__upload-loading', {
-                  'reffo-home-card__upload-loading--active': uploadStatus !== 'success',
-                  'reffo-home-card__upload-loading--leaving': isQueueUploadComplete,
+                  'reffo-home-card__upload-loading--active': uploadStatus !== 'success' && !uploadRemoving,
+                  'reffo-home-card__upload-loading--leaving': isQueueUploadComplete || uploadRemoving,
                 })}
               >
                 <ResumeUploadIcon
@@ -389,7 +417,8 @@ export default function HomeScoreCard({
               </View>
               {uploadFile ? (
                 <View className={classNames('reffo-home-card__upload-complete', {
-                  'reffo-home-card__upload-complete--visible': isQueueUploadComplete,
+                  'reffo-home-card__upload-complete--visible': isQueueUploadComplete || uploadRemoving,
+                  'reffo-home-card__upload-complete--removing': uploadRemoving,
                 })}>
                   <ResumeUploadIcon
                     status='success'
@@ -408,7 +437,9 @@ export default function HomeScoreCard({
                     onTouchEnd={event => event.stopPropagation?.()}
                     onClick={event => {
                       event.stopPropagation?.()
-                      onUploadRemove?.()
+                      if (!uploadRemoving) {
+                        onUploadRemove?.()
+                      }
                     }}
                   >
                     <Text>删除</Text>
@@ -464,6 +495,7 @@ export default function HomeScoreCard({
                     </View>
                   </View>
                   <View className='reffo-home-card__glass reffo-home-card__resume-glass'>
+                    {renderQueueResumeGlassTexture()}
                     <View className='reffo-home-card__resume-tags'>
                       {card.resumeProfile.tags.map(tag => (
                         <Text key={tag} className='reffo-home-card__resume-tag'>{tag}</Text>
@@ -482,6 +514,7 @@ export default function HomeScoreCard({
                     </View>
                   </View>
                   <View className='reffo-home-card__glass reffo-home-card__resume-glass reffo-home-card__resume-glass--detail'>
+                    {renderQueueResumeGlassTexture()}
                     <View className='reffo-home-card__resume-detail-copy'>
                       <Text className='reffo-home-card__resume-detail-summary'>
                         {card.resumeProfile.summary}
