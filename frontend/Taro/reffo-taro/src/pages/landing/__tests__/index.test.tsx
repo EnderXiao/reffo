@@ -796,13 +796,125 @@ describe('启动封页', () => {
     expect(screen.getByText('自定义岗位描述')).not.toBeNull()
     expect(screen.getByText('软件工程师')).not.toBeNull()
     expect(screen.getByText('互联网产品经理')).not.toBeNull()
-    expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(3)
+    expect(screen.getByText('数据分析师')).not.toBeNull()
+    expect(screen.getByText('UX 设计师')).not.toBeNull()
+    expect(screen.getByText('用户运营经理')).not.toBeNull()
+    expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(6)
+    const collapsedJobNodes = Array.from(container.querySelectorAll('[data-job-index]')) as HTMLElement[]
+    expect(collapsedJobNodes.slice(0, 3).every(node => node.style.getPropertyValue('--job-folder-opacity') === '1')).toBe(true)
+    expect(collapsedJobNodes.slice(3).every(node => node.style.getPropertyValue('--job-folder-opacity') === '0')).toBe(true)
+    const targetFileNodes = Array.from(container.querySelectorAll('[data-job-id]'))
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder-front')).not.toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder-shape')).not.toBeNull()
     expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[1]?.className)
       .toContain('reffo-landing-onboarding__pager-dot--active')
     expect(mockStorageSetItem).not.toHaveBeenCalled()
     expect(mockReLaunch).not.toHaveBeenCalled()
+
+    const folder = screen.getByRole('button', {name: '展开岗位文件'})
+
+    await act(async () => {
+      fireEvent.click(folder)
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-folder-opening')
+
+    await act(async () => {
+      jest.advanceTimersByTime(2210)
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--job-selecting')
+    Array.from(container.querySelectorAll('[data-job-id]')).forEach((node, index) => {
+      expect(node).toBe(targetFileNodes[index])
+    })
+    expect(screen.getByText(/面议/)).not.toBeNull()
+    expect(screen.getByText(/使用真实岗位描述/)).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 280, clientY: 430}],
+      })
+      fireEvent.touchMove(container.firstElementChild as Element, {
+        touches: [{clientX: 180, clientY: 430}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 180, clientY: 430}],
+      })
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText(/25-40K/)).not.toBeNull()
+    expect(container.querySelector('[data-job-id="software"]')?.className)
+      .toContain('reffo-landing-onboarding__target-file--selected')
+
+    for (let swipe = 0; swipe < 4; swipe += 1) {
+      await act(async () => {
+        fireEvent.touchStart(container.firstElementChild as Element, {
+          touches: [{clientX: 280, clientY: 430}],
+        })
+        fireEvent.touchMove(container.firstElementChild as Element, {
+          touches: [{clientX: 180, clientY: 430}],
+        })
+        fireEvent.touchEnd(container.firstElementChild as Element, {
+          changedTouches: [{clientX: 180, clientY: 430}],
+        })
+        await Promise.resolve()
+      })
+    }
+
+    expect(container.querySelector('[data-job-id="operations"]')?.className)
+      .toContain('reffo-landing-onboarding__target-file--selected')
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 210, clientY: 430}],
+      })
+      fireEvent.touchMove(container.firstElementChild as Element, {
+        touches: [{clientX: 198, clientY: 435}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 198, clientY: 435}],
+      })
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--job-selecting')
+    expect(container.firstElementChild?.className)
+      .not.toContain('reffo-landing-onboarding--queue-folder-closing')
+
+    const detailChrome = container.querySelector('.reffo-landing-onboarding__detail-chrome')
+    const dismissLayer = container.querySelector('.reffo-landing-onboarding__job-selection-dismiss')
+    expect(detailChrome).not.toBeNull()
+    expect(dismissLayer).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('返回'))
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-folder-closing')
+    expect(container.querySelector('[data-job-id="operations"]')?.className)
+      .toContain('reffo-landing-onboarding__target-file--selected')
+
+    await act(async () => {
+      jest.advanceTimersByTime(1460)
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-folder')
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--job-folder-restored')
+    Array.from(container.querySelectorAll('[data-job-id]')).forEach((node, index) => {
+      expect(node).toBe(targetFileNodes[index])
+    })
+    expect(screen.getByRole('button', {name: '展开岗位文件'})).not.toBeNull()
 
     await act(async () => {
       fireEvent.touchStart(container.firstElementChild as Element, {
@@ -815,6 +927,8 @@ describe('启动封页', () => {
     })
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-folder-returning')
+    expect(container.firstElementChild?.className).not.toContain('reffo-landing-onboarding--job-folder-restored')
+    expect(container.querySelectorAll('[data-job-id]')).toHaveLength(6)
     expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[0]?.className)
       .toContain('reffo-landing-onboarding__pager-dot--active')
 
