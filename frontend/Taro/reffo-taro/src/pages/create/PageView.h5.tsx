@@ -146,6 +146,24 @@ function StepHeader({meta}: {meta: CreateStepMeta}) {
   )
 }
 
+function LandingFlowHeader({onBack, onSkip}: {onBack: () => void; onSkip: () => Promise<void>}) {
+  return (
+    <View className='reffo-create__landing-header'>
+      <View className='reffo-create__landing-skip' onClick={() => void onSkip()} role='button'>
+        <Text>跳过教程</Text>
+      </View>
+      <View className='reffo-create__landing-progress' aria-label='教程进度' role='img'>
+        <View className='reffo-create__landing-progress-dot' />
+        <View className='reffo-create__landing-progress-track' />
+        <View className='reffo-create__landing-progress-dot' />
+      </View>
+      <View className='reffo-create__landing-back' onClick={onBack} role='button'>
+        <Text>返回</Text>
+      </View>
+    </View>
+  )
+}
+
 function ResumeUploadStepH5({
   state,
   onPickFile,
@@ -920,6 +938,8 @@ export default function PageView({
   handleReturnHome,
   handleCancelGeneration,
   handleClose,
+  isLandingFlow,
+  handleLandingSkip,
 }: CreatePageViewModel) {
   const isJobStep = currentStep === 'jobDescription'
   const [pendingGenerationState, setPendingGenerationState] = useState<CreateGenerationState | null>(null)
@@ -1100,13 +1120,17 @@ export default function PageView({
         'reffo-create--generation-completed': isGenerationCompleted,
         'reffo-create--history-edit': isHistoryEditMode,
         'reffo-create--delete-preview': isDeletePreviewActive,
+        'reffo-create--landing-flow': isLandingFlow,
       })}
     >
       <CreateBackdrop variant={isJobStep ? 'warm' : 'cool'} />
       <View className='reffo-create__frame'>
-        <View className='reffo-create__close' onClick={handleClose} role='button' data-testid='create-flow-close'>
+        {!isLandingFlow ? <View className='reffo-create__close' onClick={handleClose} role='button' data-testid='create-flow-close'>
           <Text>×</Text>
-        </View>
+        </View> : null}
+        {isLandingFlow ? (
+          <LandingFlowHeader onBack={handleClose} onSkip={handleLandingSkip} />
+        ) : null}
         <StepHeader meta={currentStepMeta} />
         <View className='reffo-create__body'>
           {currentStep === 'resumeUpload' ? (

@@ -11,6 +11,7 @@ import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
 import {useResumeStore} from '@/store/resumeStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
+import {useLandingFlowStore} from '@/store/landingFlowStore'
 import {feedback} from '@/utils/feedback'
 import {storage} from '@/utils/storage'
 import {navigation} from '@/utils/navigation'
@@ -942,6 +943,21 @@ export default function LandingPage() {
       setIsJobFolderRestored(true)
       setQueueMotionPhase('folder')
     }, ONBOARDING_JOB_FOLDER_CLOSE_MS)
+  }
+
+  const enterLandingJobDescription = (job: LandingJobDescription) => {
+    useLandingFlowStore.getState().startJobDescription({
+      content: job.id === 'custom'
+        ? ''
+        : [
+            job.summary,
+            ...job.responsibilities.map(item => `- ${item}`),
+          ].join('\n'),
+      companyName: job.id === 'custom' ? '' : job.company,
+      positionName: job.id === 'custom' ? '' : job.title,
+      baseLocation: job.id === 'custom' ? '' : job.location,
+    })
+    void navigation.navigateTo('/pages/create/index')
   }
 
   const exitQueueFolder = () => {
@@ -2124,6 +2140,10 @@ export default function LandingPage() {
                       style={resolveJobCardStyle(file, index, selectedJobIndex, jobDragOffset)}
                       onClick={queueMotionPhase === 'job-selecting' ? event => {
                         event.stopPropagation?.()
+                        if (isSelectedJob) {
+                          enterLandingJobDescription(file)
+                          return
+                        }
                         setSelectedJobIndex(index)
                         setJobDragOffset(0)
                       } : undefined}
