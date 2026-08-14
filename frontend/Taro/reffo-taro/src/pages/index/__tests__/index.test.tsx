@@ -15,8 +15,9 @@ jest.mock('@tarojs/taro', () => ({
 
 jest.mock('@/components/business/HomeCardDeck', () => ({
   __esModule: true,
-  default: ({cards}: any) => (
+  default: ({cards, isCreateMode}: any) => (
     <div>
+      {isCreateMode ? <div>新的申请</div> : null}
       {cards.slice(0, 3).map((card: any) => (
         <div key={card.id}>
           <span>{card.role}</span>
@@ -90,12 +91,13 @@ describe('首页组件', () => {
     })
   })
 
-  test('无源简历时应显示默认头部状态和创建 CTA', () => {
+  test('无历史简历时应显示默认头部状态和新的申请卡片', () => {
     render(<Index />)
 
     expect(screen.getByText('源简历')).toBeTruthy()
-    expect(screen.getByText('创建 Reffo 简历')).toBeTruthy()
+    expect(screen.getByText('新的申请')).toBeTruthy()
     expect(screen.getByText('点击以开始')).toBeTruthy()
+    expect(screen.queryByText('取消')).toBeNull()
   })
 
   test('已有源简历时应显示标题状态', () => {
@@ -210,6 +212,10 @@ describe('首页组件', () => {
     expect(screen.getByText('后端工程师')).toBeTruthy()
     expect(screen.getByText('85')).toBeTruthy()
     expect(screen.getByText(/当前简历/)).toBeTruthy()
+
+    fireEvent.click(screen.getByText('创建 Reffo 简历'))
+
+    expect(screen.getByText('取消')).toBeTruthy()
   })
 
   test('加载状态应显示加载提示', () => {

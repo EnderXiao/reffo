@@ -136,12 +136,21 @@ function createWorkflow(input: { revise: () => Promise<string>; advise?: () => P
   const workflow = new ResumeOptimizationWorkflow(
     eventBus,
     {
-      analyzer: { analyze: async () => resumeAnalysis },
+      analyzer: {
+        analyze: async () => resumeAnalysis,
+        repairBusinessOutput: async (_resumeMarkdown, currentOutput) => currentOutput,
+      },
       jdParser: { parse: async () => jd },
-      matcher: { match: async () => matchAnalysis },
+      matcher: {
+        match: async () => matchAnalysis,
+        repairBusinessOutput: async (_resume, _jd, currentOutput) => currentOutput,
+      },
       generator: { generate: async () => invalidResume },
       reviser: { revise: input.revise },
-      advisor: { advise: input.advise ?? (async () => interviewSuggestions) },
+      advisor: {
+        advise: input.advise ?? (async () => interviewSuggestions),
+        repairBusinessOutput: async (_analysis, _matching, _optimizedResume, currentOutput) => currentOutput,
+      },
     },
     { enableDefaultSubscribers: false }
   )

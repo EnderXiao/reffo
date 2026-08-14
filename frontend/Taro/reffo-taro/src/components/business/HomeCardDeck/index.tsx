@@ -401,7 +401,7 @@ function HomeCardDeck({
     layoutMetrics,
   ])
 
-  if (cards.length === 0) {
+  if (cards.length === 0 && !isDraftVisible) {
     return null
   }
 
@@ -446,22 +446,24 @@ function HomeCardDeck({
         </Animated.View>
       ) : null}
 
-      <Animated.View
-        style={[StyleSheet.absoluteFillObject, railAnimatedStyle]}
-        pointerEvents={isCreateMode ? 'none' : 'box-none'}
-      >
-        <IndexRail
-          cards={cards}
-          activeIndex={activeIndex}
-          isRailDragging={isRailDragging}
-          dragLabel={dragLabel}
-          railIndicatorY={railIndicatorY}
-          railBubbleY={railBubbleY}
-          panHandlers={railPanHandlers}
-          onLayout={handleRailLayout}
-          onPressIndex={jumpToIndex}
-        />
-      </Animated.View>
+      {cards.length > 0 ? (
+        <Animated.View
+          style={[StyleSheet.absoluteFillObject, railAnimatedStyle]}
+          pointerEvents={isCreateMode ? 'none' : 'box-none'}
+        >
+          <IndexRail
+            cards={cards}
+            activeIndex={activeIndex}
+            isRailDragging={isRailDragging}
+            dragLabel={dragLabel}
+            railIndicatorY={railIndicatorY}
+            railBubbleY={railBubbleY}
+            panHandlers={railPanHandlers}
+            onLayout={handleRailLayout}
+            onPressIndex={jumpToIndex}
+          />
+        </Animated.View>
+      ) : null}
     </View>
   )
 }

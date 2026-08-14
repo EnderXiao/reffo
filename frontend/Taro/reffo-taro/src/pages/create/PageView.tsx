@@ -31,7 +31,7 @@ export default function PageView({
   handleJobDescriptionChange,
   handleJobCompanyNameChange,
   handleJobPositionNameChange,
-  handleJobInputModeChange,
+  handleJobLocationChange,
   handlePickJobAttachment,
   handlePrimaryAction,
   handleCancelGeneration,
@@ -78,8 +78,8 @@ export default function PageView({
             state={jobDescriptionState}
             onCompanyNameChange={handleJobCompanyNameChange}
             onPositionNameChange={handleJobPositionNameChange}
+            onLocationChange={handleJobLocationChange}
             onContentChange={handleJobDescriptionChange}
-            onInputModeChange={handleJobInputModeChange}
             onPickAttachment={handlePickJobAttachment}
           />
         )
@@ -131,8 +131,8 @@ export default function PageView({
                   state={jobDescriptionState}
                   onCompanyNameChange={handleJobCompanyNameChange}
                   onPositionNameChange={handleJobPositionNameChange}
+                  onLocationChange={handleJobLocationChange}
                   onContentChange={handleJobDescriptionChange}
-                  onInputModeChange={handleJobInputModeChange}
                   onPickAttachment={handlePickJobAttachment}
                   compact={isCompactJobDescriptionLayout}
                   fillAvailableSpace

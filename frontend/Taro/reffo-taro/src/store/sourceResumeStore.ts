@@ -1,10 +1,11 @@
 import {create} from 'zustand';
-import type {SourceResumeState} from './types';
+import type {LoadOptions, SourceResumeState} from './types';
 import type {SourceResumeSummary} from '@/types';
 import {sourceResumeApi} from '@/services/sourceResume';
 import {getJSON, setJSON, storage} from '@/utils/storage';
 
 const STORAGE_KEY = 'latest_source_resume';
+let loadLatestSourceResumePromise: Promise<void> | null = null;
 
 const initialState = {
   latestSourceResume: null,
@@ -12,62 +13,79 @@ const initialState = {
     isLoading: false,
     error: null,
   },
+  initialized: false,
 };
 
-export const useSourceResumeStore = create<SourceResumeState>(set => ({
+export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
   ...initialState,
 
-  loadLatestSourceResume: async () => {
-    set(state => ({
-      loading: {
-        ...state.loading,
-        isLoading: true,
-        error: null,
-      },
-    }));
-
-    let cachedResume: SourceResumeSummary | null = null;
-
-    try {
-      cachedResume = await getJSON<SourceResumeSummary>(STORAGE_KEY);
-      if (cachedResume) {
-        set({latestSourceResume: cachedResume});
-      }
-    } catch (error) {
-      console.warn('[SourceResumeStore] Failed to read cached source resume:', error);
+  loadLatestSourceResume: async (options: LoadOptions = {}) => {
+    if (options.skipIfLoaded && get().initialized && !options.force) {
+      return;
     }
 
-    try {
-      const latestResume = await sourceResumeApi.getLatestSourceResume();
+    if (loadLatestSourceResumePromise && !options.force) {
+      return loadLatestSourceResumePromise;
+    }
 
-      if (latestResume) {
-        await setJSON(STORAGE_KEY, latestResume);
-      } else {
-        await storage.removeItem(STORAGE_KEY);
-      }
-
-      set({
-        latestSourceResume: latestResume,
-        loading: {
-          isLoading: false,
-          error: null,
-        },
-      });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : '加载源简历失败';
-
+    loadLatestSourceResumePromise = (async () => {
       set(state => ({
-        latestSourceResume: cachedResume ?? state.latestSourceResume,
         loading: {
           ...state.loading,
-          isLoading: false,
-          error: cachedResume ? null : errorMessage,
+          isLoading: true,
+          error: null,
         },
       }));
 
-      console.error('[SourceResumeStore] Failed to load source resume:', error);
-    }
+      let cachedResume: SourceResumeSummary | null = null;
+
+      try {
+        cachedResume = await getJSON<SourceResumeSummary>(STORAGE_KEY);
+        if (cachedResume) {
+          set({latestSourceResume: cachedResume});
+        }
+      } catch (error) {
+        console.warn('[SourceResumeStore] Failed to read cached source resume:', error);
+      }
+
+      try {
+        const latestResume = await sourceResumeApi.getLatestSourceResume();
+
+        if (latestResume) {
+          await setJSON(STORAGE_KEY, latestResume);
+        } else {
+          await storage.removeItem(STORAGE_KEY);
+        }
+
+        set({
+          latestSourceResume: latestResume,
+          loading: {
+            isLoading: false,
+            error: null,
+          },
+          initialized: true,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : '加载源简历失败';
+
+        set(state => ({
+          latestSourceResume: cachedResume ?? state.latestSourceResume,
+          loading: {
+            ...state.loading,
+            isLoading: false,
+            error: cachedResume ? null : errorMessage,
+          },
+          initialized: true,
+        }));
+
+        console.error('[SourceResumeStore] Failed to load source resume:', error);
+      }
+    })().finally(() => {
+      loadLatestSourceResumePromise = null;
+    });
+
+    return loadLatestSourceResumePromise;
   },
 
   setLatestSourceResume: async (resume: SourceResumeSummary | null) => {
@@ -83,6 +101,7 @@ export const useSourceResumeStore = create<SourceResumeState>(set => ({
         isLoading: false,
         error: null,
       },
+      initialized: true,
     });
   },
 
@@ -95,6 +114,7 @@ export const useSourceResumeStore = create<SourceResumeState>(set => ({
         isLoading: false,
         error: null,
       },
+      initialized: true,
     });
   },
 
@@ -106,10 +126,12 @@ export const useSourceResumeStore = create<SourceResumeState>(set => ({
         isLoading: false,
         error: null,
       },
+      initialized: true,
     });
   },
 
   reset: () => {
+    loadLatestSourceResumePromise = null;
     set(initialState);
   },
 }));

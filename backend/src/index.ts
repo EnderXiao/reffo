@@ -6,6 +6,7 @@ import { mvpRoutes } from '@/routes/mvp'
 import { parseRoutes } from '@/routes/parse'
 import { sourceResumeRoutes } from '@/routes/source-resume'
 import { resumeHistoryRoutes } from '@/routes/resume-history'
+import { systemRoutes } from '@/routes/system'
 
 /**
  * 启动应用
@@ -101,6 +102,7 @@ async function bootstrap() {
       health: '/api/v1/mvp/health',
     }))
     // 注册路由
+    .use(systemRoutes)
     .use(mvpRoutes)
     .use(parseRoutes)
     .use(sourceResumeRoutes)
@@ -119,6 +121,7 @@ async function bootstrap() {
   console.log('========================================')
   console.log(`🤖 AI 模型: ${env.AI_MODEL}`)
   console.log(`🔗 API 地址: ${env.OPENAI_BASE_URL}`)
+  console.log(`📄 OCR 模型: ${env.GLM_OCR_MODEL}`)
   console.log('========================================\n')
 }
 

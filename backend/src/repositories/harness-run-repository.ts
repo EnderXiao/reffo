@@ -1,8 +1,8 @@
-import { initializeDatabase } from '@/repositories/database'
+import { initializeHarnessDatabase } from '@/repositories/database'
 import { randomUUID } from 'node:crypto'
 
 export class HarnessRunRepository {
-  private readonly db = initializeDatabase()
+  private readonly db = initializeHarnessDatabase()
 
   getRun(runId: string) {
     const run = this.db.query('SELECT * FROM process_runs WHERE id = ?').get(runId)
@@ -164,6 +164,16 @@ export class HarnessRunRepository {
       .run(sample.id, sample.run_id, sample.reason, sample.status, sample.event_count, sample.created_at)
 
     return sample
+  }
+
+  createFailureSampleIfAbsent(runId: string, reason?: string) {
+    const existing = this.db.query('SELECT * FROM failure_samples WHERE run_id = ? LIMIT 1').get(runId)
+
+    if (existing) {
+      return existing
+    }
+
+    return this.createFailureSample(runId, reason)
   }
 
   private parseEvent(event: Record<string, unknown>) {

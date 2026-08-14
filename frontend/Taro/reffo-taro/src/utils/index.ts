@@ -87,3 +87,15 @@ export {
   type VisualCapabilitySnapshot,
   type VisualTier,
 } from './visual-tier';
+
+export {
+  clearSharedElementSnapshot,
+  createFallbackSharedElementSnapshot,
+  createSharedElementSnapshot,
+  isValidSharedElementSnapshot,
+  readSharedElementSnapshot,
+  scaleSharedElementSnapshot,
+  writeSharedElementSnapshot,
+  type ScaledSharedElementSnapshot,
+  type SharedElementSnapshot,
+} from './shared-element-transition';

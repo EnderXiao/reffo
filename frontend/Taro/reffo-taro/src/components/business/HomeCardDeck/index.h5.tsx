@@ -7,6 +7,10 @@ import {
   H5_RAIL_MINOR_MARK_COUNT,
   resolveH5CardScale,
 } from './motion.h5'
+import {
+  createSharedElementSnapshot,
+  writeSharedElementSnapshot,
+} from '@/utils/shared-element-transition'
 import HomeScoreCard from './HomeScoreCard.h5'
 import type {HomeCardDeckProps} from './shared'
 import useHomeCardDeckMotion from './useHomeCardDeckMotion.h5'
@@ -110,6 +114,7 @@ export default function HomeCardDeck({
   cards,
   initialIndex,
   enteringCardId,
+  returningCardId,
   isCreateMode = false,
   onCreateCardPress,
   onCardPress,
@@ -213,19 +218,11 @@ export default function HomeCardDeck({
     resultWash.className = 'reffo-home-card__open-result-wash'
     surface?.appendChild(resultWash)
 
-    try {
-      window.sessionStorage?.setItem(CARD_OPEN_RECT_STORAGE_KEY, JSON.stringify({
-        cardId: card.id,
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-        viewportWidth,
-        viewportHeight,
-      }))
-    } catch (error) {
-      console.warn('保存卡片过渡位置失败:', error)
-    }
+    writeSharedElementSnapshot(
+      CARD_OPEN_RECT_STORAGE_KEY,
+      createSharedElementSnapshot(rect, {cardId: card.id}),
+      '卡片',
+    )
 
     overlay.className = 'reffo-home-card-open-overlay'
     overlay.style.position = 'fixed'
@@ -376,6 +373,7 @@ export default function HomeCardDeck({
                   'reffo-home-card--tail-enter': isTailEntering,
                   'reffo-home-card--recycling': isRecycling,
                   'reffo-home-card--new-entry': card.id === enteringCardId,
+                  'reffo-home-card--return-target': card.id === returningCardId,
                   'reffo-home-card--pressable': isPressable,
                 })}
                 onClick={isPressable ? () => playCardOpenTransition(card) : undefined}

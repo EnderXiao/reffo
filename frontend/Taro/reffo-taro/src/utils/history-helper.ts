@@ -25,6 +25,8 @@ export function createHistoryFromResult(
   // 提取公司名称（从 JD 中提取，简化处理）
   const company = extractCompany(jdContent);
 
+  const location = extractLocation(jdContent);
+
   // 提取姓名
   const name = result.analysis.structured_resume.personal_info.name || '未知';
 
@@ -52,6 +54,7 @@ export function createHistoryFromResult(
     resultContext: {
       company,
       position,
+      ...(location ? {location} : {}),
       resumeContent,
       jdContent,
     },
@@ -63,6 +66,21 @@ export function createHistoryFromResult(
     },
     cardColor,
   };
+}
+
+function extractLocation(jdContent: string): string {
+  const patterns = [
+    /(?:工作地点|工作地|办公地点|办公地|地点|城市|Base地|base地|Base|base)[：:]\s*(.+?)[\n\r]/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = jdContent.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+
+  return '';
 }
 
 /**

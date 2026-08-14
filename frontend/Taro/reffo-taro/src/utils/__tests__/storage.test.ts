@@ -120,8 +120,15 @@ describe('TaroStorageAdapter', () => {
 });
 
 describe('Storage singleton', () => {
-  test('should export a default storage instance', () => {
-    expect(storage).toBeInstanceOf(TaroStorageAdapter);
+  test('should export a lazy storage adapter facade', async () => {
+    (Taro.setStorage as jest.Mock).mockResolvedValue(undefined);
+
+    await storage.setItem('test-key', 'test-value');
+
+    expect(Taro.setStorage).toHaveBeenCalledWith({
+      key: 'test-key',
+      data: 'test-value',
+    });
   });
 });
 

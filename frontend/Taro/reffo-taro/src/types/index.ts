@@ -5,6 +5,7 @@
 export interface ResultSessionContext {
   company: string;
   position: string;
+  location?: string;
   resumeContent: string;
   jdContent: string;
 }

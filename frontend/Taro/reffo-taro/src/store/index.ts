@@ -31,6 +31,7 @@ export {useResumeStore} from './resumeStore';
 export {useJDStore} from './jdStore';
 export {useHistoryStore} from './historyStore';
 export {useSourceResumeStore} from './sourceResumeStore';
+export {useAuthStore} from './authStore';
 
 // 以下 Store 将在后续任务中实现
 // export { useOptimizedStore } from './optimizedStore';

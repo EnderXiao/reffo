@@ -124,6 +124,8 @@ function buildContextFromHistory(history: ResumeHistory): LatestResultSessionCon
 
 export interface ResultPageViewModel {
   result: ProcessResult | null
+  resumeContent: string
+  jdContent: string
   loading: boolean
   saved: boolean
   progress: LatestResultSessionProgress
@@ -134,9 +136,11 @@ export interface ResultPageViewModel {
   handleSave: () => Promise<string | null>
   handleComplete: () => Promise<void>
   handleShare: () => Promise<void>
-  handleBackHome: () => void
+  handleBackHome: () => Promise<void>
+  handleEditHistory: () => Promise<void>
   handlePendingStage: () => void
   handleOptimizedResumeChange: (markdown: string) => Promise<void>
+  canEditHistory: boolean
 }
 
 export function usePageModel(): ResultPageViewModel {
@@ -201,7 +205,7 @@ export function usePageModel(): ResultPageViewModel {
         setSavedHistoryId(id)
       } else {
         feedback.message('未找到结果')
-        void navigation.navigateBack()
+        void navigation.returnHome()
       }
     } catch (error) {
       console.error('加载历史记录失败:', error)
@@ -236,7 +240,7 @@ export function usePageModel(): ResultPageViewModel {
         })
       } else {
         feedback.message('未找到结果')
-        void navigation.navigateBack()
+        void navigation.returnHome()
       }
     } catch (error) {
       console.error('加载结果失败:', error)
@@ -395,6 +399,10 @@ export function usePageModel(): ResultPageViewModel {
       )
       const resolvedCompany = resultContext?.company.trim() || baseHistory.company
       const resolvedPosition = resultContext?.position.trim() || baseHistory.position
+      const resolvedLocation =
+        resultContext?.location?.trim() ||
+        baseHistory.resultContext?.location?.trim() ||
+        ''
 
       const historyId = await addHistory({
         ...baseHistory,
@@ -404,6 +412,7 @@ export function usePageModel(): ResultPageViewModel {
         resultContext: {
           company: resolvedCompany,
           position: resolvedPosition,
+          ...(resolvedLocation ? {location: resolvedLocation} : {}),
           resumeContent: resultContext?.resumeContent || baseHistory.resumeContent,
           jdContent: resultContext?.jdContent || baseHistory.jdContent,
         },
@@ -454,13 +463,24 @@ export function usePageModel(): ResultPageViewModel {
   const handleBackHome = () => {
     continuationRef.current += 1
     if (enteredFromCard) {
-      void navigation.navigateBack().catch(() => {
-        void navigation.reLaunch('/pages/index/index')
-      })
+      return navigation.returnHome()
+    }
+
+    return navigation.reLaunch('/pages/index/index')
+  }
+
+  const handleEditHistory = async () => {
+    if (!savedHistoryId) {
+      feedback.message('当前简历还未保存，暂不能编辑')
       return
     }
 
-    void navigation.reLaunch('/pages/index/index')
+    continuationRef.current += 1
+    await navigation.navigateTo('/pages/create/index', {
+      step: 'jobDescription',
+      mode: 'editHistory',
+      historyId: savedHistoryId,
+    })
   }
 
   const handlePendingStage = () => {
@@ -492,6 +512,8 @@ export function usePageModel(): ResultPageViewModel {
 
   return {
     result,
+    resumeContent: resultContext?.resumeContent || '',
+    jdContent: resultContext?.jdContent || '',
     loading,
     saved,
     progress,
@@ -499,10 +521,12 @@ export function usePageModel(): ResultPageViewModel {
     generationError,
     enteredFromCard,
     returnCard,
+    canEditHistory: Boolean(savedHistoryId),
     handleSave,
     handleComplete,
     handleShare,
     handleBackHome,
+    handleEditHistory,
     handlePendingStage,
     handleOptimizedResumeChange,
   }

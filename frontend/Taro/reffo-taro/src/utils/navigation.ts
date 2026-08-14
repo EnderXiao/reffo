@@ -99,6 +99,15 @@ export interface NavigationAdapter {
    * @throws {NavigationError} 当导航失败时抛出错误
    */
   reLaunch(url: string, params?: NavigationParams): Promise<void>;
+
+  /**
+   * 返回首页；如果当前页面有上一级则返回，否则重启到首页
+   *
+   * @param url 首页路径，默认 /pages/index/index
+   * @returns Promise<void>
+   * @throws {NavigationError} 当导航失败时抛出错误
+   */
+  returnHome(url?: string): Promise<void>;
 }
 
 /**
@@ -444,6 +453,23 @@ export class TaroNavigationAdapter implements NavigationAdapter {
     } catch (error) {
       throw this.handleError(error, 'reLaunch', url);
     }
+  }
+
+  /**
+   * 返回首页
+   *
+   * H5 直接访问 hash 路由时页面栈可能只有当前页，Taro.navigateBack
+   * 可能不会抛错但也不会发生有效跳转，因此这里先显式检查页面栈。
+   *
+   * @param url 首页路径，默认 /pages/index/index
+   */
+  async returnHome(url: string = '/pages/index/index'): Promise<void> {
+    if (this.canGoBack()) {
+      await this.navigateBack();
+      return;
+    }
+
+    await this.reLaunch(url);
   }
 
   /**

@@ -1,13 +1,27 @@
 import { Elysia, t } from 'elysia'
+import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { sourceResumeRepository } from '@/repositories/source-resume-repository'
 import type { ApiResponse, SourceResumeRecord } from '@/types'
+
+function toAuthErrorResponse(error: RequestAuthError, set: { status?: unknown }) {
+  set.status = error.status
+
+  return {
+    success: false,
+    error: {
+      code: error.code,
+      message: error.message,
+    },
+  } satisfies ApiResponse<never>
+}
 
 export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' })
   .post(
     '/',
-    async ({ body, set }) => {
+    async ({ body, headers, set }) => {
       try {
-        const result = sourceResumeRepository.save(body)
+        const userContext = await resolveRequestUser(headers)
+        const result = await sourceResumeRepository.save(userContext, body)
 
         const response: ApiResponse<SourceResumeRecord> = {
           success: true,
@@ -16,6 +30,10 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
 
         return response
       } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
         console.error('保存源简历失败:', error)
         set.status = 500
 
@@ -56,15 +74,33 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
   )
   .get(
     '/latest',
-    () => {
-      const result = sourceResumeRepository.getLatest()
+    async ({ headers, set }) => {
+      try {
+        const userContext = await resolveRequestUser(headers)
+        const result = await sourceResumeRepository.getLatest(userContext)
 
-      const response: ApiResponse<SourceResumeRecord | null> = {
-        success: true,
-        data: result,
+        const response: ApiResponse<SourceResumeRecord | null> = {
+          success: true,
+          data: result,
+        }
+
+        return response
+      } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
+        console.error('获取源简历失败:', error)
+        set.status = 500
+
+        return {
+          success: false,
+          error: {
+            code: 'SOURCE_RESUME_GET_FAILED',
+            message: error instanceof Error ? error.message : '获取源简历失败',
+          },
+        } satisfies ApiResponse<never>
       }
-
-      return response
     },
     {
       detail: {
@@ -76,9 +112,10 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
   )
   .delete(
     '/:id',
-    ({ params, set }) => {
+    async ({ params, headers, set }) => {
       try {
-        const deleted = sourceResumeRepository.delete(params.id)
+        const userContext = await resolveRequestUser(headers)
+        const deleted = await sourceResumeRepository.delete(userContext, params.id)
 
         if (!deleted) {
           set.status = 404
@@ -96,6 +133,10 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
           data: { deleted: true },
         } satisfies ApiResponse<{ deleted: boolean }>
       } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
         console.error('删除源简历失败:', error)
         set.status = 500
 

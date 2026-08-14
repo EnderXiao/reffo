@@ -1,4 +1,5 @@
 import { Elysia, t } from 'elysia'
+import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { resumeHistoryRepository } from '@/repositories/resume-history-repository'
 import type { ApiResponse, ResumeHistoryRecord } from '@/types'
 
@@ -12,6 +13,7 @@ const resultStepStatusSchema = t.Union([
 const resultContextSchema = t.Object({
   company: t.String({ description: '公司名称' }),
   position: t.String({ description: '岗位名称' }),
+  location: t.Optional(t.String({ description: '工作地点' })),
   resumeContent: t.String({ description: '原始简历内容' }),
   jdContent: t.String({ description: 'JD 内容' }),
 })
@@ -64,16 +66,46 @@ const resumeHistoryUpdateBodySchema = t.Object({
   card_pattern: t.Optional(t.Union([t.String(), t.Null()])),
 })
 
+function toAuthErrorResponse(error: RequestAuthError, set: { status?: unknown }) {
+  set.status = error.status
+
+  return {
+    success: false,
+    error: {
+      code: error.code,
+      message: error.message,
+    },
+  } satisfies ApiResponse<never>
+}
+
 export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history' })
   .get(
     '/',
-    () => {
-      const response: ApiResponse<ResumeHistoryRecord[]> = {
-        success: true,
-        data: resumeHistoryRepository.list(),
-      }
+    async ({ headers, set }) => {
+      try {
+        const userContext = await resolveRequestUser(headers)
+        const response: ApiResponse<ResumeHistoryRecord[]> = {
+          success: true,
+          data: await resumeHistoryRepository.list(userContext),
+        }
 
-      return response
+        return response
+      } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
+        console.error('获取生成卡片历史失败:', error)
+        set.status = 500
+
+        return {
+          success: false,
+          error: {
+            code: 'RESUME_HISTORY_LIST_FAILED',
+            message: error instanceof Error ? error.message : '获取生成卡片历史失败',
+          },
+        } satisfies ApiResponse<never>
+      }
     },
     {
       detail: {
@@ -85,9 +117,10 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
   )
   .post(
     '/',
-    ({ body, set }) => {
+    async ({ body, headers, set }) => {
       try {
-        const result = resumeHistoryRepository.save(body)
+        const userContext = await resolveRequestUser(headers)
+        const result = await resumeHistoryRepository.save(userContext, body)
 
         const response: ApiResponse<ResumeHistoryRecord> = {
           success: true,
@@ -96,6 +129,10 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
 
         return response
       } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
         console.error('保存生成卡片历史失败:', error)
         set.status = 500
 
@@ -121,41 +158,10 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
   )
   .get(
     '/:id',
-    ({ params, set }) => {
-      const result = resumeHistoryRepository.findById(params.id)
-
-      if (!result) {
-        set.status = 404
-        return {
-          success: false,
-          error: {
-            code: 'RESUME_HISTORY_NOT_FOUND',
-            message: '生成卡片历史不存在或已删除',
-          },
-        } satisfies ApiResponse<never>
-      }
-
-      return {
-        success: true,
-        data: result,
-      } satisfies ApiResponse<ResumeHistoryRecord>
-    },
-    {
-      params: t.Object({
-        id: t.String({ description: '历史记录 ID', minLength: 1 }),
-      }),
-      detail: {
-        summary: '获取单条生成卡片历史',
-        description: '按 ID 返回生成历史详情，用于结果页详情还原。',
-        tags: ['ResumeHistory'],
-      },
-    }
-  )
-  .put(
-    '/:id',
-    ({ params, body, set }) => {
+    async ({ params, headers, set }) => {
       try {
-        const result = resumeHistoryRepository.update(params.id, body)
+        const userContext = await resolveRequestUser(headers)
+        const result = await resumeHistoryRepository.findById(userContext, params.id)
 
         if (!result) {
           set.status = 404
@@ -173,6 +179,60 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           data: result,
         } satisfies ApiResponse<ResumeHistoryRecord>
       } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
+        console.error('获取单条生成卡片历史失败:', error)
+        set.status = 500
+
+        return {
+          success: false,
+          error: {
+            code: 'RESUME_HISTORY_GET_FAILED',
+            message: error instanceof Error ? error.message : '获取单条生成卡片历史失败',
+          },
+        } satisfies ApiResponse<never>
+      }
+    },
+    {
+      params: t.Object({
+        id: t.String({ description: '历史记录 ID', minLength: 1 }),
+      }),
+      detail: {
+        summary: '获取单条生成卡片历史',
+        description: '按 ID 返回生成历史详情，用于结果页详情还原。',
+        tags: ['ResumeHistory'],
+      },
+    }
+  )
+  .put(
+    '/:id',
+    async ({ params, body, headers, set }) => {
+      try {
+        const userContext = await resolveRequestUser(headers)
+        const result = await resumeHistoryRepository.update(userContext, params.id, body)
+
+        if (!result) {
+          set.status = 404
+          return {
+            success: false,
+            error: {
+              code: 'RESUME_HISTORY_NOT_FOUND',
+              message: '生成卡片历史不存在或已删除',
+            },
+          } satisfies ApiResponse<never>
+        }
+
+        return {
+          success: true,
+          data: result,
+        } satisfies ApiResponse<ResumeHistoryRecord>
+      } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
         console.error('更新生成卡片历史失败:', error)
         set.status = 500
 
@@ -199,13 +259,31 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
   )
   .delete(
     '/',
-    () => {
-      const deleted = resumeHistoryRepository.clear()
+    async ({ headers, set }) => {
+      try {
+        const userContext = await resolveRequestUser(headers)
+        const deleted = await resumeHistoryRepository.clear(userContext)
 
-      return {
-        success: true,
-        data: { deleted },
-      } satisfies ApiResponse<{ deleted: number }>
+        return {
+          success: true,
+          data: { deleted },
+        } satisfies ApiResponse<{ deleted: number }>
+      } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
+        console.error('清空生成卡片历史失败:', error)
+        set.status = 500
+
+        return {
+          success: false,
+          error: {
+            code: 'RESUME_HISTORY_CLEAR_FAILED',
+            message: error instanceof Error ? error.message : '清空生成卡片历史失败',
+          },
+        } satisfies ApiResponse<never>
+      }
     },
     {
       detail: {
@@ -217,9 +295,10 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
   )
   .delete(
     '/:id',
-    ({ params, set }) => {
+    async ({ params, headers, set }) => {
       try {
-        const deleted = resumeHistoryRepository.delete(params.id)
+        const userContext = await resolveRequestUser(headers)
+        const deleted = await resumeHistoryRepository.delete(userContext, params.id)
 
         if (!deleted) {
           set.status = 404
@@ -237,6 +316,10 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           data: { deleted: true },
         } satisfies ApiResponse<{ deleted: boolean }>
       } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
         console.error('删除生成卡片历史失败:', error)
         set.status = 500
 

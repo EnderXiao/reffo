@@ -1,10 +1,13 @@
 import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { Database } from 'bun:sqlite'
+import { env } from '@/config/env'
 
-const DATABASE_PATH = join(process.cwd(), 'data', 'reffo.sqlite')
+const DATABASE_PATH = process.env.SQLITE_DATABASE_PATH || join(process.cwd(), 'data', 'reffo.sqlite')
+const HARNESS_DATABASE_PATH = env.HARNESS_DATABASE_PATH || join(process.cwd(), 'data', 'harness.sqlite')
 
 let database: Database | null = null
+let harnessDatabase: Database | null = null
 
 function configureDatabase(db: Database) {
   db.exec(`
@@ -40,8 +43,90 @@ export function resetDatabaseConnection() {
   }
 }
 
-export function initializeDatabase() {
-  const db = getDatabase()
+export function getHarnessDatabase() {
+  if (harnessDatabase) {
+    return harnessDatabase
+  }
+
+  mkdirSync(dirname(HARNESS_DATABASE_PATH), { recursive: true })
+  harnessDatabase = new Database(HARNESS_DATABASE_PATH, { create: true })
+  configureDatabase(harnessDatabase)
+
+  return harnessDatabase
+}
+
+export function resetHarnessDatabaseConnection() {
+  if (!harnessDatabase) {
+    return
+  }
+
+  try {
+    harnessDatabase.close()
+  } catch (error) {
+    console.error('[HarnessDatabase] close failed', error)
+  } finally {
+    harnessDatabase = null
+  }
+}
+
+function deleteHarnessRuns(db: Database, runIds: string[]) {
+  if (runIds.length === 0) {
+    return
+  }
+
+  const placeholders = runIds.map(() => '?').join(',')
+
+  db.transaction(() => {
+    db.query(`
+      DELETE FROM evaluations
+      WHERE step_run_id IN (
+        SELECT id FROM step_runs WHERE run_id IN (${placeholders})
+      )
+    `).run(...runIds)
+    db.query(`
+      DELETE FROM step_attempts
+      WHERE step_run_id IN (
+        SELECT id FROM step_runs WHERE run_id IN (${placeholders})
+      )
+    `).run(...runIds)
+    db.query(`DELETE FROM artifacts WHERE run_id IN (${placeholders})`).run(...runIds)
+    db.query(`DELETE FROM harness_events WHERE run_id IN (${placeholders})`).run(...runIds)
+    db.query(`DELETE FROM failure_samples WHERE run_id IN (${placeholders})`).run(...runIds)
+    db.query(`DELETE FROM step_runs WHERE run_id IN (${placeholders})`).run(...runIds)
+    db.query(`DELETE FROM process_runs WHERE id IN (${placeholders})`).run(...runIds)
+  })()
+}
+
+function enforceHarnessRetention(db: Database) {
+  const runIds = new Set<string>()
+
+  if (env.HARNESS_RETENTION_DAYS > 0) {
+    const cutoff = new Date(Date.now() - env.HARNESS_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString()
+    const rows = db
+      .query('SELECT id FROM process_runs WHERE started_at < ?')
+      .all(cutoff) as Array<{ id: string }>
+
+    rows.forEach(row => runIds.add(row.id))
+  }
+
+  if (env.HARNESS_MAX_RUNS > 0) {
+    const rows = db
+      .query(`
+        SELECT id
+        FROM process_runs
+        ORDER BY started_at DESC
+        LIMIT -1 OFFSET ?
+      `)
+      .all(env.HARNESS_MAX_RUNS) as Array<{ id: string }>
+
+    rows.forEach(row => runIds.add(row.id))
+  }
+
+  deleteHarnessRuns(db, Array.from(runIds))
+}
+
+export function initializeHarnessDatabase() {
+  const db = getHarnessDatabase()
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_versions (
@@ -176,6 +261,8 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_failure_samples_run_id
     ON failure_samples(run_id);
   `)
+
+  enforceHarnessRetention(db)
 
   return db
 }

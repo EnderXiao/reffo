@@ -62,6 +62,33 @@ describe('homeCardData', () => {
     expect(card.indexLabel).toBe('X')
   })
 
+  test('历史卡片优先展示创建 JD 时填写的 Base 地', () => {
+    const history: ResumeHistory = {
+      id: 'JD2026070900003',
+      position: '前端开发工程师',
+      company: '字节跳动-豆包',
+      name: '候选人',
+      createdAt: '2026-07-09T12:00:00.000Z',
+      qualityScore: 86,
+      matchScore: 80,
+      tags: [],
+      resumeContent: '# 候选人',
+      jdContent: '公司名称：字节跳动-豆包\n岗位名称：前端开发工程师\n工作地：北京',
+      optimizedContent: '# 候选人优化版',
+      resultContext: {
+        company: '字节跳动-豆包',
+        position: '前端开发工程师',
+        location: '上海',
+        resumeContent: '# 候选人',
+        jdContent: '公司名称：字节跳动-豆包\n岗位名称：前端开发工程师\n工作地：北京',
+      },
+    }
+
+    const card = toHistoryCardItem(history)
+
+    expect(card.location).toBe('上海')
+  })
+
   test('历史卡片优化策略优先展示后端返回的建议', () => {
     const history: ResumeHistory = {
       id: 'JD2026070800002',

@@ -161,6 +161,15 @@ function buildHistoryStrategyBody(history: ResumeHistory) {
   return '暂无后端优化策略，请进入详情页查看完整分析。'
 }
 
+function extractLocationFromJd(jdContent: string) {
+  const match = jdContent.match(/(?:工作地点|工作地|办公地点|办公地|地点|城市|Base地|base地|Base|base)[：:]\s*(.+?)(?:\n|\r|$)/i)
+  return match?.[1]?.trim() || ''
+}
+
+function resolveHistoryLocation(history: ResumeHistory) {
+  return history.resultContext?.location?.trim() || extractLocationFromJd(history.jdContent) || '--'
+}
+
 export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map((input, index) =>
   buildCardItem({
     ...input,
@@ -173,7 +182,7 @@ export function toHistoryCardItem(history: ResumeHistory, index = 0): HomeCardIt
     id: history.id || `history-${index}`,
     company: history.company || '--',
     indexLabel: getIndexLabel(history.company || '', index),
-    location: '--',
+    location: resolveHistoryLocation(history),
     role: history.position || '--',
     dateLabel: formatDateLabel(history.createdAt),
     score: history.qualityScore,

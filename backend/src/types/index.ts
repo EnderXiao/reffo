@@ -215,6 +215,7 @@ export type ResultStepStatus = 'pending' | 'generating' | 'done' | 'failed'
 export interface ResultSessionContextRecord {
   company: string
   position: string
+  location?: string
   resumeContent: string
   jdContent: string
 }

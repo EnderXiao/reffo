@@ -150,6 +150,7 @@ export default function PageView({
 
             <HomeFooter
               isCreateMode={isCreateMode}
+              showCancelCreate={hasHistories}
               onEnterCreateMode={handleEnterCreateMode}
               onCancelCreate={handleCancelCreate}
               compact={isCompactLayout}

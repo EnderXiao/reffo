@@ -2,6 +2,7 @@ import { Component, PropsWithChildren, createElement } from 'react'
 import { DeviceEventEmitter, StyleSheet } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { initializeNavigationTransitions } from '@/utils/navigation-transition'
+import { useAuthStore } from '@/store/authStore'
 
 import './app.scss'
 
@@ -67,6 +68,7 @@ class App extends Component<PropsWithChildren> {
 
   componentDidMount () {
     initializeNavigationTransitions()
+    useAuthStore.getState().restoreSession()
   }
 
   componentDidShow () {

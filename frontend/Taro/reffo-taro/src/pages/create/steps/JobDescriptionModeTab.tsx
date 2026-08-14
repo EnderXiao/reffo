@@ -9,21 +9,32 @@ export default function JobDescriptionModeTab({
   onClick,
   testId,
   compact = false,
+  disabled = false,
 }: {
   mode: JobDescriptionInputMode
   active: boolean
   onClick: () => void
   testId: string
   compact?: boolean
+  disabled?: boolean
 }) {
   return (
     <View
       style={
         active
-          ? {...styles.modeTab, ...(compact ? styles.modeTabCompact : {}), ...styles.modeTabActive}
-          : {...styles.modeTab, ...(compact ? styles.modeTabCompact : {})}
+          ? {
+              ...styles.modeTab,
+              ...(compact ? styles.modeTabCompact : {}),
+              ...styles.modeTabActive,
+              ...(disabled ? styles.modeTabDisabled : {}),
+            }
+          : {
+              ...styles.modeTab,
+              ...(compact ? styles.modeTabCompact : {}),
+              ...(disabled ? styles.modeTabDisabled : {}),
+            }
       }
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       role='button'
       data-testid={testId}
     >

@@ -204,6 +204,11 @@ describe('CreatePage', () => {
       .toBe(value)
   }
 
+  const expectJobLocationInputValue = (value: string) => {
+    expect((screen.getByTestId('job-location-input') as HTMLInputElement).value)
+      .toBe(value)
+  }
+
   beforeEach(async () => {
     jest.clearAllMocks()
     jest.useRealTimers()
@@ -220,7 +225,10 @@ describe('CreatePage', () => {
     mockExpoImagePicker.launchImageLibraryAsync.mockReset()
     mockExpoFileSystem.getInfoAsync.mockReset()
     mockGetLatestSourceResume.mockResolvedValue(null)
-    mockShowModal.mockResolvedValue({confirm: true, cancel: false})
+    mockShowModal.mockImplementation(options => {
+      options.success?.({confirm: true, cancel: false})
+      return Promise.resolve({confirm: true, cancel: false})
+    })
     mockDeleteSourceResume.mockResolvedValue(undefined)
     mockParseJobDescriptionImage.mockResolvedValue({
       provider: 'glm-ocr',
@@ -446,12 +454,6 @@ describe('CreatePage', () => {
 
     await renderPage()
 
-    await waitFor(() => {
-      expect(screen.getByTestId('job-mode-manual')).toBeTruthy()
-    })
-
-    fireEvent.click(screen.getByTestId('job-mode-manual'))
-
     fireEvent.change(screen.getByTestId('job-company-input'), {
       target: {value: 'OpenAI'},
     })
@@ -520,7 +522,6 @@ describe('CreatePage', () => {
 
     await renderPage()
 
-    fireEvent.click(screen.getByTestId('job-mode-manual'))
     fireEvent.change(screen.getByTestId('job-company-input'), {
       target: {value: 'OpenAI'},
     })
@@ -575,7 +576,6 @@ describe('CreatePage', () => {
 
     await renderPage()
 
-    fireEvent.click(screen.getByTestId('job-mode-manual'))
     fireEvent.change(screen.getByTestId('job-description-input'), {
       target: {
         value: '负责复杂前端应用开发与架构设计，推动高质量交付并优化体验。',
@@ -709,7 +709,6 @@ describe('CreatePage', () => {
       },
       warnings: [],
     })
-
     await renderPage()
 
     await act(async () => {
@@ -721,6 +720,7 @@ describe('CreatePage', () => {
       expectJobDescriptionInputValue('芒果tv正在招聘\n# AI创新产品经理\n长沙/20-40K/1-3年/本科\n## 职位详情')
       expectJobCompanyInputValue('芒果 TV')
       expectJobPositionInputValue('AI创新产品经理')
+      expectJobLocationInputValue('长沙')
     })
 
     await act(async () => {
@@ -734,10 +734,162 @@ describe('CreatePage', () => {
           context: expect.objectContaining({
             company: '芒果 TV',
             position: 'AI创新产品经理',
+            location: '长沙',
             jdContent: expect.stringContaining('公司名称：芒果 TV'),
           }),
         }),
       )
+    })
+  })
+
+  test('JD 未解析出公司时保留用户编辑的公司名称', async () => {
+    jest.useFakeTimers()
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
+    mockChooseMessageFile.mockResolvedValue({
+      tempFiles: [
+        {
+          name: 'jd-with-wrong-location.png',
+          path: '/tmp/jd-with-wrong-location.png',
+          size: 256 * 1024,
+        },
+      ],
+    })
+    mockParseJobDescriptionImage.mockResolvedValueOnce({
+      provider: 'glm-ocr',
+      fileName: 'jd-with-wrong-location.png',
+      fileType: 'image',
+      rawText: '# 产品经理\n负责 AI 产品规划与落地',
+      structured: {
+        companyName: '',
+        positionName: '产品经理',
+        location: '小米',
+        jdText: '# 产品经理\n负责 AI 产品规划与落地',
+        responsibilities: ['负责 AI 产品规划与落地'],
+        requirements: [],
+      },
+      warnings: [],
+    })
+    mockMatchResume.mockResolvedValueOnce({
+      ...defaultProcessResult.matching,
+      jd_structure: {
+        basic_info: {
+          title: '产品经理',
+          company: '',
+          location: '小米',
+        },
+      },
+    })
+
+    await renderPage()
+
+    fireEvent.change(screen.getByTestId('job-company-input'), {
+      target: {value: '用户编辑的公司'},
+    })
+    fireEvent.change(screen.getByTestId('job-location-input'), {
+      target: {value: '用户编辑的城市'},
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('job-upload-trigger'))
+      await jest.runAllTimersAsync()
+    })
+
+    await waitFor(() => {
+      expectJobCompanyInputValue('用户编辑的公司')
+      expectJobLocationInputValue('用户编辑的城市')
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(getLastSavedResultSession()?.context).toEqual(
+        expect.objectContaining({
+          company: '用户编辑的公司',
+          location: '用户编辑的城市',
+        }),
+      )
+    })
+  })
+
+  test('岗位截图上传中禁用输入并展示进度', async () => {
+    jest.useFakeTimers()
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    const deferred = createDeferredPromise<Awaited<ReturnType<typeof parseApi.parseJobDescriptionImage>>>()
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
+    mockChooseMessageFile.mockResolvedValue({
+      tempFiles: [
+        {
+          name: 'jd-uploading.png',
+          path: '/tmp/jd-uploading.png',
+          size: 256 * 1024,
+        },
+      ],
+    })
+    mockParseJobDescriptionImage.mockReturnValueOnce(deferred.promise)
+
+    await renderPage()
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('job-upload-trigger'))
+      await jest.advanceTimersByTimeAsync(420)
+    })
+
+    expect(screen.getByTestId('job-upload-loading')).toBeTruthy()
+    expect(screen.getByText(/正在解析图片 \d+%/)).toBeTruthy()
+    expect((screen.getByTestId('job-company-input') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByTestId('job-position-input') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByTestId('job-location-input') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByTestId('job-description-input') as HTMLTextAreaElement).disabled)
+      .toBe(true)
+
+    await act(async () => {
+      deferred.resolve({
+        provider: 'glm-ocr',
+        fileName: 'jd-uploading.png',
+        fileType: 'image',
+        rawText: '字节跳动正在招聘\n# 前端开发工程师\n工作地点：北京\n## 职位详情',
+        structured: {
+          companyName: '字节跳动',
+          positionName: '前端开发工程师',
+          location: '北京',
+          jdText: '字节跳动正在招聘\n# 前端开发工程师\n工作地点：北京\n## 职位详情',
+          responsibilities: [],
+          requirements: [],
+        },
+        warnings: [],
+      })
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expectJobCompanyInputValue('字节跳动')
+      expectJobPositionInputValue('前端开发工程师')
+      expectJobLocationInputValue('北京')
+      expectJobDescriptionInputValue('字节跳动正在招聘\n# 前端开发工程师\n工作地点：北京\n## 职位详情')
     })
   })
 
@@ -791,10 +943,11 @@ describe('CreatePage', () => {
       expectJobDescriptionInputValue(jdText)
       expectJobCompanyInputValue('万兴科技')
       expectJobPositionInputValue('产品策划经理')
+      expectJobLocationInputValue('长沙')
     })
   })
 
-  test('第二步切到文字输入后应只按手动内容判断和提交', async () => {
+  test('第二步上传解析后可继续编辑岗位描述并按编辑内容提交', async () => {
     jest.useFakeTimers()
     const existingSourceResume = {
       id: 'source-resume-1',
@@ -828,25 +981,6 @@ describe('CreatePage', () => {
     await waitFor(() => {
       expect(mockParseJobDescriptionImage).toHaveBeenCalled()
       expectJobDescriptionInputValue('岗位职责：负责增长平台体验优化')
-    })
-
-    fireEvent.click(screen.getByTestId('job-mode-manual'))
-    fireEvent.change(screen.getByTestId('job-description-input'), {
-      target: {value: ''},
-    })
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
-      await Promise.resolve()
-    })
-
-    await waitFor(() => {
-      expect(mockShowToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '请先填写目标岗位描述',
-          icon: 'none',
-        }),
-      )
     })
 
     fireEvent.change(screen.getByTestId('job-description-input'), {
@@ -867,12 +1001,11 @@ describe('CreatePage', () => {
     expect(getLastSavedResultSession()?.context.jdContent).toContain(
       '负责 AI 产品设计与跨团队协作，推动复杂功能落地。',
     )
-    expect(getLastSavedResultSession()?.context.jdContent).not.toContain(
-      '岗位描述附件：jd-shot.png',
-    )
+    expect(getLastSavedResultSession()?.context.jdContent).toContain('岗位描述附件：jd-shot.png')
+    expect(getLastSavedResultSession()?.context.jdContent).not.toContain('岗位职责：负责增长平台体验优化')
   })
 
-  test('第二步切回图片上传后应只按上传内容判断和提交', async () => {
+  test('第二步可只输入岗位描述提交，无需上传截图', async () => {
     jest.useFakeTimers()
     const existingSourceResume = {
       id: 'source-resume-1',
@@ -886,49 +1019,13 @@ describe('CreatePage', () => {
     mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
     await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
     mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
-    mockChooseMessageFile.mockResolvedValue({
-      tempFiles: [
-        {
-          name: 'jd-shot.png',
-          path: '/tmp/jd-shot.png',
-          size: 256 * 1024,
-        },
-      ],
-    })
 
     await renderPage()
 
-    fireEvent.click(screen.getByTestId('job-mode-manual'))
     fireEvent.change(screen.getByTestId('job-description-input'), {
       target: {
-        value: '这段手动输入内容不应该在上传模式下被提交。',
+        value: '负责复杂前端体验工程，推进组件库、性能优化和跨端交付。',
       },
-    })
-
-    fireEvent.click(screen.getByTestId('job-mode-upload'))
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
-      await Promise.resolve()
-    })
-
-    await waitFor(() => {
-      expect(mockShowToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '请先上传岗位描述截图，或切换到“文字输入”补充岗位描述',
-          icon: 'none',
-        }),
-      )
-    })
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('job-upload-trigger'))
-      await jest.runAllTimersAsync()
-    })
-
-    await waitFor(() => {
-      expect(mockParseJobDescriptionImage).toHaveBeenCalled()
-      expectJobDescriptionInputValue('岗位职责：负责增长平台体验优化')
     })
 
     fireEvent.click(screen.getByTestId('create-flow-primary-action'))
@@ -938,11 +1035,10 @@ describe('CreatePage', () => {
     })
 
     expect(getLastSavedResultSession()?.context.jdContent).toContain(
-      '岗位职责：负责增长平台体验优化',
+      '负责复杂前端体验工程，推进组件库、性能优化和跨端交付。',
     )
-    expect(getLastSavedResultSession()?.context.jdContent).not.toContain(
-      '这段手动输入内容不应该在上传模式下被提交。',
-    )
+    expect(getLastSavedResultSession()?.context.jdContent).not.toContain('岗位描述附件')
+    expect(mockParseJobDescriptionImage).not.toHaveBeenCalled()
   })
 
   test('RN 端缺少 chooseMessageFile 时会回退到图片选择器', async () => {

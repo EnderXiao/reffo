@@ -228,7 +228,7 @@ export class GlmOcrProvider implements OcrProvider {
   async parseDocument(input: ParseDocumentInput, options: OcrProviderOptions = {}): Promise<ParsedDocumentResult> {
     const apiKey = getApiKey()
     if (!apiKey) {
-      throw new OcrProviderError('OCR_CONFIG_MISSING', 'GLM-OCR API Key 未配置')
+      throw new OcrProviderError('OCR_CONFIG_MISSING', 'GLM-OCR API Key 未配置', { status: 503 })
     }
 
     const endpoint = resolveEndpoint()

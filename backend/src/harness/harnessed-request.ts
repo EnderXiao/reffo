@@ -1,10 +1,12 @@
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
 import { createHarnessEvent, type WorkflowStatus } from '@/harness/events'
+import { buildBusinessFailureSampleReason } from '@/harness/business-recovery'
 import { createDigest, createRunContext, type RunContext, type StepExecutionContext } from '@/harness/run-context'
 import { runStep, StepRunError, type StepRunSnapshot } from '@/harness/run-step'
 import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
+import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 
 export interface HarnessResponseMeta {
   run_id: string
@@ -121,6 +123,18 @@ export async function runHarnessedRequest<TResult>(
         },
       })
     )
+
+    try {
+      new HarnessRunRepository().createFailureSampleIfAbsent(
+        runContext.runId,
+        buildBusinessFailureSampleReason(
+          error instanceof StepRunError ? error.cause : error,
+          error instanceof StepRunError ? error.step.stepName : undefined
+        )
+      )
+    } catch (sampleError) {
+      console.error('[runHarnessedRequest] create failure sample failed:', sampleError)
+    }
 
     throw error instanceof StepRunError ? error.cause : error
   }
