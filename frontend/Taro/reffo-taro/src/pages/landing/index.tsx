@@ -5,6 +5,8 @@ import classNames from 'classnames'
 import REFFO_LOGO from '@/assets/branding/reffo-logo.png'
 import DETAIL_FOLDER from '@/assets/landing/detail-folder.svg'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
+import JobDescriptionFormH5 from '@/pages/create/components/JobDescriptionFormH5'
+import CreatePrimaryActionH5 from '@/pages/create/components/CreatePrimaryActionH5'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import {useAuthStore} from '@/store/authStore'
@@ -15,6 +17,7 @@ import {useLandingFlowStore} from '@/store/landingFlowStore'
 import {feedback} from '@/utils/feedback'
 import {storage} from '@/utils/storage'
 import {navigation} from '@/utils/navigation'
+import {suppressNextNavigationTransition} from '@/utils/navigation-transition'
 import {
   formatResumeFileSize,
   isResumeFileUploadCancelled,
@@ -83,9 +86,10 @@ const ONBOARDING_QUEUE_DETAIL_DROP_Y = 44
 const ONBOARDING_QUEUE_CARD_ROTATE_X = '0deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Y = '-15deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Z = '0deg'
+const ONBOARDING_JOB_CREATE_TRANSITION_MS = 1180
 type LandingPhase = 'splash' | 'onboarding'
 type OnboardingStep = 'target' | 'experience' | 'queue'
-type QueueMotionPhase = 'idle' | 'entry' | 'spin' | 'steady' | 'manual' | 'settling' | 'selected' | 'detail' | 'folder' | 'folder-opening' | 'job-selecting' | 'folder-closing' | 'folder-returning' | 'dismissing'
+type QueueMotionPhase = 'idle' | 'entry' | 'spin' | 'steady' | 'manual' | 'settling' | 'selected' | 'detail' | 'folder' | 'folder-opening' | 'job-selecting' | 'creating' | 'folder-closing' | 'folder-returning' | 'dismissing'
 type QueueDetailMode = 'resume' | 'upload'
 type QueueSlotKind = 'slot-0' | 'slot-1' | 'slot-2' | 'slot-3' | 'slot-4' | 'slot-5'
 
@@ -385,6 +389,7 @@ function resolveJobCardStyle(
     '--job-card-rotate': `${rotate}deg`,
     '--job-card-opacity': opacity,
     '--job-card-z': Math.round(20 - (distance * 5)),
+    '--job-card-exit-x': relativePosition < 0 ? '-115vw' : '115vw',
   } as CSSProperties
 }
 
@@ -750,6 +755,15 @@ export default function LandingPage() {
   const [jobDragOffset, setJobDragOffset] = useState(0)
   const [isJobDragging, setIsJobDragging] = useState(false)
   const [isJobFolderRestored, setIsJobFolderRestored] = useState(false)
+  const [isCreatingJob, setIsCreatingJob] = useState(false)
+  const [isReturningFromCreatingJob, setIsReturningFromCreatingJob] = useState(false)
+  const [creatingJobSourceStyle, setCreatingJobSourceStyle] = useState<CSSProperties | undefined>()
+  const [creatingJobDraft, setCreatingJobDraft] = useState({
+    content: '',
+    companyName: '',
+    positionName: '',
+    baseLocation: '',
+  })
   const [selectedDismissDurationMs, setSelectedDismissDurationMs] = useState(ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS)
   const touchStartRef = useRef<{x: number; y: number} | null>(null)
   const onboardingLogoTimerRef = useRef<number | null>(null)
@@ -777,6 +791,7 @@ export default function LandingPage() {
   const queueUploadRequestRef = useRef(0)
   const queueUploadRemoveTimerRef = useRef<number | null>(null)
   const jobFolderTimerRef = useRef<number | null>(null)
+  const creatingJobReturnTimerRef = useRef<number | null>(null)
   const jobDragRef = useRef<{startX: number; startOffset: number; isDragging: boolean} | null>(null)
 
   const clearQueueTimers = () => {
@@ -834,6 +849,14 @@ export default function LandingPage() {
       jobFolderTimerRef.current = null
     }
   }
+
+  const clearCreatingJobReturnTimer = () => {
+    if (creatingJobReturnTimerRef.current != null) {
+      window.clearTimeout(creatingJobReturnTimerRef.current)
+      creatingJobReturnTimerRef.current = null
+    }
+  }
+
 
   const hasSelectedDismissFinished = () => {
     if (!selectedDismissStartedAtRef.current) {
@@ -945,18 +968,54 @@ export default function LandingPage() {
     }, ONBOARDING_JOB_FOLDER_CLOSE_MS)
   }
 
-  const enterLandingJobDescription = (job: LandingJobDescription) => {
-    useLandingFlowStore.getState().startJobDescription({
-      content: job.id === 'custom'
-        ? ''
-        : [
-            job.summary,
-            ...job.responsibilities.map(item => `- ${item}`),
-          ].join('\n'),
+  const enterLandingJobDescription = (job: LandingJobDescription, sourceElement?: HTMLElement | null) => {
+    const draft = {
+      content: job.id === 'custom' ? '' : [job.summary, ...job.responsibilities.map(item => `- ${item}`)].join('\n'),
       companyName: job.id === 'custom' ? '' : job.company,
       positionName: job.id === 'custom' ? '' : job.title,
       baseLocation: job.id === 'custom' ? '' : job.location,
-    })
+    }
+    const sourceRect = sourceElement?.getBoundingClientRect()
+
+    if (sourceRect && typeof window !== 'undefined') {
+      const targetCenterY = (window.innerHeight / 2) - 10
+
+      setCreatingJobSourceStyle({
+        '--job-flip-start-x': `${sourceRect.left + (sourceRect.width / 2) - (window.innerWidth / 2)}px`,
+        '--job-flip-start-y': `${sourceRect.top + (sourceRect.height / 2) - targetCenterY}px`,
+        '--job-flip-start-scale-x': sourceRect.width / Math.min(350, window.innerWidth - 60),
+        '--job-flip-start-scale-y': sourceRect.height / 455,
+      } as CSSProperties)
+    } else {
+      setCreatingJobSourceStyle(undefined)
+    }
+
+    useLandingFlowStore.getState().startJobDescription(draft)
+    setCreatingJobDraft(draft)
+    setIsReturningFromCreatingJob(false)
+    setIsCreatingJob(true)
+    setQueueMotionPhase('creating')
+  }
+
+  const returnFromLandingJobDescription = () => {
+    if (!isCreatingJob || isReturningFromCreatingJob) {
+      return
+    }
+
+    clearCreatingJobReturnTimer()
+    setIsReturningFromCreatingJob(true)
+    creatingJobReturnTimerRef.current = window.setTimeout(() => {
+      creatingJobReturnTimerRef.current = null
+      setIsCreatingJob(false)
+      setIsReturningFromCreatingJob(false)
+      setCreatingJobSourceStyle(undefined)
+      setQueueMotionPhase('job-selecting')
+    }, ONBOARDING_JOB_CREATE_TRANSITION_MS)
+  }
+
+  const continueLandingJobDescription = () => {
+    useLandingFlowStore.getState().startJobDescription(creatingJobDraft)
+    suppressNextNavigationTransition()
     void navigation.navigateTo('/pages/create/index')
   }
 
@@ -1356,6 +1415,7 @@ export default function LandingPage() {
     clearQueueFolderExitTimer()
     clearQueueUploadRemoveTimer()
     clearJobFolderTimer()
+    clearCreatingJobReturnTimer()
     queueUploadRequestRef.current += 1
   }, [])
 
@@ -1368,6 +1428,7 @@ export default function LandingPage() {
     clearQueueFolderExitTimer()
     clearQueueUploadRemoveTimer()
     clearJobFolderTimer()
+    clearCreatingJobReturnTimer()
 
     if (phase !== 'onboarding' || onboardingStep !== 'queue' || isLeaving) {
       setQueueMotionPhase('idle')
@@ -1387,6 +1448,9 @@ export default function LandingPage() {
       setSelectedJobIndex(0)
       setJobDragOffset(0)
       setIsJobFolderRestored(false)
+      setIsCreatingJob(false)
+      setIsReturningFromCreatingJob(false)
+      setCreatingJobSourceStyle(undefined)
       queueUploadRequestRef.current += 1
       queueProgressRef.current = 0
       isQueueFlowPopulatedRef.current = false
@@ -1454,6 +1518,7 @@ export default function LandingPage() {
       || queueMotionPhase === 'job-selecting'
       || queueMotionPhase === 'folder-closing'
       || queueMotionPhase === 'folder-returning'
+      || queueMotionPhase === 'creating'
       || queueMotionPhase === 'dismissing'
 
     if (phase !== 'onboarding' || onboardingStep !== 'queue' || !isQueueFlowPhase) {
@@ -1580,6 +1645,7 @@ export default function LandingPage() {
       || queueMotionPhase === 'folder-opening'
       || queueMotionPhase === 'folder-closing'
       || queueMotionPhase === 'folder-returning'
+      || queueMotionPhase === 'creating'
       || isQueueDetailLeaving
     ) {
       event.preventDefault?.()
@@ -1806,12 +1872,14 @@ export default function LandingPage() {
       || queueMotionPhase === 'job-selecting'
       || queueMotionPhase === 'folder-closing'
       || queueMotionPhase === 'folder-returning'
+      || queueMotionPhase === 'creating'
       || queueMotionPhase === 'dismissing'
     const selectedQueueCard = selectedQueueCardIndex == null ? null : ONBOARDING_QUEUE_CARDS[selectedQueueCardIndex]
     const isQueueFolderStep = queueMotionPhase === 'folder'
       || queueMotionPhase === 'folder-opening'
       || queueMotionPhase === 'job-selecting'
       || queueMotionPhase === 'folder-closing'
+      || queueMotionPhase === 'creating'
     const isSelectedUploadCard = selectedQueueCard?.queueCardKind === 'upload'
     const isQueueUploadPending = selectedQueueDetailMode === 'upload'
       && !isQueueUploadComplete
@@ -1874,6 +1942,8 @@ export default function LandingPage() {
           'reffo-landing-onboarding--job-dragging': isJobDragging,
           'reffo-landing-onboarding--queue-folder-closing': queueMotionPhase === 'folder-closing',
           'reffo-landing-onboarding--queue-folder-returning': queueMotionPhase === 'folder-returning',
+          'reffo-landing-onboarding--creating-job': isCreatingJob,
+          'reffo-landing-onboarding--returning-from-job': isReturningFromCreatingJob,
           'reffo-landing-onboarding--queue-detail-restored': isQueueDetailRestored,
           'reffo-landing-onboarding--queue-detail-leaving': isQueueDetailLeaving,
           'reffo-landing-onboarding--queue-detail-upload': selectedQueueDetailMode === 'upload',
@@ -2098,6 +2168,10 @@ export default function LandingPage() {
                   if (queueMotionPhase === 'detail') {
                     exitSelectedQueueDetail()
                   }
+
+                  if (queueMotionPhase === 'creating') {
+                    returnFromLandingJobDescription()
+                  }
                 }}
               >
                 <Text>返回</Text>
@@ -2141,7 +2215,7 @@ export default function LandingPage() {
                       onClick={queueMotionPhase === 'job-selecting' ? event => {
                         event.stopPropagation?.()
                         if (isSelectedJob) {
-                          enterLandingJobDescription(file)
+                          enterLandingJobDescription(file, event.currentTarget as unknown as HTMLElement)
                           return
                         }
                         setSelectedJobIndex(index)
@@ -2184,6 +2258,43 @@ export default function LandingPage() {
                     <Text className='reffo-landing-onboarding__target-folder-count-label'>份岗位描述</Text>
                   </View>
                 </View>
+              </View>
+            ) : null}
+            {isCreatingJob ? (
+              <View className='reffo-landing-create-page'>
+                <View className='reffo-landing-create-flip' style={creatingJobSourceStyle}>
+                  <View className='reffo-landing-create-flip__front' aria-hidden='true'>
+                    <Text className='reffo-landing-onboarding__target-file-title'>{LANDING_JOB_DESCRIPTIONS[selectedJobIndex].title}</Text>
+                    <View className='reffo-landing-onboarding__job-detail'>
+                      <View className='reffo-landing-onboarding__job-meta'>
+                        <Text>{LANDING_JOB_DESCRIPTIONS[selectedJobIndex].company}</Text>
+                        <Text>{LANDING_JOB_DESCRIPTIONS[selectedJobIndex].location}</Text>
+                        <Text>{LANDING_JOB_DESCRIPTIONS[selectedJobIndex].experience} · {LANDING_JOB_DESCRIPTIONS[selectedJobIndex].salary}</Text>
+                      </View>
+                      <Text className='reffo-landing-onboarding__job-summary'>{LANDING_JOB_DESCRIPTIONS[selectedJobIndex].summary}</Text>
+                      <Text className='reffo-landing-onboarding__job-section-title'>岗位职责</Text>
+                      <View className='reffo-landing-onboarding__job-responsibilities'>
+                        {LANDING_JOB_DESCRIPTIONS[selectedJobIndex].responsibilities.map(responsibility => (
+                          <View key={responsibility} className='reffo-landing-onboarding__job-responsibility'>
+                            <View className='reffo-landing-onboarding__job-bullet' />
+                            <Text>{responsibility}</Text>
+                          </View>
+                        ))}
+                      </View>
+                      <Text className='reffo-landing-onboarding__job-overflow'>•••</Text>
+                    </View>
+                  </View>
+                  <View className='reffo-landing-create-flip__back'>
+                    <JobDescriptionFormH5
+                      state={{...creatingJobDraft, attachmentStatus: 'idle', attachmentProgress: 0, attachment: null, attachmentErrorMessage: null}}
+                      onCompanyNameChange={value => setCreatingJobDraft(previous => ({...previous, companyName: value}))}
+                      onPositionNameChange={value => setCreatingJobDraft(previous => ({...previous, positionName: value}))}
+                      onLocationChange={value => setCreatingJobDraft(previous => ({...previous, baseLocation: value}))}
+                      onContentChange={value => setCreatingJobDraft(previous => ({...previous, content: value}))}
+                    />
+                  </View>
+                </View>
+                <CreatePrimaryActionH5 label='开始生成最佳简历' onClick={continueLandingJobDescription} />
               </View>
             ) : null}
             {queueMotionPhase === 'job-selecting' ? (
