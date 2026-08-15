@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker'
 import {parseApi} from '@/services/parse'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {useHistoryStore, useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
+import {useHistoryStore, useJDStore, useLandingFlowStore, useResumeStore, useSourceResumeStore} from '@/store'
 import type {
   MatchingResult,
   ProcessResult,
@@ -16,6 +16,7 @@ import type {
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
+import {storage} from '@/utils/storage'
 import {saveLatestResultSession} from '@/utils/result-session'
 import {toHistoryCardItem} from '../index/model/homeCardData'
 import {
@@ -78,6 +79,8 @@ export interface CreatePageViewModel {
   handleReturnHome: () => Promise<void>
   handleCancelGeneration: () => void
   handleClose: () => void
+  isLandingFlow: boolean
+  handleLandingSkip: () => Promise<void>
 }
 
 const JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES = [
@@ -98,6 +101,16 @@ const HISTORY_EDIT_STEP_META: CreateStepMeta = {
   ],
   description: '仅可编辑公司名称和岗位名称以及工作地信息，不可重新上传目标岗位描述生成最佳简历哦。',
   actionLabel: '更新信息',
+}
+
+const LANDING_JOB_STEP_META: CreateStepMeta = {
+  id: 'jobDescription',
+  titleSegments: [
+    {text: '选择', tone: 'default'},
+    {text: '目标岗位', tone: 'warm'},
+  ],
+  description: '输入自定义岗位描述',
+  actionLabel: '开始生成最佳简历',
 }
 
 function buildInitialProcessResult(
@@ -419,6 +432,9 @@ function buildGenerationState(args: {
 
 export function usePageModel(): CreatePageViewModel {
   const router = useRouter()
+  const initialLandingFlow = useLandingFlowStore.getState()
+  const isLandingFlow = useLandingFlowStore(state => state.source === 'landing')
+  const landingJob = useLandingFlowStore(state => state.selectedJob)
   const requestedStepRef = useRef(normalizeRouteStep(router.params?.step))
   const editHistoryId = typeof router.params?.historyId === 'string'
     ? router.params.historyId
@@ -432,6 +448,8 @@ export function usePageModel(): CreatePageViewModel {
   const [currentStep, setCurrentStep] = useState<CreateStepId>(() =>
     isHistoryEditMode
       ? 'jobDescription'
+      : initialLandingFlow.source === 'landing'
+        ? 'jobDescription'
       : resolveInitialStep(requestedStepRef.current, Boolean(initialSourceResume)),
   )
   const [editingHistory, setEditingHistory] = useState<ResumeHistory | null>(null)
@@ -439,7 +457,8 @@ export function usePageModel(): CreatePageViewModel {
   const [hasResolvedLatestSourceResume, setHasResolvedLatestSourceResume] =
     useState(Boolean(initialSourceResume))
   const routeStepAppliedRef = useRef(
-    isHistoryEditMode ||
+    initialLandingFlow.source === 'landing' ||
+      isHistoryEditMode ||
       !requestedStepRef.current ||
       requestedStepRef.current === 'resumeUpload' ||
       Boolean(initialSourceResume),
@@ -448,9 +467,19 @@ export function usePageModel(): CreatePageViewModel {
     createInitialResumeUploadState(),
   )
   const [jobDescriptionState, setJobDescriptionState] =
-    useState<JobDescriptionStepState>(() =>
-      createInitialJobDescriptionState(useJDStore.getState().jdContent),
-    )
+    useState<JobDescriptionStepState>(() => {
+      const initial = createInitialJobDescriptionState(
+        landingJob?.content || useJDStore.getState().jdContent,
+      )
+      return landingJob
+        ? {
+            ...initial,
+            companyName: landingJob.companyName,
+            positionName: landingJob.positionName,
+            baseLocation: landingJob.baseLocation,
+          }
+        : initial
+    })
   const [generationState, setGenerationState] = useState<CreateGenerationState | null>(
     null,
   )
@@ -619,16 +648,19 @@ export function usePageModel(): CreatePageViewModel {
     if (
       currentStep === 'resumeSummary' &&
       !isHistoryEditMode &&
+      !isLandingFlow &&
       hasResolvedLatestSourceResume &&
       !latestSourceResume
     ) {
       setCurrentStep('resumeUpload')
     }
-  }, [currentStep, hasResolvedLatestSourceResume, isHistoryEditMode, latestSourceResume])
+  }, [currentStep, hasResolvedLatestSourceResume, isHistoryEditMode, isLandingFlow, latestSourceResume])
 
-  const currentStepMeta = isHistoryEditMode && currentStep === 'jobDescription'
-    ? HISTORY_EDIT_STEP_META
-    : CREATE_STEP_META[currentStep]
+  const currentStepMeta = currentStep === 'jobDescription' && isLandingFlow
+    ? LANDING_JOB_STEP_META
+    : isHistoryEditMode && currentStep === 'jobDescription'
+      ? HISTORY_EDIT_STEP_META
+      : CREATE_STEP_META[currentStep]
   const primaryActionLabel = currentStepMeta.actionLabel
   const resumeSummaryState = useMemo(
     () => buildResumeSummaryState(latestSourceResume),
@@ -1254,6 +1286,10 @@ export function usePageModel(): CreatePageViewModel {
         return false
       }
 
+      if (isLandingFlow) {
+        await storage.setItem('reffo.landing.seen', '1')
+        useLandingFlowStore.getState().clear()
+      }
       await navigation.navigateTo('/pages/result/index')
       return true
     } catch (error) {
@@ -1306,7 +1342,16 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handleClose = () => {
+    if (isLandingFlow) {
+      useLandingFlowStore.getState().clear()
+    }
     void navigation.navigateBack()
+  }
+
+  const handleLandingSkip = async () => {
+    await storage.setItem('reffo.landing.seen', '1')
+    useLandingFlowStore.getState().clear()
+    await navigation.reLaunch('/pages/index/index')
   }
 
   const resumeUploadViewState: ResumeUploadStepState = {
@@ -1347,5 +1392,7 @@ export function usePageModel(): CreatePageViewModel {
     handleReturnHome,
     handleCancelGeneration,
     handleClose,
+    isLandingFlow,
+    handleLandingSkip,
   }
 }

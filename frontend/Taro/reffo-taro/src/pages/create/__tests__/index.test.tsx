@@ -4,7 +4,7 @@ import Taro, {useRouter} from '@tarojs/taro'
 import {parseApi} from '@/services/parse'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
+import {useJDStore, useLandingFlowStore, useResumeStore, useSourceResumeStore} from '@/store'
 import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
 
@@ -215,6 +215,7 @@ describe('CreatePage', () => {
     mockUseRouter.mockReturnValue({params: {}})
     useResumeStore.getState().reset()
     useJDStore.getState().reset()
+    useLandingFlowStore.getState().clear()
     useSourceResumeStore.getState().reset()
     ;(Taro as any).chooseMessageFile = mockChooseMessageFile
     ;(Taro.getFileSystemManager as jest.Mock).mockReturnValue({
@@ -264,6 +265,28 @@ describe('CreatePage', () => {
     mockAnalyzeResume.mockResolvedValue(defaultProcessResult.analysis)
     mockMatchResume.mockResolvedValue(defaultProcessResult.matching)
     mockSaveLatestResultSession.mockResolvedValue(undefined)
+  })
+
+  test('Landing 来源直接进入岗位页并显示教程栏', async () => {
+    useLandingFlowStore.getState().startJobDescription({
+      content: '负责核心产品体验优化',
+      companyName: 'reffo 科技',
+      positionName: 'UX 设计师',
+      baseLocation: '上海',
+    })
+
+    await renderPage()
+
+    expect(screen.getByText('跳过教程')).toBeTruthy()
+    expect(screen.getByText('返回')).toBeTruthy()
+    expect(screen.getByLabelText('教程进度')).toBeTruthy()
+    expect(screen.getByText('选择')).toBeTruthy()
+    expect(screen.getByText('目标岗位')).toBeTruthy()
+    expectJobDescriptionInputValue('负责核心产品体验优化')
+    expectJobCompanyInputValue('reffo 科技')
+    expectJobPositionInputValue('UX 设计师')
+    expectJobLocationInputValue('上海')
+    expect(mockUseRouter().params).toEqual({})
   })
 
   test('应该渲染新的单页流程容器', async () => {

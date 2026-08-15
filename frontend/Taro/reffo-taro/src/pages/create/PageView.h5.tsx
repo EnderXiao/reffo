@@ -11,6 +11,8 @@ import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import ResumeUploadIcon from '@/components/business/ResumeUploadIcon/index.h5'
 import {useVisualTier} from '@/utils'
+import JobDescriptionFormH5 from './components/JobDescriptionFormH5'
+import CreatePrimaryActionH5 from './components/CreatePrimaryActionH5'
 import type {CreatePageViewModel} from './usePageModel'
 import type {
   CreateGenerationState,
@@ -142,6 +144,24 @@ function StepHeader({meta}: {meta: CreateStepMeta}) {
         ))}
       </View>
       <Text className='reffo-create__description'>{meta.description}</Text>
+    </View>
+  )
+}
+
+function LandingFlowHeader({onBack, onSkip}: {onBack: () => void; onSkip: () => Promise<void>}) {
+  return (
+    <View className='reffo-create__landing-header'>
+      <View className='reffo-create__landing-skip' onClick={() => void onSkip()} role='button'>
+        <Text>跳过教程</Text>
+      </View>
+      <View className='reffo-create__landing-progress' aria-label='教程进度' role='img'>
+        <View className='reffo-create__landing-progress-dot' />
+        <View className='reffo-create__landing-progress-track' />
+        <View className='reffo-create__landing-progress-dot' />
+      </View>
+      <View className='reffo-create__landing-back' onClick={onBack} role='button'>
+        <Text>返回</Text>
+      </View>
     </View>
   )
 }
@@ -421,112 +441,7 @@ function JobUploadPanel({
     </View>
   )
 }
-function JobDescriptionStepH5({
-  state,
-  onCompanyNameChange,
-  onPositionNameChange,
-  onLocationChange,
-  onContentChange,
-  onPickAttachment,
-  isExiting = false,
-  isDescriptionReadOnly = false,
-}: {
-  state: JobDescriptionStepState
-  onCompanyNameChange: CreatePageViewModel['handleJobCompanyNameChange']
-  onPositionNameChange: CreatePageViewModel['handleJobPositionNameChange']
-  onLocationChange: CreatePageViewModel['handleJobLocationChange']
-  onContentChange: CreatePageViewModel['handleJobDescriptionChange']
-  onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
-  isExiting?: boolean
-  isDescriptionReadOnly?: boolean
-}) {
-  const isUploadingAttachment = state.attachmentStatus === 'uploading'
-
-  return (
-    <View className='reffo-create-step reffo-create-step--job'>
-      <Card
-        className={classNames('reffo-create-job', {
-          'reffo-create-job--exiting': isExiting,
-        })}
-        bordered={false}
-        shadow='none'
-      >
-        <View className='reffo-create-job__hardware' />
-        <View className='reffo-create-job__ribbon'>
-          <Text>新的工牌制作中！</Text>
-        </View>
-
-        <View className='reffo-create-job__field-row'>
-          <View className='reffo-create-job__field reffo-create-job__field--half'>
-            <Text className='reffo-create-job__label'>公司</Text>
-            <Input
-              value={state.companyName}
-              placeholder='输入公司名称'
-              disabled={isUploadingAttachment}
-              onInput={event => {
-                if (!isUploadingAttachment) {
-                  onCompanyNameChange(event.detail.value)
-                }
-              }}
-              className={classNames('reffo-create-job__input', {
-                'reffo-create-job__input--disabled': isUploadingAttachment,
-              })}
-              data-testid='job-company-input'
-            />
-          </View>
-
-          <View className='reffo-create-job__field reffo-create-job__field--half'>
-            <Text className='reffo-create-job__label'>Base</Text>
-            <Input
-              value={state.baseLocation}
-              placeholder='输入岗位城市'
-              disabled={isUploadingAttachment}
-              onInput={event => {
-                if (!isUploadingAttachment) {
-                  onLocationChange(event.detail.value)
-                }
-              }}
-              className={classNames('reffo-create-job__input', {
-                'reffo-create-job__input--disabled': isUploadingAttachment,
-              })}
-              data-testid='job-location-input'
-            />
-          </View>
-        </View>
-
-        <View className='reffo-create-job__field'>
-          <Text className='reffo-create-job__label'>目标岗位名称</Text>
-          <Input
-            value={state.positionName}
-            placeholder='输入岗位名称'
-            disabled={isUploadingAttachment}
-            onInput={event => {
-              if (!isUploadingAttachment) {
-                onPositionNameChange(event.detail.value)
-              }
-            }}
-            className={classNames('reffo-create-job__input', {
-              'reffo-create-job__input--disabled': isUploadingAttachment,
-            })}
-            data-testid='job-position-input'
-          />
-        </View>
-
-        <View className='reffo-create-job__field reffo-create-job__field--description'>
-          <Text className='reffo-create-job__label'>目标岗位描述</Text>
-          <View className='reffo-create-job__panel'>
-            <JobUploadPanel
-              state={state}
-              onPickAttachment={onPickAttachment}
-              onContentChange={onContentChange}
-              readOnly={isDescriptionReadOnly}
-            />
-          </View>
-        </View>
-      </Card>
-    </View>
-  )
-}
+const JobDescriptionStepH5 = JobDescriptionFormH5
 
 function GenerationOverlay({
   state,
@@ -920,6 +835,8 @@ export default function PageView({
   handleReturnHome,
   handleCancelGeneration,
   handleClose,
+  isLandingFlow,
+  handleLandingSkip,
 }: CreatePageViewModel) {
   const isJobStep = currentStep === 'jobDescription'
   const [pendingGenerationState, setPendingGenerationState] = useState<CreateGenerationState | null>(null)
@@ -1100,13 +1017,17 @@ export default function PageView({
         'reffo-create--generation-completed': isGenerationCompleted,
         'reffo-create--history-edit': isHistoryEditMode,
         'reffo-create--delete-preview': isDeletePreviewActive,
+        'reffo-create--landing-flow': isLandingFlow,
       })}
     >
       <CreateBackdrop variant={isJobStep ? 'warm' : 'cool'} />
       <View className='reffo-create__frame'>
-        <View className='reffo-create__close' onClick={handleClose} role='button' data-testid='create-flow-close'>
+        {!isLandingFlow ? <View className='reffo-create__close' onClick={handleClose} role='button' data-testid='create-flow-close'>
           <Text>×</Text>
-        </View>
+        </View> : null}
+        {isLandingFlow ? (
+          <LandingFlowHeader onBack={handleClose} onSkip={handleLandingSkip} />
+        ) : null}
         <StepHeader meta={currentStepMeta} />
         <View className='reffo-create__body'>
           {currentStep === 'resumeUpload' ? (
@@ -1150,25 +1071,11 @@ export default function PageView({
             'reffo-create__footer--edit': isHistoryEditMode && isJobStep,
           })}
         >
-          <View
-            className={classNames('reffo-create__primary', {
-              'reffo-create__primary--warm': isJobStep,
-              'reffo-create__primary--dark': currentStep === 'resumeSummary',
-              'reffo-create__primary--disabled': isActionDisabled,
-            })}
-            onClick={handleActionClick}
-            role='button'
-            aria-disabled={isActionDisabled}
-            data-testid='create-flow-primary-action'
-          >
-            {isJobStep ? (
-              <View className='reffo-create__primary-spark' aria-hidden='true'>
-                <Text className='reffo-create__primary-spark-main'>✦</Text>
-                <Text className='reffo-create__primary-spark-small'>✦</Text>
-              </View>
-            ) : null}
-            <Text>{isSavingCurrentStep ? '处理中...' : actionLabel}</Text>
-          </View>
+          {isJobStep ? <CreatePrimaryActionH5 label={actionLabel} disabled={isActionDisabled} loading={isSavingCurrentStep} onClick={handleActionClick} /> : (
+            <View className={classNames('reffo-create__primary', {'reffo-create__primary--dark': currentStep === 'resumeSummary', 'reffo-create__primary--disabled': isActionDisabled})} onClick={handleActionClick} role='button' aria-disabled={isActionDisabled} data-testid='create-flow-primary-action'>
+              <Text>{isSavingCurrentStep ? '处理中...' : actionLabel}</Text>
+            </View>
+          )}
           {isHistoryEditMode && isJobStep ? (
             <View
               className={classNames('reffo-create__delete-action', {
