@@ -60,6 +60,12 @@ jest.mock('@/utils/resume-file-upload', () => ({
   pickAndParseResumeFile: jest.fn(),
 }))
 
+jest.mock('@/pages/create/utils/jobDescriptionAttachment', () => ({
+  getJobDescriptionFileValidationMessage: jest.fn(() => null),
+  parseJobDescriptionAttachment: jest.fn(),
+  pickJobDescriptionFile: jest.fn(),
+}))
+
 jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
   __esModule: true,
   default: ({card, onClick, uploadFile, uploadStatus, onUploadRemove}: {

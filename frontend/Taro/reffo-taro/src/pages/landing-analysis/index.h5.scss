@@ -1,0 +1,35 @@
+.reffo-landing-analysis {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.reffo-landing-analysis .reffo-create-generation__backdrop {
+  opacity: 1;
+  animation: none;
+}
+
+@keyframes reffo-landing-analysis-source-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes reffo-landing-analysis-target-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

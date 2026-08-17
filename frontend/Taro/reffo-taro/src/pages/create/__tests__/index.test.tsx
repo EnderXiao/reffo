@@ -289,6 +289,54 @@ describe('CreatePage', () => {
     expect(mockUseRouter().params).toEqual({})
   })
 
+  test('Landing 提交岗位后自动进入分析并带来源跳转结果页', async () => {
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    const selectedLandingResume = '# 小A\n\n## 项目经历\n- Landing 预设简历内容'
+    const deferred = createDeferredPromise<typeof defaultProcessResult.analysis>()
+    mockAnalyzeResume.mockReturnValue(deferred.promise)
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    useLandingFlowStore.getState().startJobDescription({
+      content: '负责核心产品体验优化',
+      companyName: 'reffo 科技',
+      positionName: 'UX 设计师',
+      baseLocation: '上海',
+    })
+    useLandingFlowStore.getState().selectResume({
+      source: 'preset',
+      id: 'landing-resume-design',
+      title: '小A的体验简历',
+      markdown: selectedLandingResume,
+    })
+    mockUseRouter.mockReturnValue({params: {autoGenerate: '1'}})
+
+    await renderPage()
+
+    await waitFor(() => {
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(selectedLandingResume)
+      expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
+    })
+
+    await act(async () => {
+      deferred.resolve(defaultProcessResult.analysis)
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(mockNavigateTo).toHaveBeenCalledWith({
+        url: '/pages/landing-result/index',
+      })
+    })
+  })
+
   test('应该渲染新的单页流程容器', async () => {
     await renderPage()
 

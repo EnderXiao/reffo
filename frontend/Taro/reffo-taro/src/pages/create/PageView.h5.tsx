@@ -7,24 +7,22 @@ import DELETE_ICON from '@/assets/create/delete.svg'
 import {Card} from '@/components/Card'
 import DeleteBreakCard from '@/components/business/DeleteBreakCard/index.h5'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
-import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import ResumeUploadIcon from '@/components/business/ResumeUploadIcon/index.h5'
 import {useVisualTier} from '@/utils'
 import JobDescriptionFormH5 from './components/JobDescriptionFormH5'
 import CreatePrimaryActionH5 from './components/CreatePrimaryActionH5'
+import GenerationStageH5, {buildPendingGenerationState} from './components/GenerationStageH5'
+import LandingFlowHeader from './components/LandingFlowHeader.h5'
 import type {CreatePageViewModel} from './usePageModel'
 import type {
   CreateGenerationState,
   CreateStepMeta,
   JobDescriptionStepState,
-  ResumeSummaryStepState,
   ResumeUploadStepState,
 } from './types'
 import '@/pages/index/index.h5.scss'
 import './index.h5.scss'
-
-const GENERATION_CARD_PALETTE = deriveCardPalette('#FF6A43')
 
 type DocumentWithViewTransition = Document & {
   startViewTransition?: (callback: () => void) => {
@@ -97,30 +95,6 @@ function clampGestureValue(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
 
-function buildPendingGenerationState({
-  resumeSummaryState,
-  jobDescriptionState,
-}: {
-  resumeSummaryState: ResumeSummaryStepState | null
-  jobDescriptionState: JobDescriptionStepState
-}): CreateGenerationState {
-  const companyName = jobDescriptionState.companyName.trim()
-  const positionName = jobDescriptionState.positionName.trim()
-  const baseLocation = jobDescriptionState.baseLocation.trim()
-  const resumeTitle = resumeSummaryState?.title || resumeSummaryState?.fileName || '源简历'
-  const resumeMonogram = resumeTitle.trim().match(/[A-Za-z0-9\u4e00-\u9fa5]/u)?.[0] || 'R'
-  const monogram = /[A-Za-z]/.test(resumeMonogram) ? resumeMonogram.toUpperCase() : resumeMonogram
-
-  return {
-    resumeTitle,
-    companyName,
-    positionName,
-    baseLocation,
-    monogram,
-    detailItems: [],
-  }
-}
-
 function CreateBackdrop({variant}: {variant: 'cool' | 'warm'}) {
   return (
     <View className={classNames('reffo-create__backdrop', `reffo-create__backdrop--${variant}`)} />
@@ -144,24 +118,6 @@ function StepHeader({meta}: {meta: CreateStepMeta}) {
         ))}
       </View>
       <Text className='reffo-create__description'>{meta.description}</Text>
-    </View>
-  )
-}
-
-function LandingFlowHeader({onBack, onSkip}: {onBack: () => void; onSkip: () => Promise<void>}) {
-  return (
-    <View className='reffo-create__landing-header'>
-      <View className='reffo-create__landing-skip' onClick={() => void onSkip()} role='button'>
-        <Text>跳过教程</Text>
-      </View>
-      <View className='reffo-create__landing-progress' aria-label='教程进度' role='img'>
-        <View className='reffo-create__landing-progress-dot' />
-        <View className='reffo-create__landing-progress-track' />
-        <View className='reffo-create__landing-progress-dot' />
-      </View>
-      <View className='reffo-create__landing-back' onClick={onBack} role='button'>
-        <Text>返回</Text>
-      </View>
     </View>
   )
 }
@@ -442,90 +398,6 @@ function JobUploadPanel({
   )
 }
 const JobDescriptionStepH5 = JobDescriptionFormH5
-
-function GenerationOverlay({
-  state,
-  onCancelGeneration,
-}: {
-  state: NonNullable<CreatePageViewModel['generationState']>
-  onCancelGeneration: CreatePageViewModel['handleCancelGeneration']
-}) {
-  const {tier: visualTier} = useVisualTier({benchmark: false})
-  const titleReelItems = useMemo(() => {
-    const items = [
-      state.resumeTitle.trim() || '源简历',
-      state.companyName.trim() || '目标公司',
-      state.positionName.trim() || '目标岗位',
-      state.baseLocation.trim() || '目标城市',
-    ]
-
-    return [...items, items[0]]
-  }, [state.baseLocation, state.companyName, state.positionName, state.resumeTitle])
-  const card = useMemo<HomeCardItem>(() => {
-    const company = state.companyName.trim() || state.resumeTitle || 'Reffo'
-    const role = state.positionName.trim() || '最佳匹配简历'
-
-    return {
-      id: `generation-${company}-${role}`,
-      company,
-      indexLabel: state.monogram,
-      location: state.baseLocation.trim() || '智能生成中',
-      role,
-      dateLabel: '今天',
-      score: 88,
-      primaryColor: GENERATION_CARD_PALETTE.primaryColor,
-      surfaceColor: GENERATION_CARD_PALETTE.surfaceColor,
-      stackColor: GENERATION_CARD_PALETTE.stackColor,
-      logoColor: GENERATION_CARD_PALETTE.logoColor,
-      borderColor: GENERATION_CARD_PALETTE.borderColor,
-      tone: GENERATION_CARD_PALETTE.tone,
-      strategyBody: '',
-    }
-  }, [state.baseLocation, state.companyName, state.monogram, state.positionName, state.resumeTitle])
-
-  return (
-    <View className='reffo-create-generation'>
-      <View className='reffo-create-generation__backdrop' />
-      <View className='reffo-create-generation__content'>
-        <View className='reffo-create-generation__main'>
-          <View className='reffo-create-generation__card-stage reffo-home-deck-wrap--enhanced'>
-            <HomeScoreCard
-              card={card}
-              depth={0}
-              active
-              visualTier={visualTier}
-              variant='generating'
-              className='reffo-create-generation__home-card'
-            />
-          </View>
-          <View className='reffo-create-generation__copy'>
-            <View className='reffo-create-generation__title'>
-              <Text className='reffo-create-generation__title-accent'>正在分析 </Text>
-              <View className='reffo-create-generation__title-reel' aria-hidden='true'>
-                <View className='reffo-create-generation__title-reel-track'>
-                  {titleReelItems.map((item, index) => (
-                    <Text
-                      key={`${item}-${index}`}
-                      className='reffo-create-generation__title-main'
-                    >
-                      {item}
-                    </Text>
-                  ))}
-                </View>
-              </View>
-            </View>
-            <Text className='reffo-create-generation__detail'>
-              正在为你的目标岗位量身定做最佳匹配简历……
-            </Text>
-          </View>
-        </View>
-        <View className='reffo-create-generation__cancel' onClick={onCancelGeneration}>
-          <Text>× 取消</Text>
-        </View>
-      </View>
-    </View>
-  )
-}
 
 function DeleteResumeOverlay({
   card,
@@ -1026,7 +898,7 @@ export default function PageView({
           <Text>×</Text>
         </View> : null}
         {isLandingFlow ? (
-          <LandingFlowHeader onBack={handleClose} onSkip={handleLandingSkip} />
+          <LandingFlowHeader onBack={handleClose} onSkip={handleLandingSkip} progressStep={2} />
         ) : null}
         <StepHeader meta={currentStepMeta} />
         <View className='reffo-create__body'>
@@ -1093,9 +965,12 @@ export default function PageView({
         </View>
       </View>
       {visibleGenerationState ? (
-        <GenerationOverlay
+        <GenerationStageH5
           state={visibleGenerationState}
           onCancelGeneration={handleGenerationCancelClick}
+          isLandingFlow={isLandingFlow}
+          onLandingBack={handleClose}
+          onLandingSkip={handleLandingSkip}
         />
       ) : null}
       {isDeletePreviewActive ? (

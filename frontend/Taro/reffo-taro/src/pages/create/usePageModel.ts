@@ -1,8 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
-import Taro, {useRouter} from '@tarojs/taro'
-import * as FileSystem from 'expo-file-system'
-import * as ImagePicker from 'expo-image-picker'
-import {parseApi} from '@/services/parse'
+import {useRouter} from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
 import {useHistoryStore, useJDStore, useLandingFlowStore, useResumeStore, useSourceResumeStore} from '@/store'
@@ -17,12 +14,11 @@ import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
 import {storage} from '@/utils/storage'
-import {saveLatestResultSession} from '@/utils/result-session'
-import {toHistoryCardItem} from '../index/model/homeCardData'
 import {
-  canUseBrowserFilePicker,
-  pickBrowserFile,
-} from '@/utils/web-file'
+  saveLatestResultSession,
+  type LatestResultSession,
+} from '@/utils/result-session'
+import {toHistoryCardItem} from '../index/model/homeCardData'
 import {
   formatResumeFileSize,
   isResumeFileUploadCancelled,
@@ -38,12 +34,17 @@ import {
   type JobDescriptionStepState,
   type ResumeSummaryStepState,
   type ResumeUploadStepState,
-  type UploadedJobDescriptionFile,
   type UploadedResumeFile,
 } from './types'
 import {
   buildSourceResumePayload,
 } from './utils/resumeMarkdown'
+import {
+  getFileExtension,
+  getJobDescriptionFileValidationMessage,
+  parseJobDescriptionAttachment,
+  pickJobDescriptionFile,
+} from './utils/jobDescriptionAttachment'
 import {
   extractJobMetadataFromOcrText,
   normalizeCompanyNameCandidate,
@@ -83,15 +84,10 @@ export interface CreatePageViewModel {
   handleLandingSkip: () => Promise<void>
 }
 
-const JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES = [
-  '.png',
-  '.jpg',
-  '.jpeg',
-] as const
-const JOB_DESCRIPTION_FILE_MAX_SIZE_MB = 10
-const SUPPORTED_JOB_DESCRIPTION_FILE_TYPES = new Set<string>(
-  JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
-)
+interface CreatePageModelOptions {
+  autoGenerateLanding?: boolean
+  onLandingGenerationComplete?: (session: LatestResultSession) => Promise<void> | void
+}
 
 const HISTORY_EDIT_STEP_META: CreateStepMeta = {
   id: 'jobDescription',
@@ -190,89 +186,10 @@ function buildJobDescriptionStateFromHistory(history: ResumeHistory): JobDescrip
   }
 }
 
-function getFileExtension(fileName: string) {
-  const dotIndex = fileName.lastIndexOf('.')
-  return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : ''
-}
-
-function isSupportedJobDescriptionFile(fileName: string) {
-  return SUPPORTED_JOB_DESCRIPTION_FILE_TYPES.has(getFileExtension(fileName))
-}
-
 function wait(duration: number) {
   return new Promise<void>(resolve => {
     setTimeout(() => resolve(), duration)
   })
-}
-
-interface PickedTempFile {
-  name: string
-  path: string
-  size: number
-  file?: File
-}
-
-async function pickJobDescriptionFile(): Promise<PickedTempFile | null> {
-  const canPickBrowserFile = canUseBrowserFilePicker()
-  const browserFile = canPickBrowserFile
-    ? await pickBrowserFile({
-        accept: JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
-      })
-    : null
-
-  if (browserFile) {
-    return browserFile
-  }
-
-  if (canPickBrowserFile) {
-    return null
-  }
-
-  const chooseMessageFile = (Taro as any).chooseMessageFile
-
-  if (typeof chooseMessageFile === 'function') {
-    const response = await chooseMessageFile({
-      count: 1,
-      type: 'file',
-      extension: JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES.map(type =>
-        type.replace('.', ''),
-      ),
-    })
-
-    return response.tempFiles?.[0] ?? null
-  }
-
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-
-  if (!permission.granted) {
-    throw new Error('未获得相册访问权限')
-  }
-
-  const imageResult = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsMultipleSelection: false,
-    quality: 1,
-  })
-
-  if (imageResult.canceled) {
-    return null
-  }
-
-  const asset = imageResult.assets?.[0]
-
-  if (!asset?.uri) {
-    return null
-  }
-
-  const fileInfo = await FileSystem.getInfoAsync(asset.uri)
-
-  return {
-    name: asset.fileName || asset.uri.split('/').pop() || 'job-description.png',
-    path: asset.uri,
-    size: fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number'
-      ? fileInfo.size
-      : asset.fileSize || 0,
-  }
 }
 
 function normalizeRouteStep(value?: string): CreateStepId | null {
@@ -430,11 +347,15 @@ function buildGenerationState(args: {
   }
 }
 
-export function usePageModel(): CreatePageViewModel {
+export function usePageModel(options: CreatePageModelOptions = {}): CreatePageViewModel {
   const router = useRouter()
   const initialLandingFlow = useLandingFlowStore.getState()
   const isLandingFlow = useLandingFlowStore(state => state.source === 'landing')
+  const shouldAutoGenerateLanding = isLandingFlow && (
+    options.autoGenerateLanding === true || router.params?.autoGenerate === '1'
+  )
   const landingJob = useLandingFlowStore(state => state.selectedJob)
+  const landingResume = useLandingFlowStore(state => state.selectedResume)
   const requestedStepRef = useRef(normalizeRouteStep(router.params?.step))
   const editHistoryId = typeof router.params?.historyId === 'string'
     ? router.params.historyId
@@ -444,6 +365,7 @@ export function usePageModel(): CreatePageViewModel {
   const jobAttachmentRequestRef = useRef(0)
   const jobAttachmentProgressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const generationRequestRef = useRef(0)
+  const autoGenerateStartedRef = useRef(false)
   const initialSourceResume = useSourceResumeStore.getState().latestSourceResume
   const [currentStep, setCurrentStep] = useState<CreateStepId>(() =>
     isHistoryEditMode
@@ -626,7 +548,7 @@ export function usePageModel(): CreatePageViewModel {
   }, [hasResolvedLatestSourceResume, latestSourceResume])
 
   useEffect(() => {
-    if (!latestSourceResume?.resumeMarkdown) {
+    if (isLandingFlow || !latestSourceResume?.resumeMarkdown) {
       return
     }
 
@@ -642,7 +564,7 @@ export function usePageModel(): CreatePageViewModel {
         errorMessage: null,
       }
     })
-  }, [latestSourceResume?.id, latestSourceResume?.resumeMarkdown])
+  }, [isLandingFlow, latestSourceResume?.id, latestSourceResume?.resumeMarkdown])
 
   useEffect(() => {
     if (
@@ -969,29 +891,18 @@ export function usePageModel(): CreatePageViewModel {
         return
       }
 
-      if (!isSupportedJobDescriptionFile(selectedFile.name)) {
-        setJobDescriptionState(previous => ({
-          ...previous,
-          inputMode: 'upload',
-          attachmentStatus: 'error',
-          attachmentProgress: 0,
-          attachment: null,
-          attachmentErrorMessage: '仅支持 PNG、JPG、JPEG 图片',
-        }))
-        feedback.error('仅支持 PNG、JPG、JPEG 图片')
-        return
-      }
+      const validationMessage = getJobDescriptionFileValidationMessage(selectedFile)
 
-      if (selectedFile.size > JOB_DESCRIPTION_FILE_MAX_SIZE_MB * 1024 * 1024) {
+      if (validationMessage) {
         setJobDescriptionState(previous => ({
           ...previous,
           inputMode: 'upload',
           attachmentStatus: 'error',
           attachmentProgress: 0,
           attachment: null,
-          attachmentErrorMessage: `文件不能超过 ${JOB_DESCRIPTION_FILE_MAX_SIZE_MB}MB`,
+          attachmentErrorMessage: validationMessage,
         }))
-        feedback.error(`文件不能超过 ${JOB_DESCRIPTION_FILE_MAX_SIZE_MB}MB`)
+        feedback.error(validationMessage)
         return
       }
 
@@ -1018,56 +929,24 @@ export function usePageModel(): CreatePageViewModel {
         attachmentProgress: Math.max(previous.attachmentProgress, 28),
       }))
 
-      const attachment: UploadedJobDescriptionFile = {
-        name: selectedFile.name,
-        path: selectedFile.path,
-        size: selectedFile.size,
-        extension: getFileExtension(selectedFile.name),
-        sizeLabel: formatResumeFileSize(selectedFile.size),
-        previewPath: selectedFile.path,
-      }
-
-      const parsedDocument = await parseApi.parseJobDescriptionImage(selectedFile)
+      const parsedAttachment = await parseJobDescriptionAttachment(selectedFile)
       if (jobAttachmentRequestRef.current !== requestId) {
         return
       }
       stopJobAttachmentProgress()
 
-      const parsedJob = parsedDocument.structured
-      const ocrText = parsedJob?.jdText?.trim() || parsedDocument.rawText.trim()
-
-      if (!ocrText) {
-        throw new Error('JD 图片解析结果为空，请重新上传或切换到文字输入')
-      }
-
-      const extractedJobMetadata = extractJobMetadataFromOcrText(ocrText)
-      const parsedCompanyName = normalizeCompanyNameCandidate(parsedJob?.companyName || '')
-      const parsedPositionName = resolvePositionNameCandidate(
-        parsedJob?.positionName || '',
-        extractedJobMetadata.positionName,
-      )
-      const parsedBaseLocation = resolveBaseLocationCandidate(
-        [extractedJobMetadata.baseLocation],
-        [
-          parsedCompanyName,
-          extractedJobMetadata.companyName,
-          parsedPositionName,
-        ],
-      )
-
       setJobDescriptionState(previous => ({
         ...previous,
         attachmentStatus: 'success',
         attachmentProgress: 100,
-        attachment,
+        attachment: parsedAttachment.attachment,
         inputMode: 'manual',
-        content: ocrText,
+        content: parsedAttachment.content,
         companyName:
           previous.companyName.trim() ||
-          parsedCompanyName ||
-          extractedJobMetadata.companyName,
-        positionName: previous.positionName.trim() || parsedPositionName,
-        baseLocation: previous.baseLocation.trim() || parsedBaseLocation,
+          parsedAttachment.companyName,
+        positionName: previous.positionName.trim() || parsedAttachment.positionName,
+        baseLocation: previous.baseLocation.trim() || parsedAttachment.baseLocation,
         attachmentErrorMessage: null,
       }))
 
@@ -1199,10 +1078,12 @@ export function usePageModel(): CreatePageViewModel {
     generationRequestRef.current = requestId
 
     try {
-      const resumeMarkdown =
-        latestSourceResume?.resumeMarkdown.trim() ||
-        useResumeStore.getState().resumeContent.trim() ||
-        resumeUploadState.markdown.trim()
+      // Landing must analyze the resume explicitly selected in the onboarding deck.
+      const resumeMarkdown = isLandingFlow
+        ? landingResume?.markdown.trim() || ''
+        : latestSourceResume?.resumeMarkdown.trim() ||
+          useResumeStore.getState().resumeContent.trim() ||
+          resumeUploadState.markdown.trim()
       const jdText = buildJobDescriptionPayload(jobDescriptionState)
 
       if (!resumeMarkdown) {
@@ -1211,8 +1092,12 @@ export function usePageModel(): CreatePageViewModel {
 
       setGenerationState(
         buildGenerationState({
-          latestSourceResumeTitle: latestSourceResume?.title,
-          fallbackResumeFileName: latestSourceResume?.originalFileName,
+          latestSourceResumeTitle: isLandingFlow
+            ? landingResume?.title
+            : latestSourceResume?.title,
+          fallbackResumeFileName: isLandingFlow
+            ? landingResume?.fileName
+            : latestSourceResume?.originalFileName,
           jobDescriptionState,
         }),
       )
@@ -1265,7 +1150,7 @@ export function usePageModel(): CreatePageViewModel {
       useResumeStore.getState().setAnalysis(processResult.analysis)
       useJDStore.getState().setMatching(processResult.matching)
 
-      await saveLatestResultSession({
+      const initialResultSession: LatestResultSession = {
         result: processResult,
         context: {
           company: resolvedCompanyName,
@@ -1280,7 +1165,9 @@ export function usePageModel(): CreatePageViewModel {
           optimized: 'pending',
           interview: 'pending',
         },
-      })
+      }
+
+      await saveLatestResultSession(initialResultSession)
 
       if (generationRequestRef.current !== requestId) {
         return false
@@ -1290,7 +1177,15 @@ export function usePageModel(): CreatePageViewModel {
         await storage.setItem('reffo.landing.seen', '1')
         useLandingFlowStore.getState().clear()
       }
-      await navigation.navigateTo('/pages/result/index')
+
+      if (isLandingFlow && options.onLandingGenerationComplete) {
+        await options.onLandingGenerationComplete(initialResultSession)
+        return true
+      }
+
+      await navigation.navigateTo(
+        isLandingFlow ? '/pages/landing-result/index' : '/pages/result/index',
+      )
       return true
     } catch (error) {
       if (generationRequestRef.current !== requestId) {
@@ -1306,6 +1201,40 @@ export function usePageModel(): CreatePageViewModel {
       }
     }
   }
+
+  useEffect(() => {
+    const resumeMarkdown = isLandingFlow
+      ? landingResume?.markdown.trim() || ''
+      : latestSourceResume?.resumeMarkdown.trim() ||
+        useResumeStore.getState().resumeContent.trim() ||
+        resumeUploadState.markdown.trim()
+
+    if (
+      !shouldAutoGenerateLanding ||
+      autoGenerateStartedRef.current ||
+      currentStep !== 'jobDescription' ||
+      (!isLandingFlow && !hasResolvedLatestSourceResume) ||
+      !resumeMarkdown ||
+      !jobDescriptionState.content.trim()
+    ) {
+      return
+    }
+
+    autoGenerateStartedRef.current = true
+    void handlePrimaryAction()
+  }, [
+    currentStep,
+    handlePrimaryAction,
+    hasResolvedLatestSourceResume,
+    isLandingFlow,
+    jobDescriptionState.content,
+    landingResume?.id,
+    landingResume?.markdown,
+    latestSourceResume?.id,
+    latestSourceResume?.resumeMarkdown,
+    resumeUploadState.markdown,
+    shouldAutoGenerateLanding,
+  ])
 
   const handleCancelGeneration = () => {
     if (!generationState) {

@@ -65,6 +65,34 @@
   transform: scale(1.006);
 }
 
+.reffo-landing-onboarding--analysis-active > :not(.reffo-landing-analysis):not(.reffo-landing-onboarding__queue-top):not(.reffo-landing-onboarding__detail-chrome) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.reffo-landing-onboarding--analysis-active .reffo-create-job {
+  view-transition-name: none !important;
+}
+
+.reffo-landing-onboarding--analysis-active > .reffo-landing-onboarding__queue-top,
+.reffo-landing-onboarding--analysis-active > .reffo-landing-onboarding__detail-chrome {
+  z-index: 240 !important;
+  opacity: 1 !important;
+}
+
+.reffo-landing-onboarding.reffo-landing-onboarding--result-active .reffo-landing-onboarding__pager-dot--active {
+  background: #18c66b;
+  box-shadow: 0 5PX 12PX rgba(24, 198, 107, 0.2);
+}
+
+html[data-reffo-view-transition='landing-analysis']::view-transition-old(reffo-create-card) {
+  animation: reffo-landing-analysis-source-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-create-card) {
+  animation: reffo-landing-analysis-target-in 420ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .reffo-landing-onboarding--step-queue {
   touch-action: none;
 }
@@ -274,6 +302,7 @@
   height: 42px;
   pointer-events: none;
   opacity: 0;
+  view-transition-name: reffo-landing-flow-progress;
 }
 
 .reffo-landing-onboarding--step-queue .reffo-landing-onboarding__queue-top {
@@ -1335,6 +1364,43 @@
   cursor: pointer;
 }
 
+.reffo-landing-onboarding__detail-return--completion {
+  position: relative;
+  overflow: hidden;
+  color: #9ca2a4;
+  background: #e6e9e8;
+  box-shadow: 0 5PX 10PX rgba(76, 88, 84, 0.12);
+  transition:
+    color 220ms ease,
+    box-shadow 420ms ease;
+}
+
+.reffo-landing-onboarding__detail-return--completion::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  background: #18c66b;
+  transform: scaleX(0);
+  transform-origin: 50% 50%;
+  transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-landing-onboarding__detail-return--completion > * {
+  position: relative;
+  z-index: 1;
+}
+
+.reffo-landing-onboarding__detail-return--completion-ready {
+  color: #ffffff;
+  box-shadow: 0 7PX 14PX rgba(13, 156, 87, 0.2);
+}
+
+.reffo-landing-onboarding__detail-return--completion-ready::before {
+  transform: scaleX(1);
+}
+
 .reffo-landing-onboarding__detail-card-arrow {
   position: absolute;
   z-index: 5;
@@ -1390,6 +1456,27 @@
   opacity: 0;
   pointer-events: auto;
   animation: reffo-landing-onboarding-detail-chrome-in 380ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both;
+  view-transition-name: reffo-landing-flow-action;
+}
+
+html[data-reffo-view-transition='forward']::view-transition-group(reffo-landing-flow-progress),
+html[data-reffo-view-transition='forward']::view-transition-group(reffo-landing-flow-action) {
+  z-index: 1000;
+  animation: none;
+}
+
+html[data-reffo-view-transition='forward']::view-transition-old(reffo-landing-flow-progress),
+html[data-reffo-view-transition='forward']::view-transition-old(reffo-landing-flow-action) {
+  opacity: 0;
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-flow-progress),
+html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-flow-action) {
+  opacity: 1;
+  animation: none;
+  mix-blend-mode: normal;
 }
 
 .reffo-landing-onboarding--queue-detail-leaving .reffo-landing-onboarding__detail-chrome {
@@ -1462,13 +1549,34 @@
 .reffo-landing-onboarding__target-file {
   --job-folder-scale: 0.44;
   position: absolute;
+  overflow: visible;
+  opacity: 0;
+  transform-origin: 50% 100%;
+}
+
+.reffo-landing-onboarding__target-file-front {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  box-sizing: border-box;
   overflow: hidden;
+  padding: 25px 22px 22px;
   border: 1px solid rgba(196, 204, 215, 0.34);
   border-radius: 11px;
   background: #ffffff;
   box-shadow: 0 7PX 14PX rgba(53, 72, 101, 0.12);
+  transition: box-shadow 360ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-landing-onboarding__target-file-back {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: min(calc(100vw - 60px), 350px);
   opacity: 0;
-  transform-origin: 50% 100%;
+  pointer-events: none;
+  transform: translate3d(-50%, -50%, 0) rotateY(180deg);
 }
 
 .reffo-landing-onboarding__target-file--custom {
@@ -1629,72 +1737,17 @@
 
 .reffo-landing-create-page {
   position: absolute;
-  z-index: 60;
+  z-index: 110;
   inset: 0;
   box-sizing: border-box;
-  perspective: 1100PX;
   pointer-events: none;
 }
 
-.reffo-landing-create-flip {
-  --job-flip-start-x: 0px;
-  --job-flip-start-y: 0px;
-  --job-flip-start-scale-x: 0.71;
-  --job-flip-start-scale-y: 0.86;
-  position: absolute;
-  left: 50%;
-  top: calc(50% - 10px);
-  width: min(calc(100% - 60px), 350px);
-  transform-style: preserve-3d;
-  transform-origin: 50% 50%;
-  pointer-events: auto;
-  will-change: transform;
-  animation: reffo-landing-job-card-flip 1180ms linear both;
-}
-
-.reffo-landing-create-flip__front,
-.reffo-landing-create-flip__back {
-  width: 100%;
-  will-change: opacity;
-}
-
-.reffo-landing-create-flip__front {
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-.reffo-landing-create-flip__front {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  min-height: 100%;
-  padding: 25px 22px 22px;
-  border: 1px solid rgba(196, 204, 215, 0.34);
-  border-radius: 11px;
-  background: #ffffff;
-  box-shadow: 0 24PX 46PX rgba(38, 61, 94, 0.24);
-  box-sizing: border-box;
-  overflow: hidden;
-  animation: reffo-landing-job-front-face 1180ms linear both;
-}
-
-.reffo-landing-create-flip__front .reffo-landing-onboarding__job-detail {
-  opacity: 1;
-}
-
-.reffo-landing-create-flip__back {
-  position: relative;
-  z-index: 1;
-  opacity: 0.001;
-  transform: translateZ(0) rotateY(180deg);
-  animation: reffo-landing-job-back-face 1180ms linear both;
-}
-
-.reffo-landing-create-page .reffo-create-step--job {
+.reffo-landing-onboarding__target-file-back .reffo-create-step--job {
   height: auto;
 }
 
-.reffo-landing-create-page .reffo-create-job {
+.reffo-landing-onboarding__target-file-back .reffo-create-job {
   height: auto;
   max-height: none;
   margin: 0;
@@ -1722,9 +1775,9 @@
 }
 
 .reffo-landing-onboarding--creating-job .reffo-landing-onboarding__detail-folder {
+  z-index: 60;
   opacity: 1;
   transform: none;
-  animation: reffo-landing-job-stage-out 1180ms linear both;
   pointer-events: none;
 }
 
@@ -1752,8 +1805,15 @@
   pointer-events: none;
 }
 
-.reffo-landing-onboarding--creating-job .reffo-landing-onboarding__target-file--selected {
-  opacity: 0;
+.reffo-landing-onboarding--creating-job .reffo-landing-onboarding__target-file--selected .reffo-landing-onboarding__target-file-front {
+  box-shadow: 0 24PX 46PX rgba(38, 61, 94, 0.24);
+  pointer-events: none;
+  animation: reffo-landing-job-front-face 1180ms linear both;
+}
+
+.reffo-landing-onboarding--creating-job .reffo-landing-onboarding__target-file--selected .reffo-landing-onboarding__target-file-back {
+  pointer-events: auto;
+  animation: reffo-landing-job-back-face 1180ms linear both;
 }
 
 .reffo-landing-onboarding--creating-job .reffo-landing-onboarding__target-file:not(.reffo-landing-onboarding__target-file--selected) {
@@ -1770,28 +1830,53 @@
   0% {
     opacity: 1;
     transform:
-      translate3d(calc(-50% + var(--job-flip-start-x)), calc(-50% + var(--job-flip-start-y)), 0)
+      translate3d(var(--job-card-x), var(--job-card-y), 0)
+      rotate(var(--job-card-rotate))
       rotateY(0deg)
-      scale(var(--job-flip-start-scale-x), var(--job-flip-start-scale-y));
+      scale(var(--job-card-scale));
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   25.4% {
     opacity: 1;
-    transform: translate3d(-50%, -50%, 48PX) rotateY(0deg) scale(1.035);
-    animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+    transform:
+      translate3d(
+        calc(var(--job-card-x) + var(--job-flip-end-x)),
+        calc(var(--job-card-y) + var(--job-flip-end-y)),
+        48PX
+      )
+      rotate(0deg)
+      rotateY(0deg)
+      scale(var(--job-flip-grow-x), var(--job-flip-grow-y));
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
   }
 
   50.8% {
     opacity: 1;
-    transform: translate3d(-50%, -50%, 110PX) rotateY(90deg) scale(1.015);
-    animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+    transform:
+      translate3d(
+        calc(var(--job-card-x) + var(--job-flip-end-x)),
+        calc(var(--job-card-y) + var(--job-flip-end-y)),
+        110PX
+      )
+      rotate(0deg)
+      rotateY(90deg)
+      scale(1.015);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
   }
 
   76.3%,
   100% {
     opacity: 1;
-    transform: translate3d(-50%, -50%, 0) rotateY(180deg) scale(1);
+    transform:
+      translate3d(
+        calc(var(--job-card-x) + var(--job-flip-end-x)),
+        calc(var(--job-card-y) + var(--job-flip-end-y)),
+        0
+      )
+      rotate(0deg)
+      rotateY(180deg)
+      scale(1);
   }
 }
 
@@ -1803,17 +1888,12 @@
 
 @keyframes reffo-landing-job-front-face {
   0%, 50.7% { opacity: 1; }
-  50.8%, 100% { opacity: 0.001; }
+  50.8%, 100% { opacity: 0; }
 }
 
 @keyframes reffo-landing-job-back-face {
-  0%, 50.7% { opacity: 0.001; }
+  0%, 50.7% { opacity: 0; }
   50.8%, 100% { opacity: 1; }
-}
-
-@keyframes reffo-landing-job-stage-out {
-  0%, 25.3% { opacity: 1; }
-  25.4%, 100% { opacity: 0; }
 }
 
 @keyframes reffo-landing-job-side-card-out {
@@ -1836,25 +1916,42 @@
   }
 }
 
-.reffo-landing-onboarding--returning-from-job .reffo-landing-create-flip {
+.reffo-landing-onboarding--returning-from-job .reffo-landing-onboarding__target-file--selected {
   animation-name: reffo-landing-job-card-unflip;
 }
 
-.reffo-landing-onboarding--returning-from-job .reffo-landing-create-flip__front {
+.reffo-landing-onboarding--creating-job:not(.reffo-landing-onboarding--returning-from-job) .reffo-landing-onboarding__folder-copy {
+  animation: reffo-landing-job-folder-copy-out 260ms ease both;
+}
+
+.reffo-landing-onboarding--returning-from-job .reffo-landing-onboarding__folder-copy {
+  animation: reffo-landing-job-folder-copy-return 360ms cubic-bezier(0.16, 1, 0.3, 1) 820ms both;
+}
+
+.reffo-landing-onboarding--creating-job .reffo-landing-onboarding__detail-chrome {
+  z-index: 120;
+}
+
+.reffo-landing-onboarding--creating-job .reffo-landing-onboarding__queue-top {
+  pointer-events: none;
+}
+
+.reffo-landing-onboarding--creating-job .reffo-landing-onboarding__skip--queue {
+  pointer-events: auto;
+}
+
+.reffo-landing-onboarding--returning-from-job .reffo-landing-onboarding__target-file--selected .reffo-landing-onboarding__target-file-front {
   animation-name: reffo-landing-job-front-face-return;
 }
 
-.reffo-landing-onboarding--returning-from-job .reffo-landing-create-flip__back {
+.reffo-landing-onboarding--returning-from-job .reffo-landing-onboarding__target-file--selected .reffo-landing-onboarding__target-file-back {
+  pointer-events: none;
   animation-name: reffo-landing-job-back-face-return;
 }
 
 .reffo-landing-onboarding--returning-from-job .reffo-create__primary {
   pointer-events: none;
   animation: reffo-landing-job-action-out 280ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-.reffo-landing-onboarding--returning-from-job .reffo-landing-onboarding__detail-folder {
-  animation-name: reffo-landing-job-stage-return;
 }
 
 .reffo-landing-onboarding--returning-from-job .reffo-landing-onboarding__target-file:not(.reffo-landing-onboarding__target-file--selected) {
@@ -1865,43 +1962,88 @@
   0%,
   23.7% {
     opacity: 1;
-    transform: translate3d(-50%, -50%, 0) rotateY(180deg) scale(1);
+    transform:
+      translate3d(
+        calc(var(--job-card-x) + var(--job-flip-end-x)),
+        calc(var(--job-card-y) + var(--job-flip-end-y)),
+        0
+      )
+      rotate(0deg)
+      rotateY(180deg)
+      scale(1);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
   }
 
   49.2% {
     opacity: 1;
-    transform: translate3d(-50%, -50%, 110PX) rotateY(90deg) scale(1.015);
-    animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+    transform:
+      translate3d(
+        calc(var(--job-card-x) + var(--job-flip-end-x)),
+        calc(var(--job-card-y) + var(--job-flip-end-y)),
+        110PX
+      )
+      rotate(0deg)
+      rotateY(90deg)
+      scale(1.015);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
   }
 
   74.6% {
     opacity: 1;
-    transform: translate3d(-50%, -50%, 48PX) rotateY(0deg) scale(1.035);
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transform:
+      translate3d(
+        calc(var(--job-card-x) + var(--job-flip-end-x)),
+        calc(var(--job-card-y) + var(--job-flip-end-y)),
+        48PX
+      )
+      rotate(0deg)
+      rotateY(0deg)
+      scale(var(--job-flip-grow-x), var(--job-flip-grow-y));
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
   }
 
   100% {
     opacity: 1;
     transform:
-      translate3d(calc(-50% + var(--job-flip-start-x)), calc(-50% + var(--job-flip-start-y)), 0)
+      translate3d(var(--job-card-x), var(--job-card-y), 0)
+      rotate(var(--job-card-rotate))
       rotateY(0deg)
-      scale(var(--job-flip-start-scale-x), var(--job-flip-start-scale-y));
+      scale(var(--job-card-scale));
   }
 }
 
 @keyframes reffo-landing-job-front-face-return {
-  0%, 49.1% { opacity: 0.001; }
+  0%, 49.1% { opacity: 0; }
   49.2%, 100% { opacity: 1; }
 }
 
 @keyframes reffo-landing-job-back-face-return {
   0%, 49.1% { opacity: 1; }
-  49.2%, 100% { opacity: 0.001; }
+  49.2%, 100% { opacity: 0; }
 }
 
-@keyframes reffo-landing-job-stage-return {
-  0%, 74.5% { opacity: 0; }
-  74.6%, 100% { opacity: 1; }
+@keyframes reffo-landing-job-folder-copy-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, -18px, 0);
+  }
+}
+
+@keyframes reffo-landing-job-folder-copy-return {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -18px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 @keyframes reffo-landing-job-side-card-return {
@@ -2033,7 +2175,6 @@
   top: calc(max(236px, calc(env(safe-area-inset-top) + 212px)) - min(44.2dvh, 377px));
   width: 248px;
   height: 390px;
-  padding: 25px 22px 22px;
   transform-origin: 50% 100%;
   will-change: transform, opacity;
 }
@@ -2198,20 +2339,45 @@
     scale(var(--job-card-scale));
   transition:
     transform 520ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 260ms ease,
-    box-shadow 260ms ease;
+    opacity 260ms ease;
 }
 
 .reffo-landing-onboarding--job-dragging .reffo-landing-onboarding__target-file {
   transition: none;
 }
 
-.reffo-landing-onboarding--job-selecting .reffo-landing-onboarding__target-file--selected {
+.reffo-landing-onboarding--job-selecting:not(.reffo-landing-onboarding--creating-job) .reffo-landing-onboarding__target-file--selected {
   z-index: 40 !important;
+  animation: reffo-landing-onboarding-job-selected-pulse 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-landing-onboarding--job-selecting:not(.reffo-landing-onboarding--creating-job) .reffo-landing-onboarding__target-file--selected .reffo-landing-onboarding__target-file-front {
   box-shadow:
     0 24PX 46PX rgba(38, 61, 94, 0.24),
     0 0 0 1px color-mix(in srgb, var(--job-accent) 30%, transparent);
-  animation: reffo-landing-onboarding-job-selected-pulse 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-landing-onboarding--creating-job .reffo-landing-onboarding__detail-folder {
+  z-index: 60;
+}
+
+.reffo-landing-onboarding--creating-job .reffo-landing-onboarding__target-file--selected {
+  --job-flip-end-x: 0px;
+  --job-flip-end-y: 0px;
+  --job-flip-grow-x: 1.34;
+  --job-flip-grow-y: 1.26;
+  z-index: 90 !important;
+  opacity: 1;
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+  pointer-events: auto;
+  transition: none;
+  will-change: transform;
+  animation: reffo-landing-job-card-flip 1180ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.reffo-landing-onboarding--returning-from-job .reffo-landing-onboarding__target-file--selected {
+  animation-name: reffo-landing-job-card-unflip;
 }
 
 .reffo-landing-onboarding--queue-folder-closing .reffo-landing-onboarding__target-file {
@@ -3909,6 +4075,7 @@
   .reffo-landing-onboarding__folder-copy,
   .reffo-landing-onboarding__target-folder-back,
   .reffo-landing-onboarding__target-file,
+  .reffo-landing-onboarding__target-file-front,
   .reffo-landing-onboarding__target-folder-copy,
   .reffo-landing-onboarding__selected-shadow,
   .reffo-landing-onboarding__selected-card-guide,
@@ -3916,6 +4083,11 @@
   .reffo-landing-onboarding__continue-text {
     transition: none;
     animation: none;
+  }
+
+  .reffo-landing-onboarding__detail-return--completion,
+  .reffo-landing-onboarding__detail-return--completion::before {
+    transition: none;
   }
 
   .reffo-landing-onboarding--queue-folder-step .reffo-landing-onboarding__detail-folder {

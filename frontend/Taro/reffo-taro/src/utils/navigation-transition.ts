@@ -108,6 +108,11 @@ function injectNavigationTransitionStyle() {
       transition: none !important;
     }
 
+    html[data-reffo-view-transition] .taro_router .taro_page:not(.taro_page_show) *,
+    html[data-reffo-view-transition] .taro_router .taro_page.taro_page_shade * {
+      view-transition-name: none !important;
+    }
+
     html[data-reffo-skip-route-transition] .taro_router .taro_page {
       transition: none !important;
     }

@@ -82,6 +82,11 @@ body:has(.reffo-result) *::-webkit-scrollbar {
   mask-image: none;
 }
 
+html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
+  view-transition-name: reffo-create-card;
+  contain: paint;
+}
+
 .reffo-result--from-card {
   --reffo-result-progress: 100%;
   --reffo-result-blend: 0%;

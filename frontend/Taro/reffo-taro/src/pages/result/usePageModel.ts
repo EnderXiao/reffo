@@ -132,6 +132,7 @@ export interface ResultPageViewModel {
   progressPercent: number
   generationError: string | null
   enteredFromCard: boolean
+  enteredFromLanding: boolean
   returnCard: HomeCardItem | null
   handleSave: () => Promise<string | null>
   handleComplete: () => Promise<void>
@@ -143,20 +144,43 @@ export interface ResultPageViewModel {
   canEditHistory: boolean
 }
 
-export function usePageModel(): ResultPageViewModel {
+interface ResultPageModelOptions {
+  enteredFromLanding?: boolean
+  initialSession?: LatestResultSession
+}
+
+export function usePageModel(options: ResultPageModelOptions = {}): ResultPageViewModel {
   const router = useRouter()
   const {addHistory} = useHistoryStore()
   const enteredFromCard = router.params.fromCard === '1'
-  const [result, setResult] = useState<ProcessResult | null>(null)
+  const enteredFromLanding = options.enteredFromLanding === true
+  const initialSessionRef = useRef<LatestResultSession | null>(options.initialSession
+    ? {
+        ...options.initialSession,
+        result: {
+          ...options.initialSession.result,
+          interview: normalizeInterviewResult(options.initialSession.result),
+        },
+        progress: {
+          ...getDefaultProgress(options.initialSession.result),
+          ...options.initialSession.progress,
+          interview: options.initialSession.progress?.interview
+            ?? getDefaultProgress(options.initialSession.result).interview,
+        },
+      }
+    : null)
+  const [result, setResult] = useState<ProcessResult | null>(
+    () => initialSessionRef.current?.result ?? null,
+  )
   const [resultContext, setResultContext] =
-    useState<LatestResultSessionContext | null>(null)
-  const [loading, setLoading] = useState(true)
+    useState<LatestResultSessionContext | null>(() => initialSessionRef.current?.context ?? null)
+  const [loading, setLoading] = useState(() => !initialSessionRef.current)
   const [saved, setSaved] = useState(false)
   const [savedHistoryId, setSavedHistoryId] = useState<string | null>(
     typeof router.params.id === 'string' ? router.params.id : null,
   )
   const [progress, setProgress] = useState<LatestResultSessionProgress>(
-    getDefaultProgress(null),
+    () => initialSessionRef.current?.progress ?? getDefaultProgress(null),
   )
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [returnCard, setReturnCard] = useState<HomeCardItem | null>(null)
@@ -164,6 +188,14 @@ export function usePageModel(): ResultPageViewModel {
   const isContinuingRef = useRef(false)
 
   useEffect(() => {
+    const initialSession = initialSessionRef.current
+
+    if (initialSession) {
+      initialSessionRef.current = null
+      void continueLatestSession(initialSession)
+      return
+    }
+
     const resultId = router.params.id
 
     if (resultId) {
@@ -520,6 +552,7 @@ export function usePageModel(): ResultPageViewModel {
     progressPercent: getProgressPercent(progress),
     generationError,
     enteredFromCard,
+    enteredFromLanding,
     returnCard,
     canEditHistory: Boolean(savedHistoryId),
     handleSave,
