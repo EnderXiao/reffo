@@ -8,6 +8,7 @@ export interface ResultSessionContext {
   location?: string;
   resumeContent: string;
   jdContent: string;
+  presetJdId?: string;
 }
 
 export type ResultStepStatus = 'pending' | 'generating' | 'done' | 'failed';

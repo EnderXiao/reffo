@@ -1,5 +1,5 @@
 import { Elysia, t } from 'elysia'
-import { resolveRequestUser } from '@/auth/request-context'
+import { RequestAuthError, resolveRequestUser, type RequestUserContext } from '@/auth/request-context'
 import { env, getOcrEnvStatus } from '@/config/env'
 import { createSupabaseRestClient } from '@/repositories/supabase/client'
 import { OcrParseWorkflow } from '@/workflows/ocr-parse-workflow'
@@ -18,6 +18,7 @@ interface ParseBody {
   bucket?: string
   storage_path?: string
   size_bytes?: number
+  landing?: boolean
 }
 
 function getExtension(fileName: string) {
@@ -81,11 +82,9 @@ async function downloadStorageObject(input: {
 
 async function getParseBuffer(
   body: ParseBody,
-  headers: Record<string, string | undefined>,
+  userContext: RequestUserContext,
 ) {
   if (body.storage_path) {
-    const userContext = await resolveRequestUser(headers)
-
     if (!userContext.accessToken) {
       throw new OcrProviderError('AUTH_REQUIRED', '请先登录后再上传文件', { status: 401 })
     }
@@ -130,7 +129,26 @@ async function parseDocument(
   purpose: OcrPurpose,
   fileType: OcrFileType,
 ) {
-  const buffer = await getParseBuffer(body, headers)
+  let userContext: RequestUserContext
+
+  try {
+    userContext = await resolveRequestUser(headers)
+  } catch (error) {
+    const allowsGuestInlineResume = purpose === 'resume'
+      && body.landing === true
+      && Boolean(body.content_base64)
+      && !body.storage_path
+
+    if (!(error instanceof RequestAuthError) || !allowsGuestInlineResume) {
+      throw error
+    }
+
+    userContext = {
+      userId: 'landing-guest',
+      useServiceRole: false,
+    }
+  }
+  const buffer = await getParseBuffer(body, userContext)
   const validationError = validateFile({
     fileName: body.file_name,
     mimeType: body.mime_type,
@@ -154,6 +172,19 @@ async function parseDocument(
 }
 
 function toErrorResponse(error: unknown) {
+  if (error instanceof RequestAuthError) {
+    return {
+      status: error.status,
+      response: {
+        success: false,
+        error: {
+          code: error.code,
+          message: error.message,
+        },
+      } satisfies ApiResponse<never>,
+    }
+  }
+
   if (error instanceof OcrProviderError) {
     console.error('[Parse Error]', JSON.stringify({
       code: error.code,
@@ -182,7 +213,7 @@ function toErrorResponse(error: unknown) {
       success: false,
       error: {
         code: 'OCR_PARSE_FAILED',
-        message: error instanceof Error ? error.message : '文件解析失败',
+        message: '文件解析失败，请稍后重试',
       },
     } satisfies ApiResponse<never>,
   }
@@ -226,6 +257,7 @@ export const parseRoutes = new Elysia({ prefix: '/api/v1/parse' })
         bucket: t.Optional(t.String({ minLength: 1, description: 'Supabase Storage bucket' })),
         storage_path: t.Optional(t.String({ minLength: 1, description: 'Supabase Storage object path' })),
         size_bytes: t.Optional(t.Number({ description: '文件大小' })),
+        landing: t.Optional(t.Boolean({ description: '是否为 Landing 未登录上传' })),
       }),
       detail: {
         summary: '解析简历 PDF',
@@ -257,6 +289,7 @@ export const parseRoutes = new Elysia({ prefix: '/api/v1/parse' })
         bucket: t.Optional(t.String({ minLength: 1, description: 'Supabase Storage bucket' })),
         storage_path: t.Optional(t.String({ minLength: 1, description: 'Supabase Storage object path' })),
         size_bytes: t.Optional(t.Number({ description: '文件大小' })),
+        landing: t.Optional(t.Boolean({ description: '是否为 Landing 未登录上传' })),
       }),
       detail: {
         summary: '解析 JD 图片',

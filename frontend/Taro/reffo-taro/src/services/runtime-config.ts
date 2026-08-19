@@ -25,10 +25,22 @@ export function getPublicRuntimeConfig(): Promise<PublicRuntimeConfig> {
   if (!runtimeConfigPromise) {
     runtimeConfigPromise = apiClient.get<PublicRuntimeConfig>('/system/public-config', {
       timeout: 10000,
+    }).catch(error => {
+      runtimeConfigPromise = null;
+      throw error;
     });
   }
 
   return runtimeConfigPromise;
+}
+
+export async function isLocalRuntimeEnvironment(): Promise<boolean> {
+  try {
+    return (await getPublicRuntimeConfig()).appEnv === 'local';
+  } catch {
+    // 环境未知时禁止启用本地业务数据兜底，避免把其他账号缓存当成当前用户数据。
+    return false;
+  }
 }
 
 export function resetPublicRuntimeConfigCache(): void {

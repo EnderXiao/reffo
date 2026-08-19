@@ -102,7 +102,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           success: false,
           error: {
             code: 'RESUME_HISTORY_LIST_FAILED',
-            message: error instanceof Error ? error.message : '获取生成卡片历史失败',
+            message: '获取生成卡片历史失败，请稍后重试',
           },
         } satisfies ApiResponse<never>
       }
@@ -140,7 +140,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           success: false,
           error: {
             code: 'RESUME_HISTORY_SAVE_FAILED',
-            message: error instanceof Error ? error.message : '保存生成卡片历史失败',
+            message: '保存生成卡片历史失败，请稍后重试',
           },
         }
 
@@ -151,7 +151,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
       body: resumeHistoryBodySchema,
       detail: {
         summary: '保存生成卡片历史',
-        description: '保存结果页生成的完整历史快照，并写入 SQLite 供首页重新拉取。',
+        description: '保存结果页生成的完整历史快照，供首页重新拉取。',
         tags: ['ResumeHistory'],
       },
     }
@@ -190,7 +190,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           success: false,
           error: {
             code: 'RESUME_HISTORY_GET_FAILED',
-            message: error instanceof Error ? error.message : '获取单条生成卡片历史失败',
+            message: '获取生成卡片历史失败，请稍后重试',
           },
         } satisfies ApiResponse<never>
       }
@@ -240,7 +240,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           success: false,
           error: {
             code: 'RESUME_HISTORY_UPDATE_FAILED',
-            message: error instanceof Error ? error.message : '更新生成卡片历史失败',
+            message: '更新生成卡片历史失败，请稍后重试',
           },
         } satisfies ApiResponse<never>
       }
@@ -280,7 +280,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           success: false,
           error: {
             code: 'RESUME_HISTORY_CLEAR_FAILED',
-            message: error instanceof Error ? error.message : '清空生成卡片历史失败',
+            message: '清空生成卡片历史失败，请稍后重试',
           },
         } satisfies ApiResponse<never>
       }
@@ -327,7 +327,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           success: false,
           error: {
             code: 'RESUME_HISTORY_DELETE_FAILED',
-            message: error instanceof Error ? error.message : '删除生成卡片历史失败',
+            message: '删除生成卡片历史失败，请稍后重试',
           },
         } satisfies ApiResponse<never>
       }

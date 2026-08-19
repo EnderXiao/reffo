@@ -115,6 +115,33 @@ export const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
+  accountButton: {
+    width: 41,
+    height: 41,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    elevation: 2,
+  },
+  accountAvatar: {
+    width: 41,
+    height: 41,
+  },
+  guestAccountButton: {
+    width: 58,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#24a46b',
+  },
+  guestAccountText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   logoImage: {
     width: 99,
     height: 26,

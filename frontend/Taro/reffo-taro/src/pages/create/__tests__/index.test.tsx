@@ -321,7 +321,7 @@ describe('CreatePage', () => {
     await renderPage()
 
     await waitFor(() => {
-      expect(mockAnalyzeResume).toHaveBeenCalledWith(selectedLandingResume)
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(selectedLandingResume, {landing: true})
       expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
     })
 

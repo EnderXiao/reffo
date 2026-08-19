@@ -10,20 +10,18 @@ import JobDescriptionFormH5 from '@/pages/create/components/JobDescriptionFormH5
 import CreatePrimaryActionH5 from '@/pages/create/components/CreatePrimaryActionH5'
 import LandingAnalysisPage from '../landing-analysis'
 import type {JobDescriptionStepState} from '@/pages/create/types'
-import {
-  getJobDescriptionFileValidationMessage,
-  parseJobDescriptionAttachment,
-  pickJobDescriptionFile,
-} from '@/pages/create/utils/jobDescriptionAttachment'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
 import {useResumeStore} from '@/store/resumeStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
+import {sourceResumeApi} from '@/services/sourceResume'
+import {apiClient} from '@/services/api'
 import {useLandingFlowStore} from '@/store/landingFlowStore'
 import {feedback} from '@/utils/feedback'
 import {storage} from '@/utils/storage'
+import {savePendingLandingSourceResume} from '@/utils/pending-landing-data'
 import {navigation} from '@/utils/navigation'
 import {
   formatResumeFileSize,
@@ -39,7 +37,7 @@ import {
   writeSharedElementSnapshot,
 } from '@/utils/shared-element-transition'
 import {
-  LANDING_JOB_DESCRIPTIONS,
+  LANDING_PRESET_JOB_DESCRIPTIONS,
   type LandingJobDescription,
 } from './constants/job-descriptions'
 import {
@@ -231,12 +229,12 @@ function wait(ms: number) {
 }
 
 function wrapJobIndex(index: number) {
-  const count = LANDING_JOB_DESCRIPTIONS.length
+  const count = LANDING_PRESET_JOB_DESCRIPTIONS.length
   return ((index % count) + count) % count
 }
 
 function resolveCircularJobPosition(index: number, selectedIndex: number) {
-  const count = LANDING_JOB_DESCRIPTIONS.length
+  const count = LANDING_PRESET_JOB_DESCRIPTIONS.length
   const forwardDistance = wrapJobIndex(index - selectedIndex)
   return forwardDistance > count / 2 ? forwardDistance - count : forwardDistance
 }
@@ -546,12 +544,18 @@ function shouldStartLandingByQuery() {
 async function preloadHomeData() {
   const homeRoutePromise = preloadHomeRoute()
 
-  await useAuthStore.getState().restoreSession()
+  const authState = useAuthStore.getState()
+  const session = await authState.restoreSession()
+  const shouldLoadUserData = Boolean(session) || useAuthStore.getState().initialized !== true
+  const loadProfile = useAuthStore.getState().loadProfile
 
   await Promise.all([
     homeRoutePromise,
-    useHistoryStore.getState().loadHistories({skipIfLoaded: true}),
-    useSourceResumeStore.getState().loadLatestSourceResume({skipIfLoaded: true}),
+    ...(shouldLoadUserData ? [
+      useHistoryStore.getState().loadHistories({skipIfLoaded: true}),
+      useSourceResumeStore.getState().loadLatestSourceResume({skipIfLoaded: true}),
+      ...(typeof loadProfile === 'function' ? [loadProfile()] : []),
+    ] : []),
   ].map(promise => promise.catch(error => {
     console.warn('[LandingPage] Failed to preload home data:', error)
   })))
@@ -935,11 +939,11 @@ export default function LandingPage() {
 
   const enterLandingJobDescription = (job: LandingJobDescription, sourceElement?: HTMLElement | null) => {
     const draft: JobDescriptionStepState = {
-      content: job.id === 'custom' ? '' : [job.summary, ...job.responsibilities.map(item => `- ${item}`)].join('\n'),
-      companyName: job.id === 'custom' ? '' : job.company,
-      positionName: job.id === 'custom' ? '' : job.title,
-      baseLocation: job.id === 'custom' ? '' : job.location,
-      inputMode: job.id === 'custom' ? 'upload' : 'manual',
+      content: [job.summary, ...job.responsibilities.map(item => `- ${item}`)].join('\n'),
+      companyName: job.company,
+      positionName: job.title,
+      baseLocation: job.location,
+      inputMode: 'manual',
       attachmentStatus: 'idle',
       attachmentProgress: 0,
       attachment: null,
@@ -965,7 +969,7 @@ export default function LandingPage() {
 
     creatingJobAttachmentRequestRef.current += 1
     clearCreatingJobAttachmentProgress()
-    useLandingFlowStore.getState().startJobDescription(draft)
+    useLandingFlowStore.getState().startJobDescription({...draft, id: job.id})
     setCreatingJobDraft(draft)
     setIsReturningFromCreatingJob(false)
     setIsCreatingJob(true)
@@ -991,110 +995,18 @@ export default function LandingPage() {
   }
 
   const continueLandingJobDescription = () => {
-    const selectedJob = LANDING_JOB_DESCRIPTIONS[selectedJobIndex]
-    const hasAttachment = creatingJobDraft.attachmentStatus === 'success' && Boolean(creatingJobDraft.attachment)
-
     if (creatingJobDraft.attachmentStatus === 'uploading') {
       return
     }
 
-    if (selectedJob?.id === 'custom' && !creatingJobDraft.content.trim() && !hasAttachment) {
-      feedback.message('请先上传岗位描述截图，或输入目标岗位描述', {duration: 2200})
-      return
-    }
-
-    useLandingFlowStore.getState().startJobDescription(creatingJobDraft)
+    useLandingFlowStore.getState().startJobDescription({
+      ...creatingJobDraft,
+      id: LANDING_PRESET_JOB_DESCRIPTIONS[selectedJobIndex]?.id,
+    })
     setIsLandingResultComplete(false)
     runLandingViewTransition(() => {
       setInlineLandingPhase('analysis')
     })
-  }
-
-  const handlePickCreatingJobAttachment = async () => {
-    const selectedJob = LANDING_JOB_DESCRIPTIONS[selectedJobIndex]
-
-    if (selectedJob?.id !== 'custom' || creatingJobDraft.attachmentStatus === 'uploading') {
-      return
-    }
-
-    try {
-      const selectedFile = await pickJobDescriptionFile()
-      if (!selectedFile) {
-        return
-      }
-
-      const validationMessage = getJobDescriptionFileValidationMessage(selectedFile)
-      if (validationMessage) {
-        setCreatingJobDraft(previous => ({
-          ...previous,
-          inputMode: 'upload',
-          attachmentStatus: 'error',
-          attachmentProgress: 0,
-          attachment: null,
-          attachmentErrorMessage: validationMessage,
-        }))
-        feedback.error(validationMessage)
-        return
-      }
-
-      const requestId = creatingJobAttachmentRequestRef.current + 1
-      creatingJobAttachmentRequestRef.current = requestId
-      setCreatingJobDraft(previous => ({
-        ...previous,
-        inputMode: 'upload',
-        attachmentStatus: 'uploading',
-        attachmentProgress: 8,
-        attachment: null,
-        attachmentErrorMessage: null,
-      }))
-      startCreatingJobAttachmentProgress(requestId)
-
-      await wait(120)
-      if (creatingJobAttachmentRequestRef.current !== requestId) {
-        return
-      }
-
-      setCreatingJobDraft(previous => ({
-        ...previous,
-        attachmentProgress: Math.max(previous.attachmentProgress, 28),
-      }))
-
-      const parsedAttachment = await parseJobDescriptionAttachment(selectedFile)
-      if (creatingJobAttachmentRequestRef.current !== requestId) {
-        return
-      }
-      clearCreatingJobAttachmentProgress()
-
-      setCreatingJobDraft(previous => ({
-        ...previous,
-        inputMode: 'manual',
-        attachmentStatus: 'success',
-        attachmentProgress: 100,
-        attachment: parsedAttachment.attachment,
-        content: parsedAttachment.content,
-        companyName: previous.companyName.trim() || parsedAttachment.companyName,
-        positionName: previous.positionName.trim() || parsedAttachment.positionName,
-        baseLocation: previous.baseLocation.trim() || parsedAttachment.baseLocation,
-        attachmentErrorMessage: null,
-      }))
-      feedback.success(`${selectedFile.name} 已解析，可继续编辑`)
-    } catch (error) {
-      if (isResumeFileUploadCancelled(error)) {
-        return
-      }
-
-      const message = error instanceof Error ? error.message : '文件读取失败，请重试'
-      clearCreatingJobAttachmentProgress()
-      setCreatingJobDraft(previous => ({
-        ...previous,
-        inputMode: 'upload',
-        attachmentStatus: 'error',
-        attachmentProgress: 0,
-        attachment: null,
-        attachmentErrorMessage: message,
-      }))
-      feedback.error(message)
-    }
   }
 
   const exitQueueFolder = () => {
@@ -1191,6 +1103,7 @@ export default function LandingPage() {
 
     try {
       const parsedFile = await pickAndParseResumeFile({
+        allowGuest: true,
         isActive: () => queueUploadRequestRef.current === requestId,
         onFileSelected: selectedFile => {
           setQueueUploadedFile({
@@ -1224,6 +1137,30 @@ export default function LandingPage() {
         fileName: parsedFile.name,
         markdown: parsedFile.extractedText,
       })
+
+      if (apiClient.getAuthToken()) {
+        const savedSourceResume = await sourceResumeApi.saveSourceResume({
+          title: parsedFile.name,
+          resume_markdown: parsedFile.extractedText,
+          source_type: 'file',
+          original_file_name: parsedFile.name,
+        })
+        await useSourceResumeStore.getState().setLatestSourceResume(savedSourceResume)
+      } else {
+        const now = new Date().toISOString()
+        await savePendingLandingSourceResume({
+          id: `landing-source-${Date.now()}`,
+          title: parsedFile.name,
+          resumeMarkdown: parsedFile.extractedText,
+          sourceType: 'file',
+          originalFileName: parsedFile.name,
+          sourcePath: parsedFile.path,
+          sizeBytes: parsedFile.size,
+          createdAt: now,
+          updatedAt: now,
+        })
+      }
+
       setIsQueueUploadComplete(true)
       setIsQueueUploadRemoving(false)
       feedback.success(`${parsedFile.name} 已上传`)
@@ -2321,7 +2258,7 @@ export default function LandingPage() {
                 </View>
                 <View className='reffo-landing-onboarding__target-folder-back' />
                 <View className='reffo-landing-onboarding__target-files'>
-                  {LANDING_JOB_DESCRIPTIONS.map((file, index) => {
+                  {LANDING_PRESET_JOB_DESCRIPTIONS.map((file, index) => {
                     const isSelectedJob = index === selectedJobIndex
                     const jobCardStyle = resolveJobCardStyle(file, index, selectedJobIndex, jobDragOffset)
 
@@ -2378,28 +2315,12 @@ export default function LandingPage() {
                         <View className='reffo-landing-onboarding__target-file-back'>
                           <JobDescriptionFormH5
                             state={creatingJobDraft}
-                            onCompanyNameChange={value => {
-                              if (file.id === 'custom') {
-                                setCreatingJobDraft(previous => ({...previous, companyName: value}))
-                              }
-                            }}
-                            onPositionNameChange={value => {
-                              if (file.id === 'custom') {
-                                setCreatingJobDraft(previous => ({...previous, positionName: value}))
-                              }
-                            }}
-                            onLocationChange={value => {
-                              if (file.id === 'custom') {
-                                setCreatingJobDraft(previous => ({...previous, baseLocation: value}))
-                              }
-                            }}
-                            onContentChange={value => {
-                              if (file.id === 'custom') {
-                                setCreatingJobDraft(previous => ({...previous, content: value, inputMode: 'manual'}))
-                              }
-                            }}
-                            onPickAttachment={file.id === 'custom' ? handlePickCreatingJobAttachment : undefined}
-                            isFormReadOnly={file.id !== 'custom'}
+                            onCompanyNameChange={undefined}
+                            onPositionNameChange={undefined}
+                            onLocationChange={undefined}
+                            onContentChange={undefined}
+                            onPickAttachment={undefined}
+                            isFormReadOnly
                           />
                         </View>
                       ) : null}
@@ -2411,7 +2332,7 @@ export default function LandingPage() {
                   <Text className='reffo-landing-onboarding__target-folder-owner'>我</Text>
                   <Text className='reffo-landing-onboarding__target-folder-label'>可投递的岗位</Text>
                   <View className='reffo-landing-onboarding__target-folder-count'>
-                    <Text className='reffo-landing-onboarding__target-folder-count-value'>{LANDING_JOB_DESCRIPTIONS.length}</Text>
+                    <Text className='reffo-landing-onboarding__target-folder-count-value'>{LANDING_PRESET_JOB_DESCRIPTIONS.length}</Text>
                     <Text className='reffo-landing-onboarding__target-folder-count-label'>份岗位描述</Text>
                   </View>
                 </View>
@@ -2421,11 +2342,7 @@ export default function LandingPage() {
               <View className='reffo-landing-create-page'>
                 <CreatePrimaryActionH5
                   label='开始生成最佳简历'
-                  disabled={creatingJobDraft.attachmentStatus === 'uploading' || (
-                    LANDING_JOB_DESCRIPTIONS[selectedJobIndex]?.id === 'custom'
-                    && !creatingJobDraft.content.trim()
-                    && !(creatingJobDraft.attachmentStatus === 'success' && creatingJobDraft.attachment)
-                  )}
+                  disabled={creatingJobDraft.attachmentStatus === 'uploading'}
                   onClick={continueLandingJobDescription}
                 />
               </View>

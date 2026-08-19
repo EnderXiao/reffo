@@ -6,10 +6,10 @@ import '../index.h5.scss'
 
 interface JobDescriptionFormH5Props {
   state: Pick<JobDescriptionStepState, 'content' | 'companyName' | 'positionName' | 'baseLocation' | 'attachmentStatus' | 'attachmentProgress' | 'attachment' | 'attachmentErrorMessage'>
-  onCompanyNameChange: (value: string) => void
-  onPositionNameChange: (value: string) => void
-  onLocationChange: (value: string) => void
-  onContentChange: (value: string) => void
+  onCompanyNameChange?: (value: string) => void
+  onPositionNameChange?: (value: string) => void
+  onLocationChange?: (value: string) => void
+  onContentChange?: (value: string) => void
   onPickAttachment?: () => Promise<void>
   isExiting?: boolean
   isDescriptionReadOnly?: boolean
@@ -43,16 +43,16 @@ export default function JobDescriptionFormH5({
         <View className='reffo-create-job__field-row'>
           <View className='reffo-create-job__field reffo-create-job__field--half'>
             <Text className='reffo-create-job__label'>公司</Text>
-            <Input value={state.companyName} placeholder='输入公司名称' disabled={isUploadingAttachment || isFormReadOnly} onInput={event => onCompanyNameChange(event.detail.value)} className='reffo-create-job__input' data-testid='job-company-input' />
+            <Input value={state.companyName} placeholder='输入公司名称' disabled={isUploadingAttachment || isFormReadOnly} onInput={event => onCompanyNameChange?.(event.detail.value)} className='reffo-create-job__input' data-testid='job-company-input' />
           </View>
           <View className='reffo-create-job__field reffo-create-job__field--half'>
             <Text className='reffo-create-job__label'>Base</Text>
-            <Input value={state.baseLocation} placeholder='输入岗位城市' disabled={isUploadingAttachment || isFormReadOnly} onInput={event => onLocationChange(event.detail.value)} className='reffo-create-job__input' data-testid='job-location-input' />
+            <Input value={state.baseLocation} placeholder='输入岗位城市' disabled={isUploadingAttachment || isFormReadOnly} onInput={event => onLocationChange?.(event.detail.value)} className='reffo-create-job__input' data-testid='job-location-input' />
           </View>
         </View>
         <View className='reffo-create-job__field'>
           <Text className='reffo-create-job__label'>目标岗位名称</Text>
-          <Input value={state.positionName} placeholder='输入岗位名称' disabled={isUploadingAttachment || isFormReadOnly} onInput={event => onPositionNameChange(event.detail.value)} className='reffo-create-job__input' data-testid='job-position-input' />
+          <Input value={state.positionName} placeholder='输入岗位名称' disabled={isUploadingAttachment || isFormReadOnly} onInput={event => onPositionNameChange?.(event.detail.value)} className='reffo-create-job__input' data-testid='job-position-input' />
         </View>
         <View className='reffo-create-job__field reffo-create-job__field--description'>
           <Text className='reffo-create-job__label'>目标岗位描述</Text>
@@ -79,7 +79,7 @@ export default function JobDescriptionFormH5({
                 placeholder='或输入岗位描述'
                 maxlength={20000}
                 disabled={isUploadingAttachment || isDescriptionReadOnly || isFormReadOnly}
-                onInput={event => onContentChange(event.detail.value)}
+                onInput={event => onContentChange?.(event.detail.value)}
                 className='reffo-create-textarea reffo-create-textarea--job'
                 data-testid='job-description-input'
               />

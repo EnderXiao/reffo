@@ -14,7 +14,9 @@ import {
 } from '@/utils/shared-element-transition'
 import type {IndexPageViewModel} from './model/usePageModel'
 import {HOME_PAGE_CONTENT} from './constants/content'
-import githubIcon from '@/assets/home/github.svg'
+import {resolveUserAvatar} from '@/utils/generated-avatar'
+import {useAuthStore} from '@/store/authStore'
+import {navigation} from '@/utils/navigation'
 import './index.h5.scss'
 
 type HeroMode = 'brand' | 'strategy' | 'create'
@@ -312,6 +314,9 @@ export default function PageView({
   logoSource,
 }: IndexPageViewModel) {
   const visualCapability = useVisualTier({benchmark: true})
+  const session = useAuthStore(state => state.session)
+  const profile = useAuthStore(state => state.profile)
+  const loadProfile = useAuthStore(state => state.loadProfile)
   const sourceLabel = hasSourceResume && sourceResumeTitle ? sourceResumeTitle : '源简历'
   const [returnHomePayload, setReturnHomePayload] = useState<ReturningHomePayload | null>(() => readReturnHomeMarker())
   const [isReturningFromResult, setIsReturningFromResult] = useState(() => Boolean(readReturnHomeMarker()))
@@ -327,6 +332,12 @@ export default function PageView({
   const isHomeEntryTransition = isReturnHomeTransition || isLandingEntryTransition
   const returningCardId = returnHomePayload?.cardId ?? null
   const isViewTransitionReturn = returnHomePayload?.transition === 'view-transition'
+
+  useEffect(() => {
+    if (session && !profile) {
+      void loadProfile()
+    }
+  }, [loadProfile, profile, session])
   const returnCard = useMemo(() => (
     returningCardId ? cardItems.find(card => card.id === returningCardId) ?? currentCard : currentCard
   ), [cardItems, currentCard, returningCardId])
@@ -460,9 +471,27 @@ export default function PageView({
             {!hasSourceResume ? <Text className='reffo-home__source-plus'>+</Text> : null}
             <Text className='reffo-home__source-text'>{sourceLabel}</Text>
           </View>
-          <View className='reffo-home__github-button'>
-            <Image src={githubIcon} className='reffo-home__github-icon' mode='aspectFit' />
-          </View>
+          {session ? (
+            <View
+              className='reffo-home__account-button reffo-home__account-button--avatar'
+              onClick={() => void navigation.navigateTo('/pages/profile/index')}
+              aria-label='打开用户资料'
+            >
+              <Image
+                src={resolveUserAvatar(session.user.id, profile?.avatarUrl)}
+                className='reffo-home__account-avatar'
+                mode='aspectFill'
+              />
+            </View>
+          ) : (
+            <View
+              className='reffo-home__account-button reffo-home__account-button--guest'
+              onClick={() => void navigation.navigateTo('/pages/auth/index')}
+              aria-label='登录'
+            >
+              <Text>登录</Text>
+            </View>
+          )}
         </View>
 
         <HomeHeroH5

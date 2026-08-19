@@ -41,7 +41,7 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
           success: false,
           error: {
             code: 'SOURCE_RESUME_SAVE_FAILED',
-            message: error instanceof Error ? error.message : '保存源简历失败',
+            message: '保存源简历失败，请稍后重试',
           },
         }
 
@@ -67,7 +67,7 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
       }),
       detail: {
         summary: '保存源简历',
-        description: '保存用户当前的源简历 markdown 内容，并写入 SQLite 供首页展示与索引。',
+        description: '保存用户当前的源简历 markdown 内容，供首页展示与索引。',
         tags: ['SourceResume'],
       },
     }
@@ -97,7 +97,7 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
           success: false,
           error: {
             code: 'SOURCE_RESUME_GET_FAILED',
-            message: error instanceof Error ? error.message : '获取源简历失败',
+            message: '获取源简历失败，请稍后重试',
           },
         } satisfies ApiResponse<never>
       }
@@ -144,7 +144,7 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
           success: false,
           error: {
             code: 'SOURCE_RESUME_DELETE_FAILED',
-            message: error instanceof Error ? error.message : '删除源简历失败',
+            message: '删除源简历失败，请稍后重试',
           },
         } satisfies ApiResponse<never>
       }

@@ -1105,13 +1105,19 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       useResumeStore.getState().setResumeContent(resumeMarkdown)
       useJDStore.getState().setJDContent(jdText)
 
-      const analysis = await resumeApi.analyzeResume(resumeMarkdown)
+      const presetJdId = isLandingFlow ? landingJob?.id : undefined
+      const analysis = isLandingFlow
+        ? await resumeApi.analyzeResume(resumeMarkdown, {landing: true})
+        : await resumeApi.analyzeResume(resumeMarkdown)
 
       if (generationRequestRef.current !== requestId) {
         return false
       }
 
-      const matching = await resumeApi.matchResume(analysis, jdText)
+      const matching = await resumeApi.matchResume(
+        analysis,
+        presetJdId ? {presetJdId} : jdText,
+      )
 
       if (generationRequestRef.current !== requestId) {
         return false
@@ -1158,6 +1164,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
           location: resolvedBaseLocation,
           resumeContent: resumeMarkdown,
           jdContent: jdText,
+          ...(presetJdId ? {presetJdId} : {}),
         },
         progress: {
           analysis: 'done',

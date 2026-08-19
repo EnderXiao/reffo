@@ -1,6 +1,8 @@
 import {TaroRequestAdapter, RequestError} from '@/utils/request';
 import type {RequestConfig, Response} from '@/utils/request';
 import {retry, type RetryOptions} from '@/utils/retry';
+import {redactSensitiveData} from '@/utils/redact';
+import {getClientErrorMessage} from '@/utils/client-error';
 
 /**
  * API 响应格式
@@ -37,6 +39,8 @@ export interface ApiConfig {
 }
 
 type ReffoEnv = 'local' | 'nonprod' | 'prod';
+
+export {redactSensitiveData};
 
 /**
  * API 客户端基类
@@ -152,7 +156,7 @@ export class ApiClient {
         console.log('[API Request]', {
           method: config.method,
           url: config.url,
-          data: config.data,
+          data: redactSensitiveData(config.data),
           timestamp: new Date().toISOString(),
         });
       }
@@ -176,7 +180,11 @@ export class ApiClient {
       const apiResponse = response.data as ApiResponse<any>;
       if (apiResponse && apiResponse.success === false) {
         throw new RequestError(
-          apiResponse.error?.message || '请求失败',
+          getClientErrorMessage(
+            apiResponse.error?.code,
+            response.statusCode,
+            apiResponse.error?.message || '请求失败',
+          ),
           apiResponse.error?.code || 'API_ERROR',
           response.statusCode,
           apiResponse.error?.details,
@@ -412,14 +420,27 @@ function getH5DevServerApiBaseURL(): string | undefined {
   return '/api/v1';
 }
 
-function getReffoEnv(): ReffoEnv {
+export function getReffoEnv(): ReffoEnv {
   const env = process.env.REFFO_ENV?.trim().toLowerCase();
 
   if (env === 'nonprod' || env === 'prod') {
     return env;
   }
 
+  const configuredBaseURL = getConfiguredApiBaseURL()?.toLowerCase();
+  if (configuredBaseURL?.includes('api-nonprod.reffo.app')) {
+    return 'nonprod';
+  }
+
+  if (configuredBaseURL?.includes('api.reffo.app')) {
+    return 'prod';
+  }
+
   return 'local';
+}
+
+export function isLocalApiEnvironment(): boolean {
+  return getReffoEnv() === 'local';
 }
 
 function getApiBaseURLByReffoEnv(reffoEnv: ReffoEnv): string {

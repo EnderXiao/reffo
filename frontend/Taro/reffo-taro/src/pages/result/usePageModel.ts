@@ -14,6 +14,8 @@ import {
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
+import {savePendingLandingHistory} from '@/utils/pending-landing-data'
+import {useAuthStore} from '@/store/authStore'
 import {toHistoryCardItem} from '../index/model/homeCardData'
 
 const DONE_PROGRESS: LatestResultSessionProgress = {
@@ -323,7 +325,9 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
 
         const matching = await resumeApi.matchResume(
           currentResult.analysis,
-          currentSession.context.jdContent,
+          enteredFromLanding && currentSession.context.presetJdId
+            ? {presetJdId: currentSession.context.presetJdId}
+            : currentSession.context.jdContent,
         )
 
         if (continuationRef.current !== runId) return
@@ -353,6 +357,9 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         const optimized = await resumeApi.generateOptimizedResume(
           currentResult.analysis,
           currentResult.matching,
+          ...(enteredFromLanding
+            ? [{landing: true, presetJdId: currentSession.context.presetJdId}]
+            : []),
         )
 
         if (continuationRef.current !== runId) return
@@ -379,6 +386,9 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           currentResult.analysis,
           currentResult.matching,
           currentResult.optimized,
+          ...(enteredFromLanding
+            ? [{landing: true, presetJdId: currentSession.context.presetJdId}]
+            : []),
         )
 
         if (continuationRef.current !== runId) return
@@ -436,7 +446,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         baseHistory.resultContext?.location?.trim() ||
         ''
 
-      const historyId = await addHistory({
+      const history = {
         ...baseHistory,
         position: resolvedPosition,
         company: resolvedCompany,
@@ -447,9 +457,13 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           ...(resolvedLocation ? {location: resolvedLocation} : {}),
           resumeContent: resultContext?.resumeContent || baseHistory.resumeContent,
           jdContent: resultContext?.jdContent || baseHistory.jdContent,
+          ...(resultContext?.presetJdId ? {presetJdId: resultContext.presetJdId} : {}),
         },
         progress,
-      })
+      }
+      const historyId = enteredFromLanding && !useAuthStore.getState().session
+        ? await savePendingLandingHistory(history)
+        : await addHistory(history)
 
       setSaved(true)
       setSavedHistoryId(historyId)

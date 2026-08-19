@@ -1,6 +1,7 @@
 import {create} from 'zustand'
 
 export interface LandingJobDraft {
+  id?: string
   content: string
   companyName: string
   positionName: string

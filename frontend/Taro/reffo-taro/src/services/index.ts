@@ -10,7 +10,10 @@ export type {ApiResponse, ApiConfig} from './api';
 
 // Auth API
 export {AuthApi, authApi} from './auth';
-export type {AuthSession, SignInWithPasswordInput} from './auth';
+export type {AuthSession, EmailOtpConfig, SignInWithPasswordInput, VerifyEmailOtpInput} from './auth';
+
+export {ProfileApi, profileApi} from './profile';
+export type {UserProfile} from './profile';
 
 // 运行时公开配置
 export {

@@ -1,0 +1,115 @@
+html, body, #app, .taro_page, .taro_page_show {
+  min-height: 100%;
+  margin: 0;
+  background: #f4f8fc;
+}
+
+.reffo-profile {
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding: max(16px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  color: #111;
+  background: linear-gradient(180deg, #e4f2ec 0%, #f4f8fc 42%, #fff 100%);
+}
+
+.reffo-profile__topbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reffo-profile__back {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+  font-size: 32px;
+  line-height: 1;
+}
+
+.reffo-profile__heading {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.reffo-profile__topbar-spacer { width: 36px; }
+
+.reffo-profile__content {
+  max-width: 460px;
+  margin: 56px auto 0;
+  padding: 32px 24px 28px;
+  border-radius: 0 0 22px 22px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18PX 48PX rgba(44, 83, 72, 0.1);
+  backdrop-filter: blur(16PX);
+}
+
+.reffo-profile__avatar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 34px;
+}
+
+.reffo-profile__avatar, .reffo-profile__avatar-placeholder {
+  width: 104px;
+  height: 104px;
+  border-radius: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.reffo-profile__avatar-placeholder {
+  color: #fff;
+  background: #24a46b;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.reffo-profile__upload-placeholder {
+  color: #24a46b;
+  font-size: 13px;
+}
+
+.reffo-profile__label, .reffo-profile__muted {
+  color: #8a949e;
+  font-size: 12px;
+}
+
+.reffo-profile__email {
+  display: block;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.reffo-profile__divider {
+  height: 1px;
+  margin: 26px 0 18px;
+  background: rgba(20, 40, 50, 0.1);
+}
+
+.reffo-profile__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.reffo-profile__logout {
+  margin-top: 36px;
+  padding: 13px 0;
+  border-radius: 13px;
+  text-align: center;
+  color: #fff;
+  background: #24a46b;
+  font-size: 14px;
+  font-weight: 650;
+}

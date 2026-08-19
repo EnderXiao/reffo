@@ -9,6 +9,7 @@ export default {
     'pages/landing-result/index',
     'pages/complete/index',
     'pages/auth/index',
+    'pages/profile/index',
   ],
   window: {
     backgroundTextStyle: 'light',
