@@ -163,7 +163,7 @@ function mapOtpConfig(response: Pick<SupabaseAuthResponse, 'otp_length' | 'resen
   return {
     otpLength: typeof otpLength === 'number' && Number.isInteger(otpLength) && otpLength > 0
       ? otpLength
-      : 8,
+      : 6,
     resendAfterSeconds: typeof resendAfterSeconds === 'number' && Number.isInteger(resendAfterSeconds) && resendAfterSeconds > 0
       ? resendAfterSeconds
       : 60,

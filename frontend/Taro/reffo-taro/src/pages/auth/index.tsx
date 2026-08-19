@@ -16,7 +16,7 @@ type TransitionDirection = 'forward' | 'back'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DEFAULT_OTP_CONFIG: EmailOtpConfig = {
-  otpLength: 8,
+  otpLength: 6,
   resendAfterSeconds: 60,
 }
 

@@ -89,7 +89,7 @@ export const env = {
   SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY || '',
   SUPABASE_PROJECT_ENV: parseSupabaseProjectEnv(process.env.SUPABASE_PROJECT_ENV),
   SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || 'user-files',
-  AUTH_OTP_LENGTH: parsePositiveInteger(process.env.AUTH_OTP_LENGTH, 8),
+  AUTH_OTP_LENGTH: parsePositiveInteger(process.env.AUTH_OTP_LENGTH, 6),
   AUTH_OTP_RESEND_SECONDS: parsePositiveInteger(process.env.AUTH_OTP_RESEND_SECONDS, 60),
   AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY: process.env.AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY || '',
 

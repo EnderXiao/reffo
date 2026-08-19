@@ -113,7 +113,7 @@ describe('authApi', () => {
     })).resolves.toEqual({
       session: null,
       user: {id: 'user-1', email: 'user@example.com'},
-      otpLength: 8,
+      otpLength: 6,
       resendAfterSeconds: 60,
     })
     expect(mockApiGet).toHaveBeenCalledWith('/auth/crypto-key')
