@@ -82,6 +82,24 @@ describe('business evaluators', () => {
     expect(evaluateMatchAnalysisBusiness(matchWithWeaknessEvidence).passed).toBe(true)
   })
 
+  test('passes when compound JD skills are covered by split match skills', () => {
+    const compoundSkillMatch: MatchAnalysis = {
+      ...matchAnalysis,
+      skill_match: {
+        matched: ['HTML', 'CSS', 'JavaScript', 'React'],
+        missing: [],
+      },
+      jd_structure: {
+        ...jd,
+        hard_requirements: {
+          required_skills: ['HTML/CSS/JavaScript', 'Vue/React'],
+        },
+      },
+    }
+
+    expect(evaluateMatchAnalysisBusiness(compoundSkillMatch).passed).toBe(true)
+  })
+
   test('fails incomplete source resume and match analysis', () => {
     const emptyResume: ResumeStructure = {
       personal_info: { name: '' },

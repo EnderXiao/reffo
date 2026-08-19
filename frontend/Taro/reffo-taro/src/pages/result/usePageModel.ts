@@ -14,6 +14,8 @@ import {
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
+import {savePendingLandingHistory} from '@/utils/pending-landing-data'
+import {useAuthStore} from '@/store/authStore'
 import {toHistoryCardItem} from '../index/model/homeCardData'
 
 const DONE_PROGRESS: LatestResultSessionProgress = {
@@ -124,35 +126,63 @@ function buildContextFromHistory(history: ResumeHistory): LatestResultSessionCon
 
 export interface ResultPageViewModel {
   result: ProcessResult | null
+  resumeContent: string
+  jdContent: string
   loading: boolean
   saved: boolean
   progress: LatestResultSessionProgress
   progressPercent: number
   generationError: string | null
   enteredFromCard: boolean
+  enteredFromLanding: boolean
   returnCard: HomeCardItem | null
   handleSave: () => Promise<string | null>
   handleComplete: () => Promise<void>
   handleShare: () => Promise<void>
-  handleBackHome: () => void
+  handleBackHome: () => Promise<void>
+  handleEditHistory: () => Promise<void>
   handlePendingStage: () => void
   handleOptimizedResumeChange: (markdown: string) => Promise<void>
+  canEditHistory: boolean
 }
 
-export function usePageModel(): ResultPageViewModel {
+interface ResultPageModelOptions {
+  enteredFromLanding?: boolean
+  initialSession?: LatestResultSession
+}
+
+export function usePageModel(options: ResultPageModelOptions = {}): ResultPageViewModel {
   const router = useRouter()
   const {addHistory} = useHistoryStore()
   const enteredFromCard = router.params.fromCard === '1'
-  const [result, setResult] = useState<ProcessResult | null>(null)
+  const enteredFromLanding = options.enteredFromLanding === true
+  const initialSessionRef = useRef<LatestResultSession | null>(options.initialSession
+    ? {
+        ...options.initialSession,
+        result: {
+          ...options.initialSession.result,
+          interview: normalizeInterviewResult(options.initialSession.result),
+        },
+        progress: {
+          ...getDefaultProgress(options.initialSession.result),
+          ...options.initialSession.progress,
+          interview: options.initialSession.progress?.interview
+            ?? getDefaultProgress(options.initialSession.result).interview,
+        },
+      }
+    : null)
+  const [result, setResult] = useState<ProcessResult | null>(
+    () => initialSessionRef.current?.result ?? null,
+  )
   const [resultContext, setResultContext] =
-    useState<LatestResultSessionContext | null>(null)
-  const [loading, setLoading] = useState(true)
+    useState<LatestResultSessionContext | null>(() => initialSessionRef.current?.context ?? null)
+  const [loading, setLoading] = useState(() => !initialSessionRef.current)
   const [saved, setSaved] = useState(false)
   const [savedHistoryId, setSavedHistoryId] = useState<string | null>(
     typeof router.params.id === 'string' ? router.params.id : null,
   )
   const [progress, setProgress] = useState<LatestResultSessionProgress>(
-    getDefaultProgress(null),
+    () => initialSessionRef.current?.progress ?? getDefaultProgress(null),
   )
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [returnCard, setReturnCard] = useState<HomeCardItem | null>(null)
@@ -160,6 +190,14 @@ export function usePageModel(): ResultPageViewModel {
   const isContinuingRef = useRef(false)
 
   useEffect(() => {
+    const initialSession = initialSessionRef.current
+
+    if (initialSession) {
+      initialSessionRef.current = null
+      void continueLatestSession(initialSession)
+      return
+    }
+
     const resultId = router.params.id
 
     if (resultId) {
@@ -201,7 +239,7 @@ export function usePageModel(): ResultPageViewModel {
         setSavedHistoryId(id)
       } else {
         feedback.message('未找到结果')
-        void navigation.navigateBack()
+        void navigation.returnHome()
       }
     } catch (error) {
       console.error('加载历史记录失败:', error)
@@ -236,7 +274,7 @@ export function usePageModel(): ResultPageViewModel {
         })
       } else {
         feedback.message('未找到结果')
-        void navigation.navigateBack()
+        void navigation.returnHome()
       }
     } catch (error) {
       console.error('加载结果失败:', error)
@@ -287,7 +325,9 @@ export function usePageModel(): ResultPageViewModel {
 
         const matching = await resumeApi.matchResume(
           currentResult.analysis,
-          currentSession.context.jdContent,
+          enteredFromLanding && currentSession.context.presetJdId
+            ? {presetJdId: currentSession.context.presetJdId}
+            : currentSession.context.jdContent,
         )
 
         if (continuationRef.current !== runId) return
@@ -317,6 +357,9 @@ export function usePageModel(): ResultPageViewModel {
         const optimized = await resumeApi.generateOptimizedResume(
           currentResult.analysis,
           currentResult.matching,
+          ...(enteredFromLanding
+            ? [{landing: true, presetJdId: currentSession.context.presetJdId}]
+            : []),
         )
 
         if (continuationRef.current !== runId) return
@@ -343,6 +386,9 @@ export function usePageModel(): ResultPageViewModel {
           currentResult.analysis,
           currentResult.matching,
           currentResult.optimized,
+          ...(enteredFromLanding
+            ? [{landing: true, presetJdId: currentSession.context.presetJdId}]
+            : []),
         )
 
         if (continuationRef.current !== runId) return
@@ -395,8 +441,12 @@ export function usePageModel(): ResultPageViewModel {
       )
       const resolvedCompany = resultContext?.company.trim() || baseHistory.company
       const resolvedPosition = resultContext?.position.trim() || baseHistory.position
+      const resolvedLocation =
+        resultContext?.location?.trim() ||
+        baseHistory.resultContext?.location?.trim() ||
+        ''
 
-      const historyId = await addHistory({
+      const history = {
         ...baseHistory,
         position: resolvedPosition,
         company: resolvedCompany,
@@ -404,11 +454,16 @@ export function usePageModel(): ResultPageViewModel {
         resultContext: {
           company: resolvedCompany,
           position: resolvedPosition,
+          ...(resolvedLocation ? {location: resolvedLocation} : {}),
           resumeContent: resultContext?.resumeContent || baseHistory.resumeContent,
           jdContent: resultContext?.jdContent || baseHistory.jdContent,
+          ...(resultContext?.presetJdId ? {presetJdId: resultContext.presetJdId} : {}),
         },
         progress,
-      })
+      }
+      const historyId = enteredFromLanding && !useAuthStore.getState().session
+        ? await savePendingLandingHistory(history)
+        : await addHistory(history)
 
       setSaved(true)
       setSavedHistoryId(historyId)
@@ -454,13 +509,24 @@ export function usePageModel(): ResultPageViewModel {
   const handleBackHome = () => {
     continuationRef.current += 1
     if (enteredFromCard) {
-      void navigation.navigateBack().catch(() => {
-        void navigation.reLaunch('/pages/index/index')
-      })
+      return navigation.returnHome()
+    }
+
+    return navigation.reLaunch('/pages/index/index')
+  }
+
+  const handleEditHistory = async () => {
+    if (!savedHistoryId) {
+      feedback.message('当前简历还未保存，暂不能编辑')
       return
     }
 
-    void navigation.reLaunch('/pages/index/index')
+    continuationRef.current += 1
+    await navigation.navigateTo('/pages/create/index', {
+      step: 'jobDescription',
+      mode: 'editHistory',
+      historyId: savedHistoryId,
+    })
   }
 
   const handlePendingStage = () => {
@@ -492,17 +558,22 @@ export function usePageModel(): ResultPageViewModel {
 
   return {
     result,
+    resumeContent: resultContext?.resumeContent || '',
+    jdContent: resultContext?.jdContent || '',
     loading,
     saved,
     progress,
     progressPercent: getProgressPercent(progress),
     generationError,
     enteredFromCard,
+    enteredFromLanding,
     returnCard,
+    canEditHistory: Boolean(savedHistoryId),
     handleSave,
     handleComplete,
     handleShare,
     handleBackHome,
+    handleEditHistory,
     handlePendingStage,
     handleOptimizedResumeChange,
   }

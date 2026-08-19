@@ -5,6 +5,16 @@ import { ResumeAnalyzerAgent } from '@/agents/resume-analyzer'
 import { ResumeGeneratorAgent } from '@/agents/resume-generator'
 import { ResumeRevisionAgent } from '@/agents/resume-revision'
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
+import {
+  assertBusinessEvaluationPassed,
+  buildBusinessFailureSampleReason,
+  evaluateWithBusinessRecovery,
+} from '@/harness/business-recovery'
+import {
+  evaluateInterviewSuggestionsBusiness,
+  evaluateMatchAnalysisBusiness,
+  evaluateResumeAnalysisBusiness,
+} from '@/harness/evaluators/business-evaluators'
 import { evaluateMarkdownResume } from '@/harness/evaluators/markdown-resume-evaluator'
 import { judgeResumeWithLlm } from '@/harness/evaluators/llm-judge-evaluator'
 import { createHarnessEvent, type WorkflowStatus } from '@/harness/events'
@@ -20,6 +30,7 @@ import {
 import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
+import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 import type { MvpProcessResponse } from '@/types'
 
 export interface ResumeOptimizationWorkflowInput {
@@ -31,26 +42,28 @@ export interface ResumeOptimizationWorkflowInput {
 }
 
 export interface ResumeOptimizationWorkflowAgents {
-  analyzer?: Pick<ResumeAnalyzerAgent, 'analyze'>
+  analyzer?: Pick<ResumeAnalyzerAgent, 'analyze' | 'repairBusinessOutput'>
   jdParser?: Pick<JDParserAgent, 'parse'>
-  matcher?: Pick<MatchingAgent, 'match'>
+  matcher?: Pick<MatchingAgent, 'match' | 'repairBusinessOutput'>
   generator?: Pick<ResumeGeneratorAgent, 'generate'>
   reviser?: Pick<ResumeRevisionAgent, 'revise'>
-  advisor?: Pick<InterviewAdvisorAgent, 'advise'>
+  advisor?: Pick<InterviewAdvisorAgent, 'advise' | 'repairBusinessOutput'>
 }
 
 export interface ResumeOptimizationWorkflowOptions {
   enableDefaultSubscribers?: boolean
+  enableFailureSampleAutoCapture?: boolean
 }
 
 export class ResumeOptimizationWorkflow {
   private readonly eventBus: HarnessEventBus
-  private readonly analyzer: Pick<ResumeAnalyzerAgent, 'analyze'>
+  private readonly analyzer: Pick<ResumeAnalyzerAgent, 'analyze' | 'repairBusinessOutput'>
   private readonly jdParser: Pick<JDParserAgent, 'parse'>
-  private readonly matcher: Pick<MatchingAgent, 'match'>
+  private readonly matcher: Pick<MatchingAgent, 'match' | 'repairBusinessOutput'>
   private readonly generator: Pick<ResumeGeneratorAgent, 'generate'>
   private readonly reviser: Pick<ResumeRevisionAgent, 'revise'>
-  private readonly advisor: Pick<InterviewAdvisorAgent, 'advise'>
+  private readonly advisor: Pick<InterviewAdvisorAgent, 'advise' | 'repairBusinessOutput'>
+  private readonly enableFailureSampleAutoCapture: boolean
   private readonly traceSubscriber = new TraceSubscriber()
   private readonly persistenceSubscriber = new PersistenceSubscriber()
 
@@ -66,6 +79,8 @@ export class ResumeOptimizationWorkflow {
     this.generator = agents.generator ?? new ResumeGeneratorAgent()
     this.reviser = agents.reviser ?? new ResumeRevisionAgent()
     this.advisor = agents.advisor ?? new InterviewAdvisorAgent()
+    this.enableFailureSampleAutoCapture =
+      options.enableFailureSampleAutoCapture ?? options.enableDefaultSubscribers !== false
 
     if (options.enableDefaultSubscribers !== false) {
       this.eventBus.subscribe('*', this.traceSubscriber.handle)
@@ -99,12 +114,32 @@ export class ResumeOptimizationWorkflow {
         eventBus: this.eventBus,
         stepName: 'analyze_resume',
         timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
-        execute: (stepContext) =>
-          this.analyzer.analyze(input.resume_markdown, {
+        execute: async (stepContext) => {
+          const analysis = await this.analyzer.analyze(input.resume_markdown, {
             eventBus: this.eventBus,
             stepContext,
             promptVariant,
-          }),
+          })
+          const recovered = await evaluateWithBusinessRecovery({
+            eventBus: this.eventBus,
+            stepContext,
+            outputName: 'ResumeAnalysis',
+            currentOutput: analysis,
+            evaluate: evaluateResumeAnalysisBusiness,
+            repair: ({ currentOutput, evaluation }) =>
+              this.analyzer.repairBusinessOutput(input.resume_markdown, currentOutput, evaluation, {
+                eventBus: this.eventBus,
+                stepContext,
+                promptVariant,
+              }),
+          })
+          assertBusinessEvaluationPassed({
+            evaluation: recovered.evaluation,
+            errorPrefix: '简历分析业务校验失败',
+          })
+
+          return recovered.output
+        },
       })
       steps.push(analysisStep.step)
 
@@ -127,12 +162,38 @@ export class ResumeOptimizationWorkflow {
         eventBus: this.eventBus,
         stepName: 'match_resume_to_jd',
         timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
-        execute: (stepContext) =>
-          this.matcher.match(analysisStep.result.structured_resume, jdStep.result, {
+        execute: async (stepContext) => {
+          const matchAnalysis = await this.matcher.match(analysisStep.result.structured_resume, jdStep.result, {
             eventBus: this.eventBus,
             stepContext,
             promptVariant,
-          }),
+          })
+          const recovered = await evaluateWithBusinessRecovery({
+            eventBus: this.eventBus,
+            stepContext,
+            outputName: 'MatchAnalysis',
+            currentOutput: matchAnalysis,
+            evaluate: evaluateMatchAnalysisBusiness,
+            repair: ({ currentOutput, evaluation }) =>
+              this.matcher.repairBusinessOutput(
+                analysisStep.result.structured_resume,
+                jdStep.result,
+                currentOutput,
+                evaluation,
+                {
+                  eventBus: this.eventBus,
+                  stepContext,
+                  promptVariant,
+                }
+              ),
+          })
+          assertBusinessEvaluationPassed({
+            evaluation: recovered.evaluation,
+            errorPrefix: '匹配分析业务校验失败',
+          })
+
+          return recovered.output
+        },
       })
       steps.push(matchingStep.step)
 
@@ -346,6 +407,7 @@ export class ResumeOptimizationWorkflow {
           recoverableErrors,
           recoverySummary: runtimeState.recoverySummary,
         })
+        this.createAutoFailureSample(runContext.runId, this.buildPartialFailureReason(recoverableErrors))
 
         return {
           run_id: runContext.runId,
@@ -379,12 +441,39 @@ export class ResumeOptimizationWorkflow {
             eventBus: this.eventBus,
             stepName: 'generate_interview_advice',
             timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
-            execute: (stepContext) =>
-              this.advisor.advise(analysisStep.result, matchingStep.result, optimizedResume, {
+            execute: async (stepContext) => {
+              const suggestions = await this.advisor.advise(analysisStep.result, matchingStep.result, optimizedResume, {
                 eventBus: this.eventBus,
                 stepContext,
                 promptVariant,
-              }),
+              })
+              const recovered = await evaluateWithBusinessRecovery({
+                eventBus: this.eventBus,
+                stepContext,
+                outputName: 'InterviewSuggestions',
+                currentOutput: suggestions,
+                evaluate: evaluateInterviewSuggestionsBusiness,
+                repair: ({ currentOutput, evaluation }) =>
+                  this.advisor.repairBusinessOutput(
+                    analysisStep.result,
+                    matchingStep.result,
+                    optimizedResume,
+                    currentOutput,
+                    evaluation,
+                    {
+                      eventBus: this.eventBus,
+                      stepContext,
+                      promptVariant,
+                    }
+                  ),
+              })
+              assertBusinessEvaluationPassed({
+                evaluation: recovered.evaluation,
+                errorPrefix: '面试建议业务校验失败',
+              })
+
+              return recovered.output
+            },
           })
       )
 
@@ -406,6 +495,9 @@ export class ResumeOptimizationWorkflow {
           recoverySummary: runtimeState.recoverySummary,
         }
       )
+      if (workflowStatus === 'partial') {
+        this.createAutoFailureSample(runContext.runId, this.buildPartialFailureReason(recoverableErrors))
+      }
 
       return {
         run_id: runContext.runId,
@@ -425,6 +517,13 @@ export class ResumeOptimizationWorkflow {
         finishedAt: new Date().toISOString(),
         errorMessage: error instanceof Error ? error.message : '未知错误',
       })
+      this.createAutoFailureSample(
+        runContext.runId,
+        buildBusinessFailureSampleReason(
+          error instanceof StepRunError ? error.cause : error,
+          error instanceof StepRunError ? error.step.stepName : undefined
+        )
+      )
 
       throw error instanceof StepRunError ? error.cause : error
     }
@@ -525,5 +624,27 @@ export class ResumeOptimizationWorkflow {
         payload,
       })
     )
+  }
+
+  private buildPartialFailureReason(recoverableErrors: NonNullable<MvpProcessResponse['recoverable_errors']>) {
+    if (recoverableErrors.length === 0) {
+      return 'workflow_partial reason=unknown'
+    }
+
+    return `workflow_partial recoverable_errors=${recoverableErrors
+      .map((error) => `${error.stepName}:${error.errorCode}`)
+      .join(',')}`
+  }
+
+  private createAutoFailureSample(runId: string, reason: string) {
+    if (!this.enableFailureSampleAutoCapture) {
+      return
+    }
+
+    try {
+      new HarnessRunRepository().createFailureSampleIfAbsent(runId, reason)
+    } catch (error) {
+      console.error('[ResumeOptimizationWorkflow] create failure sample failed:', error)
+    }
   }
 }

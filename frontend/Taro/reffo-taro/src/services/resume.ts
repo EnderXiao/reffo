@@ -15,6 +15,7 @@ import type {
 export interface AnalyzeResumeRequest {
   /** Markdown 格式的简历内容 */
   resume_markdown: string;
+  landing?: boolean;
 }
 
 /**
@@ -51,18 +52,23 @@ export interface ProcessResumeResponse {
 
 export interface MatchResumeRequest {
   structured_resume: ResumeAnalysis['structured_resume'];
-  jd_text: string;
+  jd_text?: string;
+  preset_jd_id?: string;
 }
 
 export interface GenerateOptimizedResumeRequest {
   structured_resume: ResumeAnalysis['structured_resume'];
   matching: MatchingApiResult;
+  landing?: boolean;
+  preset_jd_id?: string;
 }
 
 export interface GenerateInterviewSuggestionsRequest {
   analysis: ResumeAnalysis;
   matching: MatchingResult;
   optimized_resume: string;
+  landing?: boolean;
+  preset_jd_id?: string;
 }
 
 interface MatchingApiResult {
@@ -341,7 +347,10 @@ export class ResumeApi {
    * }
    * ```
    */
-  async analyzeResume(resumeMarkdown: string): Promise<ResumeAnalysis> {
+  async analyzeResume(
+    resumeMarkdown: string,
+    options: {landing?: boolean} = {},
+  ): Promise<ResumeAnalysis> {
     // 验证输入
     if (!resumeMarkdown || resumeMarkdown.trim().length < 10) {
       throw new Error('简历内容不能为空且至少需要 10 个字符');
@@ -352,6 +361,7 @@ export class ResumeApi {
       '/mvp/analyze',
       {
         resume_markdown: resumeMarkdown,
+        ...(options.landing ? {landing: true} : {}),
       },
     );
 
@@ -362,21 +372,27 @@ export class ResumeApi {
 
   async matchResume(
     analysis: ResumeAnalysis,
-    jdText: string,
+    jd: string | {presetJdId: string},
   ): Promise<MatchingResult> {
     if (!analysis?.structured_resume) {
       throw new Error('简历分析结果不存在');
     }
 
-    if (!jdText || jdText.trim().length < 10) {
+    if (typeof jd === 'string' && (!jd || jd.trim().length < 10)) {
       throw new Error('JD 内容不能为空且至少需要 10 个字符');
+    }
+
+    if (typeof jd !== 'string' && !jd.presetJdId) {
+      throw new Error('预设 JD ID 不存在');
     }
 
     const response = await apiClient.post<MatchingApiResult>(
       '/mvp/match',
       {
         structured_resume: analysis.structured_resume,
-        jd_text: jdText,
+        ...(typeof jd === 'string'
+          ? {jd_text: jd}
+          : {preset_jd_id: jd.presetJdId}),
       } satisfies MatchResumeRequest,
       {timeout: 60000},
     );
@@ -387,6 +403,7 @@ export class ResumeApi {
   async generateOptimizedResume(
     analysis: ResumeAnalysis,
     matching: MatchingResult,
+    options: {landing?: boolean; presetJdId?: string} = {},
   ): Promise<OptimizedResume> {
     if (!analysis?.structured_resume) {
       throw new Error('简历分析结果不存在');
@@ -405,6 +422,8 @@ export class ResumeApi {
       {
         structured_resume: analysis.structured_resume,
         matching: toMatchingApiPayload(matching),
+        ...(options.landing ? {landing: true} : {}),
+        ...(options.presetJdId ? {preset_jd_id: options.presetJdId} : {}),
       } satisfies GenerateOptimizedResumeRequest,
       {timeout: 90000},
     );
@@ -420,6 +439,7 @@ export class ResumeApi {
     analysis: ResumeAnalysis,
     matching: MatchingResult,
     optimized: OptimizedResume,
+    options: {landing?: boolean; presetJdId?: string} = {},
   ): Promise<InterviewSuggestions> {
     if (!analysis) {
       throw new Error('简历分析结果不存在');
@@ -439,6 +459,8 @@ export class ResumeApi {
         analysis,
         matching,
         optimized_resume: optimized.optimized_resume,
+        ...(options.landing ? {landing: true} : {}),
+        ...(options.presetJdId ? {preset_jd_id: options.presetJdId} : {}),
       } satisfies GenerateInterviewSuggestionsRequest,
       {timeout: 60000},
     );

@@ -5,7 +5,13 @@ import { MatchingAgent } from '@/agents/matching-agent'
 import { ResumeGeneratorAgent } from '@/agents/resume-generator'
 import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
 import { ResumeRevisionAgent } from '@/agents/resume-revision'
+import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { createHarnessEvent } from '@/harness/events'
+import {
+  assertBusinessEvaluationPassed,
+  evaluateWithBusinessRecovery,
+  getBusinessEvaluationErrorDetails,
+} from '@/harness/business-recovery'
 import {
   evaluateInterviewSuggestionsBusiness,
   evaluateMatchAnalysisBusiness,
@@ -19,6 +25,7 @@ import { buildQualityGateAttempt, classifyAttemptResult, decideNextAction } from
 import { runStep } from '@/harness/run-step'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
+import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 
@@ -26,11 +33,60 @@ function getHarnessRunRepository() {
   return new HarnessRunRepository()
 }
 
+function buildErrorPayload(code: string, fallbackMessage: string, error: unknown): ApiResponse<never>['error'] {
+  return {
+    code,
+    message: fallbackMessage,
+    details: getBusinessEvaluationErrorDetails(error),
+  }
+}
+
 /**
  * MVP 路由
  * 提供完整的简历优化流程接口
  */
 export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
+  .onBeforeHandle(async ({ headers, path, body, set }) => {
+    if (path === '/api/v1/mvp/health') {
+      return
+    }
+
+    const requestBody = body && typeof body === 'object'
+      ? body as Record<string, unknown>
+      : null
+    const isGuestLandingRequest = (
+      path === '/api/v1/mvp/analyze'
+      && requestBody?.landing === true
+    ) || (
+      path === '/api/v1/mvp/match'
+      && isLandingPresetJobId(requestBody?.preset_jd_id)
+    ) || (
+      (path === '/api/v1/mvp/generate' || path === '/api/v1/mvp/interview')
+      && requestBody?.landing === true
+      && isLandingPresetJobId(requestBody?.preset_jd_id)
+    )
+
+    if (isGuestLandingRequest) {
+      return
+    }
+
+    try {
+      await resolveRequestUser(headers)
+    } catch (error) {
+      if (!(error instanceof RequestAuthError)) {
+        throw error
+      }
+
+      set.status = error.status
+      return {
+        success: false,
+        error: {
+          code: error.code,
+          message: error.message,
+        },
+      } satisfies ApiResponse<never>
+    }
+  })
   /**
    * POST /api/v1/mvp/process
    * 完整流程：简历分析 -> 匹配分析 -> 简历生成 -> 面试建议
@@ -58,10 +114,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'PROCESS_FAILED',
-            message: error instanceof Error ? error.message : '处理失败',
-          },
+          error: buildErrorPayload('PROCESS_FAILED', '处理失败', error),
         }
 
         return response
@@ -271,14 +324,24 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
               eventBus,
               stepContext,
             })
-            await assertBusinessEvaluation({
+            const recovered = await evaluateWithBusinessRecovery({
               eventBus,
               stepContext,
-              evaluation: evaluateResumeAnalysisBusiness(analysis),
+              outputName: 'ResumeAnalysis',
+              currentOutput: analysis,
+              evaluate: evaluateResumeAnalysisBusiness,
+              repair: ({ currentOutput, evaluation }) =>
+                analyzer.repairBusinessOutput(resumeMarkdown, currentOutput, evaluation, {
+                  eventBus,
+                  stepContext,
+                }),
+            })
+            assertBusinessEvaluationPassed({
+              evaluation: recovered.evaluation,
               errorPrefix: '简历分析业务校验失败',
             })
 
-            return analysis
+            return recovered.output
           },
         })
 
@@ -295,10 +358,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'ANALYSIS_FAILED',
-            message: error instanceof Error ? error.message : '分析失败',
-          },
+          error: buildErrorPayload('ANALYSIS_FAILED', '分析失败', error),
         }
 
         return response
@@ -310,6 +370,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           description: 'Markdown 格式的简历内容',
           minLength: 10,
         }),
+        landing: t.Optional(t.Boolean({
+          description: '是否为未登录 Landing 体验流程',
+        })),
       }),
       detail: {
         summary: '分析简历',
@@ -327,7 +390,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/match',
     async ({ body, set }) => {
       try {
-        const jdText = normalizeMarkdownText(body.jd_text)
+        const presetJob = resolveLandingPresetJob(body.preset_jd_id)
+        const jdText = normalizeMarkdownText(presetJob || body.jd_text || '')
         const parser = new JDParserAgent()
         const matcher = new MatchingAgent()
         const { result, meta } = await runHarnessedRequest({
@@ -360,14 +424,24 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
                   eventBus,
                   stepContext,
                 })
-                await assertBusinessEvaluation({
+                const recovered = await evaluateWithBusinessRecovery({
                   eventBus,
                   stepContext,
-                  evaluation: evaluateMatchAnalysisBusiness(matchAnalysis),
+                  outputName: 'MatchAnalysis',
+                  currentOutput: matchAnalysis,
+                  evaluate: evaluateMatchAnalysisBusiness,
+                  repair: ({ currentOutput, evaluation }) =>
+                    matcher.repairBusinessOutput(body.structured_resume, jdStep.result, currentOutput, evaluation, {
+                      eventBus,
+                      stepContext,
+                    }),
+                })
+                assertBusinessEvaluationPassed({
+                  evaluation: recovered.evaluation,
                   errorPrefix: '匹配分析业务校验失败',
                 })
 
-                return matchAnalysis
+                return recovered.output
               },
             })
             steps.push(matchingStep.step)
@@ -389,10 +463,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'MATCH_FAILED',
-            message: error instanceof Error ? error.message : '匹配分析失败',
-          },
+          error: buildErrorPayload('MATCH_FAILED', '匹配分析失败', error),
         }
 
         return response
@@ -403,10 +474,13 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         structured_resume: t.Any({
           description: '结构化简历数据',
         }),
-        jd_text: t.String({
+        jd_text: t.Optional(t.String({
           description: '岗位描述（JD）文本',
           minLength: 10,
-        }),
+        })),
+        preset_jd_id: t.Optional(t.String({
+          description: 'Landing 预设岗位 ID',
+        })),
       }),
       detail: {
         summary: '匹配分析',
@@ -602,10 +676,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'GENERATE_FAILED',
-            message: error instanceof Error ? error.message : '简历生成失败',
-          },
+          error: buildErrorPayload('GENERATE_FAILED', '简历生成失败', error),
         }
 
         return response
@@ -619,6 +690,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         matching: t.Any({
           description: '匹配分析结果，需包含 jd_structure',
         }),
+        landing: t.Optional(t.Boolean({description: '是否为未登录 Landing 体验流程'})),
+        preset_jd_id: t.Optional(t.String({description: 'Landing 预设岗位 ID'})),
       }),
       detail: {
         summary: '生成优化简历',
@@ -656,14 +729,31 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
                 stepContext,
               }
             )
-            await assertBusinessEvaluation({
+            const recovered = await evaluateWithBusinessRecovery({
               eventBus,
               stepContext,
-              evaluation: evaluateInterviewSuggestionsBusiness(suggestions),
+              outputName: 'InterviewSuggestions',
+              currentOutput: suggestions,
+              evaluate: evaluateInterviewSuggestionsBusiness,
+              repair: ({ currentOutput, evaluation }) =>
+                advisor.repairBusinessOutput(
+                  body.analysis,
+                  body.matching,
+                  body.optimized_resume,
+                  currentOutput,
+                  evaluation,
+                  {
+                    eventBus,
+                    stepContext,
+                  }
+                ),
+            })
+            assertBusinessEvaluationPassed({
+              evaluation: recovered.evaluation,
               errorPrefix: '面试建议业务校验失败',
             })
 
-            return suggestions
+            return recovered.output
           },
         })
 
@@ -680,10 +770,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<never> = {
           success: false,
-          error: {
-            code: 'INTERVIEW_FAILED',
-            message: error instanceof Error ? error.message : '面试建议生成失败',
-          },
+          error: buildErrorPayload('INTERVIEW_FAILED', '面试建议生成失败', error),
         }
 
         return response
@@ -701,6 +788,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           description: '优化后的 Markdown 简历',
           minLength: 10,
         }),
+        landing: t.Optional(t.Boolean({description: '是否为未登录 Landing 体验流程'})),
+        preset_jd_id: t.Optional(t.String({description: 'Landing 预设岗位 ID'})),
       }),
       detail: {
         summary: '生成面试建议',

@@ -231,6 +231,44 @@ describe('TaroNavigationAdapter', () => {
     });
   });
 
+  describe('returnHome', () => {
+    test('should navigate back when page stack has previous page', async () => {
+      mockGetCurrentPages.mockReturnValue([
+        {route: 'pages/index/index'},
+        {route: 'pages/result/index'},
+      ]);
+      mockNavigateBack.mockResolvedValue({});
+
+      await adapter.returnHome();
+
+      expect(mockNavigateBack).toHaveBeenCalledWith({delta: 1});
+      expect(mockReLaunch).not.toHaveBeenCalled();
+    });
+
+    test('should relaunch home when current page is stack root', async () => {
+      mockGetCurrentPages.mockReturnValue([{route: 'pages/result/index'}]);
+      mockReLaunch.mockResolvedValue({});
+
+      await adapter.returnHome();
+
+      expect(mockNavigateBack).not.toHaveBeenCalled();
+      expect(mockReLaunch).toHaveBeenCalledWith({
+        url: '/pages/index/index',
+      });
+    });
+
+    test('should relaunch custom home when provided', async () => {
+      mockGetCurrentPages.mockReturnValue([]);
+      mockReLaunch.mockResolvedValue({});
+
+      await adapter.returnHome('/pages/custom/index');
+
+      expect(mockReLaunch).toHaveBeenCalledWith({
+        url: '/pages/custom/index',
+      });
+    });
+  });
+
   describe('getCurrentPages', () => {
     test('should return current pages', () => {
       const mockPages = [

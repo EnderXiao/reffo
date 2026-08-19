@@ -1,4 +1,6 @@
 import Taro from '@tarojs/taro';
+import {redactSensitiveData} from './redact';
+import {getClientErrorMessage} from './client-error';
 
 /**
  * HTTP 请求方法
@@ -248,7 +250,7 @@ export class TaroRequestAdapter implements RequestAdapter {
       console.log('[Request]', {
         method: requestConfig.method,
         url: requestConfig.url,
-        data: requestConfig.data,
+        data: redactSensitiveData(requestConfig.data),
       });
 
       // 发起请求
@@ -275,7 +277,9 @@ export class TaroRequestAdapter implements RequestAdapter {
       if (!response.success) {
         const apiError = getApiErrorPayload(response.data)
         throw new RequestError(
-          apiError?.message || `HTTP 错误: ${response.statusCode}`,
+          apiError
+            ? getClientErrorMessage(apiError.code, response.statusCode, apiError.message)
+            : `HTTP 错误: ${response.statusCode}`,
           apiError?.code || 'HTTP_ERROR',
           response.statusCode,
           apiError?.details ?? response.data,

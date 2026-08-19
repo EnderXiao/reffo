@@ -6,6 +6,9 @@ import { mvpRoutes } from '@/routes/mvp'
 import { parseRoutes } from '@/routes/parse'
 import { sourceResumeRoutes } from '@/routes/source-resume'
 import { resumeHistoryRoutes } from '@/routes/resume-history'
+import { systemRoutes } from '@/routes/system'
+import { authRoutes } from '@/routes/auth'
+import { profileRoutes } from '@/routes/profile'
 
 /**
  * 启动应用
@@ -37,6 +40,7 @@ async function bootstrap() {
             { name: 'SourceResume', description: '源简历存储与查询接口' },
             { name: 'ResumeHistory', description: '生成卡片历史接口' },
             { name: 'System', description: '系统接口' },
+            { name: 'Auth', description: '账号认证辅助接口' },
           ],
         },
       })
@@ -61,7 +65,6 @@ async function bootstrap() {
           error: {
             code: 'VALIDATION_ERROR',
             message: '请求参数验证失败',
-            details: error.message,
           },
         }
       }
@@ -77,19 +80,12 @@ async function bootstrap() {
         }
       }
 
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : typeof error === 'object' && error !== null && 'message' in error
-            ? String((error as { message?: unknown }).message || '服务器内部错误')
-            : '服务器内部错误'
-
       set.status = 500
       return {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: errorMessage,
+          message: '服务暂时不可用，请稍后重试',
         },
       }
     })
@@ -101,6 +97,9 @@ async function bootstrap() {
       health: '/api/v1/mvp/health',
     }))
     // 注册路由
+    .use(systemRoutes)
+    .use(authRoutes)
+    .use(profileRoutes)
     .use(mvpRoutes)
     .use(parseRoutes)
     .use(sourceResumeRoutes)
@@ -119,6 +118,7 @@ async function bootstrap() {
   console.log('========================================')
   console.log(`🤖 AI 模型: ${env.AI_MODEL}`)
   console.log(`🔗 API 地址: ${env.OPENAI_BASE_URL}`)
+  console.log(`📄 OCR 模型: ${env.GLM_OCR_MODEL}`)
   console.log('========================================\n')
 }
 

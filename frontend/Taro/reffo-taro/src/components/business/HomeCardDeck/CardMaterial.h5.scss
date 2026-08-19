@@ -1,0 +1,62 @@
+.reffo-card-texture {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.reffo-card-texture__mark,
+.reffo-card-texture__repeat,
+.reffo-card-texture__tile,
+.reffo-card-texture__wash {
+  position: absolute;
+}
+
+.reffo-card-texture__mark,
+.reffo-card-texture__repeat,
+.reffo-card-texture__tile {
+  z-index: 1;
+}
+
+.reffo-card-texture__repeat,
+.reffo-card-texture__wash {
+  inset: 0;
+}
+
+.reffo-card-texture__repeat {
+  opacity: 0.58;
+}
+
+.reffo-card-texture__mark svg,
+.reffo-card-texture__tile svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.reffo-card-texture__wash {
+  z-index: 2;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 10%, transparent) 0%, rgba(255, 255, 255, 0) 68%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 52%);
+}
+
+.reffo-card-glass {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.10);
+  background-clip: padding-box;
+  backdrop-filter: blur(5PX);
+  -webkit-backdrop-filter: blur(5PX);
+  border-top: 1px solid rgba(255, 255, 255, 0.26);
+}
+
+.reffo-card-glass::before {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  opacity: 0.22;
+  pointer-events: none;
+  content: '';
+}

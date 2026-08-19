@@ -146,6 +146,21 @@ export const styles = StyleSheet.create({
   fieldBlockCompact: {
     marginBottom: 6,
   },
+  fieldRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  fieldRowCompact: {
+    marginBottom: 6,
+  },
+  fieldRowItem: {
+    flex: 1,
+    minWidth: 0,
+    marginBottom: 0,
+  },
+  fieldRowItemLeft: {
+    marginRight: 8,
+  },
   descriptionFieldFill: {
     flex: 1,
     minHeight: 0,
@@ -163,19 +178,27 @@ export const styles = StyleSheet.create({
     marginBottom: 5,
   },
   inputShell: {
-    borderRadius: radius.lg,
+    borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.border.warmSoft,
     backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingLeft: 16,
-    paddingRight: 16,
-    minHeight: 46,
+    paddingLeft: 10,
+    paddingRight: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
+    minHeight: 37,
     justifyContent: 'center',
   },
   inputShellCompact: {
-    minHeight: 40,
+    minHeight: 35,
     paddingLeft: 10,
     paddingRight: 10,
+    paddingTop: 7,
+    paddingBottom: 7,
+  },
+  inputShellDisabled: {
+    opacity: 0.58,
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
   input: {
     color: colors.text.secondary,
@@ -185,6 +208,9 @@ export const styles = StyleSheet.create({
   inputCompact: {
     fontSize: 14,
     lineHeight: createLineHeight(18),
+  },
+  inputDisabled: {
+    color: '#b7aaa3',
   },
   jdPanel: {
     borderRadius: radius.xl,
@@ -200,6 +226,78 @@ export const styles = StyleSheet.create({
   jdPanelFill: {
     flex: 1,
     minHeight: 0,
+  },
+  combinedPanel: {
+    minHeight: 182,
+    paddingLeft: 0,
+    paddingRight: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  combinedPanelCompact: {
+    minHeight: 126,
+  },
+  combinedPanelFill: {
+    flex: 1,
+    minHeight: 0,
+  },
+  inlineUploadBar: {
+    position: 'relative',
+    minHeight: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0)',
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    paddingLeft: 13,
+    paddingRight: 13,
+    marginBottom: 10,
+  },
+  inlineUploadBarCompact: {
+    minHeight: 31,
+    borderRadius: 9,
+    marginBottom: 8,
+    paddingLeft: 12,
+    paddingRight: 12,
+  },
+  inlineUploadBarUploading: {
+    borderColor: 'rgba(255,108,67,0.32)',
+    backgroundColor: 'rgba(255,255,255,0.42)',
+  },
+  inlineUploadBarSuccess: {
+    borderColor: 'rgba(255,216,192,0.96)',
+    backgroundColor: 'rgba(255,224,204,0.86)',
+  },
+  inlineUploadBarError: {
+    borderColor: 'rgba(255,56,60,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.42)',
+  },
+  inlineUploadProgressFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,108,67,0.2)',
+  },
+  inlineUploadText: {
+    color: '#0874f2',
+    fontSize: 13,
+    lineHeight: createLineHeight(18),
+    fontWeight: '700',
+  },
+  inlineUploadTextCompact: {
+    fontSize: 12,
+    lineHeight: createLineHeight(17),
+  },
+  inlineUploadTextUploading: {
+    color: '#d95e34',
+  },
+  inlineUploadTextSuccess: {
+    color: '#8a5a45',
+  },
+  inlineUploadTextError: {
+    color: '#ff383c',
   },
   uploadPanel: {
     minHeight: 182,
@@ -390,6 +488,21 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  uploadProgressBadge: {
+    position: 'relative',
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  uploadProgressBadgeCompact: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    marginBottom: 8,
+  },
   previewBadgeRing: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 999,
@@ -532,12 +645,30 @@ export const styles = StyleSheet.create({
     paddingBottom: 8,
     backgroundColor: colors.surface.warmPanelSoft,
   },
+  textareaWrapCombined: {
+    flex: 1,
+    minHeight: 0,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#e1e4e8',
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    paddingLeft: 18,
+    paddingRight: 18,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
   textareaWrapCompact: {
     minHeight: 126,
     paddingLeft: 10,
     paddingRight: 10,
     paddingTop: 8,
     paddingBottom: 5,
+  },
+  textareaWrapCombinedCompact: {
+    paddingLeft: 14,
+    paddingRight: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   textareaWrapFill: {
     flex: 1,
@@ -558,6 +689,9 @@ export const styles = StyleSheet.create({
   textareaFill: {
     flex: 1,
     minHeight: 0,
+  },
+  textareaDisabled: {
+    opacity: 0.62,
   },
   modeBar: {
     flexDirection: 'row',
@@ -581,6 +715,9 @@ export const styles = StyleSheet.create({
   },
   modeTabActive: {
     backgroundColor: colors.surface.warmTab,
+  },
+  modeTabDisabled: {
+    opacity: 0.42,
   },
   modeTabGlyph: {
     color: colors.icon.muted,

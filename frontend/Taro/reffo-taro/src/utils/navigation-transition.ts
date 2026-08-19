@@ -24,6 +24,8 @@ const NAVIGATION_STYLE_ID = 'reffo-navigation-transition-style'
 const ROUTE_FADE_DURATION = 280
 const ROUTE_FADE_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
 const VIEW_TRANSITION_DURATION = 420
+const RESULT_CARD_RETURN_DURATION = 860
+const RESULT_CARD_RETURN_TRANSITION_NAME = 'reffo-result-card-return'
 
 let styleInjected = false
 let shouldSuppressNextTransition = false
@@ -106,6 +108,11 @@ function injectNavigationTransitionStyle() {
       transition: none !important;
     }
 
+    html[data-reffo-view-transition] .taro_router .taro_page:not(.taro_page_show) *,
+    html[data-reffo-view-transition] .taro_router .taro_page.taro_page_shade * {
+      view-transition-name: none !important;
+    }
+
     html[data-reffo-skip-route-transition] .taro_router .taro_page {
       transition: none !important;
     }
@@ -113,6 +120,40 @@ function injectNavigationTransitionStyle() {
     html[data-reffo-view-transition]::view-transition-group(root) {
       animation-duration: ${VIEW_TRANSITION_DURATION}ms;
       animation-timing-function: ${ROUTE_FADE_EASING};
+    }
+
+    html[data-reffo-card-return-transition]::view-transition-old(root) {
+      opacity: 0;
+      animation: none;
+      mix-blend-mode: normal;
+    }
+
+    html[data-reffo-card-return-transition]::view-transition-new(root) {
+      opacity: 1;
+      animation: none;
+      mix-blend-mode: normal;
+    }
+
+    html[data-reffo-card-return-transition]::view-transition-group(${RESULT_CARD_RETURN_TRANSITION_NAME}) {
+      overflow: clip;
+      animation-duration: ${RESULT_CARD_RETURN_DURATION}ms;
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html[data-reffo-card-return-transition]::view-transition-old(${RESULT_CARD_RETURN_TRANSITION_NAME}),
+    html[data-reffo-card-return-transition]::view-transition-new(${RESULT_CARD_RETURN_TRANSITION_NAME}) {
+      height: 100%;
+      mix-blend-mode: normal;
+      animation-duration: ${RESULT_CARD_RETURN_DURATION}ms;
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html[data-reffo-card-return-transition]::view-transition-old(${RESULT_CARD_RETURN_TRANSITION_NAME}) {
+      animation-name: reffo-result-card-return-old;
+    }
+
+    html[data-reffo-card-return-transition]::view-transition-new(${RESULT_CARD_RETURN_TRANSITION_NAME}) {
+      animation-name: reffo-result-card-return-new;
     }
 
     html[data-reffo-view-transition]::view-transition-old(root),
@@ -191,13 +232,52 @@ function injectNavigationTransitionStyle() {
       }
     }
 
+    @keyframes reffo-result-card-return-old {
+      0% {
+        opacity: 1;
+        filter: none;
+      }
+
+      58% {
+        opacity: 0.74;
+        filter: none;
+      }
+
+      100% {
+        opacity: 0;
+        filter: blur(5PX);
+      }
+    }
+
+    @keyframes reffo-result-card-return-new {
+      0%,
+      30% {
+        opacity: 0;
+        filter: blur(4PX);
+      }
+
+      64% {
+        opacity: 0.82;
+        filter: blur(0);
+      }
+
+      100% {
+        opacity: 1;
+        filter: blur(0);
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .taro_router .taro_page {
         transition: none !important;
       }
 
       html[data-reffo-view-transition]::view-transition-old(root),
-      html[data-reffo-view-transition]::view-transition-new(root) {
+      html[data-reffo-view-transition]::view-transition-new(root),
+      html[data-reffo-card-return-transition]::view-transition-old(root),
+      html[data-reffo-card-return-transition]::view-transition-new(root),
+      html[data-reffo-card-return-transition]::view-transition-old(${RESULT_CARD_RETURN_TRANSITION_NAME}),
+      html[data-reffo-card-return-transition]::view-transition-new(${RESULT_CARD_RETURN_TRANSITION_NAME}) {
         animation: none !important;
       }
     }
@@ -297,5 +377,68 @@ export async function runWithNavigationTransition(
     return action()
   } finally {
     delete root.dataset.reffoViewTransition
+  }
+}
+
+export function startResultCardReturnTransition(
+  action: NavigationAction,
+  sourceElement: HTMLElement | null,
+) {
+  if (!isH5NavigationEnvironment() || !sourceElement || !supportsViewTransition()) {
+    return false
+  }
+
+  injectNavigationTransitionStyle()
+
+  const root = document.documentElement
+  const startViewTransition = (document as DocumentWithViewTransition).startViewTransition
+  const previousViewTransitionName = sourceElement.style.getPropertyValue('view-transition-name')
+  let actionStarted = false
+
+  if (!startViewTransition) {
+    return false
+  }
+
+  root.dataset.reffoCardReturnTransition = '1'
+  sourceElement.style.setProperty('view-transition-name', RESULT_CARD_RETURN_TRANSITION_NAME)
+
+  try {
+    const transition = startViewTransition(async () => {
+      actionStarted = true
+      shouldSuppressNextTransition = true
+      await action()
+      await waitForNextPaint()
+    })
+
+    transition.finished
+      .catch(error => {
+        console.warn('结果页返回首页 View Transition 失败:', error)
+      })
+      .finally(() => {
+        if (previousViewTransitionName) {
+          sourceElement.style.setProperty('view-transition-name', previousViewTransitionName)
+        } else {
+          sourceElement.style.removeProperty('view-transition-name')
+        }
+        delete root.dataset.reffoCardReturnTransition
+        shouldSuppressNextTransition = false
+      })
+
+    return true
+  } catch (error) {
+    if (previousViewTransitionName) {
+      sourceElement.style.setProperty('view-transition-name', previousViewTransitionName)
+    } else {
+      sourceElement.style.removeProperty('view-transition-name')
+    }
+    delete root.dataset.reffoCardReturnTransition
+    shouldSuppressNextTransition = false
+
+    if (actionStarted) {
+      console.warn('结果页返回首页 View Transition 中断:', error)
+      return true
+    }
+
+    return false
   }
 }

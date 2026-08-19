@@ -18,14 +18,23 @@ jest.mock('@/services/resumeHistory', () => ({
   },
 }));
 
+jest.mock('@/services/runtime-config', () => ({
+  isLocalRuntimeEnvironment: jest.fn(async () => true),
+}));
+
 // Mock storage 模块
 jest.mock('@/utils/storage', () => ({
   getJSON: jest.fn(async () => null),
   setJSON: jest.fn(async () => {}),
+  storage: {
+    removeItem: jest.fn(async () => {}),
+  },
 }));
 
 import * as storage from '@/utils/storage';
 import {resumeHistoryApi} from '@/services/resumeHistory';
+import {isLocalRuntimeEnvironment} from '@/services/runtime-config';
+import {useAuthStore} from '@/store/authStore';
 
 const mockedResumeHistoryApi = resumeHistoryApi as jest.Mocked<typeof resumeHistoryApi>;
 
@@ -34,6 +43,7 @@ describe('History Store', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useHistoryStore.getState().reset();
+    useAuthStore.setState({session: null, initialized: false});
     (storage.getJSON as any).mockResolvedValue(null);
     (storage.setJSON as any).mockResolvedValue(undefined);
     mockedResumeHistoryApi.getHistories.mockResolvedValue([]);
@@ -44,6 +54,7 @@ describe('History Store', () => {
     } as ResumeHistory));
     mockedResumeHistoryApi.deleteHistory.mockResolvedValue(undefined);
     mockedResumeHistoryApi.clearHistories.mockResolvedValue(undefined);
+    (isLocalRuntimeEnvironment as jest.Mock).mockResolvedValue(true);
   });
 
   describe('初始状态', () => {
@@ -58,6 +69,41 @@ describe('History Store', () => {
   });
 
   describe('loadHistories', () => {
+    test('nonprod 接口失败时不读取或展示本地缓存', async () => {
+      useAuthStore.setState({
+        session: {
+          accessToken: 'test-token',
+          user: {id: 'user-1'},
+        },
+        initialized: true,
+      });
+      (isLocalRuntimeEnvironment as jest.Mock).mockResolvedValue(false);
+      mockedResumeHistoryApi.getHistories.mockRejectedValueOnce(new Error('接口失败'));
+
+      await useHistoryStore.getState().loadHistories();
+
+      expect(storage.getJSON).not.toHaveBeenCalled();
+      expect(useHistoryStore.getState().histories).toEqual([]);
+      expect(useHistoryStore.getState().loading.error).toBe('接口失败');
+    });
+
+    test('未登录时从本地历史和 Landing 待同步记录加载，不请求受保护接口', async () => {
+      const localHistory = {id: 'local-1', createdAt: '2024-01-01T00:00:00.000Z'} as ResumeHistory;
+      const pendingHistory = {id: 'pending-1', createdAt: '2024-01-02T00:00:00.000Z'} as ResumeHistory;
+      (storage.getJSON as jest.Mock)
+        .mockResolvedValueOnce([localHistory])
+        .mockResolvedValueOnce([pendingHistory]);
+
+      await useHistoryStore.getState().loadHistories();
+
+      expect(mockedResumeHistoryApi.getHistories).not.toHaveBeenCalled();
+      expect(useHistoryStore.getState().histories.map(history => history.id)).toEqual([
+        'pending-1',
+        'local-1',
+      ]);
+      expect(useHistoryStore.getState().loading.error).toBeNull();
+    });
+
     test('应该从本地存储加载历史记录', async () => {
       const mockHistories: ResumeHistory[] = [
         {
@@ -114,6 +160,13 @@ describe('History Store', () => {
     });
 
     test('应该处理加载错误', async () => {
+      useAuthStore.setState({
+        session: {
+          accessToken: 'test-token',
+          user: {id: 'user-1'},
+        },
+        initialized: true,
+      });
       const errorMessage = '读取失败';
       (storage.getJSON as any).mockRejectedValueOnce(
         new Error(errorMessage),

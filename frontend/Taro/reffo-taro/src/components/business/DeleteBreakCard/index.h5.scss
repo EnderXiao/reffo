@@ -1,0 +1,817 @@
+.reffo-delete-break-card {
+  --delete-break-card-width: 210px;
+  --delete-break-card-height: 332px;
+  --delete-break-card-plane-rotation: -120deg;
+  --delete-break-card-direction-rotation: 50deg;
+  --delete-break-card-diagonal-rotation: -91deg;
+  --delete-break-card-lay-duration: 620ms;
+  --delete-break-card-wait-duration: 2000ms;
+  --delete-break-card-break-duration: 1180ms;
+  --delete-break-card-lay-ease: cubic-bezier(0.18, 0.92, 0.22, 1);
+  --delete-break-card-shake-ease: cubic-bezier(0.46, 0, 0.58, 1);
+  --delete-break-card-break-ease: cubic-bezier(0.16, 1, 0.24, 1);
+  --delete-break-card-piece-fall-ease: cubic-bezier(0.22, 0.74, 0.18, 1);
+  --delete-break-card-top-y: -36px;
+  --delete-break-card-top-y-mid: -18px;
+  --delete-break-card-bottom-y: 37px;
+  --delete-break-card-bottom-y-mid: 18px;
+  --delete-break-card-top-z: -18px;
+  --delete-break-card-top-z-mid: -9px;
+  --delete-break-card-bottom-z: -16px;
+  --delete-break-card-bottom-z-mid: -8px;
+  --delete-break-card-top-bend: 28deg;
+  --delete-break-card-top-bend-mid: 14deg;
+  --delete-break-card-bottom-bend: -18deg;
+  --delete-break-card-bottom-bend-mid: -9deg;
+  --delete-break-card-top-twist: 2deg;
+  --delete-break-card-top-twist-mid: 1deg;
+  --delete-break-card-bottom-twist: 2deg;
+  --delete-break-card-bottom-twist-mid: 1deg;
+  --delete-break-card-thickness: 4px;
+  --delete-break-card-fall-top-y: 282px;
+  --delete-break-card-fall-bottom-y: 304px;
+  --delete-drag-x: 0px;
+  --delete-drag-y: 0px;
+  --delete-drag-progress-x: 0;
+  --delete-drag-progress-y: 0;
+  --delete-break-card-shard-color: #ff5a3c;
+  --delete-break-card-shard-group-left: 61%;
+  --delete-break-card-shard-group-top: 49%;
+  --card-design-width: 210px;
+  --card-design-height: 332px;
+  --card-responsive-scale: calc(var(--delete-break-card-width) / var(--card-design-width));
+  width: var(--delete-break-card-width);
+  height: var(--delete-break-card-height);
+  position: relative;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  view-transition-name: reffo-delete-jd-card;
+  contain: layout;
+  filter: drop-shadow(0 18PX 36PX rgba(114, 93, 82, 0.18));
+  transform-origin: center center;
+  transform:
+    translate3d(var(--delete-drag-x), var(--delete-drag-y), 0)
+    rotate(calc(var(--delete-drag-progress-y) * -5deg + var(--delete-drag-progress-x) * 4deg));
+  transition:
+    transform 300ms cubic-bezier(0.16, 1.26, 0.34, 1),
+    filter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-delete-break-card--deleting,
+.reffo-delete-break-card--settling,
+.reffo-delete-break-card--breaking {
+  filter: drop-shadow(0 8PX 14PX rgba(114, 93, 82, 0.13));
+}
+
+.reffo-delete-break-card--breaking {
+  animation: reffo-delete-break-card-impact 260ms cubic-bezier(0.18, 1.55, 0.24, 1) both;
+}
+
+.reffo-delete-break-card__whole-plane,
+.reffo-delete-break-card__whole-direction,
+.reffo-delete-break-card__whole-diagonal,
+.reffo-delete-break-card__whole-pose,
+.reffo-delete-break-card__break-layer,
+.reffo-delete-break-card__piece-fall,
+.reffo-delete-break-card__piece-plane,
+.reffo-delete-break-card__piece-direction,
+.reffo-delete-break-card__piece-diagonal,
+.reffo-delete-break-card__piece-pose,
+.reffo-delete-break-card__shard-layer {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.reffo-delete-break-card__whole-plane,
+.reffo-delete-break-card__whole-direction,
+.reffo-delete-break-card__whole-diagonal,
+.reffo-delete-break-card__whole-pose {
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-delete-break-card__whole-pose,
+.reffo-delete-break-card__piece-pose {
+  transform: translate3d(0, 0, 0) rotateZ(0deg) scaleY(1);
+}
+
+.reffo-delete-break-card__whole-card {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.reffo-delete-break-card__flipper {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform-style: preserve-3d;
+  transform: rotateY(180deg);
+}
+
+.reffo-delete-break-card__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.reffo-delete-break-card__face--back {
+  transform: rotateY(180deg);
+}
+
+.reffo-delete-break-card__break-layer {
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: center center;
+  will-change: opacity;
+}
+
+.reffo-delete-break-card__piece-fall {
+  z-index: 2;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.reffo-delete-break-card__piece-plane,
+.reffo-delete-break-card__piece-direction,
+.reffo-delete-break-card__piece-diagonal,
+.reffo-delete-break-card__piece-pose,
+.reffo-delete-break-card__shard-layer {
+  pointer-events: none;
+}
+
+.reffo-delete-break-card--waiting .reffo-delete-break-card__whole-plane,
+.reffo-delete-break-card--settling .reffo-delete-break-card__whole-plane,
+.reffo-delete-break-card--breaking .reffo-delete-break-card__whole-plane {
+  transform: perspective(900px) translate3d(0, 8px, 0) rotate(var(--delete-break-card-plane-rotation));
+}
+
+.reffo-delete-break-card--waiting .reffo-delete-break-card__whole-direction,
+.reffo-delete-break-card--settling .reffo-delete-break-card__whole-direction,
+.reffo-delete-break-card--breaking .reffo-delete-break-card__whole-direction {
+  transform: rotateX(var(--delete-break-card-direction-rotation));
+}
+
+.reffo-delete-break-card--waiting .reffo-delete-break-card__whole-diagonal,
+.reffo-delete-break-card--settling .reffo-delete-break-card__whole-diagonal,
+.reffo-delete-break-card--breaking .reffo-delete-break-card__whole-diagonal {
+  transform: rotate3d(1, -1, 0, var(--delete-break-card-diagonal-rotation));
+}
+
+.reffo-delete-break-card--waiting .reffo-delete-break-card__whole-pose,
+.reffo-delete-break-card--settling .reffo-delete-break-card__whole-pose,
+.reffo-delete-break-card--breaking .reffo-delete-break-card__whole-pose {
+  transform: translate3d(0, 0, 0) rotateZ(0deg) scaleY(0.86);
+}
+
+.reffo-delete-break-card--laying .reffo-delete-break-card__whole-plane,
+.reffo-delete-break-card--deleting .reffo-delete-break-card__whole-plane {
+  animation: reffo-delete-break-card-lay-plane var(--delete-break-card-lay-duration) var(--delete-break-card-lay-ease) both;
+}
+
+.reffo-delete-break-card--laying .reffo-delete-break-card__whole-direction,
+.reffo-delete-break-card--deleting .reffo-delete-break-card__whole-direction {
+  animation: reffo-delete-break-card-lay-direction var(--delete-break-card-lay-duration) var(--delete-break-card-lay-ease) both;
+}
+
+.reffo-delete-break-card--laying .reffo-delete-break-card__whole-diagonal,
+.reffo-delete-break-card--deleting .reffo-delete-break-card__whole-diagonal {
+  animation: reffo-delete-break-card-lay-diagonal var(--delete-break-card-lay-duration) var(--delete-break-card-lay-ease) both;
+}
+
+.reffo-delete-break-card--laying .reffo-delete-break-card__whole-pose {
+  animation: reffo-delete-break-card-lay-squash var(--delete-break-card-lay-duration) var(--delete-break-card-lay-ease) both;
+}
+
+.reffo-delete-break-card--waiting .reffo-delete-break-card__whole-pose {
+  animation: reffo-delete-break-card-wait-shake var(--delete-break-card-wait-duration) var(--delete-break-card-shake-ease) both;
+}
+
+.reffo-delete-break-card--deleting .reffo-delete-break-card__whole-pose {
+  animation:
+    reffo-delete-break-card-lay-squash var(--delete-break-card-lay-duration) var(--delete-break-card-lay-ease) both,
+    reffo-delete-break-card-wait-shake var(--delete-break-card-wait-duration) var(--delete-break-card-lay-duration) var(--delete-break-card-shake-ease) both;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__whole-card {
+  animation: reffo-delete-break-card-whole-out var(--delete-break-card-break-duration) var(--delete-break-card-break-ease) both;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__break-layer {
+  opacity: 1;
+  animation: reffo-delete-break-card-layer-jolt 260ms cubic-bezier(0.18, 1.55, 0.24, 1) both;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece-plane {
+  transform: perspective(900px) translate3d(0, 8px, 0) rotate(var(--delete-break-card-plane-rotation));
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece-direction {
+  transform: rotateX(var(--delete-break-card-direction-rotation));
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece-diagonal {
+  transform: rotate3d(1, -1, 0, var(--delete-break-card-diagonal-rotation));
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece-pose {
+  transform: translate3d(0, 0, 0) rotateZ(0deg) scaleY(0.86);
+}
+
+.reffo-delete-break-card__piece {
+  position: absolute;
+  left: 0;
+  z-index: 2;
+  width: 100%;
+  height: 55%;
+  overflow: hidden;
+  opacity: 0;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.reffo-delete-break-card__piece--top {
+  top: 0;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 84%,
+    78% 88%,
+    61% 80%,
+    47% 92%,
+    31% 82%,
+    16% 91%,
+    0 100%
+  );
+  transform-origin: center 88%;
+}
+
+.reffo-delete-break-card__piece--bottom {
+  bottom: 0;
+  clip-path: polygon(
+    100% 100%,
+    0 100%,
+    0 0,
+    16% 9%,
+    31% 0,
+    47% 10%,
+    61% 0,
+    78% 8%,
+    100% 0
+  );
+  transform-origin: center 12%;
+}
+
+.reffo-delete-break-card__piece-inner {
+  position: absolute;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  height: 182%;
+  transform-style: preserve-3d;
+}
+
+.reffo-delete-break-card__piece--top .reffo-delete-break-card__piece-inner {
+  top: 0;
+}
+
+.reffo-delete-break-card__piece--bottom .reffo-delete-break-card__piece-inner {
+  bottom: 0;
+}
+
+.reffo-delete-break-card__piece-backface {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 52% 46%, rgba(255, 255, 255, 0.42), transparent 34%),
+    linear-gradient(142deg, rgba(244, 91, 58, 0.2) 0%, rgba(244, 91, 58, 0.08) 42%, rgba(82, 69, 55, 0.18) 100%),
+    linear-gradient(180deg, rgba(255, 246, 238, 0.72), rgba(245, 198, 176, 0.48));
+  box-shadow: inset 0 0 0 1px rgba(244, 91, 58, 0.14);
+  mix-blend-mode: multiply;
+  backface-visibility: hidden;
+  transform: translateZ(calc(var(--delete-break-card-thickness) * -1));
+}
+
+.reffo-delete-break-card__piece--top .reffo-delete-break-card__piece-backface {
+  mask-image: linear-gradient(135deg, #000 0%, #000 52%, transparent 82%);
+  -webkit-mask-image: linear-gradient(135deg, #000 0%, #000 52%, transparent 82%);
+}
+
+.reffo-delete-break-card__piece--bottom .reffo-delete-break-card__piece-backface {
+  mask-image: linear-gradient(315deg, #000 0%, #000 48%, transparent 80%);
+  -webkit-mask-image: linear-gradient(315deg, #000 0%, #000 48%, transparent 80%);
+}
+
+.reffo-delete-break-card__piece::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--delete-break-card-thickness);
+  opacity: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(245, 154, 120, 0.22) 48%, rgba(78, 58, 45, 0.2) 100%);
+  filter: drop-shadow(0 1PX 1PX rgba(91, 70, 58, 0.14));
+  pointer-events: none;
+}
+
+.reffo-delete-break-card__piece--top::after {
+  bottom: 0;
+  clip-path: polygon(
+    0 48%,
+    16% 18%,
+    31% 48%,
+    47% 10%,
+    61% 44%,
+    78% 22%,
+    100% 40%,
+    100% 100%,
+    0 100%
+  );
+}
+
+.reffo-delete-break-card__piece--bottom::after {
+  top: 0;
+  clip-path: polygon(
+    0 0,
+    100% 100%,
+    100% 52%,
+    78% 82%,
+    61% 52%,
+    47% 90%,
+    31% 56%,
+    16% 78%,
+    0 60%
+  );
+}
+
+.reffo-delete-break-card__shard-layer {
+  --delete-break-card-ring-size: 132px;
+  z-index: 3;
+  opacity: 0;
+  overflow: visible;
+  transform: translate3d(0, 0, 0);
+  will-change: opacity;
+}
+
+.reffo-delete-break-card__shard-layer::before {
+  content: "";
+  position: absolute;
+  left: var(--delete-break-card-shard-group-left);
+  top: var(--delete-break-card-shard-group-top);
+  z-index: 3;
+  width: var(--delete-break-card-ring-size);
+  height: var(--delete-break-card-ring-size);
+  border: 2PX solid var(--delete-break-card-shard-color);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-50%, -50%, 0) scale(0.18);
+  filter: drop-shadow(0 0 8PX var(--delete-break-card-shard-color));
+  will-change: transform, opacity;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__shard-layer {
+  opacity: 1;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__shard-layer::before {
+  animation: reffo-delete-break-card-ring-burst 540ms cubic-bezier(0.12, 0.92, 0.2, 1) both;
+}
+
+.reffo-delete-break-card__shard {
+  --delete-break-card-shard-width: 24px;
+  --delete-break-card-shard-height: 2px;
+  --delete-break-card-shard-pop-x: 0px;
+  --delete-break-card-shard-pop-y: 0px;
+  --delete-break-card-shard-end-x: 64px;
+  --delete-break-card-shard-end-y: -64px;
+  --delete-break-card-shard-rotate: 0deg;
+  --delete-break-card-shard-scale: 1;
+  --delete-break-card-shard-duration: 420ms;
+  --delete-break-card-shard-delay: 0ms;
+  --delete-break-card-shard-base-top: var(--delete-break-card-shard-group-top);
+  position: absolute;
+  left: var(--delete-break-card-shard-group-left);
+  top: var(--delete-break-card-shard-base-top);
+  z-index: 4;
+  width: var(--delete-break-card-shard-width);
+  height: var(--delete-break-card-shard-height);
+  border-radius: 999px;
+  box-sizing: border-box;
+  opacity: 0;
+  background: var(--delete-break-card-shard-color);
+  clip-path: polygon(14% 0, 100% 0, 84% 100%, 0 100%);
+  transform-origin: center center;
+  transform:
+    translate3d(
+      calc(-50% + var(--delete-break-card-shard-pop-x)),
+      calc(-50% + var(--delete-break-card-shard-pop-y)),
+      0
+    )
+    rotateZ(var(--delete-break-card-shard-rotate))
+    scale(var(--delete-break-card-shard-scale));
+  will-change: transform, opacity;
+}
+
+.reffo-delete-break-card__shard--shape-2 {
+  clip-path: polygon(0 0, 86% 0, 100% 100%, 12% 100%);
+}
+
+.reffo-delete-break-card__shard--shape-3 {
+  clip-path: polygon(0 0, 100% 16%, 82% 100%, 12% 86%);
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece-fall--top {
+  animation: reffo-delete-break-card-piece-top-fall var(--delete-break-card-break-duration) var(--delete-break-card-piece-fall-ease) both;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece-fall--bottom {
+  animation: reffo-delete-break-card-piece-bottom-fall var(--delete-break-card-break-duration) var(--delete-break-card-piece-fall-ease) both;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece--top {
+  animation: reffo-delete-break-card-piece-top var(--delete-break-card-break-duration) var(--delete-break-card-break-ease) both;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece--bottom {
+  animation: reffo-delete-break-card-piece-bottom var(--delete-break-card-break-duration) var(--delete-break-card-break-ease) both;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece::after {
+  opacity: 1;
+  transition: opacity 80ms linear;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece-backface {
+  animation: reffo-delete-break-card-backface var(--delete-break-card-break-duration) var(--delete-break-card-break-ease) both;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__piece-inner {
+  animation: reffo-delete-break-card-front-surface var(--delete-break-card-break-duration) var(--delete-break-card-break-ease) both;
+}
+
+.reffo-delete-break-card--breaking .reffo-delete-break-card__shard {
+  animation:
+    reffo-delete-break-card-shard-burst
+    var(--delete-break-card-shard-duration)
+    cubic-bezier(0.12, 0.92, 0.22, 1)
+    var(--delete-break-card-shard-delay)
+    both;
+}
+
+.reffo-delete-break-card--paused,
+.reffo-delete-break-card--paused .reffo-delete-break-card__whole-plane,
+.reffo-delete-break-card--paused .reffo-delete-break-card__whole-direction,
+.reffo-delete-break-card--paused .reffo-delete-break-card__whole-diagonal,
+.reffo-delete-break-card--paused .reffo-delete-break-card__whole-pose,
+.reffo-delete-break-card--paused .reffo-delete-break-card__whole-card,
+.reffo-delete-break-card--paused .reffo-delete-break-card__break-layer,
+.reffo-delete-break-card--paused .reffo-delete-break-card__piece-fall,
+.reffo-delete-break-card--paused .reffo-delete-break-card__piece,
+.reffo-delete-break-card--paused .reffo-delete-break-card__piece-inner,
+.reffo-delete-break-card--paused .reffo-delete-break-card__piece-backface,
+.reffo-delete-break-card--paused .reffo-delete-break-card__shard {
+  animation-play-state: paused;
+}
+
+.reffo-delete-break-card--paused .reffo-delete-break-card__shard-layer::before {
+  animation-play-state: paused;
+}
+
+@keyframes reffo-delete-break-card-lay-plane {
+  0% {
+    transform: perspective(900px) translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  100% {
+    transform: perspective(900px) translate3d(0, 8px, 0) rotate(var(--delete-break-card-plane-rotation));
+  }
+}
+
+@keyframes reffo-delete-break-card-lay-direction {
+  0% {
+    transform: rotateX(0deg);
+  }
+
+  100% {
+    transform: rotateX(var(--delete-break-card-direction-rotation));
+  }
+}
+
+@keyframes reffo-delete-break-card-lay-diagonal {
+  0% {
+    transform: rotate3d(1, -1, 0, 0deg);
+  }
+
+  100% {
+    transform: rotate3d(1, -1, 0, var(--delete-break-card-diagonal-rotation));
+  }
+}
+
+@keyframes reffo-delete-break-card-lay-squash {
+  0% {
+    transform: translate3d(0, 0, 0) rotateZ(0deg) scaleY(1);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) rotateZ(0deg) scaleY(0.86);
+  }
+}
+
+@keyframes reffo-delete-break-card-wait-shake {
+  0%,
+  22%,
+  26%,
+  48%,
+  52%,
+  74%,
+  78%,
+  100% {
+    transform: translate3d(0, 0, 0) rotateZ(0deg) scaleY(0.86);
+  }
+
+  3.12%,
+  29.12%,
+  55.12%,
+  81.12% {
+    transform: translate3d(-2px, -1px, 1px) rotateZ(-1.1deg) scaleY(0.86);
+  }
+
+  6.24%,
+  32.24%,
+  58.24%,
+  84.24% {
+    transform: translate3d(2px, 2px, -1px) rotateZ(1deg) scaleY(0.86);
+  }
+
+  9.36%,
+  35.36%,
+  61.36%,
+  87.36% {
+    transform: translate3d(-1px, 0, 0) rotateZ(-0.8deg) scaleY(0.86);
+  }
+
+  13%,
+  39%,
+  65%,
+  91% {
+    transform: translate3d(2px, -2px, 1px) rotateZ(1.1deg) scaleY(0.86);
+  }
+
+  16.64%,
+  42.64%,
+  68.64%,
+  94.64% {
+    transform: translate3d(-2px, 3px, -1px) rotateZ(-1deg) scaleY(0.86);
+  }
+
+  20.28%,
+  47.28%,
+  72.28%,
+  98.28% {
+    transform: translate3d(1px, 0, 0) rotateZ(0.7deg) scaleY(0.86);
+  }
+}
+
+@keyframes reffo-delete-break-card-whole-out {
+  0% {
+    opacity: 1;
+  }
+
+  8% {
+    opacity: 0.72;
+  }
+
+  16%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes reffo-delete-break-card-piece-top-fall {
+  0%,
+  20% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+
+  56% {
+    transform: translate3d(0, 20px, 0);
+    opacity: 0.88;
+  }
+
+  100% {
+    transform: translate3d(0, var(--delete-break-card-fall-top-y), 0);
+    opacity: 0;
+  }
+}
+
+@keyframes reffo-delete-break-card-piece-bottom-fall {
+  0%,
+  20% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+
+  56% {
+    transform: translate3d(0, 24px, 0);
+    opacity: 0.88;
+  }
+
+  100% {
+    transform: translate3d(0, var(--delete-break-card-fall-bottom-y), 0);
+    opacity: 0;
+  }
+}
+
+@keyframes reffo-delete-break-card-piece-top {
+  0% {
+    transform: translate3d(0, 0, 0) rotateX(0deg) rotateZ(0deg);
+    opacity: 1;
+  }
+
+  6% {
+    transform: translate3d(0, 5px, 2px) rotateX(-5deg) rotateZ(-0.8deg);
+    opacity: 1;
+  }
+
+  15%,
+  100% {
+    transform:
+      translate3d(0, var(--delete-break-card-top-y), var(--delete-break-card-top-z))
+      rotateX(var(--delete-break-card-top-bend))
+      rotateZ(var(--delete-break-card-top-twist));
+    opacity: 1;
+  }
+}
+
+@keyframes reffo-delete-break-card-piece-bottom {
+  0% {
+    transform: translate3d(0, 0, 0) rotateX(0deg) rotateZ(0deg);
+    opacity: 1;
+  }
+
+  6% {
+    transform: translate3d(0, -5px, 2px) rotateX(4deg) rotateZ(-0.8deg);
+    opacity: 1;
+  }
+
+  15%,
+  100% {
+    transform:
+      translate3d(0, var(--delete-break-card-bottom-y), var(--delete-break-card-bottom-z))
+      rotateX(var(--delete-break-card-bottom-bend))
+      rotateZ(var(--delete-break-card-bottom-twist));
+    opacity: 1;
+  }
+}
+
+@keyframes reffo-delete-break-card-backface {
+  0% {
+    opacity: 0;
+  }
+
+  9% {
+    opacity: 0.52;
+  }
+
+  24%,
+  56% {
+    opacity: 0.42;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes reffo-delete-break-card-front-surface {
+  0% {
+    opacity: 1;
+    filter: none;
+  }
+
+  24%,
+  56% {
+    opacity: 0.78;
+    filter: saturate(0.84) contrast(0.95);
+  }
+
+  100% {
+    opacity: 0;
+    filter: saturate(0.84) contrast(0.95);
+  }
+}
+
+@keyframes reffo-delete-break-card-ring-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.18);
+  }
+
+  14% {
+    opacity: 0.2;
+  }
+
+  72% {
+    opacity: 0.12;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+}
+
+@keyframes reffo-delete-break-card-shard-burst {
+  0% {
+    opacity: 0;
+    transform:
+      translate3d(
+        calc(-50% + var(--delete-break-card-shard-pop-x)),
+        calc(-50% + var(--delete-break-card-shard-pop-y)),
+        0
+      )
+      rotateZ(var(--delete-break-card-shard-rotate))
+      scale(var(--delete-break-card-shard-scale));
+  }
+
+  14% {
+    opacity: 1;
+    transform:
+      translate3d(
+        calc(-50% + var(--delete-break-card-shard-pop-x)),
+        calc(-50% + var(--delete-break-card-shard-pop-y)),
+        0
+      )
+      rotateZ(var(--delete-break-card-shard-rotate))
+      scale(var(--delete-break-card-shard-scale));
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate3d(
+        calc(-50% + var(--delete-break-card-shard-pop-x) + var(--delete-break-card-shard-end-x)),
+        calc(-50% + var(--delete-break-card-shard-pop-y) + var(--delete-break-card-shard-end-y)),
+        0
+      )
+      rotateZ(var(--delete-break-card-shard-rotate))
+      scale(var(--delete-break-card-shard-scale));
+  }
+}
+
+@keyframes reffo-delete-break-card-impact {
+  0%,
+  100% {
+    transform:
+      translate3d(var(--delete-drag-x), var(--delete-drag-y), 0)
+      rotate(calc(var(--delete-drag-progress-y) * -5deg + var(--delete-drag-progress-x) * 4deg));
+  }
+
+  9% {
+    transform:
+      translate3d(calc(var(--delete-drag-x) - 5px), calc(var(--delete-drag-y) + 3px), 0)
+      rotate(calc(var(--delete-drag-progress-y) * -5deg + var(--delete-drag-progress-x) * 4deg - 1.8deg));
+  }
+
+  20% {
+    transform:
+      translate3d(calc(var(--delete-drag-x) + 6px), calc(var(--delete-drag-y) - 3px), 0)
+      rotate(calc(var(--delete-drag-progress-y) * -5deg + var(--delete-drag-progress-x) * 4deg + 1.5deg));
+  }
+
+  34% {
+    transform:
+      translate3d(calc(var(--delete-drag-x) - 2px), calc(var(--delete-drag-y) + 1px), 0)
+      rotate(calc(var(--delete-drag-progress-y) * -5deg + var(--delete-drag-progress-x) * 4deg - 0.5deg));
+  }
+}
+
+@keyframes reffo-delete-break-card-layer-jolt {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotateZ(0deg);
+  }
+
+  10% {
+    transform: translate3d(-3px, 2px, 0) rotateZ(-0.9deg);
+  }
+
+  24% {
+    transform: translate3d(3px, -2px, 0) rotateZ(0.7deg);
+  }
+
+  42% {
+    transform: translate3d(-1px, 1px, 0) rotateZ(-0.25deg);
+  }
+}

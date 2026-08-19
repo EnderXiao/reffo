@@ -1,25 +1,29 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
-import Taro, {useRouter} from '@tarojs/taro'
-import * as FileSystem from 'expo-file-system'
-import * as ImagePicker from 'expo-image-picker'
-import {parseApi} from '@/services/parse'
+import {useRouter} from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {useJDStore, useResumeStore, useSourceResumeStore} from '@/store'
+import {useHistoryStore, useJDStore, useLandingFlowStore, useResumeStore, useSourceResumeStore} from '@/store'
 import type {
   MatchingResult,
   ProcessResult,
   ResumeAnalysis,
+  ResumeHistory,
   SourceResumeSummary,
 } from '@/types'
+import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
-import {saveLatestResultSession} from '@/utils/result-session'
+import {storage} from '@/utils/storage'
 import {
-  canUseBrowserFilePicker,
-  pickBrowserFile,
-  readBrowserTextFile,
-} from '@/utils/web-file'
+  saveLatestResultSession,
+  type LatestResultSession,
+} from '@/utils/result-session'
+import {toHistoryCardItem} from '../index/model/homeCardData'
+import {
+  formatResumeFileSize,
+  isResumeFileUploadCancelled,
+  pickAndParseResumeFile,
+} from '@/utils/resume-file-upload'
 import {
   CREATE_STEP_META,
   CREATE_STEP_SEQUENCE,
@@ -29,18 +33,22 @@ import {
   type JobDescriptionInputMode,
   type JobDescriptionStepState,
   type ResumeSummaryStepState,
-  RESUME_FILE_ACCEPT_TYPES,
-  RESUME_FILE_MAX_SIZE_MB,
   type ResumeUploadStepState,
-  type UploadedJobDescriptionFile,
   type UploadedResumeFile,
 } from './types'
 import {
   buildSourceResumePayload,
 } from './utils/resumeMarkdown'
 import {
+  getFileExtension,
+  getJobDescriptionFileValidationMessage,
+  parseJobDescriptionAttachment,
+  pickJobDescriptionFile,
+} from './utils/jobDescriptionAttachment'
+import {
   extractJobMetadataFromOcrText,
   normalizeCompanyNameCandidate,
+  resolveBaseLocationCandidate,
   resolvePositionNameCandidate,
 } from './utils/jobMetadata'
 
@@ -51,6 +59,8 @@ export interface CreatePageViewModel {
   resumeSummaryState: ResumeSummaryStepState | null
   jobDescriptionState: JobDescriptionStepState
   generationState: CreateGenerationState | null
+  isHistoryEditMode: boolean
+  editingHistoryCard: HomeCardItem | null
   canSaveCurrentStep: boolean
   isSavingCurrentStep: boolean
   primaryActionLabel: string
@@ -62,25 +72,42 @@ export interface CreatePageViewModel {
   handleJobDescriptionChange: (content: string) => void
   handleJobCompanyNameChange: (content: string) => void
   handleJobPositionNameChange: (content: string) => void
+  handleJobLocationChange: (content: string) => void
   handleJobInputModeChange: (mode: JobDescriptionInputMode) => void
   handlePickJobAttachment: () => Promise<void>
   handlePrimaryAction: () => Promise<boolean>
+  handleDeleteHistoryResume: () => Promise<boolean>
+  handleReturnHome: () => Promise<void>
   handleCancelGeneration: () => void
   handleClose: () => void
+  isLandingFlow: boolean
+  handleLandingSkip: () => Promise<void>
 }
 
-const TEXT_FILE_TYPES = new Set(['.md', '.txt'])
-const JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES = [
-  '.png',
-  '.jpg',
-  '.jpeg',
-] as const
-const JOB_DESCRIPTION_FILE_MAX_SIZE_MB = 10
-const CANCEL_PATTERN = /cancel|取消/i
-const SUPPORTED_RESUME_FILE_TYPES = new Set<string>(RESUME_FILE_ACCEPT_TYPES)
-const SUPPORTED_JOB_DESCRIPTION_FILE_TYPES = new Set<string>(
-  JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
-)
+interface CreatePageModelOptions {
+  autoGenerateLanding?: boolean
+  onLandingGenerationComplete?: (session: LatestResultSession) => Promise<void> | void
+}
+
+const HISTORY_EDIT_STEP_META: CreateStepMeta = {
+  id: 'jobDescription',
+  titleSegments: [
+    {text: '编辑', tone: 'warm'},
+    {text: '申请', tone: 'default'},
+  ],
+  description: '仅可编辑公司名称和岗位名称以及工作地信息，不可重新上传目标岗位描述生成最佳简历哦。',
+  actionLabel: '更新信息',
+}
+
+const LANDING_JOB_STEP_META: CreateStepMeta = {
+  id: 'jobDescription',
+  titleSegments: [
+    {text: '选择', tone: 'default'},
+    {text: '目标岗位', tone: 'warm'},
+  ],
+  description: '输入自定义岗位描述',
+  actionLabel: '开始生成最佳简历',
+}
 
 function buildInitialProcessResult(
   analysis: ResumeAnalysis,
@@ -134,144 +161,35 @@ function createInitialJobDescriptionState(
     content: initialContent,
     companyName: '',
     positionName: '',
+    baseLocation: '',
     inputMode: initialContent.trim() ? 'manual' : 'upload',
     attachmentStatus: 'idle',
+    attachmentProgress: 0,
     attachment: null,
     attachmentErrorMessage: null,
   }
 }
 
-function getFileExtension(fileName: string) {
-  const dotIndex = fileName.lastIndexOf('.')
-  return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : ''
-}
+function buildJobDescriptionStateFromHistory(history: ResumeHistory): JobDescriptionStepState {
+  const context = history.resultContext
 
-function isSupportedResumeFile(fileName: string) {
-  return SUPPORTED_RESUME_FILE_TYPES.has(getFileExtension(fileName))
-}
-
-function isSupportedJobDescriptionFile(fileName: string) {
-  return SUPPORTED_JOB_DESCRIPTION_FILE_TYPES.has(getFileExtension(fileName))
-}
-
-function isTextFile(fileName: string) {
-  return TEXT_FILE_TYPES.has(getFileExtension(fileName))
-}
-
-function isPdfFile(fileName: string) {
-  return getFileExtension(fileName) === '.pdf'
-}
-
-function formatFileSize(size: number) {
-  const sizeInMb = size / (1024 * 1024)
-  if (sizeInMb >= 1) {
-    return `${sizeInMb.toFixed(sizeInMb >= 10 ? 0 : 1)} Mb`
+  return {
+    content: context?.jdContent || history.jdContent,
+    companyName: context?.company || history.company,
+    positionName: context?.position || history.position,
+    baseLocation: context?.location || '',
+    inputMode: 'manual',
+    attachmentStatus: 'idle',
+    attachmentProgress: 0,
+    attachment: null,
+    attachmentErrorMessage: null,
   }
-
-  return `${Math.max(1, Math.round(size / 1024))} Kb`
-}
-
-function isUserCancelled(error: unknown) {
-  const message =
-    typeof error === 'object' && error !== null
-      ? `${(error as any).message || ''}${(error as any).errMsg || ''}`
-      : String(error || '')
-
-  return CANCEL_PATTERN.test(message)
 }
 
 function wait(duration: number) {
   return new Promise<void>(resolve => {
     setTimeout(() => resolve(), duration)
   })
-}
-
-function readTextFile(filePath: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const fileManager = Taro.getFileSystemManager?.()
-
-    if (!fileManager?.readFile) {
-      reject(new Error('当前环境暂不支持读取该文件'))
-      return
-    }
-
-    fileManager.readFile({
-      filePath,
-      encoding: 'utf8',
-      success: result => resolve(String(result.data ?? '')),
-      fail: reject,
-    })
-  })
-}
-
-interface PickedTempFile {
-  name: string
-  path: string
-  size: number
-  file?: File
-}
-
-async function pickJobDescriptionFile(): Promise<PickedTempFile | null> {
-  const canPickBrowserFile = canUseBrowserFilePicker()
-  const browserFile = canPickBrowserFile
-    ? await pickBrowserFile({
-        accept: JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
-      })
-    : null
-
-  if (browserFile) {
-    return browserFile
-  }
-
-  if (canPickBrowserFile) {
-    return null
-  }
-
-  const chooseMessageFile = (Taro as any).chooseMessageFile
-
-  if (typeof chooseMessageFile === 'function') {
-    const response = await chooseMessageFile({
-      count: 1,
-      type: 'file',
-      extension: JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES.map(type =>
-        type.replace('.', ''),
-      ),
-    })
-
-    return response.tempFiles?.[0] ?? null
-  }
-
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-
-  if (!permission.granted) {
-    throw new Error('未获得相册访问权限')
-  }
-
-  const imageResult = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsMultipleSelection: false,
-    quality: 1,
-  })
-
-  if (imageResult.canceled) {
-    return null
-  }
-
-  const asset = imageResult.assets?.[0]
-
-  if (!asset?.uri) {
-    return null
-  }
-
-  const fileInfo = await FileSystem.getInfoAsync(asset.uri)
-
-  return {
-    name: asset.fileName || asset.uri.split('/').pop() || 'job-description.png',
-    path: asset.uri,
-    size: fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number'
-      ? fileInfo.size
-      : asset.fileSize || 0,
-  }
 }
 
 function normalizeRouteStep(value?: string): CreateStepId | null {
@@ -331,15 +249,14 @@ function buildResumeSummaryState(
 }
 
 function buildJobDescriptionPayload(state: JobDescriptionStepState) {
-  const isUploadMode = state.inputMode === 'upload'
-  const content = isUploadMode ? '' : state.content.trim()
-  const attachmentNote = isUploadMode && state.attachment
+  const content = state.content.trim()
+  const attachmentNote = state.attachment
     ? `岗位描述附件：${state.attachment.name}${
         state.attachment.sizeLabel ? `（${state.attachment.sizeLabel}）` : ''
       }`
     : null
   const uploadFallbackNote =
-    isUploadMode && state.attachment
+    state.attachment && !content
       ? '补充说明：用户通过上传截图/附件提供岗位信息；若附件内容无法直接解析，请优先结合公司名称和岗位名称理解岗位方向。'
       : null
   const segments = [
@@ -348,6 +265,9 @@ function buildJobDescriptionPayload(state: JobDescriptionStepState) {
       : null,
     state.positionName.trim()
       ? `岗位名称：${state.positionName.trim()}`
+      : null,
+    state.baseLocation.trim()
+      ? `工作地：${state.baseLocation.trim()}`
       : null,
     content || null,
     attachmentNote,
@@ -397,21 +317,18 @@ function buildGenerationState(args: {
   )
   const companyName = truncateText(jobDescriptionState.companyName.trim(), 24)
   const positionName = truncateText(jobDescriptionState.positionName.trim(), 24)
-  const descriptionSummary =
-    jobDescriptionState.inputMode === 'upload'
-      ? jobDescriptionState.attachment?.name
-        ? `岗位附件 · ${truncateText(jobDescriptionState.attachment.name, 22)}`
-        : ''
-      : jobDescriptionState.content.trim()
-        ? `岗位描述 · ${truncateText(
-            jobDescriptionState.content.trim().replace(/\s+/g, ' '),
-            22,
-          )}`
-        : ''
+  const baseLocation = truncateText(jobDescriptionState.baseLocation.trim(), 16)
+  const normalizedDescription = jobDescriptionState.content.trim().replace(/\s+/g, ' ')
+  const descriptionSummary = normalizedDescription
+    ? `岗位描述 · ${truncateText(normalizedDescription, 22)}`
+    : jobDescriptionState.attachment?.name
+      ? `岗位附件 · ${truncateText(jobDescriptionState.attachment.name, 22)}`
+      : ''
   const detailItems = [
     `简历 · ${resumeTitle}`,
     companyName ? `公司 · ${companyName}` : '',
     positionName ? `岗位 · ${positionName}` : '',
+    baseLocation ? `工作地 · ${baseLocation}` : '',
     descriptionSummary,
   ].filter(Boolean)
 
@@ -419,6 +336,7 @@ function buildGenerationState(args: {
     resumeTitle,
     companyName,
     positionName,
+    baseLocation,
     monogram: readCardMonogram(
       latestSourceResumeTitle,
       fallbackResumeFileName,
@@ -429,20 +347,41 @@ function buildGenerationState(args: {
   }
 }
 
-export function usePageModel(): CreatePageViewModel {
+export function usePageModel(options: CreatePageModelOptions = {}): CreatePageViewModel {
   const router = useRouter()
+  const initialLandingFlow = useLandingFlowStore.getState()
+  const isLandingFlow = useLandingFlowStore(state => state.source === 'landing')
+  const shouldAutoGenerateLanding = isLandingFlow && (
+    options.autoGenerateLanding === true || router.params?.autoGenerate === '1'
+  )
+  const landingJob = useLandingFlowStore(state => state.selectedJob)
+  const landingResume = useLandingFlowStore(state => state.selectedResume)
   const requestedStepRef = useRef(normalizeRouteStep(router.params?.step))
+  const editHistoryId = typeof router.params?.historyId === 'string'
+    ? router.params.historyId
+    : null
+  const isHistoryEditMode = router.params?.mode === 'editHistory' && Boolean(editHistoryId)
   const uploadRequestRef = useRef(0)
   const jobAttachmentRequestRef = useRef(0)
+  const jobAttachmentProgressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const generationRequestRef = useRef(0)
+  const autoGenerateStartedRef = useRef(false)
   const initialSourceResume = useSourceResumeStore.getState().latestSourceResume
   const [currentStep, setCurrentStep] = useState<CreateStepId>(() =>
-    resolveInitialStep(requestedStepRef.current, Boolean(initialSourceResume)),
+    isHistoryEditMode
+      ? 'jobDescription'
+      : initialLandingFlow.source === 'landing'
+        ? 'jobDescription'
+      : resolveInitialStep(requestedStepRef.current, Boolean(initialSourceResume)),
   )
+  const [editingHistory, setEditingHistory] = useState<ResumeHistory | null>(null)
+  const [hasLoadedEditingHistory, setHasLoadedEditingHistory] = useState(!isHistoryEditMode)
   const [hasResolvedLatestSourceResume, setHasResolvedLatestSourceResume] =
     useState(Boolean(initialSourceResume))
   const routeStepAppliedRef = useRef(
-    !requestedStepRef.current ||
+    initialLandingFlow.source === 'landing' ||
+      isHistoryEditMode ||
+      !requestedStepRef.current ||
       requestedStepRef.current === 'resumeUpload' ||
       Boolean(initialSourceResume),
   )
@@ -450,9 +389,19 @@ export function usePageModel(): CreatePageViewModel {
     createInitialResumeUploadState(),
   )
   const [jobDescriptionState, setJobDescriptionState] =
-    useState<JobDescriptionStepState>(() =>
-      createInitialJobDescriptionState(useJDStore.getState().jdContent),
-    )
+    useState<JobDescriptionStepState>(() => {
+      const initial = createInitialJobDescriptionState(
+        landingJob?.content || useJDStore.getState().jdContent,
+      )
+      return landingJob
+        ? {
+            ...initial,
+            companyName: landingJob.companyName,
+            positionName: landingJob.positionName,
+            baseLocation: landingJob.baseLocation,
+          }
+        : initial
+    })
   const [generationState, setGenerationState] = useState<CreateGenerationState | null>(
     null,
   )
@@ -467,11 +416,54 @@ export function usePageModel(): CreatePageViewModel {
       uploadRequestRef.current += 1
       jobAttachmentRequestRef.current += 1
       generationRequestRef.current += 1
+      if (jobAttachmentProgressTimerRef.current) {
+        clearInterval(jobAttachmentProgressTimerRef.current)
+      }
     }
   }, [])
 
+  const stopJobAttachmentProgress = () => {
+    if (jobAttachmentProgressTimerRef.current) {
+      clearInterval(jobAttachmentProgressTimerRef.current)
+      jobAttachmentProgressTimerRef.current = null
+    }
+  }
+
+  const startJobAttachmentProgress = (requestId: number) => {
+    stopJobAttachmentProgress()
+    jobAttachmentProgressTimerRef.current = setInterval(() => {
+      if (jobAttachmentRequestRef.current !== requestId) {
+        stopJobAttachmentProgress()
+        return
+      }
+
+      setJobDescriptionState(previous => {
+        if (previous.attachmentStatus !== 'uploading') {
+          return previous
+        }
+
+        const nextProgress = Math.min(
+          92,
+          Math.round(previous.attachmentProgress + Math.max(2, (92 - previous.attachmentProgress) * 0.18)),
+        )
+
+        return {
+          ...previous,
+          attachmentProgress: nextProgress,
+        }
+      })
+    }, 260)
+  }
+
   useEffect(() => {
     let isMounted = true
+
+    if (isHistoryEditMode) {
+      setHasResolvedLatestSourceResume(true)
+      return () => {
+        isMounted = false
+      }
+    }
 
     void loadLatestSourceResume().finally(() => {
       if (isMounted) {
@@ -483,6 +475,62 @@ export function usePageModel(): CreatePageViewModel {
       isMounted = false
     }
   }, [loadLatestSourceResume])
+
+  useEffect(() => {
+    if (!isHistoryEditMode || !editHistoryId) {
+      return
+    }
+
+    let isMounted = true
+
+    const loadEditingHistory = async () => {
+      setHasLoadedEditingHistory(false)
+
+      try {
+        let {histories} = useHistoryStore.getState()
+        let history = histories.find(item => item.id === editHistoryId)
+
+        if (!history) {
+          await useHistoryStore.getState().loadHistories()
+          histories = useHistoryStore.getState().histories
+          history = histories.find(item => item.id === editHistoryId)
+        }
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!history) {
+          feedback.message('未找到要编辑的简历')
+          void navigation.returnHome()
+          return
+        }
+
+        setEditingHistory(history)
+        setJobDescriptionState(buildJobDescriptionStateFromHistory(history))
+        useResumeStore.getState().setResumeContent(
+          history.resultContext?.resumeContent || history.resumeContent,
+        )
+        useJDStore.getState().setJDContent(
+          history.resultContext?.jdContent || history.jdContent,
+        )
+        setCurrentStep('jobDescription')
+      } catch (error) {
+        console.error('load editing history failed', error)
+        feedback.error('加载简历信息失败')
+      } finally {
+        if (isMounted) {
+          setHasLoadedEditingHistory(true)
+        }
+      }
+    }
+
+    void loadEditingHistory()
+
+    return () => {
+      isMounted = false
+    }
+  }, [editHistoryId, isHistoryEditMode])
 
   useEffect(() => {
     const requestedStep = requestedStepRef.current
@@ -500,7 +548,7 @@ export function usePageModel(): CreatePageViewModel {
   }, [hasResolvedLatestSourceResume, latestSourceResume])
 
   useEffect(() => {
-    if (!latestSourceResume?.resumeMarkdown) {
+    if (isLandingFlow || !latestSourceResume?.resumeMarkdown) {
       return
     }
 
@@ -516,19 +564,25 @@ export function usePageModel(): CreatePageViewModel {
         errorMessage: null,
       }
     })
-  }, [latestSourceResume?.id, latestSourceResume?.resumeMarkdown])
+  }, [isLandingFlow, latestSourceResume?.id, latestSourceResume?.resumeMarkdown])
 
   useEffect(() => {
     if (
       currentStep === 'resumeSummary' &&
+      !isHistoryEditMode &&
+      !isLandingFlow &&
       hasResolvedLatestSourceResume &&
       !latestSourceResume
     ) {
       setCurrentStep('resumeUpload')
     }
-  }, [currentStep, hasResolvedLatestSourceResume, latestSourceResume])
+  }, [currentStep, hasResolvedLatestSourceResume, isHistoryEditMode, isLandingFlow, latestSourceResume])
 
-  const currentStepMeta = CREATE_STEP_META[currentStep]
+  const currentStepMeta = currentStep === 'jobDescription' && isLandingFlow
+    ? LANDING_JOB_STEP_META
+    : isHistoryEditMode && currentStep === 'jobDescription'
+      ? HISTORY_EDIT_STEP_META
+      : CREATE_STEP_META[currentStep]
   const primaryActionLabel = currentStepMeta.actionLabel
   const resumeSummaryState = useMemo(
     () => buildResumeSummaryState(latestSourceResume),
@@ -540,8 +594,41 @@ export function usePageModel(): CreatePageViewModel {
     latestSourceResume?.updatedAt,
     ],
   )
+  const editingHistoryCard = useMemo(() => {
+    if (!editingHistory) {
+      return null
+    }
+
+    const company = jobDescriptionState.companyName.trim() || editingHistory.company
+    const position = jobDescriptionState.positionName.trim() || editingHistory.position
+    const location = jobDescriptionState.baseLocation.trim() || editingHistory.resultContext?.location
+
+    return toHistoryCardItem({
+      ...editingHistory,
+      company,
+      position,
+      jdContent: buildJobDescriptionPayload(jobDescriptionState),
+      resultContext: {
+        company,
+        position,
+        ...(location ? {location} : {}),
+        resumeContent: editingHistory.resultContext?.resumeContent || editingHistory.resumeContent,
+        jdContent: buildJobDescriptionPayload(jobDescriptionState),
+      },
+    })
+  }, [
+    editingHistory,
+    jobDescriptionState.baseLocation,
+    jobDescriptionState.companyName,
+    jobDescriptionState.content,
+    jobDescriptionState.positionName,
+  ])
 
   const canSaveCurrentStep = useMemo(() => {
+    if (isHistoryEditMode && !hasLoadedEditingHistory) {
+      return false
+    }
+
     if (currentStep === 'resumeUpload') {
       return (
         !isSavingCurrentStep &&
@@ -559,19 +646,17 @@ export function usePageModel(): CreatePageViewModel {
       jobDescriptionState.attachmentStatus === 'success' &&
       Boolean(jobDescriptionState.attachment)
 
-    const canSaveJobDescription =
-      jobDescriptionState.inputMode === 'upload'
-        ? hasUploadedAttachment
-        : hasManualDescription
+    const canSaveJobDescription = hasManualDescription || hasUploadedAttachment
 
     return !isSavingCurrentStep && canSaveJobDescription
   }, [
     currentStep,
+    hasLoadedEditingHistory,
+    isHistoryEditMode,
     isSavingCurrentStep,
     jobDescriptionState.attachment,
     jobDescriptionState.attachmentStatus,
     jobDescriptionState.content,
-    jobDescriptionState.inputMode,
     resumeUploadState.markdown,
     resumeUploadState.status,
   ])
@@ -584,6 +669,10 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handleJobDescriptionChange = (content: string) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     setJobDescriptionState(previous => ({
       ...previous,
       content,
@@ -592,6 +681,10 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handleJobCompanyNameChange = (content: string) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     setJobDescriptionState(previous => ({
       ...previous,
       companyName: content,
@@ -599,13 +692,32 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handleJobPositionNameChange = (content: string) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     setJobDescriptionState(previous => ({
       ...previous,
       positionName: content,
     }))
   }
 
+  const handleJobLocationChange = (content: string) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
+    setJobDescriptionState(previous => ({
+      ...previous,
+      baseLocation: content,
+    }))
+  }
+
   const handleJobInputModeChange = (mode: JobDescriptionInputMode) => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     setJobDescriptionState(previous => ({
       ...previous,
       inputMode: mode,
@@ -657,15 +769,19 @@ export function usePageModel(): CreatePageViewModel {
       return
     }
 
-    const confirmResult = await Taro.showModal({
-      title: '删除源简历？',
-      content: '删除后需要重新上传或填写源简历，之后才能继续生成。',
-      cancelText: '取消',
-      confirmText: '删除',
-      confirmColor: '#ef4444',
+    const confirmed = await new Promise<boolean>(resolve => {
+      feedback.modal({
+        title: '删除源简历？',
+        content: '删除后需要重新上传或填写源简历，之后才能继续生成。',
+        cancelText: '取消',
+        confirmText: '删除',
+        tone: 'danger',
+        onConfirm: () => resolve(true),
+        onCancel: () => resolve(false),
+      })
     })
 
-    if (!confirmResult.confirm) {
+    if (!confirmed) {
       return
     }
 
@@ -689,131 +805,48 @@ export function usePageModel(): CreatePageViewModel {
   }
 
   const handlePickResumeFile = async () => {
+    const requestId = uploadRequestRef.current + 1
+    uploadRequestRef.current = requestId
+
     try {
-      const canPickBrowserFile = canUseBrowserFilePicker()
-      const browserFile = canPickBrowserFile
-        ? await pickBrowserFile({
-            accept: RESUME_FILE_ACCEPT_TYPES,
-          })
-        : null
+      const parsedFile = await pickAndParseResumeFile({
+        isActive: () => uploadRequestRef.current === requestId,
+        onFileSelected: selectedFile => {
+          const pendingFile: UploadedResumeFile = {
+            name: selectedFile.name,
+            path: selectedFile.path,
+            size: selectedFile.size,
+            sizeLabel: formatResumeFileSize(selectedFile.size),
+            extension: selectedFile.extension,
+          }
 
-      if (canPickBrowserFile && !browserFile) {
-        return
-      }
+          setResumeUploadState(previous => ({
+            ...previous,
+            status: 'uploading',
+            progress: 0,
+            file: pendingFile,
+            errorMessage: null,
+          }))
+        },
+        onProgress: progress => {
+          setResumeUploadState(previous => ({
+            ...previous,
+            progress,
+          }))
+        },
+      })
 
-      const response = browserFile
-        ? {tempFiles: [browserFile]}
-        : await Taro.chooseMessageFile({
-            count: 1,
-            type: 'file',
-            extension: RESUME_FILE_ACCEPT_TYPES.map(type => type.replace('.', '')),
-          })
-
-      const selectedFile = response.tempFiles?.[0]
-      if (!selectedFile) {
-        return
-      }
-
-      if (!isSupportedResumeFile(selectedFile.name)) {
-        setResumeUploadState(previous => ({
-          ...previous,
-          status: 'error',
-          progress: 0,
-          file: null,
-          errorMessage: '上传失败',
-        }))
-        feedback.error('仅支持 PDF、DOC、DOCX、MD、TXT 文件')
-        return
-      }
-
-      if (selectedFile.size > RESUME_FILE_MAX_SIZE_MB * 1024 * 1024) {
-        setResumeUploadState(previous => ({
-          ...previous,
-          status: 'error',
-          progress: 0,
-          file: null,
-          errorMessage: '上传失败',
-        }))
-        feedback.error(`文件不能超过 ${RESUME_FILE_MAX_SIZE_MB}MB`)
-        return
-      }
-
-      const requestId = uploadRequestRef.current + 1
-      uploadRequestRef.current = requestId
-      const pendingFile: UploadedResumeFile = {
-        name: selectedFile.name,
-        path: selectedFile.path,
-        size: selectedFile.size,
-        sizeLabel: formatFileSize(selectedFile.size),
-        extension: getFileExtension(selectedFile.name),
-      }
-
-      setResumeUploadState(previous => ({
-        ...previous,
-        status: 'uploading',
-        progress: 18,
-        file: pendingFile,
-        errorMessage: null,
-      }))
-
-      await wait(120)
-      if (uploadRequestRef.current !== requestId) {
-        return
-      }
-
-      setResumeUploadState(previous => ({
-        ...previous,
-        progress: 52,
-      }))
-
-      let extractedText: string | undefined
-      if (isTextFile(selectedFile.name)) {
-        extractedText = selectedFile.file
-          ? await readBrowserTextFile(selectedFile.file)
-          : await readTextFile(selectedFile.path)
-        if (uploadRequestRef.current !== requestId) {
-          return
-        }
-
-        if (!extractedText.trim()) {
-          throw new Error('文件内容为空')
-        }
-
-        setResumeUploadState(previous => ({
-          ...previous,
-          progress: 84,
-        }))
-      } else if (isPdfFile(selectedFile.name)) {
-        const parsedDocument = await parseApi.parseResumeFile(selectedFile)
-        if (uploadRequestRef.current !== requestId) {
-          return
-        }
-
-        extractedText = parsedDocument.markdown?.trim() || parsedDocument.rawText.trim()
-        if (!extractedText) {
-          throw new Error('PDF 解析结果为空，请上传文本版 PDF 或手动粘贴简历')
-        }
-
-        setResumeUploadState(previous => ({
-          ...previous,
-          progress: 84,
-        }))
-      } else {
-        throw new Error('暂不支持 DOC/DOCX 解析，请另存为 PDF、MD、TXT 或手动粘贴')
-      }
-
-      await wait(120)
-      if (uploadRequestRef.current !== requestId) {
+      if (!parsedFile || uploadRequestRef.current !== requestId) {
         return
       }
 
       const uploadedFile: UploadedResumeFile = {
-        ...pendingFile,
-        extractedText,
-      }
-      const nextMarkdown = extractedText?.trim()
-      if (!nextMarkdown) {
-        throw new Error('文件解析结果为空，请手动粘贴简历')
+        name: parsedFile.name,
+        path: parsedFile.path,
+        size: parsedFile.size,
+        sizeLabel: formatResumeFileSize(parsedFile.size),
+        extension: parsedFile.extension,
+        extractedText: parsedFile.extractedText,
       }
 
       setResumeUploadState(previous => ({
@@ -821,57 +854,55 @@ export function usePageModel(): CreatePageViewModel {
         status: 'success',
         progress: 100,
         file: uploadedFile,
-        markdown: nextMarkdown,
+        markdown: parsedFile.extractedText,
         errorMessage: null,
       }))
 
-      feedback.success(`${selectedFile.name} 已上传`)
+      feedback.success(`${parsedFile.name} 已上传`)
     } catch (error) {
-      if (isUserCancelled(error)) {
+      if (isResumeFileUploadCancelled(error)) {
         return
       }
 
       const message = error instanceof Error ? error.message : '上传失败，请重试'
+      const uploadCardMessage = message.startsWith('仅支持') || message.startsWith('文件不能超过')
+        ? '上传失败'
+        : message
       console.error('resume upload failed', error)
       setResumeUploadState(previous => ({
         ...previous,
         status: 'error',
         progress: 0,
         file: null,
-        errorMessage: message,
+        errorMessage: uploadCardMessage,
       }))
       feedback.error(message)
     }
   }
 
   const handlePickJobAttachment = async () => {
+    if (jobDescriptionState.attachmentStatus === 'uploading') {
+      return
+    }
+
     try {
       const selectedFile = await pickJobDescriptionFile()
       if (!selectedFile) {
         return
       }
 
-      if (!isSupportedJobDescriptionFile(selectedFile.name)) {
-        setJobDescriptionState(previous => ({
-          ...previous,
-          inputMode: 'upload',
-          attachmentStatus: 'error',
-          attachment: null,
-          attachmentErrorMessage: '仅支持 PNG、JPG、JPEG 图片',
-        }))
-        feedback.error('仅支持 PNG、JPG、JPEG 图片')
-        return
-      }
+      const validationMessage = getJobDescriptionFileValidationMessage(selectedFile)
 
-      if (selectedFile.size > JOB_DESCRIPTION_FILE_MAX_SIZE_MB * 1024 * 1024) {
+      if (validationMessage) {
         setJobDescriptionState(previous => ({
           ...previous,
           inputMode: 'upload',
           attachmentStatus: 'error',
+          attachmentProgress: 0,
           attachment: null,
-          attachmentErrorMessage: `文件不能超过 ${JOB_DESCRIPTION_FILE_MAX_SIZE_MB}MB`,
+          attachmentErrorMessage: validationMessage,
         }))
-        feedback.error(`文件不能超过 ${JOB_DESCRIPTION_FILE_MAX_SIZE_MB}MB`)
+        feedback.error(validationMessage)
         return
       }
 
@@ -882,71 +913,57 @@ export function usePageModel(): CreatePageViewModel {
         ...previous,
         inputMode: 'upload',
         attachmentStatus: 'uploading',
+        attachmentProgress: 8,
         attachment: null,
         attachmentErrorMessage: null,
       }))
+      startJobAttachmentProgress(requestId)
 
       await wait(120)
       if (jobAttachmentRequestRef.current !== requestId) {
         return
       }
 
-      const attachment: UploadedJobDescriptionFile = {
-        name: selectedFile.name,
-        path: selectedFile.path,
-        size: selectedFile.size,
-        extension: getFileExtension(selectedFile.name),
-        sizeLabel: formatFileSize(selectedFile.size),
-        previewPath: selectedFile.path,
-      }
+      setJobDescriptionState(previous => ({
+        ...previous,
+        attachmentProgress: Math.max(previous.attachmentProgress, 28),
+      }))
 
-      const parsedDocument = await parseApi.parseJobDescriptionImage(selectedFile)
+      const parsedAttachment = await parseJobDescriptionAttachment(selectedFile)
       if (jobAttachmentRequestRef.current !== requestId) {
         return
       }
-
-      const parsedJob = parsedDocument.structured
-      const ocrText = parsedJob?.jdText?.trim() || parsedDocument.rawText.trim()
-
-      if (!ocrText) {
-        throw new Error('JD 图片解析结果为空，请重新上传或切换到文字输入')
-      }
-
-      const extractedJobMetadata = extractJobMetadataFromOcrText(ocrText)
-      const parsedCompanyName = normalizeCompanyNameCandidate(parsedJob?.companyName || '')
-      const parsedPositionName = resolvePositionNameCandidate(
-        parsedJob?.positionName || '',
-        extractedJobMetadata.positionName,
-      )
+      stopJobAttachmentProgress()
 
       setJobDescriptionState(previous => ({
         ...previous,
         attachmentStatus: 'success',
-        attachment,
+        attachmentProgress: 100,
+        attachment: parsedAttachment.attachment,
         inputMode: 'manual',
-        content: ocrText,
+        content: parsedAttachment.content,
         companyName:
           previous.companyName.trim() ||
-          parsedCompanyName ||
-          extractedJobMetadata.companyName,
-        positionName:
-          previous.positionName.trim() ||
-          parsedPositionName,
+          parsedAttachment.companyName,
+        positionName: previous.positionName.trim() || parsedAttachment.positionName,
+        baseLocation: previous.baseLocation.trim() || parsedAttachment.baseLocation,
         attachmentErrorMessage: null,
       }))
 
       feedback.success(`${selectedFile.name} 已解析，可继续编辑`)
     } catch (error) {
-      if (isUserCancelled(error)) {
+      if (isResumeFileUploadCancelled(error)) {
         return
       }
 
       const message = error instanceof Error ? error.message : '文件读取失败，请重试'
       console.error('job description attachment failed', error)
+      stopJobAttachmentProgress()
       setJobDescriptionState(previous => ({
         ...previous,
         inputMode: 'upload',
         attachmentStatus: 'error',
+        attachmentProgress: 0,
         attachment: null,
         attachmentErrorMessage: message,
       }))
@@ -969,9 +986,7 @@ export function usePageModel(): CreatePageViewModel {
       feedback.message(
         currentStep === 'resumeUpload'
           ? '请先填写或整理 Markdown 简历'
-          : jobDescriptionState.inputMode === 'upload'
-            ? '请先上传岗位描述截图，或切换到“文字输入”补充岗位描述'
-            : '请先填写目标岗位描述',
+          : '请先上传岗位描述截图，或输入目标岗位描述',
         {duration: 2200},
       )
       return false
@@ -1014,15 +1029,61 @@ export function usePageModel(): CreatePageViewModel {
       }
     }
 
+    if (isHistoryEditMode && editHistoryId) {
+      const history = editingHistory
+      if (!history) {
+        feedback.message('简历信息还在加载中')
+        return false
+      }
+
+      setIsSavingCurrentStep(true)
+
+      try {
+        const jdText = buildJobDescriptionPayload(jobDescriptionState)
+        const company = jobDescriptionState.companyName.trim() || history.company
+        const position = jobDescriptionState.positionName.trim() || history.position
+        const location = jobDescriptionState.baseLocation.trim()
+        const resumeContent = history.resultContext?.resumeContent || history.resumeContent
+
+        await useHistoryStore.getState().updateHistory(editHistoryId, {
+          company,
+          position,
+          jdContent: jdText,
+          resultContext: {
+            company,
+            position,
+            ...(location ? {location} : {}),
+            resumeContent,
+            jdContent: jdText,
+          },
+        })
+
+        feedback.success('信息已更新', {duration: 1200})
+        await navigation.redirectTo('/pages/result/index', {
+          id: editHistoryId,
+          fromCard: 1,
+        })
+        return true
+      } catch (error) {
+        console.error('update history resume failed', error)
+        feedback.error(error instanceof Error ? error.message : '更新信息失败，请重试')
+        return false
+      } finally {
+        setIsSavingCurrentStep(false)
+      }
+    }
+
     setIsSavingCurrentStep(true)
     const requestId = generationRequestRef.current + 1
     generationRequestRef.current = requestId
 
     try {
-      const resumeMarkdown =
-        latestSourceResume?.resumeMarkdown.trim() ||
-        useResumeStore.getState().resumeContent.trim() ||
-        resumeUploadState.markdown.trim()
+      // Landing must analyze the resume explicitly selected in the onboarding deck.
+      const resumeMarkdown = isLandingFlow
+        ? landingResume?.markdown.trim() || ''
+        : latestSourceResume?.resumeMarkdown.trim() ||
+          useResumeStore.getState().resumeContent.trim() ||
+          resumeUploadState.markdown.trim()
       const jdText = buildJobDescriptionPayload(jobDescriptionState)
 
       if (!resumeMarkdown) {
@@ -1031,8 +1092,12 @@ export function usePageModel(): CreatePageViewModel {
 
       setGenerationState(
         buildGenerationState({
-          latestSourceResumeTitle: latestSourceResume?.title,
-          fallbackResumeFileName: latestSourceResume?.originalFileName,
+          latestSourceResumeTitle: isLandingFlow
+            ? landingResume?.title
+            : latestSourceResume?.title,
+          fallbackResumeFileName: isLandingFlow
+            ? landingResume?.fileName
+            : latestSourceResume?.originalFileName,
           jobDescriptionState,
         }),
       )
@@ -1040,30 +1105,66 @@ export function usePageModel(): CreatePageViewModel {
       useResumeStore.getState().setResumeContent(resumeMarkdown)
       useJDStore.getState().setJDContent(jdText)
 
-      const analysis = await resumeApi.analyzeResume(resumeMarkdown)
+      const presetJdId = isLandingFlow ? landingJob?.id : undefined
+      const analysis = isLandingFlow
+        ? await resumeApi.analyzeResume(resumeMarkdown, {landing: true})
+        : await resumeApi.analyzeResume(resumeMarkdown)
 
       if (generationRequestRef.current !== requestId) {
         return false
       }
 
-      const matching = await resumeApi.matchResume(analysis, jdText)
+      const matching = await resumeApi.matchResume(
+        analysis,
+        presetJdId ? {presetJdId} : jdText,
+      )
 
       if (generationRequestRef.current !== requestId) {
         return false
       }
+
+      const parsedJdInfo = matching.jd_structure?.basic_info
+      const extractedJdMetadata = extractJobMetadataFromOcrText(jobDescriptionState.content)
+      const resolvedCompanyName =
+        jobDescriptionState.companyName.trim() ||
+        normalizeCompanyNameCandidate(parsedJdInfo?.company || '') ||
+        extractedJdMetadata.companyName
+      const resolvedPositionName =
+        jobDescriptionState.positionName.trim() ||
+        resolvePositionNameCandidate(parsedJdInfo?.title || '', extractedJdMetadata.positionName)
+      const resolvedBaseLocation =
+        jobDescriptionState.baseLocation.trim() ||
+        resolveBaseLocationCandidate(
+          [extractedJdMetadata.baseLocation],
+          [
+            resolvedCompanyName,
+            normalizeCompanyNameCandidate(parsedJdInfo?.company || ''),
+            extractedJdMetadata.companyName,
+            resolvedPositionName,
+          ],
+        )
+
+      setJobDescriptionState(previous => ({
+        ...previous,
+        companyName: resolvedCompanyName || previous.companyName,
+        positionName: resolvedPositionName || previous.positionName,
+        baseLocation: resolvedBaseLocation || previous.baseLocation,
+      }))
 
       const processResult = buildInitialProcessResult(analysis, matching)
 
       useResumeStore.getState().setAnalysis(processResult.analysis)
       useJDStore.getState().setMatching(processResult.matching)
 
-      await saveLatestResultSession({
+      const initialResultSession: LatestResultSession = {
         result: processResult,
         context: {
-          company: jobDescriptionState.companyName.trim(),
-          position: jobDescriptionState.positionName.trim(),
+          company: resolvedCompanyName,
+          position: resolvedPositionName,
+          location: resolvedBaseLocation,
           resumeContent: resumeMarkdown,
           jdContent: jdText,
+          ...(presetJdId ? {presetJdId} : {}),
         },
         progress: {
           analysis: 'done',
@@ -1071,13 +1172,27 @@ export function usePageModel(): CreatePageViewModel {
           optimized: 'pending',
           interview: 'pending',
         },
-      })
+      }
+
+      await saveLatestResultSession(initialResultSession)
 
       if (generationRequestRef.current !== requestId) {
         return false
       }
 
-      await navigation.navigateTo('/pages/result/index')
+      if (isLandingFlow) {
+        await storage.setItem('reffo.landing.seen', '1')
+        useLandingFlowStore.getState().clear()
+      }
+
+      if (isLandingFlow && options.onLandingGenerationComplete) {
+        await options.onLandingGenerationComplete(initialResultSession)
+        return true
+      }
+
+      await navigation.navigateTo(
+        isLandingFlow ? '/pages/landing-result/index' : '/pages/result/index',
+      )
       return true
     } catch (error) {
       if (generationRequestRef.current !== requestId) {
@@ -1094,6 +1209,40 @@ export function usePageModel(): CreatePageViewModel {
     }
   }
 
+  useEffect(() => {
+    const resumeMarkdown = isLandingFlow
+      ? landingResume?.markdown.trim() || ''
+      : latestSourceResume?.resumeMarkdown.trim() ||
+        useResumeStore.getState().resumeContent.trim() ||
+        resumeUploadState.markdown.trim()
+
+    if (
+      !shouldAutoGenerateLanding ||
+      autoGenerateStartedRef.current ||
+      currentStep !== 'jobDescription' ||
+      (!isLandingFlow && !hasResolvedLatestSourceResume) ||
+      !resumeMarkdown ||
+      !jobDescriptionState.content.trim()
+    ) {
+      return
+    }
+
+    autoGenerateStartedRef.current = true
+    void handlePrimaryAction()
+  }, [
+    currentStep,
+    handlePrimaryAction,
+    hasResolvedLatestSourceResume,
+    isLandingFlow,
+    jobDescriptionState.content,
+    landingResume?.id,
+    landingResume?.markdown,
+    latestSourceResume?.id,
+    latestSourceResume?.resumeMarkdown,
+    resumeUploadState.markdown,
+    shouldAutoGenerateLanding,
+  ])
+
   const handleCancelGeneration = () => {
     if (!generationState) {
       return
@@ -1104,8 +1253,41 @@ export function usePageModel(): CreatePageViewModel {
     setIsSavingCurrentStep(false)
   }
 
+  const handleDeleteHistoryResume = async () => {
+    if (!isHistoryEditMode || !editHistoryId) {
+      return false
+    }
+
+    setIsSavingCurrentStep(true)
+
+    try {
+      await useHistoryStore.getState().deleteHistory(editHistoryId)
+      feedback.success('简历已删除', {duration: 1200})
+      return true
+    } catch (error) {
+      console.error('delete history resume failed', error)
+      feedback.error(error instanceof Error ? error.message : '删除简历失败，请重试')
+      return false
+    } finally {
+      setIsSavingCurrentStep(false)
+    }
+  }
+
+  const handleReturnHome = () => {
+    return navigation.reLaunch('/pages/index/index')
+  }
+
   const handleClose = () => {
+    if (isLandingFlow) {
+      useLandingFlowStore.getState().clear()
+    }
     void navigation.navigateBack()
+  }
+
+  const handleLandingSkip = async () => {
+    await storage.setItem('reffo.landing.seen', '1')
+    useLandingFlowStore.getState().clear()
+    await navigation.reLaunch('/pages/index/index')
   }
 
   const resumeUploadViewState: ResumeUploadStepState = {
@@ -1113,7 +1295,7 @@ export function usePageModel(): CreatePageViewModel {
     file: resumeUploadState.file
       ? {
           ...resumeUploadState.file,
-          sizeLabel: formatFileSize(resumeUploadState.file.size),
+          sizeLabel: formatResumeFileSize(resumeUploadState.file.size),
         }
       : null,
   }
@@ -1126,6 +1308,8 @@ export function usePageModel(): CreatePageViewModel {
     resumeSummaryState,
     jobDescriptionState,
     generationState,
+    isHistoryEditMode,
+    editingHistoryCard,
     canSaveCurrentStep,
     isSavingCurrentStep,
     handlePickResumeFile,
@@ -1136,10 +1320,15 @@ export function usePageModel(): CreatePageViewModel {
     handleJobDescriptionChange,
     handleJobCompanyNameChange,
     handleJobPositionNameChange,
+    handleJobLocationChange,
     handleJobInputModeChange,
     handlePickJobAttachment,
     handlePrimaryAction,
+    handleDeleteHistoryResume,
+    handleReturnHome,
     handleCancelGeneration,
     handleClose,
+    isLandingFlow,
+    handleLandingSkip,
   }
 }

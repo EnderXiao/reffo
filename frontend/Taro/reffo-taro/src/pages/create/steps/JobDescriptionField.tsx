@@ -9,6 +9,8 @@ export default function JobDescriptionField({
   onChange,
   testId,
   compact = false,
+  disabled = false,
+  containerStyle,
 }: {
   label: string
   placeholder: string
@@ -16,18 +18,35 @@ export default function JobDescriptionField({
   onChange: (value: string) => void
   testId: string
   compact?: boolean
+  disabled?: boolean
+  containerStyle?: any
 }) {
   return (
-    <View style={[styles.fieldBlock, compact ? styles.fieldBlockCompact : null] as any}>
+    <View style={[styles.fieldBlock, compact ? styles.fieldBlockCompact : null, containerStyle] as any}>
       <Text style={[styles.fieldLabel, compact ? styles.fieldLabelCompact : null] as any}>
         {label}
       </Text>
-      <View style={[styles.inputShell, compact ? styles.inputShellCompact : null] as any}>
+      <View
+        style={[
+          styles.inputShell,
+          compact ? styles.inputShellCompact : null,
+          disabled ? styles.inputShellDisabled : null,
+        ] as any}
+      >
         <Input
           value={value}
           placeholder={placeholder}
-          onInput={event => onChange(readInputValue(event))}
-          style={[styles.input, compact ? styles.inputCompact : null] as any}
+          disabled={disabled}
+          onInput={event => {
+            if (!disabled) {
+              onChange(readInputValue(event))
+            }
+          }}
+          style={[
+            styles.input,
+            compact ? styles.inputCompact : null,
+            disabled ? styles.inputDisabled : null,
+          ] as any}
           data-testid={testId}
         />
       </View>

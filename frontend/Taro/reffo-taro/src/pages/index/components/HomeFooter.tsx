@@ -7,6 +7,7 @@ import {styles} from '../styles'
 
 interface HomeFooterProps {
   isCreateMode: boolean
+  showCancelCreate: boolean
   onEnterCreateMode: () => void
   onCancelCreate: () => void
   compact?: boolean
@@ -41,6 +42,7 @@ function CancelCreateIcon() {
 
 export default function HomeFooter({
   isCreateMode,
+  showCancelCreate,
   onEnterCreateMode,
   onCancelCreate,
   compact = false,
@@ -125,14 +127,16 @@ export default function HomeFooter({
               <Text style={styles.inlineActionText as any}>{HOME_PAGE_CONTENT.footer.startCreateLabel}</Text>
             </View>
           </View>
-          <View style={styles.footerActionGroupRight}>
-            <Pressable style={styles.inlineCancelButton} onPress={onCancelCreate} hitSlop={8}>
-              <View style={styles.inlineCancelIconWrap}>
-                <CancelCreateIcon />
-              </View>
-              <Text style={styles.inlineCancelText as any}>{HOME_PAGE_CONTENT.footer.cancelCreateLabel}</Text>
-            </Pressable>
-          </View>
+          {showCancelCreate ? (
+            <View style={styles.footerActionGroupRight}>
+              <Pressable style={styles.inlineCancelButton} onPress={onCancelCreate} hitSlop={8}>
+                <View style={styles.inlineCancelIconWrap}>
+                  <CancelCreateIcon />
+                </View>
+                <Text style={styles.inlineCancelText as any}>{HOME_PAGE_CONTENT.footer.cancelCreateLabel}</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </Animated.View>
       </View>
 

@@ -5,8 +5,10 @@
 export interface ResultSessionContext {
   company: string;
   position: string;
+  location?: string;
   resumeContent: string;
   jdContent: string;
+  presetJdId?: string;
 }
 
 export type ResultStepStatus = 'pending' | 'generating' | 'done' | 'failed';

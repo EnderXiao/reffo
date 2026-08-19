@@ -1,5 +1,7 @@
 import { Elysia, t } from 'elysia'
-import { env } from '@/config/env'
+import { RequestAuthError, resolveRequestUser, type RequestUserContext } from '@/auth/request-context'
+import { env, getOcrEnvStatus } from '@/config/env'
+import { createSupabaseRestClient } from '@/repositories/supabase/client'
 import { OcrParseWorkflow } from '@/workflows/ocr-parse-workflow'
 import { OcrProviderError, type OcrFileType, type OcrPurpose } from '@/services/ocr/types'
 import type { ApiResponse } from '@/types'
@@ -12,7 +14,11 @@ const PDF_EXTENSIONS = new Set(['pdf'])
 interface ParseBody {
   file_name: string
   mime_type: string
-  content_base64: string
+  content_base64?: string
+  bucket?: string
+  storage_path?: string
+  size_bytes?: number
+  landing?: boolean
 }
 
 function getExtension(fileName: string) {
@@ -54,8 +60,95 @@ function validateFile(input: {
   return null
 }
 
-async function parseDocument(body: ParseBody, purpose: OcrPurpose, fileType: OcrFileType) {
-  const buffer = decodeBase64(body.content_base64)
+async function downloadStorageObject(input: {
+  bucket: string
+  storagePath: string
+  accessToken: string
+}) {
+  const objectPath = `${input.bucket}/${input.storagePath}`
+  const response = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/storage/v1/object/${objectPath}`, {
+    headers: {
+      apikey: env.SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new OcrProviderError('STORAGE_FILE_DOWNLOAD_FAILED', '读取上传文件失败', { status: response.status })
+  }
+
+  return Buffer.from(await response.arrayBuffer())
+}
+
+async function getParseBuffer(
+  body: ParseBody,
+  userContext: RequestUserContext,
+) {
+  if (body.storage_path) {
+    if (!userContext.accessToken) {
+      throw new OcrProviderError('AUTH_REQUIRED', '请先登录后再上传文件', { status: 401 })
+    }
+
+    const bucket = body.bucket || env.SUPABASE_STORAGE_BUCKET
+    const buffer = await downloadStorageObject({
+      bucket,
+      storagePath: body.storage_path,
+      accessToken: userContext.accessToken,
+    })
+
+    await createSupabaseRestClient({
+      accessToken: userContext.accessToken,
+      useServiceRole: false,
+    }).request('/rest/v1/user_files', {
+      method: 'POST',
+      prefer: 'return=minimal',
+      body: {
+        user_id: userContext.userId,
+        purpose: body.storage_path.includes('/jobDescription/') ? 'jobDescription' : 'resume',
+        bucket,
+        storage_path: body.storage_path,
+        original_file_name: body.file_name,
+        mime_type: body.mime_type,
+        size_bytes: body.size_bytes ?? buffer.byteLength,
+      },
+    })
+
+    return buffer
+  }
+
+  if (!body.content_base64) {
+    throw new OcrProviderError('OCR_FILE_MISSING', '文件内容为空')
+  }
+
+  return decodeBase64(body.content_base64)
+}
+
+async function parseDocument(
+  body: ParseBody,
+  headers: Record<string, string | undefined>,
+  purpose: OcrPurpose,
+  fileType: OcrFileType,
+) {
+  let userContext: RequestUserContext
+
+  try {
+    userContext = await resolveRequestUser(headers)
+  } catch (error) {
+    const allowsGuestInlineResume = purpose === 'resume'
+      && body.landing === true
+      && Boolean(body.content_base64)
+      && !body.storage_path
+
+    if (!(error instanceof RequestAuthError) || !allowsGuestInlineResume) {
+      throw error
+    }
+
+    userContext = {
+      userId: 'landing-guest',
+      useServiceRole: false,
+    }
+  }
+  const buffer = await getParseBuffer(body, userContext)
   const validationError = validateFile({
     fileName: body.file_name,
     mimeType: body.mime_type,
@@ -79,6 +172,19 @@ async function parseDocument(body: ParseBody, purpose: OcrPurpose, fileType: Ocr
 }
 
 function toErrorResponse(error: unknown) {
+  if (error instanceof RequestAuthError) {
+    return {
+      status: error.status,
+      response: {
+        success: false,
+        error: {
+          code: error.code,
+          message: error.message,
+        },
+      } satisfies ApiResponse<never>,
+    }
+  }
+
   if (error instanceof OcrProviderError) {
     console.error('[Parse Error]', JSON.stringify({
       code: error.code,
@@ -107,18 +213,32 @@ function toErrorResponse(error: unknown) {
       success: false,
       error: {
         code: 'OCR_PARSE_FAILED',
-        message: error instanceof Error ? error.message : '文件解析失败',
+        message: '文件解析失败，请稍后重试',
       },
     } satisfies ApiResponse<never>,
   }
 }
 
 export const parseRoutes = new Elysia({ prefix: '/api/v1/parse' })
+  .get(
+    '/health',
+    () => ({
+      success: true,
+      data: getOcrEnvStatus(),
+    }),
+    {
+      detail: {
+        summary: 'OCR 配置状态',
+        description: '返回 GLM-OCR 是否已配置，以及缺失的环境变量。',
+        tags: ['Parse'],
+      },
+    }
+  )
   .post(
     '/resume-file',
-    async ({ body, set }) => {
+    async ({ body, headers, set }) => {
       try {
-        const result = await parseDocument(body, 'resume', 'pdf')
+        const result = await parseDocument(body, headers, 'resume', 'pdf')
         return {
           success: true,
           data: result,
@@ -133,7 +253,11 @@ export const parseRoutes = new Elysia({ prefix: '/api/v1/parse' })
       body: t.Object({
         file_name: t.String({ minLength: 1, description: '文件名' }),
         mime_type: t.String({ minLength: 1, description: 'MIME 类型' }),
-        content_base64: t.String({ minLength: 1, description: '文件 base64 内容' }),
+        content_base64: t.Optional(t.String({ minLength: 1, description: '文件 base64 内容' })),
+        bucket: t.Optional(t.String({ minLength: 1, description: 'Supabase Storage bucket' })),
+        storage_path: t.Optional(t.String({ minLength: 1, description: 'Supabase Storage object path' })),
+        size_bytes: t.Optional(t.Number({ description: '文件大小' })),
+        landing: t.Optional(t.Boolean({ description: '是否为 Landing 未登录上传' })),
       }),
       detail: {
         summary: '解析简历 PDF',
@@ -144,9 +268,9 @@ export const parseRoutes = new Elysia({ prefix: '/api/v1/parse' })
   )
   .post(
     '/jd-image',
-    async ({ body, set }) => {
+    async ({ body, headers, set }) => {
       try {
-        const result = await parseDocument(body, 'jobDescription', 'image')
+        const result = await parseDocument(body, headers, 'jobDescription', 'image')
         return {
           success: true,
           data: result,
@@ -161,7 +285,11 @@ export const parseRoutes = new Elysia({ prefix: '/api/v1/parse' })
       body: t.Object({
         file_name: t.String({ minLength: 1, description: '文件名' }),
         mime_type: t.String({ minLength: 1, description: 'MIME 类型' }),
-        content_base64: t.String({ minLength: 1, description: '文件 base64 内容' }),
+        content_base64: t.Optional(t.String({ minLength: 1, description: '文件 base64 内容' })),
+        bucket: t.Optional(t.String({ minLength: 1, description: 'Supabase Storage bucket' })),
+        storage_path: t.Optional(t.String({ minLength: 1, description: 'Supabase Storage object path' })),
+        size_bytes: t.Optional(t.Number({ description: '文件大小' })),
+        landing: t.Optional(t.Boolean({ description: '是否为 Landing 未登录上传' })),
       }),
       detail: {
         summary: '解析 JD 图片',

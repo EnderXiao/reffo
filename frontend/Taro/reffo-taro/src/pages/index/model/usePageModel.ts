@@ -5,9 +5,10 @@ import {useHistoryStore} from '@/store/historyStore'
 import {useJDStore} from '@/store/jdStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {navigation} from '@/utils/navigation'
-import {DEMO_CARDS, toHistoryCardItems} from './homeCardData'
+import {toHistoryCardItems} from './homeCardData'
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
+const NEW_CARD_ID_QUERY_KEY = 'newCardId'
 
 interface ReturningHomeState {
   isReturning: boolean
@@ -40,6 +41,32 @@ function readReturningHomeState(): ReturningHomeState {
     console.warn('读取首页返回卡片标记失败:', error)
     return {isReturning: false, cardId: null}
   }
+}
+
+function removeNewCardIdFromHashUrl() {
+  if (typeof window === 'undefined' || typeof window.history?.replaceState !== 'function') {
+    return
+  }
+
+  const {hash, pathname, search} = window.location
+  const [routePath, rawQuery = ''] = hash.split('?')
+
+  if (!rawQuery) {
+    return
+  }
+
+  const params = new URLSearchParams(rawQuery)
+
+  if (!params.has(NEW_CARD_ID_QUERY_KEY)) {
+    return
+  }
+
+  params.delete(NEW_CARD_ID_QUERY_KEY)
+
+  const nextQuery = params.toString()
+  const nextHash = nextQuery ? `${routePath}?${nextQuery}` : routePath
+
+  window.history.replaceState(window.history.state, document.title, `${pathname}${search}${nextHash}`)
 }
 
 export interface IndexPageViewModel {
@@ -75,11 +102,11 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     loadLatestSourceResume,
   } = useSourceResumeStore()
   const initialReturningHomeState = useMemo(readReturningHomeState, [])
-  const [activeCardIndex, setActiveCardIndex] = useState(DEMO_CARDS.length - 1)
+  const [activeCardIndex, setActiveCardIndex] = useState(0)
   const [isStrategyVisible, setIsStrategyVisible] = useState(initialReturningHomeState.isReturning)
   const [isCreateMode, setIsCreateMode] = useState(false)
   const [enteringCardId, setEnteringCardId] = useState<string | null>(
-    typeof router.params.newCardId === 'string' ? router.params.newCardId : null,
+    typeof router.params[NEW_CARD_ID_QUERY_KEY] === 'string' ? router.params[NEW_CARD_ID_QUERY_KEY] : null,
   )
   const [returningCardId, setReturningCardId] = useState<string | null>(initialReturningHomeState.cardId)
   const consumedEntryCardIdRef = useRef<string | null>(null)
@@ -90,19 +117,23 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
       return
     }
 
-    loadHistories()
-    loadLatestSourceResume()
+    loadHistories({skipIfLoaded: true})
+    loadLatestSourceResume({skipIfLoaded: true})
   }, [initialReturningHomeState.isReturning, loadHistories, loadLatestSourceResume])
 
-  const cardItems = useMemo(() => {
-    if (histories.length > 0) {
-      return toHistoryCardItems(histories)
+  useEffect(() => {
+    if (typeof router.params[NEW_CARD_ID_QUERY_KEY] === 'string') {
+      removeNewCardIdFromHashUrl()
     }
+  }, [router.params])
 
-    return DEMO_CARDS
+  const cardItems = useMemo(() => {
+    return histories.length > 0 ? toHistoryCardItems(histories) : []
   }, [histories])
 
   const hasHistories = histories.length > 0
+  const shouldShowCreateCard = !hasHistories
+  const resolvedCreateMode = isCreateMode || shouldShowCreateCard
   const enteringCardIndex = useMemo(
     () => enteringCardId ? cardItems.findIndex(card => card.id === enteringCardId) : -1,
     [cardItems, enteringCardId],
@@ -114,11 +145,11 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   const initialDeckIndex = enteringCardIndex >= 0
     ? enteringCardIndex
     : returningCardIndex >= 0 ? returningCardIndex
-    : hasHistories ? 0 : Math.max(0, cardItems.length - 1)
+    : 0
 
   useDidShow(() => {
-    const nextEnteringCardId = typeof router.params.newCardId === 'string'
-      ? router.params.newCardId
+    const nextEnteringCardId = typeof router.params[NEW_CARD_ID_QUERY_KEY] === 'string'
+      ? router.params[NEW_CARD_ID_QUERY_KEY]
       : null
     const returningHomeState = readReturningHomeState()
     const isFirstHomeShow = !hasShownHomeRef.current
@@ -141,8 +172,8 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
       setIsStrategyVisible(true)
     }
     if (!returningHomeState.isReturning) {
-      loadHistories()
-      loadLatestSourceResume()
+      loadHistories({skipIfLoaded: isFirstHomeShow})
+      loadLatestSourceResume({skipIfLoaded: isFirstHomeShow})
     }
   })
 
@@ -163,7 +194,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [enteringCardId])
 
   useEffect(() => {
-    if (isStrategyVisible || isCreateMode) {
+    if (isStrategyVisible || resolvedCreateMode) {
       return
     }
 
@@ -172,7 +203,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     }, 2000)
 
     return () => clearTimeout(timer)
-  }, [isCreateMode, isStrategyVisible])
+  }, [isStrategyVisible, resolvedCreateMode])
 
   const handleEnterCreateMode = useCallback(() => {
     setIsCreateMode(true)
@@ -189,8 +220,10 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [latestSourceResume])
 
   const handleCancelCreate = useCallback(() => {
-    setIsCreateMode(false)
-  }, [])
+    if (!shouldShowCreateCard) {
+      setIsCreateMode(false)
+    }
+  }, [shouldShowCreateCard])
 
   const handleViewHistory = useCallback(() => {
     void navigation.navigateTo(
@@ -201,7 +234,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [latestSourceResume])
 
   const handleCardPress = useCallback((card: HomeCardItem) => {
-    if (isCreateMode) {
+    if (resolvedCreateMode) {
       return
     }
 
@@ -213,7 +246,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     void navigation.navigateTo(
       `/pages/result/index?id=${encodeURIComponent(targetHistory.id)}&fromCard=1`,
     )
-  }, [histories, isCreateMode])
+  }, [histories, resolvedCreateMode])
 
   const handleCardChange = useCallback((_: HomeCardItem, index: number) => {
     setActiveCardIndex(previousIndex =>
@@ -254,7 +287,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     hasSourceResume: Boolean(latestSourceResume),
     sourceResumeTitle: latestSourceResume?.title ?? null,
     isStrategyVisible,
-    isCreateMode,
+    isCreateMode: resolvedCreateMode,
     initialCardIndex: initialDeckIndex,
     enteringCardId,
     handleEnterCreateMode,

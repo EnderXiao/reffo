@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro'
 import {
   initializeNavigationTransitions,
   runWithNavigationTransition,
+  startResultCardReturnTransition,
 } from '../navigation-transition'
 
 const mockMatchMedia = (matches = false) => {
@@ -65,8 +66,16 @@ describe('navigation-transition', () => {
     expect(document.documentElement.className).toBe('')
   })
 
-  test('does not use View Transition API', async () => {
-    const startViewTransition = jest.fn()
+  test('uses View Transition API when available', async () => {
+    const startViewTransition = jest.fn(async callback => {
+      await callback()
+      return {
+        ready: Promise.resolve(),
+        finished: Promise.resolve(),
+        updateCallbackDone: Promise.resolve(),
+        skipTransition: jest.fn(),
+      }
+    })
     Object.defineProperty(document, 'startViewTransition', {
       configurable: true,
       writable: true,
@@ -77,9 +86,9 @@ describe('navigation-transition', () => {
       return 'done'
     })
 
-    await expect(runWithNavigationTransition(action, {kind: 'forward'})).resolves.toBe('done')
+    await expect(runWithNavigationTransition(action, {kind: 'forward'})).resolves.toBeUndefined()
     expect(action).toHaveBeenCalledTimes(1)
-    expect(startViewTransition).not.toHaveBeenCalled()
+    expect(startViewTransition).toHaveBeenCalledTimes(1)
   })
 
   test('initializes Taro page fade styles once', () => {
@@ -99,5 +108,59 @@ describe('navigation-transition', () => {
     expect(document.getElementById('reffo-navigation-transition-style')?.textContent).toContain(
       'prefers-reduced-motion: reduce',
     )
+  })
+
+  test('starts result card return View Transition and suppresses nested route transition', async () => {
+    let finishTransition!: () => void
+    const transition = {
+      ready: Promise.resolve(),
+      finished: new Promise<void>(resolve => {
+        finishTransition = resolve
+      }),
+      updateCallbackDone: Promise.resolve(),
+      skipTransition: jest.fn(),
+    }
+    const startViewTransition = jest.fn(callback => {
+      void callback()
+      return transition
+    })
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: startViewTransition,
+    })
+    const sourceElement = document.createElement('div')
+    document.body.appendChild(sourceElement)
+    const nestedAction = jest.fn(async () => 'done')
+    const action = jest.fn(() => runWithNavigationTransition(nestedAction, {kind: 'back'}))
+
+    expect(startResultCardReturnTransition(action, sourceElement)).toBe(true)
+
+    expect(startViewTransition).toHaveBeenCalledTimes(1)
+    expect(action).toHaveBeenCalledTimes(1)
+    expect(nestedAction).toHaveBeenCalledTimes(1)
+    expect(sourceElement.style.getPropertyValue('view-transition-name')).toBe('reffo-result-card-return')
+    expect(document.documentElement.dataset.reffoCardReturnTransition).toBe('1')
+    expect(document.documentElement.dataset.reffoViewTransition).toBeUndefined()
+
+    finishTransition()
+    await transition.finished
+    await Promise.resolve()
+
+    expect(sourceElement.style.getPropertyValue('view-transition-name')).toBe('')
+    expect(document.documentElement.dataset.reffoCardReturnTransition).toBeUndefined()
+  })
+
+  test('does not start result card return transition without View Transition support', () => {
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    })
+    const action = jest.fn()
+    const sourceElement = document.createElement('div')
+
+    expect(startResultCardReturnTransition(action, sourceElement)).toBe(false)
+    expect(action).not.toHaveBeenCalled()
   })
 })

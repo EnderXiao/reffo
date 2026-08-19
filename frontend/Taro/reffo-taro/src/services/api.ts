@@ -1,6 +1,8 @@
 import {TaroRequestAdapter, RequestError} from '@/utils/request';
 import type {RequestConfig, Response} from '@/utils/request';
 import {retry, type RetryOptions} from '@/utils/retry';
+import {redactSensitiveData} from '@/utils/redact';
+import {getClientErrorMessage} from '@/utils/client-error';
 
 /**
  * API 响应格式
@@ -36,6 +38,10 @@ export interface ApiConfig {
   retry?: RetryOptions | false;
 }
 
+type ReffoEnv = 'local' | 'nonprod' | 'prod';
+
+export {redactSensitiveData};
+
 /**
  * API 客户端基类
  *
@@ -70,7 +76,7 @@ export interface ApiConfig {
  */
 export class ApiClient {
   /** 请求适配器 */
-  private request: TaroRequestAdapter;
+  private adapter: TaroRequestAdapter;
 
   /** API 基础 URL */
   private baseURL: string;
@@ -111,8 +117,8 @@ export class ApiClient {
     }
 
     // 创建请求适配器
-    this.request = new TaroRequestAdapter();
-    this.request.setDefaultTimeout(this.timeout);
+    this.adapter = new TaroRequestAdapter();
+    this.adapter.setDefaultTimeout(this.timeout);
 
     // 配置拦截器
     this.setupInterceptors();
@@ -128,7 +134,7 @@ export class ApiClient {
    */
   private setupInterceptors(): void {
     // 请求拦截器
-    this.request.addRequestInterceptor(config => {
+    this.adapter.addRequestInterceptor(config => {
       // 添加 baseURL
       if (!config.url.startsWith('http')) {
         config.url = `${this.baseURL}${config.url}`;
@@ -150,7 +156,7 @@ export class ApiClient {
         console.log('[API Request]', {
           method: config.method,
           url: config.url,
-          data: config.data,
+          data: redactSensitiveData(config.data),
           timestamp: new Date().toISOString(),
         });
       }
@@ -159,7 +165,7 @@ export class ApiClient {
     });
 
     // 响应拦截器
-    this.request.addResponseInterceptor(response => {
+    this.adapter.addResponseInterceptor(response => {
       // 记录响应日志
       if (this.enableLog) {
         console.log('[API Response]', {
@@ -174,7 +180,11 @@ export class ApiClient {
       const apiResponse = response.data as ApiResponse<any>;
       if (apiResponse && apiResponse.success === false) {
         throw new RequestError(
-          apiResponse.error?.message || '请求失败',
+          getClientErrorMessage(
+            apiResponse.error?.code,
+            response.statusCode,
+            apiResponse.error?.message || '请求失败',
+          ),
           apiResponse.error?.code || 'API_ERROR',
           response.statusCode,
           apiResponse.error?.details,
@@ -185,7 +195,7 @@ export class ApiClient {
     });
 
     // 错误拦截器
-    this.request.addErrorInterceptor(error => {
+    this.adapter.addErrorInterceptor(error => {
       // 记录错误日志
       if (this.enableLog) {
         console.error('[API Error]', {
@@ -257,7 +267,7 @@ export class ApiClient {
     config?: Omit<RequestConfig, 'url' | 'method'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
-      const response = await this.request.get<ApiResponse<T>>(url, config);
+      const response = await this.adapter.get<ApiResponse<T>>(url, config);
       return response.data.data as T;
     });
   }
@@ -284,7 +294,7 @@ export class ApiClient {
     config?: Omit<RequestConfig, 'url' | 'method' | 'data'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
-      const response = await this.request.post<ApiResponse<T>>(
+      const response = await this.adapter.post<ApiResponse<T>>(
         url,
         data,
         config,
@@ -315,7 +325,7 @@ export class ApiClient {
     config?: Omit<RequestConfig, 'url' | 'method' | 'data'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
-      const response = await this.request.put<ApiResponse<T>>(
+      const response = await this.adapter.put<ApiResponse<T>>(
         url,
         data,
         config,
@@ -342,7 +352,7 @@ export class ApiClient {
     config?: Omit<RequestConfig, 'url' | 'method'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
-      const response = await this.request.delete<ApiResponse<T>>(url, config);
+      const response = await this.adapter.delete<ApiResponse<T>>(url, config);
       return response.data.data as T;
     });
   }
@@ -365,7 +375,7 @@ export class ApiClient {
    * ```
    */
   async request<T = any>(config: RequestConfig): Promise<Response<T>> {
-    return this.request.request<T>(config);
+    return this.adapter.request<T>(config);
   }
 }
 
@@ -384,6 +394,67 @@ export function hasConfiguredApiBaseURL(): boolean {
   return Boolean(getConfiguredApiBaseURL());
 }
 
+function isLocalPreviewHost(hostname: string): boolean {
+  return hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '0.0.0.0' ||
+    hostname === '[::1]' ||
+    hostname === '::1';
+}
+
+function getLocalPreviewApiBaseURL(): string | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return isLocalPreviewHost(window.location.hostname)
+    ? 'http://127.0.0.1:3000/api/v1'
+    : undefined;
+}
+
+function getH5DevServerApiBaseURL(): string | undefined {
+  if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development') {
+    return undefined;
+  }
+
+  return '/api/v1';
+}
+
+export function getReffoEnv(): ReffoEnv {
+  const env = process.env.REFFO_ENV?.trim().toLowerCase();
+
+  if (env === 'nonprod' || env === 'prod') {
+    return env;
+  }
+
+  const configuredBaseURL = getConfiguredApiBaseURL()?.toLowerCase();
+  if (configuredBaseURL?.includes('api-nonprod.reffo.app')) {
+    return 'nonprod';
+  }
+
+  if (configuredBaseURL?.includes('api.reffo.app')) {
+    return 'prod';
+  }
+
+  return 'local';
+}
+
+export function isLocalApiEnvironment(): boolean {
+  return getReffoEnv() === 'local';
+}
+
+function getApiBaseURLByReffoEnv(reffoEnv: ReffoEnv): string {
+  if (reffoEnv === 'nonprod') {
+    return 'https://api-nonprod.reffo.app/api/v1';
+  }
+
+  if (reffoEnv === 'prod') {
+    return 'https://api.reffo.app/api/v1';
+  }
+
+  return 'http://127.0.0.1:3000/api/v1';
+}
+
 function getApiBaseURL(): string {
   // 优先使用环境变量
   const configuredBaseURL = getConfiguredApiBaseURL();
@@ -391,13 +462,21 @@ function getApiBaseURL(): string {
     return configuredBaseURL;
   }
 
-  // 开发环境默认值
-  if (process.env.NODE_ENV === 'development') {
-    return '/api/v1';
+  const reffoEnv = getReffoEnv();
+
+  // H5 dev server 通过 config/dev.ts 的 proxy 转发，保持浏览器请求同源，避免 CORS。
+  const h5DevServerBaseURL = getH5DevServerApiBaseURL();
+  if (h5DevServerBaseURL) {
+    return h5DevServerBaseURL;
   }
 
-  // 生产环境默认值
-  return 'https://api.reffo.app/api/v1';
+  // 本地预览生产构建时，避免误打不可用的线上 API 域名
+  const localPreviewBaseURL = reffoEnv === 'local' ? getLocalPreviewApiBaseURL() : undefined;
+  if (localPreviewBaseURL) {
+    return localPreviewBaseURL;
+  }
+
+  return getApiBaseURLByReffoEnv(reffoEnv);
 }
 
 /**

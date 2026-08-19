@@ -3,10 +3,13 @@ import {describe, test, expect, beforeEach, jest} from '@jest/globals';
 // Mock Taro 模块 - 使用工厂函数内部创建 mock
 jest.mock('@tarojs/taro', () => {
   const mockFn = jest.fn();
+  const Taro = {
+    request: mockFn,
+  };
   return {
-    default: {
-      request: mockFn,
-    },
+    __esModule: true,
+    default: Taro,
+    request: mockFn,
   };
 });
 

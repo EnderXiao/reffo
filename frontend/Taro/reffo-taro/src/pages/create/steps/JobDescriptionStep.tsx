@@ -2,17 +2,16 @@ import {Text, View} from '@tarojs/components'
 import {useWindowDimensions} from 'react-native'
 import ApplicationCardSurface from './ApplicationCardSurface'
 import JobDescriptionField from './JobDescriptionField'
-import JobDescriptionModeTab from './JobDescriptionModeTab'
 import {styles} from './JobDescriptionStep.styles'
 import JobDescriptionUploadArea from './JobDescriptionUploadArea'
-import type {JobDescriptionInputMode, JobDescriptionStepState} from '../types'
+import type {JobDescriptionStepState} from '../types'
 
 interface JobDescriptionStepProps {
   state: JobDescriptionStepState
   onCompanyNameChange: (content: string) => void
   onPositionNameChange: (content: string) => void
+  onLocationChange: (content: string) => void
   onContentChange: (content: string) => void
-  onInputModeChange: (mode: JobDescriptionInputMode) => void
   onPickAttachment: () => Promise<void>
   compact?: boolean
   fillAvailableSpace?: boolean
@@ -22,8 +21,8 @@ export default function JobDescriptionStep({
   state,
   onCompanyNameChange,
   onPositionNameChange,
+  onLocationChange,
   onContentChange,
-  onInputModeChange,
   onPickAttachment,
   compact = false,
   fillAvailableSpace = false,
@@ -32,6 +31,7 @@ export default function JobDescriptionStep({
   const cardWidth = Math.round(viewportWidth * 0.8)
   const cardDynamicStyle = fillAvailableSpace ? {width: cardWidth, maxWidth: cardWidth} : null
   const tipDynamicStyle = fillAvailableSpace ? {width: cardWidth, maxWidth: cardWidth} : null
+  const isUploadingAttachment = state.attachmentStatus === 'uploading'
 
   return (
     <View
@@ -63,22 +63,38 @@ export default function JobDescriptionStep({
           <View style={[styles.ribbonTail, compact ? styles.ribbonTailCompact : null] as any} />
         </View>
 
-        <JobDescriptionField
-          label='公司（可选）'
-          placeholder='输入公司名称'
-          value={state.companyName}
-          onChange={onCompanyNameChange}
-          testId='job-company-input'
-          compact={compact}
-        />
+        <View style={[styles.fieldRow, compact ? styles.fieldRowCompact : null] as any}>
+          <JobDescriptionField
+            label='公司'
+            placeholder='输入公司名称'
+            value={state.companyName}
+            onChange={onCompanyNameChange}
+            testId='job-company-input'
+            compact={compact}
+            disabled={isUploadingAttachment}
+            containerStyle={[styles.fieldRowItem, styles.fieldRowItemLeft]}
+          />
+
+          <JobDescriptionField
+            label='Base'
+            placeholder='输入岗位城市'
+            value={state.baseLocation}
+            onChange={onLocationChange}
+            testId='job-location-input'
+            compact={compact}
+            disabled={isUploadingAttachment}
+            containerStyle={styles.fieldRowItem}
+          />
+        </View>
 
         <JobDescriptionField
-          label='岗位名称（可选）'
+          label='目标岗位名称'
           placeholder='输入岗位名称'
           value={state.positionName}
           onChange={onPositionNameChange}
           testId='job-position-input'
           compact={compact}
+          disabled={isUploadingAttachment}
         />
 
         <View
@@ -104,25 +120,8 @@ export default function JobDescriptionStep({
               onPickAttachment={onPickAttachment}
               compact={compact}
               fillAvailableSpace={fillAvailableSpace}
+              disabled={isUploadingAttachment}
             />
-
-            <View style={styles.modeBar}>
-              <JobDescriptionModeTab
-                mode='upload'
-                active={state.inputMode === 'upload'}
-                onClick={() => onInputModeChange('upload')}
-                testId='job-mode-upload'
-                compact={compact}
-              />
-              <View style={styles.modeBarDivider} />
-              <JobDescriptionModeTab
-                mode='manual'
-                active={state.inputMode === 'manual'}
-                onClick={() => onInputModeChange('manual')}
-                testId='job-mode-manual'
-                compact={compact}
-              />
-            </View>
           </View>
         </View>
       </View>

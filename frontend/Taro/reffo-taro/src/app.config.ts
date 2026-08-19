@@ -1,5 +1,16 @@
 export default {
-  pages: ['pages/index/index', 'pages/create/index', 'pages/result/index', 'pages/complete/index'],
+  pages: [
+    'pages/landing/index',
+    'pages/index/index',
+    'pages/create/index',
+    'pages/landing-analysis/index',
+    'pages/debug/delete-break/index',
+    'pages/result/index',
+    'pages/landing-result/index',
+    'pages/complete/index',
+    'pages/auth/index',
+    'pages/profile/index',
+  ],
   window: {
     backgroundTextStyle: 'light',
     navigationStyle: 'custom',

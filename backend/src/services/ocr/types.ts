@@ -56,6 +56,9 @@ export type OcrProviderErrorCode =
   | 'OCR_RATE_LIMITED'
   | 'OCR_TIMEOUT'
   | 'OCR_UNSUPPORTED_FILE'
+  | 'OCR_FILE_MISSING'
+  | 'STORAGE_FILE_DOWNLOAD_FAILED'
+  | 'AUTH_REQUIRED'
   | 'OCR_EMPTY_OUTPUT'
 
 export class OcrProviderError extends Error {

@@ -1,4 +1,4 @@
-import {View} from '@tarojs/components'
+import {Text, View} from '@tarojs/components'
 import AppPageShell from '@/components/AppPageShell'
 import {useDeviceLayoutMetrics} from '@/utils'
 import AnalysisStage from './components/AnalysisStage'
@@ -31,11 +31,13 @@ export default function PageView({
   handleJobDescriptionChange,
   handleJobCompanyNameChange,
   handleJobPositionNameChange,
-  handleJobInputModeChange,
+  handleJobLocationChange,
   handlePickJobAttachment,
   handlePrimaryAction,
   handleCancelGeneration,
   handleClose,
+  isLandingFlow,
+  handleLandingSkip,
 }: CreatePageViewModel) {
   const {floatingTopInset, pageBottomPadding, viewportHeight} = useDeviceLayoutMetrics()
   const isJobDescriptionStep = currentStep === 'jobDescription'
@@ -78,8 +80,8 @@ export default function PageView({
             state={jobDescriptionState}
             onCompanyNameChange={handleJobCompanyNameChange}
             onPositionNameChange={handleJobPositionNameChange}
+            onLocationChange={handleJobLocationChange}
             onContentChange={handleJobDescriptionChange}
-            onInputModeChange={handleJobInputModeChange}
             onPickAttachment={handlePickJobAttachment}
           />
         )
@@ -112,10 +114,26 @@ export default function PageView({
               },
             ] as any}
           >
-            <CreateCloseButton
-              compact={isCompactJobDescriptionLayout}
-              onClick={handleClose}
-            />
+            {isLandingFlow ? (
+              <View style={styles.landingHeader}>
+                <View onClick={() => void handleLandingSkip()} style={styles.landingSkip}>
+                  <Text>跳过教程</Text>
+                </View>
+                <View style={styles.landingProgress} aria-label='教程进度'>
+                  <View style={styles.landingProgressDot} />
+                  <View style={styles.landingProgressTrack} />
+                  <View style={styles.landingProgressDot} />
+                </View>
+                <View onClick={handleClose} style={styles.landingBack}>
+                  <Text>返回</Text>
+                </View>
+              </View>
+            ) : (
+              <CreateCloseButton
+                compact={isCompactJobDescriptionLayout}
+                onClick={handleClose}
+              />
+            )}
 
             {isJobDescriptionStep ? (
               <CreateStaticStepLayout
@@ -131,8 +149,8 @@ export default function PageView({
                   state={jobDescriptionState}
                   onCompanyNameChange={handleJobCompanyNameChange}
                   onPositionNameChange={handleJobPositionNameChange}
+                  onLocationChange={handleJobLocationChange}
                   onContentChange={handleJobDescriptionChange}
-                  onInputModeChange={handleJobInputModeChange}
                   onPickAttachment={handlePickJobAttachment}
                   compact={isCompactJobDescriptionLayout}
                   fillAvailableSpace
