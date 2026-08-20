@@ -445,7 +445,7 @@ export function isLocalApiEnvironment(): boolean {
 
 function getApiBaseURLByReffoEnv(reffoEnv: ReffoEnv): string {
   if (reffoEnv === 'nonprod') {
-    return 'https://api-nonprod.reffo.app/api/v1';
+    return 'https://reffo-api-nonprod.onrender.com/api/v1';
   }
 
   if (reffoEnv === 'prod') {
