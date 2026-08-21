@@ -78,7 +78,7 @@ describe('resume-file-upload', () => {
 
     const result = await pickAndParseResumeFile()
 
-    expect(mockParseResumeFile).toHaveBeenCalledWith(file)
+    expect(mockParseResumeFile).toHaveBeenCalledWith(file, {landing: false})
     expect(result?.extension).toBe('.pdf')
     expect(result?.extractedText).toBe('# PDF Resume')
     expect(formatResumeFileSize(file.size)).toBe('2.0 Mb')
