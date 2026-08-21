@@ -48,7 +48,7 @@
 }
 
 .reffo-landing-onboarding__visual-scale--folder {
-  transform-origin: 50% 50%;
+  transform-origin: 50% 100%;
 }
 
 .reffo-landing-onboarding::before {
@@ -206,14 +206,14 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
 
 @media screen and (max-width: 600px) {
   .reffo-landing-onboarding__card--target {
-    --landing-card-inset: -60px;
-    --landing-card-x: -20px;
+    --landing-card-inset: clamp(-28px, -7vw, 6px);
+    --landing-card-x: clamp(-10px, -2.5vw, 65px);
     --landing-card-y: 128px;
   }
 
   .reffo-landing-onboarding__card--experience-right {
-    --landing-card-inset: -60px;
-    --landing-card-x: 60px;
+    --landing-card-inset: clamp(-28px, -7vw, 6px);
+    --landing-card-x: clamp(26px, 6.6vw, 60px);
     --landing-card-y: -150px;
   }
 }
@@ -339,6 +339,10 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   right: 0;
   top: max(42px, calc(env(safe-area-inset-top) + 24px));
   height: 42px;
+  padding: 0 clamp(24px, 7.6vw, 31px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
   pointer-events: none;
   opacity: 0;
   view-transition-name: reffo-landing-flow-progress;
@@ -349,11 +353,13 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
 }
 
 .reffo-landing-onboarding__skip--queue {
-  left: 31px;
+  position: relative;
+  left: auto;
   top: 0;
   bottom: auto;
   min-width: 70px;
   min-height: 36px;
+  flex: 1 1 0;
   align-items: center;
   justify-content: flex-start;
   color: rgba(17, 17, 17, 0.3);
@@ -366,15 +372,21 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
 }
 
 .reffo-landing-onboarding__pager {
-  position: absolute;
-  left: 50%;
-  top: 7px;
+  position: relative;
+  left: auto;
+  top: auto;
   height: 18px;
   display: flex;
   align-items: center;
   gap: 8px;
-  transform: translateX(calc(-50% + 16px));
-  transition: transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+  flex: 0 0 auto;
+  transform: none;
+}
+
+.reffo-landing-onboarding__queue-top-spacer {
+  flex: 1 1 0;
+  min-width: 70px;
+  min-height: 36px;
 }
 
 .reffo-landing-onboarding__pager-dot {
@@ -397,7 +409,7 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
 
 .reffo-landing-onboarding--queue-folder .reffo-landing-onboarding__pager,
 .reffo-landing-onboarding--queue-folder-step .reffo-landing-onboarding__pager {
-  transform: translateX(-50%);
+  transform: none;
 }
 
 .reffo-landing-onboarding--queue-folder .reffo-landing-onboarding__pager-dot,
@@ -1528,6 +1540,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   left: 0;
   right: 0;
   bottom: 0;
+  width: calc(100vw / var(--landing-visual-scale, 1));
   aspect-ratio: 720 / 147;
   opacity: 1;
   pointer-events: none;
@@ -1726,7 +1739,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   right: auto;
   top: min(44.2dvh, 377px);
   bottom: auto;
-  width: 274px;
+  width: calc(100vw / var(--landing-visual-scale, 1));
   height: 290px;
   aspect-ratio: auto;
   overflow: visible;
@@ -2179,17 +2192,17 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
 .reffo-landing-onboarding--job-selecting .reffo-landing-onboarding__detail-folder,
 .reffo-landing-onboarding--queue-folder-closing .reffo-landing-onboarding__detail-folder {
   z-index: 18;
-  left: calc(50% - 137px);
+  left: 50%;
   right: auto;
   top: min(44.2dvh, 377px);
   bottom: auto;
-  width: 274px;
+  width: calc(100vw / var(--landing-visual-scale, 1));
   height: 290px;
   aspect-ratio: auto;
   overflow: visible;
   perspective: 700PX;
-  transform: none;
   animation: none;
+  transform: translateX(-50%);
 }
 
 .reffo-landing-onboarding--queue-folder .reffo-landing-onboarding__target-files,
@@ -2238,7 +2251,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   right: auto;
   top: min(44.2dvh, 377px);
   bottom: auto;
-  width: 274px;
+  width: calc(100vw / var(--landing-visual-scale, 1));
   height: 290px;
   transform: translate3d(-50%, 0, 0);
 }

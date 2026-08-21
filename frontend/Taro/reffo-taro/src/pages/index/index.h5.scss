@@ -171,6 +171,10 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
   animation-delay: 520ms;
 }
 
+.reffo-home.reffo-home--landing-entry .reffo-home__hero {
+  animation-delay: 1120ms;
+}
+
 .reffo-home--entry-active .reffo-home-deck__rail {
   animation: reffo-home-return-rail-in 460ms cubic-bezier(0.16, 1, 0.3, 1) 580ms both;
 }
