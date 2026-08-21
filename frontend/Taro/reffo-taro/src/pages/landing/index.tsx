@@ -12,7 +12,7 @@ import LandingAnalysisPage from '../landing-analysis'
 import type {JobDescriptionStepState} from '@/pages/create/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
-import {getViewportSize} from '@/components/business/HomeCardDeck/motion.h5'
+import {resolveH5CardScale} from '@/components/business/HomeCardDeck/motion.h5'
 import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
 import {useResumeStore} from '@/store/resumeStore'
@@ -639,14 +639,6 @@ function recordLandingTransition(selector = '.reffo-landing__logo') {
   }
 }
 
-function resolveLandingVisualScale() {
-  const {width, height} = getViewportSize()
-  const widthScale = width / 393
-  const heightScale = height / 852
-
-  return Math.min(1.08, Math.max(0.78, Math.min(widthScale, heightScale)))
-}
-
 async function enterHome(selector?: string) {
   recordLandingTransition(selector)
   await wait(EXIT_TRANSITION_MS)
@@ -661,7 +653,7 @@ export default function LandingPage() {
   const [onboardingLogoSnapshot, setOnboardingLogoSnapshot] = useState<SharedElementSnapshot | null>(null)
   const [onboardingLogoStyle, setOnboardingLogoStyle] = useState<CSSProperties | null>(null)
   const [hasOnboardingLogoSettled, setHasOnboardingLogoSettled] = useState(false)
-  const [landingVisualScale, setLandingVisualScale] = useState(resolveLandingVisualScale)
+  const [landingVisualScale, setLandingVisualScale] = useState(resolveH5CardScale)
   const [queueMotionPhase, setQueueMotionPhase] = useState<QueueMotionPhase>('idle')
   const [isQueueFlowPopulated, setIsQueueFlowPopulated] = useState(false)
   const [selectedQueueCardIndex, setSelectedQueueCardIndex] = useState<number | null>(null)
@@ -703,7 +695,7 @@ export default function LandingPage() {
     const refreshScale = () => {
       window.cancelAnimationFrame(frameId)
       frameId = window.requestAnimationFrame(() => {
-        setLandingVisualScale(resolveLandingVisualScale())
+        setLandingVisualScale(resolveH5CardScale())
       })
     }
 
