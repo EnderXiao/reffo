@@ -7,7 +7,7 @@ import {useResumeStore} from '@/store/resumeStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
-import {storage} from '@/utils/storage'
+import {setJSON, storage} from '@/utils/storage'
 import {pickAndParseResumeFile} from '@/utils/resume-file-upload'
 
 jest.mock('@/store/authStore', () => ({
@@ -41,9 +41,12 @@ jest.mock('@/utils/navigation', () => ({
 }))
 
 jest.mock('@/utils/storage', () => ({
+  getJSON: jest.fn(),
+  setJSON: jest.fn(),
   storage: {
     getItem: jest.fn(),
     setItem: jest.fn(),
+    removeItem: jest.fn(),
   },
 }))
 
@@ -118,6 +121,7 @@ const mockPickAndParseResumeFile = pickAndParseResumeFile as jest.Mock
 const mockReLaunch = navigation.reLaunch as jest.Mock
 const mockStorageGetItem = storage.getItem as jest.Mock
 const mockStorageSetItem = storage.setItem as jest.Mock
+const mockSetJSON = setJSON as jest.Mock
 
 async function enterQueueStep(container: HTMLElement) {
   await act(async () => {
@@ -199,6 +203,7 @@ describe('启动封页', () => {
     mockReLaunch.mockResolvedValue(undefined)
     mockStorageGetItem.mockResolvedValue('1')
     mockStorageSetItem.mockResolvedValue(undefined)
+    mockSetJSON.mockResolvedValue(undefined)
 
     mockUseAuthStoreGetState.mockReturnValue({restoreSession})
     mockUseHistoryStoreGetState.mockReturnValue({loadHistories})
@@ -799,13 +804,12 @@ describe('启动封页', () => {
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-folder')
     expect(screen.getByText('目标岗位')).not.toBeNull()
     expect(screen.getByText(/重新匹配简历与岗位的价值/)).not.toBeNull()
-    expect(screen.getByText('自定义岗位描述')).not.toBeNull()
     expect(screen.getByText('软件工程师')).not.toBeNull()
     expect(screen.getByText('互联网产品经理')).not.toBeNull()
     expect(screen.getByText('数据分析师')).not.toBeNull()
     expect(screen.getByText('UX 设计师')).not.toBeNull()
     expect(screen.getByText('用户运营经理')).not.toBeNull()
-    expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(6)
+    expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(5)
     const collapsedJobNodes = Array.from(container.querySelectorAll('[data-job-index]')) as HTMLElement[]
     expect(collapsedJobNodes.slice(0, 3).every(node => node.style.getPropertyValue('--job-folder-opacity') === '1')).toBe(true)
     expect(collapsedJobNodes.slice(3).every(node => node.style.getPropertyValue('--job-folder-opacity') === '0')).toBe(true)
@@ -837,8 +841,8 @@ describe('启动封页', () => {
     Array.from(container.querySelectorAll('[data-job-id]')).forEach((node, index) => {
       expect(node).toBe(targetFileNodes[index])
     })
-    expect(screen.getByText(/面议/)).not.toBeNull()
-    expect(screen.getByText(/使用真实岗位描述/)).not.toBeNull()
+    expect(screen.getByText(/25-40K/)).not.toBeNull()
+    expect(screen.getByText(/面向用户的 Web 产品/)).not.toBeNull()
 
     await act(async () => {
       fireEvent.touchStart(container.firstElementChild as Element, {
@@ -853,11 +857,11 @@ describe('启动封页', () => {
       await Promise.resolve()
     })
 
-    expect(screen.getByText(/25-40K/)).not.toBeNull()
-    expect(container.querySelector('[data-job-id="software"]')?.className)
+    expect(screen.getByText(/30-45K/)).not.toBeNull()
+    expect(container.querySelector('[data-job-id="product"]')?.className)
       .toContain('reffo-landing-onboarding__target-file--selected')
 
-    for (let swipe = 0; swipe < 4; swipe += 1) {
+    for (let swipe = 0; swipe < 3; swipe += 1) {
       await act(async () => {
         fireEvent.touchStart(container.firstElementChild as Element, {
           touches: [{clientX: 280, clientY: 430}],
@@ -934,7 +938,7 @@ describe('启动封页', () => {
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-folder-returning')
     expect(container.firstElementChild?.className).not.toContain('reffo-landing-onboarding--job-folder-restored')
-    expect(container.querySelectorAll('[data-job-id]')).toHaveLength(6)
+    expect(container.querySelectorAll('[data-job-id]')).toHaveLength(5)
     expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[0]?.className)
       .toContain('reffo-landing-onboarding__pager-dot--active')
 
@@ -1010,6 +1014,14 @@ describe('启动封页', () => {
 
     expect(mockPickAndParseResumeFile).toHaveBeenCalledTimes(1)
     expect(setResumeContent).toHaveBeenCalledWith('# Melvin Kuffour\n\n## Experience')
+    expect(mockSetJSON).toHaveBeenCalledWith(
+      'reffo.landing.pendingSourceResume',
+      expect.objectContaining({
+        title: 'resume.pdf',
+        resumeMarkdown: '# Melvin Kuffour\n\n## Experience',
+        sourceType: 'file',
+      }),
+    )
     expect(mockFeedbackSuccess).toHaveBeenCalledWith('resume.pdf 已上传')
     expect(mockFeedbackError).not.toHaveBeenCalled()
     expect(container.firstElementChild?.className)

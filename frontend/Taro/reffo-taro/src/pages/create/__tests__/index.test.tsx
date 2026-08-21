@@ -4,7 +4,7 @@ import Taro, {useRouter} from '@tarojs/taro'
 import {parseApi} from '@/services/parse'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {useJDStore, useLandingFlowStore, useResumeStore, useSourceResumeStore} from '@/store'
+import {useAuthStore, useJDStore, useLandingFlowStore, useResumeStore, useSourceResumeStore} from '@/store'
 import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
 
@@ -94,6 +94,10 @@ jest.mock('@/services/resume', () => ({
     analyzeResume: jest.fn(),
     matchResume: jest.fn(),
   },
+}))
+
+jest.mock('@/services/runtime-config', () => ({
+  isLocalRuntimeEnvironment: jest.fn(async () => false),
 }))
 
 jest.mock('@/utils/result-session', () => ({
@@ -217,6 +221,13 @@ describe('CreatePage', () => {
     useJDStore.getState().reset()
     useLandingFlowStore.getState().clear()
     useSourceResumeStore.getState().reset()
+    useAuthStore.setState({
+      session: {
+        accessToken: 'test-token',
+        user: {id: 'test-user', email: 'test@example.com'},
+      },
+      initialized: true,
+    })
     ;(Taro as any).chooseMessageFile = mockChooseMessageFile
     ;(Taro.getFileSystemManager as jest.Mock).mockReturnValue({
       readFile: mockReadFile,

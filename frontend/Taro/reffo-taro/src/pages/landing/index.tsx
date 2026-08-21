@@ -12,6 +12,7 @@ import LandingAnalysisPage from '../landing-analysis'
 import type {JobDescriptionStepState} from '@/pages/create/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
+import {resolveH5CardScale} from '@/components/business/HomeCardDeck/motion.h5'
 import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
 import {useResumeStore} from '@/store/resumeStore'
@@ -96,6 +97,7 @@ const ONBOARDING_QUEUE_CARD_ROTATE_X = '0deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Y = '-15deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Z = '0deg'
 const ONBOARDING_JOB_CREATE_TRANSITION_MS = 1180
+const resolveLandingVisualScale = () => resolveH5CardScale({amplification: 1})
 type LandingPhase = 'splash' | 'onboarding'
 type InlineLandingPhase = 'analysis' | 'result'
 type OnboardingStep = 'target' | 'experience' | 'queue'
@@ -652,6 +654,7 @@ export default function LandingPage() {
   const [onboardingLogoSnapshot, setOnboardingLogoSnapshot] = useState<SharedElementSnapshot | null>(null)
   const [onboardingLogoStyle, setOnboardingLogoStyle] = useState<CSSProperties | null>(null)
   const [hasOnboardingLogoSettled, setHasOnboardingLogoSettled] = useState(false)
+  const [landingVisualScale, setLandingVisualScale] = useState(resolveLandingVisualScale)
   const [queueMotionPhase, setQueueMotionPhase] = useState<QueueMotionPhase>('idle')
   const [isQueueFlowPopulated, setIsQueueFlowPopulated] = useState(false)
   const [selectedQueueCardIndex, setSelectedQueueCardIndex] = useState<number | null>(null)
@@ -687,6 +690,28 @@ export default function LandingPage() {
     attachment: null,
     attachmentErrorMessage: null,
   })
+
+  useEffect(() => {
+    let frameId = 0
+    const refreshScale = () => {
+      window.cancelAnimationFrame(frameId)
+      frameId = window.requestAnimationFrame(() => {
+        setLandingVisualScale(resolveLandingVisualScale())
+      })
+    }
+
+    refreshScale()
+    window.addEventListener('resize', refreshScale)
+    window.addEventListener('orientationchange', refreshScale)
+    window.visualViewport?.addEventListener('resize', refreshScale)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', refreshScale)
+      window.removeEventListener('orientationchange', refreshScale)
+      window.visualViewport?.removeEventListener('resize', refreshScale)
+    }
+  }, [])
   const [selectedDismissDurationMs, setSelectedDismissDurationMs] = useState(ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS)
   const touchStartRef = useRef<{x: number; y: number} | null>(null)
   const onboardingLogoTimerRef = useRef<number | null>(null)
@@ -2003,16 +2028,22 @@ export default function LandingPage() {
           setIsJobDragging(false)
         }}
       >
-        <Image src={REFFO_LOGO} className='reffo-landing-onboarding__logo' mode='aspectFit' />
+        <img src={REFFO_LOGO} className='reffo-landing-onboarding__logo' alt='Reffo' />
         {onboardingLogoSnapshot && onboardingLogoStyle ? (
-          <Image
+          <img
             src={REFFO_LOGO}
             className='reffo-landing-onboarding__logo-flight'
             style={onboardingLogoStyle}
-            mode='aspectFit'
+            alt='Reffo'
           />
         ) : null}
 
+        <View
+          className={classNames('reffo-landing-onboarding__visual-scale', {
+            'reffo-landing-onboarding__visual-scale--folder': isQueueFolderStep,
+          })}
+          style={{'--landing-visual-scale': landingVisualScale} as CSSProperties}
+        >
         <View className='reffo-landing-onboarding__cards reffo-home-deck-wrap--enhanced'>
           {isQueueStep ? (
             queueCards.map(({key, card, cardIndex, kind, position}) => {
@@ -2356,6 +2387,7 @@ export default function LandingPage() {
             ) : null}
           </>
         ) : null}
+        </View>
 
         {onboardingStep !== 'queue' ? (
           <View className='reffo-landing-onboarding__headline reffo-landing-onboarding__headline--target'>
@@ -2470,7 +2502,7 @@ export default function LandingPage() {
 
   return (
     <View className={`reffo-landing${isLeaving ? ' reffo-landing--leaving' : ''}`}>
-      <Image src={REFFO_LOGO} className='reffo-landing__logo' mode='aspectFit' />
+      <img src={REFFO_LOGO} className='reffo-landing__logo' alt='Reffo' />
       <View className='reffo-landing__loading' aria-label='正在加载首页数据'>
         <View className='reffo-landing__loading-dot' />
         <View className='reffo-landing__loading-dot' />

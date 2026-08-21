@@ -1,3 +1,5 @@
+const NONPROD_CORS_ORIGIN = 'https://reffo-web-nonprod.onrender.com'
+
 const DEFAULT_CORS_ORIGINS = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -5,9 +7,10 @@ const DEFAULT_CORS_ORIGINS = [
   'http://127.0.0.1:4173',
   'http://localhost:10086',
   'http://127.0.0.1:10086',
+  NONPROD_CORS_ORIGIN,
 ]
 
-function parseCorsOrigin(value: string | undefined) {
+function parseCorsOrigin(value: string | undefined, appEnv: AppEnv) {
   const normalizedValue = value?.trim()
   if (!normalizedValue) {
     return DEFAULT_CORS_ORIGINS
@@ -17,10 +20,16 @@ function parseCorsOrigin(value: string | undefined) {
     return true
   }
 
-  return normalizedValue
+  const origins = normalizedValue
     .split(',')
     .map(origin => origin.trim())
     .filter(Boolean)
+
+  if (appEnv === 'nonprod' && !origins.includes(NONPROD_CORS_ORIGIN)) {
+    origins.push(NONPROD_CORS_ORIGIN)
+  }
+
+  return origins
 }
 
 type AppEnv = 'local' | 'nonprod' | 'prod'
@@ -122,7 +131,7 @@ export const env = {
   HOST: process.env.HOST || '0.0.0.0',
 
   // CORS Configuration
-  CORS_ORIGIN: parseCorsOrigin(process.env.CORS_ORIGIN),
+  CORS_ORIGIN: parseCorsOrigin(process.env.CORS_ORIGIN, parseAppEnv(process.env.APP_ENV)),
 }
 
 export function getOcrEnvStatus() {
