@@ -97,6 +97,7 @@ const ONBOARDING_QUEUE_CARD_ROTATE_X = '0deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Y = '-15deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Z = '0deg'
 const ONBOARDING_JOB_CREATE_TRANSITION_MS = 1180
+const resolveLandingVisualScale = () => resolveH5CardScale({amplification: 1})
 type LandingPhase = 'splash' | 'onboarding'
 type InlineLandingPhase = 'analysis' | 'result'
 type OnboardingStep = 'target' | 'experience' | 'queue'
@@ -653,7 +654,7 @@ export default function LandingPage() {
   const [onboardingLogoSnapshot, setOnboardingLogoSnapshot] = useState<SharedElementSnapshot | null>(null)
   const [onboardingLogoStyle, setOnboardingLogoStyle] = useState<CSSProperties | null>(null)
   const [hasOnboardingLogoSettled, setHasOnboardingLogoSettled] = useState(false)
-  const [landingVisualScale, setLandingVisualScale] = useState(resolveH5CardScale)
+  const [landingVisualScale, setLandingVisualScale] = useState(resolveLandingVisualScale)
   const [queueMotionPhase, setQueueMotionPhase] = useState<QueueMotionPhase>('idle')
   const [isQueueFlowPopulated, setIsQueueFlowPopulated] = useState(false)
   const [selectedQueueCardIndex, setSelectedQueueCardIndex] = useState<number | null>(null)
@@ -695,7 +696,7 @@ export default function LandingPage() {
     const refreshScale = () => {
       window.cancelAnimationFrame(frameId)
       frameId = window.requestAnimationFrame(() => {
-        setLandingVisualScale(resolveH5CardScale())
+        setLandingVisualScale(resolveLandingVisualScale())
       })
     }
 
