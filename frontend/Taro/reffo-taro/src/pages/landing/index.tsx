@@ -2202,29 +2202,6 @@ export default function LandingPage() {
           )}
         </View>
 
-        <View className='reffo-landing-onboarding__queue-top'>
-          <View
-            className='reffo-landing-onboarding__skip reffo-landing-onboarding__skip--queue'
-            onClick={() => {
-              void completeOnboarding()
-            }}
-          >
-            <Text>跳过教程</Text>
-          </View>
-          <View className='reffo-landing-onboarding__pager' aria-label='教程页码'>
-            <View className={classNames('reffo-landing-onboarding__pager-dot', {
-              'reffo-landing-onboarding__pager-dot--active': !isQueueFolderStep && !isInlineLandingActive,
-            })} />
-            <View className={classNames('reffo-landing-onboarding__pager-dot', {
-              'reffo-landing-onboarding__pager-dot--active': isQueueFolderStep && inlineLandingPhase !== 'result',
-            })} />
-            <View className={classNames('reffo-landing-onboarding__pager-dot', {
-              'reffo-landing-onboarding__pager-dot--active': inlineLandingPhase === 'result',
-            })} />
-          </View>
-          <View className='reffo-landing-onboarding__queue-top-spacer' aria-hidden='true' />
-        </View>
-
         {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
           <>
             <View className='reffo-landing-onboarding__detail-chrome'>
@@ -2392,6 +2369,29 @@ export default function LandingPage() {
             ) : null}
           </>
         ) : null}
+        </View>
+
+        <View className='reffo-landing-onboarding__queue-top'>
+          <View
+            className='reffo-landing-onboarding__skip reffo-landing-onboarding__skip--queue'
+            onClick={() => {
+              void completeOnboarding()
+            }}
+          >
+            <Text>跳过教程</Text>
+          </View>
+          <View className='reffo-landing-onboarding__pager' aria-label='教程页码'>
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': !isQueueFolderStep && !isInlineLandingActive,
+            })} />
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': isQueueFolderStep && inlineLandingPhase !== 'result',
+            })} />
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': inlineLandingPhase === 'result',
+            })} />
+          </View>
+          <View className='reffo-landing-onboarding__queue-top-spacer' aria-hidden='true' />
         </View>
 
         {onboardingStep !== 'queue' ? (
