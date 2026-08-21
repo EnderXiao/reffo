@@ -329,7 +329,11 @@ function resolveQueueLaneFrame(index: number, progress: number): QueueTrackFrame
 }
 
 function resolveQueueTransform(frame: QueueTrackFrame) {
-  return `translate3d(${frame.x}px, ${frame.y}px, ${frame.z}PX) rotateZ(var(--queue-rotate-z, -1deg)) rotateY(var(--queue-rotate-y, -6deg)) rotateX(var(--queue-rotate-x, 0deg)) scale(${frame.scale})`
+  const viewportX = frame.x >= 0
+    ? `clamp(0px, ${(frame.x / 3.93).toFixed(3)}vw, ${frame.x}px)`
+    : `clamp(${frame.x}px, ${(frame.x / 3.93).toFixed(3)}vw, 0px)`
+
+  return `translate3d(${viewportX}, ${frame.y}px, ${frame.z}PX) rotateZ(var(--queue-rotate-z, -1deg)) rotateY(var(--queue-rotate-y, -6deg)) rotateX(var(--queue-rotate-x, 0deg)) scale(${frame.scale})`
 }
 
 function resolveSelectedQueueY() {
@@ -342,13 +346,13 @@ function resolveSelectedQueueY() {
 }
 
 function resolveSelectedQueueTransform() {
-  return `translate3d(${ONBOARDING_QUEUE_SELECTED_X}px, ${resolveSelectedQueueY()}px, ${ONBOARDING_QUEUE_SELECTED_Z}PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(${ONBOARDING_QUEUE_SELECTED_SCALE})`
+  return `translate3d(clamp(${ONBOARDING_QUEUE_SELECTED_X}px, ${(ONBOARDING_QUEUE_SELECTED_X / 3.93).toFixed(3)}vw, 0px), ${resolveSelectedQueueY()}px, ${ONBOARDING_QUEUE_SELECTED_Z}PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(${ONBOARDING_QUEUE_SELECTED_SCALE})`
 }
 
 function resolveSelectedDetailQueueTransform() {
   const detailY = resolveSelectedQueueY() + ONBOARDING_QUEUE_DETAIL_DROP_Y
 
-  return `translate3d(${ONBOARDING_QUEUE_SELECTED_X}px, ${detailY}px, ${ONBOARDING_QUEUE_DETAIL_Z}PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(${ONBOARDING_QUEUE_DETAIL_SCALE})`
+  return `translate3d(clamp(${ONBOARDING_QUEUE_SELECTED_X}px, ${(ONBOARDING_QUEUE_SELECTED_X / 3.93).toFixed(3)}vw, 0px), ${detailY}px, ${ONBOARDING_QUEUE_DETAIL_Z}PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(${ONBOARDING_QUEUE_DETAIL_SCALE})`
 }
 
 function resolveQueueProgress(elapsedMs: number) {
@@ -2040,7 +2044,7 @@ export default function LandingPage() {
 
         <View
           className={classNames('reffo-landing-onboarding__visual-scale', {
-            'reffo-landing-onboarding__visual-scale--folder': isQueueFolderStep,
+            'reffo-landing-onboarding__visual-scale--folder': isQueueFolderStep || shouldShowDetailProgress,
           })}
           style={{'--landing-visual-scale': landingVisualScale} as CSSProperties}
         >
@@ -2218,6 +2222,7 @@ export default function LandingPage() {
               'reffo-landing-onboarding__pager-dot--active': inlineLandingPhase === 'result',
             })} />
           </View>
+          <View className='reffo-landing-onboarding__queue-top-spacer' aria-hidden='true' />
         </View>
 
         {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
