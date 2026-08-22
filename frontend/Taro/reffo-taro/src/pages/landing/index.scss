@@ -1384,7 +1384,7 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
 
 .reffo-landing-onboarding--queue-detail.reffo-landing-onboarding--queue-detail-restored .reffo-landing-onboarding__detail-folder {
   animation: none;
-  transform: translate3d(0, 0, 0);
+  transform: translate3d(-50%, 0, 0);
 }
 
 .reffo-landing-onboarding--queue-detail.reffo-landing-onboarding--queue-detail-restored .reffo-landing-onboarding__detail-card-arrow {
@@ -1541,7 +1541,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   left: 50%;
   right: auto;
   bottom: 0;
-  width: 100%;
+  width: calc(100% / var(--landing-visual-scale, 1));
   aspect-ratio: 720 / 147;
   opacity: 1;
   pointer-events: none;
