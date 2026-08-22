@@ -364,6 +364,7 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   justify-content: flex-start;
   color: rgba(17, 17, 17, 0.3);
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .reffo-landing-onboarding--step-queue .reffo-landing-onboarding__skip--queue {
@@ -1875,7 +1876,6 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   animation: reffo-landing-job-side-card-out 1180ms linear both;
 }
 
-.reffo-landing-onboarding--creating-job .reffo-landing-onboarding__detail-chrome,
 .reffo-landing-onboarding--creating-job .reffo-landing-onboarding__queue-top {
   position: absolute;
   z-index: 100;
