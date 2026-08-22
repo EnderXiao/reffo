@@ -3361,7 +3361,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   }
 
   100% {
-    width: 100%;
+    width: calc(100% / var(--landing-visual-scale, 1));
     height: 20.4167vw;
     transform: translate3d(-50%, calc(100dvh - min(44.2dvh, 377px) - 20.4167vw), 0);
   }
