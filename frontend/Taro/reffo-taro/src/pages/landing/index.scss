@@ -2199,7 +2199,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   right: auto;
   top: min(44.2dvh, 377px);
   bottom: auto;
-  width: 100%;
+  width: calc(60% / var(--landing-visual-scale, 1));
   height: 290px;
   aspect-ratio: auto;
   overflow: visible;
@@ -2254,7 +2254,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   right: auto;
   top: min(44.2dvh, 377px);
   bottom: auto;
-  width: 100%;
+  width: calc(60% / var(--landing-visual-scale, 1));
   height: 290px;
   transform: translate3d(-50%, 0, 0);
 }
