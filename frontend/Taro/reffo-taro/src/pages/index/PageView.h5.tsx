@@ -267,12 +267,24 @@ function HomeHeroH5({
               {HOME_PAGE_CONTENT.hero.createTitlePrefix}
               <Text className='reffo-home__title-accent'>{HOME_PAGE_CONTENT.hero.createTitleAccent}</Text>
             </Text>
-            <Text className='reffo-home__hero-label'>{HOME_PAGE_CONTENT.hero.createGuideLabel}</Text>
+            <View className='reffo-home__hero-label-row'>
+              <Text className='reffo-home__hero-label'>{HOME_PAGE_CONTENT.hero.createGuideLabel}</Text>
+              <View className='reffo-home__hero-label-spark' aria-hidden='true'>
+                <Text className='reffo-home__hero-label-spark-main'>✦</Text>
+                <Text className='reffo-home__hero-label-spark-small'>✦</Text>
+              </View>
+            </View>
             <Text className='reffo-home__hero-create-body'>{HOME_PAGE_CONTENT.hero.createGuideBody}</Text>
           </View>
         ) : (
           <View className='reffo-home__hero-strategy'>
-            <Text className='reffo-home__hero-label'>{HOME_PAGE_CONTENT.hero.strategyLabel}</Text>
+            <View className='reffo-home__hero-label-row'>
+              <Text className='reffo-home__hero-label'>{HOME_PAGE_CONTENT.hero.strategyLabel}</Text>
+              <View className='reffo-home__hero-label-spark' aria-hidden='true'>
+                <Text className='reffo-home__hero-label-spark-main'>✦</Text>
+                <Text className='reffo-home__hero-label-spark-small'>✦</Text>
+              </View>
+            </View>
             <View className='reffo-home__hero-strategy-body'>
               {strategyParagraphs.map((paragraph, index) => (
                 <Text
