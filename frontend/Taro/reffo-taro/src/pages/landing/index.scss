@@ -1741,7 +1741,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   right: auto;
   top: min(44.2dvh, 377px);
   bottom: auto;
-  width: calc(60% / var(--landing-visual-scale, 1));
+  width: calc(60vw / var(--landing-visual-scale, 1));
   height: 290px;
   aspect-ratio: auto;
   overflow: visible;
@@ -2199,7 +2199,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   right: auto;
   top: min(44.2dvh, 377px);
   bottom: auto;
-  width: calc(60% / var(--landing-visual-scale, 1));
+  width: calc(60vw / var(--landing-visual-scale, 1));
   height: 290px;
   aspect-ratio: auto;
   overflow: visible;
@@ -2254,7 +2254,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   right: auto;
   top: min(44.2dvh, 377px);
   bottom: auto;
-  width: calc(60% / var(--landing-visual-scale, 1));
+  width: calc(60vw / var(--landing-visual-scale, 1));
   height: 290px;
   transform: translate3d(-50%, 0, 0);
 }
@@ -3333,29 +3333,29 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
 
 @keyframes reffo-landing-onboarding-target-folder-in {
   0% {
-    width: calc(60% / var(--landing-visual-scale, 1));
+    width: calc(60vw / var(--landing-visual-scale, 1));
     transform: translate3d(-50%, 52dvh, 0) scaleY(0.28);
   }
 
   68% {
-    width: calc(60% / var(--landing-visual-scale, 1));
+    width: calc(60vw / var(--landing-visual-scale, 1));
     transform: translate3d(-50%, -12px, 0) scaleY(1.03);
   }
 
   84% {
-    width: calc(60% / var(--landing-visual-scale, 1));
+    width: calc(60vw / var(--landing-visual-scale, 1));
     transform: translate3d(-50%, 4px, 0) scaleY(0.985);
   }
 
   100% {
-    width: calc(60% / var(--landing-visual-scale, 1));
+    width: calc(60vw / var(--landing-visual-scale, 1));
     transform: translate3d(-50%, 0, 0) scaleY(1);
   }
 }
 
 @keyframes reffo-landing-onboarding-target-folder-out {
   0% {
-    width: calc(60% / var(--landing-visual-scale, 1));
+    width: calc(60vw / var(--landing-visual-scale, 1));
     height: 290px;
     transform: translate3d(-50%, 0, 0);
   }
