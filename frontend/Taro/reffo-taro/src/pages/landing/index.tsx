@@ -2204,52 +2204,6 @@ export default function LandingPage() {
 
         {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
           <>
-            <View className='reffo-landing-onboarding__detail-chrome'>
-              <View
-                className={classNames('reffo-landing-onboarding__detail-return', {
-                  'reffo-landing-onboarding__detail-return--completion': inlineLandingPhase === 'result',
-                  'reffo-landing-onboarding__detail-return--completion-ready':
-                    inlineLandingPhase === 'result' && isLandingResultComplete,
-                })}
-                role='button'
-                aria-disabled={inlineLandingPhase === 'result' && !isLandingResultComplete}
-                onClick={event => {
-                  event.stopPropagation?.()
-
-                  if (inlineLandingPhase === 'result') {
-                    landingResultCompleteRef.current?.()
-                    return
-                  }
-
-                  if (inlineLandingPhase === 'analysis') {
-                    runLandingViewTransition(() => {
-                      setInlineLandingPhase(null)
-                    })
-                    return
-                  }
-
-                  if (queueMotionPhase === 'job-selecting') {
-                    closeJobFolder()
-                    return
-                  }
-
-                  if (queueMotionPhase === 'folder') {
-                    exitQueueFolder()
-                    return
-                  }
-
-                  if (queueMotionPhase === 'detail') {
-                    exitSelectedQueueDetail()
-                  }
-
-                  if (queueMotionPhase === 'creating') {
-                    returnFromLandingJobDescription()
-                  }
-                }}
-              >
-                <Text>{inlineLandingPhase === 'result' ? '完成' : '返回'}</Text>
-              </View>
-            </View>
             {shouldShowDetailProgress ? (
               <View
                 className='reffo-landing-onboarding__detail-folder'
@@ -2370,6 +2324,55 @@ export default function LandingPage() {
           </>
         ) : null}
         </View>
+
+        {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
+          <View className='reffo-landing-onboarding__detail-chrome'>
+            <View
+              className={classNames('reffo-landing-onboarding__detail-return', {
+                'reffo-landing-onboarding__detail-return--completion': inlineLandingPhase === 'result',
+                'reffo-landing-onboarding__detail-return--completion-ready':
+                  inlineLandingPhase === 'result' && isLandingResultComplete,
+              })}
+              role='button'
+              aria-disabled={inlineLandingPhase === 'result' && !isLandingResultComplete}
+              onClick={event => {
+                event.stopPropagation?.()
+
+                if (inlineLandingPhase === 'result') {
+                  landingResultCompleteRef.current?.()
+                  return
+                }
+
+                if (inlineLandingPhase === 'analysis') {
+                  runLandingViewTransition(() => {
+                    setInlineLandingPhase(null)
+                  })
+                  return
+                }
+
+                if (queueMotionPhase === 'job-selecting') {
+                  closeJobFolder()
+                  return
+                }
+
+                if (queueMotionPhase === 'folder') {
+                  exitQueueFolder()
+                  return
+                }
+
+                if (queueMotionPhase === 'detail') {
+                  exitSelectedQueueDetail()
+                }
+
+                if (queueMotionPhase === 'creating') {
+                  returnFromLandingJobDescription()
+                }
+              }}
+            >
+              <Text>{inlineLandingPhase === 'result' ? '完成' : '返回'}</Text>
+            </View>
+          </View>
+        ) : null}
 
         <View className='reffo-landing-onboarding__queue-top'>
           <View

@@ -1743,6 +1743,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   height: 290px;
   aspect-ratio: auto;
   overflow: visible;
+  transform: translateX(-50%);
 }
 
 .reffo-landing-onboarding--queue-folder .reffo-landing-onboarding__detail-folder-front,
