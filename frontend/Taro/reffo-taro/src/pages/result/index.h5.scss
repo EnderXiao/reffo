@@ -479,10 +479,18 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
 
 .reffo-result__title-prefix,
 .reffo-result__title-accent {
-  font-size: 27px;
+  flex: 0 0 auto;
+  font-size: 24px;
   font-weight: 500;
-  line-height: 36px;
+  line-height: 32px;
   letter-spacing: 0;
+}
+
+.reffo-result__title-viewport > .reffo-result__motion-item {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .reffo-result__title-accent,
@@ -495,10 +503,10 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
 .reffo-result__title-spark {
   position: relative;
   display: inline-block;
-  width: 22px;
-  height: 18px;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 16px;
   margin-left: 3px;
-  vertical-align: 9px;
 }
 
 .reffo-result__title-spark-main,
@@ -510,14 +518,20 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
 .reffo-result__title-spark-main {
   left: 0;
   top: 2px;
-  font-size: 19px;
+  font-size: 16px;
 }
 
 .reffo-result__title-spark-small {
   right: 1px;
   top: 0;
-  font-size: 9px;
+  font-size: 8px;
   opacity: 0.86;
+}
+
+@media (max-width: 360px) {
+  .reffo-result__title-spark {
+    display: none;
+  }
 }
 
 .reffo-result__stage-switcher {

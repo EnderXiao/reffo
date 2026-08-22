@@ -235,6 +235,34 @@ export const styles = StyleSheet.create({
   heroCreateLabelCompact: {
     marginBottom: 8,
   },
+  heroLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  heroLabelSpark: {
+    position: 'relative',
+    width: 18,
+    height: 16,
+    marginLeft: 3,
+    marginTop: -2,
+  },
+  heroLabelSparkMain: {
+    position: 'absolute',
+    left: 0,
+    top: 2,
+    color: '#1c77eb',
+    fontSize: 16,
+    lineHeight: 16,
+  },
+  heroLabelSparkSmall: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    color: '#1c77eb',
+    fontSize: 8,
+    lineHeight: 8,
+    opacity: 0.86,
+  },
   heroCreateBody: {
     width: '100%',
     maxWidth: 312,
