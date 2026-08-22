@@ -1,0 +1,724 @@
+{
+  "version": 1,
+  "method": "codex_web_search",
+  "generated_at": "2026-07-27T09:30:00.000Z",
+  "companies": [
+    {
+      "company": "芒果TV",
+      "sources": [
+        {
+          "title": "芒果TV招聘",
+          "url": "https://hr.mgtv.com/",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方招聘页将芒果TV描述为年轻用户导向的全媒体内容平台，强调内容IP、用户洞察和开创性内容模式；页面披露工程师600余人、占比超过40%，并强调智能算法和大数据能力。"
+        },
+        {
+          "title": "芒果超媒2025年度公开披露材料",
+          "url": "https://file.finance.sina.com.cn/211.154.219.97%3A9494/MRGG/CNSESZ_STOCK/2026/2026-4/2026-04-30/12296142.PDF",
+          "source_type": "filing",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "公开披露材料提到芒果TV在AI技术与内容业务上的持续投入，并提及AIGC创新内容中心及大量AI相关团队项目，可用于验证AI与内容结合是公司当前公开方向。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "万兴科技",
+      "sources": [
+        {
+          "title": "万兴科技官网",
+          "url": "https://www.wondershare.cn/",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官网将公司定位为数字创意软件与AI内容创作企业，公开产品覆盖视频、绘图、文档和创作工作流，并强调AI驱动内容生产、全球用户和创作者场景。"
+        },
+        {
+          "title": "万兴科技社会招聘",
+          "url": "https://www.wondershare.cn/social-recruiting.html",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方招聘页强调AIGC、全球化用户和产品类岗位，并展示社会招聘入口与人才传播语言，可作为招聘风格和AI产品人才偏好的公开信号。"
+        },
+        {
+          "title": "万兴科技2024年年度报告",
+          "url": "https://static.cninfo.com.cn/finalpage/2025-04-28/1223329643.PDF",
+          "source_type": "filing",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "监管披露报告显示公司业务覆盖数字创意软件，并持续投入AI数字创意研发；报告可用于核验上市公司性质、业务范围和AI战略，而不能推出具体岗位直属上级。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "Shulex（数里行间）",
+      "sources": [
+        {
+          "title": "Shulex官方产品站",
+          "url": "https://solvea.shulex.com/",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方站将Shulex描述为面向跨境品牌的AI客服与消费者洞察产品，覆盖工单、知识、推荐、VOC洞察和品牌增长等场景，体现其出海AI SaaS与跨境电商定位。"
+        },
+        {
+          "title": "亚马逊云科技赋能Shulex生成式AI产品报道",
+          "url": "https://finance.sina.com.cn/tech/roll/2024-08-13/doc-inciniqk3768325.shtml",
+          "source_type": "mainstream_media",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "公开报道介绍Shulex通过生成式AI分析全球电商评论和消费者声音，并引用创始人郭振谈及跨境电商和生成式AI解决方案；创始人信息不能等同于目标岗位直属上级。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "美团",
+      "sources": [
+        {
+          "title": "美团企业社会责任报告下载中心",
+          "url": "https://www.meituan.com/csr/report",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "美团官方持续披露企业社会责任与ESG报告，公开业务覆盖本地生活、商家经营、即时配送和新职业发展，可用于核验大型平台企业性质及业务复杂度。"
+        },
+        {
+          "title": "美团外卖人才招聘",
+          "url": "https://waimai.meituan.com/help/job",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方招聘页面展示商业分析、运营和城市业务等岗位对数据分析、流程梳理、跨部门协作和业务问题解决能力的偏好，可作为招聘语言与岗位邻近信号。"
+        },
+        {
+          "title": "美团匿名员工经历讨论",
+          "url": "https://www.reddit.com/r/real_China_irl/comments/yc84xi",
+          "source_type": "community",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "单条匿名经历包含对管理和工作环境的负面指控，来源不可独立核实，只能作为需要面试核验管理方式、申诉机制和团队氛围的低置信度风险信号，不能写成公司事实。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认四个目标岗位各自直属上级。",
+        "员工口碑来源以单条匿名经历为主，不能概括美团整体或具体目标团队。"
+      ]
+    },
+    {
+      "company": "腾讯",
+      "sources": [
+        {
+          "title": "腾讯公司介绍",
+          "url": "https://www.tencent.com/zh-cn/about.html",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "腾讯官方介绍明确公司覆盖社交、数字内容、云计算、金融科技和企业服务，并公开WXG、CSIG等事业群业务边界，可用于区分微信生态、云与产业互联网等岗位语境。"
+        },
+        {
+          "title": "腾讯招聘",
+          "url": "https://careers.tencent.com/zh-cn/",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方招聘站强调连接、用户价值、产业互联网和内部成长故事，岗位内容覆盖后台开发、客户与行业解决方案等，可用于观察招聘叙事和跨团队协作偏好。"
+        },
+        {
+          "title": "腾讯产品和服务",
+          "url": "https://careers.tencent.com/productservice.html",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方页面说明企业微信、小程序、数字内容和企业服务产品边界，可用于将微信小游戏、微信小店、企业微信和CSIG财务岗位放到正确业务上下文。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "Apple",
+      "sources": [
+        {
+          "title": "Apple Teams and Careers",
+          "url": "https://www.apple.com/careers/us/work-at-apple/teams.html",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "Apple官方招聘页按Design、People、Sales、Support等团队展示岗位，并强调设计中的简洁、可用性、跨学科协作和产品体验，可作为目标岗位的公开团队语境。"
+        },
+        {
+          "title": "Apple Design Careers",
+          "url": "https://www.apple.com/careers/us/work-at-apple/teams/design.html",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "Apple官方设计团队页面强调设计贯穿产品开发全过程、重视人因、细节、性能和跨团队协作，可作为UX岗位筛选语言和作品集关注点的公开信号。"
+        },
+        {
+          "title": "Apple UX团队匿名讨论",
+          "url": "https://www.reddit.com/r/UXResearch/comments/1dhyc58",
+          "source_type": "community",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "匿名讨论称Apple团队可能高度分隔且不同团队文化差异显著；该内容未获官方证实，只能用于追问信息共享、设计影响力和团队边界，不能概括Apple整体。"
+        }
+      ],
+      "unknowns": [
+        "同名岗位可能属于不同业务团队，公开页面无法唯一确认直属上级。",
+        "匿名UX讨论样本有限，只能作为低置信度核验问题。"
+      ]
+    },
+    {
+      "company": "京东",
+      "sources": [
+        {
+          "title": "京东招聘",
+          "url": "https://zhaopin.jd.com/home",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "京东官方招聘页强调全球供应链和零售业务，并公开大时尚童装等运营岗位，说明大时尚属于京东零售招聘体系，可用于业务与招聘语境核验。"
+        },
+        {
+          "title": "京东运动鞋服行业公开白皮书",
+          "url": "https://www.itopmarketing.com/uploads/soft/20241113/1731509714.pdf",
+          "source_type": "leader_public_material",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "公开行业材料标注陈澄为京东零售大时尚事业群运动鞋服业务部总经理，可证明相关业务负责人公开身份，但不能据此认定其为目标岗位直属上级。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "字节跳动",
+      "sources": [
+        {
+          "title": "ByteDance公司官网",
+          "url": "https://www.bytedance.com/en/",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "ByteDance官方页面展示全球内容与技术产品组合，可用于核验大型全球化科技公司性质；具体岗位应继续以当前JD中的GBS、剪映CapCut、Seed或生活服务标识为最高优先级。"
+        },
+        {
+          "title": "字节跳动Seed招聘",
+          "url": "https://seed.bytedance.com/zh/career",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "Seed官方招聘页公开基础模型、视觉、语音、多模态、世界模型、AI for Science等方向，并展示研究与产品类岗位，说明Seed招聘强调前沿研究与产品化连接。"
+        },
+        {
+          "title": "Top Seed人才计划",
+          "url": "https://seed.bytedance.com/zh/topseed",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方人才计划强调基础模型、AI Infra、视觉、语音和下一代交互等研究方向，可作为Seed招聘风格信号，但不能外推到GBS、剪映或生活服务团队。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "adidas",
+      "sources": [
+        {
+          "title": "adidas Annual Report 2025",
+          "url": "https://report.adidas-group.com/2025/en/",
+          "source_type": "filing",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "adidas官方年报披露2025年净销售额、全球业务和员工重要性，能够核验其大型全球消费品牌和多区域经营性质；报告同时覆盖产品、渠道、员工与治理信息，适合作为公司级高可信背景。"
+        },
+        {
+          "title": "adidas People and Culture 2025",
+          "url": "https://report.adidas-group.com/2025/en/group-management-report-our-company/description-of-business-model/people-and-culture.html",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方披露全球员工约64938人，并将Courage、Ownership、Innovation、Team Play、Respect、Integrity作为招聘、发展与绩效文化信号，同时强调学习、包容和高绩效。"
+        },
+        {
+          "title": "adidas 2025 eCommerce performance",
+          "url": "https://report.adidas-group.com/2025/en/group-management-report-financial-review/business-performance/income-statement.html",
+          "source_type": "filing",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方年报披露2025年电商销售增长16%，DTC业务增长14%，可作为电商岗位当前业务重要性的高可信度信号；该数据是公司级渠道表现，不能直接归因到目标岗位或候选团队。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "飞书",
+      "sources": [
+        {
+          "title": "飞书招聘客户案例",
+          "url": "https://hire.feishu.cn/customer",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "飞书官方客户案例强调招聘流程数字化、组织协同、矩阵式组织转型和业务效率，反映飞书企业服务的咨询式交付与客户价值表达；这类案例可用于推断顾问岗位重视业务诊断和落地，但不是具体招聘门槛。"
+        },
+        {
+          "title": "ByteDance公司官网",
+          "url": "https://www.bytedance.com/en/",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "飞书属于字节跳动企业协作业务语境；ByteDance官方页面可核验集团科技产品背景，但岗位职责、汇报线和目标客户仍以当前飞书JD为准。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "Microsoft",
+      "sources": [
+        {
+          "title": "Microsoft Customer Success Account Manager - China",
+          "url": "https://careers.microsoft.com/v2/global/en/locations/shanghai.html",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "Microsoft官方招聘页显示CSAM属于Customer Experience & Success组织，强调客户关系、成功计划、交付与项目管理、云和行业能力，并披露该组织全球超过17000名员工。"
+        },
+        {
+          "title": "Microsoft Careers Culture",
+          "url": "https://careers.microsoft.com/v2/global/en/life-at-microsoft/culture.html",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "官方文化页强调customer obsessed、growth mindset、好奇心、协作和包容，可作为招聘风格信号，而不能替代具体团队的真实工作方式核验。"
+        },
+        {
+          "title": "Microsoft CSAM匿名岗位讨论",
+          "url": "https://www.reddit.com/r/microsoft/comments/1bxzhb6/customer_success_account_managers_csam_role/",
+          "source_type": "community",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "匿名讨论称CSAM可能跨多个客户账户工作并需要理解账户团队和客户角色，来源不可核验，只能用于面试追问账户数量、职责边界和技术深度。"
+        }
+      ],
+      "unknowns": [
+        "公开职位页面未唯一披露目标岗位直属上级。",
+        "社区内容为个体经验，不能推广到中国CSAM团队。"
+      ]
+    },
+    {
+      "company": "Amazon",
+      "sources": [
+        {
+          "title": "Amazon Japan Store Tech SDE",
+          "url": "https://www.amazon.jobs/jp/jobs/10467010/software-development-engineers-amazon-japan-store-tech",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "Amazon官方职位说明Japan Store Tech连接全球技术与本地零售创新，SDE需要独立设计、开发、测试、部署和维护分布式方案，并与全球技术和业务团队协作。"
+        },
+        {
+          "title": "Amazon Japan careers",
+          "url": "https://prod.gamma.amazon.jobs/content/jp/career-programs/university",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "Amazon Japan官方招聘页说明其持续招聘多类岗位并以培养未来领导者为招聘叙事之一；具体年限、语言和资格必须以目标JD为准。"
+        },
+        {
+          "title": "AWS Japan recruiting process",
+          "url": "https://aws.amazon.com/jp/careers/recruiting/",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "AWS官方招聘流程页面提供申请与面试支持信息，可作为Amazon体系招聘流程的邻近公开信号，但不应与Japan Store Tech或物流财务团队流程完全等同。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "盒马",
+      "sources": [
+        {
+          "title": "盒马招聘官网",
+          "url": "https://hire.freshippo.com/",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "盒马官方招聘站提供社会招聘入口，并说明新员工有师兄帮助融入团队和熟悉业务，可作为零售组织培训与招聘叙事的公开信号；实际门店排班、人员结构和绩效规则仍需面试逐项核验。"
+        },
+        {
+          "title": "阿里巴巴2026财年公开披露中的盒马",
+          "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0520/2026052001341_c.pdf",
+          "source_type": "filing",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "公开披露材料称盒马聚焦优选业态、拓展新兴城市并实现经调整EBITA为正，可用于理解盒马NB/优选类业务对可复制运营和盈利效率的重视。"
+        },
+        {
+          "title": "盒马一线工作匿名讨论",
+          "url": "https://www.reddit.com/r/LOOK_CHINA/comments/1hx1z60",
+          "source_type": "community",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "单条匿名讨论对门店工时、排班和第三方用工提出负面描述，无法核实且不能代表全部门店；仅可转化为对排班、人员结构、绩效和休息制度的核验问题。"
+        }
+      ],
+      "unknowns": [
+        "公开材料不能唯一确认目标盒马NB门店或区域的直属上级。",
+        "门店工作口碑高度依赖城市、门店和用工类型，匿名样本不能推广。"
+      ]
+    },
+    {
+      "company": "比亚迪汽车工业有限公司",
+      "sources": [
+        {
+          "title": "比亚迪2024年年度报告",
+          "url": "https://disc.static.szse.cn/disc/disk03/finalpage/2025-03-24/fe401102-25a6-40ea-8cb2-6c6eab1bd599.PDF",
+          "source_type": "filing",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "监管披露年报可核验比亚迪大型制造与新能源汽车企业性质，并披露研发、人才培养和数字化学习投入；具体SQE组织、供应商范围和汇报线未公开。"
+        },
+        {
+          "title": "比亚迪2023年年度报告",
+          "url": "https://disc.static.szse.cn/disc/disk03/finalpage/2024-03-26/6f1e78f2-fbdf-4553-8867-3930dc09a4f3.PDF",
+          "source_type": "filing",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "监管披露材料提到基于业绩、能力和服务年限的差异化激励，以及质量相关奖励，可作为重视绩效、质量与工程成果的公司级信号；该材料不能证明目标SQE团队的考核细则或直属上级。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "海尔智家",
+      "sources": [
+        {
+          "title": "海尔供应商质量工程师SQE招聘",
+          "url": "https://maker.haier.net/client/job/detail/id/10206045/recommend_record/1",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "海尔官方相邻岗位要求承接质量目标、推动开发节点问题闭环、制定测试计划并开展供应商质量管理，偏好家电行业、SQE经验和跨部门协同。"
+        },
+        {
+          "title": "海尔智家招聘",
+          "url": "https://maker.haier.net/smart_home",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "海尔智家官方招聘页强调智慧家庭、全球业务、员工价值实现和发展项目，可用于公司体量、全球化与招聘叙事分析；具体供应商质量岗位仍应以相邻官方JD和当前目标JD的质量要求为准。"
+        },
+        {
+          "title": "海尔智家2024年度可持续发展报告",
+          "url": "https://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10816075&stockid=600690",
+          "source_type": "filing",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "公开报告说明公司按供应商质量评价分层管理、对低评价供应商提供改善建议，并开展质量培训，可作为SQE岗位强调供应商改善与质量体系的高可信度背景。"
+        }
+      ],
+      "unknowns": [
+        "公开资料无法唯一确认该招聘岗位的直属上级；不得把公司高管或业务负责人直接当作直属上级。",
+        "没有足够可靠且可交叉验证的在职员工聚合口碑；单条匿名内容不得写成公司事实。"
+      ]
+    },
+    {
+      "company": "Siemens",
+      "sources": [
+        {
+          "title": "Siemens Supplier Quality Engineer",
+          "url": "https://jobs.siemens.com/externaljobs/JobDetail/Supplier-Quality-Engineer-80-100/471814",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "Siemens官方相邻SQE岗位强调质量管理体系、8D、索赔管理、质量保证协议以及对采购团队的质量指导，可作为岗位方法论与跨职能协作信号。"
+        },
+        {
+          "title": "Life at Siemens",
+          "url": "https://www.siemens.com/cn/zh/company/jobs/life-at-siemens/helping-cities-work-better.html",
+          "source_type": "official",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "Siemens官方文化页强调技术影响、创新、多元、尊重、机会平等和职业成长，可用于招聘风格分析，但不证明具体团队文化；目标SQE团队的决策方式、出差比例和供应商范围仍需面试核验。"
+        },
+        {
+          "title": "Siemens China employee reviews",
+          "url": "https://www.indeed.com/cmp/Siemens/reviews?fcountry=CN",
+          "source_type": "employee_platform",
+          "retrieved_at": "2026-07-27T09:30:00.000Z",
+          "content": "Indeed中国区聚合评价呈现对流程、目标、薪酬和发展机会的不同个体观点；评分与评论受岗位、地点和样本偏差影响，只能用于生成核验问题。"
+        }
+      ],
+      "unknowns": [
+        "公开职位未唯一披露目标中国SQE岗位直属上级。",
+        "员工评价跨业务与城市聚合，不能代表目标团队。"
+      ]
+    }
+  ],
+  "jobs": [
+    {
+      "job_id": "resume_01_job_01",
+      "company": "芒果TV",
+      "queries": [
+        "芒果TV AI创新产品经理 招聘 团队 负责人 官方",
+        "芒果TV 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_01_job_02",
+      "company": "万兴科技",
+      "queries": [
+        "万兴科技 AI产品经理 招聘 团队 负责人 官方",
+        "万兴科技 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_01_job_03",
+      "company": "Shulex（数里行间）",
+      "queries": [
+        "Shulex（数里行间） 产品经理 招聘 团队 负责人 官方",
+        "Shulex（数里行间） 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_02_job_01",
+      "company": "美团",
+      "queries": [
+        "美团 商业分析实习生 招聘 团队 负责人 官方",
+        "美团 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_02_job_02",
+      "company": "腾讯",
+      "queries": [
+        "腾讯 微信小游戏-数据科学（生态分析方向） 招聘 团队 负责人 官方",
+        "腾讯 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_02_job_03",
+      "company": "Apple",
+      "queries": [
+        "Apple Technical Analyst - Insight Team 招聘 团队 负责人 官方",
+        "Apple 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_03_job_01",
+      "company": "京东",
+      "queries": [
+        "京东 大时尚户外鞋服电商运营 招聘 团队 负责人 官方",
+        "京东 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_03_job_02",
+      "company": "字节跳动",
+      "queries": [
+        "字节跳动 国际化电商广告运营-消费电子 Global Business Solutions 招聘 团队 负责人 官方",
+        "字节跳动 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_03_job_03",
+      "company": "adidas",
+      "queries": [
+        "adidas Manager eCommerce Red 招聘 团队 负责人 官方",
+        "adidas 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_04_job_01",
+      "company": "飞书",
+      "queries": [
+        "飞书 企业 AI 转型顾问-飞书 招聘 团队 负责人 官方",
+        "飞书 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_04_job_02",
+      "company": "腾讯",
+      "queries": [
+        "腾讯 公有云客户成功经理 招聘 团队 负责人 官方",
+        "腾讯 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_04_job_03",
+      "company": "Microsoft",
+      "queries": [
+        "Microsoft Customer Success Account Manager 招聘 团队 负责人 官方",
+        "Microsoft 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_05_job_01",
+      "company": "美团",
+      "queries": [
+        "美团 后端 Java 开发工程师-交通 招聘 团队 负责人 官方",
+        "美团 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_05_job_02",
+      "company": "腾讯",
+      "queries": [
+        "腾讯 微信小店-后台开发工程师-交易基础（商品方向） 招聘 团队 负责人 官方",
+        "腾讯 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_05_job_03",
+      "company": "Amazon",
+      "queries": [
+        "Amazon Software Development Engineer, Japan Store Tech 招聘 团队 负责人 官方",
+        "Amazon 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_06_job_01",
+      "company": "字节跳动",
+      "queries": [
+        "字节跳动 即梦 AI 产品体验设计-剪映 CapCut 招聘 团队 负责人 官方",
+        "字节跳动 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_06_job_02",
+      "company": "腾讯",
+      "queries": [
+        "腾讯 企业微信-交互设计师 招聘 团队 负责人 官方",
+        "腾讯 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_06_job_03",
+      "company": "Apple",
+      "queries": [
+        "Apple UX Designer 招聘 团队 负责人 官方",
+        "Apple 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_07_job_01",
+      "company": "美团",
+      "queries": [
+        "美团 小象超市-区域前场运营 招聘 团队 负责人 官方",
+        "美团 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_07_job_02",
+      "company": "盒马",
+      "queries": [
+        "盒马 盒马 NB 店长 招聘 团队 负责人 官方",
+        "盒马 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_07_job_03",
+      "company": "Apple",
+      "queries": [
+        "Apple CN-Manager 招聘 团队 负责人 官方",
+        "Apple 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_08_job_01",
+      "company": "字节跳动",
+      "queries": [
+        "字节跳动 招聘专家-Seed 招聘 团队 负责人 官方",
+        "字节跳动 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_08_job_02",
+      "company": "美团",
+      "queries": [
+        "美团 HRBP 招聘 团队 负责人 官方",
+        "美团 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_08_job_03",
+      "company": "Apple",
+      "queries": [
+        "Apple Corporate Recruiter 招聘 团队 负责人 官方",
+        "Apple 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_09_job_01",
+      "company": "字节跳动",
+      "queries": [
+        "字节跳动 财务 BP（用户增长方向）-生活服务 招聘 团队 负责人 官方",
+        "字节跳动 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_09_job_02",
+      "company": "腾讯",
+      "queries": [
+        "腾讯 S2-CSIG 财务管理（产品财务 BP） 招聘 团队 负责人 官方",
+        "腾讯 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_09_job_03",
+      "company": "Amazon",
+      "queries": [
+        "Amazon Senior Financial Analyst, Global Logistics, Global Logistic Finance 招聘 团队 负责人 官方",
+        "Amazon 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_10_job_01",
+      "company": "比亚迪汽车工业有限公司",
+      "queries": [
+        "比亚迪汽车工业有限公司 SQE & 质量工程师 招聘 团队 负责人 官方",
+        "比亚迪汽车工业有限公司 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_10_job_02",
+      "company": "海尔智家",
+      "queries": [
+        "海尔智家 供应商质量改善工程师（SQE） 招聘 团队 负责人 官方",
+        "海尔智家 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    },
+    {
+      "job_id": "resume_10_job_03",
+      "company": "Siemens",
+      "queries": [
+        "Siemens SQE 供应商质量工程师 招聘 团队 负责人 官方",
+        "Siemens 公司规模 性质 招聘风格 员工评价"
+      ],
+      "additional_sources": []
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reffo v4.3 结果密度定向 A/B</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;background:#f4f4f1;color:#171717;margin:0}.page{max-width:1280px;margin:auto;padding:28px}.notice,.card,table{background:#fff;border:1px solid #d8d8d2;border-radius:10px}.notice{padding:18px;margin:16px 0;border-left:6px solid #171717}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}.card{padding:16px}.card strong{display:block;font-size:26px;margin-top:6px}.bad{color:#a22121}table{width:100%;border-collapse:collapse;overflow:hidden}th,td{text-align:left;padding:12px;border-bottom:1px solid #ddd}a{color:#111;font-weight:600}@media(max-width:800px){.page{padding:16px}table{font-size:13px}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>v4.3 结果密度定向 A/B</h1>
+    <div class="notice"><strong>结论：v4.3 不晋级，继续保留 v4.2.1。</strong><br>主分数仅采用完成率 100% 的 DeepSeek Pro 正反序盲评；Flash 完成率仅 16.7%，不混入主分数。</div>
+    <div class="metrics">
+      <div class="card"><span>测试案例</span><strong>3</strong></div>
+      <div class="card"><span>v4.2.1 主评审</span><strong>75.50</strong></div>
+      <div class="card"><span>v4.3 主评审</span><strong>53.17</strong></div>
+      <div class="card"><span>相对变化</span><strong class="bad">-29.58%</strong></div>
+      <div class="card"><span>动作型 bullet</span><strong>36.1% → 29.9%</strong></div>
+      <div class="card"><span>结果密度</span><strong>50.0% → 58.4%</strong></div>
+    </div>
+    <table>
+      <thead><tr><th>案例</th><th>岗位</th><th>v4.2.1</th><th>v4.3</th><th>变化</th><th>动作占比</th><th>结果密度</th></tr></thead>
+      <tbody>
+        <tr><td><a href="resume_06_resume_06_job_02.html">腾讯</a></td><td>企业微信-交互设计师</td><td>47.00</td><td>45.00</td><td class="bad">-2.00</td><td>16.7% → 11.1%</td><td>75.0% → 88.9%</td></tr>
+        <tr><td><a href="resume_10_resume_10_job_01.html">比亚迪</a></td><td>SQE &amp; 质量工程师</td><td>90.50</td><td>42.50</td><td class="bad">-48.00</td><td>41.7% → 38.5%</td><td>25.0% → 46.2%</td></tr>
+        <tr><td><a href="resume_08_resume_08_job_03.html">Apple</a></td><td>Corporate Recruiter</td><td>89.00</td><td>72.00</td><td class="bad">-17.00</td><td>50.0% → 40.0%</td><td>50.0% → 40.0%</td></tr>
+      </tbody>
+    </table>
+    <p>点击公司名称查看两版完整简历及全部评审调用。完整分析见 <a href="../../v4.3-result-density-report.md">Markdown 报告</a>。</p>
+  </main>
+</body>
+</html>

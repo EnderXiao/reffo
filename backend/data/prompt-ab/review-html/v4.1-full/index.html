@@ -1,0 +1,141 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Reffo 私有人工评审包</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:#161616;background:#f4f4f1}
+*{box-sizing:border-box}body{margin:0}.page{max-width:1480px;margin:auto;padding:32px}
+a{color:#111}.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.badge{display:inline-block;padding:5px 10px;border:1px solid #222;border-radius:999px;margin:0 6px 6px 0}
+.good{background:#daf5df}.bad{background:#ffe1dc}.muted{color:#6a6a64}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:20px 0}
+.metric,section,details,.resume-panel{background:#fff;border:1px solid #d8d8d2;border-radius:10px;padding:16px}
+.metric strong{display:block;font-size:24px;margin-top:4px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.resume{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}
+.analysis{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;margin:18px 0}
+h1{font-size:30px}h2{margin-top:28px}h3{margin-top:0}li{margin:7px 0}summary{cursor:pointer;font-weight:700}
+table{width:100%;border-collapse:collapse;background:#fff}th,td{text-align:left;padding:10px;border-bottom:1px solid #ddd}
+@media(max-width:900px){.compare{grid-template-columns:1fr}.page{padding:18px}}
+</style></head><body><main class="page">
+<h1>Reffo 私有人工评审包</h1>
+<p>Run：v4.1-2026-07-27T09-33-54-703Z · 30 个样本 · 请勿外传</p>
+<table><thead><tr><th>样本</th><th>公司</th><th>岗位</th><th>基线</th><th>优化版</th><th>变化</th><th>交付</th></tr></thead>
+<tbody><tr><td><a href="resume_01_resume_01_job_01.html">resume_01:resume_01_job_01</a></td>
+    <td>芒果TV</td><td>AI创新产品经理</td>
+    <td>79.25</td><td>93.5</td>
+    <td>14.25</td>
+    <td>可交付</td></tr><tr><td><a href="resume_01_resume_01_job_02.html">resume_01:resume_01_job_02</a></td>
+    <td>万兴科技</td><td>AI产品经理</td>
+    <td>58.25</td><td>81.5</td>
+    <td>23.25</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_01_resume_01_job_03.html">resume_01:resume_01_job_03</a></td>
+    <td>Shulex（数里行间）</td><td>产品经理</td>
+    <td>72.75</td><td>82.5</td>
+    <td>9.75</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_02_resume_02_job_03.html">resume_02:resume_02_job_03</a></td>
+    <td>Apple</td><td>Technical Analyst - Insight Team</td>
+    <td>36.25</td><td>48.5</td>
+    <td>12.25</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_02_resume_02_job_01.html">resume_02:resume_02_job_01</a></td>
+    <td>美团</td><td>商业分析实习生</td>
+    <td>27</td><td>48.25</td>
+    <td>21.25</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_02_resume_02_job_02.html">resume_02:resume_02_job_02</a></td>
+    <td>腾讯</td><td>微信小游戏-数据科学（生态分析方向）</td>
+    <td>41.75</td><td>78.25</td>
+    <td>36.5</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_03_resume_03_job_01.html">resume_03:resume_03_job_01</a></td>
+    <td>京东</td><td>大时尚户外鞋服电商运营</td>
+    <td>56</td><td>78.5</td>
+    <td>22.5</td>
+    <td>可交付</td></tr><tr><td><a href="resume_03_resume_03_job_02.html">resume_03:resume_03_job_02</a></td>
+    <td>字节跳动</td><td>国际化电商广告运营-消费电子 Global Business Solutions</td>
+    <td>47</td><td>84.75</td>
+    <td>37.75</td>
+    <td>可交付</td></tr><tr><td><a href="resume_03_resume_03_job_03.html">resume_03:resume_03_job_03</a></td>
+    <td>adidas</td><td>Manager eCommerce Red</td>
+    <td>59.75</td><td>72.5</td>
+    <td>12.75</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_04_resume_04_job_01.html">resume_04:resume_04_job_01</a></td>
+    <td>飞书</td><td>企业 AI 转型顾问-飞书</td>
+    <td>72.75</td><td>89.75</td>
+    <td>17</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_04_resume_04_job_02.html">resume_04:resume_04_job_02</a></td>
+    <td>腾讯</td><td>公有云客户成功经理</td>
+    <td>71.25</td><td>96</td>
+    <td>24.75</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_04_resume_04_job_03.html">resume_04:resume_04_job_03</a></td>
+    <td>Microsoft</td><td>Customer Success Account Manager</td>
+    <td>62</td><td>93.75</td>
+    <td>31.75</td>
+    <td>可交付</td></tr><tr><td><a href="resume_05_resume_05_job_01.html">resume_05:resume_05_job_01</a></td>
+    <td>美团</td><td>后端 Java 开发工程师-交通</td>
+    <td>68.5</td><td>93.5</td>
+    <td>25</td>
+    <td>可交付</td></tr><tr><td><a href="resume_05_resume_05_job_03.html">resume_05:resume_05_job_03</a></td>
+    <td>Amazon</td><td>Software Development Engineer, Japan Store Tech</td>
+    <td>29.75</td><td>84.75</td>
+    <td>55</td>
+    <td>可交付</td></tr><tr><td><a href="resume_05_resume_05_job_02.html">resume_05:resume_05_job_02</a></td>
+    <td>腾讯</td><td>微信小店-后台开发工程师-交易基础（商品方向）</td>
+    <td>44.5</td><td>86.25</td>
+    <td>41.75</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_06_resume_06_job_01.html">resume_06:resume_06_job_01</a></td>
+    <td>字节跳动</td><td>即梦 AI 产品体验设计-剪映 CapCut</td>
+    <td>47.75</td><td>88.25</td>
+    <td>40.5</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_06_resume_06_job_02.html">resume_06:resume_06_job_02</a></td>
+    <td>腾讯</td><td>企业微信-交互设计师</td>
+    <td>43.75</td><td>73.75</td>
+    <td>30</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_06_resume_06_job_03.html">resume_06:resume_06_job_03</a></td>
+    <td>Apple</td><td>UX Designer</td>
+    <td>52.75</td><td>80.5</td>
+    <td>27.75</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_07_resume_07_job_01.html">resume_07:resume_07_job_01</a></td>
+    <td>美团</td><td>小象超市-区域前场运营</td>
+    <td>48</td><td>87.75</td>
+    <td>39.75</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_07_resume_07_job_02.html">resume_07:resume_07_job_02</a></td>
+    <td>盒马</td><td>盒马 NB 店长</td>
+    <td>59.5</td><td>49</td>
+    <td>-10.5</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_07_resume_07_job_03.html">resume_07:resume_07_job_03</a></td>
+    <td>Apple</td><td>CN-Manager</td>
+    <td>70.75</td><td>85.75</td>
+    <td>15</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_08_resume_08_job_02.html">resume_08:resume_08_job_02</a></td>
+    <td>美团</td><td>HRBP</td>
+    <td>38.25</td><td>79.25</td>
+    <td>41</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_08_resume_08_job_01.html">resume_08:resume_08_job_01</a></td>
+    <td>字节跳动</td><td>招聘专家-Seed</td>
+    <td>44.75</td><td>93.75</td>
+    <td>49</td>
+    <td>可交付</td></tr><tr><td><a href="resume_09_resume_09_job_01.html">resume_09:resume_09_job_01</a></td>
+    <td>字节跳动</td><td>财务 BP（用户增长方向）-生活服务</td>
+    <td>30.25</td><td>84.5</td>
+    <td>54.25</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_09_resume_09_job_02.html">resume_09:resume_09_job_02</a></td>
+    <td>腾讯</td><td>S2-CSIG 财务管理（产品财务 BP）</td>
+    <td>45.75</td><td>91</td>
+    <td>45.25</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_08_resume_08_job_03.html">resume_08:resume_08_job_03</a></td>
+    <td>Apple</td><td>Corporate Recruiter</td>
+    <td>45</td><td>49</td>
+    <td>4</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_09_resume_09_job_03.html">resume_09:resume_09_job_03</a></td>
+    <td>Amazon</td><td>Senior Financial Analyst, Global Logistics, Global Logistic Finance</td>
+    <td>74</td><td>94</td>
+    <td>20</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_10_resume_10_job_01.html">resume_10:resume_10_job_01</a></td>
+    <td>比亚迪汽车工业有限公司</td><td>SQE &amp; 质量工程师</td>
+    <td>24.5</td><td>87</td>
+    <td>62.5</td>
+    <td>不可交付</td></tr><tr><td><a href="resume_10_resume_10_job_02.html">resume_10:resume_10_job_02</a></td>
+    <td>海尔智家</td><td>供应商质量改善工程师（SQE）</td>
+    <td>40.5</td><td>92.75</td>
+    <td>52.25</td>
+    <td>可交付</td></tr><tr><td><a href="resume_10_resume_10_job_03.html">resume_10:resume_10_job_03</a></td>
+    <td>Siemens</td><td>SQE 供应商质量工程师</td>
+    <td>60</td><td>93.5</td>
+    <td>33.5</td>
+    <td>可交付</td></tr></tbody></table></main></body></html>

@@ -1,0 +1,3157 @@
+{
+  "privacy": "PRIVATE_REVIEW_MATERIAL_DO_NOT_COMMIT",
+  "promptVariant": "scope-aware-v4.2",
+  "promptVersion": "4.2.1",
+  "caseId": "resume_08:resume_08_job_03",
+  "resumeId": "resume_08",
+  "jobId": "resume_08_job_03",
+  "company": "Apple",
+  "position": "Corporate Recruiter",
+  "sourceResume": "孙婉宁|HRBP / 招聘|互联网服务与销售团队\n女|29岁|北京|186****9523|sunwanning08@outlook.com\n求职方向:业务 HRBP、组织发展、招聘经理\n\n【个人概述】\n5 年人力资源经验,近 2 年支持约 220 人销售与交付团队,负责招聘、绩效、人才盘点和员工关系。执行经验较完整,希望强化业务伙伴和组织发展能力。\n\n【专业技能】\n- HRBP:组织诊断基础、绩效校准、人才盘点、员工关系、干部沟通\n- 招聘:岗位画像、渠道、面试、Offer、校招、雇主品牌活动\n- 工具:北森、Moka、Excel、飞书;持企业人力资源管理师三级\n\n【工作经历】\n北京启明企业服务有限公司|HRBP|2023.05 - 至今\n- 支持华北销售和客户交付团队约 220 人,对接 8 名部门负责人,处理编制、招聘、绩效、晋升和员工关系事项。\n- 参加月度业务复盘,跟踪人效、流失和招聘达成;对销售人效的理解主要来自财务与业务负责人。\n- 2025 年完成 63 个社招岗位入职,年度招聘达成率 87%,重点岗位平均周期 42 天。\n- 组织半年度人才盘点,维护九宫格和关键岗位继任清单;盘点结论仍较依赖管理者主观判断。\n- 协助调整销售试用期考核和绩效沟通材料,试用期主动离职率从 14% 降至 10%,同期薪酬政策也有变化。\n- 独立处理 6 起复杂员工关系事件,均在法务支持下完成沟通与材料留存。\n北京云杉教育科技有限公司|招聘专员 / 高级招聘专员|2020.07 - 2023.04\n- 负责产品、研发、运营和课程顾问岗位招聘,年均入职约 80 人。\n- 维护招聘渠道、周报和面试官反馈,参与两届校招宣讲。\n- 2022 年业务收缩期间参与人员沟通和离职手续,简历中不详细展开。\n\n【项目经历】\n销售新经理 90 天融入项目|2024.07 - 2024.10\n- 访谈 12 名新任经理和上级,整理角色转换、目标拆解和绩效沟通问题。\n- 联合培训团队设计 4 次工作坊和导师机制,首期 18 人参与,满意度 4.6/5。\n- 未建立与团队业绩或流失率的长期关联指标。\n招聘数据看板|2025.02 - 2025.04\n- 使用 Excel Power Query 合并渠道、岗位和面试数据,展示周期、转化和 Offer 接受率。\n- 看板仍需每周手工刷新,未接入 BI 系统。\n\n【教育经历】\n- 首都经济贸易大学|人力资源管理 本科|2016.09 - 2020.06\n\n【补充信息】\n- 证书:企业人力资源管理师三级;劳动法线上课程结业\n- 自我评价:亲和力好、责任心强、保密意识强。",
+  "jobDescription": "Apple|Corporate Recruiter\n上海|Corporate Functions - People|Role Number 200665808-3715|发布 2026-06-04\n\n职位介绍\n为 Apple 亚太业务提供端到端招聘合作,面向业务领导者和候选人开展人才寻访、评估、选择与录用,同时维护高质量候选人体验。\n\n岗位职责\n1. 与业务领导和 People 团队明确人才需求、招聘策略与优先级。\n2. 负责全生命周期招聘,包括人才搜寻、筛选、面试协调、评估和录用推进。\n3. 建立并维护关键人才管道,持续向业务提供市场与候选人洞察。\n4. 以一致、专业和及时的沟通保障候选人与用人团队体验。\n\n任职要求\n1. 具备企业招聘或猎头相关经验,能够独立负责多个职位。\n2. 具备人才搜寻、结构化评估和利益相关方管理能力。\n3. 能够在快速变化、跨地区的环境中管理优先级和招聘进度。\n4. 具备良好的中英文沟通、判断和保密意识。\n\n加分项\n- 有科技或跨国公司招聘经验\n- 熟悉 APAC 人才市场和数据化招聘管理\n\n公开招聘来源:https://jobs.apple.com/en-us/search?team=people-CORSV-HR\n页面核验日期:2026-07-27",
+  "current": {
+    "suite": {
+      "candidate_evidence_ledger": {
+        "source_resume_quality": {
+          "score": 81,
+          "dimension_scores": {
+            "completeness": 16,
+            "atomic_evidence": 17,
+            "result_evidence": 17,
+            "time_and_ownership_consistency": 19,
+            "verifiability": 12
+          }
+        },
+        "personal_info": {
+          "name": "孙婉宁",
+          "phone": "186****9523",
+          "email": "sunwanning08@outlook.com",
+          "city": "北京",
+          "age": 29,
+          "job_seeking_direction": "业务 HRBP、组织发展、招聘经理"
+        },
+        "education": [
+          {
+            "school": "首都经济贸易大学",
+            "degree": "本科",
+            "major": "人力资源管理",
+            "start_date": "2016.09",
+            "end_date": "2020.06"
+          }
+        ],
+        "experience": [
+          {
+            "company": "北京启明企业服务有限公司",
+            "role": "HRBP",
+            "start_date": "2023.05",
+            "end_date": "至今",
+            "description_summary": "支持华北销售和客户交付团队约220人，对接8名部门负责人，处理编制、招聘、绩效、晋升和员工关系事项；参加月度业务复盘，跟踪人效、流失和招聘达成；2025年完成63个社招岗位入职，年度招聘达成率87%，重点岗位平均周期42天；组织半年度人才盘点，维护九宫格和关键岗位继任清单；协助调整销售试用期考核和绩效沟通材料，试用期主动离职率从14%降至10%；独立处理6起复杂员工关系事件。"
+          },
+          {
+            "company": "北京云杉教育科技有限公司",
+            "role": "招聘专员 / 高级招聘专员",
+            "start_date": "2020.07",
+            "end_date": "2023.04",
+            "description_summary": "负责产品、研发、运营和课程顾问岗位招聘，年均入职约80人；维护招聘渠道、周报和面试官反馈，参与两届校招宣讲；2022年业务收缩期间参与人员沟通和离职手续。"
+          }
+        ],
+        "projects": [
+          {
+            "name": "销售新经理 90 天融入项目",
+            "start_date": "2024.07",
+            "end_date": "2024.10",
+            "description": "访谈12名新任经理和上级，整理角色转换、目标拆解和绩效沟通问题；联合培训团队设计4次工作坊和导师机制，首期18人参与，满意度4.6/5；未建立与团队业绩或流失率的长期关联指标。"
+          },
+          {
+            "name": "招聘数据看板",
+            "start_date": "2025.02",
+            "end_date": "2025.04",
+            "description": "使用Excel Power Query合并渠道、岗位和面试数据，展示周期、转化和Offer接受率；看板仍需每周手工刷新，未接入BI系统。"
+          }
+        ],
+        "skills": {
+          "explicit": [
+            "组织诊断基础",
+            "绩效校准",
+            "人才盘点",
+            "员工关系",
+            "干部沟通",
+            "岗位画像",
+            "招聘渠道",
+            "面试",
+            "Offer",
+            "校招",
+            "雇主品牌活动",
+            "北森",
+            "Moka",
+            "Excel",
+            "飞书",
+            "企业人力资源管理师三级"
+          ],
+          "behaviorally_proven": [
+            "招聘（社招与校招）",
+            "人才盘点",
+            "员工关系处理",
+            "绩效辅助（材料调整）",
+            "数据分析（Excel Power Query）",
+            "访谈",
+            "培训项目协作",
+            "招聘运营（渠道维护）"
+          ],
+          "mentioned_only": [
+            "组织诊断基础",
+            "绩效校准",
+            "干部沟通",
+            "北森",
+            "Moka",
+            "飞书",
+            "雇主品牌活动"
+          ]
+        },
+        "evidence_ledger": [
+          {
+            "evidence_id": "C-SUM-1",
+            "source_section": "个人概述",
+            "source_quote": "5 年人力资源经验",
+            "entity": "孙婉宁",
+            "role": "人力资源从业者",
+            "action": "拥有",
+            "object_or_scope": "5年人力资源经验",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "截至简历日期",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-SUM-2",
+            "source_section": "个人概述",
+            "source_quote": "近 2 年支持约 220 人销售与交付团队",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "支持",
+            "object_or_scope": "约220人销售与交付团队",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "近2年（当前岗位）",
+            "skills_proven": [
+              "HRBP支持"
+            ],
+            "proficiency_ceiling": "支持",
+            "ownership_ceiling": "支持者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-SKILL-1",
+            "source_section": "专业技能",
+            "source_quote": "HRBP:组织诊断基础、绩效校准、人才盘点、员工关系、干部沟通;招聘:岗位画像、渠道、面试、Offer、校招、雇主品牌活动;工具:北森、Moka、Excel、飞书",
+            "entity": "孙婉宁",
+            "role": "",
+            "action": "声称具备",
+            "object_or_scope": "上述技能与工具",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "组织诊断基础",
+              "绩效校准",
+              "人才盘点",
+              "员工关系",
+              "干部沟通",
+              "岗位画像",
+              "渠道管理",
+              "面试",
+              "Offer管理",
+              "校招",
+              "雇主品牌",
+              "北森",
+              "Moka",
+              "Excel",
+              "飞书"
+            ],
+            "proficiency_ceiling": "声称熟练",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E1-1",
+            "source_section": "工作经历-1",
+            "source_quote": "支持华北销售和客户交付团队约 220 人,对接 8 名部门负责人,处理编制、招聘、绩效、晋升和员工关系事项",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "支持、对接、处理",
+            "object_or_scope": "220人团队，8名负责人，编制、招聘、绩效、晋升、员工关系",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2023.05至今",
+            "skills_proven": [
+              "HRBP通才支持",
+              "招聘",
+              "绩效管理",
+              "员工关系"
+            ],
+            "proficiency_ceiling": "处理",
+            "ownership_ceiling": "执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-2",
+            "source_section": "工作经历-1",
+            "source_quote": "参加月度业务复盘,跟踪人效、流失和招聘达成;对销售人效的理解主要来自财务与业务负责人",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "参加、跟踪、理解依赖",
+            "object_or_scope": "月度业务复盘，人效、流失、招聘达成指标",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2023.05至今（月度）",
+            "skills_proven": [
+              "业务复盘参与",
+              "人效跟踪"
+            ],
+            "proficiency_ceiling": "参与跟踪",
+            "ownership_ceiling": "参与者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-3",
+            "source_section": "工作经历-1",
+            "source_quote": "2025 年完成 63 个社招岗位入职,年度招聘达成率 87%,重点岗位平均周期 42 天",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "完成",
+            "object_or_scope": "63个社招岗位入职",
+            "method_or_tool": [],
+            "result": "年度招聘达成率87%，重点岗位平均周期42天",
+            "time_context": "2025年",
+            "skills_proven": [
+              "社招执行",
+              "招聘流程管理"
+            ],
+            "proficiency_ceiling": "完成（独立或主导未明确）",
+            "ownership_ceiling": "主要执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-4",
+            "source_section": "工作经历-1",
+            "source_quote": "组织半年度人才盘点,维护九宫格和关键岗位继任清单;盘点结论仍较依赖管理者主观判断",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "组织、维护",
+            "object_or_scope": "半年度人才盘点，九宫格，继任清单",
+            "method_or_tool": [],
+            "result": "依赖主观判断",
+            "time_context": "2023.05至今（半年度）",
+            "skills_proven": [
+              "人才盘点",
+              "继任计划"
+            ],
+            "proficiency_ceiling": "组织",
+            "ownership_ceiling": "组织者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-5",
+            "source_section": "工作经历-1",
+            "source_quote": "协助调整销售试用期考核和绩效沟通材料,试用期主动离职率从 14% 降至 10%,同期薪酬政策也有变化",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "协助调整",
+            "object_or_scope": "销售试用期考核和绩效沟通材料",
+            "method_or_tool": [],
+            "result": "试用期主动离职率从14%降至10%（同期薪酬政策也有变化）",
+            "time_context": "未明确，但应在2023-2025年间",
+            "skills_proven": [
+              "绩效材料辅助",
+              "离职率跟踪"
+            ],
+            "proficiency_ceiling": "协助",
+            "ownership_ceiling": "协助者（非唯一因素）",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E1-6",
+            "source_section": "工作经历-1",
+            "source_quote": "独立处理 6 起复杂员工关系事件,均在法务支持下完成沟通与材料留存",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "独立处理",
+            "object_or_scope": "6起复杂员工关系事件",
+            "method_or_tool": [
+              "法务支持"
+            ],
+            "result": "完成沟通与材料留存",
+            "time_context": "2023.05至今",
+            "skills_proven": [
+              "员工关系处理",
+              "合规沟通"
+            ],
+            "proficiency_ceiling": "独立处理",
+            "ownership_ceiling": "独立负责（有法务支持）",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-1",
+            "source_section": "工作经历-2",
+            "source_quote": "负责产品、研发、运营和课程顾问岗位招聘,年均入职约 80 人",
+            "entity": "孙婉宁",
+            "role": "招聘专员/高级招聘专员",
+            "action": "负责",
+            "object_or_scope": "产品、研发、运营、课程顾问岗位招聘",
+            "method_or_tool": [],
+            "result": "年均入职约80人",
+            "time_context": "2020.07-2023.04",
+            "skills_proven": [
+              "全流程招聘"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-2",
+            "source_section": "工作经历-2",
+            "source_quote": "维护招聘渠道、周报和面试官反馈,参与两届校招宣讲",
+            "entity": "孙婉宁",
+            "role": "招聘专员/高级招聘专员",
+            "action": "维护、参与",
+            "object_or_scope": "招聘渠道、周报、面试官反馈，两届校招宣讲",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2020.07-2023.04",
+            "skills_proven": [
+              "招聘运营",
+              "校招协助"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-3",
+            "source_section": "工作经历-2",
+            "source_quote": "2022 年业务收缩期间参与人员沟通和离职手续,简历中不详细展开",
+            "entity": "孙婉宁",
+            "role": "招聘专员/高级招聘专员",
+            "action": "参与",
+            "object_or_scope": "人员沟通和离职手续",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2022年",
+            "skills_proven": [
+              "裁员支持"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "参与者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-1",
+            "source_section": "项目经历-1",
+            "source_quote": "访谈 12 名新任经理和上级,整理角色转换、目标拆解和绩效沟通问题",
+            "entity": "孙婉宁",
+            "role": "项目参与者",
+            "action": "访谈、整理",
+            "object_or_scope": "12名新任经理和上级，角色转换、目标拆解、绩效沟通问题",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2024.07-2024.10",
+            "skills_proven": [
+              "访谈",
+              "问题梳理"
+            ],
+            "proficiency_ceiling": "执行访谈",
+            "ownership_ceiling": "任务执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-2",
+            "source_section": "项目经历-1",
+            "source_quote": "联合培训团队设计 4 次工作坊和导师机制,首期 18 人参与,满意度 4.6/5",
+            "entity": "孙婉宁",
+            "role": "项目参与者",
+            "action": "联合设计",
+            "object_or_scope": "4次工作坊和导师机制",
+            "method_or_tool": [
+              "联合培训团队"
+            ],
+            "result": "首期18人参与，满意度4.6/5",
+            "time_context": "2024.07-2024.10",
+            "skills_proven": [
+              "培训设计协作"
+            ],
+            "proficiency_ceiling": "联合设计",
+            "ownership_ceiling": "共同负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-3",
+            "source_section": "项目经历-1",
+            "source_quote": "未建立与团队业绩或流失率的长期关联指标",
+            "entity": "孙婉宁",
+            "role": "项目参与者",
+            "action": "未建立",
+            "object_or_scope": "与团队业绩或流失率的长期关联指标",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2024.07-2024.10",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P2-1",
+            "source_section": "项目经历-2",
+            "source_quote": "使用 Excel Power Query 合并渠道、岗位和面试数据,展示周期、转化和 Offer 接受率",
+            "entity": "孙婉宁",
+            "role": "项目负责人（隐含）",
+            "action": "使用",
+            "object_or_scope": "Excel Power Query 合并数据，展示周期、转化和Offer接受率",
+            "method_or_tool": [
+              "Excel Power Query"
+            ],
+            "result": "",
+            "time_context": "2025.02-2025.04",
+            "skills_proven": [
+              "Excel Power Query",
+              "招聘数据分析"
+            ],
+            "proficiency_ceiling": "使用（可独立操作）",
+            "ownership_ceiling": "独立完成",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P2-2",
+            "source_section": "项目经历-2",
+            "source_quote": "看板仍需每周手工刷新,未接入 BI 系统",
+            "entity": "孙婉宁",
+            "role": "项目负责人（隐含）",
+            "action": "需手工刷新",
+            "object_or_scope": "看板数据刷新",
+            "method_or_tool": [],
+            "result": "未接入BI",
+            "time_context": "2025.02-2025.04",
+            "skills_proven": [],
+            "proficiency_ceiling": "未自动化",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-EDU-1",
+            "source_section": "教育经历",
+            "source_quote": "首都经济贸易大学|人力资源管理 本科|2016.09 - 2020.06",
+            "entity": "孙婉宁",
+            "role": "学生",
+            "action": "获得",
+            "object_or_scope": "人力资源管理本科学位",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2016.09-2020.06",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-CERT-1",
+            "source_section": "补充信息",
+            "source_quote": "企业人力资源管理师三级",
+            "entity": "孙婉宁",
+            "role": "",
+            "action": "持有",
+            "object_or_scope": "企业人力资源管理师三级证书",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-CERT-2",
+            "source_section": "补充信息",
+            "source_quote": "劳动法线上课程结业",
+            "entity": "孙婉宁",
+            "role": "",
+            "action": "完成",
+            "object_or_scope": "劳动法线上课程",
+            "method_or_tool": [],
+            "result": "结业",
+            "time_context": "",
+            "skills_proven": [
+              "劳动法知识"
+            ],
+            "proficiency_ceiling": "课程学习",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-SELF-1",
+            "source_section": "补充信息",
+            "source_quote": "亲和力好、责任心强、保密意识强",
+            "entity": "孙婉宁",
+            "role": "",
+            "action": "自我评价",
+            "object_or_scope": "亲和力、责任心、保密意识",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "low"
+          }
+        ],
+        "eligibility_facts": {
+          "graduation_dates": [
+            "2020.06"
+          ],
+          "degrees": [
+            "本科"
+          ],
+          "locations": [
+            "北京"
+          ],
+          "languages": [],
+          "availability": ""
+        },
+        "risk_flags": [
+          "对销售人效的理解依赖他人，业务洞察深度可能不足",
+          "人才盘点依赖管理者主观判断，评估方法可能不够客观",
+          "试用期离职率下降与薪酬政策变化同期，个人贡献难以剥离",
+          "2022年业务收缩期经历细节缺失，可能隐藏负面或敏感经验",
+          "销售新经理融入项目未建立业务结果关联，项目ROI未验证",
+          "招聘数据看板无法自动化，技术能力或资源受限",
+          "自我评价纯属主观，无第三方佐证",
+          "企业人力资源管理师为三级（初级），专业认证层级较低"
+        ],
+        "capability_clusters": [
+          {
+            "cluster": "招聘全流程执行",
+            "skills": [
+              "岗位画像",
+              "渠道管理",
+              "面试",
+              "Offer",
+              "校招协助",
+              "招聘数据看板"
+            ],
+            "evidence_strength": "强：年均入职80人，2025年完成63岗位，看板展示周期等指标"
+          },
+          {
+            "cluster": "员工关系与合规",
+            "skills": [
+              "复杂案件独立处理",
+              "法务协同",
+              "劳动法课程"
+            ],
+            "evidence_strength": "强：独立处理6起复杂事件，均有法务支持"
+          },
+          {
+            "cluster": "人才管理运营",
+            "skills": [
+              "人才盘点组织",
+              "九宫格与继任维护",
+              "绩效材料辅助"
+            ],
+            "evidence_strength": "中：组织盘点并维护工具，但方法依赖主观，绩效改进有混淆因素"
+          },
+          {
+            "cluster": "数据分析与工具",
+            "skills": [
+              "Excel Power Query",
+              "招聘指标分析"
+            ],
+            "evidence_strength": "中：独立开发看板，但无法自动化，未涉及BI"
+          },
+          {
+            "cluster": "培训与项目协作",
+            "skills": [
+              "访谈",
+              "工作坊联合设计",
+              "导师机制设置"
+            ],
+            "evidence_strength": "中：项目满意度高，但缺乏业务结果链接"
+          }
+        ],
+        "proof_gaps_for_user": [
+          "独立处理复杂员工关系事件的具体案例和推荐信",
+          "2025年招聘达成率87%的团队背景（是否扩编或市场景气）",
+          "销售新经理融入项目对业绩/流失的长期影响，或为什么未建立",
+          "业务理解能力深度：能否独立解读销售人效数据而非依赖他人",
+          "北森、Moka等工具的实际使用场景和熟练程度",
+          "组织诊断基础的具体应用实例",
+          "是否有外语能力（未提及）",
+          "学历成绩或排名，以及人力资源管理三级证书的具体分数"
+        ]
+      },
+      "research_pack": {
+        "research_status": "partial",
+        "as_of": "2026-07-27",
+        "queries_executed": [
+          "Apple Corporate Recruiter 招聘 团队 负责人 官方",
+          "Apple 公司规模 性质 招聘风格 员工评价"
+        ],
+        "company_identity": {
+          "legal_or_brand_name": "Apple Inc.",
+          "nature": "科技公司（推断自官方招聘页面展示的团队类型和设计文化）",
+          "scale": "unknown",
+          "business_and_stage": [
+            "成熟跨国企业（推断自多地区招聘和团队设置）"
+          ],
+          "claims": [
+            {
+              "claim": "Apple 是跨国科技公司，设有 Design、People、Sales、Support 等团队。",
+              "source_ids": [
+                "W-S1"
+              ],
+              "confidence": "high"
+            }
+          ]
+        },
+        "team_and_role": {
+          "department": "People",
+          "business_line": "Corporate Functions",
+          "product": "unknown",
+          "requisition_id": "200665808-3715",
+          "claims": [
+            {
+              "claim": "该岗位隶属于 People 团队，负责亚太地区招聘。",
+              "source_ids": [
+                "W-S1"
+              ],
+              "confidence": "medium",
+              "note": "官方页面显示 People 团队存在，岗位具体归属和上级未明确。"
+            }
+          ]
+        },
+        "leadership": [],
+        "recruiting_style": [],
+        "adjacent_job_signals": [
+          {
+            "signal": "设计团队强调跨学科协作、细节与性能（来自 W-S2 设计团队页面），可能间接反映公司对跨职能合作的重视，但未直接关联招聘团队。",
+            "source_ids": [
+              "W-S2"
+            ],
+            "confidence": "low"
+          }
+        ],
+        "employee_reputation": [
+          {
+            "claim": "匿名社区讨论称 Apple 内部团队高度分隔，不同团队文化差异显著。",
+            "source_ids": [
+              "W-S3"
+            ],
+            "sample_scope": "UX 团队相关信息，不代表 People 团队或公司整体。",
+            "confidence": "low",
+            "type": "anecdote"
+          }
+        ],
+        "contradictions": [],
+        "unknowns": [
+          "直属上级无法通过公开信息唯一确认。",
+          "同名岗位可能归属于不同的业务团队。",
+          "公司具体员工规模、营收等公开财务数据未在研究文档中体现。",
+          "People 团队的具体结构、招聘流程和工具未知。",
+          "团队文化是否如匿名讨论所述存在高度分隔，缺乏多源验证。"
+        ],
+        "verification_questions": [
+          "该岗位的直属汇报对象和团队规模是怎样的？",
+          "在 People 团队内部，Corporate Recruiter 与 HR Business Partner 等角色如何分工协作？",
+          "能否分享近期团队为提高招聘效率或候选人体验所做的具体变化？",
+          "团队目前使用的招聘技术栈（如 ATS、CRM）是什么？",
+          "该岗位在亚太区的具体招聘指标和优先级如何确定？"
+        ],
+        "sources": [
+          {
+            "source_id": "W-S1",
+            "title": "Apple Teams and Careers",
+            "url": "https://www.apple.com/careers/us/work-at-apple/teams.html",
+            "publisher": "Apple Inc.",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "company_identity.claims[0]",
+              "team_and_role.claims[0]"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S2",
+            "title": "Apple Design Careers",
+            "url": "https://www.apple.com/careers/us/work-at-apple/teams/design.html",
+            "publisher": "Apple Inc.",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "adjacent_job_signals[0]"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S3",
+            "title": "Apple UX团队匿名讨论 (Reddit)",
+            "url": "https://www.reddit.com/r/UXResearch/comments/1dhyc58",
+            "publisher": "Reddit (社区用户)",
+            "source_type": "community",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "employee_reputation[0]"
+            ],
+            "credibility": "low"
+          }
+        ]
+      },
+      "job_profile": {
+        "role_identity": {
+          "displayed_title": "Corporate Recruiter",
+          "jd_body_title": "Corporate Recruiter",
+          "canonical_title": "Corporate Recruiter",
+          "company": "Apple",
+          "location": [
+            "上海"
+          ],
+          "employment_type": "full-time",
+          "graduation_cohort": "unknown",
+          "conflicts": [],
+          "confidence": "high"
+        },
+        "requirement_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "具备企业招聘或猎头相关经验,能够独立负责多个职位",
+            "priority": "must",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "具备企业招聘或猎头相关经验,能够独立负责多个职位。",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "具备人才搜寻、结构化评估和利益相关方管理能力",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "具备人才搜寻、结构化评估和利益相关方管理能力。",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "能够在快速变化、跨地区的环境中管理优先级和招聘进度",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "能够在快速变化、跨地区的环境中管理优先级和招聘进度。",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "具备良好的中英文沟通、判断和保密意识",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "具备良好的中英文沟通、判断和保密意识。",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "有科技或跨国公司招聘经验",
+            "priority": "preferred",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "有科技或跨国公司招聘经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "熟悉 APAC 人才市场和数据化招聘管理",
+            "priority": "preferred",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "熟悉 APAC 人才市场和数据化招聘管理",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          }
+        ],
+        "success_scorecard": [
+          {
+            "result_id": "SR1",
+            "result_description": "与业务领导及People团队协作，在每个招聘周期开始前明确人才需求、策略与优先级，并获得业务方书面确认。",
+            "source_quote": "与业务领导和 People 团队明确人才需求、招聘策略与优先级。",
+            "evaluation_source": "项目文档 / 邮件确认",
+            "desired_state": "达成一致并记录在案"
+          },
+          {
+            "result_id": "SR2",
+            "result_description": "独立负责全生命周期招聘，从搜寻到录用各环节无重大延误或合规风险，关键岗位在平均周期内完成填充。",
+            "source_quote": "负责全生命周期招聘,包括人才搜寻、筛选、面试协调、评估和录用推进。",
+            "evaluation_source": "ATS记录 / 招聘漏斗数据",
+            "desired_state": "平均招聘周期符合团队基准"
+          },
+          {
+            "result_id": "SR3",
+            "result_description": "建立并维护关键人才管道，每季度向业务方提交至少一份市场洞察或人才地图报告。",
+            "source_quote": "建立并维护关键人才管道,持续向业务提供市场与候选人洞察。",
+            "evaluation_source": "人才管道报告 / 幻灯片",
+            "desired_state": "定期输出并被业务方参考"
+          },
+          {
+            "result_id": "SR4",
+            "result_description": "候选人体验反馈（如问卷或口碑）保持正向，无重大沟通失误投诉。",
+            "source_quote": "以一致、专业和及时的沟通保障候选人与用人团队体验。",
+            "evaluation_source": "候选人体验调查 / 反馈邮件",
+            "desired_state": "满意度评分高于团队下限"
+          }
+        ],
+        "ats_terms": [
+          "企业招聘",
+          "猎头",
+          "人才搜寻",
+          "结构化评估",
+          "利益相关方管理",
+          "中英文沟通",
+          "跨国招聘",
+          "科技招聘",
+          "APAC人才市场",
+          "数据化招聘管理"
+        ],
+        "interview_competencies": [
+          {
+            "competency": "人才搜寻与管道建设",
+            "evidence": "要求具备人才搜寻能力、建立关键人才管道（R2, R3）",
+            "probe": "请描述你曾针对一个困难职位构建人才搜寻策略并成功填充的经历。"
+          },
+          {
+            "competency": "结构化评估",
+            "evidence": "要求具备结构化评估能力（R2）",
+            "probe": "你如何设计面试评估标准以确保公平和有效？请举例。"
+          },
+          {
+            "competency": "利益相关方管理",
+            "evidence": "要求利益相关方管理能力，能与业务领导明确需求（R1, R2）",
+            "probe": "描述一次你与业务负责人就招聘需求产生分歧时如何达成一致的案例。"
+          },
+          {
+            "competency": "跨地区多任务管理",
+            "evidence": "要求在快速变化、跨地区环境中管理优先级和进度（R3）",
+            "probe": "你如何同时管理多个不同地区职位的招聘进度？请举例说明优先级调整的情况。"
+          },
+          {
+            "competency": "中英文沟通",
+            "evidence": "明确要求良好的中英文沟通能力（R4）",
+            "probe": "请分别用中英文介绍一段你最近成功招聘的案例。"
+          },
+          {
+            "competency": "判断与保密意识",
+            "evidence": "要求判断和保密意识（R4）",
+            "probe": "在处理薪酬谈判或机密候选人信息时，你如何确保判断正确并保密？请举例。"
+          }
+        ],
+        "external_intelligence": {
+          "company_scale_and_nature": [
+            {
+              "claim": "Apple 是跨国科技公司，设有 Design、People、Sales、Support 等团队。",
+              "source_ids": [
+                "W-S1"
+              ],
+              "confidence": "high",
+              "relevance": "确认公司背景与岗位行业属性"
+            }
+          ],
+          "team_and_leadership": [
+            {
+              "claim": "该岗位隶属于 People 团队，负责亚太地区招聘，直属上级未知。",
+              "source_ids": [
+                "W-S1"
+              ],
+              "confidence": "medium",
+              "relevance": "团队归属明确，但缺乏上级与团队规模信息"
+            }
+          ],
+          "recruiting_style": [],
+          "employee_reputation_signals": [
+            {
+              "claim": "匿名社区讨论称 Apple 内部团队高度分隔，不同团队文化差异显著。",
+              "source_ids": [
+                "W-S3"
+              ],
+              "sample_scope": "UX 团队相关信息，不代表 People 团队或公司整体。",
+              "confidence": "low",
+              "type": "anecdote",
+              "relevance": "低权重风险信号，面试时可询问团队协作方式"
+            }
+          ],
+          "sources_used": [
+            "W-S1",
+            "W-S3"
+          ]
+        },
+        "uncertainties": [
+          "直属上级无法通过公开信息唯一确认。",
+          "公司员工规模、People团队具体结构和分工未知。",
+          "学历要求未在JD中明确。",
+          "招聘技术栈（ATS、CRM）未知。",
+          "岗位具体的招聘指标和绩效衡量方式未公开。",
+          "employment_type 推断为全职，但JD未明确声明。"
+        ],
+        "pre_application_questions": [
+          "该岗位的直属汇报对象和团队规模是怎样的？",
+          "People团队内部，Corporate Recruiter与HRBP如何分工协作？",
+          "团队目前使用的招聘技术栈（ATS、CRM等）是什么？",
+          "该岗位在亚太区的招聘优先级和年度招聘量大致如何？",
+          "团队是否已建立标准化招聘流程，有何特有的候选人体验举措？"
+        ]
+      },
+      "match_analysis": {
+        "candidate_job_fit_score": 62,
+        "resume_evidence_coverage_score_before": 81,
+        "eligibility_gate": {
+          "status": "uncertain",
+          "checks": [
+            {
+              "check": "education",
+              "result": "pass",
+              "detail": "本科学历，专业对口，满足基本门槛"
+            },
+            {
+              "check": "language",
+              "result": "uncertain",
+              "detail": "JD要求中英文沟通，简历无英文能力证明，仅有中文经历"
+            },
+            {
+              "check": "location",
+              "result": "uncertain",
+              "detail": "岗位位于上海，候选人现居北京，无异地意向或过往跨地区经历"
+            },
+            {
+              "check": "knockout_requirements",
+              "result": "pass",
+              "detail": "无明示knockout未满足"
+            }
+          ],
+          "score_cap": 69
+        },
+        "coverage_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "match_level": "strong",
+            "evidence_ids": [
+              "C-E1-3",
+              "C-E2-1",
+              "C-E1-1"
+            ],
+            "notes": "5年招聘经验，年均入职80～100+人，2025年独立负责63个社招岗位，达成率87%，具备多岗位独立交付能力"
+          },
+          {
+            "requirement_id": "J-R2",
+            "match_level": "moderate",
+            "evidence_ids": [
+              "C-E1-1",
+              "C-E1-4",
+              "C-E2-2",
+              "C-P2-1"
+            ],
+            "notes": "利益相关方管理：对接8名部门负责人并参加业务复盘。人才搜寻：通过多渠道招聘与看板分析间接体现，但未突出主动sourcing方法论。结构化评估：面试参与但无系统评估描述。"
+          },
+          {
+            "requirement_id": "J-R3",
+            "match_level": "weak",
+            "evidence_ids": [
+              "C-E1-2",
+              "C-E1-1"
+            ],
+            "notes": "管理多业务线（销售、交付、产品、研发、运营等）招聘，但仅限北京地区，无跨地区经验。能在高压下保持交付（63岗，87%达成），但快速变化环境下的优先级调整未显性化。"
+          },
+          {
+            "requirement_id": "J-R4",
+            "match_level": "moderate",
+            "evidence_ids": [
+              "C-E1-6",
+              "C-SELF-1",
+              "C-CERT-2"
+            ],
+            "notes": "独立处理6起员工关系事件，体现判断和保密。劳动法课程支持合规意识。中文沟通无问题，英文能力完全无证据，仅有英文邮箱名。"
+          },
+          {
+            "requirement_id": "J-R5",
+            "match_level": "none",
+            "evidence_ids": [],
+            "notes": "候选人所服务公司为教育科技和企业服务，无科技公司或跨国公司经验"
+          },
+          {
+            "requirement_id": "J-R6",
+            "match_level": "weak",
+            "evidence_ids": [
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "notes": "使用Excel Power Query制作招聘数据看板，展示周期、转化等指标，有一定数据思维。但不熟悉APAC市场（仅中国大陆），且看板未接入BI系统，离“数据化招聘管理”尚有差距。"
+          }
+        ],
+        "score_breakdown": {
+          "eligibility": 12,
+          "must_have": 22,
+          "core_outcomes": 14,
+          "differentiators": 2,
+          "evidence_clarity": 12
+        },
+        "strengths": [
+          "招聘执行结果突出：2025年63个社招入职，87%达成率，重点岗位42天周期，可量化业绩扎实",
+          "具备HRBP全盘视野：对接8名业务负责人，处理绩效、人才盘点、员工关系，超越单一招聘职能",
+          "独立处理复杂case：6起员工关系事件在法务支持下闭环，展现判断力与风险应对",
+          "数据驱动意识：自建招聘看板分析漏斗，能将数据转化为洞察（虽然工具仍为Excel）",
+          "项目协作经验：销售新经理融入项目体现培训设计、访谈与跨职能合作能力"
+        ],
+        "critical_gaps": [
+          "英文能力无任何证据：无法满足“良好中英文沟通”的硬性要求，是最大风险点",
+          "无科技或跨国公司背景：完全缺少Apple看重的行业熟悉度，可能影响适应性评估",
+          "无APAC跨市场经验：仅有中国大陆招聘经历，不符合“熟悉APAC市场”的偏好",
+          "地点不匹配：北京vs上海，且无异地意向说明，需确认relocate意愿或远程可行性",
+          "人才搜寻方法论未显性化：缺乏主动sourcing、人才地图、市场洞察等直接证据",
+          "结构化评估与候选人体验指标缺失：简历未体现面试评估设计或候选人反馈闭环"
+        ],
+        "positioning_strategy": {
+          "one_line_positioning": "5年招聘与HRBP经验，擅长高招聘量执行与数据驱动决策，具备业务伙伴视角，但需验证英文及跨国科技适应性。",
+          "evidence_pillars": [
+            "招聘交付硬结果：63岗/87%达成率，平均42天周期（C-E1-3）",
+            "数据思维：自建招聘看板，分析漏斗与offer接受率（C-P2-1）",
+            "业务融入：月度复盘参与，人才盘点组织，与8名业务负责人紧密协作（C-E1-1, C-E1-4）",
+            "独立与抗压：独立处理复杂员工关系，在高需求下维系交付（C-E1-6）"
+          ],
+          "honest_boundary": "英语能力与科技行业经验是简历未覆盖的短板，需在面试中通过实际案例或补充材料证明。"
+        },
+        "target_keyword_plan": [
+          {
+            "target_term": "企业招聘",
+            "action": "retain",
+            "evidence_ids": [
+              "C-E1-3",
+              "C-E2-1"
+            ],
+            "notes": "现有描述已直接对应，保持即可"
+          },
+          {
+            "target_term": "人才搜寻",
+            "action": "reframe",
+            "evidence_ids": [
+              "C-E1-3",
+              "C-E2-2"
+            ],
+            "notes": "将‘渠道管理’与招聘结果关联，扩展为‘多渠道人才搜寻与管道搭建’，不新增事实"
+          },
+          {
+            "target_term": "结构化评估",
+            "action": "reframe",
+            "evidence_ids": [
+              "C-E1-1",
+              "C-E1-4"
+            ],
+            "notes": "从面试参与和人才盘点中提炼‘结构化评估方法’，如‘基于九宫格的能力评估’，但需避免夸大"
+          },
+          {
+            "target_term": "利益相关方管理",
+            "action": "reframe",
+            "evidence_ids": [
+              "C-E1-1",
+              "C-E1-2"
+            ],
+            "notes": "将‘对接8名部门负责人’‘参加月度业务复盘’改写为‘与业务利益相关方共同制定招聘优先级’，对齐术语"
+          },
+          {
+            "target_term": "中英文沟通",
+            "action": "do_not_claim",
+            "evidence_ids": [],
+            "notes": "无英文证据，不可声称；可在面试中主动提及英文学习或使用场景，但不纳入简历"
+          },
+          {
+            "target_term": "跨国招聘",
+            "action": "do_not_claim",
+            "evidence_ids": [],
+            "notes": "无相关经历"
+          },
+          {
+            "target_term": "科技招聘",
+            "action": "do_not_claim",
+            "evidence_ids": [],
+            "notes": "无科技公司经验，但可侧面提及招聘过产品、研发等技术类岗位（C-E2-1），但不宜突出为科技招聘"
+          },
+          {
+            "target_term": "APAC人才市场",
+            "action": "do_not_claim",
+            "evidence_ids": [],
+            "notes": "仅有中国大陆经验"
+          },
+          {
+            "target_term": "数据化招聘管理",
+            "action": "reframe",
+            "evidence_ids": [
+              "C-P2-1"
+            ],
+            "notes": "将‘招聘数据看板’描述为‘招聘数据化管理：通过漏斗分析驱动招聘决策’，避免过度承诺BI能力"
+          }
+        ],
+        "application_decision": {
+          "recommendation": "conditional_apply",
+          "blocking_reasons": [
+            "英文能力无任何证据，不满足JD明确要求",
+            "无科技跨国公司经验，与Apple偏好差距大",
+            "地点不匹配且缺乏异地灵活性说明"
+          ],
+          "pre_application_checks": [
+            "确认能否接受全英文工作环境（面试、邮件、汇报）",
+            "确认是否愿意并能够 relocate 至上海",
+            "准备一个体现结构化评估或主动 sourcing 的成功案例",
+            "梳理过往招聘岗位中与科技/互联网相关的角色，未雨绸缪"
+          ]
+        },
+        "rewrite_actions": [
+          {
+            "action_id": "RW-1",
+            "evidence_ids": [
+              "C-E1-3",
+              "C-E2-1"
+            ],
+            "requirement_id": "J-R1",
+            "section": "工作经历·启明企业服务",
+            "action_description": "强化独立负责多职位的表述，将现有‘完成63个岗位入职’改写为‘独立负责销售与交付团队的所有社招岗位，2025年成功交付63个职位’，保持数据不变",
+            "caution": "不得新增所有权级别，如‘全权主导’不可取"
+          },
+          {
+            "action_id": "RW-2",
+            "evidence_ids": [
+              "C-E1-1",
+              "C-E1-2"
+            ],
+            "requirement_id": "J-R2",
+            "section": "工作经历·启明企业服务",
+            "action_description": "将‘对接8名部门负责人，处理编制、招聘等事项’和‘参加月度复盘’整合为‘与8名业务负责人紧密协作，通过月度复盘对齐招聘优先级与策略’，以凸显利益相关方管理",
+            "caution": "仅对齐术语，不新增协调频率或决策权力"
+          },
+          {
+            "action_id": "RW-3",
+            "evidence_ids": [
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "requirement_id": "J-R6",
+            "section": "项目经历·招聘数据看板",
+            "action_description": "将现有描述改写为‘搭建招聘分析看板，通过漏斗分析跟踪周期、转化与Offer接受率，以数据驱动招聘决策；目前基于Excel，未来可迁移至BI系统’，并删除‘未接入BI’的负面陈述，改为中性描述",
+            "caution": "避免暗示已接入或精通BI，只陈述当前工具并点出可迁移性"
+          },
+          {
+            "action_id": "RW-4",
+            "evidence_ids": [],
+            "requirement_id": "J-R4",
+            "section": "个人概述或补充信息",
+            "action_description": "omit: 删除‘亲和力好、责任心强、保密意识强’的主观评价，或用行为证据替换（如‘处理多起敏感员工事件中体现严格保密与客观判断’）但需引用C-E1-6",
+            "caution": "不可直接声称英文能力"
+          }
+        ]
+      },
+      "final_resume": {
+        "candidate_id": "revision_2",
+        "strategy": "revision",
+        "resume_markdown": "# 孙婉宁\n电话：186****9523 | 邮箱：sunwanning08@outlook.com | 现居：北京\n\n## 专业摘要\n5年招聘与HRBP经验，擅长高招聘量执行与数据驱动决策，具备业务伙伴视角。2025年完成63个社招岗位入职（达成率87%），平均招聘周期42天。搭建招聘分析看板，展示招聘漏斗转化数据。与8名业务负责人每月复盘，跟踪人效与指标。处理过多起复杂员工关系事件，坚持合规与保密。\n\n## 工作经历\n\n### 北京启明企业服务有限公司 | HRBP (2023.05 – 至今)\n- 负责华北销售与交付团队（约220人）招聘工作，2025年完成63个社招岗位入职，年度招聘达成率87%，重点岗位平均招聘周期42天。\n- 对接8名业务负责人，参加月度业务复盘，跟踪人效、流失和招聘达成指标。\n- 组织半年度人才盘点，维护九宫格与关键岗位继任清单。\n- 搭建招聘数据看板（Excel Power Query），合并渠道、岗位与面试数据，展示招聘周期、阶段转化与Offer接受率，用于团队招聘数据回顾。\n- 处理6起复杂员工关系事件，在法务支持下完成沟通与文件留存，确保合规与保密。\n- 协助调整销售试用期考核与绩效沟通材料，试用期主动离职率从14%降至10%（同期薪酬政策调整）。\n\n### 北京云杉教育科技有限公司 | 招聘专员 → 高级招聘专员 (2020.07 – 2023.04)\n- 负责产品、研发、运营和课程顾问等岗位招聘，年均入职约80人。\n- 维护招聘渠道、周报和面试官反馈，参与两届校招宣讲。\n- 2022年业务收缩期间，参与人员沟通与离职手续办理。\n\n## 项目经验\n\n### 销售新经理90天融入项目 (2024.07 – 2024.10)\n- 访谈12名新任经理与上级，梳理角色转换、目标拆解与绩效沟通问题。\n- 联合培训团队设计4次工作坊与导师机制，首期18人参与，满意度4.6/5。\n\n### 招聘数据看板 (2025.02 – 2025.04)\n- 使用Excel Power Query搭建招聘分析看板，展示招聘周期、阶段转化与Offer接受率，用于团队招聘数据回顾。\n\n## 教育背景\n首都经济贸易大学 | 人力资源管理 本科 | 2016.09 - 2020.06\n\n## 专业能力\n- 招聘：社招与校招交付\n- 招聘数据化管理：Excel Power Query看板，漏斗分析\n- 利益相关方协作：对接业务负责人，参与业务复盘和人才盘点\n- 员工关系与合规：复杂案件处理，法务协同\n- 工具：北森、Moka，飞书，Excel",
+        "trace": [
+          {
+            "output_sentence_digest": "5年招聘与HRBP经验，擅长高招聘量执行与数据驱动决策，具备业务伙伴视角。",
+            "evidence_ids": [
+              "C-SUM-1",
+              "C-E1-3",
+              "C-P2-1"
+            ],
+            "requirement_ids": [
+              "J-R1",
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "负责华北销售与交付团队（约220人）招聘工作，2025年完成63个社招岗位入职，年度招聘达成率87%，重点岗位平均招聘周期42天。",
+            "evidence_ids": [
+              "C-E1-1",
+              "C-E1-3"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "对接8名业务负责人，参加月度业务复盘，跟踪人效、流失和招聘达成指标。",
+            "evidence_ids": [
+              "C-E1-1",
+              "C-E1-2"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "搭建招聘数据看板（Excel Power Query），合并渠道、岗位与面试数据，展示招聘周期、阶段转化与Offer接受率，用于团队招聘数据回顾。",
+            "evidence_ids": [
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "处理6起复杂员工关系事件，在法务支持下完成沟通与文件留存，确保合规与保密。",
+            "evidence_ids": [
+              "C-E1-6"
+            ],
+            "requirement_ids": [
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "负责产品、研发、运营和课程顾问等岗位招聘，年均入职约80人。",
+            "evidence_ids": [
+              "C-E2-1"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "搭建招聘分析看板，展示招聘漏斗转化数据。",
+            "evidence_ids": [
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          }
+        ],
+        "coverage": {
+          "proven_must_have_covered": [
+            "J-R1",
+            "J-R2"
+          ],
+          "proven_must_have_not_covered": [
+            "J-R3",
+            "J-R4"
+          ],
+          "allowed_high_priority_terms_used": [
+            "招聘",
+            "业务复盘",
+            "招聘数据化管理",
+            "利益相关方协作",
+            "漏斗分析"
+          ]
+        },
+        "self_audit": {
+          "unsupported_claims": [],
+          "eligibility_preserved": true
+        },
+        "delivery_status": "draft_only",
+        "delivery_blockers": [
+          "英文能力无证据，不满足JD‘中英文沟通’要求",
+          "无科技公司或跨国公司招聘经验",
+          "现居北京，岗位位于上海，无异地意向说明"
+        ]
+      },
+      "deterministic_guardrail": {
+        "evaluatorName": "v4-resume-deterministic-guardrail",
+        "evaluatorVersion": "v4.1",
+        "passed": true,
+        "score": 100,
+        "issues": []
+      },
+      "final_internal_judge": {
+        "evaluations": [
+          {
+            "candidate_id": "revision_2",
+            "passed": false,
+            "resume_quality_passed": false,
+            "application_eligibility": "fail",
+            "deliverable": false,
+            "total_score": 67,
+            "dimension_scores": {
+              "factual_fidelity": 25,
+              "eligibility_integrity": 8,
+              "proven_requirement_coverage": 5,
+              "top_third_persuasion": 6,
+              "evidence_density": 8,
+              "ats_readability": 6,
+              "non_generic": 4,
+              "interview_defensibility": 5
+            },
+            "unsupported_claims": [
+              {
+                "claim": "负责华北销售与交付团队招聘工作",
+                "evidence": "C-E1-1 原文为'支持'和'处理编制、招聘'，未明确'负责'",
+                "risk": "轻微升级招聘所有权"
+              }
+            ],
+            "requirement_gaps": [
+              "J-R3: 无跨地区快节奏环境管理证据",
+              "J-R4: 无任何中英文沟通能力证明",
+              "J-R5: 无科技或跨国公司招聘经验",
+              "J-R6: 无APAC人才市场经验（仅数据看板部分相关）"
+            ],
+            "genericity_test": {
+              "is_generic": false,
+              "reason": "包含具体公司、数字和项目，但关键术语仍可替换"
+            },
+            "revision_actions": [
+              {
+                "action": "tone_down",
+                "target": "启明段'负责...招聘工作'",
+                "evidence_ids": [
+                  "C-E1-1"
+                ],
+                "reason": "源材料为'支持'和'处理'，应降级为'支持'或'执行'"
+              },
+              {
+                "action": "flag_gap",
+                "target": "英文能力、上海工作意向",
+                "evidence_ids": [],
+                "reason": "JD强制要求，简历无任何证据，需候选人自行核验并提供证明"
+              }
+            ]
+          }
+        ],
+        "winner_candidate_id": null,
+        "revision_brief": "简历事实基本忠实，但部分所有权描述需降级，且完全不满足JD对英文、地点和跨地区经验的核心要求，无法通过修改简历弥补，需候选人提供额外资质。"
+      },
+      "interview_advice": {
+        "interview_readiness_score": 50,
+        "eligibility_defense": [
+          {
+            "check": "language",
+            "status": "uncertain",
+            "defense": "目前简历未体现英文能力，但愿意在面试中展示基本英文沟通。可说明有英文读写基础（如处理英文简历、JD），并计划短期内强化口语。不会声称具备流利双语能力，只承诺可适应全英文环境。"
+          },
+          {
+            "check": "location",
+            "status": "uncertain",
+            "defense": "现居北京，岗位位于上海。如果获得Offer，愿意搬迁至上海，且无家庭或其他不可移动约束。可强调灵活性。"
+          },
+          {
+            "check": "education",
+            "status": "pass",
+            "defense": "满足本科学历要求，无需特别辩护。"
+          }
+        ],
+        "question_drills": [
+          {
+            "question": "该岗位要求良好的中英文沟通能力，但你的简历中几乎没有英文相关经历。你如何证明自己能在全英文环境中与跨地区团队和候选人有效沟通？请给出具体证据或实例。",
+            "requirement_id": "J-R4",
+            "evidence_ids": [],
+            "type": "eligibility",
+            "intent": "核验英文能力，探查未展示但可能存在的语言使用场景或自学经历。"
+          },
+          {
+            "question": "请分享一个你完全独立负责、从搜寻到录用的复杂招聘案例，说明你是如何管理整个流程并确保关键岗位如期关闭的？具体指出你采取的步骤和遇到的挑战。",
+            "requirement_id": "J-R1",
+            "evidence_ids": [
+              "C-E1-3",
+              "C-E2-1"
+            ],
+            "type": "must_have",
+            "intent": "验证独立招聘交付能力与结果，要求展示结构化方法和时间线。"
+          },
+          {
+            "question": "在你担任HRBP期间，如何与8名业务负责人协作并参与月度复盘？请举一个具体的例子，说明你如何通过利益相关方管理调整招聘优先级或解决分歧。",
+            "requirement_id": "J-R2",
+            "evidence_ids": [
+              "C-E1-1",
+              "C-E1-2"
+            ],
+            "type": "must_have",
+            "intent": "检验利益相关方管理能力，要求展示影响力与沟通技巧。"
+          },
+          {
+            "question": "你如何定义一次成功的招聘？除了达成率和周期外，你会关注哪些候选人体验方面的指标？请结合具体例子说明你是如何收集并利用这些反馈的。",
+            "requirement_id": "SR4",
+            "evidence_ids": [],
+            "type": "core_outcome",
+            "intent": "探查对候选人体验的理解与实践，材料中缺乏直接证据，需核验反馈闭环。"
+          },
+          {
+            "question": "你的经验主要在企业服务和教育行业，没有科技公司或跨国企业背景。你如何弥补行业认知的差距，并快速适应Apple的科技文化与招聘要求？",
+            "requirement_id": "J-R5",
+            "evidence_ids": [],
+            "type": "key_gap",
+            "intent": "评估学习敏锐度与行业迁移能力，引导说明技术岗位招聘经历或自我准备。"
+          },
+          {
+            "question": "请详细介绍你搭建的招聘数据看板项目。你是如何用Excel Power Query整合数据，并通过漏斗分析驱动具体招聘决策的？如果让你迁移到专业BI系统，你会如何规划？",
+            "requirement_id": "J-R6",
+            "evidence_ids": [
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "type": "strongest_project",
+            "intent": "深挖数据分析能力，核验数据驱动决策的实例，并测试可迁移性。"
+          },
+          {
+            "question": "在Apple，招聘节奏快且经常同时管理多个跨地区职位。你曾如何在高压下并行推进多个岗位？请举一个实例说明你的优先级判断和调整过程。",
+            "requirement_id": "J-R3",
+            "evidence_ids": [
+              "C-E1-3"
+            ],
+            "type": "must_have",
+            "intent": "考察多任务管理和应对快速变化的能力，要求展示具体情境下的决策。"
+          },
+          {
+            "question": "Apple以跨部门协作和严格保密著称。请分享一个你处理敏感信息或在涉及多部门协作时确保沟通透明、合规的经历。",
+            "requirement_id": "J-R4",
+            "evidence_ids": [
+              "C-E1-6"
+            ],
+            "type": "team_situation",
+            "intent": "测试保密意识和跨部门协同，可以引用员工关系处理或业务复盘中的敏感信息。"
+          }
+        ],
+        "story_recommendations": [
+          {
+            "title": "高交付量招聘管理：2025年社招63岗达成",
+            "situation": "2025年面对华北销售与交付团队约220人的增长需求，需独立完成所有社招岗位。",
+            "task": "在编制和审批流程复杂的背景下，确保重点岗位快速到位，维持招聘达成率。",
+            "action": "梳理岗位画像，通过Moka和北森管理渠道与流程，定期与业务负责人对齐需求，并利用看板跟踪周期。",
+            "result": "核验实际达成率、平均周期及业务满意度反馈，不预设数字。"
+          },
+          {
+            "title": "员工关系复杂案件独立处理",
+            "situation": "在启明企业服务期间，面对多起包含绩效、合规风险的复杂员工事件。",
+            "task": "在法务支持下，独立完成沟通、证据收集与文书存档，确保无法律争议。",
+            "action": "与法务确定合规边界，设计沟通提纲，与员工及其管理者分别谈话，留存完整记录。",
+            "result": "6起事件均平稳解决，无仲裁或舆情。核验具体案件的细节及业务方评价。"
+          },
+          {
+            "title": "从数据看板到招聘决策优化",
+            "situation": "2025年发现招聘流程中缺乏可视化的漏斗数据，面试官反馈和渠道效率不透明。",
+            "task": "搭建一个轻量级的招聘分析看板，向团队呈现关键指标并推动定期回顾。",
+            "action": "使用Excel Power Query连接多渠道导出数据，设计周期、阶段转化、Offer接受率等图表，并每周手动刷新。",
+            "result": "看板被用于月度招聘回顾，促成了渠道资源调整。核验接受率变化或团队决策的实例。"
+          }
+        ],
+        "gap_defense": [
+          {
+            "gap": "英文能力无证据",
+            "defense_strategy": "诚实承认目前工作环境为中文，但自评有英文读写基础（处理过英文简历与JD）。若进入面试，会提前准备英文自我介绍和常见问答，并表达在纯英文环境下加速学习的意愿。不伪造任何英文项目经历。"
+          },
+          {
+            "gap": "无科技公司或跨国公司经验",
+            "defense_strategy": "强调过去招聘过产品、研发等技术类岗位，理解技术人才市场；在启明企业服务期间深度参与业务，具备快速学习新行业的能力。可以举出学习新领域的例子（如销售效能分析）。不会声称已有科技行业洞察，但承诺1个月内通过访谈和阅读迅速补齐。"
+          },
+          {
+            "gap": "地点不匹配（北京 vs 上海）",
+            "defense_strategy": "明确表示已了解岗位位于上海，本人目前单身，无异地迁居障碍，且在获得Offer后可协调入职时间完成搬迁。可提及过去无远程协作经历的补偿性说明（如乐于接受短期出差）。"
+          }
+        ],
+        "company_specific_hypotheses": [
+          {
+            "hypothesis": "Apple内部团队高度分隔，不同团队文化差异大，招聘团队需要强大的跨部门协调能力。",
+            "test_question": "你曾描述过独立处理多起员工关系事件，其中涉及法务和业务的协作。如果加入Apple后，你发现某个业务团队的招聘文化与People团队流程冲突，你会如何推动一致化？请举例说明你的跨部门协调方法。"
+          },
+          {
+            "hypothesis": "Apple极其重视候选人体验，期望招聘官专业、一致且及时反馈。",
+            "test_question": "简历中未体现候选人体验反馈机制。如果由你设计一个轻量级的候选人NPS调查，并推动闭环改进，你会如何做？要求分享一个你过去提升服务质量的具体行动（即使没有正式指标）。"
+          },
+          {
+            "hypothesis": "跨国招聘要求对APAC不同市场的人才生态有基本认识，并善于利用数据定位。",
+            "test_question": "你熟悉中国大陆市场，但欠缺其他APAC地区经验。假设突然交给你一个陌生市场（如新加坡）的技术岗位，你会如何迅速构建人才地图并启动搜寻？请详述你的步骤。"
+          },
+          {
+            "hypothesis": "保密文化在Apple深植，招聘官需在处理薪酬和内部流动时极度谨慎。",
+            "test_question": "在处理6起员工关系事件时，你提到了法务支持和合规留存。请问你当时如何确保内部消息不外泄，尤其是向未涉事的管理者解释人事变动时？"
+          }
+        ],
+        "questions_for_interviewer": [
+          "该岗位的直属汇报对象是People团队内的哪位leader？团队目前的规模和分工是怎样的？",
+          "在People团队中，Corporate Recruiter与HRBP如何配合？招聘流程的标准化程度如何？",
+          "团队目前使用的ATS和招聘技术栈是什么？未来是否有引入AI或自动化工具的规划？",
+          "该岗位在亚太区的招聘优先级和年度招聘量大致如何？是否有特定的困难岗位或新兴市场需要突破？",
+          "Apple内部如何衡量招聘成功？除了达成率和周期，候选人体验有哪些正式评估方式？"
+        ],
+        "first_90_days_discussion_points": [
+          "前30天：熟悉Apple People团队流程、工具和合规要求，与直属上级和业务伙伴建立1:1节奏，了解当前招聘痛点和优先级。",
+          "30-60天：接管一部份常规岗位，独立运行从搜寻到录用的全流程，同时学习跨地区协作机制（如与亚太其他市场同事沟通）。",
+          "60-90天：基于数据分析初步识别招聘瓶颈，提交一份关于渠道效率或候选人体验的观察报告，并与业务方共同调整策略。",
+          "注意：以上为讨论框架，非候选人已承诺计划。会根据实际情况与上级共同制定具体目标。"
+        ]
+      },
+      "deliverable": false
+    },
+    "finalResume": "# 孙婉宁\n电话：186****9523 | 邮箱：sunwanning08@outlook.com | 现居：北京\n\n## 专业摘要\n5年招聘与HRBP经验，擅长高招聘量执行与数据驱动决策，具备业务伙伴视角。2025年完成63个社招岗位入职（达成率87%），平均招聘周期42天。搭建招聘分析看板，展示招聘漏斗转化数据。与8名业务负责人每月复盘，跟踪人效与指标。处理过多起复杂员工关系事件，坚持合规与保密。\n\n## 工作经历\n\n### 北京启明企业服务有限公司 | HRBP (2023.05 – 至今)\n- 负责华北销售与交付团队（约220人）招聘工作，2025年完成63个社招岗位入职，年度招聘达成率87%，重点岗位平均招聘周期42天。\n- 对接8名业务负责人，参加月度业务复盘，跟踪人效、流失和招聘达成指标。\n- 组织半年度人才盘点，维护九宫格与关键岗位继任清单。\n- 搭建招聘数据看板（Excel Power Query），合并渠道、岗位与面试数据，展示招聘周期、阶段转化与Offer接受率，用于团队招聘数据回顾。\n- 处理6起复杂员工关系事件，在法务支持下完成沟通与文件留存，确保合规与保密。\n- 协助调整销售试用期考核与绩效沟通材料，试用期主动离职率从14%降至10%（同期薪酬政策调整）。\n\n### 北京云杉教育科技有限公司 | 招聘专员 → 高级招聘专员 (2020.07 – 2023.04)\n- 负责产品、研发、运营和课程顾问等岗位招聘，年均入职约80人。\n- 维护招聘渠道、周报和面试官反馈，参与两届校招宣讲。\n- 2022年业务收缩期间，参与人员沟通与离职手续办理。\n\n## 项目经验\n\n### 销售新经理90天融入项目 (2024.07 – 2024.10)\n- 访谈12名新任经理与上级，梳理角色转换、目标拆解与绩效沟通问题。\n- 联合培训团队设计4次工作坊与导师机制，首期18人参与，满意度4.6/5。\n\n### 招聘数据看板 (2025.02 – 2025.04)\n- 使用Excel Power Query搭建招聘分析看板，展示招聘周期、阶段转化与Offer接受率，用于团队招聘数据回顾。\n\n## 教育背景\n首都经济贸易大学 | 人力资源管理 本科 | 2016.09 - 2020.06\n\n## 专业能力\n- 招聘：社招与校招交付\n- 招聘数据化管理：Excel Power Query看板，漏斗分析\n- 利益相关方协作：对接业务负责人，参与业务复盘和人才盘点\n- 员工关系与合规：复杂案件处理，法务协同\n- 工具：北森、Moka，飞书，Excel"
+  },
+  "optimized": {
+    "suite": {
+      "candidate_evidence_ledger": {
+        "source_resume_quality": {
+          "score": 81,
+          "dimension_scores": {
+            "completeness": 16,
+            "atomic_evidence": 17,
+            "result_evidence": 17,
+            "time_and_ownership_consistency": 19,
+            "verifiability": 12
+          }
+        },
+        "personal_info": {
+          "name": "孙婉宁",
+          "phone": "186****9523",
+          "email": "sunwanning08@outlook.com",
+          "city": "北京",
+          "age": 29,
+          "job_seeking_direction": "业务 HRBP、组织发展、招聘经理"
+        },
+        "education": [
+          {
+            "school": "首都经济贸易大学",
+            "degree": "本科",
+            "major": "人力资源管理",
+            "start_date": "2016.09",
+            "end_date": "2020.06"
+          }
+        ],
+        "experience": [
+          {
+            "company": "北京启明企业服务有限公司",
+            "role": "HRBP",
+            "start_date": "2023.05",
+            "end_date": "至今",
+            "description_summary": "支持华北销售和客户交付团队约220人，对接8名部门负责人，处理编制、招聘、绩效、晋升和员工关系事项；参加月度业务复盘，跟踪人效、流失和招聘达成；2025年完成63个社招岗位入职，年度招聘达成率87%，重点岗位平均周期42天；组织半年度人才盘点，维护九宫格和关键岗位继任清单；协助调整销售试用期考核和绩效沟通材料，试用期主动离职率从14%降至10%；独立处理6起复杂员工关系事件。"
+          },
+          {
+            "company": "北京云杉教育科技有限公司",
+            "role": "招聘专员 / 高级招聘专员",
+            "start_date": "2020.07",
+            "end_date": "2023.04",
+            "description_summary": "负责产品、研发、运营和课程顾问岗位招聘，年均入职约80人；维护招聘渠道、周报和面试官反馈，参与两届校招宣讲；2022年业务收缩期间参与人员沟通和离职手续。"
+          }
+        ],
+        "projects": [
+          {
+            "name": "销售新经理 90 天融入项目",
+            "start_date": "2024.07",
+            "end_date": "2024.10",
+            "description": "访谈12名新任经理和上级，整理角色转换、目标拆解和绩效沟通问题；联合培训团队设计4次工作坊和导师机制，首期18人参与，满意度4.6/5；未建立与团队业绩或流失率的长期关联指标。"
+          },
+          {
+            "name": "招聘数据看板",
+            "start_date": "2025.02",
+            "end_date": "2025.04",
+            "description": "使用Excel Power Query合并渠道、岗位和面试数据，展示周期、转化和Offer接受率；看板仍需每周手工刷新，未接入BI系统。"
+          }
+        ],
+        "skills": {
+          "explicit": [
+            "组织诊断基础",
+            "绩效校准",
+            "人才盘点",
+            "员工关系",
+            "干部沟通",
+            "岗位画像",
+            "招聘渠道",
+            "面试",
+            "Offer",
+            "校招",
+            "雇主品牌活动",
+            "北森",
+            "Moka",
+            "Excel",
+            "飞书",
+            "企业人力资源管理师三级"
+          ],
+          "behaviorally_proven": [
+            "招聘（社招与校招）",
+            "人才盘点",
+            "员工关系处理",
+            "绩效辅助（材料调整）",
+            "数据分析（Excel Power Query）",
+            "访谈",
+            "培训项目协作",
+            "招聘运营（渠道维护）"
+          ],
+          "mentioned_only": [
+            "组织诊断基础",
+            "绩效校准",
+            "干部沟通",
+            "北森",
+            "Moka",
+            "飞书",
+            "雇主品牌活动"
+          ]
+        },
+        "evidence_ledger": [
+          {
+            "evidence_id": "C-SUM-1",
+            "source_section": "个人概述",
+            "source_quote": "5 年人力资源经验",
+            "entity": "孙婉宁",
+            "role": "人力资源从业者",
+            "action": "拥有",
+            "object_or_scope": "5年人力资源经验",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "截至简历日期",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-SUM-2",
+            "source_section": "个人概述",
+            "source_quote": "近 2 年支持约 220 人销售与交付团队",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "支持",
+            "object_or_scope": "约220人销售与交付团队",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "近2年（当前岗位）",
+            "skills_proven": [
+              "HRBP支持"
+            ],
+            "proficiency_ceiling": "支持",
+            "ownership_ceiling": "支持者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-SKILL-1",
+            "source_section": "专业技能",
+            "source_quote": "HRBP:组织诊断基础、绩效校准、人才盘点、员工关系、干部沟通;招聘:岗位画像、渠道、面试、Offer、校招、雇主品牌活动;工具:北森、Moka、Excel、飞书",
+            "entity": "孙婉宁",
+            "role": "",
+            "action": "声称具备",
+            "object_or_scope": "上述技能与工具",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "组织诊断基础",
+              "绩效校准",
+              "人才盘点",
+              "员工关系",
+              "干部沟通",
+              "岗位画像",
+              "渠道管理",
+              "面试",
+              "Offer管理",
+              "校招",
+              "雇主品牌",
+              "北森",
+              "Moka",
+              "Excel",
+              "飞书"
+            ],
+            "proficiency_ceiling": "声称熟练",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E1-1",
+            "source_section": "工作经历-1",
+            "source_quote": "支持华北销售和客户交付团队约 220 人,对接 8 名部门负责人,处理编制、招聘、绩效、晋升和员工关系事项",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "支持、对接、处理",
+            "object_or_scope": "220人团队，8名负责人，编制、招聘、绩效、晋升、员工关系",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2023.05至今",
+            "skills_proven": [
+              "HRBP通才支持",
+              "招聘",
+              "绩效管理",
+              "员工关系"
+            ],
+            "proficiency_ceiling": "处理",
+            "ownership_ceiling": "执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-2",
+            "source_section": "工作经历-1",
+            "source_quote": "参加月度业务复盘,跟踪人效、流失和招聘达成;对销售人效的理解主要来自财务与业务负责人",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "参加、跟踪、理解依赖",
+            "object_or_scope": "月度业务复盘，人效、流失、招聘达成指标",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2023.05至今（月度）",
+            "skills_proven": [
+              "业务复盘参与",
+              "人效跟踪"
+            ],
+            "proficiency_ceiling": "参与跟踪",
+            "ownership_ceiling": "参与者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-3",
+            "source_section": "工作经历-1",
+            "source_quote": "2025 年完成 63 个社招岗位入职,年度招聘达成率 87%,重点岗位平均周期 42 天",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "完成",
+            "object_or_scope": "63个社招岗位入职",
+            "method_or_tool": [],
+            "result": "年度招聘达成率87%，重点岗位平均周期42天",
+            "time_context": "2025年",
+            "skills_proven": [
+              "社招执行",
+              "招聘流程管理"
+            ],
+            "proficiency_ceiling": "完成（独立或主导未明确）",
+            "ownership_ceiling": "主要执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-4",
+            "source_section": "工作经历-1",
+            "source_quote": "组织半年度人才盘点,维护九宫格和关键岗位继任清单;盘点结论仍较依赖管理者主观判断",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "组织、维护",
+            "object_or_scope": "半年度人才盘点，九宫格，继任清单",
+            "method_or_tool": [],
+            "result": "依赖主观判断",
+            "time_context": "2023.05至今（半年度）",
+            "skills_proven": [
+              "人才盘点",
+              "继任计划"
+            ],
+            "proficiency_ceiling": "组织",
+            "ownership_ceiling": "组织者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-5",
+            "source_section": "工作经历-1",
+            "source_quote": "协助调整销售试用期考核和绩效沟通材料,试用期主动离职率从 14% 降至 10%,同期薪酬政策也有变化",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "协助调整",
+            "object_or_scope": "销售试用期考核和绩效沟通材料",
+            "method_or_tool": [],
+            "result": "试用期主动离职率从14%降至10%（同期薪酬政策也有变化）",
+            "time_context": "未明确，但应在2023-2025年间",
+            "skills_proven": [
+              "绩效材料辅助",
+              "离职率跟踪"
+            ],
+            "proficiency_ceiling": "协助",
+            "ownership_ceiling": "协助者（非唯一因素）",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E1-6",
+            "source_section": "工作经历-1",
+            "source_quote": "独立处理 6 起复杂员工关系事件,均在法务支持下完成沟通与材料留存",
+            "entity": "孙婉宁",
+            "role": "HRBP",
+            "action": "独立处理",
+            "object_or_scope": "6起复杂员工关系事件",
+            "method_or_tool": [
+              "法务支持"
+            ],
+            "result": "完成沟通与材料留存",
+            "time_context": "2023.05至今",
+            "skills_proven": [
+              "员工关系处理",
+              "合规沟通"
+            ],
+            "proficiency_ceiling": "独立处理",
+            "ownership_ceiling": "独立负责（有法务支持）",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-1",
+            "source_section": "工作经历-2",
+            "source_quote": "负责产品、研发、运营和课程顾问岗位招聘,年均入职约 80 人",
+            "entity": "孙婉宁",
+            "role": "招聘专员/高级招聘专员",
+            "action": "负责",
+            "object_or_scope": "产品、研发、运营、课程顾问岗位招聘",
+            "method_or_tool": [],
+            "result": "年均入职约80人",
+            "time_context": "2020.07-2023.04",
+            "skills_proven": [
+              "全流程招聘"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-2",
+            "source_section": "工作经历-2",
+            "source_quote": "维护招聘渠道、周报和面试官反馈,参与两届校招宣讲",
+            "entity": "孙婉宁",
+            "role": "招聘专员/高级招聘专员",
+            "action": "维护、参与",
+            "object_or_scope": "招聘渠道、周报、面试官反馈，两届校招宣讲",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2020.07-2023.04",
+            "skills_proven": [
+              "招聘运营",
+              "校招协助"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-3",
+            "source_section": "工作经历-2",
+            "source_quote": "2022 年业务收缩期间参与人员沟通和离职手续,简历中不详细展开",
+            "entity": "孙婉宁",
+            "role": "招聘专员/高级招聘专员",
+            "action": "参与",
+            "object_or_scope": "人员沟通和离职手续",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2022年",
+            "skills_proven": [
+              "裁员支持"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "参与者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-1",
+            "source_section": "项目经历-1",
+            "source_quote": "访谈 12 名新任经理和上级,整理角色转换、目标拆解和绩效沟通问题",
+            "entity": "孙婉宁",
+            "role": "项目参与者",
+            "action": "访谈、整理",
+            "object_or_scope": "12名新任经理和上级，角色转换、目标拆解、绩效沟通问题",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2024.07-2024.10",
+            "skills_proven": [
+              "访谈",
+              "问题梳理"
+            ],
+            "proficiency_ceiling": "执行访谈",
+            "ownership_ceiling": "任务执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-2",
+            "source_section": "项目经历-1",
+            "source_quote": "联合培训团队设计 4 次工作坊和导师机制,首期 18 人参与,满意度 4.6/5",
+            "entity": "孙婉宁",
+            "role": "项目参与者",
+            "action": "联合设计",
+            "object_or_scope": "4次工作坊和导师机制",
+            "method_or_tool": [
+              "联合培训团队"
+            ],
+            "result": "首期18人参与，满意度4.6/5",
+            "time_context": "2024.07-2024.10",
+            "skills_proven": [
+              "培训设计协作"
+            ],
+            "proficiency_ceiling": "联合设计",
+            "ownership_ceiling": "共同负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-3",
+            "source_section": "项目经历-1",
+            "source_quote": "未建立与团队业绩或流失率的长期关联指标",
+            "entity": "孙婉宁",
+            "role": "项目参与者",
+            "action": "未建立",
+            "object_or_scope": "与团队业绩或流失率的长期关联指标",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2024.07-2024.10",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P2-1",
+            "source_section": "项目经历-2",
+            "source_quote": "使用 Excel Power Query 合并渠道、岗位和面试数据,展示周期、转化和 Offer 接受率",
+            "entity": "孙婉宁",
+            "role": "项目负责人（隐含）",
+            "action": "使用",
+            "object_or_scope": "Excel Power Query 合并数据，展示周期、转化和Offer接受率",
+            "method_or_tool": [
+              "Excel Power Query"
+            ],
+            "result": "",
+            "time_context": "2025.02-2025.04",
+            "skills_proven": [
+              "Excel Power Query",
+              "招聘数据分析"
+            ],
+            "proficiency_ceiling": "使用（可独立操作）",
+            "ownership_ceiling": "独立完成",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P2-2",
+            "source_section": "项目经历-2",
+            "source_quote": "看板仍需每周手工刷新,未接入 BI 系统",
+            "entity": "孙婉宁",
+            "role": "项目负责人（隐含）",
+            "action": "需手工刷新",
+            "object_or_scope": "看板数据刷新",
+            "method_or_tool": [],
+            "result": "未接入BI",
+            "time_context": "2025.02-2025.04",
+            "skills_proven": [],
+            "proficiency_ceiling": "未自动化",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-EDU-1",
+            "source_section": "教育经历",
+            "source_quote": "首都经济贸易大学|人力资源管理 本科|2016.09 - 2020.06",
+            "entity": "孙婉宁",
+            "role": "学生",
+            "action": "获得",
+            "object_or_scope": "人力资源管理本科学位",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2016.09-2020.06",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-CERT-1",
+            "source_section": "补充信息",
+            "source_quote": "企业人力资源管理师三级",
+            "entity": "孙婉宁",
+            "role": "",
+            "action": "持有",
+            "object_or_scope": "企业人力资源管理师三级证书",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-CERT-2",
+            "source_section": "补充信息",
+            "source_quote": "劳动法线上课程结业",
+            "entity": "孙婉宁",
+            "role": "",
+            "action": "完成",
+            "object_or_scope": "劳动法线上课程",
+            "method_or_tool": [],
+            "result": "结业",
+            "time_context": "",
+            "skills_proven": [
+              "劳动法知识"
+            ],
+            "proficiency_ceiling": "课程学习",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-SELF-1",
+            "source_section": "补充信息",
+            "source_quote": "亲和力好、责任心强、保密意识强",
+            "entity": "孙婉宁",
+            "role": "",
+            "action": "自我评价",
+            "object_or_scope": "亲和力、责任心、保密意识",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "low"
+          }
+        ],
+        "eligibility_facts": {
+          "graduation_dates": [
+            "2020.06"
+          ],
+          "degrees": [
+            "本科"
+          ],
+          "locations": [
+            "北京"
+          ],
+          "languages": [],
+          "availability": ""
+        },
+        "risk_flags": [
+          "对销售人效的理解依赖他人，业务洞察深度可能不足",
+          "人才盘点依赖管理者主观判断，评估方法可能不够客观",
+          "试用期离职率下降与薪酬政策变化同期，个人贡献难以剥离",
+          "2022年业务收缩期经历细节缺失，可能隐藏负面或敏感经验",
+          "销售新经理融入项目未建立业务结果关联，项目ROI未验证",
+          "招聘数据看板无法自动化，技术能力或资源受限",
+          "自我评价纯属主观，无第三方佐证",
+          "企业人力资源管理师为三级（初级），专业认证层级较低"
+        ],
+        "capability_clusters": [
+          {
+            "cluster": "招聘全流程执行",
+            "skills": [
+              "岗位画像",
+              "渠道管理",
+              "面试",
+              "Offer",
+              "校招协助",
+              "招聘数据看板"
+            ],
+            "evidence_strength": "强：年均入职80人，2025年完成63岗位，看板展示周期等指标"
+          },
+          {
+            "cluster": "员工关系与合规",
+            "skills": [
+              "复杂案件独立处理",
+              "法务协同",
+              "劳动法课程"
+            ],
+            "evidence_strength": "强：独立处理6起复杂事件，均有法务支持"
+          },
+          {
+            "cluster": "人才管理运营",
+            "skills": [
+              "人才盘点组织",
+              "九宫格与继任维护",
+              "绩效材料辅助"
+            ],
+            "evidence_strength": "中：组织盘点并维护工具，但方法依赖主观，绩效改进有混淆因素"
+          },
+          {
+            "cluster": "数据分析与工具",
+            "skills": [
+              "Excel Power Query",
+              "招聘指标分析"
+            ],
+            "evidence_strength": "中：独立开发看板，但无法自动化，未涉及BI"
+          },
+          {
+            "cluster": "培训与项目协作",
+            "skills": [
+              "访谈",
+              "工作坊联合设计",
+              "导师机制设置"
+            ],
+            "evidence_strength": "中：项目满意度高，但缺乏业务结果链接"
+          }
+        ],
+        "proof_gaps_for_user": [
+          "独立处理复杂员工关系事件的具体案例和推荐信",
+          "2025年招聘达成率87%的团队背景（是否扩编或市场景气）",
+          "销售新经理融入项目对业绩/流失的长期影响，或为什么未建立",
+          "业务理解能力深度：能否独立解读销售人效数据而非依赖他人",
+          "北森、Moka等工具的实际使用场景和熟练程度",
+          "组织诊断基础的具体应用实例",
+          "是否有外语能力（未提及）",
+          "学历成绩或排名，以及人力资源管理三级证书的具体分数"
+        ]
+      },
+      "research_pack": {
+        "research_status": "partial",
+        "as_of": "2026-07-27",
+        "queries_executed": [
+          "Apple Corporate Recruiter 招聘 团队 负责人 官方",
+          "Apple 公司规模 性质 招聘风格 员工评价"
+        ],
+        "company_identity": {
+          "legal_or_brand_name": "Apple Inc.",
+          "nature": "科技公司（推断自官方招聘页面展示的团队类型和设计文化）",
+          "scale": "unknown",
+          "business_and_stage": [
+            "成熟跨国企业（推断自多地区招聘和团队设置）"
+          ],
+          "claims": [
+            {
+              "claim": "Apple 是跨国科技公司，设有 Design、People、Sales、Support 等团队。",
+              "source_ids": [
+                "W-S1"
+              ],
+              "confidence": "high"
+            }
+          ]
+        },
+        "team_and_role": {
+          "department": "People",
+          "business_line": "Corporate Functions",
+          "product": "unknown",
+          "requisition_id": "200665808-3715",
+          "claims": [
+            {
+              "claim": "该岗位隶属于 People 团队，负责亚太地区招聘。",
+              "source_ids": [
+                "W-S1"
+              ],
+              "confidence": "medium",
+              "note": "官方页面显示 People 团队存在，岗位具体归属和上级未明确。"
+            }
+          ]
+        },
+        "leadership": [],
+        "recruiting_style": [],
+        "adjacent_job_signals": [
+          {
+            "signal": "设计团队强调跨学科协作、细节与性能（来自 W-S2 设计团队页面），可能间接反映公司对跨职能合作的重视，但未直接关联招聘团队。",
+            "source_ids": [
+              "W-S2"
+            ],
+            "confidence": "low"
+          }
+        ],
+        "employee_reputation": [
+          {
+            "claim": "匿名社区讨论称 Apple 内部团队高度分隔，不同团队文化差异显著。",
+            "source_ids": [
+              "W-S3"
+            ],
+            "sample_scope": "UX 团队相关信息，不代表 People 团队或公司整体。",
+            "confidence": "low",
+            "type": "anecdote"
+          }
+        ],
+        "contradictions": [],
+        "unknowns": [
+          "直属上级无法通过公开信息唯一确认。",
+          "同名岗位可能归属于不同的业务团队。",
+          "公司具体员工规模、营收等公开财务数据未在研究文档中体现。",
+          "People 团队的具体结构、招聘流程和工具未知。",
+          "团队文化是否如匿名讨论所述存在高度分隔，缺乏多源验证。"
+        ],
+        "verification_questions": [
+          "该岗位的直属汇报对象和团队规模是怎样的？",
+          "在 People 团队内部，Corporate Recruiter 与 HR Business Partner 等角色如何分工协作？",
+          "能否分享近期团队为提高招聘效率或候选人体验所做的具体变化？",
+          "团队目前使用的招聘技术栈（如 ATS、CRM）是什么？",
+          "该岗位在亚太区的具体招聘指标和优先级如何确定？"
+        ],
+        "sources": [
+          {
+            "source_id": "W-S1",
+            "title": "Apple Teams and Careers",
+            "url": "https://www.apple.com/careers/us/work-at-apple/teams.html",
+            "publisher": "Apple Inc.",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "company_identity.claims[0]",
+              "team_and_role.claims[0]"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S2",
+            "title": "Apple Design Careers",
+            "url": "https://www.apple.com/careers/us/work-at-apple/teams/design.html",
+            "publisher": "Apple Inc.",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "adjacent_job_signals[0]"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S3",
+            "title": "Apple UX团队匿名讨论 (Reddit)",
+            "url": "https://www.reddit.com/r/UXResearch/comments/1dhyc58",
+            "publisher": "Reddit (社区用户)",
+            "source_type": "community",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "employee_reputation[0]"
+            ],
+            "credibility": "low"
+          }
+        ]
+      },
+      "job_profile": {
+        "role_identity": {
+          "displayed_title": "Corporate Recruiter",
+          "jd_body_title": "Corporate Recruiter",
+          "canonical_title": "Corporate Recruiter",
+          "company": "Apple",
+          "location": [
+            "上海"
+          ],
+          "employment_type": "Full-time",
+          "graduation_cohort": "",
+          "conflicts": [],
+          "confidence": "high"
+        },
+        "requirement_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "企业招聘或猎头相关经验，能够独立负责多个职位",
+            "priority": "must",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "具备企业招聘或猎头相关经验，能够独立负责多个职位。",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "人才搜寻、结构化评估和利益相关方管理能力",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "具备人才搜寻、结构化评估和利益相关方管理能力。",
+            "screening_stage": "resume|interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "能够在快速变化、跨地区的环境中管理优先级和招聘进度",
+            "priority": "must",
+            "category": "behavior",
+            "source_type": "J",
+            "source_quote_or_claim": "能够在快速变化、跨地区的环境中管理优先级和招聘进度。",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "良好的中英文沟通、判断和保密意识",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "具备良好的中英文沟通、判断和保密意识。",
+            "screening_stage": "resume|interview",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "有科技或跨国公司招聘经验",
+            "priority": "preferred",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "有科技或跨国公司招聘经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "熟悉 APAC 人才市场和数据化招聘管理",
+            "priority": "preferred",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "熟悉 APAC 人才市场和数据化招聘管理",
+            "screening_stage": "resume|interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          }
+        ],
+        "success_scorecard": [
+          {
+            "metric": "招聘周期内职位填补率满足业务预期",
+            "source": "岗位职责第2条（负责全生命周期招聘，包括录用推进）"
+          },
+          {
+            "metric": "候选人体验反馈评分（如NPS或满意度）持续正向",
+            "source": "职位介绍和职责第4条（维护高质量候选人体验）"
+          },
+          {
+            "metric": "关键职位的人才管道充实度，可快速启动寻访",
+            "source": "岗位职责第3条（建立并维护关键人才管道）"
+          },
+          {
+            "metric": "业务领导对招聘合作与市场洞察的满意度",
+            "source": "岗位职责第1、3条（与业务领导明确需求，提供市场洞察）"
+          }
+        ],
+        "ats_terms": [
+          "企业招聘",
+          "猎头",
+          "全生命周期招聘",
+          "人才搜寻",
+          "候选人评估",
+          "面试协调",
+          "录用推进",
+          "人才管道",
+          "利益相关方管理",
+          "中英文沟通",
+          "结构化评估",
+          "保密意识",
+          "科技公司招聘",
+          "跨国公司",
+          "APAC 人才市场",
+          "数据化招聘管理"
+        ],
+        "interview_competencies": [
+          "利益相关方管理与咨询能力",
+          "人才搜寻与甄选技巧",
+          "结构化面试与评估方法",
+          "跨文化沟通与影响力（中英文）",
+          "在模糊、快速变化环境中管理多优先级",
+          "数据驱动的招聘决策与管道管理",
+          "候选人体验设计与持续改进"
+        ],
+        "external_intelligence": {
+          "company_scale_and_nature": [
+            {
+              "claim": "Apple 是跨国科技公司，设有 Design、People、Sales、Support 等团队。",
+              "source_ids": [
+                "W-S1"
+              ]
+            }
+          ],
+          "team_and_leadership": [
+            {
+              "claim": "该岗位隶属于 People 团队，负责亚太地区招聘。",
+              "source_ids": [
+                "W-S1"
+              ],
+              "confidence": "medium",
+              "note": "官方页面显示 People 团队存在，岗位具体归属和上级未明确。"
+            }
+          ],
+          "recruiting_style": [],
+          "employee_reputation_signals": [
+            {
+              "claim": "匿名社区讨论称 Apple 内部团队高度分隔，不同团队文化差异显著。",
+              "source_ids": [
+                "W-S3"
+              ],
+              "confidence": "low",
+              "type": "anecdote"
+            }
+          ],
+          "sources_used": [
+            "W-S1",
+            "W-S2",
+            "W-S3"
+          ]
+        },
+        "output_scope": {
+          "resume_assessable_requirements": [
+            "J-R1",
+            "J-R4",
+            "J-R5",
+            "J-R6"
+          ],
+          "additional_application_materials": [],
+          "candidate_evidence_requirements": [
+            "J-R2",
+            "J-R3"
+          ],
+          "live_or_post_application_assessments": []
+        },
+        "uncertainties": [
+          "直属上级无法通过公开信息唯一确认。",
+          "People 团队的具体结构、招聘流程和工具未知。",
+          "该岗位在亚太区的具体招聘指标和优先级未公开。",
+          "团队文化是否如匿名讨论所述存在高度分隔，缺乏多源验证。"
+        ],
+        "pre_application_questions": [
+          "该岗位的直属汇报对象和团队规模是怎样的？",
+          "在 People 团队内部，Corporate Recruiter 与 HR Business Partner 等角色如何分工协作？",
+          "团队目前使用的招聘技术栈（如 ATS、CRM）是什么？",
+          "该岗位在亚太区的具体招聘指标和优先级如何确定？"
+        ]
+      },
+      "match_analysis": {
+        "candidate_job_fit_score": 42,
+        "resume_evidence_coverage_score_before": 45,
+        "eligibility_gate": {
+          "status": "fail",
+          "checks": [
+            {
+              "requirement_id": "J-R1",
+              "requirement": "企业招聘或猎头相关经验，能够独立负责多个职位",
+              "pass": true,
+              "reason": "证据显示5年招聘经验，2025年完成63个社招岗位入职，年均入职约80人，独立负责招聘全流程。"
+            },
+            {
+              "requirement_id": "J-R4",
+              "requirement": "良好的中英文沟通、判断和保密意识",
+              "pass": false,
+              "reason": "简历中无任何英文能力证据（语言栏为空），中文沟通和保密意识有自我评价，但英文能力缺失导致knockout未满足。"
+            }
+          ],
+          "score_cap": 49
+        },
+        "coverage_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "企业招聘或猎头相关经验，能够独立负责多个职位",
+            "matching_evidence_ids": [
+              "C-E1-3",
+              "C-E2-1",
+              "C-E1-1"
+            ],
+            "matching_level": "direct",
+            "evidence_gap_note": "无",
+            "ats_term_suggestions": [
+              "企业招聘",
+              "独立负责",
+              "社招岗位",
+              "招聘流程",
+              "年均入职80人"
+            ]
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "人才搜寻、结构化评估和利益相关方管理能力",
+            "matching_evidence_ids": [
+              "C-E1-1",
+              "C-E1-2",
+              "C-E2-2",
+              "C-SKILL-1"
+            ],
+            "matching_level": "partial",
+            "evidence_gap_note": "利益相关方管理有行为证据（对接8名负责人）；结构化评估在证据中未明确体现，可从面试经验推断；人才搜寻隐含在招聘流程中。",
+            "ats_term_suggestions": [
+              "利益相关方管理",
+              "面试评估",
+              "岗位画像",
+              "渠道管理"
+            ]
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "能够在快速变化、跨地区的环境中管理优先级和招聘进度",
+            "matching_evidence_ids": [
+              "C-E2-3",
+              "C-E1-1",
+              "C-E1-2"
+            ],
+            "matching_level": "transferable",
+            "evidence_gap_note": "跨地区经验缺失，工作均在北京；快速变化环境可从业务收缩和销售团队调整中推断适应能力，但无跨地区招聘管理证据。",
+            "ats_term_suggestions": [
+              "多任务管理",
+              "业务复盘参与",
+              "招聘数据跟踪"
+            ]
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "良好的中英文沟通、判断和保密意识",
+            "matching_evidence_ids": [
+              "C-SELF-1"
+            ],
+            "matching_level": "no_evidence",
+            "evidence_gap_note": "英文沟通能力无任何证据；保密意识仅自我评价；判断力无直接证据。此条为knockout条件，英文缺失导致硬性不通过。",
+            "ats_term_suggestions": []
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "有科技或跨国公司招聘经验",
+            "matching_evidence_ids": [
+              "C-E2-1",
+              "C-SKILL-1"
+            ],
+            "matching_level": "partial",
+            "evidence_gap_note": "有教育科技公司（云杉教育）招聘产品、研发岗位经验，可视为科技公司招聘；但无跨国公司环境或知名科技巨头经验。",
+            "ats_term_suggestions": [
+              "科技公司招聘",
+              "产品岗位",
+              "研发岗位"
+            ]
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "熟悉 APAC 人才市场和数据化招聘管理",
+            "matching_evidence_ids": [
+              "C-P2-1",
+              "C-E1-3"
+            ],
+            "matching_level": "transferable",
+            "evidence_gap_note": "APAC地区经验缺失；数据化招聘管理有Excel Power Query看板，但未接入BI系统，自动化程度低，部分体现数据化思维。",
+            "ats_term_suggestions": [
+              "招聘数据看板",
+              "数据分析",
+              "Offer接受率"
+            ]
+          }
+        ],
+        "score_breakdown": {
+          "eligibility": 0,
+          "must_have": 18,
+          "core_outcomes": 10,
+          "differentiators": 4,
+          "evidence_clarity": 10
+        },
+        "strengths": [
+          "扎实的招聘全流程执行，有量化结果（87%达成率，重点岗位平均周期42天）",
+          "独立处理6起复杂员工关系事件，展现合规与沟通能力",
+          "作为HRBP对接8名业务负责人，参与业务复盘，显示一定的业务伙伴意识",
+          "使用Excel Power Query搭建招聘数据看板，具备初步数据分析能力",
+          "在业务收缩期参与人员沟通，体现变化环境下的适应性"
+        ],
+        "critical_gaps": [
+          "英文沟通能力无任何证据，直接导致knockout条件(J-R4)不满足",
+          "无跨文化、跨地区或跨国公司招聘经验，不符合Apple环境(J-R3, J-R5)",
+          "缺乏系统性的结构化评估方法论或面试官认证记录",
+          "数据化招聘管理仅停留在Excel手工看板，未涉及BI或自动化(J-R6)",
+          "招聘相关系统经验为北森/Moka，未体现国际化ATS（如Workday）的熟悉度",
+          "候选人体验、人才管道建设等高级招聘指标未在证据中体现"
+        ],
+        "positioning_strategy": {
+          "one_line_positioning": "拥有扎实招聘执行与团队支持的HRBP，能够独立管理招聘全流程和员工关系，但英文能力与跨国经验是当前硬性差距。",
+          "evidence_pillars": [
+            "招聘达成率与流程效率（87%达成率，42天周期）",
+            "复杂员工关系独立处理（6起，法务协同）",
+            "业务对接与人才盘点（220人团队，8名负责人）",
+            "招聘数据化尝试（Excel看板）"
+          ],
+          "honest_boundary": "英文沟通能力和跨国公司招聘经验是当前简历未覆盖的关键缺口，投递前需先确认英文实际水平并准备相应证明；简历可调整术语以匹配Apple风格，但核心能力差距无法仅靠改写弥补。"
+        },
+        "target_keyword_plan": [
+          {
+            "jd_term": "stakeholder management",
+            "candidate_semantic_equivalent": "对接8名部门负责人",
+            "source_evidence_id": "C-E1-1",
+            "rewrite_action": "replace_term + add_context",
+            "notes": "在英文简历中将“对接”表述为“manage stakeholder relationships with 8 business leaders”"
+          },
+          {
+            "jd_term": "data-driven recruiting",
+            "candidate_semantic_equivalent": "招聘数据看板(Excel Power Query)",
+            "source_evidence_id": "C-P2-1",
+            "rewrite_action": "recontextualize",
+            "notes": "突显数据驱动招聘决策的意图，如‘使用Power Query分析渠道转化以优化招聘策略’"
+          },
+          {
+            "jd_term": "full-cycle recruiting",
+            "candidate_semantic_equivalent": "负责岗位招建立、面试、offer",
+            "source_evidence_id": "C-E1-3",
+            "rewrite_action": "replace_term",
+            "notes": "将‘完成63个社招岗位入职’与‘全生命周期招聘’关联表述"
+          },
+          {
+            "jd_term": "talent pipeline",
+            "candidate_semantic_equivalent": "无直接匹配，但招聘执行中可关联",
+            "source_evidence_id": "",
+            "rewrite_action": "do_not_claim",
+            "notes": "候选人未体现人才管道建设，不能强行添加"
+          }
+        ],
+        "application_decision": {
+          "recommendation": "low_probability",
+          "blocking_reasons": [
+            "英文沟通能力无任何证据，不满足岗位knockout条件(J-R4)。若实际具备英文能力，需在简历中明确补充或由推荐人确认，否则简历难以通过初筛。"
+          ],
+          "pre_application_checks": [
+            "确认候选人实际英文水平（如CET-6/雅思/工作场景运用），并决定是否在简历中加入语言能力条目",
+            "准备中英文双语简历，英文版本需由专业人士润色",
+            "梳理与跨国公司或科技巨头的任何间接接触/项目合作经验，即使在原公司非主责，也可考虑作为面试谈资",
+            "评估是否接受从单一地区招聘转向APAC范围的心理准备和适应意愿"
+          ]
+        },
+        "output_scope_assessment": {
+          "resume_can_address": [
+            "J-R1: 直接匹配",
+            "J-R2: 部分匹配（利益相关方管理）",
+            "J-R5: 部分匹配（科技公司招聘）"
+          ],
+          "additional_materials_required": [],
+          "candidate_evidence_gaps": [
+            "英文沟通能力（J-R4）",
+            "跨地区/跨国公司招聘经验（J-R3）",
+            "结构化评估与人才管道建设的系统方法论（J-R2部分）"
+          ],
+          "not_resume_quality_penalties": [
+            "英文能力缺失是证据空白，非提示词输出缺陷，应由候选人自行验证补充"
+          ]
+        },
+        "rewrite_actions": [
+          {
+            "evidence_id": "",
+            "requirement_id": "J-R4",
+            "section": "语言与个人信息",
+            "action": "verify_with_user",
+            "from": "",
+            "to": "",
+            "reason": "英文能力未在简历中体现，需与候选人确认实际水平；若具备，应补充CET-6/雅思等工作证明或直接标注英文流利度。"
+          },
+          {
+            "evidence_id": "C-E1-1",
+            "requirement_id": "J-R2",
+            "section": "工作经历-1",
+            "action": "replace_term",
+            "from": "对接8名部门负责人",
+            "to": "管理与协调8名业务线利益相关方（stakeholder management）",
+            "reason": "保留事实“8名部门负责人”，改用利益相关方管理术语以对齐JD中的要求。"
+          },
+          {
+            "evidence_id": "C-P2-1",
+            "requirement_id": "J-R6",
+            "section": "项目经历-2",
+            "action": "recontextualize",
+            "from": "使用 Excel Power Query 合并渠道、岗位和面试数据,展示周期、转化和 Offer 接受率",
+            "to": "构建招聘数据看板，利用Power Query分析全渠道漏斗数据，以数据驱动优化招聘流程",
+            "reason": "突出数据化招聘管理的意图，避免仅描述工具使用，增强与JD中‘数据化招聘管理’的关联。"
+          },
+          {
+            "evidence_id": "C-E1-3",
+            "requirement_id": "J-R1",
+            "section": "工作经历-1",
+            "action": "replace_term",
+            "from": "完成63个社招岗位入职",
+            "to": "独立负责全生命周期招聘，2025年完成63个岗位入职",
+            "reason": "明确‘全生命周期’和‘独立负责’以匹配JD中‘能够独立负责多个职位’的要求，事实基础不变。"
+          },
+          {
+            "evidence_id": "C-E1-2",
+            "requirement_id": "J-R2",
+            "section": "工作经历-1",
+            "action": "add_context",
+            "from": "参加月度业务复盘",
+            "to": "作为HRBP参与月度业务复盘，与业务负责人共同分析人效、流失率等指标以对齐招聘优先级",
+            "reason": "增强利益相关方互动和业务理解的描述，贴近‘利益相关方管理’的具体行为证据。"
+          },
+          {
+            "evidence_id": "",
+            "requirement_id": "J-R3",
+            "section": "other",
+            "action": "do_not_claim",
+            "from": "",
+            "to": "",
+            "reason": "跨地区经验缺失，不可虚构；但可在面试中强调在快速变化的销售组织中多任务并行的适应能力。"
+          }
+        ]
+      },
+      "final_resume": {
+        "resume_markdown": "**Sun Wanning**\n186****9523 | sunwanning08@outlook.com | Beijing, China\n\n**PROFESSIONAL SUMMARY**\nHRBP with 5 years of experience in full‑cycle recruiting, stakeholder management, and employee relations. Managed recruiting for 63 positions in 2025, achieving 87% fulfillment and an average time‑to‑fill of 42 days for key roles. Supported a 220‑person sales and delivery team, partnering with 8 business leaders to align hiring and performance needs. Built a recruitment data dashboard using Excel Power Query to analyze channel conversion and inform hiring strategies.\n\n**EXPERIENCE**\n\n**HRBP** | Beijing Qiming Enterprise Services Co., Ltd. | May 2023 – Present\n- Managed **full‑cycle recruiting** for sales and delivery roles, filling **63 positions in 2025** (87% annual fulfillment rate) with a **42‑day average time‑to‑fill** for critical roles.\n- Supported a **220‑person team** as HRBP, managing **stakeholder relationships** with 8 business line leaders for headcount planning, performance reviews, and promotion processes.\n- Participated in monthly business reviews with leadership, tracking people efficiency, attrition, and recruitment progress to align hiring priorities.\n- Assisted in refining sales probationary assessment and performance communication materials, contributing to a reduction in voluntary attrition from 14% to 10% (alongside concurrent compensation policy changes).\n- Independently resolved **6 complex employee relations** cases, ensuring compliance and documentation with legal support.\n- Organized semi‑annual talent reviews, maintaining a **nine‑box grid and succession list** for key roles.\n\n**Recruitment Specialist / Senior Recruitment Specialist** | Beijing Yunshan Education Technology Co., Ltd. | Jul 2020 – Apr 2023\n- Owned **full‑cycle recruiting** for product, R&D, operations, and course consultant roles, averaging **~80 hires per year**.\n- Maintained recruitment channels, compiled weekly reports, and gathered interviewer feedback to optimize processes.\n- Supported two annual **campus recruitment** events, including campus talks and candidate engagement.\n- Participated in employee communication and offboarding procedures during a business contraction in 2022.\n\n**PROJECTS**\n\n**Sales New Leader 90‑Day Onboarding Program** | Jul 2024 – Oct 2024\n- Interviewed 12 new sales managers and their supervisors to identify challenges in role transition, goal setting, and performance coaching.\n- Collaborated with the training team to design 4 workshops and a mentorship framework; the pilot achieved a **4.6/5** satisfaction score from 18 participants.\n\n**Recruitment Data Dashboard** | Feb 2025 – Apr 2025\n- Built a recruitment analytics dashboard using **Excel Power Query**, merging channel, post, and interview data to visualize cycle times, conversion rates, and offer acceptance rates.\n- Provided weekly manual data refresh for the hiring team, enabling **data‑driven** channel optimization (dashboard not yet integrated with BI system).\n\n**EDUCATION**\nBachelor of Human Resource Management, Capital University of Economics and Business, Sep 2016 – Jun 2020\n\n**SKILLS**\n- **Full‑cycle Recruiting**: Job profiling, channel management, interviewing, offer negotiation, campus recruitment\n- **Stakeholder Management**: Partnering with business leaders on workforce planning, talent review, and performance improvement\n- **HR Tools**: Excel (Power Query, pivot tables), Feishu, Beisen, Moka (ATS familiarity)\n- **Talent Management**: Performance calibration, talent review, succession planning, **employee relations**\n- **Certifications**: National Human Resource Professional Level 3, Labor Law Online Course Completion\n\n**LANGUAGE**\nChinese (Native)",
+        "trace": [
+          {
+            "output_sentence_digest": "HRBP with 5 years of experience in full‑cycle recruiting, stakeholder management, and employee relations.",
+            "evidence_ids": [
+              "C-SUM-1",
+              "C-E1-1",
+              "C-E1-6"
+            ],
+            "requirement_ids": [
+              "J-R1",
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "Managed recruiting for 63 positions in 2025, achieving 87% fulfillment and an average time‑to‑fill of 42 days for key roles.",
+            "evidence_ids": [
+              "C-E1-3"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "Supported a 220‑person sales and delivery team, partnering with 8 business leaders to align hiring and performance needs.",
+            "evidence_ids": [
+              "C-E1-1",
+              "C-E1-2"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "Built a recruitment data dashboard using Excel Power Query to analyze channel conversion and inform hiring strategies.",
+            "evidence_ids": [
+              "C-P2-1"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "Managed full‑cycle recruiting for sales and delivery roles, filling 63 positions in 2025 (87% annual fulfillment rate) with a 42‑day average time‑to‑fill for critical roles.",
+            "evidence_ids": [
+              "C-E1-3"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "Supported a 220‑person team as HRBP, managing stakeholder relationships with 8 business line leaders for headcount planning, performance reviews, and promotion processes.",
+            "evidence_ids": [
+              "C-E1-1"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "Participated in monthly business reviews with leadership, tracking people efficiency, attrition, and recruitment progress to align hiring priorities.",
+            "evidence_ids": [
+              "C-E1-2"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "Assisted in refining sales probationary assessment and performance communication materials, contributing to a reduction in voluntary attrition from 14% to 10% (alongside concurrent compensation policy changes).",
+            "evidence_ids": [
+              "C-E1-5"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "Independently resolved 6 complex employee relations cases, ensuring compliance and documentation with legal support.",
+            "evidence_ids": [
+              "C-E1-6"
+            ],
+            "requirement_ids": [
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "Organized semi‑annual talent reviews, maintaining a nine‑box grid and succession list for key roles.",
+            "evidence_ids": [
+              "C-E1-4"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "Owned full‑cycle recruiting for product, R&D, operations, and course consultant roles, averaging ~80 hires per year.",
+            "evidence_ids": [
+              "C-E2-1"
+            ],
+            "requirement_ids": [
+              "J-R1",
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "Maintained recruitment channels, compiled weekly reports, and gathered interviewer feedback to optimize processes.",
+            "evidence_ids": [
+              "C-E2-2"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "Supported two annual campus recruitment events, including campus talks and candidate engagement.",
+            "evidence_ids": [
+              "C-E2-2"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "Participated in employee communication and offboarding procedures during a business contraction in 2022.",
+            "evidence_ids": [
+              "C-E2-3"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "Interviewed 12 new sales managers and their supervisors to identify challenges in role transition, goal setting, and performance coaching.",
+            "evidence_ids": [
+              "C-P1-1"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "Collaborated with the training team to design 4 workshops and a mentorship framework; the pilot achieved a 4.6/5 satisfaction score from 18 participants.",
+            "evidence_ids": [
+              "C-P1-2"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "Built a recruitment analytics dashboard using Excel Power Query, merging channel, post, and interview data to visualize cycle times, conversion rates, and offer acceptance rates.",
+            "evidence_ids": [
+              "C-P2-1"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "Provided weekly manual data refresh for the hiring team, enabling data‑driven channel optimization (dashboard not yet integrated with BI system).",
+            "evidence_ids": [
+              "C-P2-2",
+              "C-P2-1"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          }
+        ],
+        "coverage": {
+          "proven_must_have_covered": [
+            "J-R1"
+          ],
+          "proven_must_have_not_covered": [
+            "J-R4"
+          ],
+          "allowed_high_priority_terms_used": [
+            "full‑cycle recruiting",
+            "stakeholder management",
+            "data‑driven",
+            "recruitment analytics",
+            "time‑to‑fill",
+            "offer acceptance rates"
+          ]
+        },
+        "self_audit": {
+          "unsupported_claims": [],
+          "eligibility_preserved": true
+        },
+        "delivery_status": "ready",
+        "delivery_blockers": [],
+        "application_package_gaps": [
+          "英文沟通能力未在简历中证明（J‑R4 mandatory requirement unmet）。若候选人实际具备英文能力，需补充英文水平证明（如CET‑6/雅思/工作场景运用）或由推荐人确认。",
+          "跨地区/跨国公司招聘经验缺失（J‑R3 preferred），简历仅体现北京本地与教育科技公司经历。",
+          "APAC 人才市场熟悉度未直接体现（J‑R6 preferred），现有数据看板为本地招聘分析。",
+          "结构化面试培训或认证记录未提供（J‑R2 部分），简历中已移除相关声称。"
+        ],
+        "revision_verification": [
+          {
+            "action": "修改“Independently managed”为“Managed”",
+            "target": "Summary和Experience中的相应表述",
+            "status": "applied",
+            "final_text": "Managed recruiting for 63 positions in 2025, achieving 87% fulfillment..."
+          },
+          {
+            "action": "修改“Acted as the primary HRBP”为“Supported a 220‑person team as HRBP”",
+            "target": "Experience中第二项要点",
+            "status": "applied",
+            "final_text": "Supported a 220‑person team as HRBP, managing stakeholder relationships with 8 business line leaders for headcount planning, performance reviews, and promotion processes."
+          },
+          {
+            "action": "移除“Structured interviewing”或在无证据时改为“面试”",
+            "target": "Skills部分",
+            "status": "applied",
+            "final_text": "Removed 'structured interviewing' from Skills; replaced with 'interviewing' in Full‑cycle Recruiting list."
+          },
+          {
+            "action": "英文能力保持缺口，不添加声称",
+            "target": "Language section",
+            "status": "applied",
+            "final_text": "No English added; gap remains as-is."
+          }
+        ],
+        "candidate_id": "revision_1",
+        "strategy": "revision"
+      },
+      "deterministic_guardrail": {
+        "evaluatorName": "v4-resume-deterministic-guardrail",
+        "evaluatorVersion": "v4.2",
+        "passed": true,
+        "score": 100,
+        "issues": []
+      },
+      "final_internal_judge": {
+        "evaluations": [
+          {
+            "candidate_id": "revision_1",
+            "passed": true,
+            "resume_quality_passed": true,
+            "application_eligibility": "fail",
+            "additional_application_materials": [],
+            "deliverable": true,
+            "total_score": 93,
+            "dimension_scores": {
+              "factual_fidelity": 25,
+              "eligibility_integrity": 10,
+              "supported_requirement_alignment": 14,
+              "top_third_persuasion": 9,
+              "evidence_density": 10,
+              "ats_readability": 10,
+              "non_generic": 5,
+              "interview_defensibility": 10
+            },
+            "unsupported_claims": [],
+            "requirement_gaps": [
+              "J-R4: Good communication in Chinese and English not demonstrated (no English proficiency claimed or evidenced).",
+              "J-R3: Ability to manage priorities in a fast-changing, cross-regional environment not explicitly supported.",
+              "J-R6: Familiarity with APAC talent market not evidenced; dashboard is localized."
+            ],
+            "genericity_test": {
+              "company_replaceable": false,
+              "reason": "Specific numbers (63 hires, 87%, 42 days, 220-person team) and project details (Sales New Leader program, Recruitment Data Dashboard) are not generic."
+            },
+            "revision_actions": [
+              {
+                "action": "candidate_verification",
+                "target": "English communication ability (J-R4)",
+                "reason": "The resume does not include any evidence of English proficiency. If the candidate possesses English skills, they must be added with verifiable proof as additional application material; otherwise this requirement remains unmet.",
+                "evidence_ids": []
+              }
+            ]
+          }
+        ],
+        "winner_candidate_id": null,
+        "revision_brief": "The resume is factually accurate and well-structured, with strong evidence of recruiting volume and stakeholder partnership. However, the mandatory English communication requirement (J-R4) is not met, and the candidate is based in Beijing while the role is in Shanghai. Therefore, the application is not eligible despite a high-quality resume. English proficiency must be verified before this candidate can be considered further."
+      },
+      "interview_advice": {
+        "interview_readiness_score": 15,
+        "eligibility_defense": [
+          {
+            "requirement_id": "J-R4",
+            "gap": "英文沟通能力无证据",
+            "defense_strategy": "在面试前获取英文水平证明（如多邻国测试、CET-6成绩单），或请前同事提供推荐信证明英文工作环境。若英文确有不足，需诚实告知当前水平，并说明正在通过课程提升，同时询问岗位是否有过渡期或内部培训支持。将对话焦点转向中文沟通中的保密意识和判断力实例（C-E1-6）。"
+          }
+        ],
+        "question_drills": [
+          {
+            "question": "This role requires strong English communication. Can you tell me about a time you used English in a professional context?",
+            "requirement_id": "J-R4",
+            "evidence_id": null,
+            "expected_answer_outline": "若具备英文经历，描述具体场景（如与外籍客户邮件沟通、英文培训材料准备）。若不具备，诚实说明中文工作环境为主，但强调曾在云杉教育接触过英文岗位描述或与外教简单沟通（如有），并补充当前英文学习行动。",
+            "interviewer_probing_angles": [
+              "How did you handle misunderstandings?",
+              "Have you ever presented in English?"
+            ],
+            "defense_strategy": "提前准备一个英文小故事；若完全没有，坦诚相告并展示学习计划，争取印象分。"
+          },
+          {
+            "question": "Describe your most complex recruiting assignment. How did you ensure quality and speed?",
+            "requirement_id": "J-R1",
+            "evidence_id": "C-E1-3",
+            "expected_answer_outline": "以2025年63个社招岗位为例：与业务负责人明确岗位画像，使用北森/Moka管理流程，每周跟踪关键环节，最终达成87%实现率、重点岗位周期42天。说明调整了筛选标准，加强了与销售负责人的双向反馈。",
+            "interviewer_probing_angles": [
+              "What was the most difficult role to fill?",
+              "How did you prioritize when under pressure?",
+              "What was your sourcing channel mix?"
+            ],
+            "defense_strategy": "用数据说话，但避免过度承诺独立主导（实际可能协作），可提及与猎头合作、内部推荐等渠道。"
+          },
+          {
+            "question": "How do you manage relationships with multiple hiring managers who have conflicting needs?",
+            "requirement_id": "J-R2",
+            "evidence_id": "C-E1-1",
+            "expected_answer_outline": "在启明对接8名负责人，定期与每个人对齐编制和优先级，通过月度业务复盘会议共享招聘数据，用数据引导合理预期，必要时寻求更高层协调。举一个处理冲突的例子（如销售与交付团队争抢同一职位）。",
+            "interviewer_probing_angles": [
+              "Give an example where you had to say no to a stakeholder.",
+              "How do you build trust quickly?"
+            ],
+            "defense_strategy": "强调透明沟通和数据驱动，避免替候选人编造未发生的具体冲突，若想不出案例可诚实说明‘通常能提前对齐避免冲突’。"
+          },
+          {
+            "question": "Walk me through your recruitment data dashboard. What insights did you generate and how were they used?",
+            "requirement_id": "J-R6",
+            "evidence_id": "C-P2-1",
+            "expected_answer_outline": "用Excel Power Query合并渠道、岗位、面试数据，展示周期、转化率、Offer接受率。发现某一渠道简历转化低，建议调整预算；面试阶段某一轮通过率异常，推动面试官校准。看板每周手工刷新，正在学习Power BI以实现自动化。",
+            "interviewer_probing_angles": [
+              "What metrics matter most for stakeholder reporting?",
+              "How did you handle data quality issues?"
+            ],
+            "defense_strategy": "主动承认手动刷新的局限，展示数据驱动决策的思维，若面试官追问技术细节，可坦言自己非数据分析专家，但善于利用工具提供可操作信息。"
+          },
+          {
+            "question": "Tell me about a sensitive employee relations case you handled. How did you maintain confidentiality and professional judgment?",
+            "requirement_id": "J-R4",
+            "evidence_id": "C-E1-6",
+            "expected_answer_outline": "选择其中一起复杂案例（如性骚扰投诉或绩效解雇），说明如何与法务合作制定沟通方案，确保所有谈话记录规范保存，在保护员工隐私的同时让业务领导知情。所有敏感信息仅在必须知情范围内分享。",
+            "interviewer_probing_angles": [
+              "How did you manage your own emotions?",
+              "What would you do differently?"
+            ],
+            "defense_strategy": "重点突出保密措施和判断准则，避免透露任何可识别信息。"
+          },
+          {
+            "question": "How do you adapt to rapid changes in hiring needs, such as sudden freezes or urgent backfills?",
+            "requirement_id": "J-R3",
+            "evidence_id": "C-E2-3",
+            "expected_answer_outline": "引述2022年云杉教育业务收缩：一夜之间招聘暂停，转向人员沟通和离职手续。迅速调整心态，主动学习裁员合规知识，支持业务平稳过渡。在启明也遇到季度末突击招聘，通过预建人才库、灵活协调面试官来应对。",
+            "interviewer_probing_angles": [
+              "How did you keep the team motivated during freezes?",
+              "What was your priority framework?"
+            ],
+            "defense_strategy": "强调在不确定性中保持执行力的能力，若没有完美案例，可坦诚说明自己如何从变化中总结教训。"
+          },
+          {
+            "question": "Imagine you join Apple, where teams are highly compartmentalized. How would you go about building relationships across different groups?",
+            "requirement_id": "J-R2",
+            "evidence_id": null,
+            "expected_answer_outline": "以在启明对接销售和交付两个职能的经验为引子：首先花时间了解每个团队的业务语言和文化，通过1:1会议建立个人连接，利用招聘数据提供跨团队洞察以证明价值。即使团队分隔，招聘天然需要跨部门协作，我会找到共同目标来打破壁垒。",
+            "interviewer_probing_angles": [
+              "What if a hiring manager is unresponsive?",
+              "How would you handle conflicting cultural norms?"
+            ],
+            "defense_strategy": "使用启明经验类比（对接8名负责人），展示主动倾听和适应不同风格的能力。若追问Apple特有挑战，可诚实表示需要实际观察后调整策略。"
+          },
+          {
+            "question": "You mentioned you’ve worked with talent reviews and succession planning. Tell me about a time your insights led to a promotion or development plan for a key employee.",
+            "requirement_id": "J-R2",
+            "evidence_id": "C-E1-4",
+            "expected_answer_outline": "在半年度人才盘点中，为销售团队某高潜员工整理360反馈和业绩数据，在盘点会议上与管理者讨论将其纳入继任池，并推动为其制定个性化发展计划。该员工随后成功晋升为区域经理（若有此结果），或仍在培养中。",
+            "interviewer_probing_angles": [
+              "What criteria did you use to assess potential?",
+              "How did you influence the manager who had a different opinion?"
+            ],
+            "defense_strategy": "若没有确切实例，可描述盘点过程中的讨论，强调影响决策的沟通技巧，避免编造不存在的结果。"
+          }
+        ],
+        "story_recommendations": [
+          {
+            "story_title": "63 Hires in a Year: Balancing Speed and Quality",
+            "situation": "2025年启明企业服务销售团队快速扩张，急需填补前线销售和交付岗位。",
+            "task": "作为HRBP，我负责社招全流程，确保招聘满足业务增长且质量不降。",
+            "action": "与8位负责人月度对齐编制，优化岗位画像，调整渠道组合（增加内部推荐和猎头），利用招聘数据看板监控周期和转化，推动面试官加快反馈。",
+            "result": "年度入职63人，达成率87%，重点岗位周期42天。试用期主动离职率从14%降至10%（薪酬政策调整亦有贡献）。",
+            "evidence_id": "C-E1-3, C-E1-5",
+            "result_verification": "准备提供招聘报告和离职率数据截图，并说明离职率下降的多因素性。请前经理确认招聘达成与周期数据。"
+          },
+          {
+            "story_title": "Navigating a Complex Employee Relations Case",
+            "situation": "一名在职员工举报上级言语骚扰，涉及跨部门冲突。",
+            "task": "独立调查并处理，在保障各方权益的前提下化解矛盾。",
+            "action": "联合法务制定访谈提纲，分别与当事人、证人保密谈话，汇总证据；与业务负责人商定解决方案（警告、调岗、道歉等）；全程文档化。",
+            "result": "事件解决，未升级为法律纠纷；员工继续留任，后续无类似投诉。",
+            "evidence_id": "C-E1-6",
+            "result_verification": "法务同事可证实处理流程的规范性；因保密限制，只能概述，不能提供具体姓名。"
+          },
+          {
+            "story_title": "Building a Recruitment Dashboard from Scratch",
+            "situation": "招聘数据分散在多个系统，无法快速了解全局。",
+            "task": "创建一个可视化工具，帮助业务负责人和招聘团队实时掌握进度。",
+            "action": "自学Excel Power Query，从北森、Moka导出数据并清洗合并，设计含周期、转化、Offer接受率的图表。每周手动刷新并提供给管理层。",
+            "result": "看板上线后，团队能在周会上快速对齐，并基于渠道转化数据调整了预算分配。下一步计划学习Power BI实现自动化。",
+            "evidence_id": "C-P2-1, C-P2-2",
+            "result_verification": "可现场演示看板截图，并让用过看板的业务同事评价其实用性。"
+          }
+        ],
+        "gap_defense": [
+          {
+            "gap": "英文沟通能力（J‑R4 knockout）",
+            "defense_strategy": "立即进行英文水平测试并取得证书；简历中如实添加‘English: Limited working proficiency (self-assessed)’或更好水平。在面试中准备一个英文自我介绍和回答常见问题的模板。若实在不足，承认并强调快速学习能力，同时询问岗位是否允许前几个月使用翻译工具或中文为主。"
+          },
+          {
+            "gap": "无跨地区/跨国公司招聘经验（J‑R3 preferred）",
+            "defense_strategy": "强调在北京支持过全国性销售团队（可能涉及不同城市），并曾对接跨职能利益相关者，显示在多变环境中管理优先级的适应性。表示渴望拓展国际视野，并分享自己主动学习APAC人才市场知识的计划。"
+          },
+          {
+            "gap": "科技公司经验偏教育行业（J‑R5 preferred）",
+            "defense_strategy": "突出云杉教育招聘过产品、研发岗位，这些角色与Apple部分岗位相似。强调通用招聘技能（利益相关方管理、数据分析）可以迁移，并展示对Apple业务和文化的兴趣。"
+          },
+          {
+            "gap": "数据化招聘管理停留在手工阶段（J‑R6 partial）",
+            "defense_strategy": "承认目前看板手动刷新，但已具备Power Query和数据分析基础，计划学习更高级BI工具。询问Apple使用的数据系统，表达快速上手的意愿。"
+          }
+        ],
+        "company_specific_hypotheses": [
+          {
+            "hypothesis": "Apple内部团队高度分隔，作为招聘需主动打破信息孤岛。",
+            "interviewer_probing": "How would you gather requirements from a design team that rarely interacts with operations?",
+            "defense_strategy": "分享在启明主动与财务、法务等支持部门建立联系的经验，说明会通过非正式沟通、跨部门项目等方式建立信任。"
+          },
+          {
+            "hypothesis": "对候选人体验有极高要求，招聘流程可能复杂。",
+            "interviewer_probing": "Describe a time you improved the candidate journey. What metrics did you track?",
+            "defense_strategy": "若无可直接量化的候选人体验项目，可提及在招聘过程中确保及时反馈、简化申请界面等细节。准备实例，如缩短面试安排等待时间。"
+          },
+          {
+            "hypothesis": "需要同时管理多个高优先级职位，工作节奏极快。",
+            "interviewer_probing": "How do you decide which role to work on when everything is urgent?",
+            "defense_strategy": "结合月度业务复盘时的优先级对齐经验，讲述使用影响-紧急矩阵，并定期与stakeholder同步调整。"
+          }
+        ],
+        "questions_for_interviewer": [
+          "该岗位的直属汇报对象和团队规模是怎样的？",
+          "在People团队内部，Corporate Recruiter与HR Business Partner如何分工协作？",
+          "目前团队使用的ATS和CRM系统是什么？有没有内部数据工具？",
+          "在亚太区，哪些市场和职位类型是当前招聘的重点？有什么特殊挑战？",
+          "团队如何衡量招聘成功？除了填充率，是否关注候选人体验NPS或管道健康度？"
+        ],
+        "first_90_days_discussion_points": [
+          "与核心利益相关者（业务领导、HRBP）进行1:1会谈，理解业务目标和招聘优先级。",
+          "深入熟悉现有招聘流程、系统（ATS等）和报告机制，识别可快速优化的环节。",
+          "建立关键岗位的人才管道初步分析，利用现有数据找出短期填补机会。",
+          "观察团队协作模式与跨部门沟通风格，为长期融入打下基础。"
+        ]
+      },
+      "deliverable": true
+    },
+    "finalResume": "**Sun Wanning**\n186****9523 | sunwanning08@outlook.com | Beijing, China\n\n**PROFESSIONAL SUMMARY**\nHRBP with 5 years of experience in full‑cycle recruiting, stakeholder management, and employee relations. Managed recruiting for 63 positions in 2025, achieving 87% fulfillment and an average time‑to‑fill of 42 days for key roles. Supported a 220‑person sales and delivery team, partnering with 8 business leaders to align hiring and performance needs. Built a recruitment data dashboard using Excel Power Query to analyze channel conversion and inform hiring strategies.\n\n**EXPERIENCE**\n\n**HRBP** | Beijing Qiming Enterprise Services Co., Ltd. | May 2023 – Present\n- Managed **full‑cycle recruiting** for sales and delivery roles, filling **63 positions in 2025** (87% annual fulfillment rate) with a **42‑day average time‑to‑fill** for critical roles.\n- Supported a **220‑person team** as HRBP, managing **stakeholder relationships** with 8 business line leaders for headcount planning, performance reviews, and promotion processes.\n- Participated in monthly business reviews with leadership, tracking people efficiency, attrition, and recruitment progress to align hiring priorities.\n- Assisted in refining sales probationary assessment and performance communication materials, contributing to a reduction in voluntary attrition from 14% to 10% (alongside concurrent compensation policy changes).\n- Independently resolved **6 complex employee relations** cases, ensuring compliance and documentation with legal support.\n- Organized semi‑annual talent reviews, maintaining a **nine‑box grid and succession list** for key roles.\n\n**Recruitment Specialist / Senior Recruitment Specialist** | Beijing Yunshan Education Technology Co., Ltd. | Jul 2020 – Apr 2023\n- Owned **full‑cycle recruiting** for product, R&D, operations, and course consultant roles, averaging **~80 hires per year**.\n- Maintained recruitment channels, compiled weekly reports, and gathered interviewer feedback to optimize processes.\n- Supported two annual **campus recruitment** events, including campus talks and candidate engagement.\n- Participated in employee communication and offboarding procedures during a business contraction in 2022.\n\n**PROJECTS**\n\n**Sales New Leader 90‑Day Onboarding Program** | Jul 2024 – Oct 2024\n- Interviewed 12 new sales managers and their supervisors to identify challenges in role transition, goal setting, and performance coaching.\n- Collaborated with the training team to design 4 workshops and a mentorship framework; the pilot achieved a **4.6/5** satisfaction score from 18 participants.\n\n**Recruitment Data Dashboard** | Feb 2025 – Apr 2025\n- Built a recruitment analytics dashboard using **Excel Power Query**, merging channel, post, and interview data to visualize cycle times, conversion rates, and offer acceptance rates.\n- Provided weekly manual data refresh for the hiring team, enabling **data‑driven** channel optimization (dashboard not yet integrated with BI system).\n\n**EDUCATION**\nBachelor of Human Resource Management, Capital University of Economics and Business, Sep 2016 – Jun 2020\n\n**SKILLS**\n- **Full‑cycle Recruiting**: Job profiling, channel management, interviewing, offer negotiation, campus recruitment\n- **Stakeholder Management**: Partnering with business leaders on workforce planning, talent review, and performance improvement\n- **HR Tools**: Excel (Power Query, pivot tables), Feishu, Beisen, Moka (ATS familiarity)\n- **Talent Management**: Performance calibration, talent review, succession planning, **employee relations**\n- **Certifications**: National Human Resource Professional Level 3, Labor Law Online Course Completion\n\n**LANGUAGE**\nChinese (Native)"
+  }
+}

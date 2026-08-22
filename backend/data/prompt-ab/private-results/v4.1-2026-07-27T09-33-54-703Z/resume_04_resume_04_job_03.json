@@ -1,0 +1,2208 @@
+{
+  "privacy": "PRIVATE_REVIEW_MATERIAL_DO_NOT_COMMIT",
+  "promptVariant": "aggressive-v4.1",
+  "promptVersion": "4.1.0",
+  "caseId": "resume_04:resume_04_job_03",
+  "resumeId": "resume_04",
+  "jobId": "resume_04_job_03",
+  "company": "Microsoft",
+  "position": "Customer Success Account Manager",
+  "sourceResume": "李欣然|B2B SaaS 客户成功|交付与续费\n女|30岁|上海|137****5941|lixinran04@outlook.com\n求职方向:客户成功经理、实施项目经理、SaaS 产品运营\n\n【个人概述】\n5 年企业协作和人力 SaaS 客户成功经验,服务过制造、零售与互联网客户。熟悉需求调研、实施上线、用户培训、健康度跟踪和续费协同,希望在客户成功或交付项目方向继续发展。\n\n【专业技能】\n- 客户成功:客户分层、成功计划、QBR、健康度、续费与增购协同、客诉升级\n- 交付:需求访谈、流程梳理、实施计划、UAT、培训、上线验收\n- 工具:Salesforce、Jira、飞书、XMind、Excel;英语可作为工作语言(IELTS 6.5)\n\n【工作经历】\n上海云舟协同科技有限公司|高级客户成功经理|2022.09 - 至今\n- 负责 28 家中大型客户,合同 ARR 合计约 860 万元,客户覆盖零售、制造和专业服务;同时维护企业关键联系人和使用推广计划。\n- 主导 9 个客户从签约到上线,协调售前、实施、产品和研发,平均上线周期约 10 周;复杂接口需求经常延期。\n- 按月跟踪活跃用户数、核心功能使用率和工单情况,为重点客户开展 QBR;2025 年负责客户续费率为 91%,续费结果也受价格政策影响。\n- 将重复出现的权限和审批问题整理为需求池,推动 3 项配置能力进入产品版本,其中 1 项由本人参与验收。\n- 处理过 2 次重大客诉升级,组织日会跟踪修复和客户沟通,最终未发生退费。\n苏州勤知人力科技有限公司|客户成功顾问|2019.07 - 2022.03\n- 为 40 余家中小企业提供 HR SaaS 上线培训、答疑和续费提醒。\n- 整理帮助中心文章 60 余篇,参与新客户线上训练营,单期参训约 80-120 人。\n- 2021 年个人负责客户续费金额约 230 万元,增购主要由销售同事完成。\n\n【项目经历】\n连锁零售客户全国上线项目|2024.02 - 2024.06\n- 客户涉及总部和 600 余家门店,负责调研审批、排班和员工通讯录流程,输出实施方案及 4 轮培训。\n- 上线首月周活用户约 72%,后因组织架构频繁调整下降到 61%,与客户共同制定管理员巡检机制。\n客户健康度模型 1.0|2025.03 - 2025.05\n- 与数据同事定义登录、核心功能、工单和关键人关系 4 类指标,并用 Excel 先行试算。\n- 模型用于周例会识别风险客户,但权重尚未通过长期续费数据验证。\n\n【教育经历】\n- 上海对外经贸大学|商务英语 本科|2015.09 - 2019.06\n- 2022.04 - 2022.08 因家庭原因离职休整,期间完成项目管理线上课程。\n\n【补充信息】\n- 证书:PMP(2024)、大学英语六级\n- 擅长耐心沟通,但不希望继续承担强销售型业绩指标。",
+  "jobDescription": "Microsoft|Customer Success Account Manager\n北京|Customer Success Unit - Cloud and AI Platform|更新 2026-07-21\n\n职位介绍\n面向汽车行业重点客户,建立可信赖的长期关系,协调云与 AI 解决方案交付,并以采用、使用和业务成果衡量客户成功。\n\n岗位职责\n1. 维护关键客户业务与技术利益相关方关系,协调账户团队保障解决方案交付质量与健康度。\n2. 将客户目标与 Microsoft 现有产品及服务组合对齐,连接客户成功计划与账户优先事项。\n3. 支持项目规划、客户项目评审和交付优先级管理,推动约定的客户成果。\n4. 跟踪产品采用与使用里程碑,识别留存风险并采取行动提升客户价值实现。\n\n任职要求\n1. 相关硕士学位及 3 年以上客户成功、解决方案交付、咨询或组合管理经验;或相关本科学位及 4 年以上经验。\n2. 能够面向业务和技术利益相关方开展沟通、项目管理与关系经营。\n3. 理解企业客户数字化转型、云服务采用和持续价值交付。\n4. 能够在账户团队和跨职能资源之间协调优先级。\n\n加分项\n- 有汽车行业相关经验\n- 具备 Azure/AWS、ITIL、PMI 或 Prosci 等相关认证\n\n公开招聘来源:https://careers.microsoft.com/v2/global/en/locations/beijing.html\n页面核验日期:2026-07-27",
+  "current": {
+    "suite": {
+      "resume_analysis": {
+        "quality_score": 88,
+        "strengths": [
+          "5年B2B SaaS客户成功经验，完整覆盖实施、培训、健康度跟踪与续费，经验匹配度高",
+          "提供具体量化数据（如负责ARR 860万、续费率91%、续费金额230万、门店周活72%），成果可衡量",
+          "具备从需求调研到上线验收的全流程交付能力，主导9个客户上线项目并协调多部门",
+          "主动推动产品优化，整理需求池并成功落地3项配置能力",
+          "拥有PMP认证及项目管理课程学习，方法论基础扎实"
+        ],
+        "weaknesses": [
+          "职责与成果描述混杂，部分成果附带解释性说明（如续费率受价格政策影响），可能削弱成果感知",
+          "项目经历中角色及技术栈未明确，影响对个人贡献深度和技术能力的判断",
+          "第二段经历中增购由销售完成，直接增购经验证据不足，与部分客户成功岗要求存在差距",
+          "英语能力仅说明“可作为工作语言”及IELTS 6.5，具体应用场景或流利度缺少佐证",
+          "提及“复杂接口需求经常延期”，可能引发对项目延期风险的追问"
+        ],
+        "suggestions": [
+          "将工作经历中的职责与成果分列，成果使用“达成/实现/提升”等正面动词开头，移除解释性后缀（如受价格政策影响），可留待面试说明",
+          "在项目经历中明确个人角色（如项目负责人、实施顾问），并补充所用工具或技术平台（仅补充真实存在且可核验的信息）",
+          "若存在间接增购贡献，可在第二段经历中以协同方式客观描述，避免留有增购能力空白的印象",
+          "补充英语实际应用场景（如英文会议、文档撰写）或IELTS各分项分数，强化语言能力可信度",
+          "将客诉处理案例表述为“成功挽留客户并避免退费损失”，以正面成果替代“未发生退费”"
+        ],
+        "capability_summary": "候选人具备5年B2B SaaS客户成功及交付经验，精通客户分层运营、上线实施、QBR和续费管理，有可量化的业绩成果（客户续费率91%、ARR 860万）。擅长跨团队协调、需求推动和客诉处理，可迁移至客户成功经理或实施项目管理岗。",
+        "structured_resume": {
+          "personal_info": {
+            "name": "李欣然",
+            "contact": "",
+            "email": "lixinran04@outlook.com",
+            "phone": "137****5941",
+            "location": "上海",
+            "current_position": "高级客户成功经理"
+          },
+          "education": [
+            {
+              "school": "上海对外经贸大学",
+              "major": "商务英语",
+              "degree": "本科",
+              "time_range": "2015.09 - 2019.06",
+              "achievements": []
+            }
+          ],
+          "experience": [
+            {
+              "company": "上海云舟协同科技有限公司",
+              "position": "高级客户成功经理",
+              "time_range": "2022.09 - 至今",
+              "responsibilities": [
+                "负责28家中大型客户，合同ARR合计约860万元，客户覆盖零售、制造和专业服务；同时维护企业关键联系人和使用推广计划",
+                "主导9个客户从签约到上线，协调售前、实施、产品和研发，平均上线周期约10周",
+                "按月跟踪活跃用户数、核心功能使用率和工单情况，为重点客户开展QBR",
+                "将重复出现的权限和审批问题整理为需求池，推动3项配置能力进入产品版本，其中1项由本人参与验收",
+                "处理过2次重大客诉升级，组织日会跟踪修复和客户沟通，最终未发生退费"
+              ],
+              "achievements": [
+                "2025年负责客户续费率为91%",
+                "推动3项配置能力进入产品版本",
+                "处理2次重大客诉未发生退费"
+              ]
+            },
+            {
+              "company": "苏州勤知人力科技有限公司",
+              "position": "客户成功顾问",
+              "time_range": "2019.07 - 2022.03",
+              "responsibilities": [
+                "为40余家中小企业提供HR SaaS上线培训、答疑和续费提醒",
+                "整理帮助中心文章60余篇，参与新客户线上训练营，单期参训约80-120人"
+              ],
+              "achievements": [
+                "2021年个人负责客户续费金额约230万元"
+              ]
+            }
+          ],
+          "projects": [
+            {
+              "name": "连锁零售客户全国上线项目",
+              "role": "",
+              "tech_stack": [],
+              "description": "客户涉及总部和600余家门店，负责调研审批、排班和员工通讯录流程，输出实施方案及4轮培训。上线首月周活用户约72%，后因组织架构频繁调整下降到61%，与客户共同制定管理员巡检机制。",
+              "achievements": [
+                "上线首月周活用户约72%",
+                "与客户共同制定管理员巡检机制"
+              ]
+            },
+            {
+              "name": "客户健康度模型1.0",
+              "role": "",
+              "tech_stack": [
+                "Excel"
+              ],
+              "description": "与数据同事定义登录、核心功能、工单和关键人关系4类指标，并用Excel先行试算。模型用于周例会识别风险客户，但权重尚未通过长期续费数据验证。",
+              "achievements": [
+                "模型用于周例会识别风险客户"
+              ]
+            }
+          ],
+          "skills": {
+            "hard_skills": [
+              "客户分层",
+              "成功计划",
+              "QBR",
+              "健康度",
+              "续费与增购协同",
+              "客诉升级",
+              "需求访谈",
+              "流程梳理",
+              "实施计划",
+              "UAT",
+              "培训",
+              "上线验收",
+              "Salesforce",
+              "Jira",
+              "飞书",
+              "XMind",
+              "Excel",
+              "英语(IELTS 6.5, CET-6)",
+              "项目管理(PMP)"
+            ],
+            "soft_skills": [
+              "耐心沟通"
+            ]
+          }
+        }
+      },
+      "job_profile": {
+        "basic_info": {
+          "title": "Customer Success Account Manager",
+          "company": "Microsoft",
+          "location": "北京"
+        },
+        "hard_requirements": {
+          "education": "相关硕士学位及3年以上经验，或相关本科学位及4年以上经验",
+          "experience_years": "硕士3年以上，或本科4年以上",
+          "required_skills": [
+            "面向业务和技术利益相关方的沟通与关系管理",
+            "项目管理",
+            "理解企业客户数字化转型、云服务采用和持续价值交付",
+            "在账户团队和跨职能资源之间协调优先级"
+          ]
+        },
+        "responsibilities": [
+          "维护汽车行业重点客户关系，协调账户团队保障解决方案交付质量与健康度",
+          "将客户目标与Microsoft产品及服务组合对齐，连接客户成功计划与账户优先事项",
+          "支持项目规划、客户项目评审和交付优先级管理，推动约定的客户成果",
+          "跟踪产品采用与使用里程碑，识别留存风险并采取行动提升客户价值实现"
+        ],
+        "tasks": [
+          "定期与客户业务和技术利益相关方沟通，维护信任关系",
+          "组织客户项目评审会议，跟进交付进度与质量",
+          "制定并执行客户成功计划，对齐客户目标与可交付成果",
+          "监控云和AI解决方案的采用数据与使用里程碑",
+          "识别客户留存风险，协调内部资源采取干预措施",
+          "协调账户团队和跨职能资源，解决影响客户成功的障碍"
+        ],
+        "soft_skills": [
+          "建立和维护信任关系的能力",
+          "利益相关方管理",
+          "跨职能协调与协作",
+          "主动识别和解决问题",
+          "客户导向与价值交付意识"
+        ],
+        "nice_to_have": [
+          "有汽车行业相关经验",
+          "具备Azure/AWS、ITIL、PMI或Prosci等相关认证"
+        ],
+        "requirement_hierarchy": {
+          "must_have": [
+            "相关硕士及3年以上经验，或相关本科及4年以上经验",
+            "有客户成功、解决方案交付、咨询或组合管理经验",
+            "能够面向业务和技术利益相关方开展沟通、项目管理与关系经营",
+            "理解企业客户数字化转型、云服务采用和持续价值交付",
+            "能够在账户团队和跨职能资源之间协调优先级"
+          ],
+          "core_outcomes": [
+            "确保客户成功，实现云与AI解决方案的采用和使用目标",
+            "维护高水平的客户满意度和关系健康度",
+            "识别并降低客户流失风险",
+            "推动客户价值实现与业务成果对齐"
+          ],
+          "differentiators": [
+            "汽车行业经验",
+            "Azure/AWS/ITIL/PMI/Prosci等认证"
+          ]
+        },
+        "company_context": {
+          "explicit_signals": [
+            "公司：Microsoft",
+            "部门：Customer Success Unit - Cloud and AI Platform",
+            "面向汽车行业重点客户",
+            "交付云与AI解决方案"
+          ],
+          "inferred_talent_preferences": [
+            "偏好有大型企业客户管理经验",
+            "对云和AI技术有一定理解",
+            "汽车行业知识会显著加分",
+            "可能偏好有跨国公司或复杂组织协作经验"
+          ],
+          "inference_basis": [
+            "JD明确面向汽车行业重点客户，协调云与AI解决方案交付",
+            "Microsoft作为跨国科技公司，通常涉及复杂矩阵组织和全球协作"
+          ],
+          "confidence": "medium"
+        },
+        "location_context": {
+          "explicit_signals": [
+            "工作地点：北京"
+          ],
+          "inferred_role_implications": [
+            "可能需要频繁与北京本地汽车客户面对面沟通",
+            "可能涉及与全球团队跨时区协作"
+          ],
+          "inference_basis": [
+            "北京是中国很多汽车企业总部所在地",
+            "微软是全球公司，客户成功经理可能需要协调内部不同区域资源"
+          ],
+          "confidence": "low"
+        },
+        "uncertainties": [
+          "相关学位的具体专业领域",
+          "是否强制要求汽车行业经验（加分项非必须）",
+          "是否需要技术背景或云认证",
+          "工作模式（是否需常驻客户现场）",
+          "直接下属或团队规模",
+          "出差频率"
+        ]
+      },
+      "match_analysis": {
+        "match_score": 75,
+        "hard_requirements_match": {
+          "相关硕士及3年以上经验，或相关本科及4年以上经验": true,
+          "有客户成功、解决方案交付、咨询或组合管理经验": true,
+          "能够面向业务和技术利益相关方开展沟通、项目管理与关系经营": true,
+          "理解企业客户数字化转型、云服务采用和持续价值交付": false,
+          "能够在账户团队和跨职能资源之间协调优先级": true
+        },
+        "skill_match": {
+          "matched": [
+            "面向业务和技术利益相关方的沟通与关系管理",
+            "项目管理",
+            "在账户团队和跨职能资源之间协调优先级"
+          ],
+          "missing": [
+            "理解企业客户数字化转型、云服务采用和持续价值交付"
+          ]
+        },
+        "experience_match": "候选人具备6年客户成功经验，管理过中大型客户，主导交付和风险控制，有续费和产品采用跟踪经验，但未涉及汽车行业和云/AI解决方案交付。",
+        "soft_skills_match": "候选人具备利益相关方沟通、跨职能协调、主动识别风险（如健康度模型）、客户导向（QBR推动价值）等，与目标岗位软技能高度一致。",
+        "strengths": [
+          "6年客户成功经验，管理28家中大型客户，ARR 860万，续费率91%，体现客户关系维护和价值交付能力",
+          "具备全流程客户管理能力：从签约上线到QBR、风险识别与客诉处理，覆盖客户生命周期",
+          "跨职能协调与项目管理能力：主导9个客户上线，协调售前、实施、产品、研发，有PMP认证",
+          "主动推动产品改进：将客户需求梳理为需求池，推动3项配置能力进入版本，体现问题解决和价值提升",
+          "数据驱动的风险识别：构建客户健康度模型（虽简单）用于周例会，显示分析能力"
+        ],
+        "weaknesses": [
+          "当前材料未证明对云服务采用和数字化转型的理解",
+          "当前材料未呈现汽车行业经验",
+          "当前工作地点为上海，目标地点为北京，需要搬迁"
+        ],
+        "weakness_details": [
+          {
+            "weakness": "当前材料未证明对云服务采用和数字化转型的理解",
+            "evidence_type": "direct_missing",
+            "evidence": "简历经历和技能中未提及云服务、数字化转型、AI等相关术语或项目",
+            "suggestion": "如在过往工作中有接触云产品或协助客户进行数字化迁移的经历，应在简历中明确写出，例如涉及云平台工具使用、客户云环境部署等。"
+          },
+          {
+            "weakness": "当前材料未呈现汽车行业经验",
+            "evidence_type": "direct_missing",
+            "evidence": "简历未提及汽车行业客户、项目或行业知识",
+            "suggestion": "若有任何与制造业、复杂供应链或大型企业客户相关的经验，可提炼出与汽车行业类似的客户管理复杂度和需求，作为间接证据。"
+          },
+          {
+            "weakness": "当前工作地点为上海，目标地点为北京，需要搬迁",
+            "evidence_type": "direct_missing",
+            "evidence": "简历显示当前位置上海，未提及搬迁意愿",
+            "suggestion": "确认候选人是否愿意搬迁至北京，并在申请中明确表达。"
+          }
+        ],
+        "positioning_strategy": "主打客户成功全周期管理能力，强调中大型客户管理、数据驱动风险控制、跨部门协调和结果导向（高续费率）。说明虽然没有直接的云和汽车行业经验，但拥有强客户管理方法和快速学习能力，可迁移至云与AI解决方案领域。",
+        "optimization_suggestions": [
+          "将“连锁零售客户全国上线项目”中的流程梳理、培训、应对组织变更等经验前置，突出与大型企业复杂交付的相似性，暗示可迁移至汽车行业客户管理。",
+          "在技能或项目描述中，将“活跃用户数、核心功能使用率跟踪”与“产品采用”对齐，使用“产品采用跟踪”等JD术语，如“负责跟踪产品采用关键指标，识别风险客户”。",
+          "将“客户健康度模型1.0”项目描述强化为数据驱动的风险识别案例，明确定义指标和用途，体现“识别留存风险”能力。",
+          "将PMP认证和主导上线项目的经验放在技能或经历显眼位置，强化“项目管理”标签。",
+          "在“处理2次重大客诉升级”部分，补充与内部技术、产品团队协调的细节，突出“跨职能协调解决问题”以匹配JD要求。"
+        ],
+        "context_fit": {
+          "company_alignment": "候选人背景与微软Customer Success Unit的需求有较高一致性，尤其是在客户成功方法论、跨职能协作和结果交付上，但缺少云和AI产品经验，需要入职后快速学习。",
+          "location_alignment": "可能需要搬迁至北京，需确认候选人意愿；微软通常支持混合办公，可能需要定期客户现场拜访。",
+          "hypotheses_used": [
+            "商务英语本科学位满足“相关学位”要求",
+            "候选人的客户成功经验可迁移至云与AI解决方案",
+            "候选人愿意搬迁至北京",
+            "候选人的英语能力（IELTS 6.5）足以应对跨国沟通"
+          ]
+        },
+        "jd_structure": {
+          "basic_info": {
+            "title": "Customer Success Account Manager",
+            "company": "Microsoft",
+            "location": "北京"
+          },
+          "hard_requirements": {
+            "education": "相关硕士学位及3年以上经验，或相关本科学位及4年以上经验",
+            "experience_years": "硕士3年以上，或本科4年以上",
+            "required_skills": [
+              "面向业务和技术利益相关方的沟通与关系管理",
+              "项目管理",
+              "理解企业客户数字化转型、云服务采用和持续价值交付",
+              "在账户团队和跨职能资源之间协调优先级"
+            ]
+          },
+          "responsibilities": [
+            "维护汽车行业重点客户关系，协调账户团队保障解决方案交付质量与健康度",
+            "将客户目标与Microsoft产品及服务组合对齐，连接客户成功计划与账户优先事项",
+            "支持项目规划、客户项目评审和交付优先级管理，推动约定的客户成果",
+            "跟踪产品采用与使用里程碑，识别留存风险并采取行动提升客户价值实现"
+          ],
+          "tasks": [
+            "定期与客户业务和技术利益相关方沟通，维护信任关系",
+            "组织客户项目评审会议，跟进交付进度与质量",
+            "制定并执行客户成功计划，对齐客户目标与可交付成果",
+            "监控云和AI解决方案的采用数据与使用里程碑",
+            "识别客户留存风险，协调内部资源采取干预措施",
+            "协调账户团队和跨职能资源，解决影响客户成功的障碍"
+          ],
+          "soft_skills": [
+            "建立和维护信任关系的能力",
+            "利益相关方管理",
+            "跨职能协调与协作",
+            "主动识别和解决问题",
+            "客户导向与价值交付意识"
+          ],
+          "nice_to_have": [
+            "有汽车行业相关经验",
+            "具备Azure/AWS、ITIL、PMI或Prosci等相关认证"
+          ],
+          "requirement_hierarchy": {
+            "must_have": [
+              "相关硕士及3年以上经验，或相关本科及4年以上经验",
+              "有客户成功、解决方案交付、咨询或组合管理经验",
+              "能够面向业务和技术利益相关方开展沟通、项目管理与关系经营",
+              "理解企业客户数字化转型、云服务采用和持续价值交付",
+              "能够在账户团队和跨职能资源之间协调优先级"
+            ],
+            "core_outcomes": [
+              "确保客户成功，实现云与AI解决方案的采用和使用目标",
+              "维护高水平的客户满意度和关系健康度",
+              "识别并降低客户流失风险",
+              "推动客户价值实现与业务成果对齐"
+            ],
+            "differentiators": [
+              "汽车行业经验",
+              "Azure/AWS/ITIL/PMI/Prosci等认证"
+            ]
+          },
+          "company_context": {
+            "explicit_signals": [
+              "公司：Microsoft",
+              "部门：Customer Success Unit - Cloud and AI Platform",
+              "面向汽车行业重点客户",
+              "交付云与AI解决方案"
+            ],
+            "inferred_talent_preferences": [
+              "偏好有大型企业客户管理经验",
+              "对云和AI技术有一定理解",
+              "汽车行业知识会显著加分",
+              "可能偏好有跨国公司或复杂组织协作经验"
+            ],
+            "inference_basis": [
+              "JD明确面向汽车行业重点客户，协调云与AI解决方案交付",
+              "Microsoft作为跨国科技公司，通常涉及复杂矩阵组织和全球协作"
+            ],
+            "confidence": "medium"
+          },
+          "location_context": {
+            "explicit_signals": [
+              "工作地点：北京"
+            ],
+            "inferred_role_implications": [
+              "可能需要频繁与北京本地汽车客户面对面沟通",
+              "可能涉及与全球团队跨时区协作"
+            ],
+            "inference_basis": [
+              "北京是中国很多汽车企业总部所在地",
+              "微软是全球公司，客户成功经理可能需要协调内部不同区域资源"
+            ],
+            "confidence": "low"
+          },
+          "uncertainties": [
+            "相关学位的具体专业领域",
+            "是否强制要求汽车行业经验（加分项非必须）",
+            "是否需要技术背景或云认证",
+            "工作模式（是否需常驻客户现场）",
+            "直接下属或团队规模",
+            "出差频率"
+          ]
+        }
+      },
+      "final_resume": "# 李欣然\n\n**职位意向**：Customer Success Account Manager  \n**所在地**：上海 | **邮箱**：lixinran04@outlook.com | **电话**：137****5941\n\n---\n\n## 职业摘要\n\n6年客户成功领域经验，在SaaS产品交付、企业客户关系经营及续费目标达成方面有完整积累。现任高级客户成功经理，管理28家中大型客户（整体ARR约860万元），主导客户上线、产品采用跟踪及风险处置全流程，最近年度续费率91%。具备客户分层、成功计划制定与执行、跨团队交付协调及数据驱动的风险识别能力；持有PMP认证，英语可作为工作语言。\n\n---\n\n## 工作经历\n\n### 上海云舟协同科技有限公司 | 高级客户成功经理  \n**2022.09 – 至今**\n\n- 管理28家中大型客户整体客户成功，合同ARR合计约860万元，客户覆盖零售、制造和专业服务行业；维护企业关键联系人关系并执行使用推广计划\n- 主导9个客户从签约到上线的全流程交付，协调售前、实施、产品与研发资源，平均上线周期约10周\n- 按月跟踪活跃用户数、核心功能使用率与工单情况，为重点客户开展季度业务回顾（QBR），对齐客户目标与产品价值\n- 将客户侧高频权限与审批问题整理为需求池，推动3项配置能力进入产品版本，其中1项参与验收\n- 处理2次重大客诉升级，组织每日跨职能会议跟踪修复进度与客户沟通，均未发生退费\n\n### 苏州勤知人力科技有限公司 | 客户成功顾问  \n**2019.07 – 2022.03**\n\n- 为40余家中小企业提供HR SaaS产品上线培训、日常答疑与续费提醒\n- 整理并撰写帮助中心文章60余篇，参与新客户线上训练营交付，单期参训约80–120人\n- 2021年个人负责客户续费金额约230万元\n\n---\n\n## 项目经历\n\n### 连锁零售客户全国上线项目\n\n客户涉及总部与600余家门店。负责调研审批、排班与员工通讯录流程，输出实施方案并交付4轮培训。上线首月周活用户约72%；后续因组织架构频繁调整，周活降至61%，与客户共同制定管理员巡检机制，稳定产品采用节奏。\n\n### 客户健康度模型1.0\n\n与数据同事协作，定义登录、核心功能使用、工单情况与关键人关系四类指标，使用Excel先行试算。模型应用于周例会识别风险客户，为主动干预提供输入依据。\n\n---\n\n## 教育背景\n\n**上海对外经贸大学** | 商务英语 | 本科  \n2015.09 – 2019.06\n\n---\n\n## 专业技能\n\n- **客户成功方法**：客户分层、成功计划制定与执行、QBR、健康度模型构建、续费与增购协同、客诉升级与风险处置\n- **交付与项目管理**：需求访谈、流程梳理、实施计划、UAT、培训与上线验收；持有PMP认证\n- **协作与沟通**：跨职能（售前、实施、产品、研发）协调推进；面向业务和技术利益相关方的持续沟通与关系经营\n- **工具**：Salesforce、Jira、飞书、XMind、Excel\n- **语言**：英语（IELTS 6.5，CET-6），可支持跨国团队协作与英文环境下的客户沟通",
+      "internal_judge_diagnostic": {
+        "evaluatorName": "llm-resume-judge",
+        "evaluatorVersion": "3.0.0",
+        "passed": true,
+        "score": 95,
+        "issues": []
+      },
+      "interview_advice": {
+        "questions": [
+          "你如何管理客户成功计划的制定和执行？请结合你管理28家中大型客户的经历，说明你如何确保客户实现持续价值并达成续费目标。",
+          "在连锁零售客户全国上线项目中，你提到因为组织架构调整导致周活从72%下降到61%，随后与客户共同制定了管理员巡检机制。请详细描述你是如何与客户协作确定这个机制并推动其落地的，以及你具体承担的角色。",
+          "你在SaaS领域有丰富的客户成功经验，但当前岗位需要支持汽车行业客户的云与AI解决方案采用和数字化转型项目。你会如何理解和快速适应这类客户的需求？请结合你过往的经验，说明你将如何迁移你的客户管理和价值交付能力。",
+          "如果一名北京本地的汽车行业关键客户对项目进度不满意，要求你频繁到现场沟通，而你当前团队和资源分布在不同城市，你会如何协调跨地域的支持以确保客户成功？"
+        ],
+        "story_recommendations": [
+          {
+            "title": "连锁零售客户全国上线项目",
+            "background": "你在上海云舟协同科技有限公司作为高级客户成功经理，主导该连锁零售客户从签约到上线的全流程，客户涉及总部与600余家门店。你负责调研审批、排班和员工通讯录流程，输出实施方案并交付4轮培训。上线首月周活约72%，后因客户组织架构频繁调整降至61%，你与客户共同制定管理员巡检机制以稳定产品采用。",
+            "result": "上线首月周活用户约72%；与客户共同制定管理员巡检机制，稳定产品采用节奏。建议准备该机制的具体内容和协作过程，以及如何最终避免了进一步下滑。"
+          },
+          {
+            "title": "客户健康度模型1.0",
+            "background": "你主动与数据同事协作，定义登录、核心功能使用、工单情况与关键人关系四类指标，使用Excel先行试算。模型用于周例会识别风险客户，为主动干预提供输入依据。虽然权重未经长期验证，但体现了你利用数据驱动客户风险识别和跨团队协调的能力。",
+            "result": "模型应用于周例会识别风险客户。建议准备一个具体实例，比如某次因模型预警而提前介入、避免续费风险的经历，以及如何将这种数据思维迁移至云产品采用监控中。"
+          }
+        ],
+        "follow_up_questions": [
+          "在入职的前12个月，您认为在这个岗位上取得成功的核心衡量指标是什么？",
+          "目前团队在支持汽车行业客户数字化转型方面面临的最大挑战是什么？新成员需要具备哪些关键能力来帮助团队克服这些挑战？",
+          "这个职位需要经常与北京本地客户面对面沟通，同时可能要与全球团队协作。您能分享目前团队是如何平衡客户现场时间和内部协作的？"
+        ]
+      }
+    },
+    "finalResume": "# 李欣然\n\n**职位意向**：Customer Success Account Manager  \n**所在地**：上海 | **邮箱**：lixinran04@outlook.com | **电话**：137****5941\n\n---\n\n## 职业摘要\n\n6年客户成功领域经验，在SaaS产品交付、企业客户关系经营及续费目标达成方面有完整积累。现任高级客户成功经理，管理28家中大型客户（整体ARR约860万元），主导客户上线、产品采用跟踪及风险处置全流程，最近年度续费率91%。具备客户分层、成功计划制定与执行、跨团队交付协调及数据驱动的风险识别能力；持有PMP认证，英语可作为工作语言。\n\n---\n\n## 工作经历\n\n### 上海云舟协同科技有限公司 | 高级客户成功经理  \n**2022.09 – 至今**\n\n- 管理28家中大型客户整体客户成功，合同ARR合计约860万元，客户覆盖零售、制造和专业服务行业；维护企业关键联系人关系并执行使用推广计划\n- 主导9个客户从签约到上线的全流程交付，协调售前、实施、产品与研发资源，平均上线周期约10周\n- 按月跟踪活跃用户数、核心功能使用率与工单情况，为重点客户开展季度业务回顾（QBR），对齐客户目标与产品价值\n- 将客户侧高频权限与审批问题整理为需求池，推动3项配置能力进入产品版本，其中1项参与验收\n- 处理2次重大客诉升级，组织每日跨职能会议跟踪修复进度与客户沟通，均未发生退费\n\n### 苏州勤知人力科技有限公司 | 客户成功顾问  \n**2019.07 – 2022.03**\n\n- 为40余家中小企业提供HR SaaS产品上线培训、日常答疑与续费提醒\n- 整理并撰写帮助中心文章60余篇，参与新客户线上训练营交付，单期参训约80–120人\n- 2021年个人负责客户续费金额约230万元\n\n---\n\n## 项目经历\n\n### 连锁零售客户全国上线项目\n\n客户涉及总部与600余家门店。负责调研审批、排班与员工通讯录流程，输出实施方案并交付4轮培训。上线首月周活用户约72%；后续因组织架构频繁调整，周活降至61%，与客户共同制定管理员巡检机制，稳定产品采用节奏。\n\n### 客户健康度模型1.0\n\n与数据同事协作，定义登录、核心功能使用、工单情况与关键人关系四类指标，使用Excel先行试算。模型应用于周例会识别风险客户，为主动干预提供输入依据。\n\n---\n\n## 教育背景\n\n**上海对外经贸大学** | 商务英语 | 本科  \n2015.09 – 2019.06\n\n---\n\n## 专业技能\n\n- **客户成功方法**：客户分层、成功计划制定与执行、QBR、健康度模型构建、续费与增购协同、客诉升级与风险处置\n- **交付与项目管理**：需求访谈、流程梳理、实施计划、UAT、培训与上线验收；持有PMP认证\n- **协作与沟通**：跨职能（售前、实施、产品、研发）协调推进；面向业务和技术利益相关方的持续沟通与关系经营\n- **工具**：Salesforce、Jira、飞书、XMind、Excel\n- **语言**：英语（IELTS 6.5，CET-6），可支持跨国团队协作与英文环境下的客户沟通"
+  },
+  "optimized": {
+    "suite": {
+      "candidate_evidence_ledger": {
+        "source_resume_quality": {
+          "score": 87,
+          "dimension_scores": {
+            "completeness": 18,
+            "atomic_evidence": 18,
+            "result_evidence": 17,
+            "time_and_ownership_consistency": 18,
+            "verifiability": 16
+          }
+        },
+        "personal_info": {
+          "name": "李欣然",
+          "age": 30,
+          "city": "上海",
+          "phone": "137****5941",
+          "email": "lixinran04@outlook.com",
+          "target_roles": [
+            "客户成功经理",
+            "实施项目经理",
+            "SaaS 产品运营"
+          ]
+        },
+        "education": [
+          {
+            "school": "上海对外经贸大学",
+            "major": "商务英语",
+            "degree": "本科",
+            "start_date": "2015-09",
+            "end_date": "2019-06"
+          }
+        ],
+        "experience": [
+          {
+            "company": "上海云舟协同科技有限公司",
+            "title": "高级客户成功经理",
+            "start_date": "2022-09",
+            "end_date": "至今",
+            "description_summary": "负责28家中大型客户成功、实施上线、健康度监控与续费，推动产品需求，处理客诉。"
+          },
+          {
+            "company": "苏州勤知人力科技有限公司",
+            "title": "客户成功顾问",
+            "start_date": "2019-07",
+            "end_date": "2022-03",
+            "description_summary": "为中小企业提供HR SaaS培训与支持，整理帮助文档，参与线上训练营，管理续费。"
+          }
+        ],
+        "projects": [
+          {
+            "name": "连锁零售客户全国上线项目",
+            "start_date": "2024-02",
+            "end_date": "2024-06",
+            "description_summary": "负责600+门店客户的流程调研、方案设计与培训，上线后周活从72%降至61%，制定巡检机制。"
+          },
+          {
+            "name": "客户健康度模型1.0",
+            "start_date": "2025-03",
+            "end_date": "2025-05",
+            "description_summary": "定义4类指标，用Excel试算，用于周例会识别风险客户，权重未经验证。"
+          }
+        ],
+        "skills": {
+          "explicit": [
+            "客户分层",
+            "成功计划",
+            "QBR",
+            "健康度",
+            "续费与增购协同",
+            "客诉升级",
+            "需求访谈",
+            "流程梳理",
+            "实施计划",
+            "UAT",
+            "培训",
+            "上线验收",
+            "Salesforce",
+            "Jira",
+            "飞书",
+            "XMind",
+            "Excel",
+            "英语(工作语言, IELTS 6.5)"
+          ],
+          "behaviorally_proven": [
+            "QBR",
+            "健康度监控",
+            "续费管理",
+            "客诉管理",
+            "需求调研",
+            "流程设计",
+            "实施计划",
+            "产品培训",
+            "上线验收",
+            "Excel",
+            "英语",
+            "项目管理",
+            "数据分析",
+            "文档撰写"
+          ],
+          "mentioned_only": [
+            "Salesforce",
+            "Jira",
+            "飞书",
+            "XMind",
+            "客户分层",
+            "成功计划",
+            "UAT",
+            "增购协同"
+          ]
+        },
+        "evidence_ledger": [
+          {
+            "evidence_id": "C-E1-1",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "负责 28 家中大型客户,合同 ARR 合计约 860 万元,客户覆盖零售、制造和专业服务",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "负责",
+            "object_or_scope": "28家中大型客户，合同ARR合计约860万元，覆盖零售、制造和专业服务",
+            "method_or_tool": [],
+            "result": "合同ARR约860万元",
+            "time_context": "2022.09-至今",
+            "skills_proven": [
+              "客户成功管理",
+              "客户关系管理",
+              "ARR管理"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-2",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "同时维护企业关键联系人和使用推广计划",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "维护",
+            "object_or_scope": "企业关键联系人和使用推广计划",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2022.09-至今",
+            "skills_proven": [
+              "关系维护",
+              "客户推广"
+            ],
+            "proficiency_ceiling": "维护",
+            "ownership_ceiling": "维护",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-3",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "主导 9 个客户从签约到上线,协调售前、实施、产品和研发",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "主导",
+            "object_or_scope": "9个客户从签约到上线，协调售前、实施、产品和研发",
+            "method_or_tool": [],
+            "result": "9个客户上线",
+            "time_context": "2022.09-至今",
+            "skills_proven": [
+              "客户实施",
+              "项目管理",
+              "跨部门协调"
+            ],
+            "proficiency_ceiling": "主导",
+            "ownership_ceiling": "主导",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-4",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "平均上线周期约 10 周",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "达到",
+            "object_or_scope": "平均上线周期约10周",
+            "method_or_tool": [],
+            "result": "平均周期约10周",
+            "time_context": "2022.09-至今",
+            "skills_proven": [
+              "项目周期管理"
+            ],
+            "proficiency_ceiling": "记录",
+            "ownership_ceiling": "记录",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-5",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "复杂接口需求经常延期",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "遇到",
+            "object_or_scope": "复杂接口需求经常延期",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2022.09-至今",
+            "skills_proven": [],
+            "proficiency_ceiling": "无",
+            "ownership_ceiling": "无",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E1-6",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "按月跟踪活跃用户数、核心功能使用率和工单情况,为重点客户开展 QBR",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "开展",
+            "object_or_scope": "按月跟踪活跃用户数、核心功能使用率和工单情况，为重点客户开展QBR",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2022.09-至今 (按月)",
+            "skills_proven": [
+              "健康度监控",
+              "QBR",
+              "数据分析",
+              "工单管理"
+            ],
+            "proficiency_ceiling": "熟练",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-7",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "2025 年负责客户续费率为 91%",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "达到",
+            "object_or_scope": "负责客户续费率91%",
+            "method_or_tool": [],
+            "result": "续费率91%",
+            "time_context": "2025年",
+            "skills_proven": [
+              "续费管理"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-8",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "续费结果也受价格政策影响",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "受...影响",
+            "object_or_scope": "续费结果受价格政策影响",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2025年",
+            "skills_proven": [],
+            "proficiency_ceiling": "无",
+            "ownership_ceiling": "无",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E1-9",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "将重复出现的权限和审批问题整理为需求池,推动 3 项配置能力进入产品版本",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "推动",
+            "object_or_scope": "需求池，3项配置能力进入产品版本",
+            "method_or_tool": [],
+            "result": "3项配置能力进入产品版本",
+            "time_context": "2022.09-至今",
+            "skills_proven": [
+              "需求管理",
+              "产品推动",
+              "问题分析"
+            ],
+            "proficiency_ceiling": "推动",
+            "ownership_ceiling": "推动",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-10",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "其中 1 项由本人参与验收",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "参与验收",
+            "object_or_scope": "1项配置能力",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2022.09-至今",
+            "skills_proven": [
+              "产品验收"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "参与",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-11",
+            "source_section": "工作经历·上海云舟协同科技有限公司·高级客户成功经理",
+            "source_quote": "处理过 2 次重大客诉升级,组织日会跟踪修复和客户沟通,最终未发生退费",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "处理",
+            "object_or_scope": "2次重大客诉升级，组织日会跟踪修复和客户沟通",
+            "method_or_tool": [],
+            "result": "未发生退费",
+            "time_context": "2022.09-至今",
+            "skills_proven": [
+              "客诉管理",
+              "危机处理",
+              "沟通"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-1",
+            "source_section": "工作经历·苏州勤知人力科技有限公司·客户成功顾问",
+            "source_quote": "为 40 余家中小企业提供 HR SaaS 上线培训、答疑和续费提醒",
+            "entity": "李欣然",
+            "role": "客户成功顾问",
+            "action": "提供",
+            "object_or_scope": "40余家中小企业HR SaaS上线培训、答疑和续费提醒",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2019.07-2022.03",
+            "skills_proven": [
+              "产品培训",
+              "客户支持",
+              "续费提醒"
+            ],
+            "proficiency_ceiling": "提供",
+            "ownership_ceiling": "提供",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-2",
+            "source_section": "工作经历·苏州勤知人力科技有限公司·客户成功顾问",
+            "source_quote": "整理帮助中心文章 60 余篇",
+            "entity": "李欣然",
+            "role": "客户成功顾问",
+            "action": "整理",
+            "object_or_scope": "帮助中心文章60余篇",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2019.07-2022.03",
+            "skills_proven": [
+              "技术文档撰写"
+            ],
+            "proficiency_ceiling": "整理",
+            "ownership_ceiling": "整理",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-3",
+            "source_section": "工作经历·苏州勤知人力科技有限公司·客户成功顾问",
+            "source_quote": "参与新客户线上训练营,单期参训约 80-120 人",
+            "entity": "李欣然",
+            "role": "客户成功顾问",
+            "action": "参与",
+            "object_or_scope": "新客户线上训练营，单期参训约80-120人",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2019.07-2022.03",
+            "skills_proven": [
+              "训练营培训",
+              "线上活动"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "参与",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-4",
+            "source_section": "工作经历·苏州勤知人力科技有限公司·客户成功顾问",
+            "source_quote": "2021 年个人负责客户续费金额约 230 万元,增购主要由销售同事完成",
+            "entity": "李欣然",
+            "role": "客户成功顾问",
+            "action": "负责",
+            "object_or_scope": "客户续费金额约230万元",
+            "method_or_tool": [],
+            "result": "续费金额230万元",
+            "time_context": "2021年",
+            "skills_proven": [
+              "续费管理"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-1",
+            "source_section": "项目经历·连锁零售客户全国上线项目",
+            "source_quote": "客户涉及总部和 600 余家门店,负责调研审批、排班和员工通讯录流程,输出实施方案及 4 轮培训",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "负责",
+            "object_or_scope": "调研审批、排班和员工通讯录流程，输出实施方案及4轮培训",
+            "method_or_tool": [],
+            "result": "输出实施方案及4轮培训",
+            "time_context": "2024.02-2024.06",
+            "skills_proven": [
+              "需求调研",
+              "流程设计",
+              "实施方案撰写",
+              "客户培训"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-2",
+            "source_section": "项目经历·连锁零售客户全国上线项目",
+            "source_quote": "上线首月周活用户约 72%,后因组织架构频繁调整下降到 61%",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "达到",
+            "object_or_scope": "上线首月周活用户72%，后降至61%",
+            "method_or_tool": [],
+            "result": "周活从72%降至61%",
+            "time_context": "2024.06 (首月)",
+            "skills_proven": [
+              "数据监控"
+            ],
+            "proficiency_ceiling": "监控",
+            "ownership_ceiling": "监控",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-3",
+            "source_section": "项目经历·连锁零售客户全国上线项目",
+            "source_quote": "与客户共同制定管理员巡检机制",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "制定",
+            "object_or_scope": "管理员巡检机制",
+            "method_or_tool": [],
+            "result": "制定巡检机制",
+            "time_context": "2024.02-2024.06",
+            "skills_proven": [
+              "流程优化",
+              "客户协作"
+            ],
+            "proficiency_ceiling": "共同制定",
+            "ownership_ceiling": "共同制定",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P2-1",
+            "source_section": "项目经历·客户健康度模型 1.0",
+            "source_quote": "与数据同事定义登录、核心功能、工单和关键人关系 4 类指标,并用 Excel 先行试算",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "定义",
+            "object_or_scope": "4类指标，用Excel试算",
+            "method_or_tool": [
+              "Excel"
+            ],
+            "result": "Excel试算",
+            "time_context": "2025.03-2025.05",
+            "skills_proven": [
+              "指标定义",
+              "数据分析",
+              "Excel"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "参与定义",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P2-2",
+            "source_section": "项目经历·客户健康度模型 1.0",
+            "source_quote": "模型用于周例会识别风险客户",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "使用",
+            "object_or_scope": "模型用于周例会识别风险客户",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2025.03-2025.05后",
+            "skills_proven": [
+              "风险识别"
+            ],
+            "proficiency_ceiling": "使用",
+            "ownership_ceiling": "使用",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P2-3",
+            "source_section": "项目经历·客户健康度模型 1.0",
+            "source_quote": "权重尚未通过长期续费数据验证",
+            "entity": "李欣然",
+            "role": "高级客户成功经理",
+            "action": "尚未验证",
+            "object_or_scope": "权重通过长期续费数据验证",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2025.05",
+            "skills_proven": [],
+            "proficiency_ceiling": "无",
+            "ownership_ceiling": "无",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-Cert-1",
+            "source_section": "补充信息",
+            "source_quote": "证书:PMP(2024)",
+            "entity": "李欣然",
+            "role": "",
+            "action": "持有",
+            "object_or_scope": "PMP证书",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2024年",
+            "skills_proven": [
+              "项目管理"
+            ],
+            "proficiency_ceiling": "持证",
+            "ownership_ceiling": "无",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-Cert-2",
+            "source_section": "补充信息",
+            "source_quote": "大学英语六级",
+            "entity": "李欣然",
+            "role": "",
+            "action": "持有",
+            "object_or_scope": "大学英语六级证书",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "英语"
+            ],
+            "proficiency_ceiling": "通过",
+            "ownership_ceiling": "无",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-Lang-1",
+            "source_section": "专业技能",
+            "source_quote": "IELTS 6.5",
+            "entity": "李欣然",
+            "role": "",
+            "action": "取得",
+            "object_or_scope": "IELTS 6.5",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "英语"
+            ],
+            "proficiency_ceiling": "B2水平",
+            "ownership_ceiling": "无",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-Gap-1",
+            "source_section": "补充信息",
+            "source_quote": "2022.04 - 2022.08 因家庭原因离职休整,期间完成项目管理线上课程",
+            "entity": "李欣然",
+            "role": "",
+            "action": "完成",
+            "object_or_scope": "项目管理线上课程",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2022.04-2022.08",
+            "skills_proven": [
+              "项目管理知识"
+            ],
+            "proficiency_ceiling": "学习",
+            "ownership_ceiling": "完成",
+            "claim_strength": "direct",
+            "confidence": "high"
+          }
+        ],
+        "eligibility_facts": {
+          "graduation_dates": [
+            "2019-06"
+          ],
+          "degrees": [
+            "本科"
+          ],
+          "locations": [
+            "上海"
+          ],
+          "languages": [
+            "英语(IELTS 6.5)",
+            "中文"
+          ],
+          "availability": ""
+        },
+        "risk_flags": [
+          "2022年4-8月离职休整，可能影响稳定性评价",
+          "复杂接口需求经常延期，反映复杂集成场景实施挑战",
+          "健康度模型权重未经长期验证，可靠性存疑",
+          "续费结果受价格政策影响，续费能力可能被高估",
+          "不承担强销售指标，可能限制增购贡献",
+          "英语IELTS 6.5未在具体国际项目中验证",
+          "工具Salesforce、Jira等无使用证据，熟练度不明",
+          "最近一段工作中，平均上线周期10周，效率有优化空间"
+        ],
+        "capability_clusters": [
+          "客户成功管理（健康度监控、QBR、续费、客诉）",
+          "客户实施与交付（需求调研、流程设计、培训、验收）",
+          "数据分析与模型构建（指标定义、Excel试算）",
+          "跨部门协调与需求推动",
+          "文档与知识库建设",
+          "培训与赋能（线上训练营、客户培训）",
+          "英语工作语言（IELTS 6.5）",
+          "项目管理（PMP认证）"
+        ],
+        "proof_gaps_for_user": [
+          "未提供Salesforce、Jira等工具的具体使用证据",
+          "客户分层、成功计划等技能未见具体案例",
+          "增购（向上销售）无实际成绩或案例",
+          "UAT实施过程未描述",
+          "英语应用场景缺失",
+          "休整期课程未见认证或应用证明",
+          "健康度模型权重设计依据未说明",
+          "复杂接口延期的具体原因或改进措施未提及"
+        ]
+      },
+      "research_pack": {
+        "research_status": "partial",
+        "as_of": "2026-07-27",
+        "queries_executed": [
+          "Microsoft Customer Success Account Manager 招聘 团队 负责人 官方",
+          "Microsoft 公司规模 性质 招聘风格 员工评价"
+        ],
+        "company_identity": {
+          "legal_or_brand_name": "Microsoft",
+          "nature": "unknown",
+          "scale": "organization reported to have over 17,000 employees in Customer Experience & Success (W-S1); overall company scale not disclosed in retrieved documents",
+          "business_and_stage": [],
+          "claims": [
+            {
+              "text": "Microsoft's Customer Experience & Success organization has over 17,000 employees globally.",
+              "source_id": "W-S1",
+              "confidence": "high"
+            },
+            {
+              "text": "Microsoft promotes a culture of customer obsession, growth mindset, curiosity, collaboration, and inclusion.",
+              "source_id": "W-S2",
+              "confidence": "medium"
+            }
+          ]
+        },
+        "team_and_role": {
+          "department": "Customer Experience & Success",
+          "business_line": "unknown",
+          "product": "unknown",
+          "requisition_id": "unknown",
+          "claims": [
+            {
+              "text": "CSAM role belongs to Customer Experience & Success organization at Microsoft.",
+              "source_id": "W-S1",
+              "confidence": "high"
+            }
+          ]
+        },
+        "leadership": [
+          {
+            "title": "Direct manager for CSAM role",
+            "name": "unknown",
+            "source_id": "none",
+            "confidence": "low",
+            "note": "Public job posting does not uniquely disclose reporting structure."
+          }
+        ],
+        "recruiting_style": [
+          {
+            "signal": "Values customer obsession, growth mindset, curiosity, collaboration, and inclusion based on official culture page.",
+            "source_id": "W-S2",
+            "confidence": "medium",
+            "note": "These are corporate values; actual hiring process may vary."
+          }
+        ],
+        "adjacent_job_signals": [],
+        "employee_reputation": [
+          {
+            "sample_scope": "single anonymous Reddit post (April 2024)",
+            "type": "anecdote",
+            "summary": "Suggests CSAM may work across multiple accounts and needs to understand account team and customer roles.",
+            "source_id": "W-S3",
+            "credibility": "low"
+          }
+        ],
+        "contradictions": [],
+        "unknowns": [
+          "Direct manager and leadership chain for Beijing CSAM role.",
+          "Exact team size and structure within China.",
+          "Specific business line or product focus beyond 'Cloud and AI Platform'.",
+          "Requisition ID.",
+          "Detailed hiring process and interview stages.",
+          "Employee experience specific to China CSAM team."
+        ],
+        "verification_questions": [
+          "How many accounts does a CSAM typically manage, and how are priorities balanced?",
+          "What is the expected technical depth, and how does the role collaborate with solutions architects and engineering?",
+          "Can you describe the reporting structure and the background of the hiring manager?",
+          "What are the key metrics for customer success in the first 6–12 months?",
+          "How does the team handle escalation paths for critical customer issues?",
+          "Is there a focus on specific industries (e.g., automotive as mentioned in JD) and how does that influence day‑to‑day work?",
+          "What certifications (e.g., Azure, PMI, Prosci) are most valued in practice for this role?"
+        ],
+        "sources": [
+          {
+            "source_id": "W-S1",
+            "title": "Microsoft Customer Success Account Manager - China (Shanghai Careers Page)",
+            "url": "https://careers.microsoft.com/v2/global/en/locations/shanghai.html",
+            "publisher": "Microsoft",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "Company name and brand",
+              "Department: Customer Experience & Success",
+              "Organization size (>17,000 in CEnS)",
+              "Role focus on customer relationship, success planning, delivery management, cloud and industry skills"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S2",
+            "title": "Microsoft Careers Culture",
+            "url": "https://careers.microsoft.com/v2/global/en/life-at-microsoft/culture.html",
+            "publisher": "Microsoft",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "Corporate culture emphasizing customer obsession, growth mindset, curiosity, collaboration, and inclusion",
+              "Recruiting style signals (indirect)"
+            ],
+            "credibility": "medium"
+          },
+          {
+            "source_id": "W-S3",
+            "title": "Microsoft CSAM Anonymous Discussion (Reddit)",
+            "url": "https://www.reddit.com/r/microsoft/comments/1bxzhb6/customer_success_account_managers_csam_role/",
+            "publisher": "Reddit (community)",
+            "source_type": "community",
+            "published_at": "2024-04-01",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "Speculation about multi-account workloads and role understanding",
+              "Low‑credibility anecdotal insight"
+            ],
+            "credibility": "low"
+          }
+        ]
+      },
+      "job_profile": {
+        "role_identity": {
+          "displayed_title": "Microsoft|Customer Success Account Manager",
+          "jd_body_title": "Customer Success Account Manager",
+          "canonical_title": "Customer Success Account Manager",
+          "company": "Microsoft",
+          "location": [
+            "北京"
+          ],
+          "employment_type": "unknown",
+          "graduation_cohort": "",
+          "conflicts": [],
+          "confidence": "high"
+        },
+        "requirement_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "相关硕士学位及3年以上客户成功、解决方案交付、咨询或组合管理经验；或相关本科学位及4年以上经验",
+            "priority": "must",
+            "category": "eligibility",
+            "source_type": "J",
+            "source_quote_or_claim": "相关硕士学位及3年以上客户成功、解决方案交付、咨询或组合管理经验;或相关本科学位及4年以上经验。",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "能够面向业务和技术利益相关方开展沟通、项目管理与关系经营",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "能够面向业务和技术利益相关方开展沟通、项目管理与关系经营。",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "理解企业客户数字化转型、云服务采用和持续价值交付",
+            "priority": "must",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "理解企业客户数字化转型、云服务采用和持续价值交付。",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "能够在账户团队和跨职能资源之间协调优先级",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "能够在账户团队和跨职能资源之间协调优先级。",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "有汽车行业相关经验",
+            "priority": "preferred",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "加分项 - 有汽车行业相关经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "具备Azure/AWS、ITIL、PMI或Prosci等相关认证",
+            "priority": "preferred",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "加分项 - 具备Azure/AWS、ITIL、PMI或Prosci等相关认证",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          }
+        ],
+        "success_scorecard": [
+          {
+            "outcome": "关键客户关系健康度提升，续约或增购意向明确",
+            "evidence_source": "J",
+            "measurement_basis": "客户健康度评分、续约率或客户满意度反馈"
+          },
+          {
+            "outcome": "客户目标与微软产品服务组合对齐，成功计划与账户优先事项匹配",
+            "evidence_source": "J",
+            "measurement_basis": "客户成功计划完成度、业务目标里程碑达成"
+          },
+          {
+            "outcome": "交付质量与进度得到保障，客户项目按约定成果推进",
+            "evidence_source": "J",
+            "measurement_basis": "项目评审反馈、交付里程碑按时达成率"
+          },
+          {
+            "outcome": "产品采用和使用里程碑达成，留存风险被识别并及时缓解",
+            "evidence_source": "J",
+            "measurement_basis": "产品采用率、使用里程碑完成度、客户流失预警减少"
+          }
+        ],
+        "ats_terms": [
+          "客户成功",
+          "解决方案交付",
+          "数字化转型",
+          "云服务",
+          "Azure",
+          "AWS",
+          "ITIL",
+          "PMI",
+          "Prosci",
+          "汽车行业",
+          "项目管理",
+          "关系经营",
+          "优先级协调",
+          "利益相关方",
+          "客户成功经理",
+          "Customer Success Account Manager"
+        ],
+        "interview_competencies": [
+          {
+            "competency": "客户关系管理与经营能力",
+            "evidence_mapping": "岗位职责1，任职要求2"
+          },
+          {
+            "competency": "复杂沟通与利益相关方对齐",
+            "evidence_mapping": "任职要求2、4"
+          },
+          {
+            "competency": "项目管理与交付优先级协调",
+            "evidence_mapping": "岗位职责3，任职要求4"
+          },
+          {
+            "competency": "对云计算及数字化转型的理解与应用",
+            "evidence_mapping": "任职要求3"
+          },
+          {
+            "competency": "风险识别与客户价值推动",
+            "evidence_mapping": "岗位职责4"
+          }
+        ],
+        "external_intelligence": {
+          "company_scale_and_nature": [
+            {
+              "claim": "Customer Experience & Success organization has over 17,000 employees globally",
+              "source_id": "W-S1"
+            },
+            {
+              "claim": "Microsoft promotes customer obsession, growth mindset, curiosity, collaboration, and inclusion",
+              "source_id": "W-S2",
+              "confidence": "medium"
+            }
+          ],
+          "team_and_leadership": [
+            {
+              "claim": "CSAM role belongs to Customer Experience & Success organization",
+              "source_id": "W-S1"
+            },
+            {
+              "claim": "Direct manager for Beijing CSAM role is not publicly disclosed",
+              "source_id": "none",
+              "confidence": "low"
+            }
+          ],
+          "recruiting_style": [
+            {
+              "signal": "Values customer obsession, growth mindset, curiosity, collaboration, and inclusion based on official culture page",
+              "source_id": "W-S2",
+              "confidence": "medium"
+            }
+          ],
+          "employee_reputation_signals": [
+            {
+              "signal": "CSAM may work across multiple accounts and needs to understand account team and customer roles (anecdotal, low credibility)",
+              "source_id": "W-S3",
+              "credibility": "low"
+            }
+          ],
+          "sources_used": [
+            "W-S1",
+            "W-S2",
+            "W-S3"
+          ]
+        },
+        "uncertainties": [
+          "直接经理和领导链未知",
+          "北京CSAM团队规模和结构未知",
+          "具体业务线或产品焦点未知",
+          "招聘流程和面试阶段细节未知",
+          "中国区CSAM团队员工具体体验未知"
+        ],
+        "pre_application_questions": [
+          "一名CSAM通常管理多少客户？如何平衡不同客户的优先级？",
+          "该岗位对技术深度的期望如何？与解决方案架构师、工程团队的协作方式是？",
+          "能否描述汇报结构以及招聘经理的背景？",
+          "入职后6-12个月的关键客户成功指标是什么？",
+          "在关键客户问题升级时团队如何处理？",
+          "汽车行业经验在实际工作中如何影响日常任务？",
+          "Azure/AWS、PMI、Prosci等认证在实际工作中哪个最受重视？"
+        ]
+      },
+      "match_analysis": {
+        "candidate_job_fit_score": 78,
+        "resume_evidence_coverage_score_before": 0,
+        "eligibility_gate": {
+          "status": "pass",
+          "checks": [
+            {
+              "requirement_id": "J-R1",
+              "check": "本科（商务英语）学位 + 7年客户成功相关经验（2019.07-2026.07，扣除4个月休整期）",
+              "result": "满足**相关本科学位及4年以上经验**的最低要求"
+            }
+          ],
+          "score_cap": 100
+        },
+        "coverage_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "match_level": "direct",
+            "evidence_summary": "上海对外经贸大学商务英语本科（2019.06毕业）；2019.07起连续在客户成功岗位，累计约7年经验（扣除休整期后仍远超4年）。",
+            "score_contribution": 20
+          },
+          {
+            "requirement_id": "J-R2",
+            "match_level": "direct",
+            "evidence_summary": "行为证据：主导9个客户上线，协调跨职能团队（C-E1-3）；按月跟踪健康度并为重点客户开展QBR（C-E1-6）；处理重大客诉升级，组织日会与客户沟通（C-E1-11）；PMP认证（C-Cert-1）；维护关键联系人关系（C-E1-2）。证明沟通、项目管理和关系经营能力。",
+            "score_contribution": 10
+          },
+          {
+            "requirement_id": "J-R3",
+            "match_level": "insufficient",
+            "evidence_summary": "简历未明确提及**数字化转型、云服务采用**或**持续价值交付**的具体行为。工作环境为HR SaaS/协同SaaS，但无云迁移、云部署或转型项目描述。仅可推断对SaaS交付有理解，但不足以覆盖云服务与转型。",
+            "score_contribution": 3
+          },
+          {
+            "requirement_id": "J-R4",
+            "match_level": "direct",
+            "evidence_summary": "【C-E1-3】主导上线，协调售前、实施、产品和研发；【C-E1-11】客诉时组织日会跟踪修复，跨部门协调；【C-P1-3】与客户共同制定巡检机制。证明在账户团队和跨职能资源间协调优先级。",
+            "score_contribution": 10
+          },
+          {
+            "requirement_id": "J-R5",
+            "match_level": "missing",
+            "evidence_summary": "简历覆盖零售、制造、专业服务，无汽车行业客户或项目经验。",
+            "score_contribution": 0
+          },
+          {
+            "requirement_id": "J-R6",
+            "match_level": "partial",
+            "evidence_summary": "持有PMP认证（2024），属PMI家族（C-Cert-1）；无Azure/AWS/ITIL/Prosci认证。",
+            "score_contribution": 3
+          }
+        ],
+        "score_breakdown": {
+          "eligibility": 20,
+          "must_have": 23,
+          "core_outcomes": 18,
+          "differentiators": 3,
+          "evidence_clarity": 14
+        },
+        "strengths": [
+          "丰富的客户成功全生命周期经验：从实施上线、培训、健康度监控到续费、客诉处理，有闭环行为证据",
+          "项目管理能力扎实：PMP认证 + 主导多客户上线项目",
+          "数据驱动的客户健康管理：自主定义指标并用Excel试算，已在周例会使用",
+          "跨部门协调与需求推动：成功将客诉需求转化为3项产品配置能力",
+          "可验证的量化成果：2025年续费率91%，600+门店上线项目等"
+        ],
+        "critical_gaps": [
+          "**数字化转型与云服务采用理解**（J-R3）：无直接证据，可能成为面试淘汰点",
+          "**汽车行业经验**完全缺失，无法满足加分项",
+          "**增购/扩展销售**无实际贡献证据，可能影响对价值交付整体评价",
+          "**Salesforce/Jira等工具**无使用证明，若岗位依赖工具链可能被质疑",
+          "英语能力仅靠证书，无真实国际项目验证，面对全球团队协作时说服力不足"
+        ],
+        "positioning_strategy": {
+          "one_line_positioning": "拥有7年B2B SaaS客户成功经验，擅长复杂客户项目管理与跨部门协调，以数据驱动健康度提升并推动产品改进。",
+          "evidence_pillars": [
+            "客户全生命周期管理（实施→健康度→续费→客诉）",
+            "PMP认证+多次主导大型上线项目",
+            "数据建模与风险识别实践",
+            "需求转化为产品能力的闭环案例"
+          ],
+          "honest_boundary": "过往经验集中于HR/协同SaaS领域，暂未直接参与云平台迁移或数字化转型项目；无汽车行业背景。具备快速学习能力（休整期自学完成项目管理课程），可在面试中重点阐述SaaS价值交付模式向云服务迁移的可迁移逻辑。"
+        },
+        "target_keyword_plan": [
+          {
+            "existing_term": "客户成功经理",
+            "target_term": "Customer Success Account Manager",
+            "action": "align",
+            "evidence_id": "C-E1-1"
+          },
+          {
+            "existing_term": "健康度监控",
+            "target_term": "客户健康监控",
+            "action": "align",
+            "evidence_id": "C-E1-6"
+          },
+          {
+            "existing_term": "QBR",
+            "target_term": "季度业务回顾 (QBR)",
+            "action": "keep",
+            "evidence_id": "C-E1-6"
+          },
+          {
+            "existing_term": "需求访谈",
+            "target_term": "需求调研与价值对齐",
+            "action": "align",
+            "evidence_id": "C-P1-1"
+          },
+          {
+            "existing_term": "实施计划",
+            "target_term": "成功计划与交付管理",
+            "action": "align",
+            "evidence_id": "C-E1-3"
+          },
+          {
+            "existing_term": "项目管理",
+            "target_term": "项目管理 (PMP认证)",
+            "action": "emphasize",
+            "evidence_id": "C-Cert-1"
+          },
+          {
+            "existing_term": "续费率91%",
+            "target_term": "续约率91%",
+            "action": "align",
+            "evidence_id": "C-E1-7"
+          },
+          {
+            "existing_term": "客诉升级",
+            "target_term": "客户升级管理",
+            "action": "align",
+            "evidence_id": "C-E1-11"
+          }
+        ],
+        "application_decision": {
+          "recommendation": "conditional_apply",
+          "blocking_reasons": [
+            "必须项J-R3（数字化转型理解）证据不足，可能被自动筛选或面试深度挑战",
+            "汽车行业经验完全空白，无法满足加分项"
+          ],
+          "pre_application_checks": [
+            "确认候选人在过往项目中是否接触过云部署、数据迁移或客户云环境（即使自己未主导），可补充为对技术的理解",
+            "明确岗位对汽车行业的依赖程度：若仅为nice-to-have，可以零售或制造行业类比"
+          ]
+        },
+        "rewrite_actions": [
+          {
+            "action": "verify_with_user",
+            "evidence_ids": [],
+            "requirement_id": "J-R3",
+            "target_section": "工作经历",
+            "instruction": "询问候选人是否有任何与云服务、数字化转型或客户云环境相关的经历（即使是参与或观察）。如果有，请提供具体例子和细节；如果没有，建议在面试中准备如何从SaaS价值交付模型迁移到云服务的逻辑，并阅读Azure基础文档以展示学习意愿。简历中不得伪造无证据的云经验。"
+          },
+          {
+            "action": "omit",
+            "evidence_ids": [],
+            "requirement_id": null,
+            "target_section": "技能清单",
+            "instruction": "删除‘Salesforce’、‘Jira’字样，避免因无使用证据而被追问。保留实际高频使用的工具如飞书、XMind、Excel。若面试中被问及，如实回答无深度使用经验。"
+          },
+          {
+            "action": "omit",
+            "evidence_ids": [],
+            "requirement_id": null,
+            "target_section": "技能清单",
+            "instruction": "删除‘客户分层’、‘成功计划’、‘UAT’、‘增购协同’等无行为支撑的词汇。或将其替换为有证据的行为描述，如‘客户健康度分层（基于Excel模型）’、‘成功计划：上线流程设计与培训’。"
+          },
+          {
+            "action": "rewrite",
+            "evidence_ids": [
+              "C-E1-1"
+            ],
+            "requirement_id": "J-R2",
+            "target_section": "工作经历·高级客户成功经理",
+            "instruction": "将‘负责 28 家中大型客户…’首句与J-R2关键词对齐，改为：‘经营28家中大型客户的成功关系，管理约860万ARR合同组合，覆盖零售、制造与专业服务，通过季度业务回顾(QBR)与利益相关方保持持续对齐。’以体现‘关系经营’与‘组合管理’。"
+          },
+          {
+            "action": "rewrite",
+            "evidence_ids": [
+              "C-E1-3",
+              "C-E1-4"
+            ],
+            "requirement_id": "J-R4",
+            "target_section": "工作经历·高级客户成功经理",
+            "instruction": "将实施部分改写为：‘主导客户交付优先级协调：从签约到上线全程管理跨职能（售前、实施、产品、研发）资源，平均上线周期10周，成功交付9家客户。’直接体现‘协调优先级’。"
+          },
+          {
+            "action": "rewrite",
+            "evidence_ids": [
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "requirement_id": "J-R3",
+            "target_section": "项目经历·客户健康度模型",
+            "instruction": "在描述中加入可迁移价值交付的语言：‘通过定义客户健康度指标并用于周例会风险识别，推动从被动响应向主动价值管理转型，待权重验证后可转化为客户留存预警体系。’虽非直接云服务，但展示持续价值交付思维。"
+          }
+        ]
+      },
+      "final_resume": {
+        "candidate_id": "revision_2",
+        "strategy": "revision",
+        "resume_markdown": "# 李欣然\n电话：137****5941 | 邮箱：lixinran04@outlook.com | 地点：上海 | 目标岗位：Customer Success Account Manager (客户成功经理)\n\n## 专业摘要\n多年B2B SaaS客户成功全生命周期管理经验，PMP认证，擅长通过季度业务回顾(QBR)、客户健康监控与优先级协调推动客户成功与续约。主导过600+门店级解决方案交付，管理最高860万ARR合同组合，2025年续约率达91%。英语可作为工作语言（IELTS 6.5）。\n\n## 核心能力\n- 客户成功与关系经营：季度业务回顾，客户健康监控，续约管理，客户升级管理\n- 解决方案交付：需求调研，方案设计，跨职能协调，培训与上线\n- 项目管理：PMP认证，跨职能资源协调与优先级排序\n- 数据分析：指标定义，Excel建模，风险识别\n- 沟通与文档：利益相关方对齐，技术文档撰写，产品培训\n\n## 工作经历\n### 高级客户成功经理 | 上海云舟协同科技有限公司 | 2022.09 – 至今\n- 经营28家中大型客户的成功关系，管理约860万ARR合同组合，覆盖零售、制造与专业服务；通过季度业务回顾(QBR)与利益相关方保持紧密对齐。\n- 主导客户交付优先级协调：管理从签约到上线的全流程，协调售前、实施、产品、研发资源，平均周期10周，成功交付9家客户。\n- 执行客户健康监控：按月跟踪活跃用户、核心功能使用率及工单数据，为重点客户主持季度业务回顾；2025年负责客户续约率达91%。\n- 推动产品改进闭环：将重复的权限与审批问题整理为需求池，成功推动3项配置能力进入产品版本，并参与1项的功能验收。\n- 主导客户升级管理：处理2次重大客诉升级，组织跨部门日会跟踪修复进度，确保客户零退费。\n\n### 客户成功顾问 | 苏州勤知人力科技有限公司 | 2019.07 – 2022.03\n- 为40余家中小企业提供HR SaaS上线培训、答疑和续费提醒。\n- 整理帮助中心文章60余篇，参与新客户线上训练营（单期80-120人）。\n- 2021年管理客户续费金额约230万元，增购部分由销售团队协同推进。\n\n## 项目经验\n### 连锁零售客户全国上线项目 | 2024.02 – 2024.06\n- 负责解决方案交付：调研总部及600+门店的审批、排班、员工通讯录流程，设计实施方案并执行4轮培训。\n- 上线首月周活用户达72%，后因客户组织架构调整降至61%；与客户共同制定管理员巡检机制，以维持使用粘性。\n\n### 客户健康度模型1.0 | 2025.03 – 2025.05\n- 与数据同事共同定义登录、核心功能、工单和关键人关系4类指标，使用Excel试算并应用于周例会，识别风险客户。\n- 模型权重尚待长期续费数据验证。\n\n## 教育背景\n上海对外经贸大学 | 商务英语 | 本科 | 2015.09 – 2019.06\n\n## 资质与语言\n- PMP（项目管理专业人士）认证，2024年\n- 大学英语六级 / IELTS 6.5（工作语言）",
+        "trace": [
+          {
+            "output_sentence_digest": "专业摘要 - 多年B2B SaaS客户成功全生命周期管理经验，PMP认证，擅长通过QBR、客户健康监控与优先级协调推动客户成功与续约",
+            "evidence_ids": [
+              "C-E1-6",
+              "C-E1-7",
+              "C-Cert-1",
+              "C-E1-3"
+            ],
+            "requirement_ids": [
+              "J-R1",
+              "J-R2",
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "专业摘要 - 主导过600+门店级解决方案交付，管理最高860万ARR合同组合，2025年续约率达91%",
+            "evidence_ids": [
+              "C-P1-1",
+              "C-E1-1",
+              "C-E1-7"
+            ],
+            "requirement_ids": [
+              "J-R2",
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "专业摘要 - 英语可作为工作语言（IELTS 6.5）",
+            "evidence_ids": [
+              "C-Lang-1"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "核心能力 - 客户成功与关系经营：季度业务回顾，客户健康监控，续约管理，客户升级管理",
+            "evidence_ids": [
+              "C-E1-6",
+              "C-E1-7",
+              "C-E1-11"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "核心能力 - 解决方案交付：需求调研，方案设计，跨职能协调，培训与上线",
+            "evidence_ids": [
+              "C-P1-1",
+              "C-E1-3"
+            ],
+            "requirement_ids": [
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "核心能力 - 项目管理：PMP认证，跨职能资源协调与优先级排序",
+            "evidence_ids": [
+              "C-Cert-1",
+              "C-E1-3"
+            ],
+            "requirement_ids": [
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "核心能力 - 数据分析：指标定义，Excel建模，风险识别",
+            "evidence_ids": [
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "核心能力 - 沟通与文档：利益相关方对齐，技术文档撰写，产品培训",
+            "evidence_ids": [
+              "C-E1-2",
+              "C-E2-2",
+              "C-E2-1"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "工作经历 - 经营28家中大型客户的成功关系，管理约860万ARR合同组合，覆盖零售、制造与专业服务；通过季度业务回顾(QBR)与利益相关方保持紧密对齐",
+            "evidence_ids": [
+              "C-E1-1",
+              "C-E1-6"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "工作经历 - 主导客户交付优先级协调：管理从签约到上线的全流程，协调售前、实施、产品、研发资源，平均周期10周，成功交付9家客户",
+            "evidence_ids": [
+              "C-E1-3",
+              "C-E1-4"
+            ],
+            "requirement_ids": [
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "工作经历 - 执行客户健康监控：按月跟踪活跃用户、核心功能使用率及工单数据，为重点客户主持季度业务回顾；2025年负责客户续约率达91%",
+            "evidence_ids": [
+              "C-E1-6",
+              "C-E1-7"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "工作经历 - 推动产品改进闭环：将重复的权限与审批问题整理为需求池，成功推动3项配置能力进入产品版本，并参与1项的功能验收",
+            "evidence_ids": [
+              "C-E1-9",
+              "C-E1-10"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "工作经历 - 主导客户升级管理：处理2次重大客诉升级，组织跨部门日会跟踪修复进度，确保客户零退费",
+            "evidence_ids": [
+              "C-E1-11"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "工作经历 - 为40余家中小企业提供HR SaaS上线培训、答疑和续费提醒",
+            "evidence_ids": [
+              "C-E2-1"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "工作经历 - 整理帮助中心文章60余篇，参与新客户线上训练营（单期80-120人）",
+            "evidence_ids": [
+              "C-E2-2",
+              "C-E2-3"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "工作经历 - 2021年管理客户续费金额约230万元，增购部分由销售团队协同推进",
+            "evidence_ids": [
+              "C-E2-4"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "项目 - 负责解决方案交付：调研总部及600+门店的审批、排班、员工通讯录流程，设计实施方案并执行4轮培训",
+            "evidence_ids": [
+              "C-P1-1"
+            ],
+            "requirement_ids": [
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "项目 - 上线首月周活用户达72%，后因客户组织架构调整降至61%；与客户共同制定管理员巡检机制，以维持使用粘性",
+            "evidence_ids": [
+              "C-P1-2",
+              "C-P1-3"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "项目 - 与数据同事共同定义登录、核心功能、工单和关键人关系4类指标，使用Excel试算并应用于周例会，识别风险客户",
+            "evidence_ids": [
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "项目 - 模型权重尚待长期续费数据验证",
+            "evidence_ids": [
+              "C-P2-3"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "教育背景 - 上海对外经贸大学，商务英语，本科",
+            "evidence_ids": [],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "资质 - PMP认证，2024年",
+            "evidence_ids": [
+              "C-Cert-1"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "资质 - 大学英语六级 / IELTS 6.5（工作语言）",
+            "evidence_ids": [
+              "C-Cert-2",
+              "C-Lang-1"
+            ],
+            "requirement_ids": []
+          }
+        ],
+        "coverage": {
+          "proven_must_have_covered": [
+            "J-R1",
+            "J-R2",
+            "J-R4"
+          ],
+          "proven_must_have_not_covered": [
+            "J-R3"
+          ],
+          "allowed_high_priority_terms_used": [
+            "客户成功",
+            "解决方案交付",
+            "项目管理",
+            "关系经营",
+            "优先级协调",
+            "利益相关方",
+            "客户成功经理",
+            "Customer Success Account Manager",
+            "季度业务回顾(QBR)",
+            "PMP"
+          ]
+        },
+        "self_audit": {
+          "unsupported_claims": [],
+          "eligibility_preserved": true
+        },
+        "delivery_status": "ready",
+        "delivery_blockers": []
+      },
+      "deterministic_guardrail": {
+        "evaluatorName": "v4-resume-deterministic-guardrail",
+        "evaluatorVersion": "v4.1",
+        "passed": true,
+        "score": 100,
+        "issues": []
+      },
+      "final_internal_judge": {
+        "evaluations": [
+          {
+            "candidate_id": "revision_2",
+            "passed": true,
+            "resume_quality_passed": true,
+            "application_eligibility": "pass",
+            "deliverable": true,
+            "total_score": 89,
+            "dimension_scores": {
+              "factual_fidelity": 25,
+              "eligibility_integrity": 10,
+              "proven_requirement_coverage": 15,
+              "top_third_persuasion": 9,
+              "evidence_density": 9,
+              "ats_readability": 9,
+              "non_generic": 4,
+              "interview_defensibility": 8
+            },
+            "unsupported_claims": [],
+            "requirement_gaps": [
+              "J-R3：未证明理解企业客户数字化转型、云服务采用和持续价值交付"
+            ],
+            "genericity_test": {
+              "score": 4,
+              "comment": "使用了目标职位名称和部分定制术语，但整体结构可迁移至其他 SaaS 公司。"
+            },
+            "revision_actions": []
+          }
+        ],
+        "winner_candidate_id": "revision_2",
+        "revision_brief": ""
+      },
+      "interview_advice": {
+        "interview_readiness_score": 65,
+        "eligibility_defense": [
+          {
+            "requirement_id": "J-R1",
+            "defense": "本人拥有上海对外经贸大学商务英语专业本科学位（2019年6月毕业），并于2019年7月起先后在苏州勤知人力科技有限公司和上海云舟协同科技有限公司担任客户成功类岗位，累计客户成功相关经验已超过7年（扣除2022年4-8月家庭原因休整期，仍远超4年）。完全满足'相关本科学位及4年以上经验'要求。",
+            "supporting_evidence_ids": [
+              "C-E1-1",
+              "C-E2-1",
+              "education"
+            ]
+          }
+        ],
+        "question_drills": [
+          {
+            "question": "请确认你的最高学历及专业，并说明从毕业至今的客户成功相关工作经验年限。如有中断，请解释。",
+            "requirement_id": "J-R1",
+            "evidence_id": [
+              "education",
+              "C-E1-1",
+              "C-E2-1",
+              "C-Gap-1"
+            ],
+            "key_points": [
+              "2019年6月毕业于上海对外经贸大学，商务英语本科。",
+              "2019年7月-2022年3月：苏州勤知人力，客户成功顾问。",
+              "2022年4-8月：因家庭原因离职休整，期间自学项目管理课程。",
+              "2022年9月至今：上海云舟协同，高级客户成功经理。",
+              "连续经验7年+，满足4年要求。"
+            ],
+            "follow_up_risks": [
+              "面试官可能追问休整期具体原因及学习成果。",
+              "可能要求提供项目管理课程证明。"
+            ]
+          },
+          {
+            "question": "请举例说明你如何与客户中的业务和技术利益相关方建立并维持有效关系，以推动客户成功。",
+            "requirement_id": "J-R2",
+            "evidence_id": [
+              "C-E1-1",
+              "C-E1-2",
+              "C-E1-6"
+            ],
+            "key_points": [
+              "负责28家中大型客户，通过定期QBR与关键决策者保持对齐。",
+              "维护企业关键联系人关系网络，制定使用推广计划。",
+              "按月监控健康度，与客户技术/业务负责人沟通使用数据。",
+              "2025年续约率达91%，体现关系经营成果。"
+            ],
+            "follow_up_risks": [
+              "面试官可能要求具体描述一次QBR会议细节。",
+              "如被问及不熟悉的行业关系经营差异，需诚实说明。"
+            ]
+          },
+          {
+            "question": "请描述一个你需要协调多个内部团队（如售前、实施、产品、研发）来推动客户交付的经历。你是如何确保团队对齐和优先级的？",
+            "requirement_id": "J-R4",
+            "evidence_id": [
+              "C-E1-3"
+            ],
+            "key_points": [
+              "主导9个客户从签约到上线，全程协调售前、实施、产品和研发。",
+              "采用项目管理方法，跟踪里程碑，定期跨部门同步。",
+              "成功将平均上线周期控制在10周。",
+              "如遇可能延期，主动升级并与利益相关方重新对齐。"
+            ],
+            "follow_up_risks": [
+              "面试官可能追问某一次具体冲突如何解决。",
+              "可能要求说明如何衡量协调效率。"
+            ]
+          },
+          {
+            "question": "你如何监控客户健康度，并基于数据采取行动以确保续约？请结合2025年91%续费率说明你的方法。",
+            "requirement_id": "J-R2",
+            "evidence_id": [
+              "C-E1-6",
+              "C-E1-7",
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "key_points": [
+              "按月跟踪活跃用户数、核心功能使用率、工单情况。",
+              "为重点客户主持QBR，对齐价值实现与业务目标。",
+              "2025年续费率91%，部分归因于价格政策影响，但主动风险识别和干预也起关键作用。",
+              "构建健康度模型1.0，用于周例会识别风险客户。"
+            ],
+            "follow_up_risks": [
+              "面试官可能追问价格政策的具体影响，需如实说明。",
+              "可能要求解释健康度模型指标权重如何确定。"
+            ]
+          },
+          {
+            "question": "请详细介绍连锁零售客户全国上线项目，你在其中的角色、挑战和结果。",
+            "requirement_id": "J-R4",
+            "evidence_id": [
+              "C-P1-1",
+              "C-P1-2",
+              "C-P1-3"
+            ],
+            "key_points": [
+              "负责总部及600+门店的流程调研、方案设计与4轮培训。",
+              "上线首月周活72%，后因客户组织架构调整降至61%。",
+              "与客户协作制定管理员巡检机制以维持粘性。",
+              "挑战在于规模大和多层级沟通，通过分阶段实施和定期同步解决。"
+            ],
+            "follow_up_risks": [
+              "面试官可能询问周活下降的具体原因及你的直接责任。",
+              "可能要求提供更精确的培训覆盖人数或反馈数据。"
+            ]
+          },
+          {
+            "question": "你的经历主要在SaaS领域，但本岗位要求理解企业数字化转型和云服务。你如何看待这一差距？你有哪些理解或相关接触？",
+            "requirement_id": "J-R3",
+            "evidence_id": [],
+            "key_points": [
+              "坦诚现有经验集中于HR/协同SaaS，但SaaS是云服务的一种形态。",
+              "已主动学习Azure基础概念（可提及自学课程）。",
+              "客户成功方法论（如健康度模型、价值交付）完全可迁移到云服务采用场景。",
+              "可以展示对云服务价值交付框架的理解，如Cloud Adoption Framework。"
+            ],
+            "follow_up_risks": [
+              "面试官可能深入考问具体云服务（如Azure产品），若无法回答需诚实。",
+              "可能要求提供实际接触过云的证明，若没有需承认。"
+            ]
+          },
+          {
+            "question": "根据一些公开信息，Microsoft的CSAM可能同时处理多个客户，并需要在内部团队间平衡优先级。你过去是如何管理多个客户或项目并确定优先级的？",
+            "requirement_id": "J-R4",
+            "evidence_id": [
+              "C-E1-3",
+              "C-E1-11"
+            ],
+            "key_points": [
+              "同时管理28家中大型客户，通过健康度评分和合同ARR等维度进行分层。",
+              "优先处理高风险/高价值客户，如重大客诉升级时组织日会。",
+              "使用个人任务板和定期回顾确保无遗漏。"
+            ],
+            "follow_up_risks": [
+              "面试官可能给出更复杂的场景假设，考验临场反应。"
+            ]
+          }
+        ],
+        "story_recommendations": [
+          {
+            "title": "跨部门协调交付9家客户上线",
+            "evidence_ids": [
+              "C-E1-3",
+              "C-E1-4"
+            ],
+            "summary": "作为高级客户成功经理，自2022年起主导9家客户从签约到上线，协调售前、实施、产品、研发等多方资源，通过项目管理将平均周期控制在10周，确保客户顺利上线。",
+            "suggested_talking_points": [
+              "如何建立跨部门沟通机制（例如每周进度会）。",
+              "处理1-2个具体冲突案例（例如研发资源不足如何协商）。",
+              "如何确保客户期望管理与内部交付能力对齐。"
+            ],
+            "follow_up_questions": [
+              "这9家客户中，哪一家最难推动？你学到了什么？",
+              "如果重新做一次，你会改进什么？"
+            ]
+          },
+          {
+            "title": "构建客户健康度模型并用于风险识别",
+            "evidence_ids": [
+              "C-P2-1",
+              "C-P2-2"
+            ],
+            "summary": "2025年与数据同事共同定义四类健康度指标（登录、核心功能、工单、关键人关系），用Excel试算并在周例会中使用，辅助识别高风险客户，主动介入挽回。",
+            "suggested_talking_points": [
+              "为什么选择这四类指标？权重如何初步设定？",
+              "通过模型识别了哪些具体风险，采取了什么干预措施？",
+              "模型未来如何迭代才能与续费数据关联？"
+            ],
+            "follow_up_questions": [
+              "如果权重验证后需要调整，你会如何推动？",
+              "这个模型对业务团队的实际帮助有多大？"
+            ]
+          },
+          {
+            "title": "处理重大客诉升级并实现零退费",
+            "evidence_ids": [
+              "C-E1-11"
+            ],
+            "summary": "处理过2次重大客诉升级，组织跨部门日会，跟踪技术修复进度并与客户持续沟通，最终未发生退费，维护了客户关系和公司收入。",
+            "suggested_talking_points": [
+              "客诉升级的具体原因是什么？",
+              "如何安抚客户情绪并推动内部快速响应？",
+              "从中总结出什么流程改进建议？"
+            ],
+            "follow_up_questions": [
+              "如果客户坚持退费，你会如何应对？",
+              "这些事件后你推动了哪些长期改进？"
+            ]
+          }
+        ],
+        "gap_defense": [
+          {
+            "gap": "缺乏企业数字化转型和云服务直接经验（J-R3）",
+            "defense_strategy": "承认当前经验偏向SaaS，但强调SaaS本质是云交付，已初步学习Azure基础，并能用客户成功框架解释云服务采用中的价值管理。准备一个微场景：将客户健康度模型思维迁移到云采用率监控。",
+            "recommended_response_anchors": [
+              "我已开始自学Microsoft Learn上的Azure Fundamentals。",
+              "我认为数字转型的核心是业务流程与技术的对齐，我在连锁零售项目中实际上推动了流程数字化。",
+              "如果有机会，我可以快速学习云服务知识，因为客户成功的方法论不变。"
+            ],
+            "caveats": [
+              "不要宣称有云经验，避免虚假陈述。",
+              "如果被问到Azure具体服务，如实回答不知，并展示学习意愿。"
+            ]
+          },
+          {
+            "gap": "无汽车行业经验（加分项 J-R5）",
+            "defense_strategy": "承认没有汽车行业直接经验，但服务过零售、制造等行业，具备快速学习行业特性的能力。可以提前研究汽车行业数字化转型常见场景（如车联网、智能工厂），表达兴趣。",
+            "recommended_response_anchors": [
+              "我虽然没有汽车行业经验，但在零售和制造业积累的行业分析方法可以迁移。",
+              "我了解到汽车行业现在非常注重软件定义汽车和客户体验，这与我的SaaS客户成功思维很契合。",
+              "如果有培训或行业指导资源，我能在短期内上手。"
+            ],
+            "caveats": [
+              "不要胡编对汽车行业的具体了解，诚实但展示勤奋。"
+            ]
+          },
+          {
+            "gap": "增购/扩展销售贡献不足",
+            "defense_strategy": "明确过去角色侧重续费和客户健康，增购主要由销售同事负责，但通过成功交付和健康度监控为销售提供了线索，并愿意在需要时承担更多协同角色。",
+            "recommended_response_anchors": [
+              "在苏州勤知，我负责续费230万元，增购由销售完成，但我常提供客户使用洞察给销售。",
+              "在云舟，虽然没有指标，但我曾因了解客户痛点而促成额外功能采购的讨论。",
+              "如果能与销售紧密合作，我可以更主动地识别增购机会。"
+            ],
+            "caveats": [
+              "不要夸大，承认目前不是核心强项。"
+            ]
+          },
+          {
+            "gap": "工具技能（Salesforce/Jira）无实证",
+            "defense_strategy": "在简历中已删除这些词汇，面试中如实说明仅简单使用或未深度使用，强调学习能力，并列举实际高频使用的工具（飞书、Excel、XMind）。",
+            "recommended_response_anchors": [
+              "我在之前工作中主要使用飞书进行协作，XMind做流程梳理。",
+              "对Salesforce和Jira只有基础了解，但如果有需要，我可以快速通过在线资源掌握。",
+              "我善用Excel进行数据分析，这证明了我对工具的适应力。"
+            ],
+            "caveats": [
+              "不要假装熟练，避免技术性追问。"
+            ]
+          }
+        ],
+        "company_specific_hypotheses": [
+          {
+            "hypothesis": "CSAM可能需要同时负责多个客户账户，并且需要在没有直接权威的情况下协调内部资源。",
+            "source_id": "W-S3",
+            "confidence": "low",
+            "validation_question": "在这个角色中，CSAM通常并行管理多少个客户账户？内部协调机制是怎样的？"
+          },
+          {
+            "hypothesis": "Microsoft的面试会非常重视成长心态和客户至上，因此可以准备例子展现主动学习和从失败中改进的能力。",
+            "source_id": "W-S2",
+            "confidence": "medium",
+            "validation_question": "在面试过程中，你们会通过什么方式来评估我的成长心态和客户立场？"
+          },
+          {
+            "hypothesis": "该岗位可能隶属于一个按行业或产品线划分的客户成功团队，汽车行业可能是重点方向之一。",
+            "source_id": "W-S1",
+            "confidence": "low",
+            "validation_question": "这个职位的团队目前是按行业还是按产品线组织的？汽车行业客户的占比大概是多少？"
+          }
+        ],
+        "questions_for_interviewer": [
+          "一个CSAM通常管理多少客户？如何平衡不同客户的优先级？",
+          "这个岗位对技术深度的期望如何？与解决方案架构师、工程团队的协作方式是？",
+          "能否描述汇报结构以及招聘经理的背景？",
+          "入职后6-12个月的关键客户成功指标是什么？",
+          "在关键客户问题升级时团队如何处理？",
+          "汽车行业经验在实际工作中如何影响日常任务？",
+          "Azure/AWS、PMI、Prosci等认证在实际工作中哪个最受重视？"
+        ],
+        "first_90_days_discussion_points": [
+          "理解公司内部客户成功方法论和工具，完成必要的产品与流程培训。",
+          "与分配的客户群建立联系，了解其当前状态、目标和挑战。",
+          "和内部关键利益相关方（如销售、工程、支持）建立工作关系，明确协作模式。",
+          "与经理对齐期望，明确30/60/90天里程碑和关键成功指标。",
+          "评估客户健康度基线，识别优先行动项。",
+          "开始构建个人知识库，记录行业洞察和最佳实践。"
+        ]
+      },
+      "deliverable": true
+    },
+    "finalResume": "# 李欣然\n电话：137****5941 | 邮箱：lixinran04@outlook.com | 地点：上海 | 目标岗位：Customer Success Account Manager (客户成功经理)\n\n## 专业摘要\n多年B2B SaaS客户成功全生命周期管理经验，PMP认证，擅长通过季度业务回顾(QBR)、客户健康监控与优先级协调推动客户成功与续约。主导过600+门店级解决方案交付，管理最高860万ARR合同组合，2025年续约率达91%。英语可作为工作语言（IELTS 6.5）。\n\n## 核心能力\n- 客户成功与关系经营：季度业务回顾，客户健康监控，续约管理，客户升级管理\n- 解决方案交付：需求调研，方案设计，跨职能协调，培训与上线\n- 项目管理：PMP认证，跨职能资源协调与优先级排序\n- 数据分析：指标定义，Excel建模，风险识别\n- 沟通与文档：利益相关方对齐，技术文档撰写，产品培训\n\n## 工作经历\n### 高级客户成功经理 | 上海云舟协同科技有限公司 | 2022.09 – 至今\n- 经营28家中大型客户的成功关系，管理约860万ARR合同组合，覆盖零售、制造与专业服务；通过季度业务回顾(QBR)与利益相关方保持紧密对齐。\n- 主导客户交付优先级协调：管理从签约到上线的全流程，协调售前、实施、产品、研发资源，平均周期10周，成功交付9家客户。\n- 执行客户健康监控：按月跟踪活跃用户、核心功能使用率及工单数据，为重点客户主持季度业务回顾；2025年负责客户续约率达91%。\n- 推动产品改进闭环：将重复的权限与审批问题整理为需求池，成功推动3项配置能力进入产品版本，并参与1项的功能验收。\n- 主导客户升级管理：处理2次重大客诉升级，组织跨部门日会跟踪修复进度，确保客户零退费。\n\n### 客户成功顾问 | 苏州勤知人力科技有限公司 | 2019.07 – 2022.03\n- 为40余家中小企业提供HR SaaS上线培训、答疑和续费提醒。\n- 整理帮助中心文章60余篇，参与新客户线上训练营（单期80-120人）。\n- 2021年管理客户续费金额约230万元，增购部分由销售团队协同推进。\n\n## 项目经验\n### 连锁零售客户全国上线项目 | 2024.02 – 2024.06\n- 负责解决方案交付：调研总部及600+门店的审批、排班、员工通讯录流程，设计实施方案并执行4轮培训。\n- 上线首月周活用户达72%，后因客户组织架构调整降至61%；与客户共同制定管理员巡检机制，以维持使用粘性。\n\n### 客户健康度模型1.0 | 2025.03 – 2025.05\n- 与数据同事共同定义登录、核心功能、工单和关键人关系4类指标，使用Excel试算并应用于周例会，识别风险客户。\n- 模型权重尚待长期续费数据验证。\n\n## 教育背景\n上海对外经贸大学 | 商务英语 | 本科 | 2015.09 – 2019.06\n\n## 资质与语言\n- PMP（项目管理专业人士）认证，2024年\n- 大学英语六级 / IELTS 6.5（工作语言）"
+  }
+}

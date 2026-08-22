@@ -1,0 +1,60 @@
+{
+  "topic": "小红书 AI 简历优化与一岗一简历同类内容",
+  "queries": [
+    "site:xiaohongshu.com/explore AI 简历优化 爆款 笔记 求职",
+    "site:xiaohongshu.com/explore 针对 JD 改简历 AI 求职",
+    "小红书 AI改简历 点赞",
+    "小红书 Rezi AI 简历 笔记",
+    "小红书 职徒简历 AI 优化"
+  ],
+  "xiaohongshu_access": {
+    "status": "unavailable",
+    "details": "本机缺少 agent-reach CLI 及小红书专用后端；Web 搜索页标题可加载，但笔记卡片与互动数据读取超时。",
+    "verified_viral_samples": 0
+  },
+  "results": [
+    {
+      "title": "Rezi User Docs - Create Resume",
+      "url": "https://www.rezi.ai/rezi-docs/create-resume",
+      "source": "rezi.ai",
+      "abstract": "创建简历时可输入目标职位、公司和 JD，让 AI 提供更针对性的建议。",
+      "fetched": true
+    },
+    {
+      "title": "Rezi User Docs - AI Resume Agent",
+      "url": "https://www.rezi.ai/rezi-docs/ai-resume-agent",
+      "source": "rezi.ai",
+      "abstract": "以通用 AI 容易生成空泛、机器感内容为痛点，强调按 JD 提供针对性反馈。",
+      "fetched": true
+    },
+    {
+      "title": "AI Resume Rewriter",
+      "url": "https://resumeworded.com/resume-rewriter",
+      "source": "resumeworded.com",
+      "abstract": "直接回应 AI 改写是否会添加未做经历的用户顾虑。",
+      "fetched": true
+    },
+    {
+      "title": "职徒简历官网",
+      "url": "https://www.zhitujianli.com/",
+      "source": "zhitujianli.com",
+      "abstract": "传播 AI 评分、优化建议、模板、翻译与多格式导出等广覆盖能力。",
+      "fetched": true
+    },
+    {
+      "title": "棱镜简历更新日志",
+      "url": "https://xukz.cn/changelog",
+      "source": "xukz.cn",
+      "abstract": "增加基于 JD 的匹配诊断、AI 优化、逐条 diff 和另存新版本。",
+      "fetched": true
+    },
+    {
+      "title": "Offer Ready",
+      "url": "https://www.offer-ready.top/",
+      "source": "offer-ready.top",
+      "abstract": "用写简历、查匹配、练面试串起求职准备流程。",
+      "fetched": true
+    }
+  ]
+}
+

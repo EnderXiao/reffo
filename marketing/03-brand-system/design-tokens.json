@@ -1,0 +1,258 @@
+{
+  "meta": {
+    "name": "Reffo Social Brand Tokens",
+    "version": "1.0.0",
+    "status": "review-draft",
+    "market": "中国大陆",
+    "primaryPlatform": "小红书",
+    "reviewedAt": "2026-08-16",
+    "factBasis": "Reffo Taro H5 源码与 localhost:10086 实际页面",
+    "sourceFiles": [
+      "frontend/Taro/reffo-taro/src/styles/tokens.ts",
+      "frontend/Taro/reffo-taro/src/styles/variables.scss",
+      "frontend/Taro/reffo-taro/src/pages/index/index.h5.scss",
+      "frontend/Taro/reffo-taro/src/pages/landing/index.scss",
+      "frontend/Taro/reffo-taro/src/pages/result/index.h5.scss",
+      "frontend/Taro/reffo-taro/src/assets/branding/Vector.svg",
+      "frontend/Taro/reffo-taro/src/assets/branding/reffo-logo.png"
+    ],
+    "notes": [
+      "社交视觉令牌继承现有 App，但不替代产品端设计令牌。",
+      "产品截图必须来自实际运行页面，并在发布前完成隐私脱敏。",
+      "模板中的中文和 reffo 字标均保留为可编辑文字；正式 Logo 仍以仓库品牌资产为准。"
+    ]
+  },
+  "color": {
+    "brand": {
+      "logoBlue": "#1C77EB",
+      "actionBlue": "#286FE7",
+      "activeBlue": "#1677FF",
+      "deepBlue": "#135FDB"
+    },
+    "ink": {
+      "primary": "#111111",
+      "warmPrimary": "#25211F",
+      "secondary": "#4B4F56",
+      "muted": "#7D8591",
+      "quiet": "#949494",
+      "inverse": "#FFFFFF"
+    },
+    "surface": {
+      "white": "#FFFFFF",
+      "paper": "#F8F9FB",
+      "atmosphereTop": "#DCE9F9",
+      "atmosphereMiddle": "#EEF4FB",
+      "blueCard": "#E5F2FF",
+      "darkCard": "#111317",
+      "warmPaper": "#FFF8F3"
+    },
+    "evidence": {
+      "green": "#14C972",
+      "greenDeep": "#087D48",
+      "greenSoft": "#E0F8EC",
+      "gapPink": "#FFE0ED"
+    },
+    "process": {
+      "orange": "#FF6037",
+      "orangeDeep": "#D95E34",
+      "orangeSoft": "#FFF2EB"
+    },
+    "border": {
+      "neutral": "#DFE1E6",
+      "cool": "#AAC0DF",
+      "glass": "rgba(255,255,255,0.72)",
+      "darkGlass": "rgba(255,255,255,0.20)"
+    },
+    "cardPalette": {
+      "designYellow": "#F0D45F",
+      "engineerBlue": "#6DA9FF",
+      "medicalGreen": "#74D7A7",
+      "scienceViolet": "#B95CFF",
+      "writingPink": "#FF8CA3",
+      "mathTeal": "#5ED1C6",
+      "productPeriwinkle": "#8EA2FF"
+    },
+    "usageRatio": {
+      "neutralAndWhite": 0.7,
+      "paleAtmosphere": 0.2,
+      "brandBlue": 0.08,
+      "stateColorsMaximum": 0.02
+    }
+  },
+  "gradient": {
+    "atmosphere": {
+      "type": "linear",
+      "angle": 180,
+      "stops": [
+        {"color": "#DCE9F9", "position": 0},
+        {"color": "#EEF4FB", "position": 0.33},
+        {"color": "#F8F9FB", "position": 0.58},
+        {"color": "#FFFFFF", "position": 1}
+      ],
+      "restriction": "只用于大面积背景，禁止提高饱和度或加入紫蓝霓虹。"
+    },
+    "warmProcess": {
+      "type": "linear",
+      "angle": 180,
+      "stops": [
+        {"color": "#F8DDD6", "position": 0},
+        {"color": "#FFF2EB", "position": 0.45},
+        {"color": "#FFFFFF", "position": 1}
+      ],
+      "restriction": "仅用于创建流程或暖色主题页，不作为品牌主背景。"
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "sansCN": "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+      "scoreSerif": "Georgia, 'Times New Roman', serif",
+      "mono": "'SF Mono', Menlo, Monaco, Consolas, monospace"
+    },
+    "weight": {
+      "light": 300,
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700,
+      "black": 900
+    },
+    "tracking": {
+      "display": "-0.02em",
+      "headline": "-0.01em",
+      "body": "0em",
+      "label": "0.02em"
+    },
+    "xiaohongshu1242": {
+      "display": {"size": 112, "lineHeight": 1.04, "weight": 600},
+      "headline": {"size": 76, "lineHeight": 1.12, "weight": 600},
+      "subheadline": {"size": 40, "lineHeight": 1.4, "weight": 400},
+      "body": {"size": 34, "lineHeight": 1.55, "weight": 400},
+      "label": {"size": 26, "lineHeight": 1.3, "weight": 500},
+      "caption": {"size": 22, "lineHeight": 1.4, "weight": 400}
+    },
+    "video1080": {
+      "display": {"size": 96, "lineHeight": 1.06, "weight": 600},
+      "headline": {"size": 68, "lineHeight": 1.12, "weight": 600},
+      "body": {"size": 34, "lineHeight": 1.5, "weight": 400},
+      "label": {"size": 24, "lineHeight": 1.3, "weight": 500}
+    },
+    "article1920": {
+      "display": {"size": 118, "lineHeight": 1.05, "weight": 600},
+      "headline": {"size": 72, "lineHeight": 1.12, "weight": 600},
+      "body": {"size": 34, "lineHeight": 1.45, "weight": 400},
+      "label": {"size": 24, "lineHeight": 1.3, "weight": 500}
+    }
+  },
+  "space": {
+    "base": 8,
+    "scale": [8, 16, 24, 32, 40, 48, 64, 80, 96, 120, 144],
+    "xiaohongshuOuter": 90,
+    "videoOuter": 72,
+    "articleOuter": 120
+  },
+  "radius": {
+    "xs": 8,
+    "sm": 10,
+    "md": 14,
+    "lg": 18,
+    "xl": 24,
+    "pill": 999,
+    "rules": {
+      "productScreenshot": "跟随真实设备截图，不重画容器圆角。",
+      "applicationCard": 20,
+      "informationPanel": 24,
+      "buttonOrTag": 999
+    }
+  },
+  "stroke": {
+    "hairline": 2,
+    "regular": 3,
+    "emphasis": 5,
+    "icon": 4
+  },
+  "shadow": {
+    "card": "0 24px 48px rgba(21,30,46,0.16)",
+    "floating": "0 14px 28px rgba(40,111,231,0.14)",
+    "evidence": "0 18px 40px rgba(13,156,87,0.14)",
+    "restriction": "只用单向柔和阴影；禁止发光、霓虹外描边和多层彩色阴影。"
+  },
+  "iconography": {
+    "style": "2px 等效线性图标，圆端点，必要时使用单色实心状态符号",
+    "corner": "round",
+    "defaultColor": "#111111",
+    "activeColor": "#1C77EB",
+    "minimumSize": 24,
+    "forbidden": [
+      "机器人头像",
+      "AI 大脑电路",
+      "魔法棒星爆",
+      "3D 聊天气泡",
+      "混用不同图标库"
+    ]
+  },
+  "composition": {
+    "signature": "岗位档案卡 + 右侧索引轨 + 证据标注",
+    "cardRatio": "210:332",
+    "grid": {
+      "columns": 12,
+      "gutter": 24
+    },
+    "titleLinesMaximum": 3,
+    "accentWordsMaximum": 2,
+    "stateColorKindsMaximum": 1,
+    "decorativeCardCountMaximum": 4,
+    "rules": [
+      "标题左对齐，卡片或真实截图承担第二视觉重心。",
+      "每一画面只保留一个主结论。",
+      "卡片可以裁切出画，但不得伪装成真实产品截图。",
+      "索引轨只作秩序和多岗位暗示，不作进度承诺。"
+    ]
+  },
+  "formats": {
+    "xiaohongshuCover": {
+      "width": 1242,
+      "height": 1660,
+      "safeArea": {"top": 100, "right": 90, "bottom": 110, "left": 90},
+      "titleArea": {"x": 90, "y": 210, "width": 940, "height": 420},
+      "mediaArea": {"x": 90, "y": 790, "width": 1062, "height": 700}
+    },
+    "verticalVideoCover": {
+      "width": 1080,
+      "height": 1920,
+      "safeArea": {"top": 180, "right": 72, "bottom": 300, "left": 72},
+      "titleArea": {"x": 72, "y": 260, "width": 828, "height": 460},
+      "mediaArea": {"x": 72, "y": 890, "width": 936, "height": 650}
+    },
+    "articleHeader": {
+      "width": 1920,
+      "height": 1080,
+      "safeArea": {"top": 96, "right": 120, "bottom": 96, "left": 120},
+      "titleArea": {"x": 120, "y": 260, "width": 950, "height": 420},
+      "mediaArea": {"x": 1230, "y": 140, "width": 520, "height": 800}
+    }
+  },
+  "mockup": {
+    "allowed": [
+      "实际运行的 H5 截图或录屏帧",
+      "真实截图的等比裁切、圆角蒙版和单向阴影",
+      "对姓名、电话、邮箱、公司与日期进行不可逆脱敏",
+      "用可编辑标注指出页面中的真实功能"
+    ],
+    "forbidden": [
+      "AI 生成或手工伪造产品 UI",
+      "把工作机制示意画成产品截图",
+      "修改真实按钮、价格、评分、数据或功能名称",
+      "用透视变形遮盖关键文案",
+      "展示未授权的真实用户信息"
+    ]
+  },
+  "export": {
+    "workingFormat": "SVG",
+    "socialRaster": "PNG",
+    "colorSpace": "sRGB",
+    "xiaohongshu": {"width": 1242, "height": 1660, "format": "PNG"},
+    "verticalVideo": {"width": 1080, "height": 1920, "format": "PNG"},
+    "articleHeader": {"width": 1920, "height": 1080, "format": "PNG"},
+    "textPolicy": "交付源文件保留文字，不转曲；发布副本可在最终确认后转曲或栅格化。"
+  }
+}

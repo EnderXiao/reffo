@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Reffo 横版文章头图模板</title>
+  <desc id="desc">十六比九头图，左侧标题，右侧真实 H5 截图占位与岗位档案卡。</desc>
+  <defs>
+    <linearGradient id="articleAtmosphere" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#DCE9F9"/>
+      <stop offset="0.38" stop-color="#EEF4FB"/>
+      <stop offset="0.72" stop-color="#F8F9FB"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <filter id="articleShadow" x="-30%" y="-30%" width="180%" height="190%">
+      <feDropShadow dx="0" dy="24" stdDeviation="25" flood-color="#151E2E" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <g id="background-layer">
+    <rect width="1920" height="1080" fill="url(#articleAtmosphere)"/>
+    <path d="M1120 0H1920V1080H1450C1320 862 1268 662 1120 0Z" fill="#FFFFFF" fill-opacity="0.32"/>
+  </g>
+
+  <g id="brand-layer" fill="#1C77EB">
+    <g transform="translate(120 96) scale(0.78)">
+      <path d="M48 36C48 42.0751 43.0751 47 37 47C30.9249 47 26 42.0751 26 36C26 29.9249 30.9249 25 37 25C43.0751 25 48 29.9249 48 36Z"/>
+      <path d="M0 25V47H10C15.6 47 17.6667 40.6667 18 37.5V22C18 19.6 20 19.3333 21 19.5H29.5C34.7 19.5 37.3333 13.8333 38 11V0H26C22.8 0 20.6667 2 20 3C14.6667 8 3.6 18.4 2 20C0.4 21.6 0 24 0 25Z"/>
+    </g>
+    <text x="174" y="138" font-family="Arial Rounded MT Bold, Avenir Next, Arial, sans-serif" font-size="54" font-weight="700" letter-spacing="-2">reffo</text>
+  </g>
+
+  <g id="copy-layer" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+    <rect x="120" y="222" width="292" height="54" rx="27" fill="#FFFFFF" fill-opacity="0.78"/>
+    <text x="149" y="259" fill="#4B4F56" font-size="24" font-weight="500">产品方法 · 一岗一简历</text>
+    <text x="120" y="408" fill="#111111" font-size="106" font-weight="600" letter-spacing="-3">
+      <tspan x="120">从 JD 到</tspan>
+      <tspan x="120" dy="126"><tspan fill="#1C77EB">岗位版本</tspan><tspan fill="#111111">，</tspan></tspan>
+      <tspan x="120" dy="126">如何组织一次申请</tspan>
+    </text>
+    <text x="124" y="820" fill="#4B4F56" font-size="32">
+      <tspan x="124">先判断证据，再重排重点，最后由你确认。</tspan>
+    </text>
+    <g transform="translate(120 892)">
+      <rect x="0" y="0" width="212" height="54" rx="27" fill="#E0F8EC"/>
+      <circle cx="31" cy="27" r="10" fill="#14C972"/>
+      <text x="54" y="36" fill="#087D48" font-size="24" font-weight="600">真实流程演示</text>
+    </g>
+    <text x="120" y="1000" fill="#7D8591" font-size="22">AI 初稿，请逐项核对事实。</text>
+  </g>
+
+  <g id="graphic-layer" filter="url(#articleShadow)">
+    <g transform="translate(1416 118) rotate(7 196 310)">
+      <rect width="392" height="620" rx="22" fill="#6DA9FF" opacity="0.42"/>
+    </g>
+    <g transform="translate(1494 90) rotate(10 196 310)">
+      <rect width="392" height="620" rx="22" fill="#111317"/>
+      <text x="42" y="92" fill="#FFFFFF" fill-opacity="0.48" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" font-size="24">岗位档案</text>
+      <text x="42" y="220" fill="#FFFFFF" font-family="Georgia, Times New Roman, serif" font-size="112">01</text>
+      <rect x="42" y="424" width="216" height="18" rx="9" fill="#FFFFFF" fill-opacity="0.66"/>
+      <rect x="42" y="470" width="276" height="12" rx="6" fill="#FFFFFF" fill-opacity="0.24"/>
+      <rect x="42" y="506" width="234" height="12" rx="6" fill="#FFFFFF" fill-opacity="0.18"/>
+    </g>
+  </g>
+
+  <g id="screenshot-placeholder" filter="url(#articleShadow)">
+    <rect x="1170" y="270" width="506" height="620" rx="28" fill="#FFFFFF" fill-opacity="0.94" stroke="#1C77EB" stroke-opacity="0.48" stroke-width="3" stroke-dasharray="14 12"/>
+    <rect x="1204" y="304" width="438" height="446" rx="18" fill="#EEF4FB"/>
+    <g font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" text-anchor="middle">
+      <text x="1423" y="490" fill="#1C77EB" font-size="32" font-weight="600">替换为真实 H5 截图</text>
+      <text x="1423" y="548" fill="#7D8591" font-size="23">等比裁切 · 不重画 UI</text>
+      <text x="1423" y="596" fill="#7D8591" font-size="23">发布前不可逆脱敏</text>
+    </g>
+    <rect x="1204" y="790" width="214" height="48" rx="24" fill="#286FE7"/>
+    <text x="1311" y="822" fill="#FFFFFF" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" font-size="21" font-weight="600" text-anchor="middle">真实界面证据区</text>
+  </g>
+
+  <g id="index-rail" transform="translate(1808 816)">
+    <rect x="0" y="0" width="26" height="4" rx="2" fill="#111111"/>
+    <rect x="10" y="48" width="16" height="3" rx="1.5" fill="#AAB2BF"/>
+    <rect x="16" y="96" width="10" height="3" rx="1.5" fill="#AAB2BF"/>
+    <rect x="10" y="144" width="16" height="3" rx="1.5" fill="#AAB2BF"/>
+  </g>
+
+  <g id="guide-layer" style="display:none">
+    <rect x="120" y="96" width="1680" height="888" fill="none" stroke="#FF6037" stroke-width="2" stroke-dasharray="12 12"/>
+  </g>
+</svg>

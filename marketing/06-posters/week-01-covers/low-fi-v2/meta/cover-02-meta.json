@@ -1,0 +1,24 @@
+{
+  "title": "AI 先找哪里没证明",
+  "platform": "小红书",
+  "created_at": "2026-08-17T18:00:00+08:00",
+  "post_format": "video",
+  "caption": "简历优化最容易犯的错，是还没看清问题就开始润色。Reffo 的岗位分析会先对照目标 JD，展示材料中的匹配点、差距和优化思路。页面里的字母评级只是产品内参考，不是 ATS 分数，也不是招聘方结论。真正值得看的，是哪些要求没有被材料证明，以及哪些内容需要你本人补充或核对。先看清，再动笔。AI 内容请逐项核对。",
+  "hashtags": ["#AI简历", "#简历诊断", "#岗位匹配", "#求职准备", "#产品实测", "#Reffo"],
+  "poster_style": "Reffo 社交品牌系统：真实流程、界面优先、差距语义点色",
+  "cards": [
+    {"page": 1, "type": "cover", "title": "AI 先找哪里没证明", "content": "先看材料差距，再决定怎么改", "synthesis_strategy": "collage", "material_refs": ["m002", "m003"]}
+  ],
+  "shots": [
+    {"index": 1, "duration_sec": 4, "narration": "简历先别急着润色。", "on_screen_text": "先别急着改", "visual": "封面标题进入，真实岗位分析页作为主视觉", "material_ref": "m002"},
+    {"index": 2, "duration_sec": 5, "narration": "先把源简历和目标 JD 放在一起看。", "on_screen_text": "简历 × 目标 JD", "visual": "录屏展示导入简历与填写目标 JD 的实际流程", "material_ref": "m002"},
+    {"index": 3, "duration_sec": 5, "narration": "先确认材料已经证明了什么。", "on_screen_text": "匹配点", "visual": "录屏停留在岗位分析中的匹配信息区域", "material_ref": "m002"},
+    {"index": 4, "duration_sec": 5, "narration": "再找岗位要求里还没被证明的部分。", "on_screen_text": "未证明项", "visual": "录屏滚动至材料差距区域，保持真实界面", "material_ref": "m002"},
+    {"index": 5, "duration_sec": 5, "narration": "最后再看哪些已有证据可以重排。", "on_screen_text": "优化思路", "visual": "录屏展示优化思路，不出现虚构按钮", "material_ref": "m002"},
+    {"index": 6, "duration_sec": 6, "narration": "评级只是产品内参考，AI 内容请核对。", "on_screen_text": "逐项核对事实", "visual": "回到岗位分析页并显示合规提示", "material_ref": "m002"}
+  ],
+  "materials": [
+    {"id": "m002", "path": "../assets/actual-h5-result-header-393x340.png", "kind": "image", "caption": "实际 H5 结果页安全裁切", "usage": "cover,shots", "strategy": "use_original"},
+    {"id": "m003", "path": "../assets/reffo-logo.png", "kind": "image", "caption": "Reffo 正式 Logo", "usage": "cover", "strategy": "use_original"}
+  ]
+}

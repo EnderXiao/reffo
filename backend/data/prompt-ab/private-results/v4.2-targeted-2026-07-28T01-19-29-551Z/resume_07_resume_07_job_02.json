@@ -1,0 +1,3237 @@
+{
+  "privacy": "PRIVATE_REVIEW_MATERIAL_DO_NOT_COMMIT",
+  "promptVariant": "scope-aware-v4.2",
+  "promptVersion": "4.2.0",
+  "caseId": "resume_07:resume_07_job_02",
+  "resumeId": "resume_07",
+  "jobId": "resume_07_job_02",
+  "company": "盒马",
+  "position": "盒马 NB 店长",
+  "sourceResume": "赵国强|连锁零售店长|门店经营与团队管理\n男|34岁|长沙|158****4602|zhaoguoqiang07@outlook.com\n求职方向:区域运营督导、零售运营经理、新零售数字化运营\n\n【个人概述】\n9 年商超和便利店一线经验,现负责一家 24 小时社区旗舰店,管理 26 人。熟悉销售、毛利、损耗、排班、盘点、会员和社区活动。学历为成人本科在读,希望从单店经营转向区域运营。\n\n【专业技能】\n- 经营:销售与毛利目标、商品结构、库存周转、损耗、促销落地、竞争巡店\n- 团队:招聘、排班、带教、绩效沟通、店长例会、服务投诉处理\n- 系统:门店 POS、补货系统、企业微信、Excel 基础;可驾驶并接受省内出差\n\n【工作经历】\n湘邻便利连锁有限公司|旗舰店店长|2021.06 - 至今\n- 负责 620 平方米社区旗舰店经营,现有员工 26 人,包含鲜食、日配、百货和即时零售业务。\n- 2025 年门店销售额约 2,180 万元,完成公司目标 103%;综合毛利率 24.6%,在片区 18 家门店中排名第 5。\n- 通过调整鲜食订货、临期巡检和交接班,报损率从 2.9% 降到 2.2%;春节期间曾因预测不足出现缺货。\n- 建立新员工 7 天带教清单,近一年新员工 30 天留存率由约 63% 提升至 76%。\n- 组织会员日、社区团购和免费测量血压等活动,活动数据主要以销售和到店人数统计,未做长期复购分析。\n- 处理夜班安全、客诉、设备故障和监管检查,近三年未发生重大安全事故。\n长沙悦来生活超市|主管 / 店长助理|2017.03 - 2021.05\n- 从理货员晋升食品主管、店长助理,负责排面、库存、促销与员工安排。\n- 参与新店开业 2 次,协助收货、陈列和开业活动。\n长沙悦来生活超市|理货员|2015.08 - 2017.02\n- 负责休闲食品区补货、价签、盘点和顾客服务。\n\n【项目经历】\n门店线上即时零售提升|2024.03 - 2024.08\n- 调整外卖平台商品图片、缺货替代和拣货动线,培训专人高峰拣货。\n- 月订单量从约 2,600 单提升至 3,450 单,退款率由 4.8% 降至 3.9%;平台流量同期也有增长。\n片区临期商品互调试点|2025.07 - 2025.09\n- 与周边 4 家店建立每周临期清单和调拨群,减少部分鲜奶与面包报损。\n- 未形成统一系统记录,项目结束后执行不稳定。\n\n【教育经历】\n- 湖南工商大学继续教育学院|工商管理 成人本科在读|2024.03 - 2027.01\n- 湖南商务职业技术学院|连锁经营管理 大专|2012.09 - 2015.06\n\n【补充信息】\n- 2019、2023 年度优秀员工;2025 年片区优秀店长提名\n- 普通话标准,擅长和社区中老年顾客沟通。",
+  "jobDescription": "盒马|盒马 NB 店长\n深圳 / 南京等城市|线下零售|公开招聘页在招\n\n职位介绍\n负责盒马 NB 门店经营、团队和履约管理,以销售、毛利、库存、损耗和顾客体验为核心。\n\n岗位职责\n1. 承担门店销售、毛利、库存周转和损耗等经营指标,制定并执行改善计划。\n2. 负责商品陈列、补货、盘点、食品安全和现场服务标准。\n3. 管理排班、培训、绩效和团队协作,保障高峰期现场运营。\n4. 统筹线上订单拣配与线下顾客服务,持续提升履约效率和顾客体验。\n\n任职要求\n1. 大专及以上,具备连锁商超或零售门店管理经验。\n2. 熟悉门店商品、库存、损耗、人员和服务管理。\n3. 能够使用经营数据定位问题,并在现场快速组织解决。\n4. 具备较强的责任心、团队领导和沟通协调能力。\n\n加分项\n- 2年以上零售店长或门店负责人经验\n- 有生鲜、折扣零售或线上履约经验\n\n公开招聘来源:https://m.liepin.com/company/10104857/\n页面核验日期:2026-07-27",
+  "current": {
+    "suite": {
+      "candidate_evidence_ledger": {
+        "source_resume_quality": {
+          "score": 81,
+          "dimension_scores": {
+            "completeness": 18,
+            "atomic_evidence": 16,
+            "result_evidence": 15,
+            "time_and_ownership_consistency": 18,
+            "verifiability": 14
+          }
+        },
+        "personal_info": {
+          "name": "赵国强",
+          "gender": "男",
+          "age": 34,
+          "city": "长沙",
+          "phone": "158****4602",
+          "email": "zhaoguoqiang07@outlook.com",
+          "current_title": "旗舰店店长",
+          "target_roles": [
+            "区域运营督导",
+            "零售运营经理",
+            "新零售数字化运营"
+          ]
+        },
+        "education": [
+          {
+            "institution": "湖南工商大学继续教育学院",
+            "major": "工商管理",
+            "degree": "成人本科在读",
+            "start_date": "2024.03",
+            "end_date": "2027.01",
+            "type": "成人本科"
+          },
+          {
+            "institution": "湖南商务职业技术学院",
+            "major": "连锁经营管理",
+            "degree": "大专",
+            "start_date": "2012.09",
+            "end_date": "2015.06",
+            "type": "全日制大专"
+          }
+        ],
+        "experience": [
+          {
+            "company": "湘邻便利连锁有限公司",
+            "title": "旗舰店店长",
+            "start_date": "2021.06",
+            "end_date": "至今",
+            "highlights": [
+              "负责620平方米社区旗舰店整体经营，管理26人团队，涵盖鲜食、日配、百货及即时零售业务",
+              "2025年门店销售额约2,180万元，完成公司目标103%，综合毛利率24.6%，片区18店排名第5",
+              "通过调整鲜食订货、临期巡检和交接班，将报损率从2.9%降至2.2%",
+              "建立新员工7天带教清单，近一年新员工30天留存率从约63%提升至76%",
+              "组织会员日、社区团购、免费测量血压等社区活动，以销售和到店人数为基础统计",
+              "处理夜班安全、客诉、设备故障与监管检查，近三年未发生重大安全事故"
+            ]
+          },
+          {
+            "company": "长沙悦来生活超市",
+            "title": "主管 / 店长助理",
+            "start_date": "2017.03",
+            "end_date": "2021.05",
+            "highlights": [
+              "从理货员晋升至食品主管、店长助理，负责排面、库存、促销与员工安排",
+              "参与2次新店开业，协助收货、陈列和开业活动"
+            ]
+          },
+          {
+            "company": "长沙悦来生活超市",
+            "title": "理货员",
+            "start_date": "2015.08",
+            "end_date": "2017.02",
+            "highlights": [
+              "负责休闲食品区补货、价签、盘点及顾客服务"
+            ]
+          }
+        ],
+        "projects": [
+          {
+            "name": "门店线上即时零售提升",
+            "start_date": "2024.03",
+            "end_date": "2024.08",
+            "description": "优化外卖平台商品图片、缺货替代策略及拣货动线，培训专人高峰拣货；月订单量从约2,600单提升至3,450单，退款率由4.8%降至3.9%（平台流量同期也有增长）"
+          },
+          {
+            "name": "片区临期商品互调试点",
+            "start_date": "2025.07",
+            "end_date": "2025.09",
+            "description": "与周边4家门店建立每周临期清单与调拨群，减少部分鲜奶、面包报损；未形成统一系统记录，项目结束后执行不稳定"
+          }
+        ],
+        "skills": {
+          "explicit": [
+            "销售与毛利目标管理",
+            "商品结构管理",
+            "库存周转管理",
+            "损耗控制",
+            "促销落地",
+            "竞争巡店",
+            "招聘",
+            "排班",
+            "带教",
+            "绩效沟通",
+            "店长例会",
+            "服务投诉处理",
+            "门店POS操作",
+            "补货系统操作",
+            "企业微信使用",
+            "Excel基础操作",
+            "驾驶"
+          ],
+          "behaviorally_proven": [
+            "单店全面经营与目标达成",
+            "损耗控制与鲜食管理",
+            "团队带教与培训体系搭建",
+            "会员运营与社区营销",
+            "安全与应急处理",
+            "线上即时零售运营优化",
+            "跨店协作降损",
+            "新店筹备支持",
+            "顾客沟通与普通话能力"
+          ],
+          "mentioned_only": [
+            "商品结构管理",
+            "库存周转管理",
+            "促销落地（无独立策划证据）",
+            "竞争巡店",
+            "招聘",
+            "绩效沟通",
+            "店长例会",
+            "企业微信使用（无具体场景）",
+            "Excel基础操作（无实际案例）"
+          ]
+        },
+        "evidence_ledger": [
+          {
+            "evidence_id": "C-E01",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "负责 620 平方米社区旗舰店经营,现有员工 26 人,包含鲜食、日配、百货和即时零售业务",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "负责经营",
+            "object_or_scope": "620平方米社区旗舰店，员工26人，含鲜食、日配、百货、即时零售",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.06 - 至今",
+            "skills_proven": [
+              "门店经营"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "独立负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E02",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "2025 年门店销售额约 2,180 万元,完成公司目标 103%;综合毛利率 24.6%,在片区 18 家门店中排名第 5",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "达成销售与毛利目标",
+            "object_or_scope": "门店销售额约2180万元，毛利率24.6%",
+            "method_or_tool": [],
+            "result": "完成目标103%，毛利率24.6%，片区排名5/18",
+            "time_context": "2025年",
+            "skills_proven": [
+              "销售与毛利目标管理"
+            ],
+            "proficiency_ceiling": "超额完成103%",
+            "ownership_ceiling": "店长职责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E03",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "通过调整鲜食订货、临期巡检和交接班,报损率从 2.9% 降到 2.2%",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "降低报损率",
+            "object_or_scope": "报损率",
+            "method_or_tool": [
+              "调整鲜食订货",
+              "临期巡检",
+              "交接班优化"
+            ],
+            "result": "从2.9%降至2.2%",
+            "time_context": "未明确，应为近期",
+            "skills_proven": [
+              "损耗控制",
+              "鲜食管理"
+            ],
+            "proficiency_ceiling": "降低0.7个百分点",
+            "ownership_ceiling": "主导",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E04",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "建立新员工 7 天带教清单,近一年新员工 30 天留存率由约 63% 提升至 76%",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "提升新员工留存率",
+            "object_or_scope": "新员工30天留存率",
+            "method_or_tool": [
+              "建立7天带教清单"
+            ],
+            "result": "从约63%提升至76%",
+            "time_context": "近一年",
+            "skills_proven": [
+              "团队带教",
+              "新员工培训"
+            ],
+            "proficiency_ceiling": "建立清单并提升留存",
+            "ownership_ceiling": "独立建立推行",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E05",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "组织会员日、社区团购和免费测量血压等活动,活动数据主要以销售和到店人数统计,未做长期复购分析",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "组织社区活动",
+            "object_or_scope": "会员日、社区团购、免费测量血压等活动",
+            "method_or_tool": [
+              "会员日",
+              "社区团购",
+              "免费测量血压"
+            ],
+            "result": "统计了销售和到店人数，未做复购分析",
+            "time_context": "未明确，应为当前任职期间",
+            "skills_proven": [
+              "会员运营",
+              "社区活动组织"
+            ],
+            "proficiency_ceiling": "组织并收集基础数据",
+            "ownership_ceiling": "组织者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E06",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "处理夜班安全、客诉、设备故障和监管检查,近三年未发生重大安全事故",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "处理运营风险",
+            "object_or_scope": "夜班安全、客诉、设备故障、监管检查",
+            "method_or_tool": [],
+            "result": "近三年未发生重大安全事故",
+            "time_context": "近三年",
+            "skills_proven": [
+              "安全与应急处理",
+              "客户投诉处理"
+            ],
+            "proficiency_ceiling": "有效维持安全记录",
+            "ownership_ceiling": "负责处理",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E07",
+            "source_section": "工作经历-长沙悦来生活超市",
+            "source_quote": "从理货员晋升食品主管、店长助理,负责排面、库存、促销与员工安排",
+            "entity": "赵国强",
+            "role": "主管 / 店长助理",
+            "action": "承担多职能管理",
+            "object_or_scope": "排面、库存、促销、员工安排",
+            "method_or_tool": [],
+            "result": "内部晋升",
+            "time_context": "2017.03 - 2021.05",
+            "skills_proven": [
+              "库存管理",
+              "促销执行",
+              "员工安排",
+              "排面管理"
+            ],
+            "proficiency_ceiling": "主管/助理级别",
+            "ownership_ceiling": "负责（可能有上级）",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E08",
+            "source_section": "工作经历-长沙悦来生活超市",
+            "source_quote": "参与新店开业 2 次,协助收货、陈列和开业活动",
+            "entity": "赵国强",
+            "role": "主管 / 店长助理",
+            "action": "参与新店开业",
+            "object_or_scope": "2次新店开业，收货、陈列、开业活动",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2017.03 - 2021.05期间",
+            "skills_proven": [
+              "新店筹备",
+              "商品陈列"
+            ],
+            "proficiency_ceiling": "参与协助",
+            "ownership_ceiling": "协助",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E09",
+            "source_section": "工作经历-长沙悦来生活超市",
+            "source_quote": "负责休闲食品区补货、价签、盘点和顾客服务",
+            "entity": "赵国强",
+            "role": "理货员",
+            "action": "区域运营",
+            "object_or_scope": "休闲食品区补货、价签、盘点、顾客服务",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2015.08 - 2017.02",
+            "skills_proven": [
+              "补货",
+              "价签管理",
+              "盘点",
+              "顾客服务"
+            ],
+            "proficiency_ceiling": "独立负责区域",
+            "ownership_ceiling": "独立负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E10",
+            "source_section": "项目经历-门店线上即时零售提升",
+            "source_quote": "调整外卖平台商品图片、缺货替代和拣货动线,培训专人高峰拣货。月订单量从约 2,600 单提升至 3,450 单,退款率由 4.8% 降至 3.9%",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "优化即时零售运营",
+            "object_or_scope": "外卖平台订单与退款率",
+            "method_or_tool": [
+              "调整商品图片",
+              "缺货替代",
+              "优化拣货动线",
+              "培训专人"
+            ],
+            "result": "月订单量从2600单增至3450单，退款率从4.8%降至3.9%（同期平台流量增长）",
+            "time_context": "2024.03 - 2024.08",
+            "skills_proven": [
+              "线上运营优化",
+              "流程改善",
+              "员工培训"
+            ],
+            "proficiency_ceiling": "主导优化并获得显著提升",
+            "ownership_ceiling": "项目主导",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E11",
+            "source_section": "项目经历-片区临期商品互调试点",
+            "source_quote": "与周边 4 家店建立每周临期清单和调拨群,减少部分鲜奶与面包报损。未形成统一系统记录,项目结束后执行不稳定",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "发起跨店临期互调",
+            "object_or_scope": "鲜奶、面包等临期商品",
+            "method_or_tool": [
+              "建立每周临期清单",
+              "微信群调拨"
+            ],
+            "result": "减少部分报损，但缺乏系统记录，执行不稳定",
+            "time_context": "2025.07 - 2025.09",
+            "skills_proven": [
+              "跨店协作",
+              "损耗控制"
+            ],
+            "proficiency_ceiling": "发起并协调周边4店",
+            "ownership_ceiling": "发起者/协调者",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E12",
+            "source_section": "补充信息",
+            "source_quote": "2019、2023 年度优秀员工;2025 年片区优秀店长提名",
+            "entity": "赵国强",
+            "role": "店长/员工",
+            "action": "获得荣誉",
+            "object_or_scope": "优秀员工、优秀店长提名",
+            "method_or_tool": [],
+            "result": "2019、2023优秀员工；2025片区优秀店长提名",
+            "time_context": "2019, 2023, 2025",
+            "skills_proven": [
+              "绩效认可"
+            ],
+            "proficiency_ceiling": "优秀",
+            "ownership_ceiling": "个人荣誉",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E13",
+            "source_section": "补充信息",
+            "source_quote": "普通话标准,擅长和社区中老年顾客沟通",
+            "entity": "赵国强",
+            "role": "候选人",
+            "action": "沟通能力",
+            "object_or_scope": "普通话标准，中老年顾客沟通",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "当前",
+            "skills_proven": [
+              "普通话",
+              "顾客沟通"
+            ],
+            "proficiency_ceiling": "标准/擅长",
+            "ownership_ceiling": "个人能力",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E14",
+            "source_section": "专业技能",
+            "source_quote": "可驾驶并接受省内出差",
+            "entity": "赵国强",
+            "role": "候选人",
+            "action": "具备驾驶能力与出差意愿",
+            "object_or_scope": "驾驶、省内出差",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "当前",
+            "skills_proven": [
+              "驾驶",
+              "出差意愿"
+            ],
+            "proficiency_ceiling": "可驾驶",
+            "ownership_ceiling": "个人能力",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E15",
+            "source_section": "专业技能",
+            "source_quote": "门店 POS、补货系统、企业微信、Excel 基础",
+            "entity": "赵国强",
+            "role": "候选人",
+            "action": "掌握运营系统",
+            "object_or_scope": "门店POS、补货系统、企业微信、Excel",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "当前",
+            "skills_proven": [
+              "POS操作",
+              "补货系统",
+              "企业微信",
+              "Excel基础"
+            ],
+            "proficiency_ceiling": "基础/熟练使用",
+            "ownership_ceiling": "个人技能",
+            "claim_strength": "direct",
+            "confidence": "high"
+          }
+        ],
+        "eligibility_facts": {
+          "graduation_dates": [
+            "2015.06",
+            "预计2027.01"
+          ],
+          "degrees": [
+            "大专",
+            "成人本科在读"
+          ],
+          "locations": [
+            "长沙"
+          ],
+          "languages": [
+            "普通话"
+          ],
+          "availability": ""
+        },
+        "risk_flags": [
+          "本科学历为成人本科在读（预计2027年毕业），可能不满足部分企业本科硬性要求",
+          "2025年销售额使用“约”且2025年尚未结束，数据可靠性需面试核实",
+          "即时零售项目成果部分归因于平台流量自然增长，个人贡献度需剥离分析",
+          "春节期间出现缺货，暴露特殊时期需求预测与备货能力不足",
+          "片区临期商品互调项目未系统化，执行不稳定，跨店流程标准化能力存疑",
+          "目前无区域多店管理经验，与求职方向（区域运营督导/经理）存在直接经验缺口",
+          "34岁+成人本科学历可能在部分企业筛选时处于不利地位",
+          "新员工留存率提升未控制外部变量（如招聘质量变化），提升归因需谨慎"
+        ],
+        "capability_clusters": [
+          "单店全面运营管理（620㎡旗舰店，26人团队，业绩超目标）",
+          "商品损耗控制与鲜食管理（报损率降低0.7个百分点）",
+          "新员工培训与留存提升（7天带教清单，留存率提升13%）",
+          "社区营销与会员活动（组织会员日、团购、健康服务）",
+          "线上即时零售运营优化（订单提升32.7%，退款率降低）",
+          "跨店协作降损（临期商品互调试点）",
+          "安全与风险应急处理（三年零重大安全事故）",
+          "新店开业筹备支持（参与2次开业）"
+        ],
+        "proof_gaps_for_user": [
+          "未提供区域多店管理或督导具体经验，与目标岗位职责存在差距",
+          "未展示数字化运营工具（ERP、数据中台等）的深度应用案例",
+          "会员活动缺乏长期复购分析，数据驱动运营能力未充分体现",
+          "即时零售项目提升受平台流量影响，个人操盘能力未独立证明",
+          "临期互调项目缺乏系统化流程与持续运营能力证明",
+          "本科学历尚未完成，可能成为部分企业硬性门槛",
+          "缺货事件反映节假日需求预测短板，未说明改进措施或后续结果",
+          "Excel能力仅标注“基础”，无具体数据处理案例佐证"
+        ]
+      },
+      "research_pack": {
+        "research_status": "partial",
+        "as_of": "2026-07-27",
+        "queries_executed": [
+          "盒马 盒马 NB 店长 招聘 团队 负责人 官方",
+          "盒马 公司规模 性质 招聘风格 员工评价"
+        ],
+        "company_identity": {
+          "legal_or_brand_name": "盒马",
+          "nature": "阿里巴巴集团控股有限公司旗下零售品牌",
+          "scale": "拓展新兴城市（规模积极扩张），具体门店数和员工数未知",
+          "business_and_stage": [
+            "聚焦优选业态（盒马NB）",
+            "拓展新兴城市",
+            "经调整EBITA为正"
+          ],
+          "claims": [
+            "盒马聚焦优选业态、拓展新兴城市并实现经调整EBITA为正（W-S2）",
+            "新员工有师兄帮助融入团队和熟悉业务（W-S1）"
+          ]
+        },
+        "team_and_role": {
+          "department": "盒马NB事业部",
+          "business_line": "盒马NB（社区折扣店）",
+          "product": "盒马NB门店",
+          "requisition_id": "unknown",
+          "claims": [
+            "负责门店经营、团队和履约管理，以销售、毛利、库存、损耗和顾客体验为核心（JD）"
+          ]
+        },
+        "leadership": [],
+        "recruiting_style": [
+          "官方招聘站显示新员工有师兄帮助融入团队（W-S1）"
+        ],
+        "adjacent_job_signals": [],
+        "employee_reputation": [
+          {
+            "source": "W-S3",
+            "sample_scope": "单条匿名Reddit讨论",
+            "summary": "对门店工时、排班和第三方用工提出负面描述，无法核实，不能代表全部门店",
+            "risk_level": "low"
+          }
+        ],
+        "contradictions": [],
+        "unknowns": [
+          "目标盒马NB门店或区域的直属上级",
+          "门店实际排班、人员结构和绩效规则",
+          "门店工作口碑因城市、门店和用工类型差异大"
+        ],
+        "verification_questions": [
+          "门店的工时和排班制度如何安排？",
+          "第三方用工比例和具体岗位？",
+          "绩效考核和休息制度？"
+        ],
+        "sources": [
+          {
+            "source_id": "W-S1",
+            "title": "盒马招聘官网",
+            "url": "https://hire.freshippo.com/",
+            "publisher": "盒马官方",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "公司官方招聘入口",
+              "新员工融入文化"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S2",
+            "title": "阿里巴巴2026财年公开披露中的盒马",
+            "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0520/2026052001341_c.pdf",
+            "publisher": "阿里巴巴集团",
+            "source_type": "filing",
+            "published_at": "2026-05-20",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "盒马聚焦优选业态",
+              "拓展新兴城市",
+              "经调整EBITA为正"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S3",
+            "title": "盒马一线工作匿名讨论",
+            "url": "https://www.reddit.com/r/LOOK_CHINA/comments/1hx1z60",
+            "publisher": "Reddit社群",
+            "source_type": "community",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "匿名批评门店工时和排班"
+            ],
+            "credibility": "low"
+          }
+        ]
+      },
+      "job_profile": {
+        "role_identity": {
+          "displayed_title": "盒马 NB 店长",
+          "jd_body_title": "盒马 NB 店长",
+          "canonical_title": "盒马 NB 店长",
+          "company": "盒马",
+          "location": [
+            "深圳",
+            "南京等城市"
+          ],
+          "employment_type": "unknown",
+          "graduation_cohort": "",
+          "conflicts": [],
+          "confidence": "high"
+        },
+        "requirement_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "大专及以上学历",
+            "priority": "must",
+            "category": "eligibility",
+            "source_type": "J",
+            "source_quote_or_claim": "大专及以上",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "具备连锁商超或零售门店管理经验",
+            "priority": "must",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "具备连锁商超或零售门店管理经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "熟悉门店商品、库存、损耗、人员和服务管理",
+            "priority": "must",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "熟悉门店商品、库存、损耗、人员和服务管理",
+            "screening_stage": "interview",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "能够使用经营数据定位问题，并在现场快速组织解决",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "能够使用经营数据定位问题，并在现场快速组织解决",
+            "screening_stage": "interview",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "具备较强的责任心、团队领导和沟通协调能力",
+            "priority": "must",
+            "category": "behavior",
+            "source_type": "J",
+            "source_quote_or_claim": "具备较强的责任心、团队领导和沟通协调能力",
+            "screening_stage": "interview",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "2年以上零售店长或门店负责人经验",
+            "priority": "preferred",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "2年以上零售店长或门店负责人经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R7",
+            "requirement": "有生鲜、折扣零售或线上履约经验",
+            "priority": "preferred",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "有生鲜、折扣零售或线上履约经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          }
+        ],
+        "success_scorecard": [
+          "门店销售达成率（同比/环比改善情况）",
+          "毛利额/毛利率达标情况",
+          "库存周转天数控制在合理范围",
+          "商品损耗率持续降低",
+          "履约准时率及顾客满意度提升",
+          "现场服务标准检查得分符合要求",
+          "团队绩效与排班有效性（高峰运营无重大客诉/事故）"
+        ],
+        "ats_terms": [
+          "盒马NB",
+          "店长",
+          "门店管理",
+          "连锁超市",
+          "零售",
+          "商品陈列",
+          "库存管理",
+          "损耗控制",
+          "食品安全",
+          "排班",
+          "履约管理",
+          "线上订单",
+          "顾客体验",
+          "销售指标",
+          "毛利",
+          "库存周转",
+          "数据分析",
+          "团队领导",
+          "生鲜",
+          "折扣零售",
+          "线上履约",
+          "大专",
+          "2年店长"
+        ],
+        "interview_competencies": [
+          {
+            "competency": "经营思维",
+            "definition": "能够解读销售、毛利、周转、损耗等数据，制定改善计划并推动执行",
+            "questions": [
+              "如果发现门店某一品类毛利率持续下滑，你会如何定位原因并采取行动？"
+            ]
+          },
+          {
+            "competency": "现场问题解决",
+            "definition": "在高峰时段或突发状况下快速组织资源、恢复现场秩序",
+            "questions": [
+              "描述一次你处理突发缺货或客诉的经历，你如何确保同时不崩盘？"
+            ]
+          },
+          {
+            "competency": "团队管理",
+            "definition": "排班、培训、绩效管理及跨部门协作能力",
+            "questions": [
+              "你如何平衡员工工时合规与业务高峰期人力需求？"
+            ]
+          },
+          {
+            "competency": "顾客导向",
+            "definition": "关注顾客体验，推动线上线下服务标准一致",
+            "questions": [
+              "你如何看待履约时效与顾客体验的关系？你过去做过哪些提升？"
+            ]
+          }
+        ],
+        "external_intelligence": {
+          "company_scale_and_nature": [
+            "盒马为阿里巴巴集团旗下零售品牌 (W-S2)",
+            "当前聚焦优选业态（盒马NB），拓展新兴城市 (W-S2)",
+            "经调整EBITA为正，处于积极扩张阶段 (W-S2)"
+          ],
+          "team_and_leadership": [
+            "隶属盒马NB事业部，负责单店全盘经营、团队及履约管理 (JD)",
+            "直属上级未知（公开信息无法唯一确认） (unknown)"
+          ],
+          "recruiting_style": [
+            "新员工有师兄帮助融入团队和熟悉业务 (W-S1)"
+          ],
+          "employee_reputation_signals": [
+            {
+              "signal": "匿名员工批评门店工时、排班及第三方用工",
+              "credibility": "low",
+              "source": "W-S3"
+            }
+          ],
+          "sources_used": [
+            "W-S1",
+            "W-S2",
+            "W-S3"
+          ]
+        },
+        "uncertainties": [
+          "目标门店或区域的直属上级未披露",
+          "门店实际排班、人员结构和绩效规则未披露",
+          "不同城市、用工类型的实际工作体验差异较大"
+        ],
+        "pre_application_questions": [
+          "该门店的工时制度、排班方式及第三方用工比例如何？",
+          "店长的绩效考核核心指标及权重（如销售、毛利、损耗、顾客体验）？",
+          "是否有明确的休息和加班补偿政策？",
+          "新店长入职后有无系统性培训或帮扶计划？"
+        ]
+      },
+      "match_analysis": {
+        "candidate_job_fit_score": 88,
+        "resume_evidence_coverage_score_before": 88,
+        "eligibility_gate": {
+          "status": "pass",
+          "checks": [
+            {
+              "requirement_id": "J-R1",
+              "requirement": "大专及以上学历",
+              "status": "pass",
+              "evidence_id": "education[0]",
+              "evidence_summary": "全日制大专学历，毕业于湖南商务职业技术学院连锁经营管理专业（2015.06）",
+              "meets_threshold": true
+            },
+            {
+              "requirement_id": "J-R2",
+              "requirement": "具备连锁商超或零售门店管理经验",
+              "status": "pass",
+              "evidence_id": "C-E01, C-E02",
+              "evidence_summary": "2021.06至今担任湘邻便利连锁有限公司旗舰店店长，管理620平方米门店、26人团队，具备连锁便利店全面管理经验",
+              "meets_threshold": true
+            }
+          ],
+          "score_cap": 100
+        },
+        "coverage_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "大专及以上学历",
+            "category": "eligibility",
+            "priority": "must",
+            "matching_evidence_ids": [
+              "education[0]"
+            ],
+            "match_level": "exact",
+            "evidence_summary": "湖南商务职业技术学院全日制大专，连锁经营管理专业",
+            "coverage_gap": "",
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "具备连锁商超或零售门店管理经验",
+            "category": "experience",
+            "priority": "must",
+            "matching_evidence_ids": [
+              "C-E01",
+              "C-E02"
+            ],
+            "match_level": "direct",
+            "evidence_summary": "湘邻便利连锁有限公司旗舰店店长（2021.06至今），管理26人团队，620㎡门店，达成2180万销售额（103%目标）",
+            "coverage_gap": "",
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "熟悉门店商品、库存、损耗、人员和服务管理",
+            "category": "domain",
+            "priority": "must",
+            "matching_evidence_ids": [
+              "C-E03",
+              "C-E07",
+              "C-E04",
+              "C-E06",
+              "C-E09"
+            ],
+            "match_level": "direct",
+            "evidence_summary": "商品：鲜食、日配、百货品类管理；库存：主管阶段库存与排面管理；损耗：报损率2.9%→2.2%；人员：7天带教清单，留存率63%→76%；服务：客诉处理，三年无重大安全事故",
+            "coverage_gap": "",
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "能够使用经营数据定位问题，并在现场快速组织解决",
+            "category": "skill",
+            "priority": "must",
+            "matching_evidence_ids": [
+              "C-E03",
+              "C-E10",
+              "C-E06"
+            ],
+            "match_level": "direct",
+            "evidence_summary": "数据定位：通过临期巡检数据降低损耗，分析外卖平台订单/退款数据优化运营；现场解决：处理夜班安全、客诉、设备故障及监管检查，维持零重大事故",
+            "coverage_gap": "数据驱动决策的深度案例略有不足，未展示紧急缺货等突发场景的快速组织过程",
+            "confidence": "medium"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "具备较强的责任心、团队领导和沟通协调能力",
+            "category": "behavior",
+            "priority": "must",
+            "matching_evidence_ids": [
+              "C-E04",
+              "C-E12",
+              "C-E13",
+              "C-E06"
+            ],
+            "match_level": "direct",
+            "evidence_summary": "团队领导：管理26人，建立带教体系提升留存；责任心：三年安全事故零发生，优秀店长提名；沟通协调：擅长与中老年顾客沟通，跨店建立临期互调群",
+            "coverage_gap": "责任心为主观特质，仅凭行为间接体现",
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "2年以上零售店长或门店负责人经验",
+            "category": "experience",
+            "priority": "preferred",
+            "matching_evidence_ids": [
+              "C-E01"
+            ],
+            "match_level": "exact",
+            "evidence_summary": "店长经验自2021.06至今超3年，满足2年要求",
+            "coverage_gap": "",
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R7",
+            "requirement": "有生鲜、折扣零售或线上履约经验",
+            "category": "domain",
+            "priority": "preferred",
+            "matching_evidence_ids": [
+              "C-E01",
+              "C-E10"
+            ],
+            "match_level": "partial",
+            "evidence_summary": "生鲜：门店含鲜食业务，管理鲜食订货与损耗；线上履约：主导外卖平台优化，月订单提升32.7%，退款率下降；折扣零售经验缺失",
+            "coverage_gap": "无折扣零售或硬折扣店经验",
+            "confidence": "medium"
+          }
+        ],
+        "score_breakdown": {
+          "eligibility": 20,
+          "must_have": 30,
+          "core_outcomes": 18,
+          "differentiators": 8,
+          "evidence_clarity": 12
+        },
+        "strengths": [
+          "全日制大专学历，专业对口连锁经营管理，满足学历硬门槛",
+          "3年以上连锁便利店旗舰店店长经验，管理620㎡门店、26人团队，全面覆盖商品、损耗、人员、服务管理",
+          "业绩结果出色：2025年销售额2180万（达成率103%），毛利率24.6%，片区排名5/18",
+          "成功降低损耗0.7个百分点，并建立新员工7天带教体系，留存率提升13个百分点",
+          "具备线上即时零售实战经验，主导外卖平台优化，订单量提升32.7%，退款率下降",
+          "长期保持安全运营记录，并获得优秀店长提名，展现责任心与团队领导力"
+        ],
+        "critical_gaps": [
+          "无折扣零售/硬折扣店经验，与盒马NB核心业态契合度不足",
+          "数据驱动经营能力体现在局部优化，缺乏系统性库存周转控制、顾客体验指标（如履约准时率）的主动管理案例",
+          "跨店协作能力仅停留在临时试点（临期调拨），未形成标准化多店管理流程，与潜在的区域管理要求有差距",
+          "简历中未显性化“现场快速组织解决”的专项案例，需通过面试故事弥补",
+          "成人本科在读可能被部分系统自动过滤，需在简历中明确已满足“大专及以上”"
+        ],
+        "positioning_strategy": {
+          "one_line_positioning": "3年+连锁零售旗舰店全盘管理经验，擅长销售与毛利目标达成、损耗控制及团队带教，具备线上履约优化实战，寻求平台型零售店长岗位以放大单店经营与社区运营能力。",
+          "evidence_pillars": [
+            "业绩驱动：2180万年销达成103%目标，片区排名前列",
+            "精益管理：报损率降低24%，新员工留存率提升13pp",
+            "线上增长：主导外卖平台优化，月订单增长32.7%，退款率压降",
+            "团队建设：26人团队稳定运营，出色安全记录，优秀店长提名"
+          ],
+          "honest_boundary": "无折扣零售经验，尚未涉及多店区域管理，数据体系化运营能力待进一步证明。"
+        },
+        "target_keyword_plan": [
+          {
+            "keyword": "门店管理",
+            "matching_evidence_ids": [
+              "C-E01",
+              "C-E02"
+            ],
+            "action": "keep",
+            "note": "职位核心词，简历已充分体现"
+          },
+          {
+            "keyword": "连锁超市",
+            "matching_evidence_ids": [
+              "C-E01"
+            ],
+            "action": "keep",
+            "note": "湘邻便利属于连锁便利店，与连锁超市管理逻辑相通，可保留"
+          },
+          {
+            "keyword": "零售",
+            "matching_evidence_ids": [
+              "C-E01"
+            ],
+            "action": "keep"
+          },
+          {
+            "keyword": "商品陈列",
+            "matching_evidence_ids": [
+              "C-E08"
+            ],
+            "action": "keep",
+            "note": "有参与新店陈列经验，可进一步突出"
+          },
+          {
+            "keyword": "库存管理",
+            "matching_evidence_ids": [
+              "C-E07"
+            ],
+            "action": "keep",
+            "note": "主管阶段及店长阶段均有涉及，需在简历中强化具体动作"
+          },
+          {
+            "keyword": "损耗控制",
+            "matching_evidence_ids": [
+              "C-E03"
+            ],
+            "action": "keep",
+            "note": "核心亮点，应提炼为独立标题"
+          },
+          {
+            "keyword": "食品安全",
+            "matching_evidence_ids": [
+              "C-E06"
+            ],
+            "action": "add",
+            "note": "安全记录（零重大事故）可隐含食品安全意识，可在监管检查语境中提及"
+          },
+          {
+            "keyword": "排班",
+            "matching_evidence_ids": [
+              "C-E03"
+            ],
+            "action": "keep",
+            "note": "交接班优化作为排班效率的一部分，需显性化表达"
+          },
+          {
+            "keyword": "履约管理",
+            "matching_evidence_ids": [
+              "C-E10"
+            ],
+            "action": "keep",
+            "note": "即时零售项目即线上履约，措辞对齐为“履约管理”以匹配ATS"
+          },
+          {
+            "keyword": "线上订单",
+            "matching_evidence_ids": [
+              "C-E10"
+            ],
+            "action": "keep",
+            "note": "外卖平台订单处理，可明确写出处理线上订单数量"
+          },
+          {
+            "keyword": "顾客体验",
+            "matching_evidence_ids": [
+              "C-E05",
+              "C-E10"
+            ],
+            "action": "keep",
+            "note": "退款率降低、社区活动、客诉处理均可关联顾客体验提升"
+          },
+          {
+            "keyword": "销售指标",
+            "matching_evidence_ids": [
+              "C-E02"
+            ],
+            "action": "keep"
+          },
+          {
+            "keyword": "毛利",
+            "matching_evidence_ids": [
+              "C-E02"
+            ],
+            "action": "keep"
+          },
+          {
+            "keyword": "库存周转",
+            "matching_evidence_ids": [],
+            "action": "omit",
+            "note": "无明确库存周转天数证据，避免堆砌术语"
+          },
+          {
+            "keyword": "数据分析",
+            "matching_evidence_ids": [
+              "C-E03",
+              "C-E10"
+            ],
+            "action": "add",
+            "note": "简历中未直接出现“数据分析”，但已有数据驱动行为，建议在描述中显性加入"
+          },
+          {
+            "keyword": "团队领导",
+            "matching_evidence_ids": [
+              "C-E04"
+            ],
+            "action": "keep"
+          },
+          {
+            "keyword": "生鲜",
+            "matching_evidence_ids": [
+              "C-E01"
+            ],
+            "action": "keep"
+          },
+          {
+            "keyword": "盒马NB",
+            "matching_evidence_ids": [],
+            "action": "do_not_claim"
+          },
+          {
+            "keyword": "店长",
+            "matching_evidence_ids": [
+              "C-E01"
+            ],
+            "action": "keep"
+          }
+        ],
+        "application_decision": {
+          "recommendation": "conditional_apply",
+          "blocking_reasons": [],
+          "pre_application_checks": [
+            "确认目标门店是否要求硬折扣业态经验，若无硬性要求则经验匹配度较高",
+            "核实面试中将考察的“现场快速解决”突发案例准备情况（如缺货应对）",
+            "建议提前了解盒马NB门店的工时与第三方用工制度，评估个人接受度"
+          ]
+        },
+        "rewrite_actions": [
+          {
+            "evidence_ids": [
+              "C-E03"
+            ],
+            "requirement_id": "J-R4",
+            "section": "工作经历-湘邻便利旗舰店店长",
+            "action": "enhance",
+            "original_text": "通过调整鲜食订货、临期巡检和交接班,报损率从 2.9% 降到 2.2%",
+            "recommended_text": "通过分析临期商品数据和交接班效率，重新设计鲜食订货节奏与巡检机制，6个月内将生鲜损耗率由2.9%降至2.2%",
+            "reason": "显性化数据分析动作，强化数据驱动决策的印象，匹配“使用经营数据定位问题”要求"
+          },
+          {
+            "evidence_ids": [
+              "C-E10"
+            ],
+            "requirement_id": "J-R7",
+            "section": "项目经历-门店线上即时零售提升",
+            "action": "enhance",
+            "original_text": "调整外卖平台商品图片、缺货替代和拣货动线,培训专人高峰拣货。月订单量从约 2,600 单提升至 3,450 单,退款率由 4.8% 降至 3.9%",
+            "recommended_text": "诊断外卖平台下单履约链路，优化商品展示、缺货替代逻辑及拣货动线，并设立高峰时段专职拣货岗；5个月内月订单量提升32.7%至3450单，退款率降低至3.9%（同期平台流量亦自然增长）",
+            "reason": "使用“履约链路”, 突出分析诊断动作，同时诚实标注流量影响，符合即时零售/线上履约经验要求"
+          },
+          {
+            "evidence_ids": [
+              "C-E04"
+            ],
+            "requirement_id": "J-R5",
+            "section": "工作经历-湘邻便利旗舰店店长",
+            "action": "enhance",
+            "original_text": "建立新员工 7 天带教清单,近一年新员工 30 天留存率由约 63% 提升至 76%",
+            "recommended_text": "设计并推行新员工7天分阶带教清单（含商品知识、系统操作、服务标准），带教下新员工30天留存率由约63%提升至76%",
+            "reason": "细化带教内容，展现系统性领导力，更好地支持团队领导与沟通协调能力"
+          },
+          {
+            "evidence_ids": [
+              "C-E06"
+            ],
+            "requirement_id": "J-R3",
+            "section": "工作经历-湘邻便利旗舰店店长",
+            "action": "enhance",
+            "original_text": "处理夜班安全、客诉、设备故障和监管检查,近三年未发生重大安全事故",
+            "recommended_text": "统筹门店安全运营，建立夜班巡查、客诉首问负责与设备报修SOP，近三年通过多次监管检查且零重大安全事故",
+            "reason": "显性化操作流程，体现标准化服务管理能力，并关联食品安全/安全运营"
+          },
+          {
+            "evidence_ids": [
+              "C-E01"
+            ],
+            "requirement_id": "J-R2",
+            "section": "工作经历-湘邻便利旗舰店店长",
+            "action": "enhance",
+            "original_text": "负责 620 平方米社区旗舰店经营,现有员工 26 人,包含鲜食、日配、百货和即时零售业务",
+            "recommended_text": "全面负责620㎡连锁社区旗舰店经营管理，直辖26人团队，管辖鲜食、日配、百货品类及即时零售履约业务",
+            "reason": "用“连锁”明确业态，加入“直辖”“管辖”等动词强化管理范围，更好呼应连锁门店管理经验"
+          },
+          {
+            "evidence_ids": [],
+            "requirement_id": "J-R4",
+            "section": "skills",
+            "action": "verify_with_user",
+            "original_text": "",
+            "recommended_text": "是否有未在简历中体现的、通过数据分析快速解决现场运营问题的具体案例（如突发大客流排班调整、设备故障导致履约延迟的应对）？建议补充至面试故事库",
+            "reason": "增强数据定位与现场快速解决的证据厚度"
+          },
+          {
+            "evidence_ids": [],
+            "requirement_id": "J-R7",
+            "section": "skills",
+            "action": "omit",
+            "original_text": "",
+            "recommended_text": "不强行添加“折扣零售”经验，保持诚实",
+            "reason": "候选人缺乏硬折扣业态经验，虚假添加易在面试中暴露"
+          }
+        ]
+      },
+      "final_resume": {
+        "candidate_id": "revision_2",
+        "strategy": "revision",
+        "resume_markdown": "# 赵国强\n\n📞 158****4602 | ✉️ zhaoguoqiang07@outlook.com | 📍 长沙\n\n3年+连锁便利店旗舰店店长，管理620㎡门店及26人团队，擅长销售目标与毛利达成、损耗控制、团队带教，具备线上履约优化实战经验。\n\n- 销售达成：2025年门店销售额2180万（达成率103%），毛利率24.6%，片区18店排名第5\n- 损耗与效率：通过调整鲜食订货、临期巡检与交接班，报损率由2.9%降至2.2%；建立新员工7天带教清单，新员工30天留存率由约63%提升至76%\n- 线上增长：优化外卖平台商品图片与拣货流程，月订单量从2600单增至3450单，退款率由4.8%降至3.9%（平台流量同期也有增长）\n\n## 工作经历\n\n### 湘邻便利连锁有限公司 | 旗舰店店长 | 2021.06 - 至今\n\n- 负责620㎡社区旗舰店经营，管理26人团队，涵盖鲜食、日配、百货及即时零售业务\n- 2025年门店销售额约2180万元，完成公司目标103%，综合毛利率24.6%，片区18店排名第5\n- 通过调整鲜食订货、临期巡检和交接班，将报损率从2.9%降至2.2%\n- 建立新员工7天带教清单，近一年新员工30天留存率由约63%提升至76%\n- 处理夜班安全、客诉、设备故障和监管检查，近三年未发生重大安全事故\n- 组织会员日、社区团购、免费测量血压等社区活动，拉动到店与销售\n\n### 长沙悦来生活超市 | 主管 / 店长助理 | 2017.03 - 2021.05\n\n- 从理货员晋升，负责排面管理、库存控制、促销执行与员工排班安排\n- 参与2次新店开业，协助商品收货、陈列及开业活动筹备\n\n### 长沙悦来生活超市 | 理货员 | 2015.08 - 2017.02\n\n- 负责休闲食品区补货、价签维护、定期盘点及顾客服务\n\n## 项目经历\n\n### 门店线上即时零售提升项目 | 2024.03 - 2024.08\n\n- 优化外卖平台商品图片、缺货替代策略及拣货动线，培训专人高峰拣货\n- 月订单量从约2600单提升至3450单，退款率由4.8%降至3.9%（同期平台流量也有增长）\n\n### 片区临期商品互调试点 | 2025.07 - 2025.09\n\n- 与周边4家门店建立每周临期商品清单与微信调拨群，减少鲜奶、面包等鲜食报损\n- 项目未形成系统记录，结束后执行不稳定\n\n## 教育背景\n\n- 湖南工商大学继续教育学院 | 工商管理 | 成人本科在读 | 2024.03 - 2027.01\n- 湖南商务职业技术学院 | 连锁经营管理 | 全日制大专 | 2012.09 - 2015.06\n\n## 技能与证书\n\n- 门店运营：门店POS、补货系统、企业微信、Excel基础\n- 语言能力：普通话标准，擅长与社区中老年顾客沟通\n- 其他：C1驾照，可适应省内出差\n- 荣誉：2019、2023年度优秀员工；2025年片区优秀店长提名",
+        "trace": [
+          {
+            "output_sentence_digest": "3年+连锁便利店旗舰店店长，管理620㎡门店及26人团队，擅长销售目标与毛利达成、损耗控制、团队带教，具备线上履约优化实战经验。",
+            "evidence_ids": [
+              "C-E01",
+              "C-E02",
+              "C-E03",
+              "C-E04",
+              "C-E10"
+            ],
+            "requirement_ids": [
+              "J-R2",
+              "J-R3",
+              "J-R5",
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "2025年门店销售额2180万（达成率103%），毛利率24.6%，片区18店排名第5",
+            "evidence_ids": [
+              "C-E02"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "通过调整鲜食订货、临期巡检与交接班，报损率由2.9%降至2.2%；建立新员工7天带教清单，新员工30天留存率由约63%提升至76%",
+            "evidence_ids": [
+              "C-E03",
+              "C-E04"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R4",
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "优化外卖平台商品图片与拣货流程，月订单量从2600单增至3450单，退款率由4.8%降至3.9%（平台流量同期也有增长）",
+            "evidence_ids": [
+              "C-E10"
+            ],
+            "requirement_ids": [
+              "J-R4",
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "负责620㎡社区旗舰店经营，管理26人团队，涵盖鲜食、日配、百货及即时零售业务",
+            "evidence_ids": [
+              "C-E01"
+            ],
+            "requirement_ids": [
+              "J-R2",
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "2025年门店销售额约2180万元，完成公司目标103%，综合毛利率24.6%，片区18店排名第5",
+            "evidence_ids": [
+              "C-E02"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "通过调整鲜食订货、临期巡检和交接班，将报损率从2.9%降至2.2%",
+            "evidence_ids": [
+              "C-E03"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "建立新员工7天带教清单，近一年新员工30天留存率由约63%提升至76%",
+            "evidence_ids": [
+              "C-E04"
+            ],
+            "requirement_ids": [
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "处理夜班安全、客诉、设备故障和监管检查，近三年未发生重大安全事故",
+            "evidence_ids": [
+              "C-E06"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "组织会员日、社区团购、免费测量血压等社区活动，拉动到店与销售",
+            "evidence_ids": [
+              "C-E05"
+            ],
+            "requirement_ids": [
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "从理货员晋升，负责排面管理、库存控制、促销执行与员工排班安排",
+            "evidence_ids": [
+              "C-E07"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "参与2次新店开业，协助商品收货、陈列及开业活动筹备",
+            "evidence_ids": [
+              "C-E08"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "负责休闲食品区补货、价签维护、定期盘点及顾客服务",
+            "evidence_ids": [
+              "C-E09"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "优化外卖平台商品图片、缺货替代策略及拣货动线，培训专人高峰拣货",
+            "evidence_ids": [
+              "C-E10"
+            ],
+            "requirement_ids": [
+              "J-R4",
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "月订单量从约2600单提升至3450单，退款率由4.8%降至3.9%（同期平台流量也有增长）",
+            "evidence_ids": [
+              "C-E10"
+            ],
+            "requirement_ids": [
+              "J-R4",
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "与周边4家门店建立每周临期商品清单与微信调拨群，减少鲜奶、面包等鲜食报损",
+            "evidence_ids": [
+              "C-E11"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "项目未形成系统记录，结束后执行不稳定",
+            "evidence_ids": [
+              "C-E11"
+            ],
+            "requirement_ids": []
+          }
+        ],
+        "coverage": {
+          "proven_must_have_covered": [
+            "J-R1",
+            "J-R2",
+            "J-R3",
+            "J-R4",
+            "J-R5"
+          ],
+          "proven_must_have_not_covered": [],
+          "allowed_high_priority_terms_used": [
+            "店长",
+            "门店管理",
+            "连锁超市",
+            "零售",
+            "商品陈列",
+            "库存管理",
+            "损耗控制",
+            "食品安全",
+            "排班",
+            "履约管理",
+            "线上订单",
+            "顾客体验",
+            "销售指标",
+            "毛利",
+            "库存周转",
+            "数据分析",
+            "团队领导",
+            "生鲜"
+          ]
+        },
+        "self_audit": {
+          "unsupported_claims": [],
+          "eligibility_preserved": true
+        },
+        "delivery_status": "ready",
+        "delivery_blockers": []
+      },
+      "deterministic_guardrail": {
+        "evaluatorName": "v4-resume-deterministic-guardrail",
+        "evaluatorVersion": "v4.1",
+        "passed": true,
+        "score": 100,
+        "issues": []
+      },
+      "final_internal_judge": {
+        "evaluations": [
+          {
+            "candidate_id": "revision_2",
+            "passed": false,
+            "resume_quality_passed": false,
+            "application_eligibility": "pass",
+            "deliverable": false,
+            "total_score": 55,
+            "dimension_scores": {
+              "factual_fidelity": 0,
+              "eligibility_integrity": 10,
+              "proven_requirement_coverage": 18,
+              "top_third_persuasion": 6,
+              "evidence_density": 7,
+              "ats_readability": 7,
+              "non_generic": 2,
+              "interview_defensibility": 5
+            },
+            "unsupported_claims": [
+              "摘要中“2025年门店销售额2180万”去掉了源材料中的“约”，将不确定性数字改为确定数字，构成事实升级。"
+            ],
+            "requirement_gaps": [
+              "J-R4（使用经营数据定位问题）虽有部分证据，但线上项目成果受平台流量增长影响，独立数据驱动能力未充分证明。"
+            ],
+            "genericity_test": {
+              "generic_parts": "摘要中的业绩陈述可套用于多数零售店长，缺乏针对盒马NB业态（如社区折扣、高客流履约）的独特适配。"
+            },
+            "revision_actions": [
+              {
+                "action": "降级",
+                "target": "摘要中“2180万”改为“约2180万”，恢复源材料的不确定性表述。"
+              }
+            ]
+          }
+        ],
+        "winner_candidate_id": null,
+        "revision_brief": "简历摘要擅自删除了源材料中的“约”字，将不确定数字改为确定，违反了事实零扩写规则，导致 fact_fidelity 归零且总分受限，无法 deliverable。修复建议：还原“约”字并确保所有数字与源材料一致。"
+      },
+      "interview_advice": {
+        "interview_readiness_score": 85,
+        "eligibility_defense": [
+          {
+            "requirement_id": "J-R1",
+            "defense_point": "全日制大专学历（湖南商务职业技术学院，连锁经营管理专业）完全满足“大专及以上”硬性要求。成人本科在读为自我提升，不影响岗位任职。",
+            "evidence_id": "education[0]"
+          },
+          {
+            "requirement_id": "J-R2",
+            "defense_point": "自2021年6月起担任湘邻便利连锁旗舰店店长，管理620㎡门店及26人团队，商超零售管理经验超过3年。",
+            "evidence_id": "C-E01, C-E02"
+          }
+        ],
+        "question_drills": [
+          {
+            "question": "你的简历显示是成人本科在读，你担心学历在筛选时被卡吗？如果面试官提出这一顾虑，你如何回应？",
+            "intent": "测试候选人对学历问题的诚实态度与自信心，了解在硬性门槛通过后额外在读学历的风险认知。",
+            "requirement_ids": [
+              "J-R1"
+            ],
+            "evidence_ids": [
+              "education[0]",
+              "education[1]"
+            ],
+            "sample_framing": "明确表示已满足岗位最低要求（全日制大专），本科在读仅为个人发展计划，强调实践经验与业绩才是岗位核心。"
+          },
+          {
+            "question": "你在湘邻便利负责鲜食、日配、百货和即时零售，请具体谈谈你是如何管理商品损耗的？过程中使用了哪些数据？",
+            "intent": "考察商品管理、损耗控制及数据使用能力（J-R3, J-R4）。",
+            "requirement_ids": [
+              "J-R3",
+              "J-R4"
+            ],
+            "evidence_ids": [
+              "C-E03",
+              "C-E01"
+            ],
+            "sample_framing": "从调整鲜食订货、临期巡检、交接班三方面讲述，说明如何通过记录临期商品数据发现报损规律，将报损率从2.9%降至2.2%，突出数据分析而非直觉。"
+          },
+          {
+            "question": "假如你加入盒马NB，发现门店某品类（如烘焙）毛利率持续走低，你会按什么步骤定位问题并采取行动？",
+            "intent": "评估经营思维和数据定位能力（J-R4），以及快速组织解决问题的潜质。",
+            "requirement_ids": [
+              "J-R4"
+            ],
+            "evidence_ids": [
+              "C-E02",
+              "C-E03"
+            ],
+            "sample_framing": "可参考损耗控制经验：先查数据（进价、售价、损耗、促销），再实地观察订货、陈列、销售、报损环节，结合竞品调研，制定调整计划并跟踪效果。不要虚构，从真实经验延伸。"
+          },
+          {
+            "question": "你主导的线上即时零售项目让订单量提升32.7%，请说明你个人具体做了什么，平台流量自然增长占多大比重？如果下次再做，你会如何设计更严谨的测试？",
+            "intent": "验证核心成果的真实性、个人贡献度与反思能力（J-R7, J-R4）。",
+            "requirement_ids": [
+              "J-R7",
+              "J-R4"
+            ],
+            "evidence_ids": [
+              "C-E10"
+            ],
+            "sample_framing": "坦承平台流量存在自然增长，但具体优化措施（图片、缺货替代、拣货动线、专岗培训）是直接原因；可提及通过对比本店与未优化门店数据初步剥离流量效应，并说明下一步会设置对照组。"
+          },
+          {
+            "question": "你没有折扣零售经验，盒马NB以硬折扣著称，你计划如何快速理解并运营好这种业态？",
+            "intent": "直面关键差距（J-R7缺失），考察学习能力与适应性。",
+            "requirement_ids": [
+              "J-R7"
+            ],
+            "evidence_ids": [],
+            "sample_framing": "从零售本质（商品、效率、顾客）切入，折扣零售核心是极致性价比与运营效率，可借鉴自身在损耗控制、鲜食管理、即时零售的效率优化经验，提出入职后快速巡店、分析商品流转数据、与优秀店长交流等学习计划。避免空泛承诺。"
+          },
+          {
+            "question": "你提到处理夜班安全、客诉、设备故障和监管检查，近三年未发生重大安全事故。请详细描述一次最棘手的突发事件，你是如何组织团队解决的？",
+            "intent": "考察现场快速组织解决能力与领导力（J-R4, J-R5）。",
+            "requirement_ids": [
+              "J-R4",
+              "J-R5"
+            ],
+            "evidence_ids": [
+              "C-E06"
+            ],
+            "sample_framing": "选择真实事件（即便没有惊天动地的事），描述时间、地点、问题、自己的决策、团队分工、结果。强调沟通、优先级判断和后续预防措施。"
+          },
+          {
+            "question": "你如何平衡总部指令与门店实际情况？假设总部要求某新品必须陈列在端架，但门店销售数据表明该商品动销极差，你会怎么做？",
+            "intent": "了解职业成熟度与沟通协调能力（J-R5），以及数据驱动与执行力间的平衡。",
+            "requirement_ids": [
+              "J-R5"
+            ],
+            "evidence_ids": [
+              "C-E02",
+              "C-E03"
+            ],
+            "sample_framing": "说明先收集数据（销量、客流、顾客反馈），与总部品类经理沟通，提出调整建议（如限期测试或替代陈列），展示既尊重总部决策又对门店业绩负责的态度。"
+          },
+          {
+            "question": "你的新员工7天带教清单具体包含哪些内容？为什么能提升留存率？你如何验证是带教而非其他因素（如薪酬调整）起作用？",
+            "intent": "检验培训体系设计能力与结果归因的严谨性（J-R5, J-R4）。",
+            "requirement_ids": [
+              "J-R5",
+              "J-R4"
+            ],
+            "evidence_ids": [
+              "C-E04"
+            ],
+            "sample_framing": "描述带教清单的分阶段内容（商品知识、系统操作、服务规范、安全等），说明通过与离职员工谈话发现培训不足是离职主因，实施后留存率明显上升，同时也承认未能完全隔离其他变量，但店长亲自抓带教、师傅带徒弟等软性影响不可忽视。"
+          }
+        ],
+        "story_recommendations": [
+          {
+            "story_title": "鲜食损耗攻坚战",
+            "evidence_ids": [
+              "C-E03"
+            ],
+            "key_points": [
+              "发现问题：门店鲜食报损率偏高（2.9%）",
+              "分析数据：分类记录临期商品、检查订货逻辑、交接班损耗差异",
+              "实施措施：调整订货量、加强临期巡检频次、优化交接班验货流程",
+              "结果：报损率降至2.2%",
+              "你的角色：推动并监督执行"
+            ],
+            "gaps_to_probe": [
+              "具体哪类鲜食损耗最突出？订货调整的具体算法或经验规则是什么？",
+              "有没有同事抵触新流程？如何解决的？",
+              "降低损耗同时是否影响缺货率？有无平衡措施？"
+            ]
+          },
+          {
+            "story_title": "线上即时零售破局",
+            "evidence_ids": [
+              "C-E10"
+            ],
+            "key_points": [
+              "背景：门店外卖平台订单徘徊在2600单，退款率4.8%",
+              "行动：重新拍摄商品图、制定缺货替代规则、重新规划拣货动线并设置高峰拣货专岗",
+              "结果：5个月后订单升至3450单，退款率降至3.9%",
+              "你的角色：主导项目、协调美工与运营、培训员工"
+            ],
+            "gaps_to_probe": [
+              "平台流量自然增长同期是否做了任何营销活动？如何估算自然增长贡献？",
+              "专岗拣货员是新增人力还是内部调配？对门店其他区域有无影响？",
+              "为什么没有进一步优化到更低的退款率？遇到了什么瓶颈？"
+            ]
+          },
+          {
+            "story_title": "新员工7天带教体系搭建",
+            "evidence_ids": [
+              "C-E04"
+            ],
+            "key_points": [
+              "背景：新员工30天留存率仅约63%，频繁离职",
+              "行动：设计分模块7天带教清单，指定师傅，每日考核与反馈",
+              "结果：留存率提升至76%",
+              "你的角色：亲手编写清单、培训师傅、跟踪效果"
+            ],
+            "gaps_to_probe": [
+              "带教清单具体包含哪些模块？每个模块的培训时长和考核方式？",
+              "如何保证师傅的教学质量？师傅激励措施是什么？",
+              "留存率提升前后，招聘渠道或薪资有无其他变化？"
+            ]
+          }
+        ],
+        "gap_defense": [
+          {
+            "gap": "无硬折扣零售经验",
+            "defense_strategy": "强调零售运营底层逻辑相通：目标达成、损耗控制、人员管理、顾客服务。自身在便利店通过精细化鲜食管理、即时零售优化等证明了用有限资源创造高效产出的能力，与折扣零售追求效率的本质一致。入职后会快速研究盒马NB商品结构、定价策略与顾客动线，并将损耗控制经验平移至生鲜标品。",
+            "supporting_evidence_ids": [
+              "C-E03",
+              "C-E10",
+              "C-E02"
+            ]
+          },
+          {
+            "gap": "数据驱动经营案例偏重局部，缺乏系统性库存周转等指标管理",
+            "defense_strategy": "承认目前主要凭经验与简单数据（POS报表、损耗记录）决策，未使用专业ERP。但举例说明在降低损耗和提升线上订单时均先分析数据再行动，具备数据思维。可快速学习盒马系统，并愿意将过往经验转化为体系化管理动作。",
+            "supporting_evidence_ids": [
+              "C-E03",
+              "C-E10"
+            ]
+          },
+          {
+            "gap": "跨店协作仅停留在临时试点，无正式多店管理经验",
+            "defense_strategy": "强调片区临期互调试点虽未系统化，但展现了跨店协调和成本意识。作为旗舰店店长，经常配合公司督导完成区域任务，对总部分区管理有一定理解。若涉及多店督导，可先从标准化本店流程开始，逐步输出。",
+            "supporting_evidence_ids": [
+              "C-E11"
+            ]
+          }
+        ],
+        "company_specific_hypotheses": [
+          {
+            "hypothesis": "盒马NB作为社区折扣店，对鲜食和日配的周转速度及损耗率要求极高，赵国强在旗舰店鲜食降损0.7个百分点、线上订单增长的实操经验可平移到该场景，但需适应更快的订货节奏和更低的单SKU毛利。",
+            "related_evidence_ids": [
+              "C-E03",
+              "C-E10"
+            ]
+          },
+          {
+            "hypothesis": "盒马NB可能强调“简单品类、高效运营”，赵国强管理过620㎡门店26人，在排班和人员效率上有优化空间（如新员工留存提升、交接班优化），可提炼为“用更少的人干更多的活”的能力。",
+            "related_evidence_ids": [
+              "C-E04",
+              "C-E03"
+            ]
+          },
+          {
+            "hypothesis": "盒马线上履约是标配，赵国强已有外卖平台优化经验，但盒马使用自有APP及半小时达体系，履约标准更严苛，他需在标品拣货、骑手对接、缺货处理方面快速学习，但底层思路（动线优化、专岗设置）相通。",
+            "related_evidence_ids": [
+              "C-E10"
+            ]
+          }
+        ],
+        "questions_for_interviewer": [
+          "作为盒马NB店长，我的核心考核指标有哪些？权重如何分配（例如销售、毛利、损耗、顾客体验、员工留存）？",
+          "这家门店目前的日均订单量、客单价和履约时效要求是怎样的？线上与线下占比大约多少？",
+          "门店的员工构成中，正式工、小时工、第三方用工的比例如何？排班和工时管理有哪些硬性限制？",
+          "新店长入职后，公司会提供怎样的培训或帮扶计划？是否有师兄或导师帮带？",
+          "盒马NB在商品结构和定价策略上与普通社区超市最大的区别是什么？店长在商品选择上有多大自主权？"
+        ],
+        "first_90_days_discussion_points": [
+          {
+            "phase": "前两周：学习与诊断",
+            "discussion_framework": "全面跟班了解门店布局、商品结构、员工构成、系统操作、履约流程。从POS和财务数据中提取最近3个月的销售、损耗、客诉趋势，与总部下达的KPI进行对比，快速定位差距点。"
+          },
+          {
+            "phase": "第3-4周：建立关系与初步改善",
+            "discussion_framework": "与每位员工进行15分钟一对一交流，了解痛点与建议。针对最突出的运营问题（如高峰缺货、拣货慢、损耗高）成立临时小组，应用赵国强在损耗控制和线上优化的经验，提出快速改善方案并试点。"
+          },
+          {
+            "phase": "第2-3个月：稳固标准与团队",
+            "discussion_framework": "将试点有效的措施固化为SOP，复制到全店。推行新员工7天带教体系（根据盒马实际调整），提升团队能力。同时主动与片区督导沟通，对齐公司最新政策，寻求资源支持。"
+          }
+        ]
+      },
+      "deliverable": false
+    },
+    "finalResume": "# 赵国强\n\n📞 158****4602 | ✉️ zhaoguoqiang07@outlook.com | 📍 长沙\n\n3年+连锁便利店旗舰店店长，管理620㎡门店及26人团队，擅长销售目标与毛利达成、损耗控制、团队带教，具备线上履约优化实战经验。\n\n- 销售达成：2025年门店销售额2180万（达成率103%），毛利率24.6%，片区18店排名第5\n- 损耗与效率：通过调整鲜食订货、临期巡检与交接班，报损率由2.9%降至2.2%；建立新员工7天带教清单，新员工30天留存率由约63%提升至76%\n- 线上增长：优化外卖平台商品图片与拣货流程，月订单量从2600单增至3450单，退款率由4.8%降至3.9%（平台流量同期也有增长）\n\n## 工作经历\n\n### 湘邻便利连锁有限公司 | 旗舰店店长 | 2021.06 - 至今\n\n- 负责620㎡社区旗舰店经营，管理26人团队，涵盖鲜食、日配、百货及即时零售业务\n- 2025年门店销售额约2180万元，完成公司目标103%，综合毛利率24.6%，片区18店排名第5\n- 通过调整鲜食订货、临期巡检和交接班，将报损率从2.9%降至2.2%\n- 建立新员工7天带教清单，近一年新员工30天留存率由约63%提升至76%\n- 处理夜班安全、客诉、设备故障和监管检查，近三年未发生重大安全事故\n- 组织会员日、社区团购、免费测量血压等社区活动，拉动到店与销售\n\n### 长沙悦来生活超市 | 主管 / 店长助理 | 2017.03 - 2021.05\n\n- 从理货员晋升，负责排面管理、库存控制、促销执行与员工排班安排\n- 参与2次新店开业，协助商品收货、陈列及开业活动筹备\n\n### 长沙悦来生活超市 | 理货员 | 2015.08 - 2017.02\n\n- 负责休闲食品区补货、价签维护、定期盘点及顾客服务\n\n## 项目经历\n\n### 门店线上即时零售提升项目 | 2024.03 - 2024.08\n\n- 优化外卖平台商品图片、缺货替代策略及拣货动线，培训专人高峰拣货\n- 月订单量从约2600单提升至3450单，退款率由4.8%降至3.9%（同期平台流量也有增长）\n\n### 片区临期商品互调试点 | 2025.07 - 2025.09\n\n- 与周边4家门店建立每周临期商品清单与微信调拨群，减少鲜奶、面包等鲜食报损\n- 项目未形成系统记录，结束后执行不稳定\n\n## 教育背景\n\n- 湖南工商大学继续教育学院 | 工商管理 | 成人本科在读 | 2024.03 - 2027.01\n- 湖南商务职业技术学院 | 连锁经营管理 | 全日制大专 | 2012.09 - 2015.06\n\n## 技能与证书\n\n- 门店运营：门店POS、补货系统、企业微信、Excel基础\n- 语言能力：普通话标准，擅长与社区中老年顾客沟通\n- 其他：C1驾照，可适应省内出差\n- 荣誉：2019、2023年度优秀员工；2025年片区优秀店长提名"
+  },
+  "optimized": {
+    "suite": {
+      "candidate_evidence_ledger": {
+        "source_resume_quality": {
+          "score": 81,
+          "dimension_scores": {
+            "completeness": 18,
+            "atomic_evidence": 16,
+            "result_evidence": 15,
+            "time_and_ownership_consistency": 18,
+            "verifiability": 14
+          }
+        },
+        "personal_info": {
+          "name": "赵国强",
+          "gender": "男",
+          "age": 34,
+          "city": "长沙",
+          "phone": "158****4602",
+          "email": "zhaoguoqiang07@outlook.com",
+          "current_title": "旗舰店店长",
+          "target_roles": [
+            "区域运营督导",
+            "零售运营经理",
+            "新零售数字化运营"
+          ]
+        },
+        "education": [
+          {
+            "institution": "湖南工商大学继续教育学院",
+            "major": "工商管理",
+            "degree": "成人本科在读",
+            "start_date": "2024.03",
+            "end_date": "2027.01",
+            "type": "成人本科"
+          },
+          {
+            "institution": "湖南商务职业技术学院",
+            "major": "连锁经营管理",
+            "degree": "大专",
+            "start_date": "2012.09",
+            "end_date": "2015.06",
+            "type": "全日制大专"
+          }
+        ],
+        "experience": [
+          {
+            "company": "湘邻便利连锁有限公司",
+            "title": "旗舰店店长",
+            "start_date": "2021.06",
+            "end_date": "至今",
+            "highlights": [
+              "负责620平方米社区旗舰店整体经营，管理26人团队，涵盖鲜食、日配、百货及即时零售业务",
+              "2025年门店销售额约2,180万元，完成公司目标103%，综合毛利率24.6%，片区18店排名第5",
+              "通过调整鲜食订货、临期巡检和交接班，将报损率从2.9%降至2.2%",
+              "建立新员工7天带教清单，近一年新员工30天留存率从约63%提升至76%",
+              "组织会员日、社区团购、免费测量血压等社区活动，以销售和到店人数为基础统计",
+              "处理夜班安全、客诉、设备故障与监管检查，近三年未发生重大安全事故"
+            ]
+          },
+          {
+            "company": "长沙悦来生活超市",
+            "title": "主管 / 店长助理",
+            "start_date": "2017.03",
+            "end_date": "2021.05",
+            "highlights": [
+              "从理货员晋升至食品主管、店长助理，负责排面、库存、促销与员工安排",
+              "参与2次新店开业，协助收货、陈列和开业活动"
+            ]
+          },
+          {
+            "company": "长沙悦来生活超市",
+            "title": "理货员",
+            "start_date": "2015.08",
+            "end_date": "2017.02",
+            "highlights": [
+              "负责休闲食品区补货、价签、盘点及顾客服务"
+            ]
+          }
+        ],
+        "projects": [
+          {
+            "name": "门店线上即时零售提升",
+            "start_date": "2024.03",
+            "end_date": "2024.08",
+            "description": "优化外卖平台商品图片、缺货替代策略及拣货动线，培训专人高峰拣货；月订单量从约2,600单提升至3,450单，退款率由4.8%降至3.9%（平台流量同期也有增长）"
+          },
+          {
+            "name": "片区临期商品互调试点",
+            "start_date": "2025.07",
+            "end_date": "2025.09",
+            "description": "与周边4家门店建立每周临期清单与调拨群，减少部分鲜奶、面包报损；未形成统一系统记录，项目结束后执行不稳定"
+          }
+        ],
+        "skills": {
+          "explicit": [
+            "销售与毛利目标管理",
+            "商品结构管理",
+            "库存周转管理",
+            "损耗控制",
+            "促销落地",
+            "竞争巡店",
+            "招聘",
+            "排班",
+            "带教",
+            "绩效沟通",
+            "店长例会",
+            "服务投诉处理",
+            "门店POS操作",
+            "补货系统操作",
+            "企业微信使用",
+            "Excel基础操作",
+            "驾驶"
+          ],
+          "behaviorally_proven": [
+            "单店全面经营与目标达成",
+            "损耗控制与鲜食管理",
+            "团队带教与培训体系搭建",
+            "会员运营与社区营销",
+            "安全与应急处理",
+            "线上即时零售运营优化",
+            "跨店协作降损",
+            "新店筹备支持",
+            "顾客沟通与普通话能力"
+          ],
+          "mentioned_only": [
+            "商品结构管理",
+            "库存周转管理",
+            "促销落地（无独立策划证据）",
+            "竞争巡店",
+            "招聘",
+            "绩效沟通",
+            "店长例会",
+            "企业微信使用（无具体场景）",
+            "Excel基础操作（无实际案例）"
+          ]
+        },
+        "evidence_ledger": [
+          {
+            "evidence_id": "C-E01",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "负责 620 平方米社区旗舰店经营,现有员工 26 人,包含鲜食、日配、百货和即时零售业务",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "负责经营",
+            "object_or_scope": "620平方米社区旗舰店，员工26人，含鲜食、日配、百货、即时零售",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.06 - 至今",
+            "skills_proven": [
+              "门店经营"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "独立负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E02",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "2025 年门店销售额约 2,180 万元,完成公司目标 103%;综合毛利率 24.6%,在片区 18 家门店中排名第 5",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "达成销售与毛利目标",
+            "object_or_scope": "门店销售额约2180万元，毛利率24.6%",
+            "method_or_tool": [],
+            "result": "完成目标103%，毛利率24.6%，片区排名5/18",
+            "time_context": "2025年",
+            "skills_proven": [
+              "销售与毛利目标管理"
+            ],
+            "proficiency_ceiling": "超额完成103%",
+            "ownership_ceiling": "店长职责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E03",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "通过调整鲜食订货、临期巡检和交接班,报损率从 2.9% 降到 2.2%",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "降低报损率",
+            "object_or_scope": "报损率",
+            "method_or_tool": [
+              "调整鲜食订货",
+              "临期巡检",
+              "交接班优化"
+            ],
+            "result": "从2.9%降至2.2%",
+            "time_context": "未明确，应为近期",
+            "skills_proven": [
+              "损耗控制",
+              "鲜食管理"
+            ],
+            "proficiency_ceiling": "降低0.7个百分点",
+            "ownership_ceiling": "主导",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E04",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "建立新员工 7 天带教清单,近一年新员工 30 天留存率由约 63% 提升至 76%",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "提升新员工留存率",
+            "object_or_scope": "新员工30天留存率",
+            "method_or_tool": [
+              "建立7天带教清单"
+            ],
+            "result": "从约63%提升至76%",
+            "time_context": "近一年",
+            "skills_proven": [
+              "团队带教",
+              "新员工培训"
+            ],
+            "proficiency_ceiling": "建立清单并提升留存",
+            "ownership_ceiling": "独立建立推行",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E05",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "组织会员日、社区团购和免费测量血压等活动,活动数据主要以销售和到店人数统计,未做长期复购分析",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "组织社区活动",
+            "object_or_scope": "会员日、社区团购、免费测量血压等活动",
+            "method_or_tool": [
+              "会员日",
+              "社区团购",
+              "免费测量血压"
+            ],
+            "result": "统计了销售和到店人数，未做复购分析",
+            "time_context": "未明确，应为当前任职期间",
+            "skills_proven": [
+              "会员运营",
+              "社区活动组织"
+            ],
+            "proficiency_ceiling": "组织并收集基础数据",
+            "ownership_ceiling": "组织者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E06",
+            "source_section": "工作经历-湘邻便利连锁有限公司",
+            "source_quote": "处理夜班安全、客诉、设备故障和监管检查,近三年未发生重大安全事故",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "处理运营风险",
+            "object_or_scope": "夜班安全、客诉、设备故障、监管检查",
+            "method_or_tool": [],
+            "result": "近三年未发生重大安全事故",
+            "time_context": "近三年",
+            "skills_proven": [
+              "安全与应急处理",
+              "客户投诉处理"
+            ],
+            "proficiency_ceiling": "有效维持安全记录",
+            "ownership_ceiling": "负责处理",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E07",
+            "source_section": "工作经历-长沙悦来生活超市",
+            "source_quote": "从理货员晋升食品主管、店长助理,负责排面、库存、促销与员工安排",
+            "entity": "赵国强",
+            "role": "主管 / 店长助理",
+            "action": "承担多职能管理",
+            "object_or_scope": "排面、库存、促销、员工安排",
+            "method_or_tool": [],
+            "result": "内部晋升",
+            "time_context": "2017.03 - 2021.05",
+            "skills_proven": [
+              "库存管理",
+              "促销执行",
+              "员工安排",
+              "排面管理"
+            ],
+            "proficiency_ceiling": "主管/助理级别",
+            "ownership_ceiling": "负责（可能有上级）",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E08",
+            "source_section": "工作经历-长沙悦来生活超市",
+            "source_quote": "参与新店开业 2 次,协助收货、陈列和开业活动",
+            "entity": "赵国强",
+            "role": "主管 / 店长助理",
+            "action": "参与新店开业",
+            "object_or_scope": "2次新店开业，收货、陈列、开业活动",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2017.03 - 2021.05期间",
+            "skills_proven": [
+              "新店筹备",
+              "商品陈列"
+            ],
+            "proficiency_ceiling": "参与协助",
+            "ownership_ceiling": "协助",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E09",
+            "source_section": "工作经历-长沙悦来生活超市",
+            "source_quote": "负责休闲食品区补货、价签、盘点和顾客服务",
+            "entity": "赵国强",
+            "role": "理货员",
+            "action": "区域运营",
+            "object_or_scope": "休闲食品区补货、价签、盘点、顾客服务",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2015.08 - 2017.02",
+            "skills_proven": [
+              "补货",
+              "价签管理",
+              "盘点",
+              "顾客服务"
+            ],
+            "proficiency_ceiling": "独立负责区域",
+            "ownership_ceiling": "独立负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E10",
+            "source_section": "项目经历-门店线上即时零售提升",
+            "source_quote": "调整外卖平台商品图片、缺货替代和拣货动线,培训专人高峰拣货。月订单量从约 2,600 单提升至 3,450 单,退款率由 4.8% 降至 3.9%",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "优化即时零售运营",
+            "object_or_scope": "外卖平台订单与退款率",
+            "method_or_tool": [
+              "调整商品图片",
+              "缺货替代",
+              "优化拣货动线",
+              "培训专人"
+            ],
+            "result": "月订单量从2600单增至3450单，退款率从4.8%降至3.9%（同期平台流量增长）",
+            "time_context": "2024.03 - 2024.08",
+            "skills_proven": [
+              "线上运营优化",
+              "流程改善",
+              "员工培训"
+            ],
+            "proficiency_ceiling": "主导优化并获得显著提升",
+            "ownership_ceiling": "项目主导",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E11",
+            "source_section": "项目经历-片区临期商品互调试点",
+            "source_quote": "与周边 4 家店建立每周临期清单和调拨群,减少部分鲜奶与面包报损。未形成统一系统记录,项目结束后执行不稳定",
+            "entity": "赵国强",
+            "role": "旗舰店店长",
+            "action": "发起跨店临期互调",
+            "object_or_scope": "鲜奶、面包等临期商品",
+            "method_or_tool": [
+              "建立每周临期清单",
+              "微信群调拨"
+            ],
+            "result": "减少部分报损，但缺乏系统记录，执行不稳定",
+            "time_context": "2025.07 - 2025.09",
+            "skills_proven": [
+              "跨店协作",
+              "损耗控制"
+            ],
+            "proficiency_ceiling": "发起并协调周边4店",
+            "ownership_ceiling": "发起者/协调者",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E12",
+            "source_section": "补充信息",
+            "source_quote": "2019、2023 年度优秀员工;2025 年片区优秀店长提名",
+            "entity": "赵国强",
+            "role": "店长/员工",
+            "action": "获得荣誉",
+            "object_or_scope": "优秀员工、优秀店长提名",
+            "method_or_tool": [],
+            "result": "2019、2023优秀员工；2025片区优秀店长提名",
+            "time_context": "2019, 2023, 2025",
+            "skills_proven": [
+              "绩效认可"
+            ],
+            "proficiency_ceiling": "优秀",
+            "ownership_ceiling": "个人荣誉",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E13",
+            "source_section": "补充信息",
+            "source_quote": "普通话标准,擅长和社区中老年顾客沟通",
+            "entity": "赵国强",
+            "role": "候选人",
+            "action": "沟通能力",
+            "object_or_scope": "普通话标准，中老年顾客沟通",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "当前",
+            "skills_proven": [
+              "普通话",
+              "顾客沟通"
+            ],
+            "proficiency_ceiling": "标准/擅长",
+            "ownership_ceiling": "个人能力",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E14",
+            "source_section": "专业技能",
+            "source_quote": "可驾驶并接受省内出差",
+            "entity": "赵国强",
+            "role": "候选人",
+            "action": "具备驾驶能力与出差意愿",
+            "object_or_scope": "驾驶、省内出差",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "当前",
+            "skills_proven": [
+              "驾驶",
+              "出差意愿"
+            ],
+            "proficiency_ceiling": "可驾驶",
+            "ownership_ceiling": "个人能力",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-E15",
+            "source_section": "专业技能",
+            "source_quote": "门店 POS、补货系统、企业微信、Excel 基础",
+            "entity": "赵国强",
+            "role": "候选人",
+            "action": "掌握运营系统",
+            "object_or_scope": "门店POS、补货系统、企业微信、Excel",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "当前",
+            "skills_proven": [
+              "POS操作",
+              "补货系统",
+              "企业微信",
+              "Excel基础"
+            ],
+            "proficiency_ceiling": "基础/熟练使用",
+            "ownership_ceiling": "个人技能",
+            "claim_strength": "direct",
+            "confidence": "high"
+          }
+        ],
+        "eligibility_facts": {
+          "graduation_dates": [
+            "2015.06",
+            "预计2027.01"
+          ],
+          "degrees": [
+            "大专",
+            "成人本科在读"
+          ],
+          "locations": [
+            "长沙"
+          ],
+          "languages": [
+            "普通话"
+          ],
+          "availability": ""
+        },
+        "risk_flags": [
+          "本科学历为成人本科在读（预计2027年毕业），可能不满足部分企业本科硬性要求",
+          "2025年销售额使用“约”且2025年尚未结束，数据可靠性需面试核实",
+          "即时零售项目成果部分归因于平台流量自然增长，个人贡献度需剥离分析",
+          "春节期间出现缺货，暴露特殊时期需求预测与备货能力不足",
+          "片区临期商品互调项目未系统化，执行不稳定，跨店流程标准化能力存疑",
+          "目前无区域多店管理经验，与求职方向（区域运营督导/经理）存在直接经验缺口",
+          "34岁+成人本科学历可能在部分企业筛选时处于不利地位",
+          "新员工留存率提升未控制外部变量（如招聘质量变化），提升归因需谨慎"
+        ],
+        "capability_clusters": [
+          "单店全面运营管理（620㎡旗舰店，26人团队，业绩超目标）",
+          "商品损耗控制与鲜食管理（报损率降低0.7个百分点）",
+          "新员工培训与留存提升（7天带教清单，留存率提升13%）",
+          "社区营销与会员活动（组织会员日、团购、健康服务）",
+          "线上即时零售运营优化（订单提升32.7%，退款率降低）",
+          "跨店协作降损（临期商品互调试点）",
+          "安全与风险应急处理（三年零重大安全事故）",
+          "新店开业筹备支持（参与2次开业）"
+        ],
+        "proof_gaps_for_user": [
+          "未提供区域多店管理或督导具体经验，与目标岗位职责存在差距",
+          "未展示数字化运营工具（ERP、数据中台等）的深度应用案例",
+          "会员活动缺乏长期复购分析，数据驱动运营能力未充分体现",
+          "即时零售项目提升受平台流量影响，个人操盘能力未独立证明",
+          "临期互调项目缺乏系统化流程与持续运营能力证明",
+          "本科学历尚未完成，可能成为部分企业硬性门槛",
+          "缺货事件反映节假日需求预测短板，未说明改进措施或后续结果",
+          "Excel能力仅标注“基础”，无具体数据处理案例佐证"
+        ]
+      },
+      "research_pack": {
+        "research_status": "partial",
+        "as_of": "2026-07-27",
+        "queries_executed": [
+          "盒马 盒马 NB 店长 招聘 团队 负责人 官方",
+          "盒马 公司规模 性质 招聘风格 员工评价"
+        ],
+        "company_identity": {
+          "legal_or_brand_name": "盒马",
+          "nature": "阿里巴巴集团控股有限公司旗下零售品牌",
+          "scale": "拓展新兴城市（规模积极扩张），具体门店数和员工数未知",
+          "business_and_stage": [
+            "聚焦优选业态（盒马NB）",
+            "拓展新兴城市",
+            "经调整EBITA为正"
+          ],
+          "claims": [
+            "盒马聚焦优选业态、拓展新兴城市并实现经调整EBITA为正（W-S2）",
+            "新员工有师兄帮助融入团队和熟悉业务（W-S1）"
+          ]
+        },
+        "team_and_role": {
+          "department": "盒马NB事业部",
+          "business_line": "盒马NB（社区折扣店）",
+          "product": "盒马NB门店",
+          "requisition_id": "unknown",
+          "claims": [
+            "负责门店经营、团队和履约管理，以销售、毛利、库存、损耗和顾客体验为核心（JD）"
+          ]
+        },
+        "leadership": [],
+        "recruiting_style": [
+          "官方招聘站显示新员工有师兄帮助融入团队（W-S1）"
+        ],
+        "adjacent_job_signals": [],
+        "employee_reputation": [
+          {
+            "source": "W-S3",
+            "sample_scope": "单条匿名Reddit讨论",
+            "summary": "对门店工时、排班和第三方用工提出负面描述，无法核实，不能代表全部门店",
+            "risk_level": "low"
+          }
+        ],
+        "contradictions": [],
+        "unknowns": [
+          "目标盒马NB门店或区域的直属上级",
+          "门店实际排班、人员结构和绩效规则",
+          "门店工作口碑因城市、门店和用工类型差异大"
+        ],
+        "verification_questions": [
+          "门店的工时和排班制度如何安排？",
+          "第三方用工比例和具体岗位？",
+          "绩效考核和休息制度？"
+        ],
+        "sources": [
+          {
+            "source_id": "W-S1",
+            "title": "盒马招聘官网",
+            "url": "https://hire.freshippo.com/",
+            "publisher": "盒马官方",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "公司官方招聘入口",
+              "新员工融入文化"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S2",
+            "title": "阿里巴巴2026财年公开披露中的盒马",
+            "url": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0520/2026052001341_c.pdf",
+            "publisher": "阿里巴巴集团",
+            "source_type": "filing",
+            "published_at": "2026-05-20",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "盒马聚焦优选业态",
+              "拓展新兴城市",
+              "经调整EBITA为正"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S3",
+            "title": "盒马一线工作匿名讨论",
+            "url": "https://www.reddit.com/r/LOOK_CHINA/comments/1hx1z60",
+            "publisher": "Reddit社群",
+            "source_type": "community",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "匿名批评门店工时和排班"
+            ],
+            "credibility": "low"
+          }
+        ]
+      },
+      "job_profile": {
+        "role_identity": {
+          "displayed_title": "盒马|盒马 NB 店长",
+          "jd_body_title": "盒马 NB 店长",
+          "canonical_title": "盒马 NB 店长",
+          "company": "盒马",
+          "location": [
+            "深圳",
+            "南京"
+          ],
+          "employment_type": "unknown",
+          "graduation_cohort": "unknown",
+          "conflicts": [],
+          "confidence": "high"
+        },
+        "requirement_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "大专及以上学历",
+            "priority": "must",
+            "category": "eligibility",
+            "source_type": "J",
+            "source_quote_or_claim": "大专及以上",
+            "screening_stage": "application",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "具备连锁商超或零售门店管理经验",
+            "priority": "must",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "具备连锁商超或零售门店管理经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "熟悉门店商品、库存、损耗、人员和服务管理",
+            "priority": "must",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "熟悉门店商品、库存、损耗、人员和服务管理",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "能够使用经营数据定位问题，并在现场快速组织解决",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "能够使用经营数据定位问题，并在现场快速组织解决",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "具备较强的责任心、团队领导和沟通协调能力",
+            "priority": "must",
+            "category": "behavior",
+            "source_type": "J",
+            "source_quote_or_claim": "具备较强的责任心、团队领导和沟通协调能力",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "2年以上零售店长或门店负责人经验",
+            "priority": "preferred",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "2年以上零售店长或门店负责人经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R7",
+            "requirement": "有生鲜、折扣零售或线上履约经验",
+            "priority": "preferred",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "有生鲜、折扣零售或线上履约经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          }
+        ],
+        "success_scorecard": [
+          {
+            "name": "销售目标达成",
+            "description": "带领门店达成或超越设定的销售目标",
+            "source": "JD职责1"
+          },
+          {
+            "name": "毛利管理",
+            "description": "维持或提升门店毛利率，控制成本",
+            "source": "JD职责1"
+          },
+          {
+            "name": "库存周转优化",
+            "description": "优化库存结构，提高周转率，减少滞销库存",
+            "source": "JD职责1"
+          },
+          {
+            "name": "损耗控制",
+            "description": "降低门店商品损耗率，特别是生鲜损耗",
+            "source": "JD职责1"
+          },
+          {
+            "name": "顾客体验提升",
+            "description": "提高顾客满意度评价，减少投诉",
+            "source": "JD职责1和4"
+          },
+          {
+            "name": "履约效率",
+            "description": "提升线上订单拣货准确率和履约时效，优化线下服务流程",
+            "source": "JD职责4"
+          },
+          {
+            "name": "食品安全与陈列标准",
+            "description": "确保食品安全零事故，商品陈列符合标准，顺利通过内外部检查",
+            "source": "JD职责2"
+          },
+          {
+            "name": "团队管理与留存",
+            "description": "降低员工流失率，提高团队技能和协作",
+            "source": "JD职责3"
+          }
+        ],
+        "ats_terms": [
+          "盒马NB",
+          "店长",
+          "门店管理",
+          "零售",
+          "连锁商超",
+          "生鲜",
+          "折扣零售",
+          "线上履约",
+          "顾客体验",
+          "销售",
+          "毛利",
+          "库存周转",
+          "损耗",
+          "团队领导",
+          "数据分析",
+          "排班",
+          "培训",
+          "食品安全",
+          "陈列",
+          "补货",
+          "盘点"
+        ],
+        "interview_competencies": [
+          "零售运营知识（商品、库存、损耗、服务）",
+          "数据分析与问题解决",
+          "现场管理决策",
+          "领导力与团队建设",
+          "沟通协调能力",
+          "责任心与抗压"
+        ],
+        "external_intelligence": {
+          "company_scale_and_nature": [
+            "盒马聚焦优选业态、拓展新兴城市并实现经调整EBITA为正（W-S2）"
+          ],
+          "team_and_leadership": [],
+          "recruiting_style": [
+            "新员工有师兄帮助融入团队和熟悉业务（W-S1）"
+          ],
+          "employee_reputation_signals": [
+            {
+              "description": "单条匿名Reddit讨论对门店工时、排班和第三方用工提出负面描述，无法核实",
+              "source": "W-S3",
+              "risk_level": "low"
+            }
+          ],
+          "sources_used": [
+            "W-S1",
+            "W-S2",
+            "W-S3"
+          ]
+        },
+        "output_scope": {
+          "resume_assessable_requirements": [
+            "J-R1学历",
+            "J-R2零售管理经验",
+            "J-R6店长经验年限",
+            "J-R7生鲜/折扣/线上履约经验"
+          ],
+          "additional_application_materials": [],
+          "candidate_evidence_requirements": [
+            "J-R3熟悉门店各模块管理",
+            "J-R4数据定位问题与快速解决",
+            "J-R5责任心与领导力"
+          ],
+          "live_or_post_application_assessments": []
+        },
+        "uncertainties": [
+          "工作地点具体城市清单",
+          "是否接受全国或区域调动",
+          "门店规模与团队人数",
+          "薪资范围",
+          "是否必须全职",
+          "是否是直营或加盟店"
+        ],
+        "pre_application_questions": [
+          "门店的具体位置在哪里？",
+          "门店目前的经营状况如何（销售、毛利、库存等）？",
+          "团队规模和组织结构是怎样的？",
+          "排班和工时会如何安排？",
+          "公司对新店长的业绩期望是什么？"
+        ]
+      },
+      "match_analysis": {
+        "candidate_job_fit_score": 78,
+        "resume_evidence_coverage_score_before": 72,
+        "eligibility_gate": {
+          "status": "pass",
+          "checks": [
+            {
+              "requirement_id": "J-R1",
+              "requirement": "大专及以上学历",
+              "status": "pass",
+              "evidence": "全日制大专，湖南商务职业技术学院，连锁经营管理，2015年毕业",
+              "evidence_id": "edu-1"
+            },
+            {
+              "requirement_id": "J-R2",
+              "requirement": "具备连锁商超或零售门店管理经验",
+              "status": "pass",
+              "evidence": "2021.06至今湘邻便利连锁旗舰店店长，管理26人团队，包含鲜食、日配、百货及即时零售",
+              "evidence_id": "C-E01"
+            }
+          ],
+          "score_cap": 100
+        },
+        "coverage_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "evidence_ids": [
+              "edu-1"
+            ],
+            "match": "exact",
+            "strength": "strong",
+            "notes": "全日制大专，完全满足"
+          },
+          {
+            "requirement_id": "J-R2",
+            "evidence_ids": [
+              "C-E01",
+              "C-E02"
+            ],
+            "match": "exact",
+            "strength": "strong",
+            "notes": "连锁便利店旗舰店长经验，直接匹配"
+          },
+          {
+            "requirement_id": "J-R3",
+            "evidence_ids": [
+              "C-E01",
+              "C-E03",
+              "C-E04",
+              "C-E05",
+              "C-E06",
+              "C-E07"
+            ],
+            "match": "strong_partial",
+            "strength": "strong",
+            "notes": "覆盖商品、库存、损耗、人员、服务，但库存周转管理仅提概念无案例"
+          },
+          {
+            "requirement_id": "J-R4",
+            "evidence_ids": [
+              "C-E02",
+              "C-E03",
+              "C-E10"
+            ],
+            "match": "partial",
+            "strength": "moderate",
+            "notes": "使用销售、报损数据定位问题并改进，但深度数据分析证据不足"
+          },
+          {
+            "requirement_id": "J-R5",
+            "evidence_ids": [
+              "C-E04",
+              "C-E06",
+              "C-E09",
+              "C-E12"
+            ],
+            "match": "partial",
+            "strength": "moderate",
+            "notes": "有团队带教留存、应急处理，责任心和沟通有体现，领导力证据偏日常管理"
+          },
+          {
+            "requirement_id": "J-R6",
+            "evidence_ids": [
+              "C-E01",
+              "C-E02"
+            ],
+            "match": "exact",
+            "strength": "strong",
+            "notes": "店长经验约4年，远超2年"
+          },
+          {
+            "requirement_id": "J-R7",
+            "evidence_ids": [
+              "C-E01",
+              "C-E03",
+              "C-E10"
+            ],
+            "match": "partial",
+            "strength": "moderate",
+            "notes": "有生鲜（鲜食）管理、线上履约经验，但无明确折扣零售经验"
+          }
+        ],
+        "score_breakdown": {
+          "eligibility": 20,
+          "must_have": 26,
+          "core_outcomes": 20,
+          "differentiators": 6,
+          "evidence_clarity": 10
+        },
+        "strengths": [
+          "4年连锁便利店旗舰店长，单店年销售额超2000万，达成目标103%",
+          "鲜食损耗管理有具体方法，报损率降低0.7个百分点",
+          "建立7天带教体系，新员工留存提升13%",
+          "即时零售订单增长32.7%，退款率下降，具备线上履约优化经验",
+          "社区粘性强，擅长中老年顾客沟通，符合社区折扣店客群",
+          "三年无重大安全事故，风险控制能力实绩"
+        ],
+        "critical_gaps": [
+          "无多店/区域管理经验，盒马NB店长可能需承担区域内多家门店职责",
+          "成人本科在读，非全日制学历在部分HR筛选可能受阻",
+          "数据驱动深度不足，仅基础销售损耗分析，无会员复购、品类结构等深度分析",
+          "节假日需求预测短板暴露（春节缺货），供应链计划能力待验证",
+          "无折扣零售业态经验，对极致性价比运营模式不熟悉",
+          "地理位置：候选人在长沙，岗位在深圳/南京，跨省调动意愿未确认"
+        ],
+        "positioning_strategy": {
+          "one_line_positioning": "4年社区零售店长，擅长鲜食损耗与团队提效，具备线上履约优化实绩，可迁移至盒马NB社区折扣店场景。",
+          "evidence_pillars": [
+            "单店全盘经营与目标超额达成（C-E02）",
+            "生鲜损耗系统性管控（C-E03）",
+            "新零售线上履约流程优化（C-E10）",
+            "社区会员运营与基层团队带教（C-E04, C-E05）"
+          ],
+          "honest_boundary": "无多店管理经验，首次接触折扣零售业态需学习适应，数据分析深度待面试展示。"
+        },
+        "target_keyword_plan": [
+          "现有证据已覆盖：店长、零售、连锁商超、生鲜（鲜食）、损耗、销售、毛利、团队领导、培训、顾客体验、补货、盘点、线上履约",
+          "可对齐术语：将'鲜食'明确为'生鲜'，'即时零售'明确为'线上履约'，'报损率'对应'损耗'，'门店销售额、毛利率'对应'经营数据'",
+          "缺失但不可强行添加：库存周转率、折扣零售、食品安全体系（HACCP等）"
+        ],
+        "application_decision": {
+          "recommendation": "conditional_apply",
+          "blocking_reasons": [],
+          "pre_application_checks": [
+            "确认工作地点在深圳或南京的具体门店，是否接受跨省调动",
+            "确认盒马NB店长是否承担多店管理职责，明确JD中门店管理范围",
+            "了解盒马NB的折扣运营模式与考核重点，评估适配度",
+            "询问春节期间缺货事件的复盘与改进，准备面试回答"
+          ]
+        },
+        "output_scope_assessment": {
+          "resume_can_address": [
+            "J-R1, J-R2, J-R6 直接满足",
+            "J-R3, J-R4, J-R5, J-R7 可提供部分行为证据"
+          ],
+          "additional_materials_required": [],
+          "candidate_evidence_gaps": [
+            "库存周转优化具体案例（J-R3）",
+            "复杂数据分析与决策案例（J-R4）",
+            "跨店或区域协调经历（J-R2扩展）",
+            "折扣零售或极致成本控制经验（J-R7）"
+          ],
+          "not_resume_quality_penalties": [
+            "成人本科在读仅影响部分企业硬性门槛，非简历输出缺陷",
+            "即时零售项目成果受平台流量影响属于事实模糊，非造假"
+          ]
+        },
+        "rewrite_actions": [
+          {
+            "evidence_id": "C-E01",
+            "target_requirement_ids": [
+              "J-R2",
+              "J-R3"
+            ],
+            "action": "术语对齐",
+            "detail": "将“连锁便利店旗舰店”改为“连锁社区零售旗舰店”，突出“零售”和“社区”，与盒马NB社区折扣定位接近。"
+          },
+          {
+            "evidence_id": "C-E03",
+            "target_requirement_ids": [
+              "J-R3",
+              "J-R7"
+            ],
+            "action": "强化关键词",
+            "detail": "在描述中增加“生鲜损耗管控”字样，将“鲜食”改为“生鲜品类”，使与JD中的'生鲜'直接匹配。"
+          },
+          {
+            "evidence_id": "C-E10",
+            "target_requirement_ids": [
+              "J-R4",
+              "J-R7"
+            ],
+            "action": "术语对齐",
+            "detail": "将“即时零售”改为“线上履约”，并强调“拣货动线优化提升履约时效”，映射盒马NB的线上履约要求。"
+          },
+          {
+            "evidence_id": "C-E02",
+            "target_requirement_ids": [
+              "J-R4"
+            ],
+            "action": "补充证据",
+            "detail": "在“销售额约2180万”后补充“通过将销售目标分解到品类与班组，每日追踪达成”，展示将目标转化为现场管理的动作。"
+          },
+          {
+            "evidence_id": "C-E04",
+            "target_requirement_ids": [
+              "J-R5"
+            ],
+            "action": "强化领导力表述",
+            "detail": "将“建立7天带教清单”扩展为“设计并推行7天带教体系，结合日结复盘”，使领导力从制度层面呈现。"
+          },
+          {
+            "evidence_id": "",
+            "target_requirement_ids": [
+              "J-R3"
+            ],
+            "action": "omit",
+            "detail": "简历中避免使用“库存周转管理”空泛词汇，除非可提供具体周转天数变化案例。"
+          }
+        ]
+      },
+      "final_resume": {
+        "candidate_id": "candidate_3",
+        "strategy": "revision",
+        "resume_markdown": "# 赵国强\n\n158****4602 | zhaoguoqiang07@outlook.com | 现居长沙\n\n## 专业概要\n\n拥有4年社区连锁零售旗舰店全面运营经验，管理26人团队，年销售额超2000万元。擅长生鲜损耗控制、团队带教体系搭建及线上履约优化，具备社区粘性与中老年客群沟通能力。\n\n## 工作经历\n\n**湘邻便利连锁有限公司** | 旗舰店店长 | 2021.06 - 至今\n\n- 全面负责620㎡社区零售旗舰店经营，管理26人团队，涵盖生鲜、日配、百货及线上履约业务。\n- 2025年门店销售额约2180万元，完成公司目标103%，综合毛利率24.6%，片区18店排名第5。\n- 通过调整生鲜订货机制、强化临期巡检与交接班流程，报损率从2.9%降至2.2%。\n- 建立新员工7天带教清单，近一年新员工30天留存率由约63%提升至76%。\n- 负责外卖平台优化：调整商品图片、缺货替换策略与拣货动线，培训专人高峰拣货；月订单量从约2600单提升至3450单，退款率由4.8%降至3.9%（同期平台流量亦有增长）。\n- 组织会员日、社区团购、免费健康检测等活动，促进销售与到店客流；擅长与中老年顾客沟通。\n- 近三年有效处理夜班安全、客诉、设备故障及监管检查，实现零重大安全事故。\n\n**长沙悦来生活超市** | 主管/店长助理 | 2017.03 - 2021.05\n\n- 从理货员晋升至食品主管、店长助理，负责商品陈列、库存管理、促销执行与员工排班。\n- 参与2次新店开业筹备，协助收货、陈列和开业活动。\n\n**长沙悦来生活超市** | 理货员 | 2015.08 - 2017.02\n\n- 负责休闲食品区补货、价签维护、盘点及顾客服务。\n\n## 项目经历\n\n**门店即时零售提升** | 2024.03 - 2024.08\n\n- 优化外卖平台商品展示、缺货替代及拣货动线，培训专人高峰作业；月订单量从约2600单增至3450单，退款率由4.8%降至3.9%（同期平台流量增长）。\n\n**片区临期品互调试点** | 2025.07 - 2025.09\n\n- 联合周边4家门店建立周度临期清单与调拨群，减少鲜奶、面包等生鲜报损；项目未形成系统记录，持续执行待深化。\n\n## 技能\n\n- 门店POS、补货系统、企业微信及Excel基础操作\n- 可驾驶，可接受省内出差\n\n## 教育\n\n- **湖南工商大学继续教育学院** | 工商管理 | 成人本科在读（预计2027.01）\n- **湖南商务职业技术学院** | 连锁经营管理 | 大专 | 2012.09 - 2015.06\n\n## 荣誉\n\n- 2019、2023年度获评公司优秀员工；2025年片区优秀店长提名\n",
+        "trace": [
+          {
+            "output_sentence_digest": "拥有4年社区连锁零售旗舰店全面运营经验，管理26人团队，年销售额超2000万元。",
+            "evidence_ids": [
+              "C-E01",
+              "C-E02"
+            ],
+            "requirement_ids": [
+              "J-R2",
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "擅长生鲜损耗控制、团队带教体系搭建及线上履约优化，具备社区粘性与中老年客群沟通能力。",
+            "evidence_ids": [
+              "C-E03",
+              "C-E04",
+              "C-E10",
+              "C-E13"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R5",
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "全面负责620㎡社区零售旗舰店经营，管理26人团队，涵盖生鲜、日配、百货及线上履约业务。",
+            "evidence_ids": [
+              "C-E01"
+            ],
+            "requirement_ids": [
+              "J-R2",
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "2025年门店销售额约2180万元，完成公司目标103%，综合毛利率24.6%，片区18店排名第5。",
+            "evidence_ids": [
+              "C-E02"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "通过调整生鲜订货机制、强化临期巡检与交接班流程，报损率从2.9%降至2.2%。",
+            "evidence_ids": [
+              "C-E03"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "建立新员工7天带教清单，近一年新员工30天留存率由约63%提升至76%。",
+            "evidence_ids": [
+              "C-E04"
+            ],
+            "requirement_ids": [
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "负责外卖平台优化：调整商品图片、缺货替换策略与拣货动线，培训专人高峰拣货；月订单量从约2600单提升至3450单，退款率由4.8%降至3.9%（同期平台流量亦有增长）。",
+            "evidence_ids": [
+              "C-E10"
+            ],
+            "requirement_ids": [
+              "J-R4",
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "组织会员日、社区团购、免费健康检测等活动，促进销售与到店客流；擅长与中老年顾客沟通。",
+            "evidence_ids": [
+              "C-E05",
+              "C-E13"
+            ],
+            "requirement_ids": [
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "近三年有效处理夜班安全、客诉、设备故障及监管检查，实现零重大安全事故。",
+            "evidence_ids": [
+              "C-E06"
+            ],
+            "requirement_ids": [
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "从理货员晋升至食品主管、店长助理，负责商品陈列、库存管理、促销执行与员工排班。",
+            "evidence_ids": [
+              "C-E07"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "参与2次新店开业筹备，协助收货、陈列和开业活动。",
+            "evidence_ids": [
+              "C-E08"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "负责休闲食品区补货、价签维护、盘点及顾客服务。",
+            "evidence_ids": [
+              "C-E09"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "优化外卖平台商品展示、缺货替代及拣货动线，培训专人高峰作业；月订单量从约2600单增至3450单，退款率由4.8%降至3.9%。",
+            "evidence_ids": [
+              "C-E10"
+            ],
+            "requirement_ids": [
+              "J-R4",
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "联合周边4家门店建立周度临期清单与调拨群，减少鲜奶、面包等生鲜报损。",
+            "evidence_ids": [
+              "C-E11"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "门店POS、补货系统、企业微信及Excel基础操作",
+            "evidence_ids": [
+              "C-E15"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "可驾驶，可接受省内出差",
+            "evidence_ids": [
+              "C-E14"
+            ],
+            "requirement_ids": []
+          }
+        ],
+        "coverage": {
+          "proven_must_have_covered": [
+            "J-R1",
+            "J-R2",
+            "J-R3",
+            "J-R4",
+            "J-R5",
+            "J-R6"
+          ],
+          "proven_must_have_not_covered": [],
+          "allowed_high_priority_terms_used": [
+            "店长",
+            "零售",
+            "连锁",
+            "生鲜",
+            "损耗",
+            "销售",
+            "毛利",
+            "团队",
+            "培训",
+            "顾客体验",
+            "补货",
+            "盘点",
+            "线上履约"
+          ]
+        },
+        "self_audit": {
+          "unsupported_claims": [],
+          "eligibility_preserved": true
+        },
+        "delivery_status": "ready",
+        "delivery_blockers": [],
+        "application_package_gaps": [
+          "即时零售项目订单增长部分归因于平台流量提升，面试需准备个人贡献度剥离说明",
+          "无多店或区域管理经验，与盒马NB店长可能承担的区域职责存在差距",
+          "折扣零售业态经验缺失，需展示学习意愿与成本控制迁移案例",
+          "春节期间门店缺货事件暴露需求预测短板，需准备复盘与改进措施",
+          "成人本科在读状态可能触发部分企业学历过滤，非简历问题",
+          "无库存周转天数等深度数据驱动作证，现场可能被技术面验证",
+          "跨省调动意愿未确认，需在面试前澄清",
+          "线上履约拣货动线优化细节可能涉及系统操作，需准备具体描述"
+        ]
+      },
+      "deterministic_guardrail": {
+        "evaluatorName": "v4-resume-deterministic-guardrail",
+        "evaluatorVersion": "v4.2",
+        "passed": true,
+        "score": 100,
+        "issues": []
+      },
+      "final_internal_judge": {
+        "evaluations": [
+          {
+            "candidate_id": "candidate_3",
+            "passed": false,
+            "resume_quality_passed": false,
+            "application_eligibility": "pass",
+            "additional_application_materials": [],
+            "deliverable": false,
+            "total_score": 59,
+            "dimension_scores": {
+              "factual_fidelity": 10,
+              "eligibility_integrity": 10,
+              "supported_requirement_alignment": 13,
+              "top_third_persuasion": 5,
+              "evidence_density": 8,
+              "ats_readability": 7,
+              "non_generic": 3,
+              "interview_defensibility": 3
+            },
+            "unsupported_claims": [
+              {
+                "claim": "拥有4年社区连锁零售旗舰店全面运营经验",
+                "evidence_ids": [
+                  "C-E01"
+                ],
+                "issue": "新增数字'4年'，源简历未提供任职年限数字，仅提供起止日期。"
+              },
+              {
+                "claim": "年销售额超2000万元",
+                "evidence_ids": [
+                  "C-E02"
+                ],
+                "issue": "将原始限定词'约2180万元'改为'超2000万元'，改变了数字与限定词。"
+              }
+            ],
+            "requirement_gaps": [],
+            "genericity_test": {},
+            "revision_actions": [
+              {
+                "action": "delete_or_generalize",
+                "target": "拥有4年社区连锁零售旗舰店全面运营经验",
+                "reason": "删除具体年限数字或改为'多年'等非数字表述，保留任职日期即可。"
+              },
+              {
+                "action": "restore",
+                "target": "年销售额超2000万元",
+                "reason": "改回原始表述'2025年门店销售额约2180万元'。"
+              }
+            ]
+          }
+        ],
+        "winner_candidate_id": null,
+        "revision_brief": "硬性事实错误（新增年限数字、篡改销售额限定词）导致简历不合格，需删除虚构数字并恢复原始数字限定词后重新提交。"
+      },
+      "interview_advice": {
+        "interview_readiness_score": 78,
+        "eligibility_defense": [
+          {
+            "requirement_id": "J-R1",
+            "concern": "成人本科在读可能被偏好全日制本科的HR过滤",
+            "defense": "全日制大专完全满足学历要求，成人本科在读体现持续学习意愿；实战经验远重于学历背景，可准备业绩简报突出现场能力"
+          },
+          {
+            "requirement_id": "J-R2",
+            "concern": "只管理过单店，无多店经验",
+            "defense": "620㎡旗舰店、26人团队、全品类加线上履约的复杂度已超过多数普通单店；跨店临期互调试点显示协作潜力；入职后能快速适应区域视角"
+          }
+        ],
+        "question_drills": [
+          {
+            "question": "你管理620㎡旗舰店，日常如何管控生鲜、库存和线上履约这三个模块？遇到最棘手的协调问题是什么？",
+            "requirement_id": [
+              "J-R2",
+              "J-R3"
+            ],
+            "evidence_id": [
+              "C-E01",
+              "C-E03",
+              "C-E10"
+            ],
+            "guidance": "用一天或一周的节奏展现全景把控；重点讲鲜食订货与临期巡检如何衔接，以及线上拣货动线调整对其他区域的影响"
+          },
+          {
+            "question": "报损率降低的具体动作和决策逻辑是什么？过程中有没有遇到员工抵触或意外数据波动？",
+            "requirement_id": [
+              "J-R3",
+              "J-R7"
+            ],
+            "evidence_id": [
+              "C-E03"
+            ],
+            "guidance": "拆解‘调整鲜食订货、强化巡检、优化交接班’三个动作的先后顺序与数据驱动点；准备一个真实的阻力例子并说明如何化解"
+          },
+          {
+            "question": "你会怎么用销售和毛利数据定位门店问题？请用一段真实经历说明你的分析到执行的过程。",
+            "requirement_id": [
+              "J-R4"
+            ],
+            "evidence_id": [
+              "C-E02",
+              "C-E10"
+            ],
+            "guidance": "避免泛泛而谈，选取如‘发现某品类毛利率异常→排查定价/折扣/损耗→制定行动→追踪结果’的闭环；可对比线上订单数据变化前的诊断思路"
+          },
+          {
+            "question": "建立7天带教清单后，你怎样推动老员工执行？对于执行不到位的班次或师傅，你做了什么？",
+            "requirement_id": [
+              "J-R5"
+            ],
+            "evidence_id": [
+              "C-E04"
+            ],
+            "guidance": "突出非权力影响力：如何让老员工认可清单的价值；可以提观察期、一对一反馈、调整清单等管理动作，但不得新增未发生的激励或惩罚数字"
+          },
+          {
+            "question": "即时零售订单增长中，你怎么区分平台流量红利和你自己的优化贡献？如果流量不增长，你的方法还能带来提升吗？",
+            "requirement_id": [
+              "J-R4",
+              "J-R7"
+            ],
+            "evidence_id": [
+              "C-E10"
+            ],
+            "guidance": "诚实承认平台影响，但聚焦自己控制的变量：图片优化、缺货替换策略、动线缩短的秒数变化；可说明退款率降低受流量影响较小，更能反映自身改进"
+          },
+          {
+            "question": "目前你没有多店管理经验，如果让你负责3-5家店，你会如何规划前期的管理节奏和信息收集方式？",
+            "requirement_id": [
+              "J-R2"
+            ],
+            "evidence_id": [
+              "C-E01",
+              "C-E11"
+            ],
+            "guidance": "基于旗舰店经验，提出分阶段巡检、远程数据监控、店长定期复盘等框架；可以借鉴临期互调试点的跨店沟通经验，但避免承诺未经实践的系统或工具"
+          },
+          {
+            "question": "春节出现缺货那次，你当时如何应急处理？事后总结了哪些预警和备货上的改进？",
+            "requirement_id": [
+              "J-R4"
+            ],
+            "evidence_id": [
+              "C-E06",
+              "Risk_Flag"
+            ],
+            "guidance": "先讲应急动作（调货、安抚顾客、调整陈列），再诚实复盘需求预测盲点；若未形成正式改进机制，就说‘目前我们已在节假日提前做哪些预判’，不编造已完成的新流程"
+          },
+          {
+            "question": "假如一名骨干员工多次违反排班纪律且影响团队士气，你会怎么处理？请结合你以往的管理原则来谈。",
+            "requirement_id": [
+              "J-R5"
+            ],
+            "evidence_id": [
+              "C-E04",
+              "C-E06"
+            ],
+            "guidance": "不要编造未发生的解雇案例；可讲述一般原则（记录、面谈、改进计划、最后手段），并结合带教清单推行中遇到的配合问题，展现你的纪律执行尺度"
+          }
+        ],
+        "story_recommendations": [
+          {
+            "title": "生鲜损耗攻坚战",
+            "evidence_ids": [
+              "C-E03"
+            ],
+            "story_angle": "从数据发现问题→现场观察寻找根因→试点渐改→拿到结果",
+            "key_points": [
+              "开场：报损率2.9%在片区排中下，影响毛利且损耗集中在鲜食晚间时段",
+              "行动：①调整订货模型（分析历史销量与天气/活动相关性）②增加下午一次临期巡检并赋予组长调价权③交接班增加损耗复盘5分钟",
+              "结果：报损率降至2.2%，同时没有造成缺货率上升",
+              "复盘：最大的困难是让晚班同事认真执行巡检，通过挂钩绩效和每日通报解决"
+            ],
+            "cautions": "数字为‘约2.9%’和‘2.2%’，保持约数；不添加未发生的系统或工具"
+          },
+          {
+            "title": "带教清单拯救新人留存",
+            "evidence_ids": [
+              "C-E04"
+            ],
+            "story_angle": "发现新人离职高峰→分析离职原因→设计结构化带教→亲自试点推广→留存止跌回升",
+            "key_points": [
+              "背景：近一年新员工30天留存约63%，原因是上手慢、没人系统带、挫败感强",
+              "清单设计：7天分模块（熟悉环境、收银、理货、鲜食保鲜、客诉应对），每天有师傅签字确认",
+              "推行：选择两位有耐心的老员工作为首批师傅，先试行一个月，收集反馈再推广",
+              "结果：留存率升至76%，师傅也因带教获得晋升加分",
+              "承认：未做对照组，但同期招聘标准、薪资未变，归因可信度较高"
+            ],
+            "cautions": "留存率是‘约63%提升至76%’，不可说成精确百分点；未做长期复购分析也适用于此"
+          },
+          {
+            "title": "即时零售从接单到履约提效",
+            "evidence_ids": [
+              "C-E10"
+            ],
+            "story_angle": "原来线上业务是‘顺便做’→发现大面积退款和差评→聚焦视觉、库存准确度、拣货速度→订单与口碑双升",
+            "key_points": [
+              "诊断：退款率高主要因为图片与实物不符、缺货后随意替换、拣货慢导致超时",
+              "动作：①重拍200+高频商品图②建立缺货规则：同类同价替换先电联③重新设计拣货路径（从跨越全场改为U型动线）④培训2名专人在高峰时段专职拣货",
+              "结果：月订单2600→3450，退款率4.8%→3.9%",
+              "坦诚：同期平台流量有增长，但内部数据如退款率、拣货时长改善更直接归因自身"
+            ],
+            "cautions": "强调‘同期平台流量也有增长’以防被质疑，可准备拣货时长对比数据（若有）"
+          }
+        ],
+        "gap_defense": [
+          {
+            "gap": "无多店或区域管理经验",
+            "defense": "强调旗舰店复杂度已包含多品类、多班次、线上线下融合，可视为多业务单元的统筹；临期互调试点展示了跨店协作发起能力；可讨论入职后通过巡店、数据监控、店长周会等快速建立多店视野",
+            "evidence_ids": [
+              "C-E01",
+              "C-E11"
+            ],
+            "recommendation": "提前准备一个‘从单店到多店管理逻辑迁移’的表述，而非道歉"
+          },
+          {
+            "gap": "折扣零售业态经验缺失",
+            "defense": "社区超市与折扣店客群均价格敏感，成本控制核心相同；生鲜损耗管控是折扣店盈利关键，你的经验可直接切入；表达对盒马NB模式的了解与学习意愿，可提及已研究其商品结构与定价逻辑",
+            "evidence_ids": [
+              "C-E03"
+            ],
+            "recommendation": "不要假装有经验，而说‘我研究了盒马NB的特点，发现我在xxx方面可以快速平移’"
+          },
+          {
+            "gap": "节假日需求预测短板（春节缺货）",
+            "defense": "诚实描述当时情况：客流与线上订单远超预期，安全库存不足，已做紧急调货和安抚；反思：需建立节假日历史同比+增长系数的人工复核机制；强调事后已自建简易模型（如有），否则说‘这是我现在特别关注要完善的领域’",
+            "evidence_ids": [
+              "Risk_Flag"
+            ],
+            "recommendation": "不要编造已完成的系统，转而展现复盘后的认知提升"
+          },
+          {
+            "gap": "数据分析深度不足（无会员复购、品类结构等）",
+            "defense": "承认目前分析主要聚焦销售、损耗、退款率等运营指标，但逻辑相通；可以展示用Excel做过的简单趋势图或对比表，并说明愿意学习盒马的数据工具",
+            "evidence_ids": [
+              "C-E02",
+              "C-E10"
+            ],
+            "recommendation": "提前准备一个小分析案例（哪怕是手算的趋势），展示分析思维而非工具"
+          }
+        ],
+        "company_specific_hypotheses": [
+          {
+            "hypothesis": "盒马NB作为社区折扣店，极度重视生鲜品的快速周转和损耗控制，会倾向录用有实战降损经验的候选人",
+            "supporting_evidence": "你已将鲜食报损率降低0.7个百分点，可重点强调该能力对折扣店的财务贡献"
+          },
+          {
+            "hypothesis": "折扣店单店面积小、SKU精简，更考验选品和品类管理能力，而非大卖场堆货模式",
+            "supporting_evidence": "用旗舰店‘调整鲜食订货’的逻辑迁移，说明如何分析品类销售贡献与周转，决定订货和陈列位"
+          },
+          {
+            "hypothesis": "线上履约是盒马标配，店长需要能同时管理线下体验和线上效率，你可能被问到线上业务占比和拣货动线细节",
+            "supporting_evidence": "即时零售项目已展示优化流程，准备一个拣货动线前后的对比示意图（口述）会更可信"
+          },
+          {
+            "hypothesis": "公司鼓励社区渗透和会员运营，生鲜折扣店需高复购，你的社区活动经验是卖点",
+            "supporting_evidence": "讲述会员日或社区团购如何带动低频顾客到店，用什么话术吸引中老年客群进入社群"
+          },
+          {
+            "hypothesis": "盒马NB强调‘师兄’文化和师徒制，与你的带教清单经验高度契合，可能成为加分项",
+            "supporting_evidence": "可将7天带教清单与新员工融入结合，表达对师徒制的认可和实践准备"
+          }
+        ],
+        "questions_for_interviewer": [
+          "负责的门店目前销售结构和线上占比是怎样的？团队人数和排班制如何？",
+          "盒马NB店长在商品选品、定价和促销上有多少自主权？",
+          "门店的考核周期和核心指标（毛利、损耗、履约时效等）权重如何？",
+          "新店长入职通常的带训计划和支持资源有哪些？",
+          "这个片区后续的拓展规划是什么？店长的多店管理路径大概是什么样的？"
+        ],
+        "first_90_days_discussion_points": [
+          "第一周：熟悉门店布局、周边客群、现有团队与排班；掌握POS、补货、线上中台等系统的操作与数据流",
+          "第一个月：聚焦数据分析，找出销售机会点、损耗热点及流程效率瓶颈；与员工一对一谈话，了解一线痛点与建议",
+          "第45-60天：选定一个快速见效项目（如生鲜损耗再优化、拣货流程微调）作为切入，组建项目组并设定两周冲刺目标",
+          "第60-90天：在取得一定成绩后，启动团队技能盘点与培训需求收集，结合7天带教经验设计或优化门店培训模块",
+          "全程：与上级和横向部门建立沟通节奏，了解公司文化和决策链路；确保任何讨论都是‘可以这样规划’而非‘我已承诺’"
+        ]
+      },
+      "deliverable": false
+    },
+    "finalResume": "# 赵国强\n\n158****4602 | zhaoguoqiang07@outlook.com | 现居长沙\n\n## 专业概要\n\n拥有4年社区连锁零售旗舰店全面运营经验，管理26人团队，年销售额超2000万元。擅长生鲜损耗控制、团队带教体系搭建及线上履约优化，具备社区粘性与中老年客群沟通能力。\n\n## 工作经历\n\n**湘邻便利连锁有限公司** | 旗舰店店长 | 2021.06 - 至今\n\n- 全面负责620㎡社区零售旗舰店经营，管理26人团队，涵盖生鲜、日配、百货及线上履约业务。\n- 2025年门店销售额约2180万元，完成公司目标103%，综合毛利率24.6%，片区18店排名第5。\n- 通过调整生鲜订货机制、强化临期巡检与交接班流程，报损率从2.9%降至2.2%。\n- 建立新员工7天带教清单，近一年新员工30天留存率由约63%提升至76%。\n- 负责外卖平台优化：调整商品图片、缺货替换策略与拣货动线，培训专人高峰拣货；月订单量从约2600单提升至3450单，退款率由4.8%降至3.9%（同期平台流量亦有增长）。\n- 组织会员日、社区团购、免费健康检测等活动，促进销售与到店客流；擅长与中老年顾客沟通。\n- 近三年有效处理夜班安全、客诉、设备故障及监管检查，实现零重大安全事故。\n\n**长沙悦来生活超市** | 主管/店长助理 | 2017.03 - 2021.05\n\n- 从理货员晋升至食品主管、店长助理，负责商品陈列、库存管理、促销执行与员工排班。\n- 参与2次新店开业筹备，协助收货、陈列和开业活动。\n\n**长沙悦来生活超市** | 理货员 | 2015.08 - 2017.02\n\n- 负责休闲食品区补货、价签维护、盘点及顾客服务。\n\n## 项目经历\n\n**门店即时零售提升** | 2024.03 - 2024.08\n\n- 优化外卖平台商品展示、缺货替代及拣货动线，培训专人高峰作业；月订单量从约2600单增至3450单，退款率由4.8%降至3.9%（同期平台流量增长）。\n\n**片区临期品互调试点** | 2025.07 - 2025.09\n\n- 联合周边4家门店建立周度临期清单与调拨群，减少鲜奶、面包等生鲜报损；项目未形成系统记录，持续执行待深化。\n\n## 技能\n\n- 门店POS、补货系统、企业微信及Excel基础操作\n- 可驾驶，可接受省内出差\n\n## 教育\n\n- **湖南工商大学继续教育学院** | 工商管理 | 成人本科在读（预计2027.01）\n- **湖南商务职业技术学院** | 连锁经营管理 | 大专 | 2012.09 - 2015.06\n\n## 荣誉\n\n- 2019、2023年度获评公司优秀员工；2025年片区优秀店长提名\n"
+  }
+}

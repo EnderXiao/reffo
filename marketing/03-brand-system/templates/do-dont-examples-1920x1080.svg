@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Reffo 社交视觉允许与禁止示例</title>
+  <desc id="desc">左侧为允许视觉，右侧为禁止视觉，供团队内部培训与审核。</desc>
+  <defs>
+    <linearGradient id="allowedBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DCE9F9"/>
+      <stop offset="0.56" stop-color="#F8F9FB"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <linearGradient id="forbiddenBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#175CFF"/>
+      <stop offset="0.5" stop-color="#6C2DFF"/>
+      <stop offset="1" stop-color="#FF39C6"/>
+    </linearGradient>
+    <filter id="allowedShadow" x="-30%" y="-30%" width="180%" height="190%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#151E2E" flood-opacity="0.16"/>
+    </filter>
+    <filter id="forbiddenGlow" x="-60%" y="-60%" width="240%" height="240%">
+      <feDropShadow dx="0" dy="0" stdDeviation="24" flood-color="#63F7FF" flood-opacity="0.90"/>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="#F8F9FB"/>
+  <text x="96" y="92" fill="#111111" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" font-size="46" font-weight="600">Reffo 社交视觉：允许 / 禁止</text>
+  <text x="1824" y="86" fill="#7D8591" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" font-size="22" text-anchor="end">内部审核示例 · 中文均可编辑</text>
+
+  <g id="allowed-example">
+    <rect x="96" y="136" width="820" height="840" rx="30" fill="#FFFFFF"/>
+    <rect x="126" y="166" width="480" height="640" rx="24" fill="url(#allowedBg)"/>
+    <g fill="#1C77EB">
+      <g transform="translate(168 202) scale(0.42)">
+        <path d="M48 36C48 42.0751 43.0751 47 37 47C30.9249 47 26 42.0751 26 36C26 29.9249 30.9249 25 37 25C43.0751 25 48 29.9249 48 36Z"/>
+        <path d="M0 25V47H10C15.6 47 17.6667 40.6667 18 37.5V22C18 19.6 20 19.3333 21 19.5H29.5C34.7 19.5 37.3333 13.8333 38 11V0H26C22.8 0 20.6667 2 20 3C14.6667 8 3.6 18.4 2 20C0.4 21.6 0 24 0 25Z"/>
+      </g>
+      <text x="197" y="224" font-family="Arial Rounded MT Bold, Avenir Next, Arial, sans-serif" font-size="28" font-weight="700">reffo</text>
+    </g>
+    <g font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+      <text x="168" y="322" fill="#111111" font-size="49" font-weight="600">
+        <tspan x="168">先看</tspan><tspan fill="#1C77EB"> JD</tspan><tspan fill="#111111">，</tspan>
+        <tspan x="168" dy="64">再改简历</tspan>
+      </text>
+      <text x="168" y="466" fill="#4B4F56" font-size="23">一个结论，真实证据，克制配色。</text>
+    </g>
+    <g filter="url(#allowedShadow)" transform="translate(318 506) rotate(6 120 190)">
+      <rect width="240" height="380" rx="14" fill="#111317"/>
+      <text x="26" y="76" fill="#FFFFFF" fill-opacity="0.46" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" font-size="18">岗位档案</text>
+      <text x="26" y="174" fill="#FFFFFF" font-family="Georgia, Times New Roman, serif" font-size="76">02</text>
+      <rect x="26" y="270" width="154" height="14" rx="7" fill="#FFFFFF" fill-opacity="0.64"/>
+      <rect x="26" y="304" width="178" height="9" rx="4.5" fill="#FFFFFF" fill-opacity="0.23"/>
+      <rect x="26" y="330" width="142" height="9" rx="4.5" fill="#FFFFFF" fill-opacity="0.17"/>
+    </g>
+    <rect x="162" y="710" width="210" height="50" rx="25" fill="#E0F8EC"/>
+    <circle cx="191" cy="735" r="9" fill="#14C972"/>
+    <text x="214" y="744" fill="#087D48" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" font-size="21" font-weight="600">证据已确认</text>
+
+    <g font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+      <circle cx="680" cy="212" r="24" fill="#14C972"/>
+      <path d="M668 212L677 221L694 201" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="722" y="225" fill="#087D48" font-size="34" font-weight="700">允许使用</text>
+      <text x="664" y="320" fill="#111111" font-size="27" font-weight="600">• 黑色主标题 + 少量蓝色重点</text>
+      <text x="664" y="378" fill="#111111" font-size="27" font-weight="600">• 浅蓝到白的空气背景</text>
+      <text x="664" y="436" fill="#111111" font-size="27" font-weight="600">• 岗位档案卡与索引秩序</text>
+      <text x="664" y="494" fill="#111111" font-size="27" font-weight="600">• 一张图只讲一个结论</text>
+      <text x="664" y="552" fill="#111111" font-size="27" font-weight="600">• 真实、脱敏的产品截图</text>
+      <text x="664" y="610" fill="#111111" font-size="27" font-weight="600">• 状态色有明确语义</text>
+    </g>
+  </g>
+
+  <g id="forbidden-example">
+    <rect x="1004" y="136" width="820" height="840" rx="30" fill="#FFFFFF"/>
+    <rect x="1034" y="166" width="480" height="640" rx="24" fill="url(#forbiddenBg)"/>
+    <g opacity="0.54" stroke="#63F7FF" fill="none">
+      <path d="M1056 262H1492M1056 342H1492M1056 422H1492M1056 502H1492M1056 582H1492M1056 662H1492"/>
+      <path d="M1112 188V782M1200 188V782M1288 188V782M1376 188V782M1464 188V782"/>
+    </g>
+    <circle cx="1274" cy="484" r="118" fill="#14162B" stroke="#63F7FF" stroke-width="8" filter="url(#forbiddenGlow)"/>
+    <circle cx="1238" cy="458" r="15" fill="#63F7FF"/>
+    <circle cx="1310" cy="458" r="15" fill="#63F7FF"/>
+    <path d="M1224 522C1260 550 1288 550 1324 522" fill="none" stroke="#63F7FF" stroke-width="10" stroke-linecap="round"/>
+    <g font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" text-anchor="middle" filter="url(#forbiddenGlow)">
+      <text x="1274" y="282" fill="#FFFFFF" font-size="50" font-weight="900" stroke="#175CFF" stroke-width="3">AI 一键拿 Offer!!!</text>
+      <text x="1274" y="712" fill="#FFF200" font-size="34" font-weight="900">稳过 ATS · 保证面试</text>
+    </g>
+    <g transform="translate(1390 210)">
+      <circle cx="0" cy="0" r="54" fill="#FF3B5B"/>
+      <path d="M-20 -20L20 20M20 -20L-20 20" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+    </g>
+
+    <g font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+      <circle cx="1588" cy="212" r="24" fill="#FF3B5B"/>
+      <path d="M1578 202L1598 222M1598 202L1578 222" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+      <text x="1630" y="225" fill="#B51634" font-size="34" font-weight="700">禁止使用</text>
+      <text x="1572" y="320" fill="#111111" font-size="27" font-weight="600">• 高饱和科技蓝紫渐变</text>
+      <text x="1572" y="378" fill="#111111" font-size="27" font-weight="600">• 机器人、脑电路和赛博网格</text>
+      <text x="1572" y="436" fill="#111111" font-size="27" font-weight="600">• 发光描边与多层彩色阴影</text>
+      <text x="1572" y="494" fill="#111111" font-size="27" font-weight="600">• 伪造产品 UI 或效果数据</text>
+      <text x="1572" y="552" fill="#111111" font-size="27" font-weight="600">• 结果保证和焦虑营销</text>
+      <text x="1572" y="610" fill="#111111" font-size="27" font-weight="600">• 多个感叹号与爆炸贴纸</text>
+    </g>
+  </g>
+
+  <g id="legal-layer" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+    <text x="96" y="1034" fill="#7D8591" font-size="22">判断标准：如果视觉先让人想到“通用 AI 广告”，而不是岗位、证据与申请版本，就偏离了 Reffo。</text>
+  </g>
+</svg>

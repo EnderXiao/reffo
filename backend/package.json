@@ -17,7 +17,8 @@
     "test:unit": "bun test ./src",
     "migrate:sqlite-to-supabase": "bun --env-file=.env.nonprod run scripts/migrate-sqlite-to-supabase.ts",
     "migrate:sqlite-to-supabase:nonprod": "bun --env-file=.env.nonprod run scripts/migrate-sqlite-to-supabase.ts",
-    "migrate:sqlite-to-supabase:prod": "bun --env-file=.env.prod run scripts/migrate-sqlite-to-supabase.ts"
+    "migrate:sqlite-to-supabase:prod": "bun --env-file=.env.prod run scripts/migrate-sqlite-to-supabase.ts",
+    "prompt-ab:run:v43:result-density": "bun --env-file=.env.local run scripts/run-prompt-ab-v43-result-density.ts"
   },
   "dependencies": {
     "elysia": "^1.0.0",

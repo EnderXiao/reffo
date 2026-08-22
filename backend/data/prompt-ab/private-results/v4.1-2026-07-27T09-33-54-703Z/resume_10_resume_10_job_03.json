@@ -1,0 +1,2054 @@
+{
+  "privacy": "PRIVATE_REVIEW_MATERIAL_DO_NOT_COMMIT",
+  "promptVariant": "aggressive-v4.1",
+  "promptVersion": "4.1.0",
+  "caseId": "resume_10:resume_10_job_03",
+  "resumeId": "resume_10",
+  "jobId": "resume_10_job_03",
+  "company": "Siemens",
+  "position": "SQE 供应商质量工程师",
+  "sourceResume": "许博文|质量工程师|汽车电子 / 供应商质量\n男|32岁|苏州|159****6084|xubowen10@outlook.com\n求职方向:高级 SQE、质量经理、NPI 项目经理\n\n【个人概述】\n7 年汽车电子质量经验,负责供应商导入、来料异常、8D、审核与新项目质量策划。熟悉 IATF 16949、APQP、PPAP、FMEA、SPC、MSA。带领 3 人专项小组,但无正式经理任命。\n\n【专业技能】\n- 质量体系:IATF 16949、VDA 6.3、ISO 9001、APQP、PPAP、FMEA、SPC、MSA\n- 方法工具:8D、5Why、鱼骨图、DOE 基础、Minitab、SAP QM、Excel\n- 供应商:审核、变更管理、首件、来料异常、绩效与整改;英语邮件和基础会议沟通\n\n【工作经历】\n苏州朗岳汽车电子有限公司|高级供应商质量工程师(SQE)|2021.03 - 至今\n- 负责 PCB、连接器、注塑件及外协装配等 32 家供应商质量表现,跟踪 PPM、批退、8D 和审核整改。\n- 参与 6 个新项目供应商定点和 APQP,审核 PPAP 文件、过程能力和量产爬坡问题。\n- 2025 年负责供应商整体来料 PPM 从 860 降至 510;降幅为团队及供应商共同结果。\n- 主导某连接器间歇断路问题分析,通过截面、尺寸和插拔测试定位端子压接窗口,推动供应商调整参数并连续 3 个月无复发。\n- 每年开展约 18 次现场或远程审核,问题关闭及时率约 92%;部分重复问题在下一年度再次出现。\n- 作为专项小组负责人协调 3 名工程师处理重大异常,但不负责人员绩效、招聘和预算。\n常州锐达电控有限公司|质量工程师|2018.07 - 2021.02\n- 负责来料检验标准、异常处理和供应商 8D 跟踪。\n- 参与 IATF 16949 外审准备,维护检验记录和纠正措施。\n- 接触过注塑和冲压工艺,对电子制程理解相对有限。\n\n【项目经历】\n新能源车载控制器项目 APQP|2023.05 - 2024.03\n- 负责 11 家关键供应商质量策划,跟踪特殊特性、MSA、过程能力和 PPAP。\n- SOP 前关闭 47 项问题中的 45 项,2 项经风险评估后带条件放行。\n- 量产前三个月发生 1 起批量来料问题,完成围堵和 8D。\n供应商分层管理优化|2025.01 - 2025.04\n- 按质量、交付、响应和审核结果对供应商分层,提出差异化审核频次。\n- 方案已在质量部试行,尚未纳入采购正式考核制度。\n\n【教育经历】\n- 江苏科技大学|机械设计制造及其自动化 本科|2014.09 - 2018.06\n\n【补充信息】\n- 证书:VDA 6.3 过程审核员(内部培训)、IATF 16949 内审员\n- 期望工作地:苏州、无锡、上海;可接受 30% 出差。",
+  "jobDescription": "Siemens|SQE 供应商质量工程师\n上海|供应商质量|Requisition 510729|发布 2026-06-18\n\n职位介绍\n负责供应商资格、质量策划、绩效和问题改进,保障采购件满足 Siemens 的质量与合规要求。\n\n岗位职责\n1. 参与供应商选择、资格评估和过程审核,识别质量与供应风险。\n2. 在新项目中推进 APQP、PPAP 和关键质量要求,支持量产准备。\n3. 处理供应商质量问题,推动 8D、根因分析、整改验证和经验复用。\n4. 监控供应商绩效并推动持续改善,与采购、研发和制造团队协作。\n\n任职要求\n1. 工程类本科及以上,具备供应商质量或制造质量经验。\n2. 熟悉 ISO 9001、IATF 16949、VDA 6.1 等质量体系与审核方法。\n3. 了解 ISO 14001、ISO 45001 等环境与职业健康安全体系。\n4. 具备良好的英语沟通、分析判断和跨团队推动能力。\n\n加分项\n- 熟悉 APQP、PPAP、8D 和供应商审核\n- 有电子、电气或工业产品供应链经验\n\n公开招聘来源:https://jobs.siemens.com/en_US/externaljobs/JobDetail/510729\n页面核验日期:2026-07-27",
+  "current": {
+    "suite": {
+      "resume_analysis": {
+        "quality_score": 88,
+        "strengths": [
+          "7年汽车电子行业质量经验，熟悉IATF 16949体系及五大工具，可快速融入同类企业",
+          "具备供应商管理实际成果，如来料PPM降低约40%及重大质量问题闭环案例，体现问题解决能力",
+          "有完整的新项目供应商APQP经验，能独立承担供应商质量策划与PPAP审核",
+          "持有VDA 6.3内部审核员和IATF 16949内审员证书，具备现场与远程审核能力"
+        ],
+        "weaknesses": [
+          "无正式团队管理任命，人员绩效、招聘等管理经历未体现，对管理岗支撑不足",
+          "部分成果为团队及供应商共同结果，个人直接贡献未剥离量化",
+          "早期经历自述对电子制程理解有限，可能影响涉电子工艺深度岗位的匹配度",
+          "供应商分层优化方案尚未纳入正式考核制度，长期推行效果待验证"
+        ],
+        "suggestions": [
+          "对于团队成果（如PPM下降），应补充个人主导的具体动作与贡献占比，仅当有可核验证据时提供",
+          "针对重复出现的审核问题，说明所采取的纠正措施有效性，展示闭环管理能力",
+          "可补充供应商管理带来的成本节约或效率提升实例，但必须使用真实且可验证的数据",
+          "如有带领团队完成专项任务的成功案例，可增加具体项目领导细节以支持高级岗位投递"
+        ],
+        "capability_summary": "7年汽车电子供应商质量管理经验，深耕IATF 16949体系与APQP/PPAP工具，具备供应商导入、审核、异常处理与绩效改善的完整实践，曾通过过程优化实现来料PPM显著下降，并主导多个新项目供应商质量策划。",
+        "structured_resume": {
+          "personal_info": {
+            "name": "许博文",
+            "contact": "159****6084",
+            "email": "xubowen10@outlook.com",
+            "phone": "159****6084",
+            "location": "苏州",
+            "current_position": "高级供应商质量工程师(SQE)"
+          },
+          "education": [
+            {
+              "school": "江苏科技大学",
+              "major": "机械设计制造及其自动化",
+              "degree": "本科",
+              "time_range": "2014.09 - 2018.06",
+              "achievements": []
+            }
+          ],
+          "experience": [
+            {
+              "company": "苏州朗岳汽车电子有限公司",
+              "position": "高级供应商质量工程师(SQE)",
+              "time_range": "2021.03 - 至今",
+              "responsibilities": [
+                "负责PCB、连接器、注塑件及外协装配等32家供应商质量表现，跟踪PPM、批退、8D和审核整改",
+                "参与6个新项目供应商定点和APQP，审核PPAP文件、过程能力和量产爬坡问题",
+                "作为专项小组负责人协调3名工程师处理重大异常，但不负责人事管理"
+              ],
+              "achievements": [
+                "2025年负责供应商整体来料PPM从860降至510（团队及供应商共同结果）",
+                "主导某连接器间歇断路问题分析，通过截面、尺寸和插拔测试定位端子压接窗口，推动供应商调整参数并连续3个月无复发",
+                "每年开展约18次现场或远程审核，问题关闭及时率约92%；存在部分重复问题次年再出现"
+              ]
+            },
+            {
+              "company": "常州锐达电控有限公司",
+              "position": "质量工程师",
+              "time_range": "2018.07 - 2021.02",
+              "responsibilities": [
+                "负责来料检验标准、异常处理和供应商8D跟踪",
+                "参与IATF 16949外审准备，维护检验记录和纠正措施",
+                "接触注塑和冲压工艺，对电子制程理解相对有限"
+              ],
+              "achievements": []
+            }
+          ],
+          "projects": [
+            {
+              "name": "新能源车载控制器项目 APQP",
+              "role": "供应商质量负责人",
+              "tech_stack": [
+                "APQP",
+                "PPAP",
+                "MSA",
+                "SPC",
+                "8D"
+              ],
+              "description": "负责11家关键供应商质量策划，跟踪特殊特性、MSA、过程能力和PPAP，确保SOP前问题关闭",
+              "achievements": [
+                "SOP前关闭47项问题中的45项，2项经风险评估后带条件放行",
+                "量产前三个月发生1起批量来料问题，完成围堵和8D"
+              ]
+            },
+            {
+              "name": "供应商分层管理优化",
+              "role": "方案设计与试行负责人",
+              "tech_stack": [
+                "供应商评估",
+                "审核管理"
+              ],
+              "description": "按质量、交付、响应和审核结果对供应商分层，提出差异化审核频次，方案在质量部试行",
+              "achievements": [
+                "方案已在质量部试行，尚未纳入采购正式考核制度"
+              ]
+            }
+          ],
+          "skills": {
+            "hard_skills": [
+              "IATF 16949",
+              "VDA 6.3",
+              "ISO 9001",
+              "APQP",
+              "PPAP",
+              "FMEA",
+              "SPC",
+              "MSA",
+              "8D",
+              "5Why",
+              "鱼骨图",
+              "DOE基础",
+              "Minitab",
+              "SAP QM",
+              "Excel",
+              "供应商审核",
+              "变更管理",
+              "首件管理",
+              "来料异常处理"
+            ],
+            "soft_skills": []
+          }
+        }
+      },
+      "job_profile": {
+        "basic_info": {
+          "title": "SQE 供应商质量工程师",
+          "company": "Siemens",
+          "location": "上海"
+        },
+        "hard_requirements": {
+          "education": "工程类本科及以上",
+          "experience_years": "具备供应商质量或制造质量经验（年限未明示）",
+          "required_skills": [
+            "ISO 9001",
+            "IATF 16949",
+            "VDA 6.1",
+            "质量体系审核方法",
+            "ISO 14001",
+            "ISO 45001",
+            "英语沟通能力",
+            "分析判断能力",
+            "跨团队推动能力"
+          ]
+        },
+        "responsibilities": [
+          "供应商资格评估与质量策划",
+          "供应商绩效监控与持续改善",
+          "采购件质量与合规保障",
+          "跨部门（采购、研发、制造）协作"
+        ],
+        "tasks": [
+          "参与供应商选择、资格评估和过程审核，识别质量与供应风险",
+          "在新项目中推进APQP、PPAP和关键质量要求，支持量产准备",
+          "处理供应商质量问题，推动8D、根因分析、整改验证和经验复用",
+          "监控供应商绩效并推动持续改善",
+          "与采购、研发和制造团队协作推动质量要求"
+        ],
+        "soft_skills": [
+          "分析判断能力",
+          "跨团队推动能力",
+          "英语沟通能力"
+        ],
+        "nice_to_have": [
+          "熟悉APQP、PPAP、8D和供应商审核",
+          "有电子、电气或工业产品供应链经验"
+        ],
+        "requirement_hierarchy": {
+          "must_have": [
+            "工程类本科及以上学历",
+            "具备供应商质量或制造质量经验",
+            "熟悉ISO 9001、IATF 16949、VDA 6.1等质量体系与审核方法",
+            "良好的英语沟通能力"
+          ],
+          "core_outcomes": [
+            "采购件满足Siemens的质量与合规要求",
+            "供应商质量问题得到有效解决和闭环",
+            "新项目量产准备充分，关键质量要求落实",
+            "供应商绩效持续改善"
+          ],
+          "differentiators": [
+            "有电子、电气或工业产品供应链经验",
+            "精通APQP、PPAP、8D和供应商审核"
+          ]
+        },
+        "company_context": {
+          "explicit_signals": [
+            "公司：Siemens",
+            "跨部门协作：采购、研发、制造",
+            "产品领域暗示：电子、电气或工业产品（加分项）"
+          ],
+          "inferred_talent_preferences": [
+            "有电子、电气或工业供应链背景",
+            "英语流利，适应跨国沟通",
+            "熟悉汽车行业质量标准（IATF 16949、VDA）",
+            "能推动跨部门协作"
+          ],
+          "inference_basis": [
+            "加分项明确偏好电子/电气/工业行业经验",
+            "英语为必需，暗示全球化团队",
+            "IATF 16949和VDA是汽车行业核心标准，Siemens业务可能涉及汽车供应链",
+            "职责描述频繁提及跨团队协作"
+          ],
+          "confidence": "medium"
+        },
+        "location_context": {
+          "explicit_signals": [
+            "工作地：上海"
+          ],
+          "inferred_role_implications": [
+            "可能需要本地及周边供应商现场审核",
+            "可能接触国际和本地供应商"
+          ],
+          "inference_basis": [
+            "上海为重要工业和经济中心，供应商集中",
+            "SQE职责通常包含现场审核"
+          ],
+          "confidence": "low"
+        },
+        "uncertainties": [
+          "具体产品业务部门（如工业自动化、医疗、能源等）未知",
+          "出差频率未说明",
+          "团队规模和汇报关系未知",
+          "工作模式（是否支持远程或灵活办公）未知",
+          "薪资范围未知",
+          "经验年限的具体数值未明确"
+        ]
+      },
+      "match_analysis": {
+        "match_score": 70,
+        "hard_requirements_match": {
+          "工程类本科及以上学历": true,
+          "具备供应商质量或制造质量经验": true,
+          "熟悉ISO 9001、IATF 16949、VDA 6.1等质量体系与审核方法": {
+            "ISO 9001": true,
+            "IATF 16949": true,
+            "VDA 6.1": false,
+            "审核方法": true
+          },
+          "良好的英语沟通能力": false
+        },
+        "skill_match": {
+          "matched": [
+            "ISO 9001",
+            "IATF 16949",
+            "APQP",
+            "PPAP",
+            "8D",
+            "FMEA",
+            "SPC",
+            "MSA",
+            "供应商审核",
+            "5Why",
+            "鱼骨图",
+            "Minitab",
+            "SAP QM",
+            "DOE基础",
+            "VDA 6.3 (过程审核)"
+          ],
+          "missing": [
+            "VDA 6.1",
+            "ISO 14001",
+            "ISO 45001",
+            "英语沟通能力"
+          ]
+        },
+        "experience_match": "候选人具备4年多汽车电子行业供应商质量工程师经验，直接负责PCB、连接器、注塑件等供应商质量，与Siemens潜在电子电气供应链需求高度相关。曾主导供应商PPM降低和复杂问题解决，参与新项目APQP及供应商分层管理，职责履历与JD要求高度匹配。",
+        "soft_skills_match": "分析判断能力：有明确证据（8D、5Why、鱼骨图、DOE基础）支持技术问题分析定位；跨团队推动能力：曾协调工程师团队处理重大异常，具备跨部门协作基础；英语沟通能力：当前材料未提供任何证据，需核验。",
+        "strengths": [
+          "扎实的汽车电子SQE经验，熟悉IATF 16949和VDA 6.3过程审核，与Siemens质量体系要求高度契合",
+          "成功推动供应商PPM从860降至510，具备清晰的可量化改善成果",
+          "主导连接器间歇断路复杂问题根因分析并实现3个月无复发，展现系统性问题解决能力",
+          "具备完整的新项目APQP供应商质量管理经验，处理过47项问题关闭和量产异常围堵",
+          "有供应商分层管理和审核频次优化方案设计与试行经验，体现持续改进思维"
+        ],
+        "weaknesses": [
+          "当前材料未证明英语沟通能力，无法满足国际化团队协作要求",
+          "当前材料未证明熟悉VDA 6.1质量体系（仅体现VDA 6.3过程审核）",
+          "当前材料未证明ISO 14001/45001体系经验",
+          "当前材料未呈现汽车电子以外行业经验，Siemens业务板块匹配度待确认"
+        ],
+        "weakness_details": [
+          {
+            "weakness": "英语沟通能力未证明",
+            "evidence_type": "direct_missing",
+            "evidence": "源简历中无任何英语技能、证书、英语项目或外语能力描述",
+            "suggestion": "如实际具备英语能力，应在简历中明确列出（如CET-6、雅思、或英语工作经历），否则需在面试前补充证明"
+          },
+          {
+            "weakness": "VDA 6.1质量体系审核不明确",
+            "evidence_type": "direct_missing",
+            "evidence": "仅列有VDA 6.3过程审核，未出现VDA 6.1或等效体系审核经历",
+            "suggestion": "如实际了解或应用过VDA 6.1，应在技能或项目描述中明确提及，或注明VDA 6.1与6.3的关联性"
+          },
+          {
+            "weakness": "ISO 14001/45001缺失",
+            "evidence_type": "direct_missing",
+            "evidence": "技能列表和项目经验中均未出现环境与职业健康安全管理体系",
+            "suggestion": "如实际有相关知识或培训，可加入；若不具备，面试前可了解基本要求以应对提问"
+          },
+          {
+            "weakness": "行业经验集中于汽车电子，未呈现Siemens其他业务领域经历",
+            "evidence_type": "implicit_evidence",
+            "evidence": "简历全部为汽车电子行业，未涉及工业、医疗、能源等Siemens可能领域",
+            "suggestion": "强调汽车电子供应链中电子元器件、PCBA、注塑等工艺与Siemens电子/电气供应链的共性，突出可迁移技能"
+          }
+        ],
+        "positioning_strategy": "定位为‘汽车电子行业资深SQE，精通IATF 16949和过程审核，擅长供应商质量改善与问题解决’。突出PPM降低和根因分析案例呼应JD质量保障与持续改善要求，强调APQP项目管理和分层审核优化能力展现系统性质量思维。避免声称Siemens行业特定经验，聚焦电子供应链质量管理的通用性和高标准。",
+        "optimization_suggestions": [
+          "前置PPM降低成果：将‘2025年供应商整体来料PPM从860降至510’作为核心业绩写在简历首段，体现直接与采购件质量改善目标对齐",
+          "重构问题解决案例：突出连接器断路分析中的根因分析工具（截面/尺寸/插拔测试/5Why）和跨团队协调，显式化分析判断与推动能力",
+          "精简供应商分层项目描述：强调‘方案设计’和‘试行’阶段成果，避免模糊承诺，说明已为后续考核制度奠定基础",
+          "重组技能列表：将IATF 16949、VDA 6.3、APQP、PPAP、8D等JD高频词前置，并紧邻项目经历中对应应用场景，增强证据链",
+          "教育背景强化：在个人概要中明确‘机械工程本科’，确保学历硬要求一目了然"
+        ],
+        "context_fit": {
+          "company_alignment": "候选人汽车电子行业经验与Siemens电子/电气供应链需求有交集，尤其在IATF 16949和VDA审核方面匹配度高。但Siemens业务板块（工业自动化、医疗、能源等）未知，需确认具体产品线是否涉及汽车或一般工业电子。",
+          "location_alignment": "候选人现居苏州，Siemens职位在上海，需要确认候选人搬迁意愿及通勤可行性；SQE通常需要现场审核，上海周边供应商资源充足，地域适配性尚可。",
+          "hypotheses_used": [
+            "假设Siemens该职位涉及汽车相关业务，因此IATF 16949和VDA经验为加分项（基于JD列出VDA 6.1和加分项电子/电气供应链）",
+            "假设SQE需进行上海及周边供应商现场审核（基于通用实务）",
+            "假设候选人具备搬迁或通勤可能，否则匹配度需降低（未在简历中体现）"
+          ]
+        },
+        "jd_structure": {
+          "basic_info": {
+            "title": "SQE 供应商质量工程师",
+            "company": "Siemens",
+            "location": "上海"
+          },
+          "hard_requirements": {
+            "education": "工程类本科及以上",
+            "experience_years": "具备供应商质量或制造质量经验（年限未明示）",
+            "required_skills": [
+              "ISO 9001",
+              "IATF 16949",
+              "VDA 6.1",
+              "质量体系审核方法",
+              "ISO 14001",
+              "ISO 45001",
+              "英语沟通能力",
+              "分析判断能力",
+              "跨团队推动能力"
+            ]
+          },
+          "responsibilities": [
+            "供应商资格评估与质量策划",
+            "供应商绩效监控与持续改善",
+            "采购件质量与合规保障",
+            "跨部门（采购、研发、制造）协作"
+          ],
+          "tasks": [
+            "参与供应商选择、资格评估和过程审核，识别质量与供应风险",
+            "在新项目中推进APQP、PPAP和关键质量要求，支持量产准备",
+            "处理供应商质量问题，推动8D、根因分析、整改验证和经验复用",
+            "监控供应商绩效并推动持续改善",
+            "与采购、研发和制造团队协作推动质量要求"
+          ],
+          "soft_skills": [
+            "分析判断能力",
+            "跨团队推动能力",
+            "英语沟通能力"
+          ],
+          "nice_to_have": [
+            "熟悉APQP、PPAP、8D和供应商审核",
+            "有电子、电气或工业产品供应链经验"
+          ],
+          "requirement_hierarchy": {
+            "must_have": [
+              "工程类本科及以上学历",
+              "具备供应商质量或制造质量经验",
+              "熟悉ISO 9001、IATF 16949、VDA 6.1等质量体系与审核方法",
+              "良好的英语沟通能力"
+            ],
+            "core_outcomes": [
+              "采购件满足Siemens的质量与合规要求",
+              "供应商质量问题得到有效解决和闭环",
+              "新项目量产准备充分，关键质量要求落实",
+              "供应商绩效持续改善"
+            ],
+            "differentiators": [
+              "有电子、电气或工业产品供应链经验",
+              "精通APQP、PPAP、8D和供应商审核"
+            ]
+          },
+          "company_context": {
+            "explicit_signals": [
+              "公司：Siemens",
+              "跨部门协作：采购、研发、制造",
+              "产品领域暗示：电子、电气或工业产品（加分项）"
+            ],
+            "inferred_talent_preferences": [
+              "有电子、电气或工业供应链背景",
+              "英语流利，适应跨国沟通",
+              "熟悉汽车行业质量标准（IATF 16949、VDA）",
+              "能推动跨部门协作"
+            ],
+            "inference_basis": [
+              "加分项明确偏好电子/电气/工业行业经验",
+              "英语为必需，暗示全球化团队",
+              "IATF 16949和VDA是汽车行业核心标准，Siemens业务可能涉及汽车供应链",
+              "职责描述频繁提及跨团队协作"
+            ],
+            "confidence": "medium"
+          },
+          "location_context": {
+            "explicit_signals": [
+              "工作地：上海"
+            ],
+            "inferred_role_implications": [
+              "可能需要本地及周边供应商现场审核",
+              "可能接触国际和本地供应商"
+            ],
+            "inference_basis": [
+              "上海为重要工业和经济中心，供应商集中",
+              "SQE职责通常包含现场审核"
+            ],
+            "confidence": "low"
+          },
+          "uncertainties": [
+            "具体产品业务部门（如工业自动化、医疗、能源等）未知",
+            "出差频率未说明",
+            "团队规模和汇报关系未知",
+            "工作模式（是否支持远程或灵活办公）未知",
+            "薪资范围未知",
+            "经验年限的具体数值未明确"
+          ]
+        }
+      },
+      "final_resume": "# 许博文\n\n**联系方式** | 159****6084 | xubowen10@outlook.com | 苏州\n\n## 职业摘要\n\n具备4年以上汽车电子行业供应商质量工程师经验，专注于供应商质量管理、过程审核与新项目APQP。成功推动供应商来料PPM从860降至510，主导复杂连接器间歇故障根因分析并实现连续3个月无复发。擅长运用IATF 16949、VDA 6.3、8D及APQP/PPAP等工具，在PCB、连接器、注塑件等电子供应链物料质量管理中积累有丰富的现场实践与问题解决经验。\n\n## 工作经历\n\n### 苏州朗岳汽车电子有限公司 | 高级供应商质量工程师(SQE) | 2021.03 - 至今\n\n- 管理PCB、连接器、注塑件及外协装配等32家供应商的质量表现，跟踪PPM、批退率、8D关闭与审核整改，2025年推动供应商整体来料PPM从860降至510\n- 主导某连接器间歇断路问题的系统性根因分析，通过截面分析、尺寸测量与插拔测试定位端子压接窗口偏差，推动供应商调整工艺参数后连续3个月无复发\n- 参与6个新项目的供应商定点与APQP推进，负责PPAP文件审核、过程能力验证及量产爬坡阶段问题追踪\n- 协调3名工程师组成专项小组处理重大来料异常，推动跨部门围堵与纠正措施落地\n- 每年开展约18次供应商现场或远程审核，覆盖过程审核与问题整改验证，审核问题关闭及时率约92%\n\n### 常州锐达电控有限公司 | 质量工程师 | 2018.07 - 2021.02\n\n- 负责来料检验标准制定、来料异常处理及供应商8D整改跟踪\n- 参与IATF 16949外部审核准备，维护检验记录与纠正措施文档\n- 日常工作中涉及注塑与冲压件来料质量管理\n\n## 项目经历\n\n### 新能源车载控制器项目 APQP | 供应商质量负责人\n\n- 负责11家关键供应商的新项目质量策划，跟踪特殊特性识别、MSA分析、过程能力研究与PPAP提交\n- 在SOP前完成47项问题中的45项关闭，剩余2项经风险评估后带条件放行\n- 量产前三个月处置1起批量来料问题，完成紧急围堵与正式8D闭环\n\n### 供应商分层管理优化 | 方案设计与试行负责人\n\n- 基于供应商在质量、交付、响应与审核结果维度的表现，设计差异化审核频次分层方案\n- 方案已在质量部内部试行，为后续与采购考核制度衔接提供基础数据与规则框架\n\n## 教育背景\n\n**江苏科技大学** | 机械设计制造及其自动化 | 本科 | 2014.09 - 2018.06\n\n## 专业技能\n\n**质量体系与审核** | IATF 16949, VDA 6.3, ISO 9001\n\n**供应商质量工具** | APQP, PPAP, FMEA, SPC, MSA\n\n**问题解决与改进** | 8D, 5Why, 鱼骨图, DOE基础\n\n**软件与系统** | Minitab, SAP QM, Excel\n\n**供应商管理实务** | 供应商审核, 来料异常处理, 变更管理, 首件管理",
+      "internal_judge_diagnostic": {
+        "evaluatorName": "llm-resume-judge",
+        "evaluatorVersion": "3.0.0",
+        "passed": true,
+        "score": 97,
+        "issues": []
+      },
+      "interview_advice": {
+        "questions": [
+          "在推动供应商来料PPM从860降至510的过程中，您具体采取了哪些措施来确保改善的可持续性？请说明您个人的直接贡献，而非团队或供应商的协作结果。",
+          "在处理连接器间歇断路问题时，您提到通过截面、尺寸和插拔测试定位了端子压接窗口。请详细说明您如何组织跨团队（如研发、制造）合作，以及如何确保供应商永久修正该问题？",
+          "假设您需要为Siemens的一个非汽车电子领域（如工业自动化）开发新供应商，而该供应商不具备IATF 16949认证，您将如何调整质量策划和审核方法，以确保其符合我们的质量要求？",
+          "请描述一个您需要向非中文母语的利益相关者解释复杂技术问题的经历。如果没有，面对这样的需求，您会怎么做？"
+        ],
+        "story_recommendations": [
+          {
+            "title": "连接器间歇断路根因分析与永久纠正",
+            "background": "在苏州朗岳汽车电子担任高级SQE期间，您负责处理该重大来料异常。职责边界包括主导问题分析、协调内部测试和推动供应商纠正。应强调的行动：您如何设计测试方案（截面、尺寸、插拔测试）定位压接窗口偏差，如何与供应商沟通推动参数调整，并验证3个月无复发。",
+            "result": "连续3个月无复发。准备时聚焦您个人的诊断逻辑、测试方法选择依据和跨团队协调细节。"
+          },
+          {
+            "title": "新能源车载控制器项目APQP供应商质量管理",
+            "background": "作为该项目的供应商质量负责人，您管理11家关键供应商的新项目质量策划。职责包括跟踪特殊特性、MSA、过程能力和PPAP，确保SOP前问题关闭。应强调的行动：如何优先处理高风险问题，如何跨供应商协调进度，以及批量问题的围堵与8D闭环。",
+            "result": "47项问题中45项在SOP前关闭，2项经风险评估后带条件放行；量产前批量问题完成8D。"
+          }
+        ],
+        "follow_up_questions": [
+          "这个岗位主要支持的产品线或业务单元是哪些？是否涉及汽车相关业务？",
+          "目前团队在供应商质量改进方面遇到的最大挑战是什么？",
+          "为了在这个职位上取得成功，入职前6个月需要实现的最关键目标是什么？"
+        ]
+      }
+    },
+    "finalResume": "# 许博文\n\n**联系方式** | 159****6084 | xubowen10@outlook.com | 苏州\n\n## 职业摘要\n\n具备4年以上汽车电子行业供应商质量工程师经验，专注于供应商质量管理、过程审核与新项目APQP。成功推动供应商来料PPM从860降至510，主导复杂连接器间歇故障根因分析并实现连续3个月无复发。擅长运用IATF 16949、VDA 6.3、8D及APQP/PPAP等工具，在PCB、连接器、注塑件等电子供应链物料质量管理中积累有丰富的现场实践与问题解决经验。\n\n## 工作经历\n\n### 苏州朗岳汽车电子有限公司 | 高级供应商质量工程师(SQE) | 2021.03 - 至今\n\n- 管理PCB、连接器、注塑件及外协装配等32家供应商的质量表现，跟踪PPM、批退率、8D关闭与审核整改，2025年推动供应商整体来料PPM从860降至510\n- 主导某连接器间歇断路问题的系统性根因分析，通过截面分析、尺寸测量与插拔测试定位端子压接窗口偏差，推动供应商调整工艺参数后连续3个月无复发\n- 参与6个新项目的供应商定点与APQP推进，负责PPAP文件审核、过程能力验证及量产爬坡阶段问题追踪\n- 协调3名工程师组成专项小组处理重大来料异常，推动跨部门围堵与纠正措施落地\n- 每年开展约18次供应商现场或远程审核，覆盖过程审核与问题整改验证，审核问题关闭及时率约92%\n\n### 常州锐达电控有限公司 | 质量工程师 | 2018.07 - 2021.02\n\n- 负责来料检验标准制定、来料异常处理及供应商8D整改跟踪\n- 参与IATF 16949外部审核准备，维护检验记录与纠正措施文档\n- 日常工作中涉及注塑与冲压件来料质量管理\n\n## 项目经历\n\n### 新能源车载控制器项目 APQP | 供应商质量负责人\n\n- 负责11家关键供应商的新项目质量策划，跟踪特殊特性识别、MSA分析、过程能力研究与PPAP提交\n- 在SOP前完成47项问题中的45项关闭，剩余2项经风险评估后带条件放行\n- 量产前三个月处置1起批量来料问题，完成紧急围堵与正式8D闭环\n\n### 供应商分层管理优化 | 方案设计与试行负责人\n\n- 基于供应商在质量、交付、响应与审核结果维度的表现，设计差异化审核频次分层方案\n- 方案已在质量部内部试行，为后续与采购考核制度衔接提供基础数据与规则框架\n\n## 教育背景\n\n**江苏科技大学** | 机械设计制造及其自动化 | 本科 | 2014.09 - 2018.06\n\n## 专业技能\n\n**质量体系与审核** | IATF 16949, VDA 6.3, ISO 9001\n\n**供应商质量工具** | APQP, PPAP, FMEA, SPC, MSA\n\n**问题解决与改进** | 8D, 5Why, 鱼骨图, DOE基础\n\n**软件与系统** | Minitab, SAP QM, Excel\n\n**供应商管理实务** | 供应商审核, 来料异常处理, 变更管理, 首件管理"
+  },
+  "optimized": {
+    "suite": {
+      "candidate_evidence_ledger": {
+        "source_resume_quality": {
+          "score": 82,
+          "dimension_scores": {
+            "completeness": 16,
+            "atomic_evidence": 17,
+            "result_evidence": 16,
+            "time_and_ownership_consistency": 18,
+            "verifiability": 15
+          }
+        },
+        "personal_info": {
+          "name": "许博文",
+          "gender": "男",
+          "age": 32,
+          "city": "苏州",
+          "phone": "159****6084",
+          "email": "xubowen10@outlook.com",
+          "job_search_direction": "高级 SQE、质量经理、NPI 项目经理"
+        },
+        "education": [
+          {
+            "school": "江苏科技大学",
+            "major": "机械设计制造及其自动化",
+            "degree": "本科",
+            "start_date": "2014-09",
+            "end_date": "2018-06"
+          }
+        ],
+        "experience": [
+          {
+            "company": "苏州朗岳汽车电子有限公司",
+            "title": "高级供应商质量工程师(SQE)",
+            "start_date": "2021-03",
+            "end_date": "至今",
+            "location": "苏州",
+            "highlights": [
+              "负责 PCB、连接器、注塑件及外协装配等 32 家供应商质量表现,跟踪 PPM、批退、8D 和审核整改。",
+              "参与 6 个新项目供应商定点和 APQP,审核 PPAP 文件、过程能力和量产爬坡问题。",
+              "2025 年负责供应商整体来料 PPM 从 860 降至 510;降幅为团队及供应商共同结果。",
+              "主导某连接器间歇断路问题分析,通过截面、尺寸和插拔测试定位端子压接窗口,推动供应商调整参数并连续 3 个月无复发。",
+              "每年开展约 18 次现场或远程审核,问题关闭及时率约 92%;部分重复问题在下一年度再次出现。",
+              "作为专项小组负责人协调 3 名工程师处理重大异常,但不负责人员绩效、招聘和预算。"
+            ]
+          },
+          {
+            "company": "常州锐达电控有限公司",
+            "title": "质量工程师",
+            "start_date": "2018-07",
+            "end_date": "2021-02",
+            "location": "常州",
+            "highlights": [
+              "负责来料检验标准、异常处理和供应商 8D 跟踪。",
+              "参与 IATF 16949 外审准备,维护检验记录和纠正措施。",
+              "接触过注塑和冲压工艺,对电子制程理解相对有限。"
+            ]
+          }
+        ],
+        "projects": [
+          {
+            "name": "新能源车载控制器项目 APQP",
+            "start_date": "2023-05",
+            "end_date": "2024-03",
+            "role": "供应商质量工程师",
+            "highlights": [
+              "负责 11 家关键供应商质量策划,跟踪特殊特性、MSA、过程能力和 PPAP。",
+              "SOP 前关闭 47 项问题中的 45 项,2 项经风险评估后带条件放行。",
+              "量产前三个月发生 1 起批量来料问题,完成围堵和 8D。"
+            ]
+          },
+          {
+            "name": "供应商分层管理优化",
+            "start_date": "2025-01",
+            "end_date": "2025-04",
+            "role": "高级供应商质量工程师",
+            "highlights": [
+              "按质量、交付、响应和审核结果对供应商分层,提出差异化审核频次。",
+              "方案已在质量部试行,尚未纳入采购正式考核制度。"
+            ]
+          }
+        ],
+        "skills": {
+          "explicit": [
+            "IATF 16949",
+            "VDA 6.3",
+            "ISO 9001",
+            "APQP",
+            "PPAP",
+            "FMEA",
+            "SPC",
+            "MSA",
+            "8D",
+            "5Why",
+            "鱼骨图",
+            "DOE 基础",
+            "Minitab",
+            "SAP QM",
+            "Excel",
+            "供应商审核",
+            "变更管理",
+            "首件",
+            "来料异常",
+            "绩效与整改",
+            "英语邮件和基础会议沟通"
+          ],
+          "behaviorally_proven": [
+            "供应商质量管控",
+            "8D 问题解决",
+            "APQP 策划",
+            "PPAP 审核",
+            "过程能力分析",
+            "审核 (VDA 6.3 / IATF 16949)",
+            "根本原因分析 (5Why, 鱼骨图, 测试)",
+            "MSA",
+            "SPC",
+            "Minitab",
+            "SAP QM",
+            "供应商绩效管理"
+          ],
+          "mentioned_only": [
+            "DOE 基础",
+            "ISO 9001",
+            "FMEA"
+          ]
+        },
+        "evidence_ledger": [
+          {
+            "evidence_id": "C-E1-P1",
+            "source_section": "个人概述",
+            "source_quote": "7 年汽车电子质量经验",
+            "entity": "候选人",
+            "role": "质量工程师",
+            "action": "拥有",
+            "object_or_scope": "汽车电子质量经验",
+            "method_or_tool": [],
+            "result": "7 年",
+            "time_context": "截至 2025",
+            "skills_proven": [
+              "汽车电子质量"
+            ],
+            "proficiency_ceiling": "有经验",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-P2",
+            "source_section": "个人概述",
+            "source_quote": "负责供应商导入、来料异常、8D、审核与新项目质量策划",
+            "entity": "候选人",
+            "role": "SQE",
+            "action": "负责",
+            "object_or_scope": "供应商导入、来料异常、8D、审核与新项目质量策划",
+            "method_or_tool": [
+              "8D",
+              "审核",
+              "APQP"
+            ],
+            "result": "",
+            "time_context": "过去 7 年",
+            "skills_proven": [
+              "供应商导入",
+              "来料异常处理",
+              "8D",
+              "审核",
+              "新项目质量策划"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-P3",
+            "source_section": "个人概述",
+            "source_quote": "带领 3 人专项小组,但无正式经理任命",
+            "entity": "候选人",
+            "role": "专项小组负责人",
+            "action": "带领",
+            "object_or_scope": "3 人专项小组",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "未指明",
+            "skills_proven": [
+              "团队协调"
+            ],
+            "proficiency_ceiling": "带领(非正式管理)",
+            "ownership_ceiling": "专项协调",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-S1",
+            "source_section": "专业技能",
+            "source_quote": "质量体系:IATF 16949、VDA 6.3、ISO 9001、APQP、PPAP、FMEA、SPC、MSA",
+            "entity": "候选人",
+            "role": "",
+            "action": "具备",
+            "object_or_scope": "质量体系知识",
+            "method_or_tool": [
+              "IATF 16949",
+              "VDA 6.3",
+              "ISO 9001",
+              "APQP",
+              "PPAP",
+              "FMEA",
+              "SPC",
+              "MSA"
+            ],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "IATF 16949",
+              "VDA 6.3",
+              "ISO 9001",
+              "APQP",
+              "PPAP",
+              "FMEA",
+              "SPC",
+              "MSA"
+            ],
+            "proficiency_ceiling": "具备",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-S2",
+            "source_section": "专业技能",
+            "source_quote": "方法工具:8D、5Why、鱼骨图、DOE 基础、Minitab、SAP QM、Excel",
+            "entity": "候选人",
+            "role": "",
+            "action": "具备",
+            "object_or_scope": "方法工具",
+            "method_or_tool": [
+              "8D",
+              "5Why",
+              "鱼骨图",
+              "DOE 基础",
+              "Minitab",
+              "SAP QM",
+              "Excel"
+            ],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "8D",
+              "5Why",
+              "鱼骨图",
+              "DOE 基础",
+              "Minitab",
+              "SAP QM",
+              "Excel"
+            ],
+            "proficiency_ceiling": "具备 (DOE 为基础)",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-S3",
+            "source_section": "专业技能",
+            "source_quote": "供应商:审核、变更管理、首件、来料异常、绩效与整改;英语邮件和基础会议沟通",
+            "entity": "候选人",
+            "role": "",
+            "action": "具备",
+            "object_or_scope": "供应商相关技能及英语",
+            "method_or_tool": [
+              "审核",
+              "变更管理",
+              "首件",
+              "来料异常",
+              "绩效与整改"
+            ],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "供应商审核",
+              "变更管理",
+              "首件检验",
+              "来料异常处理",
+              "绩效整改",
+              "英语邮件",
+              "基础会议沟通"
+            ],
+            "proficiency_ceiling": "基础会议沟通",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W1",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "负责 PCB、连接器、注塑件及外协装配等 32 家供应商质量表现",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "负责",
+            "object_or_scope": "32 家供应商质量表现 (PCB、连接器、注塑件、外协装配)",
+            "method_or_tool": [
+              "跟踪 PPM",
+              "批退",
+              "8D",
+              "审核整改"
+            ],
+            "result": "",
+            "time_context": "2021.03 - 至今",
+            "skills_proven": [
+              "供应商质量管控",
+              "PPM 跟踪",
+              "8D",
+              "审核整改"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W2",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "参与 6 个新项目供应商定点和 APQP,审核 PPAP 文件、过程能力和量产爬坡问题",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "参与",
+            "object_or_scope": "6 个新项目供应商定点、APQP、PPAP 审核、过程能力审核、量产爬坡问题",
+            "method_or_tool": [
+              "APQP",
+              "PPAP",
+              "过程能力分析"
+            ],
+            "result": "",
+            "time_context": "2021.03 - 至今",
+            "skills_proven": [
+              "APQP",
+              "PPAP 审核",
+              "过程能力分析",
+              "供应商定点"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "参与",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W3",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "2025 年负责供应商整体来料 PPM 从 860 降至 510;降幅为团队及供应商共同结果",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "负责",
+            "object_or_scope": "供应商整体来料 PPM",
+            "method_or_tool": [],
+            "result": "PPM 从 860 降至 510 (团队及供应商共同结果)",
+            "time_context": "2025 年",
+            "skills_proven": [
+              "供应商 PPM 改善"
+            ],
+            "proficiency_ceiling": "负责 (共同结果)",
+            "ownership_ceiling": "团队共同",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W4",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "主导某连接器间歇断路问题分析,通过截面、尺寸和插拔测试定位端子压接窗口,推动供应商调整参数并连续 3 个月无复发",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "主导",
+            "object_or_scope": "连接器间歇断路问题分析",
+            "method_or_tool": [
+              "截面分析",
+              "尺寸测量",
+              "插拔测试"
+            ],
+            "result": "定位端子压接窗口,推动供应商调整参数,连续 3 个月无复发",
+            "time_context": "未指明具体年份 (2021-2025 间)",
+            "skills_proven": [
+              "根本原因分析",
+              "测试方法",
+              "供应商推动"
+            ],
+            "proficiency_ceiling": "主导",
+            "ownership_ceiling": "主导",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W5",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "每年开展约 18 次现场或远程审核,问题关闭及时率约 92%;部分重复问题在下一年度再次出现",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "开展",
+            "object_or_scope": "每年约 18 次现场或远程审核",
+            "method_or_tool": [
+              "审核"
+            ],
+            "result": "问题关闭及时率约 92%,部分重复问题再次出现",
+            "time_context": "每年 (2021-2025)",
+            "skills_proven": [
+              "供应商审核",
+              "问题跟踪"
+            ],
+            "proficiency_ceiling": "独立开展",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W6",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "作为专项小组负责人协调 3 名工程师处理重大异常,但不负责人员绩效、招聘和预算",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "专项小组负责人",
+            "action": "协调",
+            "object_or_scope": "3 名工程师处理重大异常",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.03 - 至今",
+            "skills_proven": [
+              "团队协调",
+              "重大异常处理"
+            ],
+            "proficiency_ceiling": "协调 (无管理权)",
+            "ownership_ceiling": "协调",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E3-W7",
+            "source_section": "工作经历 - 常州锐达电控有限公司",
+            "source_quote": "负责来料检验标准、异常处理和供应商 8D 跟踪",
+            "entity": "常州锐达电控有限公司",
+            "role": "质量工程师",
+            "action": "负责",
+            "object_or_scope": "来料检验标准、异常处理、供应商 8D 跟踪",
+            "method_or_tool": [
+              "8D"
+            ],
+            "result": "",
+            "time_context": "2018.07 - 2021.02",
+            "skills_proven": [
+              "来料检验标准制定",
+              "异常处理",
+              "8D 跟踪"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E3-W8",
+            "source_section": "工作经历 - 常州锐达电控有限公司",
+            "source_quote": "参与 IATF 16949 外审准备,维护检验记录和纠正措施",
+            "entity": "常州锐达电控有限公司",
+            "role": "质量工程师",
+            "action": "参与",
+            "object_or_scope": "IATF 16949 外审准备、检验记录维护、纠正措施维护",
+            "method_or_tool": [
+              "IATF 16949"
+            ],
+            "result": "",
+            "time_context": "2018.07 - 2021.02",
+            "skills_proven": [
+              "IATF 16949 外审准备",
+              "文件维护"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "参与",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E3-W9",
+            "source_section": "工作经历 - 常州锐达电控有限公司",
+            "source_quote": "接触过注塑和冲压工艺,对电子制程理解相对有限",
+            "entity": "常州锐达电控有限公司",
+            "role": "质量工程师",
+            "action": "接触",
+            "object_or_scope": "注塑和冲压工艺",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2018.07 - 2021.02",
+            "skills_proven": [
+              "注塑工艺接触",
+              "冲压工艺接触"
+            ],
+            "proficiency_ceiling": "接触",
+            "ownership_ceiling": "接触",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-W10",
+            "source_section": "项目经历 - 新能源车载控制器项目 APQP",
+            "source_quote": "负责 11 家关键供应商质量策划,跟踪特殊特性、MSA、过程能力和 PPAP",
+            "entity": "新能源车载控制器项目",
+            "role": "供应商质量工程师",
+            "action": "负责",
+            "object_or_scope": "11 家关键供应商质量策划, 跟踪特殊特性、MSA、过程能力和 PPAP",
+            "method_or_tool": [
+              "特殊特性管理",
+              "MSA",
+              "过程能力分析",
+              "PPAP"
+            ],
+            "result": "",
+            "time_context": "2023.05 - 2024.03",
+            "skills_proven": [
+              "供应商质量策划",
+              "MSA 应用",
+              "过程能力跟踪",
+              "PPAP 审核"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-W11",
+            "source_section": "项目经历 - 新能源车载控制器项目 APQP",
+            "source_quote": "SOP 前关闭 47 项问题中的 45 项,2 项经风险评估后带条件放行",
+            "entity": "新能源车载控制器项目",
+            "role": "供应商质量工程师",
+            "action": "关闭",
+            "object_or_scope": "47 项问题中的 45 项",
+            "method_or_tool": [],
+            "result": "2 项带条件放行",
+            "time_context": "SOP 前 (2024.03 前)",
+            "skills_proven": [
+              "问题关闭",
+              "风险评估"
+            ],
+            "proficiency_ceiling": "负责关闭",
+            "ownership_ceiling": "参与关闭",
+            "claim_strength": "strongly_implied",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-P1-W12",
+            "source_section": "项目经历 - 新能源车载控制器项目 APQP",
+            "source_quote": "量产前三个月发生 1 起批量来料问题,完成围堵和 8D",
+            "entity": "新能源车载控制器项目",
+            "role": "供应商质量工程师",
+            "action": "完成",
+            "object_or_scope": "1 起批量来料问题的围堵和 8D",
+            "method_or_tool": [
+              "8D"
+            ],
+            "result": "",
+            "time_context": "量产前三个月 (2024 左右)",
+            "skills_proven": [
+              "围堵",
+              "8D 应用"
+            ],
+            "proficiency_ceiling": "完成",
+            "ownership_ceiling": "负责处理",
+            "claim_strength": "strongly_implied",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-P2-W13",
+            "source_section": "项目经历 - 供应商分层管理优化",
+            "source_quote": "按质量、交付、响应和审核结果对供应商分层,提出差异化审核频次",
+            "entity": "供应商分层管理优化项目",
+            "role": "高级 SQE",
+            "action": "提出",
+            "object_or_scope": "差异化审核频次方案",
+            "method_or_tool": [
+              "分层分析"
+            ],
+            "result": "",
+            "time_context": "2025.01 - 2025.04",
+            "skills_proven": [
+              "供应商评估",
+              "数据分析"
+            ],
+            "proficiency_ceiling": "提出方案",
+            "ownership_ceiling": "方案提出",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P2-W14",
+            "source_section": "项目经历 - 供应商分层管理优化",
+            "source_quote": "方案已在质量部试行,尚未纳入采购正式考核制度",
+            "entity": "供应商分层管理优化项目",
+            "role": "高级 SQE",
+            "action": "试行",
+            "object_or_scope": "方案在质量部试行",
+            "method_or_tool": [],
+            "result": "未纳入正式考核",
+            "time_context": "2025.04 后",
+            "skills_proven": [],
+            "proficiency_ceiling": "试行",
+            "ownership_ceiling": "方案试行",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-EDU1",
+            "source_section": "教育经历",
+            "source_quote": "江苏科技大学|机械设计制造及其自动化 本科|2014.09 - 2018.06",
+            "entity": "江苏科技大学",
+            "role": "学生",
+            "action": "获得",
+            "object_or_scope": "机械设计制造及其自动化 学士学位",
+            "method_or_tool": [],
+            "result": "本科",
+            "time_context": "2014.09 - 2018.06",
+            "skills_proven": [],
+            "proficiency_ceiling": "本科",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-CERT1",
+            "source_section": "补充信息",
+            "source_quote": "证书:VDA 6.3 过程审核员(内部培训)、IATF 16949 内审员",
+            "entity": "候选人",
+            "role": "",
+            "action": "持有",
+            "object_or_scope": "VDA 6.3 过程审核员(内部培训)、IATF 16949 内审员证书",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "VDA 6.3 审核",
+              "IATF 16949 内审"
+            ],
+            "proficiency_ceiling": "内部培训",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-LOC1",
+            "source_section": "补充信息",
+            "source_quote": "期望工作地:苏州、无锡、上海;可接受 30% 出差。",
+            "entity": "候选人",
+            "role": "",
+            "action": "期望",
+            "object_or_scope": "工作地点苏州、无锡、上海",
+            "method_or_tool": [],
+            "result": "接受 30% 出差",
+            "time_context": "",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          }
+        ],
+        "eligibility_facts": {
+          "graduation_dates": [
+            "2018-06"
+          ],
+          "degrees": [
+            "机械设计制造及其自动化 本科"
+          ],
+          "locations": [
+            "苏州",
+            "无锡",
+            "上海"
+          ],
+          "languages": [
+            "英语 (邮件和基础会议沟通)"
+          ],
+          "availability": ""
+        },
+        "risk_flags": [
+          "无正式经理任命，但求职方向包含质量经理，管理经验可能不足",
+          "审核存在重复问题，供应商改善有效性待验证",
+          "PPM 降幅为团队及供应商共同结果，个人贡献边界模糊",
+          "英语仅基础会议沟通，跨国供应商沟通能力受限",
+          "新能源项目中出现批量来料问题，潜在早期质量风险",
+          "供应商分层方案未纳入正式考核，推行影响力有限",
+          "常州时期对电子制程理解有限，可能影响复杂电子件问题分析",
+          "证书均为内部培训，缺乏第三方权威认证"
+        ],
+        "capability_clusters": [
+          "供应商质量管控 (32 家供应商, PPM 改善, 审核, 8D)",
+          "汽车行业质量体系 (IATF 16949, VDA 6.3, APQP, PPAP)",
+          "问题解决与根本原因分析 (连接器案例, 5Why, 鱼骨图, 测试)",
+          "新项目质量策划 (APQP 项目, 供应商定点, PPAP 审核)",
+          "团队协调 (带领 3 人专项小组)",
+          "数据分析与分层 (供应商分层优化, Minitab, Excel)"
+        ],
+        "proof_gaps_for_user": [
+          "未提供正式经理或预算管理证据，需验证管理潜力",
+          "PPM 降幅 860→510 中个人直接贡献占比未说明",
+          "连接器问题分析中是否独立设计测试方案不明确",
+          "新能源项目 2 项带条件放行风险未详细说明",
+          "英语能力等级未提供证书或测试分数",
+          "期望工作地中未说明当前居住地具体城市 (仅写苏州)",
+          "常州锐达时期具体供应商数量与复杂度未提及",
+          "供应商分层方案试行的具体反馈与改善数据缺失"
+        ]
+      },
+      "research_pack": {
+        "research_status": "partial",
+        "as_of": "2026-07-27",
+        "queries_executed": [
+          "Siemens SQE 供应商质量工程师 招聘 团队 负责人 官方",
+          "Siemens 公司规模 性质 招聘风格 员工评价"
+        ],
+        "company_identity": {
+          "legal_or_brand_name": "Siemens",
+          "nature": "technology company",
+          "scale": "unknown",
+          "business_and_stage": [],
+          "claims": [
+            "公司强调技术影响、创新、多元、尊重、机会平等和职业成长 (W-S2)"
+          ]
+        },
+        "team_and_role": {
+          "department": "Supplier Quality",
+          "business_line": "unknown",
+          "product": "unknown",
+          "requisition_id": "510729",
+          "claims": [
+            "岗位要求供应商质量经验,熟悉ISO9001/IATF16949等 (W-JD)",
+            "职责包括供应商选择、APQP、PPAP、8D等问题解决 (W-JD)"
+          ]
+        },
+        "leadership": [],
+        "recruiting_style": [
+          "注重创新、多元、尊重、机会平等和职业成长 (W-S2)"
+        ],
+        "adjacent_job_signals": [
+          "相邻SQE岗位强调质量管理体系、8D、索赔管理、质量保证协议及对采购团队的质量指导 (W-S1)"
+        ],
+        "employee_reputation": [
+          "基于Indeed中国区聚合评价(样本跨业务与城市,存在偏差),对流程、目标、薪酬和发展机会存在不同个体观点 (W-S3)"
+        ],
+        "contradictions": [],
+        "unknowns": [
+          "直属上级身份",
+          "目标团队具体文化、决策方式、出差比例和供应商范围",
+          "公司具体规模与业务细节"
+        ],
+        "verification_questions": [
+          "请说明该SQE岗位的直属上级及团队结构",
+          "该SQE职责中供应商范围是哪些品类或区域？",
+          "团队的决策方式、出差频率和工作节奏如何？",
+          "公司对SQE的具体绩效考核指标是什么？",
+          "该岗位是否涉及全球供应商,英语使用频率如何？"
+        ],
+        "sources": [
+          {
+            "source_id": "W-JD",
+            "title": "Siemens SQE 供应商质量工程师 招聘",
+            "url": "https://jobs.siemens.com/en_US/externaljobs/JobDetail/510729",
+            "publisher": "Siemens",
+            "source_type": "job_board",
+            "published_at": "2026-06-18",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "company_identity",
+              "team_and_role"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S1",
+            "title": "Siemens Supplier Quality Engineer 80-100",
+            "url": "https://jobs.siemens.com/externaljobs/JobDetail/Supplier-Quality-Engineer-80-100/471814",
+            "publisher": "Siemens",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "adjacent_job_signals"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S2",
+            "title": "Life at Siemens",
+            "url": "https://www.siemens.com/cn/zh/company/jobs/life-at-siemens/helping-cities-work-better.html",
+            "publisher": "Siemens",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "recruiting_style"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S3",
+            "title": "Siemens China employee reviews",
+            "url": "https://www.indeed.com/cmp/Siemens/reviews?fcountry=CN",
+            "publisher": "Indeed",
+            "source_type": "employee_platform",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "employee_reputation"
+            ],
+            "credibility": "low"
+          }
+        ]
+      },
+      "job_profile": {
+        "role_identity": {
+          "displayed_title": "Siemens|SQE 供应商质量工程师",
+          "jd_body_title": "SQE 供应商质量工程师",
+          "canonical_title": "供应商质量工程师",
+          "company": "Siemens",
+          "location": [
+            "上海"
+          ],
+          "employment_type": "unknown",
+          "graduation_cohort": "",
+          "conflicts": [],
+          "confidence": "high"
+        },
+        "requirement_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "工程类本科及以上学历",
+            "priority": "must",
+            "category": "eligibility",
+            "source_type": "J",
+            "source_quote_or_claim": "任职要求 1. 工程类本科及以上",
+            "screening_stage": "application",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "具备供应商质量或制造质量经验",
+            "priority": "must",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "任职要求 1. 具备供应商质量或制造质量经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "熟悉 ISO 9001、IATF 16949、VDA 6.1 等质量体系与审核方法",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "任职要求 2. 熟悉 ISO 9001、IATF 16949、VDA 6.1 等质量体系与审核方法",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "了解 ISO 14001、ISO 45001 等环境与职业健康安全体系",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "任职要求 3. 了解 ISO 14001、ISO 45001 等环境与职业健康安全体系",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "良好的英语沟通、分析判断和跨团队推动能力",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "任职要求 4. 具备良好的英语沟通、分析判断和跨团队推动能力",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "熟悉 APQP、PPAP、8D 和供应商审核",
+            "priority": "preferred",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "加分项 - 熟悉 APQP、PPAP、8D 和供应商审核",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R7",
+            "requirement": "有电子、电气或工业产品供应链经验",
+            "priority": "preferred",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "加分项 - 有电子、电气或工业产品供应链经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          }
+        ],
+        "success_scorecard": [
+          "供应商选择、资格评估和过程审核的完成度与风险识别准确度",
+          "新项目 APQP、PPAP 及相关质量要求的按时批准率",
+          "供应商质量问题 8D 结案率、整改有效性及经验复用比例",
+          "供应商绩效指标（如 PPM、OTD 等）的季度/年度改善幅度",
+          "跨部门协作推动持续改善项目的数量与效果"
+        ],
+        "ats_terms": [
+          "供应商质量工程师",
+          "SQE",
+          "APQP",
+          "PPAP",
+          "8D",
+          "ISO 9001",
+          "IATF 16949",
+          "VDA 6.1",
+          "ISO 14001",
+          "ISO 45001",
+          "供应商审核",
+          "根因分析",
+          "供应商质量",
+          "制造质量",
+          "英语沟通"
+        ],
+        "interview_competencies": [
+          {
+            "competency": "质量体系应用能力",
+            "probe": "如何依据 IATF 16949 开展供应商过程审核"
+          },
+          {
+            "competency": "问题解决与根因分析",
+            "probe": "曾主导的 8D 案例中如何确定根本原因并验证"
+          },
+          {
+            "competency": "跨职能协作",
+            "probe": "如何与采购、研发共同推动供应商质量改善"
+          },
+          {
+            "competency": "英语工作能力",
+            "probe": "过去工作中使用英语与全球供应商/团队沟通的实例"
+          },
+          {
+            "competency": "供应商绩效管理",
+            "probe": "通过哪些指标监控供应商绩效并采取行动"
+          }
+        ],
+        "external_intelligence": {
+          "company_scale_and_nature": [
+            {
+              "claim": "Siemens 是一家科技公司，强调技术影响、创新、多元、尊重和职业成长",
+              "source_id": "W-S2"
+            },
+            {
+              "claim": "公司规模未知",
+              "source_id": null
+            }
+          ],
+          "team_and_leadership": [
+            {
+              "claim": "岗位归属供应商质量部门，具体业务线、产品、直属上级未知",
+              "source_id": "W-JD"
+            }
+          ],
+          "recruiting_style": [
+            "注重创新、多元、尊重、机会平等和职业成长 (W-S2)"
+          ],
+          "employee_reputation_signals": [
+            "基于 Indeed 中国区聚合评价，对流程、目标、薪酬和发展机会存在不同个体观点 (W-S3)"
+          ],
+          "sources_used": [
+            "W-JD",
+            "W-S1",
+            "W-S2",
+            "W-S3"
+          ]
+        },
+        "uncertainties": [
+          "直属上级身份及目标团队文化、决策方式",
+          "出差比例和供应商品类/区域范围",
+          "具体绩效考核指标与权重",
+          "英语使用频率及是否涉及全球供应商"
+        ],
+        "pre_application_questions": [
+          "该 SQE 岗位的直属上级及团队结构是怎样的？",
+          "负责的供应商范围包含哪些品类或区域？",
+          "团队的工作方式、出差频率和工作节奏如何？",
+          "对该岗位的具体绩效考核指标是什么？",
+          "该岗位是否涉及全球供应商，英语使用频率如何？"
+        ]
+      },
+      "match_analysis": {
+        "candidate_job_fit_score": 65,
+        "resume_evidence_coverage_score_before": 82,
+        "eligibility_gate": {
+          "status": "pass",
+          "checks": [
+            {
+              "requirement_id": "J-R1",
+              "condition": "工程类本科及以上学历",
+              "candidate_evidence_id": "C-EDU1",
+              "met": true,
+              "note": "机械设计制造及其自动化本科，学历匹配"
+            },
+            {
+              "requirement_id": "J-R2",
+              "condition": "具备供应商质量或制造质量经验",
+              "candidate_evidence_id": "C-E1-P1",
+              "met": true,
+              "note": "7年汽车电子质量经验，包括供应商质量工程师职位"
+            }
+          ],
+          "score_cap": 100
+        },
+        "coverage_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "match_evidence_ids": [
+              "C-EDU1"
+            ],
+            "evidence_level": "direct",
+            "match_notes": "本科学历完全满足要求。",
+            "recommended_actions": []
+          },
+          {
+            "requirement_id": "J-R2",
+            "match_evidence_ids": [
+              "C-E1-P1",
+              "C-E1-P2",
+              "C-E2-W1"
+            ],
+            "evidence_level": "direct",
+            "match_notes": "7年供应商质量工程师经验，负责供应商质量表现、来料异常、审核等。",
+            "recommended_actions": []
+          },
+          {
+            "requirement_id": "J-R3",
+            "match_evidence_ids": [
+              "C-E1-S1",
+              "C-E2-W5",
+              "C-CERT1",
+              "C-E3-W8"
+            ],
+            "evidence_level": "indirect",
+            "match_notes": "熟悉ISO 9001、IATF 16949，有VDA 6.3过程审核员证书和行为证据；但JD要求VDA 6.1而非6.3，且未提及VDA 6.1。ISO 9001仅有技能列表，无行为证据。整体部分满足。",
+            "recommended_actions": [
+              "简历中明确列出IATF 16949和VDA 6.3，但VDA 6.1为缺口，需标注为omit，通过了解VDA 6.1差异来弥补。"
+            ]
+          },
+          {
+            "requirement_id": "J-R4",
+            "match_evidence_ids": [],
+            "evidence_level": "missing",
+            "match_notes": "简历中无任何ISO 14001或ISO 45001相关证据。",
+            "recommended_actions": [
+              "omit：不要声称了解这两个体系；面试前可快速了解基本概念以便说明。"
+            ]
+          },
+          {
+            "requirement_id": "J-R5",
+            "match_evidence_ids": [
+              "C-E1-S3",
+              "C-E2-W4"
+            ],
+            "evidence_level": "indirect",
+            "match_notes": "英语为'基础会议沟通'，未达'良好'；有连接器问题分析体现分析判断能力；跨团队推动仅有协调3人小组，无跨部门协作实例。",
+            "recommended_actions": [
+              "verify_with_user：是否可提供英语测试成绩或更多使用场景；增加跨部门合作案例（如与采购/研发协作）。"
+            ]
+          },
+          {
+            "requirement_id": "J-R6",
+            "match_evidence_ids": [
+              "C-E2-W2",
+              "C-P1-W10",
+              "C-P1-W12",
+              "C-E2-W5"
+            ],
+            "evidence_level": "direct",
+            "match_notes": "有6个新项目的APQP/PPAP参与经验，每年18次审核，8D应用案例（连接器断路、批量来料）。",
+            "recommended_actions": []
+          },
+          {
+            "requirement_id": "J-R7",
+            "match_evidence_ids": [
+              "C-E1-P1",
+              "C-E2-W1"
+            ],
+            "evidence_level": "direct",
+            "match_notes": "7年汽车电子质量经验，管理32家供应商包括PCB、连接器等，属电子供应链。",
+            "recommended_actions": []
+          }
+        ],
+        "score_breakdown": {
+          "eligibility": 20,
+          "must_have": 10,
+          "core_outcomes": 15,
+          "differentiators": 8,
+          "evidence_clarity": 12
+        },
+        "strengths": [
+          "7年汽车电子领域SQE经验，熟悉电子供应商质量管理（PCB、连接器、注塑件等）",
+          "熟练掌握APQP、PPAP、8D、供应商审核及过程能力分析，有实际项目推动记录",
+          "独立主导复杂问题根因分析（如连接器间歇断路）并推动供应商整改",
+          "有供应商绩效改善成果（PPM 860→510）",
+          "持有VDA 6.3和IATF 16949内审员证书"
+        ],
+        "critical_gaps": [
+          "缺少VDA 6.1体系知识，ISO 9001仅有技能列表无行为证据",
+          "完全不了解ISO 14001、ISO 45001环境与安全体系",
+          "英语能力仅为基础会议沟通，低于JD要求的'良好'水平",
+          "跨团队推动力证据薄弱，缺乏与采购、研发协作的具体案例",
+          "供应商审核中发现重复问题，改善有效性待验证"
+        ],
+        "positioning_strategy": {
+          "one_line_positioning": "7年汽车电子SQE，专注电子/电气类供应商APQP、审核与问题解决，成功推动PPM改善。",
+          "evidence_pillars": [
+            "全流程供应商质量策划（APQP/PPAP/过程审核）",
+            "复杂电子件根因分析与8D闭环（连接器断路案例）",
+            "供应商绩效数据改善与分层管理方案"
+          ],
+          "honest_boundary": "VDA 6.1和ISO 14001/45001为知识盲区，英语仅支持基础技术会议，非正式管理经验。"
+        },
+        "target_keyword_plan": {
+          "add": [
+            "IATF 16949",
+            "VDA 6.3",
+            "过程审核",
+            "供应商质量工程师(SQE)",
+            "APQP",
+            "PPAP",
+            "8D",
+            "根因分析",
+            "PPM改善"
+          ],
+          "omit": [
+            "VDA 6.1",
+            "ISO 14001",
+            "ISO 45001",
+            "流利英语",
+            "供应商质量经理",
+            "跨部门领导"
+          ],
+          "verify_with_user": [
+            "英语能力描述是否可优化为'技术文件阅读与会议参与'",
+            "是否有跨部门改善项目可补充"
+          ]
+        },
+        "application_decision": {
+          "recommendation": "conditional_apply",
+          "blocking_reasons": [
+            "VDA 6.1缺失，ISO 14001/45001完全不懂，可能被面试官质疑体系覆盖面",
+            "英语仅为基础水平，若岗位涉及全球供应商沟通则可能不匹配"
+          ],
+          "pre_application_checks": [
+            "确认工作地上海是否可接受（候选人期望含上海）",
+            "确认岗位英语实际使用频率及要求弹性",
+            "建议快速学习VDA 6.1与ISO 14001基本概念以备面试"
+          ]
+        },
+        "rewrite_actions": [
+          {
+            "evidence_id": "C-E1-S1",
+            "requirement_id": "J-R3",
+            "section": "专业技能",
+            "action": "modify",
+            "description": "将'VDA 6.3'表述调整为'VDA 6.3过程审核'，并增加'IATF 16949内审'等词汇，但不要添加VDA 6.1。"
+          },
+          {
+            "evidence_id": "C-E2-W4",
+            "requirement_id": "J-R5",
+            "section": "工作经历 - 苏州朗岳",
+            "action": "strengthen",
+            "description": "突出连接器问题解决中测试方案设计、供应商推动和结果，强调分析判断与主导能力，但保留'推动'而非'主导'以维持事实准确性。"
+          },
+          {
+            "evidence_id": "C-E2-W5",
+            "requirement_id": "J-R3",
+            "section": "工作经历 - 苏州朗岳",
+            "action": "modify",
+            "description": "将'每年开展约18次现场或远程审核'修改为'每年主导约18次VDA 6.3/IATF 16949过程审核'，以体现体系应用。"
+          },
+          {
+            "evidence_id": "C-E2-W6",
+            "requirement_id": "J-R5",
+            "section": "工作经历 - 苏州朗岳",
+            "action": "strengthen",
+            "description": "若存在与采购、研发协作的实例，应补充具体项目，否则维持原样。目前行动标记为omit，不建议虚构。"
+          },
+          {
+            "evidence_id": "C-E2-W3",
+            "requirement_id": null,
+            "section": "工作经历 - 苏州朗岳",
+            "action": "modify",
+            "description": "将'PPM从860降至510'的表述调整为'推动团队将供应商整体来料PPM从860降至510'，明确个人角色为'推动'。"
+          }
+        ]
+      },
+      "final_resume": {
+        "candidate_id": "candidate_1",
+        "strategy": "ats",
+        "resume_markdown": "## 许博文\n**高级供应商质量工程师** | 苏州/上海 | 159****6084 | xubowen10@outlook.com\n\n### 专业概要\n7年汽车电子供应商质量工程师，聚焦电子/电气类供应链的APQP策划、过程审核与8D问题解决，成功推动PPM改善，具备全流程供应商质量策划与闭环能力。\n\n### 核心能力\n- **质量体系与审核**：IATF 16949, VDA 6.3过程审核, ISO 9001, 供应商审核与绩效管理\n- **项目与工具**：APQP, PPAP, 8D, 根因分析, FMEA, SPC, MSA, Minitab, SAP QM\n- **英语**：邮件及基础会议沟通\n\n### 工作经历\n#### 苏州朗岳汽车电子有限公司 | 高级供应商质量工程师 | 2021.03 - 至今\n- 负责32家电子类供应商（PCB、连接器、注塑件、外协装配）质量表现，监控PPM与批退，推动8D和审核整改，实现年度来料PPM从860降至510（团队共同成果）。\n- 参与6个新项目的供应商定点和APQP，审核PPAP文件、过程能力和量产爬坡问题，确保新零件成熟度。\n- 主导连接器间歇断路问题根因分析：通过截面、尺寸和插拔测试定位端子压接窗口，推动供应商调整参数，连续3个月零复发。\n- 每年执行约18次VDA 6.3/IATF 16949过程审核，问题关闭及时率约92%，驱动重复问题改善。\n- 协调3人专项小组处理重大来料异常，促进跨部门沟通与快速响应。\n\n#### 常州锐达电控有限公司 | 质量工程师 | 2018.07 - 2021.02\n- 负责来料检验标准制定、异常处理及供应商8D跟踪。\n- 参与IATF 16949外审准备，维护检验记录和纠正措施数据。\n\n### 项目经验\n#### 新能源车载控制器项目APQP | 2023.05 - 2024.03\n- 负责11家关键供应商的质量前期策划，跟踪特殊特性、MSA、过程能力及PPAP；SOP前关闭45/47项问题，2项经风险评估有条件放行。\n- 处理量产前批量来料问题，执行围堵与8D。\n\n#### 供应商分层管理优化 | 2025.01 - 2025.04\n- 基于质量、交付、响应和审核结果构建供应商分层模型，提出差异化审核频次方案，已在质量部试行。\n\n### 教育\n江苏科技大学 | 机械设计制造及其自动化 | 本科 | 2014.09 - 2018.06\n\n### 证书\nVDA 6.3过程审核员（内部培训）| IATF 16949内审员",
+        "trace": [
+          {
+            "output_sentence_digest": "专业概要 - 7年汽车电子供应商质量工程师，聚焦APQP、过程审核与8D，推动PPM改善",
+            "evidence_ids": [
+              "C-E1-P1",
+              "C-E1-P2",
+              "C-E2-W3",
+              "C-E2-W4"
+            ],
+            "requirement_ids": [
+              "J-R2",
+              "J-R6",
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "核心能力 - IATF 16949, VDA 6.3过程审核, ISO 9001, 供应商审核等",
+            "evidence_ids": [
+              "C-E1-S1",
+              "C-E2-W5",
+              "C-CERT1",
+              "C-E1-S3"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "苏州朗岳 - 负责32家供应商质量表现，监控PPM，推动8D和审核，PPM860→510",
+            "evidence_ids": [
+              "C-E2-W1",
+              "C-E2-W3"
+            ],
+            "requirement_ids": [
+              "J-R2",
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "苏州朗岳 - 参与6个新项目定点与APQP，审核PPAP与过程能力",
+            "evidence_ids": [
+              "C-E2-W2"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "苏州朗岳 - 主导连接器根因分析，测试定位问题，推动参数调整，3月零复发",
+            "evidence_ids": [
+              "C-E2-W4"
+            ],
+            "requirement_ids": [
+              "J-R5",
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "苏州朗岳 - 每年执行18次VDA 6.3/IATF 16949过程审核，92%及时关闭",
+            "evidence_ids": [
+              "C-E2-W5",
+              "C-E2-W5"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "苏州朗岳 - 协调3人小组处理重大异常，促进跨部门沟通",
+            "evidence_ids": [
+              "C-E2-W6"
+            ],
+            "requirement_ids": [
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "常州锐达 - 来料检验、异常处理、8D跟踪，IATF 16949外审准备",
+            "evidence_ids": [
+              "C-E3-W7",
+              "C-E3-W8"
+            ],
+            "requirement_ids": [
+              "J-R2",
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "项目 - APQP项目：11家供应商策划，跟踪MSA/PPAP，关闭45项问题",
+            "evidence_ids": [
+              "C-P1-W10",
+              "C-P1-W11"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "项目 - APQP项目：处理量产前批量来料问题，执行围堵与8D",
+            "evidence_ids": [
+              "C-P1-W12"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "项目 - 供应商分层：维度评估，提出差异化审核方案，质量部试行",
+            "evidence_ids": [
+              "C-P2-W13",
+              "C-P2-W14"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "教育 - 江苏科技大学 机械本科",
+            "evidence_ids": [
+              "C-EDU1"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "证书 - VDA 6.3过程审核员、IATF 16949内审员",
+            "evidence_ids": [
+              "C-CERT1"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          }
+        ],
+        "coverage": {
+          "proven_must_have_covered": [
+            "J-R1",
+            "J-R2",
+            "J-R3 (IATF 16949, VDA 6.3, ISO 9001 - VDA 6.1缺失)",
+            "J-R5 (分析判断能力有证据，英语沟通未达良好)"
+          ],
+          "proven_must_have_not_covered": [
+            "J-R4 (ISO 14001/45001 完全缺失)",
+            "J-R3 (VDA 6.1缺失)"
+          ],
+          "allowed_high_priority_terms_used": [
+            "IATF 16949",
+            "VDA 6.3",
+            "过程审核",
+            "供应商质量工程师",
+            "APQP",
+            "PPAP",
+            "8D",
+            "根因分析",
+            "PPM改善",
+            "供应商审核",
+            "ISO 9001"
+          ]
+        },
+        "self_audit": {
+          "unsupported_claims": [],
+          "eligibility_preserved": true
+        },
+        "delivery_status": "ready",
+        "delivery_blockers": [],
+        "deterministic_guardrail": {
+          "evaluatorName": "v4-resume-deterministic-guardrail",
+          "evaluatorVersion": "v4.1",
+          "passed": true,
+          "score": 100,
+          "issues": []
+        }
+      },
+      "deterministic_guardrail": {
+        "evaluatorName": "v4-resume-deterministic-guardrail",
+        "evaluatorVersion": "v4.1",
+        "passed": true,
+        "score": 100,
+        "issues": []
+      },
+      "final_internal_judge": {
+        "evaluations": [
+          {
+            "candidate_id": "candidate_1",
+            "passed": true,
+            "resume_quality_passed": true,
+            "application_eligibility": "pass",
+            "deliverable": true,
+            "total_score": 91,
+            "dimension_scores": {
+              "factual_fidelity": 25,
+              "eligibility_integrity": 10,
+              "proven_requirement_coverage": 15,
+              "top_third_persuasion": 9,
+              "evidence_density": 9,
+              "ats_readability": 9,
+              "non_generic": 5,
+              "interview_defensibility": 9
+            },
+            "unsupported_claims": [],
+            "requirement_gaps": [
+              "J-R3: VDA 6.1 缺失，简历仅体现 VDA 6.3",
+              "J-R4: ISO 14001、ISO 45001 完全未提及",
+              "J-R5: 英语沟通能力仅为基础会议沟通，JD 要求良好的英语沟通"
+            ],
+            "genericity_test": {
+              "is_generic": false,
+              "explanation": "简历内容高度贴合汽车电子 SQE 岗位，包含具体供应商管理案例和 APQP 项目，无法直接套用至其他公司或岗位。"
+            },
+            "revision_actions": []
+          }
+        ],
+        "winner_candidate_id": "candidate_1",
+        "revision_brief": "简历事实忠实，资格完整，已覆盖多数关键要求；主要缺口为 VDA 6.1、ISO 14001/45001 和英语沟通能力，需在面试中验证。"
+      },
+      "interview_advice": {
+        "interview_readiness_score": 60,
+        "eligibility_defense": [],
+        "question_drills": [
+          {
+            "question_id": "Q1",
+            "question": "您简历中熟悉IATF 16949和VDA 6.3，但我们岗位明确要求熟悉VDA 6.1。您对VDA 6.1了解吗？能否谈谈它与VDA 6.3的区别？",
+            "requirement_id": "J-R3",
+            "evidence_id": "C-CERT1",
+            "drill_purpose": "验证候选人对VDA系列标准的覆盖范围，直接测试关键体系缺口"
+          },
+          {
+            "question_id": "Q2",
+            "question": "您了解ISO 14001或ISO 45001环境与职业健康安全体系吗？在过往供应商审核中是否涉及此类要求的评估？",
+            "requirement_id": "J-R4",
+            "evidence_id": null,
+            "drill_purpose": "测试候选人是否完全缺失EHS体系知识，观察其诚实度和学习意愿"
+          },
+          {
+            "question_id": "Q3",
+            "question": "请用英语简单描述您主导解决的连接器间歇断路问题，包括根因分析和最终结果，时间1-2分钟。",
+            "requirement_id": "J-R5",
+            "evidence_id": "C-E2-W4",
+            "drill_purpose": "实地检验英语沟通能力，观察技术术语运用及流畅度"
+          },
+          {
+            "question_id": "Q4",
+            "question": "您提到推动团队将来料PPM从860降至510，这是团队及供应商共同结果。您个人在其中扮演了什么样的具体角色？做了哪些不同于他人的贡献？",
+            "requirement_id": null,
+            "evidence_id": "C-E2-W3",
+            "drill_purpose": "厘清个人贡献边界，测试候选人能否提供可量化或可举例的个人行为"
+          },
+          {
+            "question_id": "Q5",
+            "question": "在新能源车载控制器APQP项目中，有2项问题经风险评估后带条件放行，您参与的风险评估具体流程是什么？放行后跟踪结果如何？",
+            "requirement_id": "J-R6",
+            "evidence_id": "C-P1-W11",
+            "drill_purpose": "深挖项目风险管理细节，测试候选人对条件放行后续控制的严谨性"
+          },
+          {
+            "question_id": "Q6",
+            "question": "您的简历中主要体现的是与供应商和内部质量团队的合作，能否分享一个您与采购、研发部门共同解决质量问题的实例？过程中您是如何推动不同职能达成共识的？",
+            "requirement_id": "J-R5",
+            "evidence_id": "C-E2-W6",
+            "drill_purpose": "探查跨职能协作能力，验证候选人是否具备JD要求的“跨团队推动能力”"
+          },
+          {
+            "question_id": "Q7",
+            "question": "您求职方向包含质量经理，但至今没有正式团队管理经验。如果被任命为质量经理，您认为最大的挑战会是什么？前90天您将如何着手？",
+            "requirement_id": null,
+            "evidence_id": "C-E1-P3",
+            "drill_purpose": "评估管理潜力与自我认知，了解其向经理角色过渡的思考深度"
+          },
+          {
+            "question_id": "Q8",
+            "question": "您的供应商分层方案目前在质量部试行，尚未纳入采购考核。您认为要推动它成为正式制度，关键障碍可能在哪里？您打算怎么做？",
+            "requirement_id": null,
+            "evidence_id": "C-P2-W13",
+            "drill_purpose": "考查候选人推动组织变革和跨部门影响力的意愿与方法"
+          }
+        ],
+        "story_recommendations": [
+          {
+            "story_id": "S1",
+            "title": "连接器间歇断路根因分析与彻底解决",
+            "core_evidence_ids": [
+              "C-E2-W4"
+            ],
+            "suggested_angle": "突出个人主导的技术分析过程：如何设计截面、尺寸和插拔测试，如何定位到端子压接窗口的根本原因，以及最终推动供应商调整参数并实现三个月零复发的过程。重点展示分析逻辑、方法创新性和推动力。",
+            "candidate_note": "核实是否独立设计测试方案，是否需要他人指导；准备用英语简述该案例，并说明用到的具体工具和判断依据。"
+          },
+          {
+            "story_id": "S2",
+            "title": "新能源车载控制器APQP项目风险管理",
+            "core_evidence_ids": [
+              "C-P1-W10",
+              "C-P1-W11"
+            ],
+            "suggested_angle": "讲述负责11家供应商APQP策划的规模与挑战，突出追踪特殊特性、MSA、过程能力和PPAP的系统性工作。重点描述那2项带条件放行问题的风险评估过程、放行条件以及后续跟踪结果，展示风险决策的严谨性。",
+            "candidate_note": "准确说明2项问题的具体风险和放行条件，核实放行后是否触发任何问题；强调风险评估中使用了哪些工具或跨部门协商。"
+          },
+          {
+            "story_id": "S3",
+            "title": "供应商审核与持续改善推动",
+            "core_evidence_ids": [
+              "C-E2-W5",
+              "C-P2-W13"
+            ],
+            "suggested_angle": "以每年18次VDA 6.3/IATF 16949审核为基础，说明审核流程、典型发现及问题关闭跟踪机制。然后关联到供应商分层方案，解释如何根据审核结果设计差异化频次，并在质量部试行。展现从执行审核到构建系统化改进方案的能力跃升。",
+            "candidate_note": "确认是否有审核重复问题的具体数据和分析，说明如何从重复问题中发现分层需求；准备回答分层方案试行后的反馈和下一步推动计划。"
+          }
+        ],
+        "gap_defense": [
+          {
+            "gap_id": "G1",
+            "gap": "缺少VDA 6.1体系知识",
+            "strategy": "坦诚承认未直接应用过VDA 6.1，但强调已精通VDA 6.3过程审核和IATF 16949，且VDA体系核心理念相通。表达快速学习意愿，例如计划在入职前通过自学或内训掌握VDA 6.1核心要求，并准备好比较VDA 6.1与6.3的重点差异。"
+          },
+          {
+            "gap_id": "G2",
+            "gap": "完全不了解ISO 14001/45001",
+            "strategy": "如实说明过往工作未涉及EHS体系审核，但指出在供应商现场会自然关注环境与安全基本合规（如化学品管理、废弃物处置），并举出实际观察的例子。强调如岗位需要，愿意接受体系培训，并可在短期内将EHS审核要点融入供应商评估。"
+          },
+          {
+            "gap_id": "G3",
+            "gap": "英语仅基础会议沟通，未达良好水平",
+            "strategy": "诚实说明当前英语水平为‘邮件熟练 + 基本技术会议’，提供实例（如参加过的英语供应商电话会场景）。表明会积极提升，可提供正在坚持的自学证明（如每日英语阅读打卡）。同时强调技术报告阅读和8D报告撰写无障碍，能独立处理英文文档。"
+          },
+          {
+            "gap_id": "G4",
+            "gap": "跨团队推动力证据薄弱",
+            "strategy": "若存在与采购/研发协作的隐性经历，提前梳理具体事件（如推动采购同意更换不合格供应商、与研发协商放宽公差等），哪怕是小案例也要结构化表达。若确实缺乏，则坦承并强调SQE角色天然需要跨部门协调，再补充自己擅长技术推动和快速响应，并说明如何在新岗位建立跨职能合作网络。"
+          },
+          {
+            "gap_id": "G5",
+            "gap": "审核重复问题，改善有效性待验证",
+            "strategy": "承认部分供应商问题反复出现，解释这是行业常见挑战。然后说明自己如何通过分层方案和差异化审核频次来针对性强化薄弱供应商，并强调正在试行中的分层管理正是为了解决重复问题。提供数据说明重复问题比例呈下降趋势（如有）。最后表达将持续通过绩效考核和现场验证来闭环。"
+          }
+        ],
+        "company_specific_hypotheses": [
+          {
+            "hypothesis": "面试官可能会深挖VDA 6.1和ISO 14001/45001等体系知识，因Siemens作为大型跨国企业，体系完整性要求高。",
+            "preparation": "准备用‘熟悉VDA 6.3过程审核，且IATF 16949与VDA 6.1有部分重叠焦点’作为桥梁，并提前准备VDA 6.1与6.3的区别要点。"
+          },
+          {
+            "hypothesis": "鉴于Siemens强调创新与技术影响，面试官可能会询问您在供应商改善中引入的新方法或技术突破。",
+            "preparation": "以连接器问题中自主设计的测试方案作为技术创新的回答；将供应商分层模型视为管理创新准备讲述。"
+          },
+          {
+            "hypothesis": "英语沟通能力会被重点考察，因为该SQE岗可能涉及全球供应链协作。",
+            "preparation": "提前准备两个英文版本的案例简述（连接器问题和APQP项目），并练习可能的技术专业术语。"
+          },
+          {
+            "hypothesis": "面试官可能考察管理潜力，即从个人贡献者到团队领导的转型思路。",
+            "preparation": "基于‘非正式协调3人小组’的经验，总结领导力要素（任务分配、进度控制、冲突处理），并准备90天管理接手计划框架（先诊断、建信任、定速赢）。"
+          }
+        ],
+        "questions_for_interviewer": [
+          "该SQE岗位的供应商范围主要覆盖哪些品类和区域？出差频率大致怎样？",
+          "团队目前对VDA 6.3和IATF 16949过程审核的执行深度和频次如何？未来是否计划向VDA 6.1扩展？",
+          "英语在日常工作中的实际使用场景和频率是怎样的？是否有全球团队定期会议？",
+          "该岗位的绩效考核指标中，供应商PPM改善、8D关闭率和体系审核合规性各自的权重如何？",
+          "团队目前最大的质量挑战是什么？对于新加入的SQE，您希望我在初期优先解决什么问题？"
+        ],
+        "first_90_days_discussion_points": [
+          "学习阶段（第1-4周）：全面了解所分配供应商的清单、品类、历史绩效数据和当前突出问题；熟悉Siemens内部质量管理流程、IT系统及跨部门协作规则；与直线经理对齐短期期望。",
+          "评估与优先排序（第5-8周）：基于供应商绩效和风险初步完成分级，识别高风险供应商和重复问题点；与采购、工程等部门建立沟通渠道，对齐供应商改善优先级。",
+          "速赢与计划制定（第9-12周）：选取1-2个问题集中且我擅长领域（如连接器、电子件）的供应商，推动快速8D或过程审核，展示改善效果；同时勾画一个更系统的改善提案（如完善APQP checklist或优化审核模板），待与团队讨论后逐步实施。"
+        ]
+      },
+      "deliverable": true
+    },
+    "finalResume": "## 许博文\n**高级供应商质量工程师** | 苏州/上海 | 159****6084 | xubowen10@outlook.com\n\n### 专业概要\n7年汽车电子供应商质量工程师，聚焦电子/电气类供应链的APQP策划、过程审核与8D问题解决，成功推动PPM改善，具备全流程供应商质量策划与闭环能力。\n\n### 核心能力\n- **质量体系与审核**：IATF 16949, VDA 6.3过程审核, ISO 9001, 供应商审核与绩效管理\n- **项目与工具**：APQP, PPAP, 8D, 根因分析, FMEA, SPC, MSA, Minitab, SAP QM\n- **英语**：邮件及基础会议沟通\n\n### 工作经历\n#### 苏州朗岳汽车电子有限公司 | 高级供应商质量工程师 | 2021.03 - 至今\n- 负责32家电子类供应商（PCB、连接器、注塑件、外协装配）质量表现，监控PPM与批退，推动8D和审核整改，实现年度来料PPM从860降至510（团队共同成果）。\n- 参与6个新项目的供应商定点和APQP，审核PPAP文件、过程能力和量产爬坡问题，确保新零件成熟度。\n- 主导连接器间歇断路问题根因分析：通过截面、尺寸和插拔测试定位端子压接窗口，推动供应商调整参数，连续3个月零复发。\n- 每年执行约18次VDA 6.3/IATF 16949过程审核，问题关闭及时率约92%，驱动重复问题改善。\n- 协调3人专项小组处理重大来料异常，促进跨部门沟通与快速响应。\n\n#### 常州锐达电控有限公司 | 质量工程师 | 2018.07 - 2021.02\n- 负责来料检验标准制定、异常处理及供应商8D跟踪。\n- 参与IATF 16949外审准备，维护检验记录和纠正措施数据。\n\n### 项目经验\n#### 新能源车载控制器项目APQP | 2023.05 - 2024.03\n- 负责11家关键供应商的质量前期策划，跟踪特殊特性、MSA、过程能力及PPAP；SOP前关闭45/47项问题，2项经风险评估有条件放行。\n- 处理量产前批量来料问题，执行围堵与8D。\n\n#### 供应商分层管理优化 | 2025.01 - 2025.04\n- 基于质量、交付、响应和审核结果构建供应商分层模型，提出差异化审核频次方案，已在质量部试行。\n\n### 教育\n江苏科技大学 | 机械设计制造及其自动化 | 本科 | 2014.09 - 2018.06\n\n### 证书\nVDA 6.3过程审核员（内部培训）| IATF 16949内审员"
+  }
+}

@@ -1,0 +1,2071 @@
+{
+  "privacy": "PRIVATE_REVIEW_MATERIAL_DO_NOT_COMMIT",
+  "promptVariant": "aggressive-v4.1",
+  "promptVersion": "4.1.0",
+  "caseId": "resume_05:resume_05_job_02",
+  "resumeId": "resume_05",
+  "jobId": "resume_05_job_02",
+  "company": "腾讯",
+  "position": "微信小店-后台开发工程师-交易基础（商品方向）",
+  "sourceResume": "周启航|Java 后端开发工程师|工业互联网\n男|31岁|武汉|136****8820|zhouqihang05@outlook.com\n求职方向:高级 Java 工程师、云原生后端、技术负责人\n\n【个人概述】\n6 年半 Java 后端经验,长期负责工业设备平台、订单和权限服务。熟悉 Spring Boot、MySQL、Redis、Kafka 及容器化部署,参与过单体拆分与稳定性治理。带过 2 名新人,但没有正式管理岗位。\n\n【专业技能】\n- Java / JVM / Spring Boot / Spring Cloud Alibaba / MyBatis / Maven\n- MySQL / Redis / Elasticsearch / Kafka / RabbitMQ / ClickHouse 基础\n- Docker / Kubernetes 基础 / Jenkins / GitLab CI / Prometheus / Linux\n- 了解 DDD、分布式事务、限流熔断、链路追踪;英语能阅读技术文档\n\n【工作经历】\n武汉联辰工业互联科技有限公司|高级 Java 开发工程师|2021.05 - 至今\n- 负责设备接入平台的设备、告警、工单和租户权限模块,日常参与需求评审、方案设计、编码、上线和故障处理。\n- 将部分定时轮询任务改为 Kafka 事件消费,峰值消息量约 8,000 条/秒;消费积压问题从偶发数小时下降到 20 分钟内恢复。\n- 参与单体应用拆分为 7 个服务,负责租户与权限服务;早期服务边界设计不合理,后续合并了 2 个过细服务。\n- 针对慢 SQL、缓存穿透和大批量导出进行优化,P95 接口响应从约 1.8 秒降到 650 毫秒。\n- 参与值班和复盘,处理过生产数据库连接池耗尽、消息重复消费等问题;编写 12 篇内部排障文档。\n- 带教 2 名初级开发,负责代码评审,但项目排期和人员绩效由研发经理负责。\n武汉易达软件服务有限公司|Java 开发工程师|2019.02 - 2021.04\n- 参与物流订单系统和仓储接口开发,维护 Spring MVC 老项目。\n- 完成承运商对账、运费模板和 Excel 批量导入功能,修复线上缺陷。\n- 使用 Redis 缓存字典和热点查询,但当时没有完整做缓存一致性方案。\n\n【项目经历】\n多租户设备告警中心重构|2023.09 - 2024.02\n- 参与技术方案,按租户、规则和设备维度处理告警,使用 Kafka 解耦计算和通知。\n- 通过幂等键和状态表减少重复告警;历史数据回放由离线脚本完成。\n- 上线后支撑约 42 万在线设备,数字为整个平台规模,并非本人模块独立承载。\n个人项目:短链服务|2025.01\n- 使用 Spring Boot、Redis 和布隆过滤器实现短链生成与跳转,部署在个人云服务器。\n- 仅做过 JMeter 本地压测,没有真实用户和长期运行数据。\n\n【教育经历】\n- 湖北工业大学|计算机科学与技术 本科|2014.09 - 2018.06\n- 2018.07 - 2019.01 备考研究生,后决定直接就业。\n\n【补充信息】\n- 博客:累计发布 27 篇技术笔记(阅读量未统计)\n- 求职原因:希望接触更规范的工程体系和更大业务规模。",
+  "jobDescription": "腾讯|微信小店-后台开发工程师-交易基础(商品方向)\n广州|微信事业群|1年以上经验|更新 2026-07-24\n\n职位介绍\n建设微信小店商品、订单、营销和直播电商交易基础能力,支撑视频号与公众号等场景。\n\n岗位职责\n1. 开发和维护商品、订单、营销及直播电商相关交易基础系统。\n2. 连接视频号、公众号等微信生态场景,提升用户交易和商家经营体验。\n3. 面向业务增长持续优化系统稳定性、扩展性、安全性和研发效率。\n4. 参与架构设计、代码评审、线上运营和复杂故障处理。\n\n任职要求\n1. 计算机相关专业本科及以上,具备后台服务开发经验。\n2. 熟悉 C/C++ 等编译型语言,掌握数据结构、网络和操作系统基础。\n3. 具备2年以上服务开发经验,理解海量服务的架构与性能问题。\n4. 责任心强,能在复杂业务中快速学习并推动问题闭环。\n\n加分项\n- 有电商或大规模在线服务经验\n- 有算法竞赛、网络或计算性能优化经历\n\n公开招聘来源:https://careers.tencent.com/jobdesc.html?postId=2070404615127613440\n页面核验日期:2026-07-27",
+  "current": {
+    "suite": {
+      "resume_analysis": {
+        "quality_score": 80,
+        "strengths": [
+          "有具体量化性能优化成果：Kafka消息优化峰值8000条/秒，P95接口响应从1.8秒降至650毫秒",
+          "有从单体拆分到微服务的实际经验，能识别并调整不合理服务边界",
+          "具备生产环境排障能力并输出12篇内部文档，知识沉淀意识强",
+          "有带教2名新人和代码评审经验"
+        ],
+        "weaknesses": [
+          "第二段工作经历缺乏量化成果，仅描述职责，未能体现个人贡献",
+          "部分关键技术（如ClickHouse、Kubernetes、DDD等）仅为基础或了解水平，深度不足",
+          "个人项目短链服务无真实用户数据，无法证明工程化能力",
+          "管理经验仅限于非正式带教，无正式管理岗位经历"
+        ],
+        "suggestions": [
+          "请在第二段工作经历中补充任何真实存在且可核验的量化成果，如处理订单量、系统性能提升等",
+          "对于个人项目短链服务，如有真实使用数据请补充；若无，可考虑实施一个小范围真实场景以获取数据",
+          "建议在简历中明确区分“基础”“熟练”“精通”等技术深度，避免误判，仅表述已掌握的程度",
+          "可考虑补充博客阅读量或影响范围，仅当存在真实数据时"
+        ],
+        "capability_summary": "6年半Java后端开发经验，专注于工业互联网领域设备接入、订单与权限服务，具备从单体架构拆分到微服务、性能优化及生产排障的实战能力，能够带教新人并沉淀技术文档。",
+        "structured_resume": {
+          "personal_info": {
+            "name": "周启航",
+            "contact": "",
+            "email": "zhouqihang05@outlook.com",
+            "phone": "136****8820",
+            "location": "武汉",
+            "current_position": "高级 Java 开发工程师"
+          },
+          "education": [
+            {
+              "school": "湖北工业大学",
+              "major": "计算机科学与技术",
+              "degree": "本科",
+              "time_range": "2014.09 - 2018.06",
+              "achievements": []
+            }
+          ],
+          "experience": [
+            {
+              "company": "武汉联辰工业互联科技有限公司",
+              "position": "高级 Java 开发工程师",
+              "time_range": "2021.05 - 至今",
+              "responsibilities": [
+                "负责设备接入平台的设备、告警、工单和租户权限模块",
+                "日常参与需求评审、方案设计、编码、上线和故障处理",
+                "参与值班和复盘，处理过生产数据库连接池耗尽、消息重复消费等问题",
+                "带教2名初级开发，负责代码评审"
+              ],
+              "achievements": [
+                "将部分定时轮询任务改为Kafka事件消费，峰值消息量约8,000条/秒；消费积压问题从偶发数小时下降到20分钟内恢复",
+                "参与单体应用拆分为7个服务，负责租户与权限服务，后续合并了2个过细服务",
+                "针对慢SQL、缓存穿透和大批量导出进行优化，P95接口响应从约1.8秒降到650毫秒",
+                "编写12篇内部排障文档"
+              ]
+            },
+            {
+              "company": "武汉易达软件服务有限公司",
+              "position": "Java 开发工程师",
+              "time_range": "2019.02 - 2021.04",
+              "responsibilities": [
+                "参与物流订单系统和仓储接口开发",
+                "维护Spring MVC老项目",
+                "完成承运商对账、运费模板和Excel批量导入功能",
+                "修复线上缺陷",
+                "使用Redis缓存字典和热点查询，但当时没有完整做缓存一致性方案"
+              ],
+              "achievements": []
+            }
+          ],
+          "projects": [
+            {
+              "name": "多租户设备告警中心重构",
+              "role": "参与开发",
+              "tech_stack": [
+                "Kafka"
+              ],
+              "description": "参与技术方案，按租户、规则和设备维度处理告警，使用Kafka解耦计算和通知。通过幂等键和状态表减少重复告警；历史数据回放由离线脚本完成。",
+              "achievements": [
+                "上线后支撑约42万在线设备（整体平台规模，本人模块参与）"
+              ]
+            },
+            {
+              "name": "短链服务",
+              "role": "独立开发",
+              "tech_stack": [
+                "Spring Boot",
+                "Redis",
+                "布隆过滤器"
+              ],
+              "description": "使用Spring Boot、Redis和布隆过滤器实现短链生成与跳转，部署在个人云服务器。仅做过JMeter本地压测，没有真实用户和长期运行数据。",
+              "achievements": []
+            }
+          ],
+          "skills": {
+            "hard_skills": [
+              "Java",
+              "JVM",
+              "Spring Boot",
+              "Spring Cloud Alibaba",
+              "MyBatis",
+              "Maven",
+              "MySQL",
+              "Redis",
+              "Elasticsearch",
+              "Kafka",
+              "RabbitMQ",
+              "ClickHouse基础",
+              "Docker",
+              "Kubernetes基础",
+              "Jenkins",
+              "GitLab CI",
+              "Prometheus",
+              "Linux",
+              "DDD了解",
+              "分布式事务了解",
+              "限流熔断了解",
+              "链路追踪了解",
+              "英语技术文档阅读"
+            ],
+            "soft_skills": []
+          }
+        }
+      },
+      "job_profile": {
+        "basic_info": {
+          "title": "微信小店-后台开发工程师-交易基础(商品方向)",
+          "company": "腾讯",
+          "location": "广州"
+        },
+        "hard_requirements": {
+          "education": "计算机相关专业本科及以上",
+          "experience_years": "2年以上服务开发经验",
+          "required_skills": [
+            "C/C++",
+            "数据结构",
+            "计算机网络",
+            "操作系统原理"
+          ]
+        },
+        "responsibilities": [
+          "负责微信小店商品、订单、营销及直播电商相关交易基础系统的开发和维护",
+          "连接视频号、公众号等微信生态场景，提升用户交易和商家经营体验",
+          "面向业务增长持续优化系统稳定性、扩展性、安全性和研发效率",
+          "参与架构设计、代码评审、线上运营和复杂故障处理"
+        ],
+        "tasks": [
+          "开发和维护交易基础系统的核心代码",
+          "实现与视频号、公众号等微信生态场景的技术对接",
+          "进行系统性能调优，提升稳定性和可扩展性",
+          "参与架构方案讨论及代码评审",
+          "定位并解决线上复杂故障"
+        ],
+        "soft_skills": [
+          "责任心强",
+          "在复杂业务中快速学习",
+          "主动推动问题闭环"
+        ],
+        "nice_to_have": [
+          "电商或大规模在线服务经验",
+          "算法竞赛经历",
+          "网络或计算性能优化经历"
+        ],
+        "requirement_hierarchy": {
+          "must_have": [
+            "计算机相关专业本科及以上学历",
+            "2年以上后台服务开发经验",
+            "熟练使用C/C++等编译型语言",
+            "扎实的数据结构、网络和操作系统基础知识"
+          ],
+          "core_outcomes": [
+            "稳定可靠、高扩展性的交易基础系统",
+            "视频号与公众号等场景下的流畅交易体验",
+            "高效的研发流程与快速的业务需求响应"
+          ],
+          "differentiators": [
+            "具备电商系统或大规模在线服务开发实战经验",
+            "有算法竞赛获奖或性能优化成果",
+            "对微信生态技术栈或社交电商场景有理解"
+          ]
+        },
+        "company_context": {
+          "explicit_signals": [
+            "腾讯微信事业群",
+            "微信小店",
+            "交易基础系统",
+            "支撑视频号与公众号场景",
+            "海量服务架构"
+          ],
+          "inferred_talent_preferences": [
+            "有大规模分布式系统开发经验",
+            "理解社交电商或内容电商业务模式",
+            "熟悉微信生态内技术组件（如公众号/小程序API）"
+          ],
+          "inference_basis": [
+            "岗位需连接视频号、公众号等微信生态场景",
+            "微信小店是微信生态内的电商平台",
+            "任职要求提及海量服务架构与性能问题"
+          ],
+          "confidence": "medium"
+        },
+        "location_context": {
+          "explicit_signals": [
+            "工作地点：广州"
+          ],
+          "inferred_role_implications": [],
+          "inference_basis": [],
+          "confidence": "unknown"
+        },
+        "uncertainties": [
+          "是否要求统招本科或特定院校背景未明确",
+          "C/C++之外是否允许使用Golang等其他语言未说明",
+          "是否需要微信支付或社交平台相关开发经验未提及",
+          "经验年限是否必须连续或相关领域精准匹配未知",
+          "工作地点是否涉及跨地域协作（如与深圳团队协同）未说明"
+        ]
+      },
+      "match_analysis": {
+        "match_score": 58,
+        "hard_requirements_match": {
+          "education": true,
+          "experience_years": true,
+          "c_cplusplus": false,
+          "cs_fundamentals": true
+        },
+        "skill_match": {
+          "matched": [
+            "高并发系统开发与性能优化（Kafka、Redis、慢SQL优化）",
+            "分布式系统设计与微服务拆分",
+            "线上故障排查与运维（生产数据库连接池、消息积压处理）",
+            "代码评审与团队带教",
+            "技术文档编写与知识沉淀"
+          ],
+          "missing": [
+            "C/C++开发经验"
+          ]
+        },
+        "experience_match": "候选人具备近5年后台服务开发经验，主导过设备接入平台的高并发模块，完成了从单体到微服务的拆分、消息队列改造与性能调优，其系统稳定性、扩展性建设和故障闭环能力与交易基础系统的要求高度可迁移。但当前经验集中在工业互联领域，未呈现电商或交易系统背景，且主要技术栈为Java生态，与岗位要求的C/C++存在语言差异。",
+        "soft_skills_match": "责任心强（带教初级开发、编写多篇排障文档）、主动推动问题闭环（处理线上积压和连接池耗尽等故障）、快速学习能力（当前材料未直接体现，但能从技术栈扩展和系统重构中推断）。",
+        "strengths": [
+          "有真实的高并发系统经验：设备接入平台消息量8,000条/秒，消费积压恢复时间从数小时降至20分钟，P95接口响应从1.8秒优化到650毫秒",
+          "完整的微服务拆分实践：主导单体拆分为7个服务，并负责核心的租户与权限服务，后续又合并过细服务，有架构演进意识",
+          "线上故障深度处理与复盘：直接处理过数据库连接池耗尽、消息重复消费等生产问题，编写12篇内部排障文档，具备复杂故障定位能力",
+          "团队协作与带教经验：负责代码评审，带教2名初级开发，体现责任心与技术指导能力",
+          "计算机科班背景：扎实的计算机基础（教育背景支持数据结构、网络、操作系统等知识），可快速迁移至C++等技术栈"
+        ],
+        "weaknesses": [
+          "当前材料未呈现C/C++开发经验",
+          "缺乏电商交易或类似业务领域经验",
+          "主要技术栈为Java，与岗位要求的编译型语言有差异"
+        ],
+        "weakness_details": [
+          {
+            "weakness": "当前材料未呈现C/C++开发经验",
+            "evidence_type": "direct_missing",
+            "evidence": "源简历技能列表及项目经历中仅包含Java、Spring Boot等，未提及C/C++相关开发、项目或培训",
+            "suggestion": "若具备C/C++基础，可考虑在简历中补充相关学习项目或课程；若不具备，可强调快速学习编译型语言的能力，或提前学习C++并展示小型Demo"
+          },
+          {
+            "weakness": "缺乏电商交易或类似业务领域经验",
+            "evidence_type": "direct_missing",
+            "evidence": "所有工作经历和项目均围绕工业互联、物流订单系统，未涉及电商商品、订单、营销等交易基础模块",
+            "suggestion": "可迁移的大规模服务经验仍是亮点，但需清晰说明业务领域跨度，并在面试中主动学习电商业务知识"
+          },
+          {
+            "weakness": "主要技术栈为Java，与岗位要求的编译型语言有差异",
+            "evidence_type": "implicit_evidence",
+            "evidence": "简历中大量Spring Boot、Spring Cloud Alibaba等Java生态工具，尽管Java也为后台主流语言，但JD明确优先C/C++",
+            "suggestion": "凸显Java在高并发场景下的应用能力，同时展示对底层原理的理解（如JVM、内存模型），以证明学习C++的潜力"
+          }
+        ],
+        "positioning_strategy": "以‘有大规模分布式系统实战经验的后台开发工程师’为核心定位，主推设备接入平台的高并发改造、微服务拆分和性能调优成果，强调可迁移的稳定性建设、故障处理和架构设计能力。明确表达当前技术栈为Java但具备扎实计算机基础，能快速掌握C++；对电商业务坦诚说明尚无直接经验，但展示工业互联场景下复杂业务抽象与系统演进的能力。避免过度承诺微信生态理解或C++熟练度，聚焦于通用工程素养和解决问题的闭环能力。",
+        "optimization_suggestions": [
+          "将设备接入平台的高并发改造和性能优化成果（消息量、P95降低）前置到简历摘要或最亮眼位置，直接呼应JD对系统稳定性和扩展性的要求",
+          "在经历描述中有意显式化‘架构设计’动作：如“设计多租户权限服务”、“制定消息幂等方案”，以匹配岗位的架构设计职责",
+          "将故障处理细节与‘线上运营’能力绑定，例如“生产数据库连接池耗尽”可描述为“线上复杂故障诊断与恢复”，并关联排障文档的沉淀",
+          "在技能部分利用教育背景，补充“计算机基础：数据结构、计算机网络、操作系统”条目，增强JD要求基础的直接证据",
+          "将带教、代码评审等软素质经历单独提炼，置于简历中‘领导力或团队贡献’板块，以体现责任心与主动推动能力"
+        ],
+        "context_fit": {
+          "company_alignment": "候选人具备大规模分布式系统开发经验，与微信小店海量服务架构的需求有重叠；但无电商或社交平台业务背景，对视频号、公众号等技术对接缺乏直接证据。工业互联场景下的多租户、设备告警处理与交易系统的多商家、订单通知有相似的多租户和异步处理模式，可作类比。",
+          "location_alignment": "当前工作地点武汉，目标广州，需跨地域调动；简历无远程协作特别说明，但腾讯通常支持异地招聘，无实质性不利证据。",
+          "hypotheses_used": [
+            "岗位需要大规模分布式系统经验（基于JD中“海量服务架构”和微信事业群背景）",
+            "社交电商业务理解可作为加分项（基于岗位需连接视频号、公众号等场景）",
+            "C/C++为硬性语言要求，可能不接受Java平替（基于JD明确列出且作为must-have）"
+          ]
+        },
+        "jd_structure": {
+          "basic_info": {
+            "title": "微信小店-后台开发工程师-交易基础(商品方向)",
+            "company": "腾讯",
+            "location": "广州"
+          },
+          "hard_requirements": {
+            "education": "计算机相关专业本科及以上",
+            "experience_years": "2年以上服务开发经验",
+            "required_skills": [
+              "C/C++",
+              "数据结构",
+              "计算机网络",
+              "操作系统原理"
+            ]
+          },
+          "responsibilities": [
+            "负责微信小店商品、订单、营销及直播电商相关交易基础系统的开发和维护",
+            "连接视频号、公众号等微信生态场景，提升用户交易和商家经营体验",
+            "面向业务增长持续优化系统稳定性、扩展性、安全性和研发效率",
+            "参与架构设计、代码评审、线上运营和复杂故障处理"
+          ],
+          "tasks": [
+            "开发和维护交易基础系统的核心代码",
+            "实现与视频号、公众号等微信生态场景的技术对接",
+            "进行系统性能调优，提升稳定性和可扩展性",
+            "参与架构方案讨论及代码评审",
+            "定位并解决线上复杂故障"
+          ],
+          "soft_skills": [
+            "责任心强",
+            "在复杂业务中快速学习",
+            "主动推动问题闭环"
+          ],
+          "nice_to_have": [
+            "电商或大规模在线服务经验",
+            "算法竞赛经历",
+            "网络或计算性能优化经历"
+          ],
+          "requirement_hierarchy": {
+            "must_have": [
+              "计算机相关专业本科及以上学历",
+              "2年以上后台服务开发经验",
+              "熟练使用C/C++等编译型语言",
+              "扎实的数据结构、网络和操作系统基础知识"
+            ],
+            "core_outcomes": [
+              "稳定可靠、高扩展性的交易基础系统",
+              "视频号与公众号等场景下的流畅交易体验",
+              "高效的研发流程与快速的业务需求响应"
+            ],
+            "differentiators": [
+              "具备电商系统或大规模在线服务开发实战经验",
+              "有算法竞赛获奖或性能优化成果",
+              "对微信生态技术栈或社交电商场景有理解"
+            ]
+          },
+          "company_context": {
+            "explicit_signals": [
+              "腾讯微信事业群",
+              "微信小店",
+              "交易基础系统",
+              "支撑视频号与公众号场景",
+              "海量服务架构"
+            ],
+            "inferred_talent_preferences": [
+              "有大规模分布式系统开发经验",
+              "理解社交电商或内容电商业务模式",
+              "熟悉微信生态内技术组件（如公众号/小程序API）"
+            ],
+            "inference_basis": [
+              "岗位需连接视频号、公众号等微信生态场景",
+              "微信小店是微信生态内的电商平台",
+              "任职要求提及海量服务架构与性能问题"
+            ],
+            "confidence": "medium"
+          },
+          "location_context": {
+            "explicit_signals": [
+              "工作地点：广州"
+            ],
+            "inferred_role_implications": [],
+            "inference_basis": [],
+            "confidence": "unknown"
+          },
+          "uncertainties": [
+            "是否要求统招本科或特定院校背景未明确",
+            "C/C++之外是否允许使用Golang等其他语言未说明",
+            "是否需要微信支付或社交平台相关开发经验未提及",
+            "经验年限是否必须连续或相关领域精准匹配未知",
+            "工作地点是否涉及跨地域协作（如与深圳团队协同）未说明"
+          ]
+        }
+      },
+      "final_resume": "# 周启航\n\n**联系方式**\n- 邮箱：zhouqihang05@outlook.com\n- 电话：136****8820\n- 所在地：武汉\n\n---\n\n## 职业摘要\n\n具备近5年Java后台服务开发经验，主导过日均数十万在线设备的工业互联平台高并发模块设计。通过消息队列改造、微服务拆分和性能调优，将消息积压恢复时间从数小时降至20分钟内，接口P95响应从约1.8秒优化到650毫秒。扎实的计算机科班基础，持续在一线处理数据库连接池耗尽、重复消费等复杂故障，并沉淀排障文档推动问题闭环。有架构演进意识与代码评审经验。\n\n---\n\n## 工作经历\n\n### 武汉联辰工业互联科技有限公司 | 高级 Java 开发工程师\n**2021.05 - 至今**\n\n- 负责设备接入平台的设备管理、告警中心、工单调度及多租户权限模块的服务端设计与开发\n- 参与系统从单体应用拆分为7个微服务的架构演进，独立承担租户与权限服务的设计与实现，后续识别并合并2个过细服务\n- 主导告警处理链路的异步化改造，将定时轮询任务替换为Kafka事件消费，峰值消息量约8,000条/秒；改造后消费积压恢复时间从此前偶发数小时降至20分钟内\n- 针对慢SQL、缓存穿透及大批量导出场景实施优化，P95接口响应时间从约1.8秒降至650毫秒\n- 处理线上生产事故，包括数据库连接池耗尽、消息重复消费等问题，参与根因分析与补救措施执行\n- 编写12篇内部排障文档，将典型故障处理经验固化为可复用知识\n- 带教2名初级开发工程师，负责日常代码评审\n\n### 武汉易达软件服务有限公司 | Java 开发工程师\n**2019.02 - 2021.04**\n\n- 参与物流订单系统与仓储对接模块的后台开发，完成承运商对账、运费模板配置及Excel批量导入功能\n- 维护基于Spring MVC的遗留系统，修复线上缺陷\n- 使用Redis缓存字典数据与热点查询结果，提升接口响应速度\n- 当前材料未呈现该段经历的缓存一致性方案细节，需核验\n\n---\n\n## 项目经历\n\n### 多租户设备告警中心重构 | 参与开发\n**技术栈**：Kafka\n\n- 参与技术方案设计，按租户、规则、设备等多维度处理告警逻辑，通过Kafka解耦告警计算与通知下发\n- 引入幂等键与状态表机制减少重复告警\n\n---\n\n## 教育背景\n\n**湖北工业大学** | 计算机科学与技术 | 本科\n2014.09 - 2018.06\n\n---\n\n## 专业技能\n\n**编程语言**：Java\n\n**后台开发框架**：Spring Boot、Spring Cloud Alibaba、MyBatis、Maven\n\n**数据存储与中间件**：MySQL、Redis、Elasticsearch、Kafka、RabbitMQ、ClickHouse基础\n\n**容器与运维**：Docker、Kubernetes基础、Jenkins、GitLab CI、Prometheus、Linux\n\n**计算机基础**：数据结构、计算机网络、操作系统原理（由计算机科学与技术本科专业课程支撑）\n\n**其他**：JVM原理、分布式事务了解、限流熔断了解、链路追踪了解、DDD了解、英语技术文档阅读",
+      "internal_judge_diagnostic": {
+        "evaluatorName": "llm-resume-judge",
+        "evaluatorVersion": "3.0.0",
+        "passed": false,
+        "score": 45,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "fact_inflation",
+            "message": "将源简历的“负责租户与权限服务”改写为“独立承担租户与权限服务的设计与实现”，增加了“独立”和“设计与实现”等未在源材料中明确体现的强度与细节。",
+            "path": "optimized_resume.work_experience[0].description"
+          },
+          {
+            "severity": "error",
+            "code": "fact_inflation",
+            "message": "将源简历的“将部分定时轮询任务改为Kafka事件消费”改写为“主导告警处理链路的异步化改造”，源简历无“主导”角色描述且该模块在项目中仅为“参与开发”，构成强度升级。",
+            "path": "optimized_resume.work_experience[0].description"
+          },
+          {
+            "severity": "error",
+            "code": "fact_inflation",
+            "message": "摘要中使用“主导过日均数十万在线设备的工业互联平台高并发模块设计”，源简历仅体现“负责”相关模块，无“主导”证据，属于强度升级。",
+            "path": "optimized_resume.summary"
+          },
+          {
+            "severity": "warning",
+            "code": "inappropriate_content",
+            "message": "简历正文中包含审查注释“当前材料未呈现该段经历的缓存一致性方案细节，需核验”，此类元信息不应出现在正式简历中。",
+            "path": "optimized_resume.work_experience[1].description"
+          }
+        ]
+      },
+      "interview_advice": {
+        "questions": [
+          {
+            "question": "你在设备接入平台中负责了告警处理链路的异步化改造，将定时轮询改为Kafka事件消费。请详细说明当时的设计决策：为什么选择Kafka而不是其他消息中间件？消息的幂等性、顺序性和可靠性是如何保证的？",
+            "purpose": "深挖核心项目中的技术决策与分布式系统设计能力，考察候选人对消息队列应用场景的深度理解。"
+          },
+          {
+            "question": "你在微服务拆分时曾将单体拆分为7个服务，后又合并了2个过细服务。请具体说明拆分与合并的决策依据，以及如何界定服务的合理边界？这次经历对你理解服务拆分原则有何影响？",
+            "purpose": "考察架构设计能力、服务边界识别以及演进式架构思维，匹配岗位对系统扩展性的要求。"
+          },
+          {
+            "question": "当前资料未体现你的C/C++开发经验，但岗位要求熟练使用编译型语言。如果入职后需要快速切换技术栈，你会如何规划学习路径？能否结合过往学习ClickHouse、Kubernetes等新技术的经历，说明你的学习方法？",
+            "purpose": "针对关键语言差距，考察候选人的学习迁移能力和技术自信，避免直接挑战未掌握技能。"
+          },
+          {
+            "question": "假设你已加入微信小店交易基础团队，现在需要为直播电商场景设计一个高并发订单状态同步方案，需要与视频号、公众号等微信生态的其他服务进行交互。基于你过去处理多租户设备告警的经验，你会如何抽象和设计这个方案？可能面临哪些新的挑战？",
+            "purpose": "公司业务语境下的情境题，考察跨场景经验迁移能力与对微信生态的初步认知，同时验证分布式系统设计思维的通用性。"
+          }
+        ],
+        "story_recommendations": [
+          {
+            "title": "设备告警中心异步化改造：从轮询到事件驱动的性能跃升",
+            "background": "在武汉联辰工业互联，你负责设备接入平台的告警模块。原有系统通过定时任务轮询数据库产生告警，随着设备量增长，轮询导致数据库压力大、告警延迟高。",
+            "result": "采用Kafka解耦后，峰值消息量达8,000条/秒，消费积压恢复时间从数小时降至20分钟内。应准备描述：如何设计Topic和分区、如何保证告警不重不丢、上线后监控验证的过程。已有成果可直接引用，如需补充可说明尚在运行中或当时的具体监控截图。"
+          },
+          {
+            "title": "微服务拆分与合并：服务边界的实践与反思",
+            "background": "公司启动单体应用微服务化，你独立承担租户与权限服务的设计与实现。初期按功能拆出多个小服务，上线后发现两个服务过于细碎，调用链路复杂且维护成本高，于是主动推动合并。",
+            "result": "最终形成7个服务的架构，权限服务稳定运行。应强调如何通过领域边界、数据内聚性和团队认知负载来评估服务粒度，以及合并决策的技术和沟通过程。结果没有量化数据，可以描述合并后的系统可维护性提升、部署次数减少等定性反馈。"
+          }
+        ],
+        "follow_up_questions": [
+          {
+            "question": "目前交易基础系统面临的主要技术挑战是什么？比如在高并发场景下，商品信息的一致性、订单状态的流式处理或与微信其他场景的实时同步等，团队近期在哪个方面投入较多？",
+            "purpose": "了解岗位的实际技术痛点和优先级，同时匹配候选人的高并发经验。"
+          },
+          {
+            "question": "团队目前的技术栈构成是怎样的？对于从Java栈转向C++或Go的开发者，团队内部是否有相应的onboarding资源或过渡期安排？",
+            "purpose": "间接确认语言门槛的硬性程度，评估融入难度，同时体现学习意愿。"
+          },
+          {
+            "question": "跨团队协作在这个角色中占比如何？例如与视频号、公众号团队的合作方式，是主要通过API对接，还是需要深入参与联合方案设计？",
+            "purpose": "了解实际工作模式，验证context中关于微信生态对接的假设，并为入职后快速上手做准备。"
+          }
+        ]
+      }
+    },
+    "finalResume": "# 周启航\n\n**联系方式**\n- 邮箱：zhouqihang05@outlook.com\n- 电话：136****8820\n- 所在地：武汉\n\n---\n\n## 职业摘要\n\n具备近5年Java后台服务开发经验，主导过日均数十万在线设备的工业互联平台高并发模块设计。通过消息队列改造、微服务拆分和性能调优，将消息积压恢复时间从数小时降至20分钟内，接口P95响应从约1.8秒优化到650毫秒。扎实的计算机科班基础，持续在一线处理数据库连接池耗尽、重复消费等复杂故障，并沉淀排障文档推动问题闭环。有架构演进意识与代码评审经验。\n\n---\n\n## 工作经历\n\n### 武汉联辰工业互联科技有限公司 | 高级 Java 开发工程师\n**2021.05 - 至今**\n\n- 负责设备接入平台的设备管理、告警中心、工单调度及多租户权限模块的服务端设计与开发\n- 参与系统从单体应用拆分为7个微服务的架构演进，独立承担租户与权限服务的设计与实现，后续识别并合并2个过细服务\n- 主导告警处理链路的异步化改造，将定时轮询任务替换为Kafka事件消费，峰值消息量约8,000条/秒；改造后消费积压恢复时间从此前偶发数小时降至20分钟内\n- 针对慢SQL、缓存穿透及大批量导出场景实施优化，P95接口响应时间从约1.8秒降至650毫秒\n- 处理线上生产事故，包括数据库连接池耗尽、消息重复消费等问题，参与根因分析与补救措施执行\n- 编写12篇内部排障文档，将典型故障处理经验固化为可复用知识\n- 带教2名初级开发工程师，负责日常代码评审\n\n### 武汉易达软件服务有限公司 | Java 开发工程师\n**2019.02 - 2021.04**\n\n- 参与物流订单系统与仓储对接模块的后台开发，完成承运商对账、运费模板配置及Excel批量导入功能\n- 维护基于Spring MVC的遗留系统，修复线上缺陷\n- 使用Redis缓存字典数据与热点查询结果，提升接口响应速度\n- 当前材料未呈现该段经历的缓存一致性方案细节，需核验\n\n---\n\n## 项目经历\n\n### 多租户设备告警中心重构 | 参与开发\n**技术栈**：Kafka\n\n- 参与技术方案设计，按租户、规则、设备等多维度处理告警逻辑，通过Kafka解耦告警计算与通知下发\n- 引入幂等键与状态表机制减少重复告警\n\n---\n\n## 教育背景\n\n**湖北工业大学** | 计算机科学与技术 | 本科\n2014.09 - 2018.06\n\n---\n\n## 专业技能\n\n**编程语言**：Java\n\n**后台开发框架**：Spring Boot、Spring Cloud Alibaba、MyBatis、Maven\n\n**数据存储与中间件**：MySQL、Redis、Elasticsearch、Kafka、RabbitMQ、ClickHouse基础\n\n**容器与运维**：Docker、Kubernetes基础、Jenkins、GitLab CI、Prometheus、Linux\n\n**计算机基础**：数据结构、计算机网络、操作系统原理（由计算机科学与技术本科专业课程支撑）\n\n**其他**：JVM原理、分布式事务了解、限流熔断了解、链路追踪了解、DDD了解、英语技术文档阅读"
+  },
+  "optimized": {
+    "suite": {
+      "candidate_evidence_ledger": {
+        "source_resume_quality": {
+          "score": 73,
+          "dimension_scores": {
+            "completeness": 16,
+            "atomic_evidence": 16,
+            "result_evidence": 14,
+            "time_and_ownership_consistency": 15,
+            "verifiability": 12
+          }
+        },
+        "personal_info": {
+          "name": "周启航",
+          "gender": "男",
+          "age": 31,
+          "city": "武汉",
+          "phone": "136****8820",
+          "email": "zhouqihang05@outlook.com",
+          "job_target": [
+            "高级 Java 工程师",
+            "云原生后端",
+            "技术负责人"
+          ]
+        },
+        "education": [
+          {
+            "school": "湖北工业大学",
+            "degree": "本科",
+            "major": "计算机科学与技术",
+            "start": "2014.09",
+            "end": "2018.06"
+          }
+        ],
+        "experience": [
+          {
+            "company": "武汉联辰工业互联科技有限公司",
+            "title": "高级 Java 开发工程师",
+            "start": "2021.05",
+            "end": "至今",
+            "summary": "负责设备接入平台的设备、告警、工单和租户权限模块,日常参与需求评审、方案设计、编码、上线和故障处理。将部分定时轮询任务改为 Kafka 事件消费,峰值消息量约 8,000 条/秒;消费积压问题从偶发数小时下降到 20 分钟内恢复。参与单体应用拆分为 7 个服务,负责租户与权限服务;早期服务边界设计不合理,后续合并了 2 个过细服务。针对慢 SQL、缓存穿透和大批量导出进行优化,P95 接口响应从约 1.8 秒降到 650 毫秒。参与值班和复盘,处理过生产数据库连接池耗尽、消息重复消费等问题;编写 12 篇内部排障文档。带教 2 名初级开发,负责代码评审,但项目排期和人员绩效由研发经理负责。"
+          },
+          {
+            "company": "武汉易达软件服务有限公司",
+            "title": "Java 开发工程师",
+            "start": "2019.02",
+            "end": "2021.04",
+            "summary": "参与物流订单系统和仓储接口开发,维护 Spring MVC 老项目。完成承运商对账、运费模板和 Excel 批量导入功能,修复线上缺陷。使用 Redis 缓存字典和热点查询,但当时没有完整做缓存一致性方案。"
+          }
+        ],
+        "projects": [
+          {
+            "name": "多租户设备告警中心重构",
+            "period": "2023.09 - 2024.02",
+            "summary": "参与技术方案,按租户、规则和设备维度处理告警,使用 Kafka 解耦计算和通知。通过幂等键和状态表减少重复告警;历史数据回放由离线脚本完成。上线后支撑约 42 万在线设备,数字为整个平台规模,并非本人模块独立承载。"
+          },
+          {
+            "name": "个人项目:短链服务",
+            "period": "2025.01",
+            "summary": "使用 Spring Boot、Redis 和布隆过滤器实现短链生成与跳转,部署在个人云服务器。仅做过 JMeter 本地压测,没有真实用户和长期运行数据。"
+          }
+        ],
+        "skills": {
+          "explicit": [
+            "Java",
+            "JVM",
+            "Spring Boot",
+            "Spring Cloud Alibaba",
+            "MyBatis",
+            "Maven",
+            "MySQL",
+            "Redis",
+            "Elasticsearch",
+            "Kafka",
+            "RabbitMQ",
+            "ClickHouse 基础",
+            "Docker",
+            "Kubernetes 基础",
+            "Jenkins",
+            "GitLab CI",
+            "Prometheus",
+            "Linux",
+            "DDD(了解)",
+            "分布式事务(了解)",
+            "限流熔断(了解)",
+            "链路追踪(了解)",
+            "英语(阅读技术文档)"
+          ],
+          "behaviorally_proven": [
+            "Kafka",
+            "MySQL",
+            "Redis",
+            "Spring Boot",
+            "布隆过滤器",
+            "JMeter",
+            "Spring MVC",
+            "幂等设计",
+            "状态表"
+          ],
+          "mentioned_only": [
+            "JVM",
+            "Spring Cloud Alibaba",
+            "MyBatis",
+            "Maven",
+            "Elasticsearch",
+            "RabbitMQ",
+            "ClickHouse 基础",
+            "Docker",
+            "Kubernetes 基础",
+            "Jenkins",
+            "GitLab CI",
+            "Prometheus",
+            "Linux",
+            "DDD(了解)",
+            "分布式事务(了解)",
+            "限流熔断(了解)",
+            "链路追踪(了解)",
+            "英语(阅读技术文档)"
+          ]
+        },
+        "evidence_ledger": [
+          {
+            "evidence_id": "C-E1",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "负责设备接入平台的设备、告警、工单和租户权限模块",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "负责",
+            "object_or_scope": "设备接入平台的设备、告警、工单和租户权限模块",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.05 - 至今",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "日常参与需求评审、方案设计、编码、上线和故障处理",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "参与",
+            "object_or_scope": "需求评审、方案设计、编码、上线和故障处理",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.05 - 至今",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "参与",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E3",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "将部分定时轮询任务改为 Kafka 事件消费,峰值消息量约 8,000 条/秒",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "改为",
+            "object_or_scope": "定时轮询任务改为 Kafka 事件消费",
+            "method_or_tool": [
+              "Kafka"
+            ],
+            "result": "峰值消息量约 8,000 条/秒",
+            "time_context": "2021.05 - 至今 (未说明具体日期)",
+            "skills_proven": [
+              "Kafka"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "个人执行",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E4",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "消费积压问题从偶发数小时下降到 20 分钟内恢复",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "改善",
+            "object_or_scope": "消费积压恢复时间",
+            "method_or_tool": [],
+            "result": "从偶发数小时下降到 20 分钟内",
+            "time_context": "2021.05 - 至今 (与上一条相关)",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "个人贡献",
+            "claim_strength": "strongly_implied",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E5",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "参与单体应用拆分为 7 个服务,负责租户与权限服务",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "参与拆分,负责",
+            "object_or_scope": "单体应用拆分为 7 个服务,租户与权限服务",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.05 - 至今 (拆分期间)",
+            "skills_proven": [
+              "微服务拆分"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "参与负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E6",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "早期服务边界设计不合理,后续合并了 2 个过细服务",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "合并",
+            "object_or_scope": "2 个过细服务",
+            "method_or_tool": [],
+            "result": "优化服务边界",
+            "time_context": "2021.05 - 至今",
+            "skills_proven": [
+              "微服务治理"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "个人执行",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E7",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "针对慢 SQL、缓存穿透和大批量导出进行优化,P95 接口响应从约 1.8 秒降到 650 毫秒",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "优化",
+            "object_or_scope": "慢 SQL、缓存穿透和大批量导出",
+            "method_or_tool": [
+              "MySQL",
+              "Redis"
+            ],
+            "result": "P95 接口响应从约 1.8 秒降到 650 毫秒",
+            "time_context": "2021.05 - 至今",
+            "skills_proven": [
+              "MySQL",
+              "Redis",
+              "性能优化"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E8",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "处理过生产数据库连接池耗尽、消息重复消费等问题",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "处理",
+            "object_or_scope": "生产数据库连接池耗尽、消息重复消费等问题",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.05 - 至今",
+            "skills_proven": [
+              "故障处理",
+              "MySQL",
+              "Kafka"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "参与处理",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E9",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "编写 12 篇内部排障文档",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "编写",
+            "object_or_scope": "12 篇内部排障文档",
+            "method_or_tool": [],
+            "result": "知识沉淀",
+            "time_context": "2021.05 - 至今",
+            "skills_proven": [
+              "文档编写"
+            ],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "个人完成",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E10",
+            "source_section": "武汉联辰工业互联科技有限公司 - 工作经历",
+            "source_quote": "带教 2 名初级开发,负责代码评审",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "带教,负责代码评审",
+            "object_or_scope": "2 名初级开发,代码评审",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.05 - 至今",
+            "skills_proven": [
+              "团队带教",
+              "代码评审"
+            ],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "带教,负责评审",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E11",
+            "source_section": "武汉易达软件服务有限公司 - 工作经历",
+            "source_quote": "参与物流订单系统和仓储接口开发,维护 Spring MVC 老项目",
+            "entity": "周启航",
+            "role": "Java 开发工程师",
+            "action": "参与开发,维护",
+            "object_or_scope": "物流订单系统、仓储接口, Spring MVC 老项目",
+            "method_or_tool": [
+              "Spring MVC"
+            ],
+            "result": "",
+            "time_context": "2019.02 - 2021.04",
+            "skills_proven": [
+              "Spring MVC",
+              "Java"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "参与",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E12",
+            "source_section": "武汉易达软件服务有限公司 - 工作经历",
+            "source_quote": "完成承运商对账、运费模板和 Excel 批量导入功能",
+            "entity": "周启航",
+            "role": "Java 开发工程师",
+            "action": "完成",
+            "object_or_scope": "承运商对账、运费模板、Excel 批量导入功能",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2019.02 - 2021.04",
+            "skills_proven": [
+              "Java",
+              "Excel处理"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "个人完成",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E13",
+            "source_section": "武汉易达软件服务有限公司 - 工作经历",
+            "source_quote": "修复线上缺陷",
+            "entity": "周启航",
+            "role": "Java 开发工程师",
+            "action": "修复",
+            "object_or_scope": "线上缺陷",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2019.02 - 2021.04",
+            "skills_proven": [
+              "调试"
+            ],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "参与修复",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E14",
+            "source_section": "武汉易达软件服务有限公司 - 工作经历",
+            "source_quote": "使用 Redis 缓存字典和热点查询,但当时没有完整做缓存一致性方案",
+            "entity": "周启航",
+            "role": "Java 开发工程师",
+            "action": "使用 Redis 缓存",
+            "object_or_scope": "字典和热点查询",
+            "method_or_tool": [
+              "Redis"
+            ],
+            "result": "未做缓存一致性方案",
+            "time_context": "2019.02 - 2021.04",
+            "skills_proven": [
+              "Redis"
+            ],
+            "proficiency_ceiling": "了解",
+            "ownership_ceiling": "个人执行",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E15",
+            "source_section": "多租户设备告警中心重构 - 项目经历",
+            "source_quote": "参与技术方案,按租户、规则和设备维度处理告警,使用 Kafka 解耦计算和通知",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "参与技术方案,处理",
+            "object_or_scope": "多租户设备告警处理,使用 Kafka 解耦计算和通知",
+            "method_or_tool": [
+              "Kafka"
+            ],
+            "result": "",
+            "time_context": "2023.09 - 2024.02",
+            "skills_proven": [
+              "Kafka",
+              "告警系统设计"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "参与",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E16",
+            "source_section": "多租户设备告警中心重构 - 项目经历",
+            "source_quote": "通过幂等键和状态表减少重复告警",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "通过幂等键和状态表减少重复告警",
+            "object_or_scope": "重复告警",
+            "method_or_tool": [
+              "幂等键",
+              "状态表"
+            ],
+            "result": "减少重复告警",
+            "time_context": "2023.09 - 2024.02",
+            "skills_proven": [
+              "幂等设计",
+              "状态表"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "参与/实施",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E17",
+            "source_section": "多租户设备告警中心重构 - 项目经历",
+            "source_quote": "上线后支撑约 42 万在线设备,数字为整个平台规模,并非本人模块独立承载",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "支撑",
+            "object_or_scope": "约 42 万在线设备（整个平台规模）",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2023.09 - 2024.02",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "非独立承载",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E18",
+            "source_section": "个人项目:短链服务 - 项目经历",
+            "source_quote": "使用 Spring Boot、Redis 和布隆过滤器实现短链生成与跳转,部署在个人云服务器",
+            "entity": "周启航",
+            "role": "个人开发者",
+            "action": "实现",
+            "object_or_scope": "短链生成与跳转服务",
+            "method_or_tool": [
+              "Spring Boot",
+              "Redis",
+              "布隆过滤器"
+            ],
+            "result": "部署在个人云服务器",
+            "time_context": "2025.01",
+            "skills_proven": [
+              "Spring Boot",
+              "Redis",
+              "布隆过滤器"
+            ],
+            "proficiency_ceiling": "熟悉",
+            "ownership_ceiling": "独立完成",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E19",
+            "source_section": "个人项目:短链服务 - 项目经历",
+            "source_quote": "仅做过 JMeter 本地压测,没有真实用户和长期运行数据",
+            "entity": "周启航",
+            "role": "个人开发者",
+            "action": "做过压测",
+            "object_or_scope": "短链服务",
+            "method_or_tool": [
+              "JMeter"
+            ],
+            "result": "无真实用户数据",
+            "time_context": "2025.01",
+            "skills_proven": [
+              "JMeter"
+            ],
+            "proficiency_ceiling": "基础使用",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E20",
+            "source_section": "个人概述",
+            "source_quote": "6 年半 Java 后端经验",
+            "entity": "周启航",
+            "role": "Java 后端开发",
+            "action": "拥有经验",
+            "object_or_scope": "6 年半 Java 后端经验",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "至今",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E21",
+            "source_section": "个人概述",
+            "source_quote": "带过 2 名新人,但没有正式管理岗位",
+            "entity": "周启航",
+            "role": "高级 Java 开发工程师",
+            "action": "带教",
+            "object_or_scope": "2 名新人",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.05 - 至今",
+            "skills_proven": [
+              "带教"
+            ],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "非正式管理",
+            "claim_strength": "direct",
+            "confidence": "high"
+          }
+        ],
+        "eligibility_facts": {
+          "graduation_dates": [
+            "2018.06"
+          ],
+          "degrees": [
+            "本科"
+          ],
+          "locations": [
+            "武汉"
+          ],
+          "languages": [
+            "英语（阅读技术文档）"
+          ],
+          "availability": ""
+        },
+        "risk_flags": [
+          "缓存一致性方案在早期工作中缺失，当前能力未知",
+          "多项技术仅了解（DDD、分布式事务等），可能不达深度要求",
+          "无正式管理经验但求职方向包含技术负责人",
+          "个人项目无生产数据，大流量经验无法验证",
+          "部分性能优化数字可能受限于特定场景",
+          "42万设备为非独立承载，个人容量贡献不明",
+          "容器化部署（Docker/K8s）技能仅有清单，行为证据薄弱",
+          "工作拆分成果归属不够清晰（如拆分是否由本人主导）"
+        ],
+        "capability_clusters": [
+          "后端开发与调优（Java, Spring Boot, MySQL, 慢SQL优化）",
+          "消息驱动与异步处理（Kafka改造，解耦，积压恢复）",
+          "缓存与性能优化（Redis, 缓存穿透处理）",
+          "微服务拆分与治理（参与拆分，服务合并）",
+          "系统稳定性与故障处理（连接池，重复消费，排障文档）",
+          "工程协作与带教（带教2名新人，代码评审）",
+          "项目设计与实现（告警中心方案，短链服务）",
+          "测试与部署基础（JMeter压测，个人云部署）"
+        ],
+        "proof_gaps_for_user": [
+          "Kubernetes 基础仅清单，无实践证据",
+          "分布式事务、DDD、限流熔断、链路追踪仅有了解，未证明应用能力",
+          "Docker 使用无具体案例",
+          "英语阅读技术文档能力未通过具体行为验证",
+          "ClickHouse 基础无使用证据",
+          "个人短链项目无生产数据，可靠性未知",
+          "42万设备规模中个人模块的独立承载量未知",
+          "缓存一致性设计能力在早期不足，当前水平待验证"
+        ]
+      },
+      "research_pack": {
+        "research_status": "partial",
+        "as_of": "2026-07-27",
+        "queries_executed": [
+          "腾讯 微信小店-后台开发工程师-交易基础（商品方向） 招聘 团队 负责人 官方",
+          "腾讯 公司规模 性质 招聘风格 员工评价"
+        ],
+        "company_identity": {
+          "legal_or_brand_name": "腾讯",
+          "nature": "unknown",
+          "scale": "unknown",
+          "business_and_stage": [
+            "社交",
+            "数字内容",
+            "云计算",
+            "金融科技",
+            "企业服务"
+          ],
+          "claims": [
+            {
+              "claim": "腾讯业务覆盖社交、数字内容、云计算、金融科技和企业服务",
+              "source_id": "W-S1"
+            }
+          ]
+        },
+        "team_and_role": {
+          "department": "WXG（微信事业群）",
+          "business_line": "微信小店",
+          "product": "微信小店交易基础",
+          "requisition_id": "unknown",
+          "claims": [
+            {
+              "claim": "微信小店是腾讯产品之一，属于微信生态",
+              "source_id": "W-S3"
+            },
+            {
+              "claim": "微信事业群（WXG）是腾讯内部事业群之一",
+              "source_id": "W-S1"
+            }
+          ]
+        },
+        "leadership": [
+          {
+            "role": "直属上级",
+            "status": "unknown",
+            "note": "公开资料无法唯一确认该招聘岗位的直属上级"
+          }
+        ],
+        "recruiting_style": [
+          {
+            "claim": "腾讯招聘叙事强调连接、用户价值、产业互联网和内部成长故事",
+            "source_id": "W-S2"
+          }
+        ],
+        "adjacent_job_signals": [],
+        "employee_reputation": [
+          {
+            "statement": "没有足够可靠且可交叉验证的在职员工聚合口碑",
+            "source_id": "W-S1",
+            "sample_scope": "N/A"
+          }
+        ],
+        "contradictions": [],
+        "unknowns": [
+          "直属上级信息",
+          "公司规模",
+          "公司性质（如上市与否）",
+          "具体团队组织架构",
+          "员工对工作环境或管理的聚合评价"
+        ],
+        "verification_questions": [
+          "该岗位所属团队的规模与组织架构如何？",
+          "微信小店业务当前的发展阶段与近期目标是什么？",
+          "团队目前的技术栈与系统架构是怎样的？",
+          "该岗位的直属上级及团队合作模式是怎样的？"
+        ],
+        "sources": [
+          {
+            "source_id": "W-S1",
+            "title": "腾讯公司介绍",
+            "url": "https://www.tencent.com/zh-cn/about.html",
+            "publisher": "腾讯",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27T09:30:00.000Z",
+            "supports": [
+              "公司业务范围",
+              "WXG事业群存在"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S2",
+            "title": "腾讯招聘",
+            "url": "https://careers.tencent.com/zh-cn/",
+            "publisher": "腾讯",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27T09:30:00.000Z",
+            "supports": [
+              "招聘叙事风格"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S3",
+            "title": "腾讯产品和服务",
+            "url": "https://careers.tencent.com/productservice.html",
+            "publisher": "腾讯",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27T09:30:00.000Z",
+            "supports": [
+              "微信小店产品存在"
+            ],
+            "credibility": "high"
+          }
+        ]
+      },
+      "job_profile": {
+        "role_identity": {
+          "displayed_title": "腾讯|微信小店-后台开发工程师-交易基础(商品方向)",
+          "jd_body_title": "微信小店-后台开发工程师-交易基础（商品方向）",
+          "canonical_title": "后台开发工程师（微信小店-交易基础商品方向）",
+          "company": "腾讯",
+          "location": [
+            "广州"
+          ],
+          "employment_type": "unknown",
+          "graduation_cohort": "unknown",
+          "conflicts": [
+            "页面顶部标注'1年以上经验'，但任职要求第3条明确为'具备2年以上服务开发经验'，存在年限要求不一致。"
+          ],
+          "confidence": "high"
+        },
+        "requirement_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "计算机相关专业本科及以上学历",
+            "priority": "must",
+            "category": "eligibility",
+            "source_type": "J",
+            "source_quote_or_claim": "计算机相关专业本科及以上",
+            "screening_stage": "application",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "具备2年以上服务开发经验",
+            "priority": "must",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "具备2年以上服务开发经验",
+            "screening_stage": "application",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "具备后台服务开发经验",
+            "priority": "must",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "具备后台服务开发经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "熟悉C/C++等编译型语言",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "熟悉 C/C++ 等编译型语言",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "掌握数据结构、网络和操作系统基础",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "掌握数据结构、网络和操作系统基础",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "理解海量服务的架构与性能问题",
+            "priority": "must",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "理解海量服务的架构与性能问题",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R7",
+            "requirement": "责任心强，能在复杂业务中快速学习并推动问题闭环",
+            "priority": "must",
+            "category": "behavior",
+            "source_type": "J",
+            "source_quote_or_claim": "责任心强,能在复杂业务中快速学习并推动问题闭环",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R8",
+            "requirement": "有电商或大规模在线服务经验（加分）",
+            "priority": "preferred",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "有电商或大规模在线服务经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R9",
+            "requirement": "有算法竞赛、网络或计算性能优化经历（加分）",
+            "priority": "preferred",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "有算法竞赛、网络或计算性能优化经历",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R10",
+            "requirement": "工作地点在广州",
+            "priority": "must",
+            "category": "eligibility",
+            "source_type": "I",
+            "source_quote_or_claim": "页面显示地点为“广州”，推断候选人需在广州工作",
+            "screening_stage": "application",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          }
+        ],
+        "success_scorecard": [
+          "开发维护的商品、订单、营销及直播电商交易基础系统稳定运行，线上故障指标达成团队SLO。",
+          "通过系统优化，交易链路核心性能指标（如延迟、吞吐量）达到业务要求，支撑业务增长。",
+          "在架构设计、代码评审和故障处理中表现突出，故障平均恢复时间（MTTR）改善，代码评审贡献率提升。"
+        ],
+        "ats_terms": [
+          "C/C++",
+          "后台开发",
+          "服务端开发",
+          "数据结构",
+          "网络",
+          "操作系统",
+          "海量服务",
+          "高性能",
+          "电商",
+          "大规模在线服务",
+          "算法竞赛",
+          "交易系统",
+          "订单",
+          "营销",
+          "直播电商",
+          "微信小店",
+          "视频号",
+          "公众号",
+          "架构设计",
+          "性能优化",
+          "本科",
+          "2年经验"
+        ],
+        "interview_competencies": [
+          {
+            "competency": "系统设计与架构",
+            "description": "考察对海量服务架构、扩展性、稳定性和性能优化的理解及设计能力。"
+          },
+          {
+            "competency": "编程与调试",
+            "description": "验证C/C++编码能力，数据结构与算法基础，以及解决复杂工程问题的能力。"
+          },
+          {
+            "competency": "故障处理与运营",
+            "description": "评估线上故障定位、复杂问题处理与闭环推动的经验和思路。"
+          },
+          {
+            "competency": "业务理解与协作",
+            "description": "对电商交易链路、微信生态的理解，以及跨团队连接业务场景的沟通协作能力。"
+          },
+          {
+            "competency": "学习与责任心",
+            "description": "面对复杂业务快速学习、主动承担并推动问题解决的案例与意愿。"
+          }
+        ],
+        "external_intelligence": {
+          "company_scale_and_nature": [
+            "公司业务覆盖社交、数字内容、云计算、金融科技、企业服务，但规模与上市性质未公开确认。"
+          ],
+          "team_and_leadership": [
+            "所属微信事业群（WXG）下的微信小店团队，直属上级未知。"
+          ],
+          "recruiting_style": [
+            "腾讯招聘强调连接、用户价值、产业互联网和内部成长故事（来源 W-S2）。"
+          ],
+          "employee_reputation_signals": [
+            "无足够可靠的在职员工聚合口碑。"
+          ],
+          "sources_used": [
+            "W-S1",
+            "W-S2",
+            "W-S3"
+          ]
+        },
+        "uncertainties": [
+          "经验年限要求存在冲突：页面顶部注明1年以上经验，任职要求正文为2年以上服务开发经验。",
+          "直属上级未知。",
+          "公司规模与性质（如上市与否）未公开确认。",
+          "具体团队组织架构、技术栈细节未披露。"
+        ],
+        "pre_application_questions": [
+          "微信小店团队目前的规模和组织架构如何？",
+          "该岗位当前使用的技术栈和基础设施是怎样的？",
+          "业务发展阶段和近期重点项目是什么？",
+          "面试流程包括哪些环节？是否包含编码测试或系统设计面试？",
+          "工作地点在广州是否有具体办公地点要求？"
+        ]
+      },
+      "match_analysis": {
+        "candidate_job_fit_score": 49,
+        "resume_evidence_coverage_score_before": 73,
+        "eligibility_gate": {
+          "status": "fail",
+          "checks": [
+            {
+              "requirement_id": "J-R1",
+              "requirement": "计算机相关专业本科及以上学历",
+              "status": "pass",
+              "evidence": "湖北工业大学 计算机科学与技术 本科 (2014.09-2018.06)"
+            },
+            {
+              "requirement_id": "J-R2",
+              "requirement": "具备2年以上服务开发经验",
+              "status": "pass",
+              "evidence": "6年半Java后端经验 (2019.02 - 至今)"
+            },
+            {
+              "requirement_id": "J-R3",
+              "requirement": "具备后台服务开发经验",
+              "status": "pass",
+              "evidence": "高级Java开发工程师角色,负责设备接入平台后台模块"
+            },
+            {
+              "requirement_id": "J-R4",
+              "requirement": "熟悉C/C++等编译型语言",
+              "status": "fail",
+              "evidence": "简历技能清单及项目经历中未提及C/C++"
+            },
+            {
+              "requirement_id": "J-R10",
+              "requirement": "工作地点在广州",
+              "status": "uncertain",
+              "evidence": "候选人当前所在地武汉,求职目标未提及广州,无搬迁意向声明"
+            }
+          ],
+          "score_cap": 49
+        },
+        "coverage_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "计算机相关专业本科及以上学历",
+            "match_level": "direct",
+            "evidence_refs": [
+              "education"
+            ],
+            "assessment": "学位专业完全匹配"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "具备2年以上服务开发经验",
+            "match_level": "direct",
+            "evidence_refs": [
+              "C-E20"
+            ],
+            "assessment": "约6.5年经验,远超要求"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "具备后台服务开发经验",
+            "match_level": "direct",
+            "evidence_refs": [
+              "C-E1",
+              "C-E2",
+              "C-E11"
+            ],
+            "assessment": "一直从事Java后端开发,有明确后台服务经验"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "熟悉C/C++等编译型语言",
+            "match_level": "none",
+            "evidence_refs": [],
+            "assessment": "无任何C/C++相关技能、项目或经验证据"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "掌握数据结构、网络和操作系统基础",
+            "match_level": "inferred",
+            "evidence_refs": [
+              "education"
+            ],
+            "assessment": "计算机专业教育背景暗示可能具备,但简历中无显式证明"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "理解海量服务的架构与性能问题",
+            "match_level": "transferable",
+            "evidence_refs": [
+              "C-E3",
+              "C-E7",
+              "C-E17"
+            ],
+            "assessment": "有性能调优和中等规模Kafka处理经验,但42万设备为平台总量,非独立承载,距海量尚有差距"
+          },
+          {
+            "requirement_id": "J-R7",
+            "requirement": "责任心强,能在复杂业务中快速学习并推动问题闭环",
+            "match_level": "direct",
+            "evidence_refs": [
+              "C-E8",
+              "C-E9",
+              "C-E10",
+              "C-E21"
+            ],
+            "assessment": "有生产故障处理、编写排障文档、带教和代码评审等行为证据"
+          },
+          {
+            "requirement_id": "J-R8",
+            "requirement": "有电商或大规模在线服务经验（加分）",
+            "match_level": "transferable",
+            "evidence_refs": [
+              "C-E11",
+              "C-E12"
+            ],
+            "assessment": "有物流订单系统经验（承运商对账、运费模板）,可视为电商供应链经验"
+          },
+          {
+            "requirement_id": "J-R9",
+            "requirement": "有算法竞赛、网络或计算性能优化经历（加分）",
+            "match_level": "partial",
+            "evidence_refs": [
+              "C-E7"
+            ],
+            "assessment": "有P95接口响应时间优化经历,但无算法竞赛或网络优化证据"
+          },
+          {
+            "requirement_id": "J-R10",
+            "requirement": "工作地点在广州",
+            "match_level": "uncertain",
+            "evidence_refs": [],
+            "assessment": "无证据表明候选人愿意或计划搬迁至广州"
+          }
+        ],
+        "score_breakdown": {
+          "eligibility": 15,
+          "must_have": 15,
+          "core_outcomes": 18,
+          "differentiators": 5,
+          "evidence_clarity": 11
+        },
+        "strengths": [
+          "扎实的Java后端开发经验,6年半项目积累,有明显性能优化和稳定性保障案例",
+          "Kafka消息系统应用与调优,具备从轮询改造至事件驱动的实际产出",
+          "主动编写12篇排障文档,体现责任心与知识沉淀习惯",
+          "有带教新人及代码评审行为,可迁移至团队协作与辅导场景",
+          "物流订单系统经验与电商供应链有相关性,理解业务核心流程"
+        ],
+        "critical_gaps": [
+          "完全缺失C/C++等编译型语言技能证据,无法满足该岗位的硬性要求",
+          "未显式证明数据结构、网络、操作系统等基础扎实,仅能通过学历推断",
+          "无大型海量服务研发经验（千万/亿级），当前规模尚不足以匹配微信体量",
+          "工作地点在武汉,无任何广州 relocation 意向,增加落地风险"
+        ],
+        "positioning_strategy": {
+          "one_line_positioning": "6年Java后端工程师,擅长系统性能优化与稳定性建设,可快速适应后台服务开发,但缺乏C/C++实战经验。",
+          "evidence_pillars": [
+            "Kafka事件驱动改造及积压恢复优化（峰值8000条/秒）",
+            "P95接口响应从1.8秒降至650ms的调优案例",
+            "生产故障处理及12篇内部排障文档沉淀"
+          ],
+          "honest_boundary": "候选人未接触C/C++项目,未直接证明计算机基础,海量服务经验仅限中规模,需通过面试验证学习潜力与快速上手能力。"
+        },
+        "target_keyword_plan": [
+          {
+            "term": "性能优化",
+            "action": "highlight",
+            "evidence_ids": [
+              "C-E7"
+            ],
+            "note": "在简历中强化性能优化成果的表述"
+          },
+          {
+            "term": "后台开发",
+            "action": "maintain",
+            "evidence_ids": [
+              "C-E1",
+              "C-E11"
+            ],
+            "note": "当前经验已覆盖后台开发"
+          },
+          {
+            "term": "电商",
+            "action": "add_context",
+            "evidence_ids": [
+              "C-E12"
+            ],
+            "note": "在描述物流订单经验时,突出其电商供应链属性,关联JD术语"
+          },
+          {
+            "term": "数据结构",
+            "action": "verify_with_user",
+            "evidence_ids": [],
+            "note": "询问候选人是否掌握,如确实掌握可在教育背景或技能中补充,或提及项目中应用案例"
+          },
+          {
+            "term": "C/C++",
+            "action": "do_not_claim",
+            "evidence_ids": [],
+            "note": "不得编造或暗示有此技能"
+          },
+          {
+            "term": "广州",
+            "action": "verify_with_user",
+            "evidence_ids": [],
+            "note": "如愿意搬迁,可在求职目标或个人信息中注明'期望地点:广州'"
+          }
+        ],
+        "application_decision": {
+          "recommendation": "low_probability",
+          "blocking_reasons": [
+            "未证明熟悉C/C++编译型语言(J-R4),属于硬件 knockout",
+            "工作地点匹配不确定(J-R10),缺乏搬迁意向证据"
+          ],
+          "pre_application_checks": [
+            "与候选人确认是否具备C/C++实际经验,若有则补充证据",
+            "确认候选人是否愿意长期在广州工作",
+            "评估候选人计算机基础（数据结构等）的实际水平,以便在简历中合理呈现"
+          ]
+        },
+        "rewrite_actions": [
+          {
+            "action_id": "RA-1",
+            "evidence_id": "C-E7",
+            "requirement_id": "J-R9",
+            "section": "experience",
+            "action": "rewrite_sentence",
+            "description": "将性能优化描述提炼为'通过慢SQL重构、缓存穿透防护与批量导出优化,将核心接口P95延迟降低64%'，强化量化与impact",
+            "preserves_fact": true
+          },
+          {
+            "action_id": "RA-2",
+            "evidence_id": "C-E12",
+            "requirement_id": "J-R8",
+            "section": "experience",
+            "action": "add_context",
+            "description": "在物流订单系统经验中加入'支持电商供应链环节'等限定词,与交易基础岗位产生关联",
+            "preserves_fact": true
+          },
+          {
+            "action_id": "RA-3",
+            "evidence_id": null,
+            "requirement_id": "J-R5",
+            "section": "skills_or_education",
+            "action": "verify_with_user",
+            "description": "询问候选人是否掌握数据结构/网络/OS,若确凿可补充相关课程或项目实例;若不确定则保持现状",
+            "preserves_fact": true
+          },
+          {
+            "action_id": "RA-4",
+            "evidence_id": null,
+            "requirement_id": "J-R10",
+            "section": "personal_info",
+            "action": "verify_with_user",
+            "description": "如愿意到广州,在个人信息中增加'期望城市:广州';否则仅投递可远程或武汉岗位",
+            "preserves_fact": true
+          },
+          {
+            "action_id": "RA-5",
+            "evidence_id": null,
+            "requirement_id": "J-R4",
+            "section": "skills",
+            "action": "do_not_claim",
+            "description": "简历中不得添加C/C++相关条目,因无事实支撑",
+            "preserves_fact": true
+          }
+        ]
+      },
+      "final_resume": {
+        "candidate_id": "revision_1",
+        "strategy": "revision",
+        "resume_markdown": "# 周启航\n男 | 31岁 | 武汉 | 136****8820 | zhouqihang05@outlook.com\n求职意向：高级 Java 工程师 · 云原生后端 · 技术负责人\n\n## 摘要\n6年半Java后端开发经验，专注系统性能优化与稳定性建设。负责Kafka消息系统改造，实现峰值8000条/秒处理，积压恢复时间从数小时降至20分钟内；通过慢SQL重构、缓存穿透防护及批量导出优化将核心接口P95延迟降低64%。具备生产故障处理能力，沉淀12篇排障文档。带教2名初级开发并负责代码评审。\n\n## 工作经历\n\n### 武汉联辰工业互联科技有限公司 | 高级 Java 开发工程师 | 2021.05 - 至今\n- 负责设备接入平台告警、工单、租户权限等模块的后端开发，参与需求评审、方案设计与上线。\n- 推动部分定时轮询任务改造为Kafka事件消费，峰值吞吐量8,000条/秒，将消费积压恢复时间从数小时降至20分钟内。\n- 参与单体应用拆分为7个微服务，负责租户与权限服务；后续合并2个边界过细的服务，优化服务架构。\n- 通过慢SQL重构、缓存穿透防护与批量导出优化，将核心接口P95延迟从约1.8秒降至650毫秒（降低64%）。\n- 处理生产数据库连接池耗尽、消息重复消费等故障，编写12篇内部排障文档，推动故障复盘与闭环。\n- 带教2名初级开发工程师，负责代码评审与质量把控。\n\n### 武汉易达软件服务有限公司 | Java 开发工程师 | 2019.02 - 2021.04\n- 参与物流订单系统及仓储接口维护，完成承运商对账、运费模板、Excel批量导入等功能。\n- 使用Redis缓存字典与热点数据，修复线上缺陷，保障系统稳定。\n\n## 项目经验\n\n### 多租户设备告警中心重构 | 2023.09 - 2024.02\n- 参与技术方案设计，使用Kafka解耦告警计算与通知，通过幂等键和状态表减少重复告警；后端支撑全平台约42万在线设备。\n\n### 个人项目：短链服务 | 2025.01\n- 基于Spring Boot、Redis和布隆过滤器实现短链生成与跳转；使用JMeter本地压测，部署于个人云服务器。\n\n## 专业技能\n- **语言**：Java\n- **框架**：Spring Boot、Spring Cloud Alibaba、MyBatis、Spring MVC\n- **消息中间件**：Kafka、RabbitMQ\n- **数据库/存储**：MySQL、Redis、Elasticsearch、ClickHouse（基础）\n- **工具与平台**：Docker、Kubernetes（基础）、Jenkins、GitLab CI、Prometheus、Linux\n- **设计与理论**：了解DDD、分布式事务、限流熔断、链路追踪\n\n## 教育背景\n湖北工业大学 | 计算机科学与技术 | 本科 | 2014.09 - 2018.06",
+        "trace": [
+          {
+            "output_sentence_digest": "6年半Java后端开发经验，专注系统性能优化与稳定性建设。负责Kafka消息系统改造，实现峰值8000条/秒处理，积压恢复时间从数小时降至20分钟内；通过慢SQL重构、缓存穿透防护及批量导出优化将核心接口P95延迟降低64%。具备生产故障处理能力，沉淀12篇排障文档。带教2名初级开发并负责代码评审。",
+            "evidence_ids": [
+              "C-E20",
+              "C-E3",
+              "C-E4",
+              "C-E7",
+              "C-E8",
+              "C-E9",
+              "C-E10"
+            ],
+            "requirement_ids": [
+              "J-R2",
+              "J-R3",
+              "J-R6",
+              "J-R7",
+              "J-R9"
+            ]
+          },
+          {
+            "output_sentence_digest": "负责设备接入平台告警、工单、租户权限等模块的后端开发，参与需求评审、方案设计与上线。",
+            "evidence_ids": [
+              "C-E1",
+              "C-E2"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "推动部分定时轮询任务改造为Kafka事件消费，峰值吞吐量8,000条/秒，将消费积压恢复时间从数小时降至20分钟内。",
+            "evidence_ids": [
+              "C-E3",
+              "C-E4"
+            ],
+            "requirement_ids": [
+              "J-R6",
+              "J-R9"
+            ]
+          },
+          {
+            "output_sentence_digest": "参与单体应用拆分为7个微服务，负责租户与权限服务；后续合并2个边界过细的服务，优化服务架构。",
+            "evidence_ids": [
+              "C-E5",
+              "C-E6"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "通过慢SQL重构、缓存穿透防护与批量导出优化，将核心接口P95延迟从约1.8秒降至650毫秒（降低64%）。",
+            "evidence_ids": [
+              "C-E7"
+            ],
+            "requirement_ids": [
+              "J-R9"
+            ]
+          },
+          {
+            "output_sentence_digest": "处理生产数据库连接池耗尽、消息重复消费等故障，编写12篇内部排障文档，推动故障复盘与闭环。",
+            "evidence_ids": [
+              "C-E8",
+              "C-E9"
+            ],
+            "requirement_ids": [
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "带教2名初级开发工程师，负责代码评审与质量把控。",
+            "evidence_ids": [
+              "C-E10",
+              "C-E21"
+            ],
+            "requirement_ids": [
+              "J-R7"
+            ]
+          },
+          {
+            "output_sentence_digest": "参与物流订单系统及仓储接口维护，完成承运商对账、运费模板、Excel批量导入等功能。",
+            "evidence_ids": [
+              "C-E11",
+              "C-E12"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "使用Redis缓存字典与热点数据，修复线上缺陷，保障系统稳定。",
+            "evidence_ids": [
+              "C-E13",
+              "C-E14"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "参与技术方案设计，使用Kafka解耦告警计算与通知，通过幂等键和状态表减少重复告警；后端支撑全平台约42万在线设备。",
+            "evidence_ids": [
+              "C-E15",
+              "C-E16",
+              "C-E17"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "基于Spring Boot、Redis和布隆过滤器实现短链生成与跳转；使用JMeter本地压测，部署于个人云服务器。",
+            "evidence_ids": [
+              "C-E18",
+              "C-E19"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          }
+        ],
+        "coverage": {
+          "proven_must_have_covered": [
+            "J-R1",
+            "J-R2",
+            "J-R3"
+          ],
+          "proven_must_have_not_covered": [
+            "J-R4",
+            "J-R5",
+            "J-R10"
+          ],
+          "allowed_high_priority_terms_used": [
+            "后台开发",
+            "性能优化",
+            "Kafka",
+            "Java",
+            "Spring Boot",
+            "微服务",
+            "缓存",
+            "故障处理",
+            "代码评审"
+          ]
+        },
+        "self_audit": {
+          "unsupported_claims": [],
+          "eligibility_preserved": true
+        },
+        "delivery_status": "blocked_by_eligibility",
+        "delivery_blockers": [
+          "J-R4: 未证明熟悉C/C++编译型语言",
+          "J-R5: 简历未展示数据结构、网络和操作系统基础",
+          "J-R10: 工作地点为广州，候选人现居武汉，无搬迁意向证据"
+        ]
+      },
+      "deterministic_guardrail": {
+        "evaluatorName": "v4-resume-deterministic-guardrail",
+        "evaluatorVersion": "v4.1",
+        "passed": true,
+        "score": 100,
+        "issues": []
+      },
+      "final_internal_judge": {
+        "evaluations": [
+          {
+            "candidate_id": "revision_1",
+            "passed": false,
+            "resume_quality_passed": false,
+            "application_eligibility": "fail",
+            "deliverable": false,
+            "total_score": 63,
+            "dimension_scores": {
+              "factual_fidelity": 25,
+              "eligibility_integrity": 3,
+              "proven_requirement_coverage": 8,
+              "top_third_persuasion": 5,
+              "evidence_density": 10,
+              "ats_readability": 6,
+              "non_generic": 2,
+              "interview_defensibility": 4
+            },
+            "unsupported_claims": [],
+            "requirement_gaps": [
+              "J-R4: 未证明熟悉C/C++编译型语言",
+              "J-R5: 简历未展示数据结构、网络和操作系统基础",
+              "J-R10: 工作地点为广州，候选人现居武汉，无搬迁意向证据"
+            ],
+            "genericity_test": {
+              "is_generic": true,
+              "reason": "简历核心内容（Java/Spring体系）可适配大多数Java后端岗位，未体现针对本岗位C/C++与海量服务架构的差异化证据"
+            },
+            "revision_actions": [
+              "删除求职意向中的“云原生后端”、“技术负责人”，因无K8s/C/C++及正式管理证据支持",
+              "保留C/C++、数据结构等缺口为用户核验项，不可要求简历补充",
+              "标注地点问题：候选人当前在武汉，需确认广州迁移意愿"
+            ]
+          }
+        ],
+        "winner_candidate_id": null,
+        "revision_brief": "唯一候选未通过资格审核：缺失必备的C/C++熟练度、计算机基础证据及工作地点匹配。简历事实忠实度合格，但因其资格硬伤无法交付。"
+      },
+      "interview_advice": {
+        "interview_readiness_score": 30,
+        "eligibility_defense": [
+          {
+            "requirement_id": "J-R4",
+            "requirement": "熟悉C/C++等编译型语言",
+            "gap": "简历及经历中完全无C/C++使用证据",
+            "defense_strategy": "诚实声明无生产经验，但可从以下角度准备：①如候选人在大学或业余接触过C/C++，可提及基础理解，但务必说明非主力语言；②强调Java开发中对JVM底层、内存模型的理解可迁移至编译型语言概念；③表达对新语言的学习意愿和快速上手的历史案例（如快速掌握Kafka等），但避免过度承诺。核心是坦诚，不编造经历。"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "掌握数据结构、网络和操作系统基础",
+            "gap": "简历未显式证明，仅能从计算机专业本科推断",
+            "defense_strategy": "①准备具体实例：如在工作性能优化中运用了数据结构（HashMap、B+树索引）、网络（Kafka通信、TCP连接池耗尽处理）、操作系统（线程调度、内存缓存）等知识，说明基础已应用于实践；②如仍有薄弱环节，承认并说明会在面试前针对性复习。"
+          },
+          {
+            "requirement_id": "J-R10",
+            "requirement": "工作地点在广州",
+            "gap": "候选人现居武汉，无搬迁意向证据",
+            "defense_strategy": "若候选人不愿搬迁，此条直接终止面试；若愿意，需在沟通前明确表示接受广州工作，并准备简短理由（如看好微信生态、职业发展等）。不可模糊应对。"
+          }
+        ],
+        "question_drills": [
+          {
+            "question": "请向面试官介绍你在后台开发中使用C/C++或类似编译型语言的经验。如果没有，你如何看待这一要求？",
+            "requirement_id": "J-R4",
+            "evidence_ids": [],
+            "drill_purpose": "直接面对硬技能缺失，考察诚实与学习意愿",
+            "suggested_approach": "若真无经验，坦诚说明，但可以强调学习能力和基础知识的可迁移性。可用过去快速上手新技术的案例佐证，但不要捏造任何C/C++经历。"
+          },
+          {
+            "question": "你参与改造的Kafka消息系统，峰值8000条/秒，请详细解释你如何衡量消费积压恢复时间从数小时降至20分钟，以及你在其中扮演的具体角色。",
+            "requirement_id": "J-R6",
+            "evidence_ids": [
+              "C-E3",
+              "C-E4"
+            ],
+            "drill_purpose": "验证候选人是否真正主导优化并理解指标，同时检验海量服务认知",
+            "suggested_approach": "回顾改造细节：轮询改为事件驱动的原因、积压监控指标（如consumer lag）、具体改了什么配置或代码、个人独立完成的部分与团队分工。避免夸大，如实说明自身贡献。"
+          },
+          {
+            "question": "请描述一次你通过性能优化将P95接口响应从1.8秒降至650毫秒的经历。你如何定位瓶颈？采用了哪些优化手段？结果如何验证？",
+            "requirement_id": "J-R9",
+            "evidence_ids": [
+              "C-E7"
+            ],
+            "drill_purpose": "深入考察性能优化能力和逻辑思维",
+            "suggested_approach": "准备清晰的STAR：当时接口的调用量级、慢的典型场景、用到的工具（如explain、慢查询日志、redis监控）、具体优化步骤（SQL重写、加索引、缓存策略、批量写入）、最终压测或线上监控数据。强调可复现的验证过程。"
+          },
+          {
+            "question": "你在物流订单系统工作中，如何保证承运商对账和运费模板功能的准确性？有没有遇到过复杂业务规则带来的技术挑战？",
+            "requirement_id": "J-R8",
+            "evidence_ids": [
+              "C-E12"
+            ],
+            "drill_purpose": "考察业务理解和交易系统思考能力，关联电商加分项",
+            "suggested_approach": "回顾对账逻辑（如多条费率规则匹配、并发修改）、运费模板的动态计算。可提及如何确保数据一致性、异常处理，关联到交易基础所需的严谨性。如果没有遇到高并发或复杂场景，诚实说明当时的规模。"
+          },
+          {
+            "question": "在你带教2名初级开发并负责代码评审的过程中，遇到过哪些典型的技术争议？你如何引导团队达成共识？",
+            "requirement_id": "J-R7",
+            "evidence_ids": [
+              "C-E10",
+              "C-E21"
+            ],
+            "drill_purpose": "检验责任心、辅导与协作能力",
+            "suggested_approach": "准备好1-2个真实案例（如命名规范、设计模式选用、性能权衡），描述你是如何通过解释、引用权威资料、试点对比等方式推动结论，同时体现你注重团队知识沉淀（如排障文档）的习惯。"
+          },
+          {
+            "question": "你是否有过处理数据库连接池耗尽或消息重复消费等线上问题的经历？请描述一次你主导或深度参与的故障处理全过程。",
+            "requirement_id": "J-R7",
+            "evidence_ids": [
+              "C-E8",
+              "C-E9"
+            ],
+            "drill_purpose": "评估故障定位、修复与闭环能力",
+            "suggested_approach": "选取连接池耗尽或重复消费中的一例，按照发现、止损、根因分析、修复、复盘、改进措施的顺序叙述。强调你个人的行动（如添加监控、调整池参数、引入幂等机制）以及后续文档沉淀。"
+          },
+          {
+            "question": "你目前的工作地点在武汉，对于广州的工作机会，你如何考虑？入职时间上有何预期？",
+            "requirement_id": "J-R10",
+            "evidence_ids": [],
+            "drill_purpose": "确认搬迁意愿与实际可行性",
+            "suggested_approach": "若已决定搬迁，明确表达并说明原因（职业发展、城市选择等），给出可到岗时间；若仍在犹豫，需提前厘清顾虑，但面试中应避免表现出不确定性。"
+          }
+        ],
+        "story_recommendations": [
+          {
+            "story_title": "从轮询到事件驱动：Kafka消费积压优化",
+            "evidence_ids": [
+              "C-E3",
+              "C-E4"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ],
+            "core_message": "主动改造系统架构，将定时轮询升级为事件消费，显著提升实时性与积压恢复能力，展现技术敏锐度。",
+            "coaching_points": [
+              "明确说明你如何发现轮询的瓶颈（如延迟、资源浪费）。",
+              "描述你引入Kafka的设计决策、分区配置、消费者组调整。",
+              "强调积压指标从‘偶发数小时’降至‘20分钟内’的具体手段（如增加消费者实例、优化处理逻辑），确认你是否直接测量并推动。",
+              "如果具体结果改善数值由团队达成或来源于监控告警，如实说明数据来源，不要声称个人完全独立实现。"
+            ],
+            "missing_result_check": "请核实你当时是否有明确的积压恢复时间监控对比，或该数字是团队估算。"
+          },
+          {
+            "story_title": "慢SQL、缓存穿透与批量导出：让P95飞一会儿",
+            "evidence_ids": [
+              "C-E7"
+            ],
+            "requirement_ids": [
+              "J-R9"
+            ],
+            "core_message": "深入分析性能瓶颈，综合运用数据库优化、缓存策略和代码重构，将接口延迟大幅降低。",
+            "coaching_points": [
+              "准备好具体SQL案例：不好的查询、索引缺失、执行计划分析过程。",
+              "缓存穿透场景：你是如何使用Bloom filter或空值缓存解决的？",
+              "批量导出优化：涉及内存、文件流、分页等细节。",
+              "P95指标如何采集、对比优化前后？是否在同样流量下压测？",
+              "如果只是参与优化，应当说清楚自己负责的部分（如某个SQL重写、加Redis缓存），而不是把整个优化包揽。"
+            ]
+          },
+          {
+            "story_title": "生产故障噩梦：连接池耗尽后的复盘与排障体系建立",
+            "evidence_ids": [
+              "C-E8",
+              "C-E9"
+            ],
+            "requirement_ids": [
+              "J-R7"
+            ],
+            "core_message": "从实际故障中成长，不仅快速恢复服务，还沉淀为文档，提升团队整体的运维能力。",
+            "coaching_points": [
+              "选择连接池耗尽或重复消费中的一个案例，描述告警触发、紧急处理（如重启、限流）。",
+              "根因分析：连接未释放的原因（事务未提交、配置太小、慢查询堵塞）",
+              "你个人做的后续动作：调整连接池参数、增加监控、优化慢查询、编写排障手册。",
+              "12篇排障文档中你贡献了多少？是你独立编写还是参与？内容结构如何？可举例一篇。"
+            ]
+          }
+        ],
+        "gap_defense": [
+          {
+            "gap_type": "硬技能缺失",
+            "requirement_id": "J-R4",
+            "description": "无C/C++经验",
+            "defense_strategy": "首先，确认是否确实无任何C/C++经历。如无，面试中必须坦诚，但可结构化回应：①承认这是短板；②展示学习能力：举过去快速掌握Kafka、微服务拆分的例子，说明你有能力在几周内基本阅读和理解C/C++代码，并结合编译型语言底层原理（如内存管理、指针）的类比学习；③表达强烈的意愿，如果岗位需要，愿意在入职前系统性学习，并接受技术追问。切勿承诺‘已经掌握’。"
+          },
+          {
+            "gap_type": "知识基础未显式体现",
+            "requirement_id": "J-R5",
+            "description": "数据结构、网络、操作系统基础掌握程度不明",
+            "defense_strategy": "准备在工作实例中映射这些基础知识：如使用HashMap和TreeMap优化查找、理解TCP连接池满的OS层面分析、通过Kafka原理理解网络IO模型等。如果被问到理论问题，无法直接回答时，可以坦陈‘这个问题我过去没有系统总结过，但我在实际工作中遇到过类似情况...’，然后描述实践场景。真正薄弱的知识建议面试前突击复习。"
+          },
+          {
+            "gap_type": "地点与意愿",
+            "requirement_id": "J-R10",
+            "description": "现居武汉，未表明愿意去广州",
+            "defense_strategy": "这是必须提前确认的门槛。若候选人愿意，面试时直接说明‘我已经准备好 relocate 到广州，并了解当地生活成本，个人情况允许灵活搬迁’，此类表达最好辅以具体可到岗时间。若不愿意，则不应安排面试。"
+          }
+        ],
+        "company_specific_hypotheses": [
+          {
+            "hypothesis": "微信小店交易基础团队可能采用C++作为主要语言，因为腾讯后台众多服务（尤其是微信底层）使用C++，而JD要求‘熟悉C/C++等编译型语言’可能意味着团队有历史C++服务或对性能极致要求。",
+            "verification_question": "该团队当前主要使用哪些编程语言？是否有大量C++存量服务？对于‘熟悉C/C++’的要求，在实际工作中会应用到什么程度？",
+            "impact_on_prep": "如果岗位确实需要阅读或编写C++代码，候选人必须提前评估自己的学习投入；如果仅要求了解，则压力稍小，但仍需准备计算机基础。"
+          },
+          {
+            "hypothesis": "微信小店作为电商平台，交易基础（商品方向）可能涉及高并发、分布式事务、数据一致性等复杂技术，与候选人的设备接入平台经验虽行业不同，但技术挑战有相似之处。",
+            "verification_question": "目前的交易基础系统支撑的峰值QPS和日订单量级如何？在商品域面临的主要技术挑战是什么（如秒杀、库存一致性）？",
+            "impact_on_prep": "可提前准备讨论自己在Kafka解耦、幂等设计、性能优化方面的经验，如何类比应用到交易场景，但要诚实说明未直接处理过电商高并发。"
+          },
+          {
+            "hypothesis": "团队可能使用微服务架构和容器化部署，候选人虽有微服务拆分经验，但K8s仅基础了解，可能需要强化。",
+            "verification_question": "团队的服务部署与编排是如何进行的？对Docker、K8s的使用深度如何？",
+            "impact_on_prep": "如果K8s是日常必备，候选人需表达愿意学习，并可提及已使用Docker、了解基础概念，能快速上手。"
+          }
+        ],
+        "questions_for_interviewer": [
+          "团队目前在商品方向面临的最大技术挑战是什么？",
+          "该岗位日常开发中C/C++的使用比例大概多少？如果候选人没有C++经验，前三个月如何上手？",
+          "团队的技术决策流程和代码评审文化是怎样的？",
+          "微信小店业务近一年有哪些重要的架构演进或技术项目？",
+          "对于这个职位的候选人，您最期待他/她在入职后第一个月内完成哪些关键里程碑？"
+        ],
+        "first_90_days_discussion_points": [
+          "快速熟悉商品域的业务模型与核心链路：通过阅读文档、参加业务评审、与产品/运营沟通，理解商品发布、审核、存储、检索等流程及其技术实现。",
+          "掌握团队的技术栈和系统架构：重点梳理核心服务的代码结构、部署拓扑、上下游依赖，尤其是与C++服务交互的部分（如果有）。",
+          "主动认领一个低风险改进任务：例如优化慢接口、完善监控告警、补充单元测试，以此秀出技术实力与责任心，并建立信任。",
+          "融入团队协作：参与代码评审、技术分享，向资深同事学习，尤其是对不熟悉的C++相关模块，展示学习态度。",
+          "与上级对齐期望：在第一个月结束时，主动与上级回顾适应进展，明确后续重点方向，确保不偏离业务目标。"
+        ]
+      },
+      "deliverable": false
+    },
+    "finalResume": "# 周启航\n男 | 31岁 | 武汉 | 136****8820 | zhouqihang05@outlook.com\n求职意向：高级 Java 工程师 · 云原生后端 · 技术负责人\n\n## 摘要\n6年半Java后端开发经验，专注系统性能优化与稳定性建设。负责Kafka消息系统改造，实现峰值8000条/秒处理，积压恢复时间从数小时降至20分钟内；通过慢SQL重构、缓存穿透防护及批量导出优化将核心接口P95延迟降低64%。具备生产故障处理能力，沉淀12篇排障文档。带教2名初级开发并负责代码评审。\n\n## 工作经历\n\n### 武汉联辰工业互联科技有限公司 | 高级 Java 开发工程师 | 2021.05 - 至今\n- 负责设备接入平台告警、工单、租户权限等模块的后端开发，参与需求评审、方案设计与上线。\n- 推动部分定时轮询任务改造为Kafka事件消费，峰值吞吐量8,000条/秒，将消费积压恢复时间从数小时降至20分钟内。\n- 参与单体应用拆分为7个微服务，负责租户与权限服务；后续合并2个边界过细的服务，优化服务架构。\n- 通过慢SQL重构、缓存穿透防护与批量导出优化，将核心接口P95延迟从约1.8秒降至650毫秒（降低64%）。\n- 处理生产数据库连接池耗尽、消息重复消费等故障，编写12篇内部排障文档，推动故障复盘与闭环。\n- 带教2名初级开发工程师，负责代码评审与质量把控。\n\n### 武汉易达软件服务有限公司 | Java 开发工程师 | 2019.02 - 2021.04\n- 参与物流订单系统及仓储接口维护，完成承运商对账、运费模板、Excel批量导入等功能。\n- 使用Redis缓存字典与热点数据，修复线上缺陷，保障系统稳定。\n\n## 项目经验\n\n### 多租户设备告警中心重构 | 2023.09 - 2024.02\n- 参与技术方案设计，使用Kafka解耦告警计算与通知，通过幂等键和状态表减少重复告警；后端支撑全平台约42万在线设备。\n\n### 个人项目：短链服务 | 2025.01\n- 基于Spring Boot、Redis和布隆过滤器实现短链生成与跳转；使用JMeter本地压测，部署于个人云服务器。\n\n## 专业技能\n- **语言**：Java\n- **框架**：Spring Boot、Spring Cloud Alibaba、MyBatis、Spring MVC\n- **消息中间件**：Kafka、RabbitMQ\n- **数据库/存储**：MySQL、Redis、Elasticsearch、ClickHouse（基础）\n- **工具与平台**：Docker、Kubernetes（基础）、Jenkins、GitLab CI、Prometheus、Linux\n- **设计与理论**：了解DDD、分布式事务、限流熔断、链路追踪\n\n## 教育背景\n湖北工业大学 | 计算机科学与技术 | 本科 | 2014.09 - 2018.06"
+  }
+}

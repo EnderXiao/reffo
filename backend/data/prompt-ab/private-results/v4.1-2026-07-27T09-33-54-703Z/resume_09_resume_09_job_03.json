@@ -1,0 +1,1779 @@
+{
+  "privacy": "PRIVATE_REVIEW_MATERIAL_DO_NOT_COMMIT",
+  "promptVariant": "aggressive-v4.1",
+  "promptVersion": "4.1.0",
+  "caseId": "resume_09:resume_09_job_03",
+  "resumeId": "resume_09",
+  "jobId": "resume_09_job_03",
+  "company": "Amazon",
+  "position": "Senior Financial Analyst, Global Logistics, Global Logistic Finance",
+  "sourceResume": "何嘉雯|财务分析|制造业预算与经营支持\n女|29岁|成都|187****1465|hejiawen09@outlook.com\n求职方向:FP&A、业务财务 BP、财务数据分析\n\n【个人概述】\n5 年制造业财务经验,从成本会计转为财务分析,负责预算、月度经营分析和工厂成本专题。已通过 CPA 会计、财管两科,会使用 Power BI,但商业部门支持经验有限。\n\n【专业技能】\n- 财务:预算与滚动预测、管理报表、成本差异、盈利分析、资本开支跟踪\n- 工具:Excel(Power Query、Power Pivot)、Power BI、SAP FI/CO、用友\n- 证书:初级会计职称;CPA 专业阶段通过会计、财管 2 科;英语 CET-4\n\n【工作经历】\n成都川岳精密制造有限公司|财务分析师|2022.08 - 至今\n- 负责工厂年度预算、月度滚动预测和经营分析,覆盖收入、材料、人工、制造费用与资本开支。\n- 每月与生产、采购和销售核对差异,向财务经理提交约 20 页经营分析材料;通常不直接向总经理汇报。\n- 建立产品毛利分析模型,按客户、产品族和订单拆分标准与实际成本,发现 6 个长期低毛利产品。\n- 参与材料降本项目,跟踪替代料、采购价格和用量差异;2025 年项目账面降本约 480 万元,为跨部门共同结果。\n- 使用 Power BI 制作预算执行与库存金额看板,将月报准备时间从约 3 天缩短到 1.5 天。\n- 协助新产线投资测算,负责现金流模型和敏感性表,市场销量假设由业务部门提供。\n四川启盛电气有限公司|成本会计|2020.07 - 2022.07\n- 负责材料、人工和制造费用归集,月末成本结转和存货盘点。\n- 维护 BOM 与标准成本差异表,处理跨月暂估和异常工单。\n- 工作以核算和关账为主,参与业务分析较少。\n\n【项目经历】\n低毛利产品专项|2024.04 - 2024.07\n- 重新核对 68 个产品成本口径,按订单量、材料波动和工时拆解利润变化。\n- 推动销售重新议价 3 个、工艺改善 2 个、停产评估 1 个;未记录各动作最终利润贡献。\n月度经营看板|2023.11 - 2024.02\n- 从 SAP 导出数据后通过 Power Query 清洗,建立收入、成本、库存和费用模型。\n- 当前仍依赖本地文件,权限和自动刷新尚未解决。\n\n【教育经历】\n- 西南财经大学天府学院|财务管理 本科|2016.09 - 2020.06\n- GPA 3.3/4.0;校财务案例大赛三等奖\n\n【补充信息】\n- 期望在成都或重庆工作,不接受长期出差。\n- 自我评价:数字敏感、严谨,业务沟通需要继续提升。",
+  "jobDescription": "Amazon|Senior Financial Analyst, Global Logistics, Global Logistic Finance\n上海|Finance & Global Business Services|Job ID 10478834\n\n职位介绍\n负责 Amazon Global Logistics 欧洲进口业务的运费成本、月结、预测和自动化财务验证,支持从中国起运到欧洲履约中心的端到端物流经济性管理。\n\n岗位职责\n1. 负责欧洲进口运费月结、计提、实际与预测差异及管理层说明。\n2. 建立并维护按集装箱、计费重量和费用代码拆分的运费成本与费率模型。\n3. 支持年度与滚动规划、情景分析、成本桥接和降本项目。\n4. 使用高级 Excel 和 SQL 处理大规模数据,并推动财务工具自动化、标准化和可扩展。\n\n任职要求\n1. 3 年以上税务、财务或相关分析领域经验,并有使用关键财务指标开展分析的经验。\n2. 具备通过自动化和分析改善财务流程、工具与管控的经历。\n3. 工程、统计、商业等本科学位,或同等量化岗位经验。\n4. 具备用于数据挖掘和商业智能的高级 SQL 能力。\n\n加分项\n- 了解 Tableau 及大规模数据报告工具\n- 熟悉 Oracle、SAP、Essbase、Cognos 等财务或分析系统\n\n公开招聘来源:https://amazon.jobs/en/jobs/10478834/senior-financial-analyst-global-logistics-global-logistic-finance\n页面核验日期:2026-07-27",
+  "current": {
+    "suite": {
+      "resume_analysis": {
+        "quality_score": 86,
+        "strengths": [
+          "5年制造业财务经验，从成本会计到财务分析，具备预算、经营分析和成本分析全流程能力",
+          "已通过CPA会计和财管两科，财务理论基础扎实",
+          "使用Power BI制作看板，将月报准备时间从约3天缩短到1.5天，展现了工具应用与效率提升能力",
+          "建立产品毛利分析模型，主动发现6个长期低毛利产品，并推动业务改善",
+          "参与材料降本项目，实现账面降本约480万元（跨部门共同成果），体现成本控制参与度"
+        ],
+        "weaknesses": [
+          "个人概述中自述“商业部门支持经验有限”，对FP&A或业务财务BP岗位可能构成短板",
+          "月度经营分析仅向财务经理汇报，通常不直接对接总经理，汇报层级和业务影响力有限",
+          "低毛利产品专项未记录最终利润贡献，成果量化不足",
+          "月度经营看板仍依赖本地文件，权限和自动刷新尚未解决，自动化程度待提升",
+          "自我评价提到“业务沟通需要继续提升”，可能影响跨部门协作效能"
+        ],
+        "suggestions": [
+          "补充低毛利产品专项中重新议价、工艺改善和停产评估的实际利润影响，仅补充真实存在且可核验的数据",
+          "明确项目经历中的个人角色（如独立负责或协作），以增强成果可信度",
+          "可补充与业务部门合作的具体案例，展现业务支持能力，仅使用真实发生的事件",
+          "说明月度经营看板从本地到自动化的改进计划或进展，体现持续优化意识",
+          "在简历中更突出业务合作成果，如议价成功后的价格调整幅度，仅补充有据可查的信息"
+        ],
+        "capability_summary": "5年制造业财务经验，从成本会计到财务分析，擅长预算编制与滚动预测、成本差异分析及经营看板建设。具备CPA专业阶段两科知识，熟练运用Power BI和Excel实现数据自动化，推动业务降本与毛利优化。可迁移至FP&A或业务财务角色，提供财务数据支持和经营决策洞察。",
+        "structured_resume": {
+          "personal_info": {
+            "name": "何嘉雯",
+            "contact": "187****1465",
+            "email": "hejiawen09@outlook.com",
+            "phone": "187****1465",
+            "location": "成都",
+            "current_position": "财务分析师"
+          },
+          "education": [
+            {
+              "school": "西南财经大学天府学院",
+              "major": "财务管理",
+              "degree": "本科",
+              "time_range": "2016.09 - 2020.06",
+              "achievements": [
+                "GPA 3.3/4.0",
+                "校财务案例大赛三等奖"
+              ]
+            }
+          ],
+          "experience": [
+            {
+              "company": "成都川岳精密制造有限公司",
+              "position": "财务分析师",
+              "time_range": "2022.08 - 至今",
+              "responsibilities": [
+                "负责工厂年度预算、月度滚动预测和经营分析，覆盖收入、材料、人工、制造费用与资本开支",
+                "每月与生产、采购和销售核对差异，向财务经理提交约20页经营分析材料",
+                "建立产品毛利分析模型，按客户、产品族和订单拆分标准与实际成本",
+                "参与材料降本项目，跟踪替代料、采购价格和用量差异",
+                "使用Power BI制作预算执行与库存金额看板",
+                "协助新产线投资测算，负责现金流模型和敏感性表（市场销量假设由业务部门提供）"
+              ],
+              "achievements": [
+                "发现6个长期低毛利产品",
+                "2025年材料降本项目账面降本约480万元（跨部门共同结果）",
+                "通过Power BI看板将月报准备时间从约3天缩短到1.5天"
+              ]
+            },
+            {
+              "company": "四川启盛电气有限公司",
+              "position": "成本会计",
+              "time_range": "2020.07 - 2022.07",
+              "responsibilities": [
+                "负责材料、人工和制造费用归集，月末成本结转和存货盘点",
+                "维护BOM与标准成本差异表，处理跨月暂估和异常工单"
+              ],
+              "achievements": []
+            }
+          ],
+          "projects": [
+            {
+              "name": "低毛利产品专项",
+              "role": "",
+              "tech_stack": [],
+              "description": "重新核对68个产品成本口径，按订单量、材料波动和工时拆解利润变化。推动销售重新议价3个、工艺改善2个、停产评估1个；未记录各动作最终利润贡献。",
+              "achievements": [
+                "推动销售重新议价3个、工艺改善2个、停产评估1个（未记录最终利润贡献）"
+              ]
+            },
+            {
+              "name": "月度经营看板",
+              "role": "",
+              "tech_stack": [
+                "SAP",
+                "Power Query",
+                "Excel"
+              ],
+              "description": "从SAP导出数据后通过Power Query清洗，建立收入、成本、库存和费用模型。当前仍依赖本地文件，权限和自动刷新尚未解决。",
+              "achievements": [
+                "建立收入、成本、库存和费用模型（仍依赖本地文件，权限和自动刷新未解决）"
+              ]
+            }
+          ],
+          "skills": {
+            "hard_skills": [
+              "预算与滚动预测",
+              "管理报表",
+              "成本差异分析",
+              "盈利分析",
+              "资本开支跟踪",
+              "Excel（Power Query, Power Pivot）",
+              "Power BI",
+              "SAP FI/CO",
+              "用友",
+              "初级会计职称",
+              "CPA专业阶段通过会计和财管",
+              "英语CET-4"
+            ],
+            "soft_skills": []
+          }
+        }
+      },
+      "job_profile": {
+        "basic_info": {
+          "title": "Senior Financial Analyst, Global Logistics",
+          "company": "Amazon",
+          "location": "上海"
+        },
+        "hard_requirements": {
+          "education": "工程、统计、商业等本科学位，或同等量化岗位经验",
+          "experience_years": "3年以上税务、财务或相关分析领域经验",
+          "required_skills": [
+            "高级SQL（数据挖掘和商业智能）",
+            "使用关键财务指标进行分析",
+            "通过自动化和分析改善财务流程/工具"
+          ]
+        },
+        "responsibilities": [
+          "欧洲进口运费月结、计提、差异分析及管理层报告",
+          "建立并维护按集装箱、计费重量和费用代码拆分的运费成本与费率模型",
+          "支持年度与滚动规划、情景分析、成本桥接和降本项目",
+          "使用高级Excel和SQL处理大规模数据，并推动财务工具自动化、标准化和可扩展"
+        ],
+        "tasks": [
+          "执行月度运费结算、预提和实际与预测差异的量化说明",
+          "构建和维护多维度运费成本分解模型",
+          "参与年度预算、滚动预测和降本增效分析",
+          "利用SQL和Excel进行大数据分析，开发自动化财务报告和流程"
+        ],
+        "soft_skills": [
+          "管理层书面报告和沟通能力",
+          "跨部门协作（与物流、技术等团队）",
+          "分析性思维和细节导向"
+        ],
+        "nice_to_have": [
+          "了解Tableau及大规模数据报告工具",
+          "熟悉Oracle、SAP、Essbase、Cognos等财务或分析系统"
+        ],
+        "requirement_hierarchy": {
+          "must_have": [
+            "3年以上税务、财务或相关分析领域经验",
+            "使用关键财务指标进行分析的经验",
+            "高级SQL能力",
+            "通过自动化和分析改善财务流程的经验",
+            "工程、统计、商业等本科学位或同等量化经验"
+          ],
+          "core_outcomes": [
+            "精准及时的运费月结与差异分析",
+            "可维护的多维度运费成本与费率模型",
+            "支持年度规划与降本项目的有效财务分析",
+            "推动财务数据处理和报告的自动化与标准化"
+          ],
+          "differentiators": [
+            "Tableau或类似大数据报告工具经验",
+            "ERP系统（Oracle/SAP等）经验",
+            "物流或供应链行业财务背景",
+            "跨国团队协作和英语沟通能力"
+          ]
+        },
+        "company_context": {
+          "explicit_signals": [
+            "Amazon Global Logistics 部门",
+            "负责欧洲进口业务运费成本管理",
+            "从中国起运到欧洲履约中心的端到端物流经济性",
+            "部门：Finance & Global Business Services"
+          ],
+          "inferred_talent_preferences": [
+            "有跨国物流或供应链财务经验者优先",
+            "适应大型跨国公司矩阵式组织",
+            "熟悉国际物流成本和关税结构"
+          ],
+          "inference_basis": [
+            "职位明确聚焦欧洲进口跨境物流财务",
+            "Amazon 作为全球电商与物流巨头，通常要求全球化视野和内部协作"
+          ],
+          "confidence": "medium"
+        },
+        "location_context": {
+          "explicit_signals": [
+            "工作地点：上海"
+          ],
+          "inferred_role_implications": [
+            "可能需要与本地物流供应商、报关行或内部中国团队协作",
+            "可能需要适应与欧洲团队的跨时区沟通"
+          ],
+          "inference_basis": [
+            "业务涉及从中国起运，上海是主要港口和物流枢纽",
+            "岗位支持欧洲业务，必然存在远程跨地区协作"
+          ],
+          "confidence": "low"
+        },
+        "uncertainties": [
+          "是否需要流利的英语口语和书面语（JD未明确）",
+          "是否需要物流、供应链或海关相关知识（岗位未直接要求）",
+          "是否要求使用特定ERP系统的经验（仅列为加分项）",
+          "工作节奏和出差要求未知",
+          "团队规模和汇报结构未知",
+          "是否强制要求掌握高级Excel（职责提及，但未列入硬性要求）"
+        ]
+      },
+      "match_analysis": {
+        "match_score": 74,
+        "hard_requirements_match": {
+          "education": true,
+          "experience_years": true,
+          "required_skill_sql": false,
+          "required_skill_financial_metrics_analysis": true,
+          "required_skill_automation_process_improvement": true
+        },
+        "skill_match": {
+          "matched": [
+            "Excel (Power Query, Power Pivot)",
+            "Power BI",
+            "预算与滚动预测",
+            "成本差异分析",
+            "盈利分析",
+            "管理报表",
+            "SAP FI/CO",
+            "资本开支跟踪",
+            "自动化报告开发"
+          ],
+          "missing": [
+            "SQL"
+          ]
+        },
+        "experience_match": "候选人拥有4年+制造业财务分析经验，涵盖预算、成本差异分析、滚动预测和毛利分析，直接对应运营成本管理核心要求。具有建立多维成本分解模型（按产品族、客户）和推动自动化报告的实际案例，结果可量化。但行业背景为制造而非物流，缺少运费、关税等国际物流成本管理经验。",
+        "soft_skills_match": "候选人在现岗位中定期编制并提交管理层经营分析报告，展示书面沟通能力；每月与生产、采购和销售核对差异，体现跨部门协作；毛利分析、低毛利产品专项等项目反映分析性思维和细节关注。总体软技能与岗位要求高度匹配。",
+        "strengths": [
+          "4年制造业财务分析经验，精通预算、滚动预测、成本差异分析，与岗位核心分析职责高度吻合。",
+          "成功通过Power BI自动化看板将月报准备时间缩短50%，直接证明流程自动化与工具改善能力。",
+          "主导构建多维度产品毛利分析模型（按客户、产品族拆分），可迁移至运费成本分解。",
+          "SAP FI/CO 实操经验，符合JD中ERP系统偏好的加分项。",
+          "材料降本项目实现账面降本约480万元，体现成本控制与跨部门协作成效。"
+        ],
+        "weaknesses": [
+          "当前材料未证明具备高级SQL能力，而岗位硬性要求SQL用于数据挖掘和商业智能。",
+          "无国际物流或供应链行业财务经验，可能缺乏对运费、关税、集装箱成本等业务的理解。",
+          "英语能力仅通过CET-4，未展示英文工作沟通或报告撰写经历，跨国团队协作背景不明。"
+        ],
+        "weakness_details": [
+          {
+            "weakness": "高级SQL能力缺失",
+            "evidence_type": "direct_missing",
+            "evidence": "技能列表、项目描述和工作经历中均未提及SQL或数据库查询语言的使用。",
+            "suggestion": "可学习SQL基础并尽快通过在线课程或练习项目补充，同时在简历中如有接触数据库的经历应如实体现；若短期内无法证明，应在面试中坦诚并强调快速学习能力。"
+          },
+          {
+            "weakness": "无物流行业财务经验",
+            "evidence_type": "direct_missing",
+            "evidence": "两段工作经历均属于制造业（精密制造、电气），未涉及物流、运输或供应链相关领域。",
+            "suggestion": "在简历和面试中强调成本分析的可迁移性（如从制造业多维成本分解到物流运费多维分解），并提前研究亚马逊物流成本结构和关键指标。"
+          },
+          {
+            "weakness": "英语能力证据不足",
+            "evidence_type": "implicit_evidence",
+            "evidence": "外语技能仅列出CET-4，无托福、雅思等高分英语证明，也未展示英文工作场景；但JD并未明确要求英语流利。",
+            "suggestion": "若具备英文读写能力，可在简历中增加英文版本或相关经历；若欠缺，属于潜在风险，需在面试前准备英文财务术语和自我介绍。"
+          }
+        ],
+        "positioning_strategy": "主打‘具备自动化能力的成本分析专家’定位。以制造业财务分析中构建多维成本模型、推动Power BI自动化和主导降本项目的成果，对标亚马逊物流运费分析的职责要求。明确说明成本分析方法论的普适性，但坦诚无物流领域经验，表达快速学习意愿和已做的行业研究。在SQL技能上，强调正在学习并展示学习计划。",
+        "optimization_suggestions": [
+          "在简历开头专业总结部分，将‘通过Power BI自动化将月报准备时间缩短50%’前置，直接呼应JD的‘通过自动化和分析改善财务流程’要求。",
+          "重新描述‘月度经营看板’项目，使用‘开发多维度财务模型’‘实现数据自动化清洗与可视化’等措辞，并强调Power Query和Power Pivot的应用，对齐JD所需的‘高级Excel处理大规模数据’。",
+          "在‘成本分析’描述中，明确‘按多维度（客户、产品族、订单）拆分成本’，以类比JD中‘按集装箱、计费重量、费用代码拆分’的维度分析方法，展现思维迁移。",
+          "将SAP FI/CO使用经验作为独立要点，标注‘熟练操作部分财务模块’，以匹配JD加分项中的ERP经验。",
+          "若允许，可将CPA通过会计和财管的记录提前，显示扎实的财务基础，从而部分弥补行业经验的缺失。"
+        ],
+        "context_fit": {
+          "company_alignment": "候选人具备大型跨国企业（Amazon）通常看重的流程自动化意识和ERP系统经验，但制造业出身与全球物流电商的文化差异可能较大；需证明适应矩阵式组织和跨时区协作的潜力。",
+          "location_alignment": "候选人现居成都，工作地上海需搬迁；无上海或长三角物流枢纽的直接工作经验，但不构成硬性障碍。",
+          "hypotheses_used": [
+            "亚马逊全球物流部门偏好有跨国物流财务经验的候选人（依据公司上下文推断，置信度中）",
+            "岗位可能需要与上海本地物流供应商协作，并适应与欧洲团队的跨时区沟通（依据地点上下文推断，置信度低）"
+          ]
+        },
+        "jd_structure": {
+          "basic_info": {
+            "title": "Senior Financial Analyst, Global Logistics",
+            "company": "Amazon",
+            "location": "上海"
+          },
+          "hard_requirements": {
+            "education": "工程、统计、商业等本科学位，或同等量化岗位经验",
+            "experience_years": "3年以上税务、财务或相关分析领域经验",
+            "required_skills": [
+              "高级SQL（数据挖掘和商业智能）",
+              "使用关键财务指标进行分析",
+              "通过自动化和分析改善财务流程/工具"
+            ]
+          },
+          "responsibilities": [
+            "欧洲进口运费月结、计提、差异分析及管理层报告",
+            "建立并维护按集装箱、计费重量和费用代码拆分的运费成本与费率模型",
+            "支持年度与滚动规划、情景分析、成本桥接和降本项目",
+            "使用高级Excel和SQL处理大规模数据，并推动财务工具自动化、标准化和可扩展"
+          ],
+          "tasks": [
+            "执行月度运费结算、预提和实际与预测差异的量化说明",
+            "构建和维护多维度运费成本分解模型",
+            "参与年度预算、滚动预测和降本增效分析",
+            "利用SQL和Excel进行大数据分析，开发自动化财务报告和流程"
+          ],
+          "soft_skills": [
+            "管理层书面报告和沟通能力",
+            "跨部门协作（与物流、技术等团队）",
+            "分析性思维和细节导向"
+          ],
+          "nice_to_have": [
+            "了解Tableau及大规模数据报告工具",
+            "熟悉Oracle、SAP、Essbase、Cognos等财务或分析系统"
+          ],
+          "requirement_hierarchy": {
+            "must_have": [
+              "3年以上税务、财务或相关分析领域经验",
+              "使用关键财务指标进行分析的经验",
+              "高级SQL能力",
+              "通过自动化和分析改善财务流程的经验",
+              "工程、统计、商业等本科学位或同等量化经验"
+            ],
+            "core_outcomes": [
+              "精准及时的运费月结与差异分析",
+              "可维护的多维度运费成本与费率模型",
+              "支持年度规划与降本项目的有效财务分析",
+              "推动财务数据处理和报告的自动化与标准化"
+            ],
+            "differentiators": [
+              "Tableau或类似大数据报告工具经验",
+              "ERP系统（Oracle/SAP等）经验",
+              "物流或供应链行业财务背景",
+              "跨国团队协作和英语沟通能力"
+            ]
+          },
+          "company_context": {
+            "explicit_signals": [
+              "Amazon Global Logistics 部门",
+              "负责欧洲进口业务运费成本管理",
+              "从中国起运到欧洲履约中心的端到端物流经济性",
+              "部门：Finance & Global Business Services"
+            ],
+            "inferred_talent_preferences": [
+              "有跨国物流或供应链财务经验者优先",
+              "适应大型跨国公司矩阵式组织",
+              "熟悉国际物流成本和关税结构"
+            ],
+            "inference_basis": [
+              "职位明确聚焦欧洲进口跨境物流财务",
+              "Amazon 作为全球电商与物流巨头，通常要求全球化视野和内部协作"
+            ],
+            "confidence": "medium"
+          },
+          "location_context": {
+            "explicit_signals": [
+              "工作地点：上海"
+            ],
+            "inferred_role_implications": [
+              "可能需要与本地物流供应商、报关行或内部中国团队协作",
+              "可能需要适应与欧洲团队的跨时区沟通"
+            ],
+            "inference_basis": [
+              "业务涉及从中国起运，上海是主要港口和物流枢纽",
+              "岗位支持欧洲业务，必然存在远程跨地区协作"
+            ],
+            "confidence": "low"
+          },
+          "uncertainties": [
+            "是否需要流利的英语口语和书面语（JD未明确）",
+            "是否需要物流、供应链或海关相关知识（岗位未直接要求）",
+            "是否要求使用特定ERP系统的经验（仅列为加分项）",
+            "工作节奏和出差要求未知",
+            "团队规模和汇报结构未知",
+            "是否强制要求掌握高级Excel（职责提及，但未列入硬性要求）"
+          ]
+        }
+      },
+      "final_resume": "# 何嘉雯\n\n**电话:** 187****1465  \n**邮箱:** hejiawen09@outlook.com  \n**所在地:** 成都\n\n---\n\n## 职业摘要\n\n4年制造业财务分析经验，精通成本差异、预算与滚动预测。擅长构建多维度成本分解模型，并以自动化工具推动流程改善——通过Power BI将月报准备时间缩短50%。熟悉SAP FI/CO与高级Excel数据处理，具备从财务分析到跨部门降本落地的闭环能力。\n\n---\n\n## 工作经历\n\n### 成都川岳精密制造有限公司 | 财务分析师  \n**2022.08 - 至今**\n\n- 编制年度预算与月度滚动预测，完成覆盖收入、材料、人工、制造费用的经营分析，定期向管理层提交约20页分析材料。\n- 与生产、采购、销售部门核对差异，量化各项成本波动原因，支撑月度经营决策。\n- 构建按客户、产品族、订单拆分的毛利分析模型，区分标准成本与实际成本，识别6个长期低毛利产品并推动销售重新议价、工艺改善与停产评估。\n- 参与材料降本项目，跟踪替代料、采购价格与用量差异；所在跨部门项目实现账面降本约480万元（共同成果）。\n- 使用Power BI开发预算执行与库存金额看板，将月报准备时间从约3天缩短至1.5天。\n- 参与新产线投资评估，搭建现金流模型与敏感性分析表（销量假设由业务部门提供）。\n\n### 四川启盛电气有限公司 | 成本会计  \n**2020.07 - 2022.07**\n\n- 负责材料、人工、制造费用归集，完成月末成本结转、存货盘点及差异处理。\n- 维护BOM与标准成本差异表，处理跨月暂估与异常工单。\n\n---\n\n## 项目经历\n\n### 低毛利产品专项\n\n- 重新核对68个产品线的成本口径，按订单量、材料波动与工时拆解利润变化。\n- 推动销售重新议价3个产品、工艺改善2个、停产评估1个（各动作最终利润贡献未单独量化）。\n\n### 月度经营看板\n\n- 从SAP导出数据，通过Power Query清洗，建立收入、成本、库存与费用的多维分析模型。\n- 当前结果仍依赖本地文件，权限与自动刷新问题尚未解决。\n\n---\n\n## 教育\n\n**西南财经大学天府学院** | 财务管理 | 本科  \n2016.09 - 2020.06  \nGPA 3.3/4.0 | 校财务案例大赛三等奖\n\n---\n\n## 专业技能\n\n**财务与分析：** 预算与滚动预测、成本差异分析、盈利分析、管理报表、资本开支跟踪  \n**工具：** Excel (Power Query, Power Pivot)、Power BI、SAP FI/CO、用友  \n**资质：** CPA专业阶段（会计、财管已通过）、初级会计职称、英语CET-4",
+      "internal_judge_diagnostic": {
+        "evaluatorName": "llm-resume-judge",
+        "evaluatorVersion": "3.0.0",
+        "passed": true,
+        "score": 90,
+        "issues": []
+      },
+      "interview_advice": {
+        "questions": [
+          "你提到建立了按客户、产品族、订单拆分的毛利分析模型。如果现在需要为物流部门构建按集装箱、计费重量和费用代码拆分的运费成本模型，你会如何调整分析维度和方法？",
+          "请你详细说说‘低毛利产品专项’中，你是怎么识别出那6个产品的？在推动销售、工艺和生产部门采取行动时，遇到的主要阻力是什么，你又如何说服他们？最终，这些产品现在的状态如何？",
+          "该岗位要求高级SQL以进行数据挖掘和商业智能。目前简历中未体现相关经验。如果获得这个职位，你计划如何在短期内掌握SQL，并展示你能将其应用到实际分析工作中的能力？请结合你学习Power BI和Power Query的经验谈谈学习路径。",
+          "考虑到Amazon Global Logistics的业务涉及从中国到欧洲的跨境运输，这个岗位可能需要同时与上海的本地团队（如物流供应商）和欧洲的业务伙伴协作，并适应跨时区沟通。假设你入职后发现，欧洲团队要求你每月5号前提交运费分析报告，而上海供应商通常在月初的第3天才提供完整数据，导致你只有两天时间处理和分析，你会如何优化流程或沟通以满足截止时间？"
+        ],
+        "story_recommendations": [
+          {
+            "title": "低毛利产品专项",
+            "background": "在成都川岳精密制造有限公司担任财务分析师期间，你主导建立了产品毛利分析模型，并发现68个产品中有6个长期低毛利产品。你按订单量、材料波动和工时拆解利润变化，推动销售、生产等部门采取行动。",
+            "result": "推动销售重新议价3个产品、工艺改善2个、停产评估1个。但未记录各动作的最终利润贡献。建议准备真实可核验的后续进展或影响描述，如议价后的价格变化幅度或毛利改善趋势。"
+          },
+          {
+            "title": "月度经营看板",
+            "background": "为了缩短月报准备时间，你主动开发了基于Power BI的预算执行与库存看板。从SAP导出数据，通过Power Query清洗，建立收入、成本、库存和费用的多维模型。",
+            "result": "将月报准备时间从约3天缩短到1.5天（缩短50%）。目前看板仍依赖本地文件，权限和自动刷新未解决，但已展示了自动化流程改善的能力。建议强调自动化思维，并准备解释如何在未来解决自动化问题。"
+          }
+        ],
+        "follow_up_questions": [
+          "For this role, what are the top one or two success metrics in the first six months that you would use to evaluate the candidate's performance?",
+          "What are the biggest challenges your team currently faces in freight cost analysis or financial reporting automation?",
+          "Could you describe the typical collaboration pattern with the European team and Shanghai local partners? How often does the team have cross-time zone meetings or handovers?"
+        ]
+      }
+    },
+    "finalResume": "# 何嘉雯\n\n**电话:** 187****1465  \n**邮箱:** hejiawen09@outlook.com  \n**所在地:** 成都\n\n---\n\n## 职业摘要\n\n4年制造业财务分析经验，精通成本差异、预算与滚动预测。擅长构建多维度成本分解模型，并以自动化工具推动流程改善——通过Power BI将月报准备时间缩短50%。熟悉SAP FI/CO与高级Excel数据处理，具备从财务分析到跨部门降本落地的闭环能力。\n\n---\n\n## 工作经历\n\n### 成都川岳精密制造有限公司 | 财务分析师  \n**2022.08 - 至今**\n\n- 编制年度预算与月度滚动预测，完成覆盖收入、材料、人工、制造费用的经营分析，定期向管理层提交约20页分析材料。\n- 与生产、采购、销售部门核对差异，量化各项成本波动原因，支撑月度经营决策。\n- 构建按客户、产品族、订单拆分的毛利分析模型，区分标准成本与实际成本，识别6个长期低毛利产品并推动销售重新议价、工艺改善与停产评估。\n- 参与材料降本项目，跟踪替代料、采购价格与用量差异；所在跨部门项目实现账面降本约480万元（共同成果）。\n- 使用Power BI开发预算执行与库存金额看板，将月报准备时间从约3天缩短至1.5天。\n- 参与新产线投资评估，搭建现金流模型与敏感性分析表（销量假设由业务部门提供）。\n\n### 四川启盛电气有限公司 | 成本会计  \n**2020.07 - 2022.07**\n\n- 负责材料、人工、制造费用归集，完成月末成本结转、存货盘点及差异处理。\n- 维护BOM与标准成本差异表，处理跨月暂估与异常工单。\n\n---\n\n## 项目经历\n\n### 低毛利产品专项\n\n- 重新核对68个产品线的成本口径，按订单量、材料波动与工时拆解利润变化。\n- 推动销售重新议价3个产品、工艺改善2个、停产评估1个（各动作最终利润贡献未单独量化）。\n\n### 月度经营看板\n\n- 从SAP导出数据，通过Power Query清洗，建立收入、成本、库存与费用的多维分析模型。\n- 当前结果仍依赖本地文件，权限与自动刷新问题尚未解决。\n\n---\n\n## 教育\n\n**西南财经大学天府学院** | 财务管理 | 本科  \n2016.09 - 2020.06  \nGPA 3.3/4.0 | 校财务案例大赛三等奖\n\n---\n\n## 专业技能\n\n**财务与分析：** 预算与滚动预测、成本差异分析、盈利分析、管理报表、资本开支跟踪  \n**工具：** Excel (Power Query, Power Pivot)、Power BI、SAP FI/CO、用友  \n**资质：** CPA专业阶段（会计、财管已通过）、初级会计职称、英语CET-4"
+  },
+  "optimized": {
+    "suite": {
+      "candidate_evidence_ledger": {
+        "source_resume_quality": {
+          "score": 79,
+          "dimension_scores": {
+            "completeness": 16,
+            "atomic_evidence": 14,
+            "result_evidence": 16,
+            "time_and_ownership_consistency": 18,
+            "verifiability": 15
+          }
+        },
+        "personal_info": {
+          "name": "何嘉雯",
+          "gender": "女",
+          "age": 29,
+          "location": "成都",
+          "phone": "187****1465",
+          "email": "hejiawen09@outlook.com",
+          "desired_position": "FP&A、业务财务 BP、财务数据分析"
+        },
+        "education": [
+          {
+            "school": "西南财经大学天府学院",
+            "degree": "财务管理 本科",
+            "start": "2016-09",
+            "end": "2020-06",
+            "gpa": "3.3/4.0",
+            "other": "校财务案例大赛三等奖"
+          }
+        ],
+        "experience": [
+          {
+            "company": "成都川岳精密制造有限公司",
+            "title": "财务分析师",
+            "start": "2022-08",
+            "end": "至今",
+            "highlights": [
+              "负责工厂年度预算、月度滚动预测和经营分析，覆盖收入、材料、人工、制造费用与资本开支",
+              "每月与生产、采购和销售核对差异，向财务经理提交约20页经营分析材料；通常不直接向总经理汇报",
+              "建立产品毛利分析模型，按客户、产品族和订单拆分标准与实际成本，发现6个长期低毛利产品",
+              "参与材料降本项目，跟踪替代料、采购价格和用量差异；2025年项目账面降本约480万元，为跨部门共同结果",
+              "使用Power BI制作预算执行与库存金额看板，将月报准备时间从约3天缩短到1.5天",
+              "协助新产线投资测算，负责现金流模型和敏感性表，市场销量假设由业务部门提供"
+            ]
+          },
+          {
+            "company": "四川启盛电气有限公司",
+            "title": "成本会计",
+            "start": "2020-07",
+            "end": "2022-07",
+            "highlights": [
+              "负责材料、人工和制造费用归集，月末成本结转和存货盘点",
+              "维护BOM与标准成本差异表，处理跨月暂估和异常工单",
+              "工作以核算和关账为主，参与业务分析较少"
+            ]
+          }
+        ],
+        "projects": [
+          {
+            "name": "低毛利产品专项",
+            "start": "2024-04",
+            "end": "2024-07",
+            "highlights": [
+              "重新核对68个产品成本口径，按订单量、材料波动和工时拆解利润变化",
+              "推动销售重新议价3个、工艺改善2个、停产评估1个；未记录各动作最终利润贡献"
+            ]
+          },
+          {
+            "name": "月度经营看板",
+            "start": "2023-11",
+            "end": "2024-02",
+            "highlights": [
+              "从SAP导出数据后通过Power Query清洗，建立收入、成本、库存和费用模型",
+              "当前仍依赖本地文件，权限和自动刷新尚未解决"
+            ]
+          }
+        ],
+        "skills": {
+          "explicit": [
+            "预算与滚动预测",
+            "管理报表",
+            "成本差异",
+            "盈利分析",
+            "资本开支跟踪",
+            "Excel(Power Query、Power Pivot)",
+            "Power BI",
+            "SAP FI/CO",
+            "用友",
+            "初级会计职称",
+            "CPA专业阶段通过会计、财管2科",
+            "英语CET-4"
+          ],
+          "behaviorally_proven": [
+            "预算编制",
+            "滚动预测",
+            "经营分析",
+            "差异分析",
+            "毛利分析模型建立",
+            "成本分析",
+            "投资测算",
+            "Power BI看板制作",
+            "Power Query数据清洗",
+            "成本核算",
+            "BOM维护"
+          ],
+          "mentioned_only": []
+        },
+        "evidence_ledger": [
+          {
+            "evidence_id": "C-E1-B1",
+            "source_section": "成都川岳精密制造有限公司|财务分析师 2022.08-至今",
+            "source_quote": "负责工厂年度预算、月度滚动预测和经营分析,覆盖收入、材料、人工、制造费用与资本开支",
+            "entity": "何嘉雯",
+            "role": "财务分析师",
+            "action": "负责",
+            "object_or_scope": "工厂年度预算、月度滚动预测和经营分析",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2022.08-至今",
+            "skills_proven": [
+              "预算编制",
+              "滚动预测",
+              "经营分析"
+            ],
+            "proficiency_ceiling": "负责执行",
+            "ownership_ceiling": "主要执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-B2",
+            "source_section": "成都川岳精密制造有限公司|财务分析师 2022.08-至今",
+            "source_quote": "每月与生产、采购和销售核对差异,向财务经理提交约 20 页经营分析材料;通常不直接向总经理汇报",
+            "entity": "何嘉雯",
+            "role": "财务分析师",
+            "action": "核对差异，提交材料",
+            "object_or_scope": "约20页经营分析材料",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "每月",
+            "skills_proven": [
+              "差异分析",
+              "经营分析"
+            ],
+            "proficiency_ceiling": "执行与协作",
+            "ownership_ceiling": "执行者（汇报对象为财务经理）",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-B3",
+            "source_section": "成都川岳精密制造有限公司|财务分析师 2022.08-至今",
+            "source_quote": "建立产品毛利分析模型,按客户、产品族和订单拆分标准与实际成本,发现 6 个长期低毛利产品",
+            "entity": "何嘉雯",
+            "role": "财务分析师",
+            "action": "建立模型",
+            "object_or_scope": "产品毛利分析模型，发现6个长期低毛利产品",
+            "method_or_tool": [
+              "按客户、产品族和订单拆分标准与实际成本"
+            ],
+            "result": "发现6个长期低毛利产品",
+            "time_context": "2022.08-至今（未标明具体时间）",
+            "skills_proven": [
+              "毛利分析",
+              "成本分析",
+              "模型建立"
+            ],
+            "proficiency_ceiling": "独立建立模型",
+            "ownership_ceiling": "主要创建者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-B4",
+            "source_section": "成都川岳精密制造有限公司|财务分析师 2022.08-至今",
+            "source_quote": "参与材料降本项目,跟踪替代料、采购价格和用量差异;2025 年项目账面降本约 480 万元,为跨部门共同结果",
+            "entity": "何嘉雯",
+            "role": "财务分析师",
+            "action": "参与、跟踪",
+            "object_or_scope": "材料降本项目，降本约480万元（跨部门共同结果）",
+            "method_or_tool": [
+              "跟踪替代料、采购价格和用量差异"
+            ],
+            "result": "2025年项目账面降本约480万元",
+            "time_context": "提及2025年，项目时间未明确",
+            "skills_proven": [
+              "成本分析",
+              "差异分析"
+            ],
+            "proficiency_ceiling": "参与跟踪",
+            "ownership_ceiling": "参与者（非主导）",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-B5",
+            "source_section": "成都川岳精密制造有限公司|财务分析师 2022.08-至今",
+            "source_quote": "使用 Power BI 制作预算执行与库存金额看板,将月报准备时间从约 3 天缩短到 1.5 天",
+            "entity": "何嘉雯",
+            "role": "财务分析师",
+            "action": "制作看板",
+            "object_or_scope": "预算执行与库存金额看板",
+            "method_or_tool": [
+              "Power BI"
+            ],
+            "result": "月报准备时间从约3天缩短到1.5天",
+            "time_context": "2022.08-至今（未标明具体时间）",
+            "skills_proven": [
+              "Power BI看板制作"
+            ],
+            "proficiency_ceiling": "独立制作看板",
+            "ownership_ceiling": "主要制作者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-B6",
+            "source_section": "成都川岳精密制造有限公司|财务分析师 2022.08-至今",
+            "source_quote": "协助新产线投资测算,负责现金流模型和敏感性表,市场销量假设由业务部门提供",
+            "entity": "何嘉雯",
+            "role": "财务分析师",
+            "action": "协助投资测算，负责现金流模型和敏感性表",
+            "object_or_scope": "新产线投资测算",
+            "method_or_tool": [
+              "现金流模型",
+              "敏感性表"
+            ],
+            "result": "",
+            "time_context": "2022.08-至今（未标明具体时间）",
+            "skills_proven": [
+              "投资测算",
+              "财务模型"
+            ],
+            "proficiency_ceiling": "负责部分（现金流和敏感性）",
+            "ownership_ceiling": "部分责任（协助角色）",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-B1",
+            "source_section": "四川启盛电气有限公司|成本会计 2020.07-2022.07",
+            "source_quote": "负责材料、人工和制造费用归集,月末成本结转和存货盘点",
+            "entity": "何嘉雯",
+            "role": "成本会计",
+            "action": "负责归集、结转、盘点",
+            "object_or_scope": "材料、人工、制造费用归集，月末成本结转，存货盘点",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2020.07-2022.07",
+            "skills_proven": [
+              "成本核算",
+              "存货盘点"
+            ],
+            "proficiency_ceiling": "独立负责",
+            "ownership_ceiling": "主要执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-B2",
+            "source_section": "四川启盛电气有限公司|成本会计 2020.07-2022.07",
+            "source_quote": "维护 BOM 与标准成本差异表,处理跨月暂估和异常工单",
+            "entity": "何嘉雯",
+            "role": "成本会计",
+            "action": "维护、处理",
+            "object_or_scope": "BOM与标准成本差异表，跨月暂估和异常工单",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2020.07-2022.07",
+            "skills_proven": [
+              "BOM维护",
+              "成本差异分析"
+            ],
+            "proficiency_ceiling": "日常维护",
+            "ownership_ceiling": "执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-B1",
+            "source_section": "项目经历-低毛利产品专项 2024.04-2024.07",
+            "source_quote": "重新核对 68 个产品成本口径,按订单量、材料波动和工时拆解利润变化",
+            "entity": "何嘉雯",
+            "role": "项目参与者",
+            "action": "重新核对，拆解利润变化",
+            "object_or_scope": "68个产品成本口径",
+            "method_or_tool": [
+              "按订单量、材料波动和工时拆解"
+            ],
+            "result": "",
+            "time_context": "2024.04-2024.07",
+            "skills_proven": [
+              "成本分析",
+              "利润拆解"
+            ],
+            "proficiency_ceiling": "独立分析",
+            "ownership_ceiling": "主要分析人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-B2",
+            "source_section": "项目经历-低毛利产品专项 2024.04-2024.07",
+            "source_quote": "推动销售重新议价 3 个、工艺改善 2 个、停产评估 1 个;未记录各动作最终利润贡献",
+            "entity": "何嘉雯",
+            "role": "项目参与者",
+            "action": "推动",
+            "object_or_scope": "销售重新议价3个、工艺改善2个、停产评估1个",
+            "method_or_tool": [],
+            "result": "未记录利润贡献",
+            "time_context": "2024.04-2024.07",
+            "skills_proven": [
+              "跨部门推动"
+            ],
+            "proficiency_ceiling": "推动（非主导）",
+            "ownership_ceiling": "推动者",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-P2-B1",
+            "source_section": "项目经历-月度经营看板 2023.11-2024.02",
+            "source_quote": "从 SAP 导出数据后通过 Power Query 清洗,建立收入、成本、库存和费用模型",
+            "entity": "何嘉雯",
+            "role": "项目参与者",
+            "action": "导出、清洗、建立模型",
+            "object_or_scope": "收入、成本、库存和费用模型",
+            "method_or_tool": [
+              "SAP",
+              "Power Query"
+            ],
+            "result": "",
+            "time_context": "2023.11-2024.02",
+            "skills_proven": [
+              "数据清洗",
+              "Power Query",
+              "模型建立"
+            ],
+            "proficiency_ceiling": "独立建立模型",
+            "ownership_ceiling": "主要执行者",
+            "claim_strength": "direct",
+            "confidence": "high"
+          }
+        ],
+        "eligibility_facts": {
+          "graduation_dates": [
+            "2020-06"
+          ],
+          "degrees": [
+            "财务管理 本科"
+          ],
+          "locations": [
+            "成都",
+            "重庆"
+          ],
+          "languages": [
+            "英语 CET-4"
+          ],
+          "availability": ""
+        },
+        "risk_flags": [
+          "商业部门支持经验有限（个人概述）",
+          "通常不直接向总经理汇报（工作经历）",
+          "第二份工作以核算关账为主，业务分析参与较少",
+          "低毛利产品专题未记录最终利润贡献",
+          "经营看板仍依赖本地文件，权限和自动刷新未解决",
+          "自我评价业务沟通需要继续提升",
+          "不接受长期出差（可能限制岗位选择）",
+          "英语仅为CET-4，未证实工作英语能力"
+        ],
+        "capability_clusters": [
+          "预算管理与滚动预测",
+          "成本核算与分析",
+          "经营分析与差异分析",
+          "投资测算与财务模型",
+          "Excel/Power BI数据可视化",
+          "SAP/用友系统操作",
+          "跨部门协作（材料降本、推动改善）",
+          "项目管理（低毛利产品专项、看板建设）"
+        ],
+        "proof_gaps_for_user": [
+          "预算全流程独立负责程度",
+          "针对商业部门的分析深度",
+          "CPA剩余科目通过计划",
+          "英语实际应用能力",
+          "Power BI高级功能（DAX/自动刷新）掌握程度",
+          "向高层汇报的经验",
+          "独立领导跨部门项目的经验",
+          "从成本会计到财务分析的转型能力细节"
+        ]
+      },
+      "research_pack": {
+        "research_status": "partial",
+        "as_of": "2026-07-27",
+        "queries_executed": [
+          "Amazon Senior Financial Analyst, Global Logistics, Global Logistic Finance 招聘 团队 负责人 官方",
+          "Amazon 公司规模 性质 招聘风格 员工评价"
+        ],
+        "company_identity": {
+          "legal_or_brand_name": "Amazon",
+          "nature": "unknown",
+          "scale": "unknown",
+          "business_and_stage": [
+            "e-commerce (Japan Store)",
+            "cloud computing (AWS)"
+          ],
+          "claims": [
+            {
+              "text": "Amazon operates in Japan with a Store Tech team.",
+              "source_id": "W-S1"
+            },
+            {
+              "text": "Amazon Japan runs career programs and emphasizes leadership development.",
+              "source_id": "W-S2"
+            },
+            {
+              "text": "AWS provides a recruiting process page for Japan.",
+              "source_id": "W-S3"
+            }
+          ]
+        },
+        "team_and_role": {
+          "department": "unknown",
+          "business_line": "unknown",
+          "product": "unknown",
+          "requisition_id": "10478834",
+          "claims": []
+        },
+        "leadership": [],
+        "recruiting_style": [
+          {
+            "text": "Recruiting materials emphasize leadership development narratives.",
+            "source_id": "W-S2"
+          },
+          {
+            "text": "Structured application and interview support referenced by AWS Japan careers page.",
+            "source_id": "W-S3"
+          }
+        ],
+        "adjacent_job_signals": [
+          {
+            "text": "Amazon Japan hiring Software Development Engineers for Store Tech, suggesting cross-functional tech teams.",
+            "source_id": "W-S1"
+          },
+          {
+            "text": "AWS Japan recruiting details available, indicating separate business unit hiring.",
+            "source_id": "W-S3"
+          }
+        ],
+        "employee_reputation": [],
+        "contradictions": [],
+        "unknowns": [
+          "Direct manager for this role is unknown from public sources.",
+          "Team size, structure, and specific business metrics for Global Logistics Finance are unknown.",
+          "Whether the hiring process and culture align with general Amazon standards is unverified for this specific team."
+        ],
+        "verification_questions": [
+          "Who is the direct manager for this Senior Financial Analyst position?",
+          "What is the size and structure of the Global Logistics Finance team?",
+          "How does the actual recruitment process for this Shanghai-based role differ from the general AWS Japan process?",
+          "Are there any recent public reports on Amazon Global Logistics expansion or cost management initiatives?"
+        ],
+        "sources": [
+          {
+            "source_id": "W-S1",
+            "title": "Amazon Japan Store Tech SDE",
+            "url": "https://www.amazon.jobs/jp/jobs/10467010/software-development-engineers-amazon-japan-store-tech",
+            "publisher": "Amazon Jobs",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27T09:30:00.000Z",
+            "supports": [
+              "Amazon operates in Japan with a Store Tech team."
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S2",
+            "title": "Amazon Japan careers",
+            "url": "https://prod.gamma.amazon.jobs/content/jp/career-programs/university",
+            "publisher": "Amazon Jobs",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27T09:30:00.000Z",
+            "supports": [
+              "Amazon Japan runs career programs and emphasizes leadership development.",
+              "Recruiting materials emphasize leadership development narratives."
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S3",
+            "title": "AWS Japan recruiting process",
+            "url": "https://aws.amazon.com/jp/careers/recruiting/",
+            "publisher": "AWS Careers",
+            "source_type": "official",
+            "published_at": "unknown",
+            "accessed_at": "2026-07-27T09:30:00.000Z",
+            "supports": [
+              "AWS provides a recruiting process page for Japan.",
+              "Structured application and interview support referenced by AWS Japan careers page.",
+              "AWS Japan recruiting details available, indicating separate business unit hiring."
+            ],
+            "credibility": "high"
+          }
+        ]
+      },
+      "job_profile": {
+        "role_identity": {
+          "displayed_title": "Amazon|Senior Financial Analyst, Global Logistics, Global Logistic Finance",
+          "jd_body_title": "Senior Financial Analyst, Global Logistics, Global Logistic Finance",
+          "canonical_title": "Senior Financial Analyst, Global Logistics",
+          "company": "Amazon",
+          "location": [
+            "上海"
+          ],
+          "employment_type": "unknown",
+          "graduation_cohort": "unknown",
+          "conflicts": [],
+          "confidence": "high"
+        },
+        "requirement_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "3年以上税务、财务或相关分析领域经验，并有使用关键财务指标开展分析的经验",
+            "priority": "must",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "3 年以上税务、财务或相关分析领域经验,并有使用关键财务指标开展分析的经验。",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "具备通过自动化和分析改善财务流程、工具与管控的经历",
+            "priority": "must",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "具备通过自动化和分析改善财务流程、工具与管控的经历。",
+            "screening_stage": "resume, interview",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "工程、统计、商业等本科学位，或同等量化岗位经验",
+            "priority": "must",
+            "category": "eligibility",
+            "source_type": "J",
+            "source_quote_or_claim": "工程、统计、商业等本科学位,或同等量化岗位经验。",
+            "screening_stage": "resume",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "具备用于数据挖掘和商业智能的高级 SQL 能力",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "具备用于数据挖掘和商业智能的高级 SQL 能力。",
+            "screening_stage": "resume, interview",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "了解 Tableau 及大规模数据报告工具",
+            "priority": "preferred",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "了解 Tableau 及大规模数据报告工具",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "熟悉 Oracle、SAP、Essbase、Cognos 等财务或分析系统",
+            "priority": "preferred",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "熟悉 Oracle、SAP、Essbase、Cognos 等财务或分析系统",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          }
+        ],
+        "success_scorecard": [
+          {
+            "goal": "按时准确完成欧洲进口运费月度结算、计提和预测差异分析，差异解释获得管理层认可",
+            "measurement": "月结报告及时性、预测准确度评审、管理层反馈",
+            "source": "岗位职责1"
+          },
+          {
+            "goal": "建立并维护按集装箱、计费重量、费用代码拆分的运费成本与费率模型，模型准确率满足业务需求",
+            "measurement": "模型准确度指标、业务部门采纳与验证记录",
+            "source": "岗位职责2"
+          },
+          {
+            "goal": "成功支持年度与滚动规划、情景分析、成本桥接和降本项目，推动实现成本节约目标",
+            "measurement": "规划参与度、分析质量、降本金额（如有）或项目里程碑达成",
+            "source": "岗位职责3"
+          },
+          {
+            "goal": "使用高级 Excel 和 SQL 推动财务工具自动化、标准化和可扩展，减少人工处理时间",
+            "measurement": "自动化工具上线数量、流程效率提升百分比、用户反馈",
+            "source": "岗位职责4"
+          }
+        ],
+        "ats_terms": [
+          "Senior Financial Analyst",
+          "Global Logistics",
+          "运费",
+          "月结",
+          "预测",
+          "自动化",
+          "高级 Excel",
+          "SQL",
+          "数据挖掘",
+          "商业智能",
+          "Tableau",
+          "Oracle",
+          "SAP",
+          "Essbase",
+          "Cognos",
+          "税务",
+          "财务分析",
+          "关键财务指标",
+          "成本模型",
+          "欧洲进口",
+          "集装箱",
+          "计费重量",
+          "费用代码",
+          "金融",
+          "分析"
+        ],
+        "interview_competencies": [
+          "财务数据分析与建模能力",
+          "高级 SQL 查询与商业智能应用",
+          "Excel 高级功能与自动化经验",
+          "端到端物流成本理解",
+          "流程改善与自动化项目落地经验",
+          "管理层沟通与差异分析叙述能力",
+          "结果导向与降本意识",
+          "跨团队协作与影响力"
+        ],
+        "external_intelligence": {
+          "company_scale_and_nature": [
+            "Amazon 是一家全球电商与云计算（AWS）公司，上海办公室存在多个业务线。（W-S1 表明 Amazon Japan Store Tech 团队，但未直接确认 Shanghai 团队结构）"
+          ],
+          "team_and_leadership": [
+            "直接上级未知（无公开证据），Global Logistics Finance 团队规模与结构未知"
+          ],
+          "recruiting_style": [
+            "招聘流程强调领导力发展叙述（W-S2）",
+            "可能遵循结构化面试与能力评估（W-S3）"
+          ],
+          "employee_reputation_signals": [],
+          "sources_used": [
+            "W-S1",
+            "W-S2",
+            "W-S3"
+          ]
+        },
+        "uncertainties": [
+          "直属上级身份未知",
+          "Global Logistics Finance 团队规模、现有技术与工具栈未知",
+          "上海办公室的具体工作文化和面试流程是否与全球保持一致未知",
+          "是否需要欧洲时区协调或差旅，JD 未提及"
+        ],
+        "pre_application_questions": [
+          "该岗位的直接汇报对象是谁？团队目前人数和分工？",
+          "目前使用的主要系统（ERP、数据仓库、可视化工具）是哪些？是否有迁移计划？",
+          "运费模型和自动化项目的近期优先级或痛点是什么？",
+          "该岗位是否需要与欧洲团队紧密协作？典型工作日的时间分配如何？",
+          "内部职业发展路径和培训机会有哪些？"
+        ]
+      },
+      "match_analysis": {
+        "candidate_job_fit_score": 49,
+        "resume_evidence_coverage_score_before": 60,
+        "eligibility_gate": {
+          "status": "fail",
+          "checks": [
+            {
+              "requirement_id": "J-R3",
+              "description": "工程、统计、商业等本科学位，或同等量化岗位经验",
+              "matched": true,
+              "evidence": "财务管理本科（西南财经大学天府学院）"
+            },
+            {
+              "requirement_id": "J-R4",
+              "description": "高级 SQL 能力",
+              "matched": false,
+              "evidence": "未发现任何 SQL 使用证据"
+            }
+          ],
+          "score_cap": 49
+        },
+        "coverage_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "3年以上税务、财务或相关分析领域经验，并有使用关键财务指标开展分析的经验",
+            "evidence_ids": [
+              "C-E1-B1",
+              "C-E1-B2",
+              "C-E1-B3"
+            ],
+            "match_level": "direct",
+            "gap_analysis": "经验年限满足（2020.07起），当前岗位负责预算、预测、经营分析并覆盖关键财务指标。",
+            "transferability_rationale": null
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "具备通过自动化和分析改善财务流程、工具与管控的经历",
+            "evidence_ids": [
+              "C-E1-B5",
+              "C-P2-B1"
+            ],
+            "match_level": "direct",
+            "gap_analysis": "Power BI 看板缩短月报时间 50%，Power Query 清洗数据建立模型，均为流程自动化改善。",
+            "transferability_rationale": null
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "工程、统计、商业等本科学位，或同等量化岗位经验",
+            "evidence_ids": [
+              "C-edu-1"
+            ],
+            "match_level": "direct",
+            "gap_analysis": "财务管理本科，属于商业相关学位。",
+            "transferability_rationale": null
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "具备用于数据挖掘和商业智能的高级 SQL 能力",
+            "evidence_ids": [],
+            "match_level": "none",
+            "gap_analysis": "简历无任何 SQL 使用痕迹，也未列入技能清单。",
+            "transferability_rationale": "Power Query/Power BI 的数据处理能力可部分迁移，但不能替代直接 SQL 经验。"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "了解 Tableau 及大规模数据报告工具",
+            "evidence_ids": [
+              "C-E1-B5"
+            ],
+            "match_level": "transferable",
+            "gap_analysis": "有 Power BI 看板制作经验，可迁移至 Tableau，但无直接使用证据。",
+            "transferability_rationale": "两者均为商业智能可视化工具，建模逻辑相似。"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "熟悉 Oracle、SAP、Essbase、Cognos 等财务或分析系统",
+            "evidence_ids": [
+              "C-E1-???",
+              "skills-SAP"
+            ],
+            "match_level": "direct",
+            "gap_analysis": "技能清单列出 SAP FI/CO 及用友，直接满足 SAP 部分。",
+            "transferability_rationale": null
+          }
+        ],
+        "score_breakdown": {
+          "eligibility": 20,
+          "must_have": 20,
+          "core_outcomes": 15,
+          "differentiators": 6,
+          "evidence_clarity": 12
+        },
+        "strengths": [
+          "清晰的预算编制与滚动预测经验，与岗位规划需求高度相关",
+          "通过 Power BI 看板将报告准备时间缩短 50%，展示流程自动化改善能力",
+          "具备成本分析及产品毛利建模能力，可迁移至运费成本建模",
+          "熟悉 SAP FI/CO 系统，匹配首选系统要求",
+          "CPA 部分科目通过，显示财务知识深度"
+        ],
+        "critical_gaps": [
+          "缺少 SQL 高级应用证据，为 knockout must-have 要求",
+          "无物流、运费或供应链行业直接经验",
+          "Tableau 使用经验缺失",
+          "面向总经理/高层的直接汇报经历不足",
+          "英语仅 CET-4，未证明工作英语能力"
+        ],
+        "positioning_strategy": {
+          "one_line_positioning": "6年制造业财务分析经验，擅预算预测、成本建模与 Power BI 流程优化，可迁移至物流财务，需补 SQL 短板。",
+          "evidence_pillars": [
+            "预算与滚动预测",
+            "成本与毛利分析模型",
+            "Power BI 流程自动化",
+            "SAP FI/CO 系统操作"
+          ],
+          "honest_boundary": "目前无 SQL 与物流领域经验，需在面试中如实说明，并展示学习计划与可迁移分析能力。"
+        },
+        "target_keyword_plan": [
+          {
+            "requirement": "J-R2 自动化改善流程",
+            "candidate_term": "Power BI 看板、Power Query 清洗",
+            "rewrite_guidance": "在「使用 Power BI 制作预算执行与库存金额看板」后补强'实现财务报告自动化，改善流程效率'等 JD 术语。",
+            "evidence_ids": [
+              "C-E1-B5",
+              "C-P2-B1"
+            ]
+          },
+          {
+            "requirement": "J-R1 关键财务指标分析",
+            "candidate_term": "经营分析、差异分析",
+            "rewrite_guidance": "突出'运用关键财务指标（如毛利率、材料差异率）开展月度分析'，与 JD 对齐。",
+            "evidence_ids": [
+              "C-E1-B1",
+              "C-E1-B2"
+            ]
+          },
+          {
+            "requirement": "J-R6 财务系统熟悉",
+            "candidate_term": "SAP FI/CO",
+            "rewrite_guidance": "强调 SAP FI/CO 模块的实际应用（如成本中心会计、内部订单）。",
+            "evidence_ids": [
+              "C-E1-???",
+              "skills-SAP"
+            ]
+          },
+          {
+            "requirement": "J-R4 SQL",
+            "candidate_term": null,
+            "rewrite_guidance": "不要声称 SQL 技能；若后续学习，可在更新简历时补充。",
+            "evidence_ids": []
+          }
+        ],
+        "application_decision": {
+          "recommendation": "low_probability",
+          "blocking_reasons": [
+            "Must-have requirement '高级 SQL 能力' 未在简历中得到证实。"
+          ],
+          "pre_application_checks": [
+            "确认候选人是否具备基本 SQL 知识或正在学习",
+            "询问是否有物流或供应链项目经验（未体现在简历中）",
+            "评估英语水平是否足以支撑全球化团队沟通"
+          ]
+        },
+        "rewrite_actions": [
+          {
+            "action_type": "align_terminology",
+            "requirement_id": "J-R2",
+            "evidence_ids": [
+              "C-E1-B5"
+            ],
+            "section": "experience/highlights (成都川岳精密制造有限公司)",
+            "proposed_change": "将「使用 Power BI 制作预算执行与库存金额看板，将月报准备时间从约 3 天缩短到 1.5 天」改写为「通过 Power BI 实现财务报告自动化，实现流程改善，将月报准备时间缩短 50%」，更贴近 JD 关键词。"
+          },
+          {
+            "action_type": "highlight_evidence",
+            "requirement_id": "J-R1",
+            "evidence_ids": [
+              "C-E1-B1"
+            ],
+            "section": "experience/highlights (成都川岳精密制造有限公司)",
+            "proposed_change": "在第一条职责前增加引导句「运用关键财务指标（收入、成本、费用差异）开展分析」，使匹配度更高。"
+          },
+          {
+            "action_type": "do_not_claim",
+            "requirement_id": "J-R4",
+            "evidence_ids": [],
+            "section": "skills or experience",
+            "proposed_change": "勿在简历中添加 SQL 技能；若真实具备且可证明，建议添加项目示例；否则保持空缺。"
+          },
+          {
+            "action_type": "verify_with_user",
+            "requirement_id": "J-R5",
+            "evidence_ids": [],
+            "section": "skills",
+            "proposed_change": "确认是否使用过 Tableau。若有，写入；若无，可注明「可迁移的 Power BI 可视化经验」。"
+          }
+        ]
+      },
+      "final_resume": {
+        "candidate_id": "revision_2",
+        "strategy": "revision",
+        "resume_markdown": "## 何嘉雯\n女 | 29岁 | 成都 | 187****1465 | hejiawen09@outlook.com | 意向岗位：财务分析/业务财务 BP/财务数据分析\n\n### 专业概要\n5 年制造业财务经验，其中 3 年财务分析经验，擅长预算管理与滚动预测、成本建模与经营分析，通过 Power BI 实现财务报告自动化与流程改善。具备 SAP FI/CO 应用能力，熟悉财务系统。\n\n### 工作经历\n**成都川岳精密制造有限公司** | 财务分析师 | 2022.08 - 至今\n- 运用关键财务指标（收入、成本、费用差异）开展分析，负责工厂年度预算、月度滚动预测和经营分析，覆盖收入、材料、人工、制造费用与资本开支，每月向财务经理提交约 20 页经营分析材料。\n- 建立产品毛利分析模型，按客户、产品族和订单拆分标准与实际成本，识别 6 个长期低毛利产品，推动销售重新议价 3 个、工艺改善 2 个、停产评估 1 个。\n- 参与材料降本项目，跟踪替代料、采购价格和用量差异，项目实现账面降本约 480 万元（跨部门共同结果）。\n- 使用 Power BI 制作预算执行与库存金额看板，实现财务报告自动化与流程改善，将月报准备时间从约 3 天缩短至 1.5 天。\n- 协助新产线投资测算，负责现金流模型和敏感性表，市场销量假设由业务部门提供。\n- 从 SAP 导出数据，通过 Power Query 清洗，建立收入、成本、库存和费用模型，优化数据准备流程。\n\n**四川启盛电气有限公司** | 成本会计 | 2020.07 - 2022.07\n- 负责材料、人工、制造费用归集，月末成本结转和存货盘点，维护 BOM 与标准成本差异表，处理跨月暂估和异常工单。\n\n### 项目经历\n**低毛利产品专项** | 2024.04 - 2024.07\n- 重新核对 68 个产品成本口径，按订单量、材料波动和工时拆解利润变化；推动销售重新议价 3 个、工艺改善 2 个、停产评估 1 个。\n\n**月度经营看板** | 2023.11 - 2024.02\n- 从 SAP 导出数据后通过 Power Query 清洗，建立收入、成本、库存和费用模型，为经营分析提供数据基础。\n\n### 教育背景\n西南财经大学天府学院 | 财务管理 本科 | 2016.09 - 2020.06 | GPA 3.3/4.0 | 校财务案例大赛三等奖\n\n### 技能与证书\n- 预算编制与滚动预测 | 成本分析与毛利建模 | Power BI / Excel 高级（Power Query, Power Pivot）\n- SAP FI/CO | 用友 | 初级会计职称 | CPA 专业阶段通过会计、财管 2 科\n- 英语 CET-4",
+        "trace": [
+          {
+            "output_sentence_digest": "5 年制造业财务经验，其中 3 年财务分析经验，擅长预算管理与滚动预测、成本建模与经营分析，通过 Power BI 实现财务报告自动化与流程改善。",
+            "evidence_ids": [
+              "C-E1-B1",
+              "C-E1-B3",
+              "C-E1-B5",
+              "C-P2-B1"
+            ],
+            "requirement_ids": [
+              "J-R1",
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "具备 SAP FI/CO 应用能力，熟悉财务系统。",
+            "evidence_ids": [
+              "C-P2-B1",
+              "skills-SAP"
+            ],
+            "requirement_ids": [
+              "J-R6"
+            ]
+          },
+          {
+            "output_sentence_digest": "运用关键财务指标（收入、成本、费用差异）开展分析，负责工厂年度预算、月度滚动预测和经营分析，覆盖收入、材料、人工、制造费用与资本开支，每月向财务经理提交约 20 页经营分析材料。",
+            "evidence_ids": [
+              "C-E1-B1",
+              "C-E1-B2"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "建立产品毛利分析模型，按客户、产品族和订单拆分标准与实际成本，识别 6 个长期低毛利产品，推动销售重新议价 3 个、工艺改善 2 个、停产评估 1 个。",
+            "evidence_ids": [
+              "C-E1-B3",
+              "C-P1-B1",
+              "C-P1-B2"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "参与材料降本项目，跟踪替代料、采购价格和用量差异，项目实现账面降本约 480 万元（跨部门共同结果）。",
+            "evidence_ids": [
+              "C-E1-B4"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "使用 Power BI 制作预算执行与库存金额看板，实现财务报告自动化与流程改善，将月报准备时间从约 3 天缩短至 1.5 天。",
+            "evidence_ids": [
+              "C-E1-B5"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "协助新产线投资测算，负责现金流模型和敏感性表，市场销量假设由业务部门提供。",
+            "evidence_ids": [
+              "C-E1-B6"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "从 SAP 导出数据，通过 Power Query 清洗，建立收入、成本、库存和费用模型，优化数据准备流程。",
+            "evidence_ids": [
+              "C-P2-B1"
+            ],
+            "requirement_ids": [
+              "J-R6",
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "负责材料、人工、制造费用归集，月末成本结转和存货盘点，维护 BOM 与标准成本差异表，处理跨月暂估和异常工单。",
+            "evidence_ids": [
+              "C-E2-B1",
+              "C-E2-B2"
+            ],
+            "requirement_ids": []
+          },
+          {
+            "output_sentence_digest": "重新核对 68 个产品成本口径，按订单量、材料波动和工时拆解利润变化；推动销售重新议价 3 个、工艺改善 2 个、停产评估 1 个。",
+            "evidence_ids": [
+              "C-P1-B1",
+              "C-P1-B2"
+            ],
+            "requirement_ids": []
+          }
+        ],
+        "coverage": {
+          "proven_must_have_covered": [
+            "J-R1",
+            "J-R2",
+            "J-R3",
+            "J-R6"
+          ],
+          "proven_must_have_not_covered": [
+            "J-R4"
+          ],
+          "allowed_high_priority_terms_used": [
+            "自动化",
+            "流程改善",
+            "关键财务指标",
+            "SAP",
+            "预算",
+            "滚动预测",
+            "经营分析",
+            "Power BI",
+            "财务报告"
+          ]
+        },
+        "self_audit": {
+          "unsupported_claims": [],
+          "eligibility_preserved": true
+        },
+        "delivery_status": "blocked_by_eligibility",
+        "delivery_blockers": [
+          "缺失 Must-have 要求：具备用于数据挖掘和商业智能的高级 SQL 能力 (J-R4)"
+        ]
+      },
+      "deterministic_guardrail": {
+        "evaluatorName": "v4-resume-deterministic-guardrail",
+        "evaluatorVersion": "v4.1",
+        "passed": true,
+        "score": 100,
+        "issues": []
+      },
+      "final_internal_judge": {
+        "evaluations": [
+          {
+            "candidate_id": "revision_2",
+            "passed": false,
+            "resume_quality_passed": false,
+            "application_eligibility": "pass",
+            "deliverable": false,
+            "total_score": 75,
+            "dimension_scores": {
+              "factual_fidelity": 25,
+              "eligibility_integrity": 10,
+              "proven_requirement_coverage": 10,
+              "top_third_persuasion": 5,
+              "evidence_density": 9,
+              "ats_readability": 7,
+              "non_generic": 2,
+              "interview_defensibility": 7
+            },
+            "unsupported_claims": [],
+            "requirement_gaps": [
+              "J-R4: 高级 SQL 能力 (must-have)",
+              "J-R5: Tableau 及大规模数据报告工具 (preferred)"
+            ],
+            "genericity_test": {
+              "score": 2,
+              "feedback": "简历未针对特定行业或公司定制，强调通用制造业财务分析，与Amazon全球物流岗位关联度低。关键词覆盖不全面，可迁移性强。"
+            },
+            "revision_actions": []
+          }
+        ],
+        "winner_candidate_id": null,
+        "revision_brief": "简历缺失必须的高级 SQL 能力，且整体得分未达质量门控，不可交付。"
+      },
+      "interview_advice": {
+        "interview_readiness_score": 0,
+        "eligibility_defense": [
+          {
+            "requirement_id": "J-R4",
+            "gap": "简历未显示任何 SQL 使用证据，而岗位要求高级 SQL 能力",
+            "honest_position": "如实说明目前没有直接使用高级 SQL 进行数据挖掘的经验，但具备通过 Power Query 和 Power Pivot 进行复杂数据处理和建模的能力，这些技能可迁移到 SQL。同时，可提及正在通过在线课程（如 W3Schools/SQLZoo）系统学习 SQL，并计划在入职前达到可独立完成多表查询和聚合分析的水平。",
+            "evidence_support": [
+              "C-E1-B5 (Power BI 看板与数据模型)",
+              "C-P2-B1 (Power Query 清洗 SAP 数据)"
+            ]
+          },
+          {
+            "requirement_id": "J-R4",
+            "gap": "英语仅 CET-4，未证实工作英语能力",
+            "honest_position": "坦诚 CET-4 是大学时的水平，目前可进行基础书面阅读和邮件沟通，但流利口语和商务英语需要提升。表示愿意参加公司内部的英语培训，或在工作中与 Global 团队逐步锻炼。若面试中有英文环节，请面试官评估实际水平。"
+          },
+          {
+            "requirement_id": "J-R5",
+            "gap": "无 Tableau 使用经验",
+            "honest_position": "表明仅使用 Power BI 制作可视化报告，但理解 Tableau 的类似功能（如仪表板、数据连接），自信可快速适应。若有自学经历可诚实说明。"
+          }
+        ],
+        "question_drills": [
+          {
+            "id": "Q1",
+            "category": "资格核验",
+            "question": "在您的简历中，我们没有看到 SQL 相关经验。这个岗位要求高级 SQL 能力，您如何弥补这一差距？",
+            "requirement_id": "J-R4",
+            "related_evidence_ids": [],
+            "expected_themes": [
+              "诚实承认当前无 SQL 经验",
+              "突出 Power Query 处理大量数据的逻辑与 SQL 相似",
+              "展示学习计划或已开始的 SQL 培训",
+              "强调快速学习能力和以往掌握 Power BI 的经历"
+            ],
+            "follow_up_questions": [
+              "您能用 Power Query 举例说明如何处理多表合并和复杂筛选吗？这与 SQL 的 JOIN 和 WHERE 类似。",
+              "如果入职后前两周需要您用 SQL 提取运费数据，您的学习路径会是什么？"
+            ]
+          },
+          {
+            "id": "Q2",
+            "category": "Must-have 经验",
+            "question": "请举例说明您如何使用关键财务指标（如收入增长率、成本差异率）发现业务问题，并推动行动。",
+            "requirement_id": "J-R1",
+            "related_evidence_ids": [
+              "C-E1-B1",
+              "C-E1-B2",
+              "C-E1-B3"
+            ],
+            "expected_themes": [
+              "描述分析过程中使用的具体指标（例如：单位材料成本差异、产品毛利率）",
+              "解释数据来源和分析方法（如按客户/产品族拆分）",
+              "强调发现的洞察（6个低毛利产品）和推动的业务措施（议价、工艺改善）",
+              "如果可能，提及与管理层的讨论（即使未直接汇报给总经理）"
+            ],
+            "follow_up_questions": [
+              "您当时有没有设定一个阈值来定义’低毛利’？这个阈值是如何确定的？",
+              "推动销售重新议价时，您提供了哪些数据论点说服他们？"
+            ]
+          },
+          {
+            "id": "Q3",
+            "category": "Must-have 自动化",
+            "question": "请您详细描述通过自动化和分析改善财务流程的一个具体例子。您使用了什么工具？遇到了哪些阻力？",
+            "requirement_id": "J-R2",
+            "related_evidence_ids": [
+              "C-E1-B5",
+              "C-P2-B1"
+            ],
+            "expected_themes": [
+              "详细说明 Power BI 看板项目：从 SAP 导出数据，用 Power Query 清洗，建立模型，设计可视化",
+              "量化结果：月报准备时间缩短 50%",
+              "提及遇到的挑战（如权限问题无法自动刷新）以及如何克服或当前状态",
+              "强调自动化带来的流程改善和管控提升（如看板提供实时预算执行监控）"
+            ],
+            "follow_up_questions": [
+              "如果现在让您用 Tableau 重新做这个看板，您大概需要多久？您会如何规划学习？",
+              "自动刷新未解决的具体原因是什么？您当时有没有给出技术替代方案？"
+            ]
+          },
+          {
+            "id": "Q4",
+            "category": "核心结果达成",
+            "question": "请谈谈您参与的材料降本项目，您的具体贡献是什么？最终实现账面降本 480 万元，您在其中起了什么作用？",
+            "requirement_id": "J-R1",
+            "related_evidence_ids": [
+              "C-E1-B4"
+            ],
+            "expected_themes": [
+              "澄清角色是’参与’和’跟踪’，而非主导，不夸大贡献",
+              "描述具体跟踪的差异：替代料、采购价格、用量差异",
+              "说明跨部门合作：与采购、生产如何协作识别降本机会",
+              "如果有，提供自己发现的具体降本点（例如某材料替代方案可节省 X%）",
+              "强调财务分析在量化降本金额中的支持作用"
+            ],
+            "follow_up_questions": [
+              "您如何确保记录的降本金额是准确的？有没有被质疑过？",
+              "这个项目是由谁发起的？您是如何被纳入团队的？"
+            ]
+          },
+          {
+            "id": "Q5",
+            "category": "最强项目",
+            "question": "您建立的毛利分析模型被认为是您简历中的亮点。请从头到尾讲述您如何设计这个模型，以及它如何改变了决策。",
+            "requirement_id": "J-R1",
+            "related_evidence_ids": [
+              "C-E1-B3",
+              "C-P1-B1"
+            ],
+            "expected_themes": [
+              "模型的目标：识别低毛利产品并支持定价和产品组合决策",
+              "数据源：从 SAP 获取实际成本，从销售系统获取售价，按客户/产品族/订单拆分",
+              "方法论：核算标准成本与实际成本的差异，结合订单量和材料波动分析利润变化",
+              "输出的行动：推动 3 个议价、2 个工艺改善、1 个停产评估",
+              "过程中遇到的挑战（如成本口径不统一）及如何解决"
+            ],
+            "follow_up_questions": [
+              "你们之前没有这样的模型吗？如果没有，您是如何获得管理层支持去建立的？",
+              "最终停产评估的那个产品，能说说具体的经济分析吗？"
+            ]
+          },
+          {
+            "id": "Q6",
+            "category": "关键差距弥补",
+            "question": "您有丰富的制造业成本分析经验，但这个岗位聚焦在物流运费分析。您会如何将您的技能迁移到这个新领域？",
+            "requirement_id": "J-R1",
+            "related_evidence_ids": [],
+            "expected_themes": [
+              "指出成本分析的通用性：分析成本构成、识别差异、寻找降本驱动",
+              "举例：制造业的材料差异 vs 物流的运费差异（类似地跟踪标准费率与实际费率）",
+              "强调快速学习行业知识的方法：与业务部门交流、阅读内部文档、分析历史数据",
+              "表达对物流成本构成（集装箱、计费重量、费用代码）的理解意愿"
+            ],
+            "follow_up_questions": [
+              "假如给您一个运费数据集，您会如何开始分析？第一周会看哪些指标？",
+              "您觉得您的模型中哪些部分可以直接应用于运费建模？"
+            ]
+          },
+          {
+            "id": "Q7",
+            "category": "团队情境",
+            "question": "您之前的工作汇报对象是财务经理，而这个岗位可能需要与全球团队以及更高级别管理层互动。您会如何调整您的沟通方式？",
+            "requirement_id": "J-R1",
+            "related_evidence_ids": [
+              "C-E1-B2"
+            ],
+            "expected_themes": [
+              "承认过去直接向总经理汇报的经验有限，但有过与生产、采购等跨部门高管的协作",
+              "强调根据受众调整报告颗粒度：对高层侧重结论和影响，对业务伙伴提供详细数据",
+              "举例：在经营分析中，对财务经理提交 20 页详细材料，但对业务部门仅提供关键差异和行动清单",
+              "表达学习 Amazon 的写作文化（六页纸 memo 等）的意愿"
+            ],
+            "follow_up_questions": [
+              "如果有一次您和业务 VP 对成本差异的解释有分歧，您会怎么处理？",
+              "您如何看待 Amazon 的’客户至上’和’刨根问底’领导力原则在财务分析中的应用？"
+            ]
+          },
+          {
+            "id": "Q8",
+            "category": "失败/学习",
+            "question": "分享一次您的分析结果未被采纳或您发现结果有误的经历。您学到了什么？",
+            "requirement_id": "J-R1",
+            "related_evidence_ids": [],
+            "expected_themes": [
+              "诚实面对不足，从候选人既有风险中选取合适例子（如低毛利项目未记录利润贡献）",
+              "讲述如何确保分析质量：交叉验证数据、寻求同事 review",
+              "强调反思和流程改进（如后来建立看板，提升报告透明度）",
+              "如果没有明显失败，可讲述一个挑战性分析项目中的困难"
+            ],
+            "follow_up_questions": [
+              "您当时是怎么发现分析有误的？事后和团队沟通了吗？",
+              "如果重来一次，您会在流程上做什么不同？"
+            ]
+          }
+        ],
+        "story_recommendations": [
+          {
+            "story_title": "建立预算管理与滚动预测流程",
+            "core_narrative": "在加入川岳精密时，公司预算流程几乎为手工 Excel，耗时且易错。我主动梳理各成本中心数据来源，设计了标准化模板，并在 SAP 中建立成本中心报告体系。现在每月滚动预测可快速生成差异分析，支持管理层快速调整资源分配。如果可能，核实财务经理或总经理的反馈，如预算准确度提升或审批时间缩短的具体反馈。",
+            "evidence_ids": [
+              "C-E1-B1"
+            ],
+            "preparation_tip": "重点准备：1) 你是如何说服团队采用新流程的？2) 流程优化前后对比的时间或质量指标（即使估算）。3) 如果无具体反馈，准备好诚实说明’未正式记录效果，但根据后续年度的预算编制效率自评’ 。"
+          },
+          {
+            "story_title": "低毛利产品分析驱动业务行动",
+            "core_narrative": "在一次月度分析中，我发现某产品族的毛利率持续下降。我主动构建了按订单和客户维度的成本模型，发现主要原因是某种原材料价格上升未及时传导至售价。我与销售和采购合作，提供了 3 个定价方案和 2 个替代材料建议，最终成功推动客户涨价并更换了低成本材料。此项目后来被扩展为全公司低毛利产品专项。如果可能，核实销售经理或工艺部门的具体反馈，如’涨价后客户无流失’或’材料替换后节省 X 元/吨’ —— 请据实回忆，无则如实说。",
+            "evidence_ids": [
+              "C-E1-B3",
+              "C-P1-B1"
+            ],
+            "preparation_tip": "准备：1) 你是如何计算’长期低毛利’的？2) 你如何与销售团队建立信任让他们采纳分析？3) 如果推动的行动没有量化结果，可以强调过程改进（如建立了标准分析流程）。"
+          },
+          {
+            "story_title": "用 Power BI 实现月报自动化",
+            "core_narrative": "接手月报工作后，我发现手工整合数据非常耗时。我自学 Power BI，将 SAP 数据导出、Power Query 清洗、建立数据模型到设计交互仪表板的流程打通。现在管理层可直接查看预算执行和库存水平，我只需专注分析差异。这项改进将我的月报准备时间从 3 天降至 1.5 天。如果可能，了解使用者的具体反馈（如’看板被用于周度会议’）—— 不求夸张，如实呈现。",
+            "evidence_ids": [
+              "C-E1-B5",
+              "C-P2-B1"
+            ],
+            "preparation_tip": "重点准备：1) 你如何确保数据自动清洗的准确性？2) 你如何培训其他同事使用看板？3) 未解决自动刷新的原因和你的替代方案（如每天手动同步一次，是否可接受）。"
+          }
+        ],
+        "gap_defense": [
+          {
+            "gap": "高级 SQL 能力缺失",
+            "defense_strategy": "在面试中主动承认，但立即展示数据处理能力和学习速度。准备一个用 Power Query 实现复杂数据合并和聚合的案例（对应 SQL JOIN 和 GROUP BY），说明逻辑是相通的。可提及正在完成 Codecademy 的 SQL 课程，并展示练习查询。如果面试官要求现场写 SQL，诚实寻求提示，展示推理过程而非背诵语法。",
+            "role_play_tip": "'虽然我没有在生产环境中使用高级 SQL，但我的日常分析大量依赖 Power Query 和 DAX 进行数据建模，其核心概念（表关系、筛选上下文）与 SQL 非常相似。近期我开始在 SQLZoo 上练习复杂查询，相信几周内可以达到岗位要求。'"
+          },
+          {
+            "gap": "无物流与运费分析经验",
+            "defense_strategy": "强调成本分析的可迁移性。将制造业的成本构成（BOM、标准成本、差异分析）与物流成本（费率、运费类型、分摊规则）类比。准备一个制造业成本分析如何发现差异并推动行动的例子，延伸至物流场景。例如：‘就像我通过 BOM 拆解材料差异一样，对于运费我可以按供应商、航线、货物类型拆解费率差异，识别异常’。表达对学习物流基础（如 Incoterms、集装箱尺寸）的热情。",
+            "role_play_tip": "'物流成本分析的核心是理解费率结构和业务驱动因素，这和我做产品毛利分析是相通的——都需要将总成本分解到可管理的单元，然后识别关键差异。我相信加上几周的业务学习，我能快速贡献。'"
+          },
+          {
+            "gap": "英语能力未证实",
+            "defense_strategy": "如果被要求英文自我介绍或案例分析，尽力而为，不必掩饰。准备一段英文自我介绍，突出财务分析经验和数字。如果遇到困难，可请求允许用中文解释复杂观点，然后总结英文关键词。表达’我的英语读写能力较强，口语在积极练习中，如有环境会很快提升’。",
+            "role_play_tip": "提前写好英文版简历亮点，并练习说。可用‘Hello, I'm He Jiawen. I have five years of experience in manufacturing finance, specializing in budgeting, cost analysis, and process automation...’"
+          }
+        ],
+        "company_specific_hypotheses": [
+          {
+            "hypothesis": "Amazon 面试注重领导力原则（LP），几乎所有行为问题都会围绕 LP 展开。",
+            "evidence_base": "来源 W-S2 提到职业计划强调领导力发展；Amazon 全球招聘通常以 LP 为核心。",
+            "preparation": "将自己的每个故事对应 1-2 个 LP（如’客户至上’、’刨根问底’、’达成业绩’）。准备 STAR 格式，并确保包含数据和具体行动。"
+          },
+          {
+            "hypothesis": "可能会有案例分析或 Excel/SQL 实操测试。",
+            "evidence_base": "Amazon 财务岗常见案例分析。",
+            "preparation": "练习快速解读数据表格并给出建议。对于 SQL 测试，若出现，诚实说明当前水平并尽力。可要求换为类似逻辑的 Excel 练习题。"
+          },
+          {
+            "hypothesis": "团队可能跨多个时区合作，需要灵活的工作时间。",
+            "evidence_base": "岗位描述涉及 Global Logistics，可能和欧洲、北美团队合作。",
+            "preparation": "表达可接受早间或晚间会议，并举例过往与生产部门配合中的灵活安排。"
+          },
+          {
+            "hypothesis": "面试官可能对 Power BI 到 Tableau 的迁移能力有疑问。",
+            "evidence_base": "JD 要求 Tableau。",
+            "preparation": "准备好 Power BI 和 Tableau 的相似之处（字段拖拽、可视化类型、数据连接），并表达短期内可掌握 Tableau。"
+          }
+        ],
+        "questions_for_interviewer": [
+          "请问这个岗位直接汇报给哪位经理？团队现在有多少人，如何分工？",
+          "目前团队使用的主要数据平台或 ERP 系统是什么？有正在进行的 Data Lake 或自动化项目吗？",
+          "对于运费分析，当前最大的痛点是数据准确性、时效性还是模型精细化？",
+          "这个岗位的日常工作需要和欧洲或北美团队开会吗？典型的一天时间如何分配？",
+          "公司对这个岗位的长期发展路径有什么规划？是否有轮岗或培训机会？",
+          "您希望这位 Senior Financial Analyst 在前三个月解决的最优先问题是什么？"
+        ],
+        "first_90_days_discussion_points": [
+          {
+            "phase": "前30天：学习与融入",
+            "discussion_topics": [
+              "了解 Amazon Global Logistics 的业务模式、主要航线和成本结构。",
+              "掌握运费月结和预测流程，熟悉报告工具和数据源。",
+              "与跨职能伙伴（运营、采购、IT）建立初步信任关系。",
+              "评估现有 Excel/SQL 报告并识别可自动化的环节。"
+            ],
+            "note": "这不是承诺，而是与经理讨论的潜在计划，会根据实际资源和优先级调整。"
+          },
+          {
+            "phase": "30-60天：贡献与分析",
+            "discussion_topics": [
+              "独立承担部分月结任务，确保数据准确和及时。",
+              "开始构建按集装箱、计费重量等维度的成本分析模型。",
+              "参与一个运费降本项目，提供初步的成本差异分析。",
+              "若已掌握 SQL，尝试编写部分查询替代手工数据提取。"
+            ]
+          },
+          {
+            "phase": "60-90天：深化与改进",
+            "discussion_topics": [
+              "提出至少一个流程自动化改进建议（如自动化报告或 Tableau 仪表板）。",
+              "在管理层会议上展示一次运费趋势分析，并获取反馈。",
+              "继续扩展 SQL 和 Tableau 技能，使之达到独立解决复杂查询的水平。",
+              "与经理回顾 90 天目标完成度，共同制定下半年发展规划。"
+            ]
+          }
+        ]
+      },
+      "deliverable": false
+    },
+    "finalResume": "## 何嘉雯\n女 | 29岁 | 成都 | 187****1465 | hejiawen09@outlook.com | 意向岗位：财务分析/业务财务 BP/财务数据分析\n\n### 专业概要\n5 年制造业财务经验，其中 3 年财务分析经验，擅长预算管理与滚动预测、成本建模与经营分析，通过 Power BI 实现财务报告自动化与流程改善。具备 SAP FI/CO 应用能力，熟悉财务系统。\n\n### 工作经历\n**成都川岳精密制造有限公司** | 财务分析师 | 2022.08 - 至今\n- 运用关键财务指标（收入、成本、费用差异）开展分析，负责工厂年度预算、月度滚动预测和经营分析，覆盖收入、材料、人工、制造费用与资本开支，每月向财务经理提交约 20 页经营分析材料。\n- 建立产品毛利分析模型，按客户、产品族和订单拆分标准与实际成本，识别 6 个长期低毛利产品，推动销售重新议价 3 个、工艺改善 2 个、停产评估 1 个。\n- 参与材料降本项目，跟踪替代料、采购价格和用量差异，项目实现账面降本约 480 万元（跨部门共同结果）。\n- 使用 Power BI 制作预算执行与库存金额看板，实现财务报告自动化与流程改善，将月报准备时间从约 3 天缩短至 1.5 天。\n- 协助新产线投资测算，负责现金流模型和敏感性表，市场销量假设由业务部门提供。\n- 从 SAP 导出数据，通过 Power Query 清洗，建立收入、成本、库存和费用模型，优化数据准备流程。\n\n**四川启盛电气有限公司** | 成本会计 | 2020.07 - 2022.07\n- 负责材料、人工、制造费用归集，月末成本结转和存货盘点，维护 BOM 与标准成本差异表，处理跨月暂估和异常工单。\n\n### 项目经历\n**低毛利产品专项** | 2024.04 - 2024.07\n- 重新核对 68 个产品成本口径，按订单量、材料波动和工时拆解利润变化；推动销售重新议价 3 个、工艺改善 2 个、停产评估 1 个。\n\n**月度经营看板** | 2023.11 - 2024.02\n- 从 SAP 导出数据后通过 Power Query 清洗，建立收入、成本、库存和费用模型，为经营分析提供数据基础。\n\n### 教育背景\n西南财经大学天府学院 | 财务管理 本科 | 2016.09 - 2020.06 | GPA 3.3/4.0 | 校财务案例大赛三等奖\n\n### 技能与证书\n- 预算编制与滚动预测 | 成本分析与毛利建模 | Power BI / Excel 高级（Power Query, Power Pivot）\n- SAP FI/CO | 用友 | 初级会计职称 | CPA 专业阶段通过会计、财管 2 科\n- 英语 CET-4"
+  }
+}

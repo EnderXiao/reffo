@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-labelledby="title desc">
+  <title id="title">Reffo 竖版视频封面模板</title>
+  <desc id="desc">九比十六竖版视频封面，标题和真实 H5 画面占位区均位于安全区内。</desc>
+  <defs>
+    <linearGradient id="videoAtmosphere" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DCE9F9"/>
+      <stop offset="0.38" stop-color="#EEF4FB"/>
+      <stop offset="0.72" stop-color="#F8F9FB"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <filter id="videoShadow" x="-30%" y="-30%" width="170%" height="180%">
+      <feDropShadow dx="0" dy="26" stdDeviation="28" flood-color="#151E2E" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <g id="background-layer">
+    <rect width="1080" height="1920" fill="url(#videoAtmosphere)"/>
+    <circle cx="918" cy="334" r="214" fill="#FFFFFF" fill-opacity="0.30"/>
+  </g>
+
+  <g id="brand-layer" fill="#1C77EB">
+    <g transform="translate(72 202) scale(0.70)">
+      <path d="M48 36C48 42.0751 43.0751 47 37 47C30.9249 47 26 42.0751 26 36C26 29.9249 30.9249 25 37 25C43.0751 25 48 29.9249 48 36Z"/>
+      <path d="M0 25V47H10C15.6 47 17.6667 40.6667 18 37.5V22C18 19.6 20 19.3333 21 19.5H29.5C34.7 19.5 37.3333 13.8333 38 11V0H26C22.8 0 20.6667 2 20 3C14.6667 8 3.6 18.4 2 20C0.4 21.6 0 24 0 25Z"/>
+    </g>
+    <text x="121" y="239" font-family="Arial Rounded MT Bold, Avenir Next, Arial, sans-serif" font-size="47" font-weight="700" letter-spacing="-2">reffo</text>
+  </g>
+
+  <g id="copy-layer" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+    <rect x="72" y="300" width="286" height="56" rx="28" fill="#FFFFFF" fill-opacity="0.78"/>
+    <text x="100" y="338" fill="#4B4F56" font-size="24" font-weight="500">真实产品流程 · 01</text>
+    <text x="72" y="496" fill="#111111" font-size="92" font-weight="600" letter-spacing="-2">
+      <tspan x="72">一个</tspan><tspan fill="#1C77EB">岗位</tspan><tspan fill="#111111">，</tspan>
+      <tspan x="72" dy="112">一份经过你</tspan>
+      <tspan x="72" dy="112"><tspan fill="#1C77EB">确认</tspan><tspan fill="#111111">的简历</tspan></tspan>
+    </text>
+    <text x="76" y="828" fill="#4B4F56" font-size="32">
+      <tspan x="76">看差距、重组证据、继续编辑，</tspan>
+      <tspan x="76" dy="50">每一步都留给你最终确认。</tspan>
+    </text>
+  </g>
+
+  <g id="graphic-layer" filter="url(#videoShadow)">
+    <g transform="translate(714 858) rotate(7 150 238)">
+      <rect width="300" height="474" rx="18" fill="#6DA9FF" opacity="0.48"/>
+    </g>
+    <g transform="translate(770 830) rotate(10 150 238)">
+      <rect width="300" height="474" rx="18" fill="#111317"/>
+      <text x="34" y="92" fill="#FFFFFF" fill-opacity="0.50" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" font-size="22">岗位档案</text>
+      <text x="34" y="196" fill="#FFFFFF" font-family="Georgia, Times New Roman, serif" font-size="88">03</text>
+      <rect x="34" y="334" width="190" height="16" rx="8" fill="#FFFFFF" fill-opacity="0.64"/>
+      <rect x="34" y="372" width="224" height="11" rx="5.5" fill="#FFFFFF" fill-opacity="0.24"/>
+      <rect x="34" y="402" width="168" height="11" rx="5.5" fill="#FFFFFF" fill-opacity="0.18"/>
+    </g>
+  </g>
+
+  <g id="screenshot-placeholder" filter="url(#videoShadow)">
+    <rect x="72" y="982" width="720" height="520" rx="26" fill="#FFFFFF" fill-opacity="0.94" stroke="#1C77EB" stroke-opacity="0.48" stroke-width="3" stroke-dasharray="14 12"/>
+    <rect x="106" y="1016" width="652" height="356" rx="18" fill="#EEF4FB"/>
+    <g font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" text-anchor="middle">
+      <text x="432" y="1152" fill="#1C77EB" font-size="34" font-weight="600">替换为真实 H5 录屏帧</text>
+      <text x="432" y="1208" fill="#7D8591" font-size="24">保留真实界面 · 删除个人信息</text>
+      <text x="432" y="1260" fill="#7D8591" font-size="24">不要用 AI 或手工重画产品 UI</text>
+    </g>
+    <rect x="106" y="1408" width="234" height="48" rx="24" fill="#286FE7"/>
+    <text x="223" y="1441" fill="#FFFFFF" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif" font-size="22" font-weight="600" text-anchor="middle">真实界面证据区</text>
+  </g>
+
+  <g id="index-rail" transform="translate(1000 1000)">
+    <rect x="0" y="0" width="24" height="4" rx="2" fill="#111111"/>
+    <rect x="8" y="62" width="16" height="3" rx="1.5" fill="#AAB2BF"/>
+    <rect x="14" y="124" width="10" height="3" rx="1.5" fill="#AAB2BF"/>
+    <rect x="8" y="186" width="16" height="3" rx="1.5" fill="#AAB2BF"/>
+    <rect x="14" y="248" width="10" height="3" rx="1.5" fill="#AAB2BF"/>
+    <rect x="8" y="310" width="16" height="3" rx="1.5" fill="#AAB2BF"/>
+  </g>
+
+  <g id="legal-layer" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+    <text x="72" y="1586" fill="#7D8591" font-size="23">AI 初稿，请逐项核对事实。</text>
+    <text x="1008" y="1586" fill="#1C77EB" font-size="23" font-weight="600" text-anchor="end">REF / V01</text>
+  </g>
+
+  <g id="guide-layer" style="display:none">
+    <rect x="72" y="180" width="936" height="1440" fill="none" stroke="#FF6037" stroke-width="2" stroke-dasharray="12 12"/>
+    <rect x="0" y="1620" width="1080" height="300" fill="#FF6037" fill-opacity="0.08"/>
+  </g>
+</svg>

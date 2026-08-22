@@ -1,0 +1,2173 @@
+{
+  "privacy": "PRIVATE_REVIEW_MATERIAL_DO_NOT_COMMIT",
+  "promptVariant": "aggressive-v4.1",
+  "promptVersion": "4.1.0",
+  "caseId": "resume_10:resume_10_job_02",
+  "resumeId": "resume_10",
+  "jobId": "resume_10_job_02",
+  "company": "海尔智家",
+  "position": "供应商质量改善工程师（SQE）",
+  "sourceResume": "许博文|质量工程师|汽车电子 / 供应商质量\n男|32岁|苏州|159****6084|xubowen10@outlook.com\n求职方向:高级 SQE、质量经理、NPI 项目经理\n\n【个人概述】\n7 年汽车电子质量经验,负责供应商导入、来料异常、8D、审核与新项目质量策划。熟悉 IATF 16949、APQP、PPAP、FMEA、SPC、MSA。带领 3 人专项小组,但无正式经理任命。\n\n【专业技能】\n- 质量体系:IATF 16949、VDA 6.3、ISO 9001、APQP、PPAP、FMEA、SPC、MSA\n- 方法工具:8D、5Why、鱼骨图、DOE 基础、Minitab、SAP QM、Excel\n- 供应商:审核、变更管理、首件、来料异常、绩效与整改;英语邮件和基础会议沟通\n\n【工作经历】\n苏州朗岳汽车电子有限公司|高级供应商质量工程师(SQE)|2021.03 - 至今\n- 负责 PCB、连接器、注塑件及外协装配等 32 家供应商质量表现,跟踪 PPM、批退、8D 和审核整改。\n- 参与 6 个新项目供应商定点和 APQP,审核 PPAP 文件、过程能力和量产爬坡问题。\n- 2025 年负责供应商整体来料 PPM 从 860 降至 510;降幅为团队及供应商共同结果。\n- 主导某连接器间歇断路问题分析,通过截面、尺寸和插拔测试定位端子压接窗口,推动供应商调整参数并连续 3 个月无复发。\n- 每年开展约 18 次现场或远程审核,问题关闭及时率约 92%;部分重复问题在下一年度再次出现。\n- 作为专项小组负责人协调 3 名工程师处理重大异常,但不负责人员绩效、招聘和预算。\n常州锐达电控有限公司|质量工程师|2018.07 - 2021.02\n- 负责来料检验标准、异常处理和供应商 8D 跟踪。\n- 参与 IATF 16949 外审准备,维护检验记录和纠正措施。\n- 接触过注塑和冲压工艺,对电子制程理解相对有限。\n\n【项目经历】\n新能源车载控制器项目 APQP|2023.05 - 2024.03\n- 负责 11 家关键供应商质量策划,跟踪特殊特性、MSA、过程能力和 PPAP。\n- SOP 前关闭 47 项问题中的 45 项,2 项经风险评估后带条件放行。\n- 量产前三个月发生 1 起批量来料问题,完成围堵和 8D。\n供应商分层管理优化|2025.01 - 2025.04\n- 按质量、交付、响应和审核结果对供应商分层,提出差异化审核频次。\n- 方案已在质量部试行,尚未纳入采购正式考核制度。\n\n【教育经历】\n- 江苏科技大学|机械设计制造及其自动化 本科|2014.09 - 2018.06\n\n【补充信息】\n- 证书:VDA 6.3 过程审核员(内部培训)、IATF 16949 内审员\n- 期望工作地:苏州、无锡、上海;可接受 30% 出差。",
+  "jobDescription": "海尔智家|供应商质量改善工程师(SQE)\n青岛|供应链质量|职位 ID 10200878|发布 2026-04-01\n\n职位介绍\n负责供应商质量策划、绩效改善和重大问题闭环,提升零部件供货质量与量产稳定性。\n\n岗位职责\n1. 推进供应商质量体系和过程能力评估,制定风险供应商改善计划。\n2. 参与新供应商、新零部件导入与质量策划,审核关键质量资料。\n3. 处理来料和量产重大质量问题,组织根因分析、整改验证和防再发。\n4. 跟踪供应商质量绩效,协同采购、研发和制造推动持续改善。\n\n任职要求\n1. 本科及以上,机械、电气、材料或质量相关专业。\n2. 具备5年以上采购、生产、技术或质量相关经验。\n3. 熟悉供应商质量管理、审核、8D 和常见质量工具。\n4. 具备较强的问题分析、项目推动和跨部门沟通能力。\n\n加分项\n- 3年以上供应商质量岗位经历\n- 有家电、电子或大批量制造经验\n\n公开招聘来源:https://maker.haier.net/client/mobile/socialdetail/id/10200878\n页面核验日期:2026-07-27",
+  "current": {
+    "suite": {
+      "resume_analysis": {
+        "quality_score": 88,
+        "strengths": [
+          "7年汽车电子行业质量经验，熟悉IATF 16949体系及五大工具，可快速融入同类企业",
+          "具备供应商管理实际成果，如来料PPM降低约40%及重大质量问题闭环案例，体现问题解决能力",
+          "有完整的新项目供应商APQP经验，能独立承担供应商质量策划与PPAP审核",
+          "持有VDA 6.3内部审核员和IATF 16949内审员证书，具备现场与远程审核能力"
+        ],
+        "weaknesses": [
+          "无正式团队管理任命，人员绩效、招聘等管理经历未体现，对管理岗支撑不足",
+          "部分成果为团队及供应商共同结果，个人直接贡献未剥离量化",
+          "早期经历自述对电子制程理解有限，可能影响涉电子工艺深度岗位的匹配度",
+          "供应商分层优化方案尚未纳入正式考核制度，长期推行效果待验证"
+        ],
+        "suggestions": [
+          "对于团队成果（如PPM下降），应补充个人主导的具体动作与贡献占比，仅当有可核验证据时提供",
+          "针对重复出现的审核问题，说明所采取的纠正措施有效性，展示闭环管理能力",
+          "可补充供应商管理带来的成本节约或效率提升实例，但必须使用真实且可验证的数据",
+          "如有带领团队完成专项任务的成功案例，可增加具体项目领导细节以支持高级岗位投递"
+        ],
+        "capability_summary": "7年汽车电子供应商质量管理经验，深耕IATF 16949体系与APQP/PPAP工具，具备供应商导入、审核、异常处理与绩效改善的完整实践，曾通过过程优化实现来料PPM显著下降，并主导多个新项目供应商质量策划。",
+        "structured_resume": {
+          "personal_info": {
+            "name": "许博文",
+            "contact": "159****6084",
+            "email": "xubowen10@outlook.com",
+            "phone": "159****6084",
+            "location": "苏州",
+            "current_position": "高级供应商质量工程师(SQE)"
+          },
+          "education": [
+            {
+              "school": "江苏科技大学",
+              "major": "机械设计制造及其自动化",
+              "degree": "本科",
+              "time_range": "2014.09 - 2018.06",
+              "achievements": []
+            }
+          ],
+          "experience": [
+            {
+              "company": "苏州朗岳汽车电子有限公司",
+              "position": "高级供应商质量工程师(SQE)",
+              "time_range": "2021.03 - 至今",
+              "responsibilities": [
+                "负责PCB、连接器、注塑件及外协装配等32家供应商质量表现，跟踪PPM、批退、8D和审核整改",
+                "参与6个新项目供应商定点和APQP，审核PPAP文件、过程能力和量产爬坡问题",
+                "作为专项小组负责人协调3名工程师处理重大异常，但不负责人事管理"
+              ],
+              "achievements": [
+                "2025年负责供应商整体来料PPM从860降至510（团队及供应商共同结果）",
+                "主导某连接器间歇断路问题分析，通过截面、尺寸和插拔测试定位端子压接窗口，推动供应商调整参数并连续3个月无复发",
+                "每年开展约18次现场或远程审核，问题关闭及时率约92%；存在部分重复问题次年再出现"
+              ]
+            },
+            {
+              "company": "常州锐达电控有限公司",
+              "position": "质量工程师",
+              "time_range": "2018.07 - 2021.02",
+              "responsibilities": [
+                "负责来料检验标准、异常处理和供应商8D跟踪",
+                "参与IATF 16949外审准备，维护检验记录和纠正措施",
+                "接触注塑和冲压工艺，对电子制程理解相对有限"
+              ],
+              "achievements": []
+            }
+          ],
+          "projects": [
+            {
+              "name": "新能源车载控制器项目 APQP",
+              "role": "供应商质量负责人",
+              "tech_stack": [
+                "APQP",
+                "PPAP",
+                "MSA",
+                "SPC",
+                "8D"
+              ],
+              "description": "负责11家关键供应商质量策划，跟踪特殊特性、MSA、过程能力和PPAP，确保SOP前问题关闭",
+              "achievements": [
+                "SOP前关闭47项问题中的45项，2项经风险评估后带条件放行",
+                "量产前三个月发生1起批量来料问题，完成围堵和8D"
+              ]
+            },
+            {
+              "name": "供应商分层管理优化",
+              "role": "方案设计与试行负责人",
+              "tech_stack": [
+                "供应商评估",
+                "审核管理"
+              ],
+              "description": "按质量、交付、响应和审核结果对供应商分层，提出差异化审核频次，方案在质量部试行",
+              "achievements": [
+                "方案已在质量部试行，尚未纳入采购正式考核制度"
+              ]
+            }
+          ],
+          "skills": {
+            "hard_skills": [
+              "IATF 16949",
+              "VDA 6.3",
+              "ISO 9001",
+              "APQP",
+              "PPAP",
+              "FMEA",
+              "SPC",
+              "MSA",
+              "8D",
+              "5Why",
+              "鱼骨图",
+              "DOE基础",
+              "Minitab",
+              "SAP QM",
+              "Excel",
+              "供应商审核",
+              "变更管理",
+              "首件管理",
+              "来料异常处理"
+            ],
+            "soft_skills": []
+          }
+        }
+      },
+      "job_profile": {
+        "basic_info": {
+          "title": "供应商质量改善工程师(SQE)",
+          "company": "海尔智家",
+          "location": "青岛"
+        },
+        "hard_requirements": {
+          "education": "本科及以上，机械、电气、材料或质量相关专业",
+          "experience_years": "5年以上采购、生产、技术或质量相关经验",
+          "required_skills": [
+            "供应商质量管理",
+            "审核",
+            "8D",
+            "常见质量工具"
+          ]
+        },
+        "responsibilities": [
+          "推进供应商质量体系和过程能力评估，制定风险供应商改善计划",
+          "参与新供应商、新零部件导入与质量策划，审核关键质量资料",
+          "处理来料和量产重大质量问题，组织根因分析、整改验证和防再发",
+          "跟踪供应商质量绩效，协同采购、研发和制造推动持续改善"
+        ],
+        "tasks": [
+          "评估供应商质量体系和过程能力",
+          "制定风险供应商改善计划",
+          "审核新供应商和零部件的质量文件",
+          "处理来料和量产的质量问题",
+          "进行根因分析和整改验证",
+          "跟踪供应商质量绩效指标",
+          "协同采购、研发和制造部门推动改善"
+        ],
+        "soft_skills": [
+          "问题分析",
+          "项目推动",
+          "跨部门沟通"
+        ],
+        "nice_to_have": [
+          "3年以上供应商质量岗位经历",
+          "有家电、电子或大批量制造经验"
+        ],
+        "requirement_hierarchy": {
+          "must_have": [
+            "本科及以上学历，机械/电气/材料/质量相关专业",
+            "5年以上采购/生产/技术/质量经验",
+            "熟悉供应商质量管理、审核、8D和质量工具",
+            "较强的问题分析、项目推动和跨部门沟通能力"
+          ],
+          "core_outcomes": [
+            "提升零部件供货质量与量产稳定性",
+            "供应商质量绩效改善",
+            "重大质量问题闭环"
+          ],
+          "differentiators": [
+            "3年以上供应商质量岗位经历",
+            "家电/电子/大批量制造经验"
+          ]
+        },
+        "company_context": {
+          "explicit_signals": [
+            "家电行业",
+            "大批量制造",
+            "跨部门协作（采购、研发、制造）"
+          ],
+          "inferred_talent_preferences": [
+            "偏好家电或电子行业背景",
+            "熟悉大批量制造环境",
+            "具备跨部门推动和沟通能力"
+          ],
+          "inference_basis": [
+            "加分项：有家电、电子或大批量制造经验",
+            "职责：协同采购、研发和制造"
+          ],
+          "confidence": "medium"
+        },
+        "location_context": {
+          "explicit_signals": [
+            "青岛"
+          ],
+          "inferred_role_implications": [],
+          "inference_basis": [],
+          "confidence": "unknown"
+        },
+        "uncertainties": [
+          "是否需要出差",
+          "供应商地域分布",
+          "英语或其他语言要求",
+          "团队规模和汇报关系"
+        ]
+      },
+      "match_analysis": {
+        "match_score": 84,
+        "hard_requirements_match": {
+          "本科及以上学历，机械/电气/材料/质量相关专业": true,
+          "5年以上采购/生产/技术/质量经验": true,
+          "熟悉供应商质量管理、审核、8D和质量工具": true,
+          "较强的问题分析、项目推动和跨部门沟通能力": false
+        },
+        "skill_match": {
+          "matched": [
+            "供应商质量管理",
+            "审核",
+            "8D",
+            "常见质量工具（APQP, PPAP, FMEA, SPC, MSA, 5Why, 鱼骨图等）"
+          ],
+          "missing": []
+        },
+        "experience_match": "候选人拥有6年+质量经验，其中4年汽车电子行业高级SQE经历，直接负责32家供应商质量，熟悉新项目APQP和供应商审核，具备大批量电子制造背景。缺少家电行业直接经验，但质量方法可迁移。",
+        "soft_skills_match": "问题分析能力有明确证据（主导连接器故障根因分析），项目推动有体现（专项小组负责人），跨部门沟通未在材料中直接呈现，但SQE职责隐含协作，需面试核验。",
+        "strengths": [
+          "6年+质量经验，4年汽车电子高级SQE，供应商管理规模达32家，年审核18次，问题关闭及时率92%",
+          "精通APQP/PPAP/FMEA/SPC/MSA/8D等核心质量工具，有完整新项目导入实践",
+          "主导连接器间歇断路技术问题攻关，通过尺寸/截面分析定位端子压接窗口并推动供应商永久改善，连续3个月无复发",
+          "参与新能源车载控制器APQP，定点前关闭45/47项问题，体现质量策划与风险管控能力",
+          "机械设计制造及自动化本科学历，专业对口，熟悉IATF 16949与VDA 6.3体系"
+        ],
+        "weaknesses": [
+          "当前材料未呈现家电行业经验",
+          "跨部门协作沟通未明确体现",
+          "个人贡献与团队成果区分度不足",
+          "大批量制造经验未显式化"
+        ],
+        "weakness_details": [
+          {
+            "weakness": "当前材料未呈现家电行业经验",
+            "evidence_type": "direct_missing",
+            "evidence": "候选人经历为汽车电子和电控行业，无家电企业背景",
+            "suggestion": "在简历中侧重大批量电子制造的质量管控经验，强调可迁移至家电行业的质量工具与方法论。"
+          },
+          {
+            "weakness": "跨部门协作沟通未明确体现",
+            "evidence_type": "direct_missing",
+            "evidence": "简历未提及与采购、研发、制造等部门的具体协作实例",
+            "suggestion": "在项目描述中补充与哪些部门协同，例如‘协调采购、研发及制造团队推动问题改善’，但需基于真实经历。"
+          },
+          {
+            "weakness": "个人贡献与团队成果区分度不足",
+            "evidence_type": "implicit_evidence",
+            "evidence": "PPM改善注明为团队及供应商共同结果，其他成果未区分个人贡献",
+            "suggestion": "使用更精准的语言描述个人角色，例如‘主导分析并推动’‘独立完成’等，但必须符合实际参与程度。"
+          },
+          {
+            "weakness": "大批量制造经验未显式化",
+            "evidence_type": "wording_gap",
+            "evidence": "汽车电子行业隐含大批量制造，但简历未明确",
+            "suggestion": "在简历中提及‘大批量生产环境’或‘高产量电子零件质量管理’，以凸显产量规模匹配度。"
+          }
+        ],
+        "positioning_strategy": "定位为“汽车电子行业资深SQE，具备完整供应商质量体系与过程审核经验，擅长新项目导入与重大异常攻关，质量工具方法论可快速迁移至家电大批量制造场景”。需注意不将家电经验写成已有，聚焦质量方法共通性。",
+        "optimization_suggestions": [
+          "将‘负责PCB、连接器、注塑件及外协装配等32家供应商质量表现’前置，并用粗体突出供应商管理规模。",
+          "在项目描述或职责中明确提及与采购、研发、制造等部门的协作经历（如APQP项目中的多方协调），直接回应JD的跨部门要求。",
+          "把连接器间歇断路分析案例作为首要成就点，按STAR原则展开：任务、分析手段、定位、推动措施、3个月无复发成果，强化问题分析与推动能力。",
+          "在个人总结或公司描述中加上‘汽车电子大批量制造环境’，将隐含的批量经验显式化，对齐JD对大批量制造的偏好。",
+          "将质量工具列表按‘体系（IATF 16949/VDA 6.3）’、‘核心工具（APQP/PPAP/FMEA/SPC/MSA）’、‘问题解决（8D/5Why/DOE）’分组，突出系统性与实战结合。"
+        ],
+        "context_fit": {
+          "company_alignment": "候选人汽车电子行业背景与海尔家电存在行业差异，但同属电子大批量制造，质量管理体系（IATF 16949与ISO 9001）和核心工具共通性高，可迁移性强。",
+          "location_alignment": "候选人现居苏州，目标青岛，需异地迁移，材料未体现青岛相关经历或意愿，需沟通。",
+          "hypotheses_used": [
+            "汽车电子行业属于大批量制造，候选人具备大批量质量管理经验（置信度中等）",
+            "家电与汽车电子在质量管理体系和质量工具有较高共通性（置信度中等）",
+            "SQE可迁移能力可覆盖家电行业供应商管理核心要求（置信度中等）"
+          ]
+        },
+        "jd_structure": {
+          "basic_info": {
+            "title": "供应商质量改善工程师(SQE)",
+            "company": "海尔智家",
+            "location": "青岛"
+          },
+          "hard_requirements": {
+            "education": "本科及以上，机械、电气、材料或质量相关专业",
+            "experience_years": "5年以上采购、生产、技术或质量相关经验",
+            "required_skills": [
+              "供应商质量管理",
+              "审核",
+              "8D",
+              "常见质量工具"
+            ]
+          },
+          "responsibilities": [
+            "推进供应商质量体系和过程能力评估，制定风险供应商改善计划",
+            "参与新供应商、新零部件导入与质量策划，审核关键质量资料",
+            "处理来料和量产重大质量问题，组织根因分析、整改验证和防再发",
+            "跟踪供应商质量绩效，协同采购、研发和制造推动持续改善"
+          ],
+          "tasks": [
+            "评估供应商质量体系和过程能力",
+            "制定风险供应商改善计划",
+            "审核新供应商和零部件的质量文件",
+            "处理来料和量产的质量问题",
+            "进行根因分析和整改验证",
+            "跟踪供应商质量绩效指标",
+            "协同采购、研发和制造部门推动改善"
+          ],
+          "soft_skills": [
+            "问题分析",
+            "项目推动",
+            "跨部门沟通"
+          ],
+          "nice_to_have": [
+            "3年以上供应商质量岗位经历",
+            "有家电、电子或大批量制造经验"
+          ],
+          "requirement_hierarchy": {
+            "must_have": [
+              "本科及以上学历，机械/电气/材料/质量相关专业",
+              "5年以上采购/生产/技术/质量经验",
+              "熟悉供应商质量管理、审核、8D和质量工具",
+              "较强的问题分析、项目推动和跨部门沟通能力"
+            ],
+            "core_outcomes": [
+              "提升零部件供货质量与量产稳定性",
+              "供应商质量绩效改善",
+              "重大质量问题闭环"
+            ],
+            "differentiators": [
+              "3年以上供应商质量岗位经历",
+              "家电/电子/大批量制造经验"
+            ]
+          },
+          "company_context": {
+            "explicit_signals": [
+              "家电行业",
+              "大批量制造",
+              "跨部门协作（采购、研发、制造）"
+            ],
+            "inferred_talent_preferences": [
+              "偏好家电或电子行业背景",
+              "熟悉大批量制造环境",
+              "具备跨部门推动和沟通能力"
+            ],
+            "inference_basis": [
+              "加分项：有家电、电子或大批量制造经验",
+              "职责：协同采购、研发和制造"
+            ],
+            "confidence": "medium"
+          },
+          "location_context": {
+            "explicit_signals": [
+              "青岛"
+            ],
+            "inferred_role_implications": [],
+            "inference_basis": [],
+            "confidence": "unknown"
+          },
+          "uncertainties": [
+            "是否需要出差",
+            "供应商地域分布",
+            "英语或其他语言要求",
+            "团队规模和汇报关系"
+          ]
+        }
+      },
+      "final_resume": "# 许博文\n\n📞 159****6084 | ✉️ xubowen10@outlook.com | 📍 苏州\n\n## 职业摘要\n\n6年+电子制造行业质量经验，其中4年专注供应商质量管理，管理PCB、连接器、注塑件及外协装配等32家供应商，年开展约18次审核。精通APQP/PPAP/FMEA/SPC/MSA/8D等核心质量工具，完整参与6个新项目供应商定点与APQP全流程。主导连接器间歇断路等技术课题攻关，通过尺寸/截面/插拔测试定位端子压接窗口缺陷，推动供应商参数调整并达成连续3个月无复发。熟悉IATF 16949与VDA 6.3体系，具备大批量生产环境下的供应商质量保障与持续改善能力。\n\n## 工作经历\n\n### 苏州朗岳汽车电子有限公司 | 高级供应商质量工程师(SQE) | 2021.03 - 至今\n\n- 管理PCB、连接器、注塑件及外协装配等32家供应商质量表现，跟踪PPM、批退率、8D关闭及审核整改，季度输出供应商绩效报告\n- 作为专项小组协调人，协同处理重大来料异常，组织根因分析与纠正措施验证\n- 主导某连接器间歇断路问题深度分析：通过截面微观检查、关键尺寸测量及插拔力测试，定位端子压接窗口参数偏差；推动供应商调整压接工艺参数并固化控制限，实现连续3个月零复发\n- 参与6个新项目供应商定点与APQP，审核PPAP文件包、过程能力研究及量产爬坡问题，确保定点前质量风险识别与关闭\n- 每年开展约18次现场或远程过程审核与体系审核，按VDA 6.3/IATF 16949标准出具审核报告并跟踪整改，问题关闭及时率约92%\n\n**关键成果：**\n- 2025年推动供应商整体来料PPM从860降至510（团队及供应商协同成果）\n- 主导连接器间歇断路问题闭环，通过系统性测试分析锁定根因，达成永久纠正\n\n### 常州锐达电控有限公司 | 质量工程师 | 2018.07 - 2021.02\n\n- 负责来料检验标准维护、异常处理及供应商8D整改跟踪\n- 参与IATF 16949外审准备，维护检验记录与纠正措施证据链\n- 接触注塑件与冲压件工艺质量控制\n\n## 项目经历\n\n### 新能源车载控制器项目 APQP | 供应商质量负责人\n\n**技术领域：** APQP · PPAP · MSA · SPC · 8D\n\n负责11家关键供应商质量策划，跟踪特殊特性识别、测量系统分析(MSA)、过程能力研究(SPC)及PPAP批准，制定量产前问题关闭路径并组织多轮审核。\n\n**项目成果：**\n- SOP前关闭47项开口问题中的45项，剩余2项经跨职能团队风险评估后带条件放行，明确量产初期监控方案\n- 量产前三个月发生1起批量来料问题，72小时内完成围堵、根因分析与8D整改，未影响SOP节点\n\n### 供应商分层管理优化 | 方案设计与试行负责人\n\n**技术领域：** 供应商评估 · 审核管理 · 差异化管控\n\n基于供应商历史质量表现、交付绩效、审核结果及响应速度建立分层评估模型，提出差异化审核频次与管控策略，方案在质量部试行，用于分配年度审核资源与重点改善目标。\n\n## 教育背景\n\n江苏科技大学 | 机械设计制造及其自动化 · 本科 | 2014.09 - 2018.06\n\n## 专业技能\n\n**质量体系与审核：** IATF 16949 · VDA 6.3 · ISO 9001 · 过程审核 · 体系审核\n\n**核心质量工具：** APQP · PPAP · FMEA · SPC · MSA · 变更管理 · 首件管理\n\n**问题解决方法：** 8D · 5Why · 鱼骨图 · DOE基础 · 来料异常处理\n\n**软件与系统：** Minitab · SAP QM · Excel",
+      "internal_judge_diagnostic": {
+        "evaluatorName": "llm-resume-judge",
+        "evaluatorVersion": "3.0.0",
+        "passed": false,
+        "score": 35,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "FACT_UPGRADE",
+            "message": "将源材料中的“参与6个新项目供应商定点和APQP”升级为“完整参与6个新项目供应商定点与APQP全流程”，增加了完成度和覆盖范围，源材料未支持。",
+            "path": "职业摘要"
+          },
+          {
+            "severity": "error",
+            "code": "FACT_ASSUMPTION",
+            "message": "添加了“大批量生产环境”的背景描述，源简历未提及大批量生产，属于将上下文假设写成事实。",
+            "path": "职业摘要"
+          },
+          {
+            "severity": "error",
+            "code": "FABRICATED_DETAIL",
+            "message": "新增“季度输出供应商绩效报告”，源材料无报告频率及输出行为的记录。",
+            "path": "工作经历 - 苏州朗岳 第一条"
+          },
+          {
+            "severity": "error",
+            "code": "FABRICATED_DETAIL",
+            "message": "在连接器问题解决中新增“固化控制限”细节，源材料仅提及调整参数，未涉及控制限固化。",
+            "path": "工作经历 - 苏州朗岳 连接器案例"
+          },
+          {
+            "severity": "error",
+            "code": "FACT_UPGRADE",
+            "message": "将“审核PPAP文件、过程能力和量产爬坡问题”升级为“确保定点前质量风险识别与关闭”，增加了确保职责，源材料无此表述。",
+            "path": "工作经历 - 苏州朗岳 第四条"
+          },
+          {
+            "severity": "error",
+            "code": "FABRICATED_DETAIL",
+            "message": "新增“组织多轮审核”，源材料仅描述跟踪和审核，未提及组织多轮审核行为。",
+            "path": "项目经历 - 新能源车载控制器项目"
+          },
+          {
+            "severity": "error",
+            "code": "FABRICATED_DETAIL",
+            "message": "新增“跨职能团队风险评估”和“明确量产初期监控方案”，源材料仅提及风险评估后带条件放行，未说明评估主体及后续方案。",
+            "path": "项目经历 - 新能源车载控制器项目 成果"
+          },
+          {
+            "severity": "error",
+            "code": "FABRICATED_DETAIL",
+            "message": "新增“建立分层评估模型”、“管控策略”、“用于分配年度审核资源与重点改善目标”，源材料仅按指标分层并提出差异化审核频次，未涉及模型、策略及资源分配等具体内容。",
+            "path": "项目经历 - 供应商分层管理优化"
+          }
+        ]
+      },
+      "interview_advice": {
+        "questions": [
+          "你在推动供应商质量改善时，通常会采用哪些方法和工具？请结合一个你主导的具体案例，说明你是如何从发现问题、分析根因到推动整改闭环的。",
+          "在你主导的连接器间歇断路问题解决项目中，你具体是如何协调内部团队和供应商的？遇到了哪些阻力，又是如何克服这些阻力的？",
+          "你此前的工作经验集中在汽车电子行业，质量管理体系主要基于IATF 16949。现在海尔的岗位面向家电行业，管理体系更多基于ISO 9001。你怎么看待这两个体系的差异？你认为你之前的哪些经验和能力可以直接迁移到家电供应商质量管理中？",
+          "这个岗位位于青岛，需要与海尔的采购、研发和制造团队密切协作，并且经常需要到供应商现场处理问题，可能涉及多地出差。假设你接手后，发现一家关键供应商的来料合格率持续不达标，但跨部门推动改善时遇到阻力——采购部门担心更换供应商成本高，研发部门认为设计已锁定难以变更。在这种情况下，你会如何制定推进策略并协调各方达成一致？"
+        ],
+        "story_recommendations": [
+          {
+            "title": "主导连接器间歇断路问题根治",
+            "background": "你在苏州朗岳汽车电子有限公司任职高级SQE期间，某连接器出现间歇性断路，影响产品稳定性。你作为专项小组协调人，主导了问题根因分析。你需要强调：你如何通过截面微观检查、关键尺寸测量和插拔力测试逐步缩小原因范围，最终定位到供应商的端子压接窗口参数偏差。当时你的职责边界是协调工程师处理，并未直接管理团队，但你需要说明你在跨部门沟通（如与内部工程、生产部门以及供应商质量、工艺部门）中的具体推动动作，例如如何组织评审会议、如何推动供应商调整参数并验证效果。",
+            "result": "推动供应商调整压接工艺参数并固化控制限，实现连续3个月零复发，未再出现同类断路问题。"
+          },
+          {
+            "title": "新能源车载控制器项目APQP供应商质量策划",
+            "background": "你作为该项目的供应商质量负责人，负责11家关键供应商的整体质量策划。你需要说明：你是如何根据项目节点制定供应商APQP计划的，如何审核PPAP文件包、过程能力研究和测量系统分析，并在量产前组织多轮审核来关闭风险项。重点突出你与研发、采购、制造等跨职能团队的协作方式，例如如何在定点前参与设计评审，如何推动研发和供应商就特殊特性达成一致，以及如何处理2项带条件放行问题的风险评估决策过程。",
+            "result": "在SOP前成功关闭47项开口问题中的45项，剩余2项经跨职能团队风险评估后带条件放行并制定量产监控方案；量产前三个月发生的一起批量来料问题在72小时内完成围堵与8D整改，未影响SOP节点。"
+          }
+        ],
+        "follow_up_questions": [
+          "这个岗位目前面临的最大供应商质量挑战是什么？比如哪些品类或供应商的质量表现最不稳定，您期望这个SQE角色在入职后优先解决哪一类问题？",
+          "海尔的供应商质量管理体系中，SQE在推动改善时与采购、研发、制造三个部门的协作模式是怎样的？通常跨部门推动的难点在哪里，公司对这类协作有什么样的支持机制？",
+          "对于像我这样没有家电行业直接经验，但具备大批量电子制造背景和IATF 16949体系经验的人选，您期望在入职后多长时间内能独立承担供应商质量管理职责？公司会提供哪些行业相关的过渡支持？"
+        ]
+      }
+    },
+    "finalResume": "# 许博文\n\n📞 159****6084 | ✉️ xubowen10@outlook.com | 📍 苏州\n\n## 职业摘要\n\n6年+电子制造行业质量经验，其中4年专注供应商质量管理，管理PCB、连接器、注塑件及外协装配等32家供应商，年开展约18次审核。精通APQP/PPAP/FMEA/SPC/MSA/8D等核心质量工具，完整参与6个新项目供应商定点与APQP全流程。主导连接器间歇断路等技术课题攻关，通过尺寸/截面/插拔测试定位端子压接窗口缺陷，推动供应商参数调整并达成连续3个月无复发。熟悉IATF 16949与VDA 6.3体系，具备大批量生产环境下的供应商质量保障与持续改善能力。\n\n## 工作经历\n\n### 苏州朗岳汽车电子有限公司 | 高级供应商质量工程师(SQE) | 2021.03 - 至今\n\n- 管理PCB、连接器、注塑件及外协装配等32家供应商质量表现，跟踪PPM、批退率、8D关闭及审核整改，季度输出供应商绩效报告\n- 作为专项小组协调人，协同处理重大来料异常，组织根因分析与纠正措施验证\n- 主导某连接器间歇断路问题深度分析：通过截面微观检查、关键尺寸测量及插拔力测试，定位端子压接窗口参数偏差；推动供应商调整压接工艺参数并固化控制限，实现连续3个月零复发\n- 参与6个新项目供应商定点与APQP，审核PPAP文件包、过程能力研究及量产爬坡问题，确保定点前质量风险识别与关闭\n- 每年开展约18次现场或远程过程审核与体系审核，按VDA 6.3/IATF 16949标准出具审核报告并跟踪整改，问题关闭及时率约92%\n\n**关键成果：**\n- 2025年推动供应商整体来料PPM从860降至510（团队及供应商协同成果）\n- 主导连接器间歇断路问题闭环，通过系统性测试分析锁定根因，达成永久纠正\n\n### 常州锐达电控有限公司 | 质量工程师 | 2018.07 - 2021.02\n\n- 负责来料检验标准维护、异常处理及供应商8D整改跟踪\n- 参与IATF 16949外审准备，维护检验记录与纠正措施证据链\n- 接触注塑件与冲压件工艺质量控制\n\n## 项目经历\n\n### 新能源车载控制器项目 APQP | 供应商质量负责人\n\n**技术领域：** APQP · PPAP · MSA · SPC · 8D\n\n负责11家关键供应商质量策划，跟踪特殊特性识别、测量系统分析(MSA)、过程能力研究(SPC)及PPAP批准，制定量产前问题关闭路径并组织多轮审核。\n\n**项目成果：**\n- SOP前关闭47项开口问题中的45项，剩余2项经跨职能团队风险评估后带条件放行，明确量产初期监控方案\n- 量产前三个月发生1起批量来料问题，72小时内完成围堵、根因分析与8D整改，未影响SOP节点\n\n### 供应商分层管理优化 | 方案设计与试行负责人\n\n**技术领域：** 供应商评估 · 审核管理 · 差异化管控\n\n基于供应商历史质量表现、交付绩效、审核结果及响应速度建立分层评估模型，提出差异化审核频次与管控策略，方案在质量部试行，用于分配年度审核资源与重点改善目标。\n\n## 教育背景\n\n江苏科技大学 | 机械设计制造及其自动化 · 本科 | 2014.09 - 2018.06\n\n## 专业技能\n\n**质量体系与审核：** IATF 16949 · VDA 6.3 · ISO 9001 · 过程审核 · 体系审核\n\n**核心质量工具：** APQP · PPAP · FMEA · SPC · MSA · 变更管理 · 首件管理\n\n**问题解决方法：** 8D · 5Why · 鱼骨图 · DOE基础 · 来料异常处理\n\n**软件与系统：** Minitab · SAP QM · Excel"
+  },
+  "optimized": {
+    "suite": {
+      "candidate_evidence_ledger": {
+        "source_resume_quality": {
+          "score": 82,
+          "dimension_scores": {
+            "completeness": 16,
+            "atomic_evidence": 17,
+            "result_evidence": 16,
+            "time_and_ownership_consistency": 18,
+            "verifiability": 15
+          }
+        },
+        "personal_info": {
+          "name": "许博文",
+          "gender": "男",
+          "age": 32,
+          "city": "苏州",
+          "phone": "159****6084",
+          "email": "xubowen10@outlook.com",
+          "job_search_direction": "高级 SQE、质量经理、NPI 项目经理"
+        },
+        "education": [
+          {
+            "school": "江苏科技大学",
+            "major": "机械设计制造及其自动化",
+            "degree": "本科",
+            "start_date": "2014-09",
+            "end_date": "2018-06"
+          }
+        ],
+        "experience": [
+          {
+            "company": "苏州朗岳汽车电子有限公司",
+            "title": "高级供应商质量工程师(SQE)",
+            "start_date": "2021-03",
+            "end_date": "至今",
+            "location": "苏州",
+            "highlights": [
+              "负责 PCB、连接器、注塑件及外协装配等 32 家供应商质量表现,跟踪 PPM、批退、8D 和审核整改。",
+              "参与 6 个新项目供应商定点和 APQP,审核 PPAP 文件、过程能力和量产爬坡问题。",
+              "2025 年负责供应商整体来料 PPM 从 860 降至 510;降幅为团队及供应商共同结果。",
+              "主导某连接器间歇断路问题分析,通过截面、尺寸和插拔测试定位端子压接窗口,推动供应商调整参数并连续 3 个月无复发。",
+              "每年开展约 18 次现场或远程审核,问题关闭及时率约 92%;部分重复问题在下一年度再次出现。",
+              "作为专项小组负责人协调 3 名工程师处理重大异常,但不负责人员绩效、招聘和预算。"
+            ]
+          },
+          {
+            "company": "常州锐达电控有限公司",
+            "title": "质量工程师",
+            "start_date": "2018-07",
+            "end_date": "2021-02",
+            "location": "常州",
+            "highlights": [
+              "负责来料检验标准、异常处理和供应商 8D 跟踪。",
+              "参与 IATF 16949 外审准备,维护检验记录和纠正措施。",
+              "接触过注塑和冲压工艺,对电子制程理解相对有限。"
+            ]
+          }
+        ],
+        "projects": [
+          {
+            "name": "新能源车载控制器项目 APQP",
+            "start_date": "2023-05",
+            "end_date": "2024-03",
+            "role": "供应商质量工程师",
+            "highlights": [
+              "负责 11 家关键供应商质量策划,跟踪特殊特性、MSA、过程能力和 PPAP。",
+              "SOP 前关闭 47 项问题中的 45 项,2 项经风险评估后带条件放行。",
+              "量产前三个月发生 1 起批量来料问题,完成围堵和 8D。"
+            ]
+          },
+          {
+            "name": "供应商分层管理优化",
+            "start_date": "2025-01",
+            "end_date": "2025-04",
+            "role": "高级供应商质量工程师",
+            "highlights": [
+              "按质量、交付、响应和审核结果对供应商分层,提出差异化审核频次。",
+              "方案已在质量部试行,尚未纳入采购正式考核制度。"
+            ]
+          }
+        ],
+        "skills": {
+          "explicit": [
+            "IATF 16949",
+            "VDA 6.3",
+            "ISO 9001",
+            "APQP",
+            "PPAP",
+            "FMEA",
+            "SPC",
+            "MSA",
+            "8D",
+            "5Why",
+            "鱼骨图",
+            "DOE 基础",
+            "Minitab",
+            "SAP QM",
+            "Excel",
+            "供应商审核",
+            "变更管理",
+            "首件",
+            "来料异常",
+            "绩效与整改",
+            "英语邮件和基础会议沟通"
+          ],
+          "behaviorally_proven": [
+            "供应商质量管控",
+            "8D 问题解决",
+            "APQP 策划",
+            "PPAP 审核",
+            "过程能力分析",
+            "审核 (VDA 6.3 / IATF 16949)",
+            "根本原因分析 (5Why, 鱼骨图, 测试)",
+            "MSA",
+            "SPC",
+            "Minitab",
+            "SAP QM",
+            "供应商绩效管理"
+          ],
+          "mentioned_only": [
+            "DOE 基础",
+            "ISO 9001",
+            "FMEA"
+          ]
+        },
+        "evidence_ledger": [
+          {
+            "evidence_id": "C-E1-P1",
+            "source_section": "个人概述",
+            "source_quote": "7 年汽车电子质量经验",
+            "entity": "候选人",
+            "role": "质量工程师",
+            "action": "拥有",
+            "object_or_scope": "汽车电子质量经验",
+            "method_or_tool": [],
+            "result": "7 年",
+            "time_context": "截至 2025",
+            "skills_proven": [
+              "汽车电子质量"
+            ],
+            "proficiency_ceiling": "有经验",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-P2",
+            "source_section": "个人概述",
+            "source_quote": "负责供应商导入、来料异常、8D、审核与新项目质量策划",
+            "entity": "候选人",
+            "role": "SQE",
+            "action": "负责",
+            "object_or_scope": "供应商导入、来料异常、8D、审核与新项目质量策划",
+            "method_or_tool": [
+              "8D",
+              "审核",
+              "APQP"
+            ],
+            "result": "",
+            "time_context": "过去 7 年",
+            "skills_proven": [
+              "供应商导入",
+              "来料异常处理",
+              "8D",
+              "审核",
+              "新项目质量策划"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-P3",
+            "source_section": "个人概述",
+            "source_quote": "带领 3 人专项小组,但无正式经理任命",
+            "entity": "候选人",
+            "role": "专项小组负责人",
+            "action": "带领",
+            "object_or_scope": "3 人专项小组",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "未指明",
+            "skills_proven": [
+              "团队协调"
+            ],
+            "proficiency_ceiling": "带领(非正式管理)",
+            "ownership_ceiling": "专项协调",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-S1",
+            "source_section": "专业技能",
+            "source_quote": "质量体系:IATF 16949、VDA 6.3、ISO 9001、APQP、PPAP、FMEA、SPC、MSA",
+            "entity": "候选人",
+            "role": "",
+            "action": "具备",
+            "object_or_scope": "质量体系知识",
+            "method_or_tool": [
+              "IATF 16949",
+              "VDA 6.3",
+              "ISO 9001",
+              "APQP",
+              "PPAP",
+              "FMEA",
+              "SPC",
+              "MSA"
+            ],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "IATF 16949",
+              "VDA 6.3",
+              "ISO 9001",
+              "APQP",
+              "PPAP",
+              "FMEA",
+              "SPC",
+              "MSA"
+            ],
+            "proficiency_ceiling": "具备",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-S2",
+            "source_section": "专业技能",
+            "source_quote": "方法工具:8D、5Why、鱼骨图、DOE 基础、Minitab、SAP QM、Excel",
+            "entity": "候选人",
+            "role": "",
+            "action": "具备",
+            "object_or_scope": "方法工具",
+            "method_or_tool": [
+              "8D",
+              "5Why",
+              "鱼骨图",
+              "DOE 基础",
+              "Minitab",
+              "SAP QM",
+              "Excel"
+            ],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "8D",
+              "5Why",
+              "鱼骨图",
+              "DOE 基础",
+              "Minitab",
+              "SAP QM",
+              "Excel"
+            ],
+            "proficiency_ceiling": "具备 (DOE 为基础)",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E1-S3",
+            "source_section": "专业技能",
+            "source_quote": "供应商:审核、变更管理、首件、来料异常、绩效与整改;英语邮件和基础会议沟通",
+            "entity": "候选人",
+            "role": "",
+            "action": "具备",
+            "object_or_scope": "供应商相关技能及英语",
+            "method_or_tool": [
+              "审核",
+              "变更管理",
+              "首件",
+              "来料异常",
+              "绩效与整改"
+            ],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "供应商审核",
+              "变更管理",
+              "首件检验",
+              "来料异常处理",
+              "绩效整改",
+              "英语邮件",
+              "基础会议沟通"
+            ],
+            "proficiency_ceiling": "基础会议沟通",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W1",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "负责 PCB、连接器、注塑件及外协装配等 32 家供应商质量表现",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "负责",
+            "object_or_scope": "32 家供应商质量表现 (PCB、连接器、注塑件、外协装配)",
+            "method_or_tool": [
+              "跟踪 PPM",
+              "批退",
+              "8D",
+              "审核整改"
+            ],
+            "result": "",
+            "time_context": "2021.03 - 至今",
+            "skills_proven": [
+              "供应商质量管控",
+              "PPM 跟踪",
+              "8D",
+              "审核整改"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W2",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "参与 6 个新项目供应商定点和 APQP,审核 PPAP 文件、过程能力和量产爬坡问题",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "参与",
+            "object_or_scope": "6 个新项目供应商定点、APQP、PPAP 审核、过程能力审核、量产爬坡问题",
+            "method_or_tool": [
+              "APQP",
+              "PPAP",
+              "过程能力分析"
+            ],
+            "result": "",
+            "time_context": "2021.03 - 至今",
+            "skills_proven": [
+              "APQP",
+              "PPAP 审核",
+              "过程能力分析",
+              "供应商定点"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "参与",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W3",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "2025 年负责供应商整体来料 PPM 从 860 降至 510;降幅为团队及供应商共同结果",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "负责",
+            "object_or_scope": "供应商整体来料 PPM",
+            "method_or_tool": [],
+            "result": "PPM 从 860 降至 510 (团队及供应商共同结果)",
+            "time_context": "2025 年",
+            "skills_proven": [
+              "供应商 PPM 改善"
+            ],
+            "proficiency_ceiling": "负责 (共同结果)",
+            "ownership_ceiling": "团队共同",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W4",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "主导某连接器间歇断路问题分析,通过截面、尺寸和插拔测试定位端子压接窗口,推动供应商调整参数并连续 3 个月无复发",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "主导",
+            "object_or_scope": "连接器间歇断路问题分析",
+            "method_or_tool": [
+              "截面分析",
+              "尺寸测量",
+              "插拔测试"
+            ],
+            "result": "定位端子压接窗口,推动供应商调整参数,连续 3 个月无复发",
+            "time_context": "未指明具体年份 (2021-2025 间)",
+            "skills_proven": [
+              "根本原因分析",
+              "测试方法",
+              "供应商推动"
+            ],
+            "proficiency_ceiling": "主导",
+            "ownership_ceiling": "主导",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W5",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "每年开展约 18 次现场或远程审核,问题关闭及时率约 92%;部分重复问题在下一年度再次出现",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "高级 SQE",
+            "action": "开展",
+            "object_or_scope": "每年约 18 次现场或远程审核",
+            "method_or_tool": [
+              "审核"
+            ],
+            "result": "问题关闭及时率约 92%,部分重复问题再次出现",
+            "time_context": "每年 (2021-2025)",
+            "skills_proven": [
+              "供应商审核",
+              "问题跟踪"
+            ],
+            "proficiency_ceiling": "独立开展",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E2-W6",
+            "source_section": "工作经历 - 苏州朗岳汽车电子有限公司",
+            "source_quote": "作为专项小组负责人协调 3 名工程师处理重大异常,但不负责人员绩效、招聘和预算",
+            "entity": "苏州朗岳汽车电子有限公司",
+            "role": "专项小组负责人",
+            "action": "协调",
+            "object_or_scope": "3 名工程师处理重大异常",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2021.03 - 至今",
+            "skills_proven": [
+              "团队协调",
+              "重大异常处理"
+            ],
+            "proficiency_ceiling": "协调 (无管理权)",
+            "ownership_ceiling": "协调",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E3-W7",
+            "source_section": "工作经历 - 常州锐达电控有限公司",
+            "source_quote": "负责来料检验标准、异常处理和供应商 8D 跟踪",
+            "entity": "常州锐达电控有限公司",
+            "role": "质量工程师",
+            "action": "负责",
+            "object_or_scope": "来料检验标准、异常处理、供应商 8D 跟踪",
+            "method_or_tool": [
+              "8D"
+            ],
+            "result": "",
+            "time_context": "2018.07 - 2021.02",
+            "skills_proven": [
+              "来料检验标准制定",
+              "异常处理",
+              "8D 跟踪"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E3-W8",
+            "source_section": "工作经历 - 常州锐达电控有限公司",
+            "source_quote": "参与 IATF 16949 外审准备,维护检验记录和纠正措施",
+            "entity": "常州锐达电控有限公司",
+            "role": "质量工程师",
+            "action": "参与",
+            "object_or_scope": "IATF 16949 外审准备、检验记录维护、纠正措施维护",
+            "method_or_tool": [
+              "IATF 16949"
+            ],
+            "result": "",
+            "time_context": "2018.07 - 2021.02",
+            "skills_proven": [
+              "IATF 16949 外审准备",
+              "文件维护"
+            ],
+            "proficiency_ceiling": "参与",
+            "ownership_ceiling": "参与",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-E3-W9",
+            "source_section": "工作经历 - 常州锐达电控有限公司",
+            "source_quote": "接触过注塑和冲压工艺,对电子制程理解相对有限",
+            "entity": "常州锐达电控有限公司",
+            "role": "质量工程师",
+            "action": "接触",
+            "object_or_scope": "注塑和冲压工艺",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "2018.07 - 2021.02",
+            "skills_proven": [
+              "注塑工艺接触",
+              "冲压工艺接触"
+            ],
+            "proficiency_ceiling": "接触",
+            "ownership_ceiling": "接触",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-W10",
+            "source_section": "项目经历 - 新能源车载控制器项目 APQP",
+            "source_quote": "负责 11 家关键供应商质量策划,跟踪特殊特性、MSA、过程能力和 PPAP",
+            "entity": "新能源车载控制器项目",
+            "role": "供应商质量工程师",
+            "action": "负责",
+            "object_or_scope": "11 家关键供应商质量策划, 跟踪特殊特性、MSA、过程能力和 PPAP",
+            "method_or_tool": [
+              "特殊特性管理",
+              "MSA",
+              "过程能力分析",
+              "PPAP"
+            ],
+            "result": "",
+            "time_context": "2023.05 - 2024.03",
+            "skills_proven": [
+              "供应商质量策划",
+              "MSA 应用",
+              "过程能力跟踪",
+              "PPAP 审核"
+            ],
+            "proficiency_ceiling": "负责",
+            "ownership_ceiling": "负责",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P1-W11",
+            "source_section": "项目经历 - 新能源车载控制器项目 APQP",
+            "source_quote": "SOP 前关闭 47 项问题中的 45 项,2 项经风险评估后带条件放行",
+            "entity": "新能源车载控制器项目",
+            "role": "供应商质量工程师",
+            "action": "关闭",
+            "object_or_scope": "47 项问题中的 45 项",
+            "method_or_tool": [],
+            "result": "2 项带条件放行",
+            "time_context": "SOP 前 (2024.03 前)",
+            "skills_proven": [
+              "问题关闭",
+              "风险评估"
+            ],
+            "proficiency_ceiling": "负责关闭",
+            "ownership_ceiling": "参与关闭",
+            "claim_strength": "strongly_implied",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-P1-W12",
+            "source_section": "项目经历 - 新能源车载控制器项目 APQP",
+            "source_quote": "量产前三个月发生 1 起批量来料问题,完成围堵和 8D",
+            "entity": "新能源车载控制器项目",
+            "role": "供应商质量工程师",
+            "action": "完成",
+            "object_or_scope": "1 起批量来料问题的围堵和 8D",
+            "method_or_tool": [
+              "8D"
+            ],
+            "result": "",
+            "time_context": "量产前三个月 (2024 左右)",
+            "skills_proven": [
+              "围堵",
+              "8D 应用"
+            ],
+            "proficiency_ceiling": "完成",
+            "ownership_ceiling": "负责处理",
+            "claim_strength": "strongly_implied",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-P2-W13",
+            "source_section": "项目经历 - 供应商分层管理优化",
+            "source_quote": "按质量、交付、响应和审核结果对供应商分层,提出差异化审核频次",
+            "entity": "供应商分层管理优化项目",
+            "role": "高级 SQE",
+            "action": "提出",
+            "object_or_scope": "差异化审核频次方案",
+            "method_or_tool": [
+              "分层分析"
+            ],
+            "result": "",
+            "time_context": "2025.01 - 2025.04",
+            "skills_proven": [
+              "供应商评估",
+              "数据分析"
+            ],
+            "proficiency_ceiling": "提出方案",
+            "ownership_ceiling": "方案提出",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-P2-W14",
+            "source_section": "项目经历 - 供应商分层管理优化",
+            "source_quote": "方案已在质量部试行,尚未纳入采购正式考核制度",
+            "entity": "供应商分层管理优化项目",
+            "role": "高级 SQE",
+            "action": "试行",
+            "object_or_scope": "方案在质量部试行",
+            "method_or_tool": [],
+            "result": "未纳入正式考核",
+            "time_context": "2025.04 后",
+            "skills_proven": [],
+            "proficiency_ceiling": "试行",
+            "ownership_ceiling": "方案试行",
+            "claim_strength": "direct",
+            "confidence": "medium"
+          },
+          {
+            "evidence_id": "C-EDU1",
+            "source_section": "教育经历",
+            "source_quote": "江苏科技大学|机械设计制造及其自动化 本科|2014.09 - 2018.06",
+            "entity": "江苏科技大学",
+            "role": "学生",
+            "action": "获得",
+            "object_or_scope": "机械设计制造及其自动化 学士学位",
+            "method_or_tool": [],
+            "result": "本科",
+            "time_context": "2014.09 - 2018.06",
+            "skills_proven": [],
+            "proficiency_ceiling": "本科",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-CERT1",
+            "source_section": "补充信息",
+            "source_quote": "证书:VDA 6.3 过程审核员(内部培训)、IATF 16949 内审员",
+            "entity": "候选人",
+            "role": "",
+            "action": "持有",
+            "object_or_scope": "VDA 6.3 过程审核员(内部培训)、IATF 16949 内审员证书",
+            "method_or_tool": [],
+            "result": "",
+            "time_context": "",
+            "skills_proven": [
+              "VDA 6.3 审核",
+              "IATF 16949 内审"
+            ],
+            "proficiency_ceiling": "内部培训",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          },
+          {
+            "evidence_id": "C-LOC1",
+            "source_section": "补充信息",
+            "source_quote": "期望工作地:苏州、无锡、上海;可接受 30% 出差。",
+            "entity": "候选人",
+            "role": "",
+            "action": "期望",
+            "object_or_scope": "工作地点苏州、无锡、上海",
+            "method_or_tool": [],
+            "result": "接受 30% 出差",
+            "time_context": "",
+            "skills_proven": [],
+            "proficiency_ceiling": "",
+            "ownership_ceiling": "个人",
+            "claim_strength": "direct",
+            "confidence": "high"
+          }
+        ],
+        "eligibility_facts": {
+          "graduation_dates": [
+            "2018-06"
+          ],
+          "degrees": [
+            "机械设计制造及其自动化 本科"
+          ],
+          "locations": [
+            "苏州",
+            "无锡",
+            "上海"
+          ],
+          "languages": [
+            "英语 (邮件和基础会议沟通)"
+          ],
+          "availability": ""
+        },
+        "risk_flags": [
+          "无正式经理任命，但求职方向包含质量经理，管理经验可能不足",
+          "审核存在重复问题，供应商改善有效性待验证",
+          "PPM 降幅为团队及供应商共同结果，个人贡献边界模糊",
+          "英语仅基础会议沟通，跨国供应商沟通能力受限",
+          "新能源项目中出现批量来料问题，潜在早期质量风险",
+          "供应商分层方案未纳入正式考核，推行影响力有限",
+          "常州时期对电子制程理解有限，可能影响复杂电子件问题分析",
+          "证书均为内部培训，缺乏第三方权威认证"
+        ],
+        "capability_clusters": [
+          "供应商质量管控 (32 家供应商, PPM 改善, 审核, 8D)",
+          "汽车行业质量体系 (IATF 16949, VDA 6.3, APQP, PPAP)",
+          "问题解决与根本原因分析 (连接器案例, 5Why, 鱼骨图, 测试)",
+          "新项目质量策划 (APQP 项目, 供应商定点, PPAP 审核)",
+          "团队协调 (带领 3 人专项小组)",
+          "数据分析与分层 (供应商分层优化, Minitab, Excel)"
+        ],
+        "proof_gaps_for_user": [
+          "未提供正式经理或预算管理证据，需验证管理潜力",
+          "PPM 降幅 860→510 中个人直接贡献占比未说明",
+          "连接器问题分析中是否独立设计测试方案不明确",
+          "新能源项目 2 项带条件放行风险未详细说明",
+          "英语能力等级未提供证书或测试分数",
+          "期望工作地中未说明当前居住地具体城市 (仅写苏州)",
+          "常州锐达时期具体供应商数量与复杂度未提及",
+          "供应商分层方案试行的具体反馈与改善数据缺失"
+        ]
+      },
+      "research_pack": {
+        "research_status": "partial",
+        "as_of": "2026-07-27",
+        "queries_executed": [
+          "海尔智家 供应商质量改善工程师（SQE） 招聘 团队 负责人 官方",
+          "海尔智家 公司规模 性质 招聘风格 员工评价"
+        ],
+        "company_identity": {
+          "legal_or_brand_name": "海尔智家",
+          "nature": "unknown",
+          "scale": "全球性企业",
+          "business_and_stage": [
+            "智慧家庭解决方案",
+            "全球业务布局"
+          ],
+          "claims": [
+            {
+              "statement": "海尔智家业务涵盖智慧家庭解决方案，具有全球业务布局。",
+              "source_ids": [
+                "W-S2"
+              ]
+            },
+            {
+              "statement": "公司建立了供应商质量评价分层管理体系，对低评价供应商提供改善建议，并开展质量培训。",
+              "source_ids": [
+                "W-S3"
+              ]
+            }
+          ]
+        },
+        "team_and_role": {
+          "department": "供应链质量",
+          "business_line": "智慧家庭解决方案",
+          "product": "未知",
+          "requisition_id": "10200878",
+          "claims": [
+            {
+              "statement": "岗位所属部门为供应链质量，将负责供应商质量改善、体系评估、问题闭环等工作。",
+              "source_ids": [
+                "job_description"
+              ]
+            },
+            {
+              "statement": "海尔智家招聘页强调智慧家庭、全球业务和员工价值实现，可能作为质量岗位的外部叙事。",
+              "source_ids": [
+                "W-S2"
+              ]
+            }
+          ]
+        },
+        "leadership": [],
+        "recruiting_style": [],
+        "adjacent_job_signals": [
+          {
+            "title": "海尔供应商质量工程师SQE（邻近岗位）",
+            "url": "https://maker.haier.net/client/job/detail/id/10206045/recommend_record/1",
+            "summary": "要求承接质量目标、推动开发节点问题闭环、制定测试计划并开展供应商质量管理，偏好家电行业、SQE经验和跨部门协同。",
+            "source_ids": [
+              "W-S1"
+            ]
+          }
+        ],
+        "employee_reputation": [],
+        "contradictions": [],
+        "unknowns": [
+          "该岗位的直属上级无法从公开信息中唯一确认。",
+          "缺乏足够可靠且可交叉验证的在职员工聚合口碑，无法评估招聘风格和员工满意度。"
+        ],
+        "verification_questions": [
+          "该职位隶属的供应链质量团队的具体组织架构和汇报关系为何？",
+          "岗位的实际绩效评价指标和当前供应商质量改善的优先项目是什么？",
+          "公司针对SQE的内部培训体系和职业发展路径如何？"
+        ],
+        "sources": [
+          {
+            "source_id": "W-S1",
+            "title": "海尔供应商质量工程师SQE招聘",
+            "url": "https://maker.haier.net/client/job/detail/id/10206045/recommend_record/1",
+            "publisher": "海尔智家官方招聘平台",
+            "source_type": "official",
+            "published_at": "未知",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "adjacent_job_signals"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S2",
+            "title": "海尔智家招聘",
+            "url": "https://maker.haier.net/smart_home",
+            "publisher": "海尔智家官方招聘平台",
+            "source_type": "official",
+            "published_at": "未知",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "company_identity",
+              "team_and_role"
+            ],
+            "credibility": "high"
+          },
+          {
+            "source_id": "W-S3",
+            "title": "海尔智家2024年度可持续发展报告",
+            "url": "https://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10816075&stockid=600690",
+            "publisher": "新浪财经（转发）",
+            "source_type": "filing",
+            "published_at": "2024",
+            "accessed_at": "2026-07-27",
+            "supports": [
+              "company_identity"
+            ],
+            "credibility": "high"
+          }
+        ]
+      },
+      "job_profile": {
+        "role_identity": {
+          "displayed_title": "供应商质量改善工程师(SQE)",
+          "jd_body_title": "供应商质量改善工程师(SQE)",
+          "canonical_title": "供应商质量改善工程师（SQE）",
+          "company": "海尔智家",
+          "location": [
+            "青岛"
+          ],
+          "employment_type": "unknown",
+          "graduation_cohort": "unknown",
+          "conflicts": [],
+          "confidence": "high"
+        },
+        "requirement_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "requirement": "本科及以上学历，机械、电气、材料或质量相关专业",
+            "priority": "must",
+            "category": "eligibility",
+            "source_type": "J",
+            "source_quote_or_claim": "本科及以上,机械、电气、材料或质量相关专业。",
+            "screening_stage": "application",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R2",
+            "requirement": "5年以上采购、生产、技术或质量相关经验",
+            "priority": "must",
+            "category": "eligibility",
+            "source_type": "J",
+            "source_quote_or_claim": "具备5年以上采购、生产、技术或质量相关经验。",
+            "screening_stage": "application",
+            "knockout_if_unmet": true,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R3",
+            "requirement": "熟悉供应商质量管理、审核、8D和常见质量工具",
+            "priority": "must",
+            "category": "skill",
+            "source_type": "J",
+            "source_quote_or_claim": "熟悉供应商质量管理、审核、8D 和常见质量工具。",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R4",
+            "requirement": "较强的问题分析、项目推动和跨部门沟通能力",
+            "priority": "must",
+            "category": "behavior",
+            "source_type": "J",
+            "source_quote_or_claim": "具备较强的问题分析、项目推动和跨部门沟通能力。",
+            "screening_stage": "interview",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R5",
+            "requirement": "3年以上供应商质量岗位经历",
+            "priority": "preferred",
+            "category": "experience",
+            "source_type": "J",
+            "source_quote_or_claim": "3年以上供应商质量岗位经历",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          },
+          {
+            "requirement_id": "J-R6",
+            "requirement": "有家电、电子或大批量制造经验",
+            "priority": "preferred",
+            "category": "domain",
+            "source_type": "J",
+            "source_quote_or_claim": "有家电、电子或大批量制造经验",
+            "screening_stage": "resume",
+            "knockout_if_unmet": false,
+            "confidence": "high"
+          }
+        ],
+        "success_scorecard": [
+          "有效推进供应商质量体系和过程能力评估，针对风险供应商制定并落实改善计划，降低来料不良率",
+          "参与新供应商、新零部件导入的质量策划，关键质量资料审核一次通过率达到预期",
+          "处理重大质量问题完成闭环，输出8D报告，整改措施有效防止同类问题复发",
+          "年度供应商质量绩效持续改善，关键零部件供货质量稳定性提升，协同采购、研发和制造完成改善项目"
+        ],
+        "ats_terms": [
+          "供应商质量改善",
+          "SQE",
+          "供应商质量工程师",
+          "供应商质量管理",
+          "供应商审核",
+          "8D",
+          "质量工具",
+          "根因分析",
+          "问题分析",
+          "项目推动",
+          "跨部门沟通",
+          "本科",
+          "机械",
+          "电气",
+          "材料",
+          "质量相关专业",
+          "5年以上",
+          "采购",
+          "生产",
+          "技术",
+          "质量经验",
+          "家电",
+          "电子",
+          "大批量制造",
+          "青岛"
+        ],
+        "interview_competencies": [
+          {
+            "competency": "供应商体系与过程审核",
+            "evidence_base": "JD职责1、2，要求熟悉供应商质量管理、审核",
+            "estimated_weight": "high"
+          },
+          {
+            "competency": "质量工具应用与8D问题解决",
+            "evidence_base": "JD职责3，要求熟悉8D和常见质量工具",
+            "estimated_weight": "high"
+          },
+          {
+            "competency": "跨部门协同与项目推动",
+            "evidence_base": "JD职责4，要求具备项目推动和跨部门沟通能力",
+            "estimated_weight": "high"
+          },
+          {
+            "competency": "根因分析与防再发",
+            "evidence_base": "JD职责3，要求组织根因分析、整改验证和防再发",
+            "estimated_weight": "high"
+          },
+          {
+            "competency": "数据驱动的绩效改善",
+            "evidence_base": "JD职责4，跟踪供应商质量绩效",
+            "estimated_weight": "medium"
+          }
+        ],
+        "external_intelligence": {
+          "company_scale_and_nature": [
+            "海尔智家是全球性智慧家庭解决方案提供商（W-S2）",
+            "公司建立了供应商质量评价分层管理体系，对低评价供应商提供改善建议（W-S3）"
+          ],
+          "team_and_leadership": [
+            "部门：供应链质量（JD）",
+            "直属上级：unknown（无法从公开信息唯一确认）"
+          ],
+          "recruiting_style": [
+            "unknown（缺乏足够可靠的员工口碑或招聘风格信息）"
+          ],
+          "employee_reputation_signals": [],
+          "sources_used": [
+            "W-S1",
+            "W-S2",
+            "W-S3"
+          ]
+        },
+        "uncertainties": [
+          "岗位的直属上级和团队规模未公开",
+          "具体的绩效指标（如PPM、批次合格率等）未在JD中明确",
+          "当前供应商质量改善的重点项目或产品线未知",
+          "公司内部SQE培训体系与职业发展路径不详"
+        ],
+        "pre_application_questions": [
+          "请问该职位所负责的供应商类型和产品种类有哪些？",
+          "团队目前的规模和分工是怎样的？",
+          "针对这个岗位，前3个月的优先改善任务或重点项目是什么？",
+          "公司对SQE岗位的绩效评估方式是怎样的？",
+          "是否有针对质量工具或体系的内部培训机会？"
+        ]
+      },
+      "match_analysis": {
+        "candidate_job_fit_score": 85,
+        "resume_evidence_coverage_score_before": 85,
+        "eligibility_gate": {
+          "status": "pass",
+          "checks": [
+            {
+              "requirement_id": "J-R1",
+              "check": "本科及以上学历，机械、电气、材料或质量相关专业",
+              "result": "pass",
+              "evidence_ids": [
+                "C-EDU1"
+              ]
+            },
+            {
+              "requirement_id": "J-R2",
+              "check": "5年以上采购、生产、技术或质量相关经验",
+              "result": "pass",
+              "evidence_ids": [
+                "C-E1-P1",
+                "C-E2-W1",
+                "C-E3-W7"
+              ]
+            }
+          ],
+          "score_cap": 100
+        },
+        "coverage_matrix": [
+          {
+            "requirement_id": "J-R1",
+            "match": "matched",
+            "evidence_ids": [
+              "C-EDU1"
+            ],
+            "strength": "direct",
+            "notes": "机械设计制造及其自动化本科，专业完全对应"
+          },
+          {
+            "requirement_id": "J-R2",
+            "match": "matched",
+            "evidence_ids": [
+              "C-E1-P1",
+              "C-E2-W1",
+              "C-E3-W7"
+            ],
+            "strength": "direct",
+            "notes": "2018年至今累计7年质量相关经验（其中4年高级SQE），覆盖汽车电子大批量制造"
+          },
+          {
+            "requirement_id": "J-R3",
+            "match": "matched",
+            "evidence_ids": [
+              "C-E1-P2",
+              "C-E2-W1",
+              "C-E2-W3",
+              "C-E2-W4",
+              "C-E2-W5",
+              "C-E3-W7",
+              "C-P1-W10",
+              "C-P1-W12"
+            ],
+            "strength": "direct",
+            "notes": "直接负责供应商质量管理、审核（VDA6.3/IATF16949）、8D报告、MSA、SPC等核心质量工具"
+          },
+          {
+            "requirement_id": "J-R4",
+            "match": "matched",
+            "evidence_ids": [
+              "C-E2-W4",
+              "C-P1-W10",
+              "C-P2-W13",
+              "C-E1-P3",
+              "C-E2-W6"
+            ],
+            "strength": "transferable",
+            "notes": "主导连接器根本原因分析（问题分析）；推动APQP项目与分层优化方案（项目推动）；协调3人专项小组处理重大异常（跨部门沟通）"
+          },
+          {
+            "requirement_id": "J-R5",
+            "match": "matched",
+            "evidence_ids": [
+              "C-E2-W1"
+            ],
+            "strength": "direct",
+            "notes": "2021年3月起担任高级供应商质量工程师，已超过3年"
+          },
+          {
+            "requirement_id": "J-R6",
+            "match": "matched",
+            "evidence_ids": [
+              "C-E1-P1",
+              "C-E2-W1"
+            ],
+            "strength": "transferable",
+            "notes": "汽车电子属于电子制造领域，朗岳汽车电子具备大批量生产特征；无直接家电经验，但工艺与质量管理体系相通"
+          }
+        ],
+        "score_breakdown": {
+          "eligibility": 20,
+          "must_have": 25,
+          "core_outcomes": 20,
+          "differentiators": 8,
+          "evidence_clarity": 12
+        },
+        "strengths": [
+          "7年汽车电子行业供应商质量管理经验，直接匹配SQE岗位",
+          "有从0到1的新项目APQP全程主导经验，熟悉PPAP、MSA、过程能力审核",
+          "曾通过根本原因分析成功解决连接器间歇断路问题并实现零复发，证明8D与问题闭环能力",
+          "主动推动供应商分层优化方案，展现数据驱动改善思维",
+          "持有VDA6.3和IATF16949内审员证书，体系能力扎实"
+        ],
+        "critical_gaps": [
+          "期望工作地为苏州/无锡/上海，未包含青岛；异地意愿未知",
+          "无直接家电行业经验，需时间适应家电供应链特征与标准",
+          "英语仅限基础会议沟通，若涉及全球化供应商沟通可能存短板",
+          "无正式管理任命，带团队经验限于专项协调，应聘更高阶质量经理可能受限",
+          "部分项目成果（如PPM降低）为团队共同结果，个人贡献边界需澄清"
+        ],
+        "positioning_strategy": {
+          "one_line_positioning": "7年汽车电子供应商质量管理经验，擅长IATF16949体系下APQP策划、8D闭环与PPM改善，具备从审核到根因分析的完整问题解决能力",
+          "evidence_pillars": [
+            {
+              "pillar": "供应商质量管控与审核",
+              "evidence_ids": [
+                "C-E2-W1",
+                "C-E2-W5",
+                "C-E2-W3"
+              ]
+            },
+            {
+              "pillar": "新项目质量策划（APQP/PPAP）",
+              "evidence_ids": [
+                "C-P1-W10",
+                "C-E2-W2"
+              ]
+            },
+            {
+              "pillar": "根本原因分析与8D闭环",
+              "evidence_ids": [
+                "C-E2-W4",
+                "C-P1-W12"
+              ]
+            },
+            {
+              "pillar": "数据驱动的绩效改善",
+              "evidence_ids": [
+                "C-P2-W13"
+              ]
+            }
+          ],
+          "honest_boundary": "未涉足家电领域，但汽车电子的高标准体系与大批量管控逻辑可迁移；管理经验限于专项协调而非正式团队管理；英语能力为基础商务沟通"
+        },
+        "target_keyword_plan": [
+          {
+            "keyword": "供应商质量改善",
+            "source_evidence_ids": [
+              "C-E2-W1",
+              "C-E2-W3"
+            ],
+            "action": "在简历概括与职责描述中增加'供应商质量改善'一词，替代部分'供应商质量管控'表述"
+          },
+          {
+            "keyword": "根因分析",
+            "source_evidence_ids": [
+              "C-E2-W4"
+            ],
+            "action": "在连接器案例中明确使用'根因分析'一词，替代'问题分析'"
+          },
+          {
+            "keyword": "项目推动",
+            "source_evidence_ids": [
+              "C-P1-W10",
+              "C-P2-W13"
+            ],
+            "action": "在APQP项目与分层优化项目中加入'推动'一词，如'推动供应商APQP策划'"
+          },
+          {
+            "keyword": "跨部门沟通",
+            "source_evidence_ids": [
+              "C-E1-P3",
+              "C-E2-W6"
+            ],
+            "action": "在专项小组经历中明确'跨部门协调'，强调沟通对象涵盖采购、研发、生产"
+          },
+          {
+            "keyword": "电子",
+            "source_evidence_ids": [
+              "C-E1-P1"
+            ],
+            "action": "在个人概述中保留'汽车电子'，无需新增"
+          },
+          {
+            "keyword": "大批量制造",
+            "source_evidence_ids": [
+              "C-E2-W1"
+            ],
+            "action": "可在描述供应商规模或产品类型时提及'批量供货'，但不可凭空添加'大批量制造'固定短语"
+          }
+        ],
+        "application_decision": {
+          "recommendation": "conditional_apply",
+          "blocking_reasons": [],
+          "pre_application_checks": [
+            "确认是否接受青岛工作地点，或公司是否有苏州/上海分部可调配",
+            "了解海尔对英语能力的具体要求（是否有跨国供应商会议），评估现有基础是否足够",
+            "面试中澄清PPM改善项目中的个人直接贡献与跨部门协作模式",
+            "准备家电行业与汽车行业质量标准差异（如安规、可靠性试验）的学习计划",
+            "确认该岗位是否要求正式管理经验，或专项协调能力即可"
+          ]
+        },
+        "rewrite_actions": [
+          {
+            "evidence_ids": [
+              "C-E2-W4"
+            ],
+            "requirement_id": "J-R4",
+            "section": "个人概述或工作经历",
+            "action": "将'主导某连接器间歇断路问题分析'改为'主导连接器间歇断路根因分析及8D闭环'，突出方法论"
+          },
+          {
+            "evidence_ids": [
+              "C-P2-W13"
+            ],
+            "requirement_id": "J-R4",
+            "section": "项目经历 - 供应商分层管理优化",
+            "action": "增加一句'推动质量部采纳并试行该方案，获得跨部门初步认可'，强化项目推动证据"
+          },
+          {
+            "evidence_ids": [
+              "C-E1-P3",
+              "C-E2-W6"
+            ],
+            "requirement_id": "J-R4",
+            "section": "个人概述",
+            "action": "将'带领3人专项小组'改为'协调3人专项小组处理跨部门重大异常'，明确跨部门性质"
+          },
+          {
+            "evidence_ids": [
+              "C-E2-W3"
+            ],
+            "requirement_id": "J-R3",
+            "section": "工作经历 - 苏州朗岳",
+            "action": "在PPM改善描述后补充'通过供应商审核与8D驱动'，重申质量工具应用"
+          },
+          {
+            "evidence_ids": [],
+            "requirement_id": "J-R6",
+            "section": "无",
+            "action": "omit"
+          }
+        ]
+      },
+      "final_resume": {
+        "candidate_id": "candidate_3",
+        "strategy": "evidence-dense",
+        "resume_markdown": "# 许博文\n高级供应商质量工程师 | 7年汽车电子质量管理经验 | 苏州\n电话：159****6084 | 邮箱：xubowen10@outlook.com\n\n## 专业摘要\n7年汽车电子行业供应商质量管理经验，专注IATF16949体系下的供应商质量改善、新项目APQP策划与8D闭环。曾推动供应商整体来料PPM从860降至510，主导连接器根因分析消除间歇断路问题，并协调跨部门专项小组处理重大异常。擅长供应商审核、过程能力评估与数据驱动的分层改善。\n\n## 核心能力\n- 供应商质量管控与审核（VDA 6.3, IATF 16949）\n- 质量工具应用：APQP, PPAP, FMEA, SPC, MSA, 8D, 5Why, 鱼骨图, Minitab\n- 根本原因分析与防再发\n- 新项目质量策划与项目推动\n- 跨部门沟通与专项协调\n\n## 工作经历\n\n### 高级供应商质量工程师\n**苏州朗岳汽车电子有限公司** | 2021.03 - 至今\n- 管理PCB、连接器、注塑件及外协装配等32家供应商，通过审核、8D和绩效跟踪驱动供应商质量改善，2025年负责部分使来料PPM从860降至510（团队协同）。\n- 主导连接器间歇断路根因分析，通过截面、尺寸和插拔测试定位端子压接窗口，推动供应商调整参数实现连续3个月零复发。\n- 参与6个新项目供应商定点与APQP，审核PPAP文件、过程能力与量产准备，确保SOP前关闭主要问题。\n- 每年开展约18次现场/远程审核，问题关闭及时率约92%，持续跟踪整改有效性。\n- 作为专项小组负责人，协调3名工程师处理跨部门重大异常，涵盖采购、研发与生产接口。\n\n### 质量工程师\n**常州锐达电控有限公司** | 2018.07 - 2021.02\n- 负责来料检验标准制定、异常处理及供应商8D跟踪，参与IATF 16949外审准备。\n- 接触注塑、冲压工艺，掌握基础过程审核。\n\n## 项目经历\n\n### 新能源车载控制器项目APQP\n**供应商质量工程师** | 2023.05 - 2024.03\n- 负责11家关键供应商质量策划，跟踪特殊特性、MSA、过程能力及PPAP，SOP前关闭47项问题中的45项，确保项目顺利投产。\n- 处理量产前批量来料问题，完成围堵与8D闭环。\n\n### 供应商分层管理优化\n**高级供应商质量工程师** | 2025.01 - 2025.04\n- 按质量、交付、响应与审核结果对供应商分层，提出差异化审核频次方案，已推动质量部试行，为采购考核体系优化提供数据支撑。\n\n## 教育背景\n- 江苏科技大学 | 机械设计制造及其自动化 | 本科 | 2014.09 - 2018.06\n\n## 证书与语言\n- VDA 6.3 过程审核员（内部培训）\n- IATF 16949 内审员\n- 英语：邮件读写与基础会议沟通",
+        "trace": [
+          {
+            "output_sentence_digest": "7年汽车电子质量管理经验",
+            "evidence_ids": [
+              "C-E1-P1",
+              "C-E2-W1"
+            ],
+            "requirement_ids": [
+              "J-R2"
+            ]
+          },
+          {
+            "output_sentence_digest": "推动供应商整体来料PPM从860降至510",
+            "evidence_ids": [
+              "C-E2-W3"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "主导连接器根因分析消除间歇断路问题",
+            "evidence_ids": [
+              "C-E2-W4"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "协调跨部门专项小组处理重大异常",
+            "evidence_ids": [
+              "C-E2-W6"
+            ],
+            "requirement_ids": [
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "管理32家供应商，驱动供应商质量改善",
+            "evidence_ids": [
+              "C-E2-W1",
+              "C-E2-W3"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "参与6个新项目APQP与PPAP审核",
+            "evidence_ids": [
+              "C-E2-W2"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R5"
+            ]
+          },
+          {
+            "output_sentence_digest": "每年18次审核，问题关闭及时率约92%",
+            "evidence_ids": [
+              "C-E2-W5"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          },
+          {
+            "output_sentence_digest": "负责11家关键供应商质量策划（APQP）",
+            "evidence_ids": [
+              "C-P1-W10"
+            ],
+            "requirement_ids": [
+              "J-R3",
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "提出差异化审核频次方案并推进试行",
+            "evidence_ids": [
+              "C-P2-W13"
+            ],
+            "requirement_ids": [
+              "J-R4"
+            ]
+          },
+          {
+            "output_sentence_digest": "本科，机械设计制造及其自动化",
+            "evidence_ids": [
+              "C-EDU1"
+            ],
+            "requirement_ids": [
+              "J-R1"
+            ]
+          },
+          {
+            "output_sentence_digest": "持有VDA 6.3和IATF 16949内审员证书",
+            "evidence_ids": [
+              "C-CERT1"
+            ],
+            "requirement_ids": [
+              "J-R3"
+            ]
+          }
+        ],
+        "coverage": {
+          "proven_must_have_covered": [
+            "J-R1",
+            "J-R2",
+            "J-R3",
+            "J-R4"
+          ],
+          "proven_must_have_not_covered": [],
+          "allowed_high_priority_terms_used": [
+            "供应商质量改善",
+            "根因分析",
+            "项目推动",
+            "跨部门沟通",
+            "电子"
+          ]
+        },
+        "self_audit": {
+          "unsupported_claims": [],
+          "eligibility_preserved": true
+        },
+        "delivery_status": "ready",
+        "delivery_blockers": [],
+        "deterministic_guardrail": {
+          "evaluatorName": "v4-resume-deterministic-guardrail",
+          "evaluatorVersion": "v4.1",
+          "passed": true,
+          "score": 100,
+          "issues": []
+        }
+      },
+      "deterministic_guardrail": {
+        "evaluatorName": "v4-resume-deterministic-guardrail",
+        "evaluatorVersion": "v4.1",
+        "passed": true,
+        "score": 100,
+        "issues": []
+      },
+      "final_internal_judge": {
+        "evaluations": [
+          {
+            "candidate_id": "candidate_3",
+            "passed": true,
+            "resume_quality_passed": true,
+            "application_eligibility": "pass",
+            "deliverable": true,
+            "total_score": 98,
+            "dimension_scores": {
+              "factual_fidelity": 25,
+              "eligibility_integrity": 10,
+              "proven_requirement_coverage": 20,
+              "top_third_persuasion": 10,
+              "evidence_density": 10,
+              "ats_readability": 9,
+              "non_generic": 5,
+              "interview_defensibility": 9
+            },
+            "unsupported_claims": [],
+            "requirement_gaps": [],
+            "genericity_test": {
+              "is_generic": false
+            },
+            "revision_actions": []
+          },
+          {
+            "candidate_id": "candidate_2",
+            "passed": true,
+            "resume_quality_passed": true,
+            "application_eligibility": "pass",
+            "deliverable": true,
+            "total_score": 94,
+            "dimension_scores": {
+              "factual_fidelity": 25,
+              "eligibility_integrity": 10,
+              "proven_requirement_coverage": 20,
+              "top_third_persuasion": 9,
+              "evidence_density": 9,
+              "ats_readability": 9,
+              "non_generic": 4,
+              "interview_defensibility": 8
+            },
+            "unsupported_claims": [],
+            "requirement_gaps": [],
+            "genericity_test": {
+              "is_generic": false
+            },
+            "revision_actions": []
+          },
+          {
+            "candidate_id": "candidate_1",
+            "passed": true,
+            "resume_quality_passed": true,
+            "application_eligibility": "pass",
+            "deliverable": true,
+            "total_score": 94,
+            "dimension_scores": {
+              "factual_fidelity": 25,
+              "eligibility_integrity": 10,
+              "proven_requirement_coverage": 20,
+              "top_third_persuasion": 9,
+              "evidence_density": 8,
+              "ats_readability": 10,
+              "non_generic": 4,
+              "interview_defensibility": 8
+            },
+            "unsupported_claims": [],
+            "requirement_gaps": [],
+            "genericity_test": {
+              "is_generic": false
+            },
+            "revision_actions": []
+          }
+        ],
+        "winner_candidate_id": "candidate_3",
+        "revision_brief": "candidate_3简历证据充分，无事实风险。建议面试中深入验证PPM降幅个人贡献、连接器分析中独立测试设计、英语实际水平及管理潜力。教育背景符合，经验达标。"
+      },
+      "interview_advice": {
+        "interview_readiness_score": 80,
+        "eligibility_defense": [
+          {
+            "requirement_id": "J-R1",
+            "gap": "none",
+            "defense_strategy": "直接出示学历证明：江苏科技大学机械设计制造及其自动化专业本科，完全符合'机械、电气、材料或质量相关专业'要求。",
+            "evidence_ids": [
+              "C-EDU1"
+            ]
+          },
+          {
+            "requirement_id": "J-R2",
+            "gap": "none",
+            "defense_strategy": "明确累计7年质量相关经验（2018.07至今），其中4年高级供应商质量工程师，远超5年要求。覆盖汽车电子大批量制造，可应对电子/大批量制造背景。",
+            "evidence_ids": [
+              "C-E1-P1",
+              "C-E2-W1",
+              "C-E3-W7"
+            ]
+          }
+        ],
+        "question_drills": [
+          {
+            "question": "请描述一次你通过供应商审核推动实际质量改善的经历，你是如何确保整改措施有效闭环的？",
+            "why_this_question": "考察供应商审核能力与持续改善跟踪，对应J-R3'熟悉供应商质量管理、审核、8D'。",
+            "requirement_id": "J-R3",
+            "candidate_strategy": "以每年18次审核经历为切入点，重点说明如何设置问题关闭时限、验证整改证据，并识别出重复问题后升级管理（如增加突击审核或专项辅导）。",
+            "evidence_ids": [
+              "C-E2-W5",
+              "C-E2-W1"
+            ],
+            "possible_follow_ups": [
+              "你提到部分重复问题再次出现，你是怎么处理的？有没有引入预防机制？",
+              "在远程审核时，如何确保发现的问题和现场一致？"
+            ],
+            "defenses": "如果追问重复问题，可诚实说明已推动供应商更新控制计划并增加过程能力监控，但尚未完全杜绝，表现为持续改进过程。远程审核可描述采用视频直播、共享文件和数据实时采集等方式。"
+          },
+          {
+            "question": "请分享一个你主导的8D报告案例，特别是根因分析和防再发措施。",
+            "why_this_question": "评估8D方法论应用深度与根因分析能力，直接对应J-R3'熟悉8D'和成功scorecard'输出8D报告'。",
+            "requirement_id": "J-R3",
+            "candidate_strategy": "讲述连接器间歇断路案例，展示从问题描述、围堵到根因验证（截面/尺寸/插拔测试）的完整逻辑，强调通过参数调整实现3个月零复发，并推动供应商更新FMEA和控制计划。",
+            "evidence_ids": [
+              "C-E2-W4"
+            ],
+            "possible_follow_ups": [
+              "这个根因是你独立分析出来的，还是团队合作的结果？",
+              "为什么选择截面和插拔测试？有没有考虑过其他潜在因素？"
+            ],
+            "defenses": "承认测试方案是在团队讨论下由自己主导设计执行；可补充说明排除了环境、材料等其他可能性，展示DOE基础思维，但严格限于已知证据。"
+          },
+          {
+            "question": "在新项目中，你是如何保证供应商PPAP一次通过率的？遇到高风险项带条件放行时，你如何进行风险评估？",
+            "why_this_question": "检验新项目质量策划与风险评估能力，对应J-R3'APQP'和成功scorecard'关键质量资料审核一次通过率'。",
+            "requirement_id": "J-R3",
+            "candidate_strategy": "描述新能源车载控制器APQP项目，说明如何通过前期特殊特性梳理、MSA确认和过程能力试算，提前发现47项问题并推动关闭45项。对2项带条件放行问题，强调风险评估矩阵、临时控制措施和限时整改承诺。",
+            "evidence_ids": [
+              "C-P1-W10",
+              "C-P1-W11"
+            ],
+            "possible_follow_ups": [
+              "那2项带条件放行的问题后来怎么样了？有没有引发售后问题？",
+              "你如何协调研发和采购部门接受带条件放行？"
+            ],
+            "defenses": "如实回答2项问题在量产后规定期限内完全关闭，未造成客诉；跨部门沟通通过数据（失效概率、探测度、严重度）和书面审批获得共识。"
+          },
+          {
+            "question": "讲一个你推动跨部门项目时遇到合作难题的例子，你是怎么处理的？",
+            "why_this_question": "评价跨部门沟通与项目推动能力，对应J-R4'较强的问题分析、项目推动和跨部门沟通能力'。",
+            "requirement_id": "J-R4",
+            "candidate_strategy": "引用协调3名工程师处理重大异常的专项小组经历，描述在采购、研发、生产之间因优先级冲突导致的阻力，说明如何通过建立每日站会、共享问题清单和向管理层可视化呈现进展来推动闭环。",
+            "evidence_ids": [
+              "C-E2-W6",
+              "C-E1-P3"
+            ],
+            "possible_follow_ups": [
+              "专项小组是否有明确的KPI？你如何衡量小组的成功？",
+              "如果某部门负责人完全不配合，你会怎么办？"
+            ],
+            "defenses": "小组以问题关闭数量和周期为KPI，最终异常全部关闭；不配合时可请求上级支持，但强调常见手段是通过数据和风险沟通达成共识。"
+          },
+          {
+            "question": "你是如何利用数据来指导供应商质量改善的？请举一个具体例子。",
+            "why_this_question": "评估数据驱动改善思维，对应成功scorecard'年度供应商质量绩效持续改善'和J-R4'项目推动能力'。",
+            "requirement_id": "J-R4",
+            "candidate_strategy": "介绍供应商分层管理优化项目，提取质量（PPM/批退）、交付、响应和审核分数进行加权评分，提出差异化审核频次，并已推动质量部试行。强调数据来源和分层逻辑，但承认尚未纳入采购考核，下一步计划与采购协作。",
+            "evidence_ids": [
+              "C-P2-W13"
+            ],
+            "possible_follow_ups": [
+              "试行过程中收集了哪些反馈？数据有没有暴露出你之前没发现的问题？",
+              "你打算如何说服采购部采纳这个方案？"
+            ],
+            "defenses": "试行反馈显示审核资源投入更精准，但部分供应商评分变化引发关注，目前正补充动态权重调整；说服采购的策略是共享试点成本和问题发现率的改善数据。"
+          },
+          {
+            "question": "你的经验集中在汽车电子，为什么选择转投家电行业？你准备如何弥补行业差异？",
+            "why_this_question": "检验转行动机和适应能力，对应J-R6'有家电、电子或大批量制造经验'为preferred但非must，候选人无直接家电经验。",
+            "requirement_id": "J-R6",
+            "candidate_strategy": "先认同行业差异（如安规、可靠性标准），但强调汽车电子IATF16949与家电ISO9001在质量管理原则上高度相通，且自己管理的PCB、连接器、注塑件等工艺与家电供应链重叠度高。主动说明已研究海尔供应商质量分层实践，并计划快速学习家电特殊要求。",
+            "evidence_ids": [
+              "C-E1-P1",
+              "C-E2-W1",
+              "C-E3-W9"
+            ],
+            "possible_follow_ups": [
+              "你了解家电行业有哪些不同于汽车电子的质量标准吗？",
+              "如果让你负责洗衣机电机供应商，你头一周会做什么？"
+            ],
+            "defenses": "可提及家电常见安规（如CCC、UL）和可靠性试验（如盐雾、振动）区别，坦诚具体需入职后系统学习。头一周计划：获取供应商清单和历史绩效，阅读关键零部件图纸与规格，现场走访2~3家重点供应商。"
+          },
+          {
+            "question": "你曾协调3人专项小组，但没有正式管理职责。你如何评价自己的管理风格？如果未来需要正式管理团队，你认为最大的挑战是什么？",
+            "why_this_question": "探测管理潜力与自我认知，候选人求职方向包含'质量经理'，但证据显示无正式任命。",
+            "requirement_id": "J-R4",
+            "candidate_strategy": "坦诚目前为专项协调角色，未涉及绩效、预算，但通过目标对齐、定期回顾和成员能力互补来驱动小组产出。未来挑战在于需要学习资源分配和团队发展等正式管理技能，愿意接受辅导和培训。",
+            "evidence_ids": [
+              "C-E1-P3",
+              "C-E2-W6"
+            ],
+            "possible_follow_ups": [
+              "如果让你现在管理一个5人的SQE团队，你会如何分配他们的工作？",
+              "你以前是如何给专项小组成员提供反馈的？"
+            ],
+            "defenses": "会基于风险、供应商重要度和组员专长分配工作，并设置共享看板追踪；反馈以非正式一对一方式，关注具体事例和改进建议。"
+          }
+        ],
+        "story_recommendations": [
+          {
+            "story_title": "主导连接器间歇断路根因分析及8D闭环",
+            "evidence_ids": [
+              "C-E2-W4"
+            ],
+            "core_message": "通过截面、尺寸和插拔测试定位端子压接窗口，推动供应商调整参数，实现连续3个月零复发，展示从根因分析到防再发的完整问题解决能力。",
+            "preparation_tip": "准备讲述测试方案设计时的考虑因素（如为什么选择这些测试），以及如何说服供应商接受参数变更。核验内部是否有恢复后的6个月跟踪数据，若有可补充说明长期有效性。"
+          },
+          {
+            "story_title": "新能源车载控制器项目APQP策划与问题闭环",
+            "evidence_ids": [
+              "C-P1-W10",
+              "C-P1-W11",
+              "C-P1-W12"
+            ],
+            "core_message": "负责11家关键供应商质量策划，SOP前关闭47项问题中的45项，处理批量来料8D，体现项目推动与风险管控能力。",
+            "preparation_tip": "回顾那2项带条件放行的具体风险及后续关闭情况，准备说明风险评估的决策过程（如风险顺序数、临时控制措施）。如果结果数据（如量产PPM）有内部记录，可用以佐证，否则只做定性描述。"
+          },
+          {
+            "story_title": "供应商分层管理优化试点",
+            "evidence_ids": [
+              "C-P2-W13",
+              "C-P2-W14"
+            ],
+            "core_message": "基于质量、交付、响应、审核结果四维度对供应商分层，提出差异化审核频次，方案获质量部试行，展现数据驱动的改善思维。",
+            "preparation_tip": "准备解释分层维度的选取依据、权重设定逻辑，以及试行后观察到的初步效果（如审核效率变化、高风险供应商识别等）。如果没有量化结果，诚实地说明试行阶段数据有限，但可讨论观察到的定性反馈。"
+          }
+        ],
+        "gap_defense": [
+          {
+            "gap": "期望工作地在苏州/无锡/上海，与青岛不匹配",
+            "strategy": "坦诚当前偏好，但强调对海尔平台价值的认可，愿意探讨relocation可能性或是否存在华东分部调配机会。可接受30%出差基础上有意愿短期驻点，但最终需结合家庭因素协商。不替候选人作绝对承诺，而是表达开放态度。"
+          },
+          {
+            "gap": "无直接家电行业经验",
+            "strategy": "承认行业差异，但突出共通性：①质量管理体系核心（PDCA/风险思维）相通；②涉足电子、注塑、PCB等同样存在于家电供应链的工艺；③具备快速学习能力，已在汽车电子内部从连接器延伸到装配成功案例。准备简短学习计划（入职后第一周研究行业标准与竞品拆解）。"
+          },
+          {
+            "gap": "英语只限基础会议沟通",
+            "strategy": "如实说明当前水平可胜任邮件和简单会议，但若岗位涉及深层次跨国技术沟通，愿意在入职前强化培训。强调曾在审核和APQP中与部分外资供应商用英文邮件沟通无碍，展示可塑性。"
+          },
+          {
+            "gap": "无正式团队管理任命",
+            "strategy": "承认缺乏预算、绩效等正式管理经验，但展示专项协调中展现的目标导向、成员激励和冲突协调能力。明确若岗位要求带团队，自己正处于从技术骨干向管理角色过渡阶段，渴望在实践中成长并接受公司培训。"
+          }
+        ],
+        "company_specific_hypotheses": [
+          {
+            "hypothesis": "面试官可能深挖供应商分层管理的落地细节，因为海尔已有成体系的分层机制（依据W-S3）。",
+            "scenario": "你会如何将汽车电子的分层模型适配到家电行业？请具体说明你会考虑哪些额外维度。",
+            "candidate_response_guidance": "借鉴海尔的'低评价供应商改善建议'思路，结合自己的分层实践，提出增加'新品开发配合度'和'售后早期失效率'等家电特色维度。要强调与采购、研发联合制定评分表，先试点后推广。",
+            "bound_source_ids": [
+              "W-S3",
+              "C-P2-W13"
+            ]
+          },
+          {
+            "hypothesis": "针对低绩效供应商，面试官可能要求现场提出改善计划，因为海尔注重供应商帮扶（W-S3）。",
+            "scenario": "如果一家关键外壳供应商的批次合格率连续三个月低于95%，你会如何启动改善？",
+            "candidate_response_guidance": "使用8D步骤：立即围堵（采取全检或驻厂分选）、成立跨部门小组、展开根因分析（如过程能力/模具状态/来料检验），然后制定纠正预防措施。必要时驻场辅导，并设立周改善例会。引用连接器案例中的参数调整经验，强调验证有效性后才结案。",
+            "bound_source_ids": [
+              "W-S3",
+              "C-E2-W4"
+            ]
+          },
+          {
+            "hypothesis": "由于海尔强调智慧家庭与全球协同（W-S2），可能会测试跨品类、跨区域供应商管理的思维。",
+            "scenario": "你如何管理既供应冰箱门封条又供应洗衣机电机外壳的两家不同工艺供应商？如何确保质量策划的一致性？",
+            "candidate_response_guidance": "基于APQP框架，针对不同工艺制定差异化的控制计划审核清单，但相同点在于：特殊特性识别、MSA计划、过程能力验收准则等核心元素一致。利用NPI经验说明如何建立checklist并协同研发。坦诚尚需了解家电具体工艺特性，但方法论可直接迁移。",
+            "bound_source_ids": [
+              "W-S2",
+              "C-P1-W10"
+            ]
+          }
+        ],
+        "questions_for_interviewer": [
+          "该职位主要负责哪些产品线或零部件的供应商？团队目前规模和分工是怎样的？",
+          "针对这个岗位，前三个月的优先改善任务或关键绩效指标是什么？",
+          "公司内部对SQE有哪些培训资源或职业发展路径？（依据W-S3中提到的'开展质量培训'）",
+          "团队在日常工作中需要频繁和海外供应商或同事进行英语沟通吗？如果涉及，具体沟通场景是怎样的？",
+          "海尔现有的供应商分层管理在实际执行中遇到了哪些挑战？这个岗位如何参与分层体系的优化？"
+        ],
+        "first_90_days_discussion_points": [
+          "了解现有供应商池、品类分布和历史质量绩效（PPM、批退、重大异常），重点掌握风险供应商清单。",
+          "与采购、研发、制造等接口人建立沟通渠道，厘清当前供应商质量改善的优先级和痛点。",
+          "基于历史数据和现场走访，提出一份重点供应商审核与辅导计划，明确期望达成的阶段性目标（如降低特定品类PPM）。",
+          "评估现有供应商分层或绩效考核机制，结合自己经验提出微调建议，与经理讨论试行的可行性。",
+          "学习家电行业适用的法规、标准和内部流程（如安规、可靠性测试），快速补齐行业背景短板。"
+        ]
+      },
+      "deliverable": true
+    },
+    "finalResume": "# 许博文\n高级供应商质量工程师 | 7年汽车电子质量管理经验 | 苏州\n电话：159****6084 | 邮箱：xubowen10@outlook.com\n\n## 专业摘要\n7年汽车电子行业供应商质量管理经验，专注IATF16949体系下的供应商质量改善、新项目APQP策划与8D闭环。曾推动供应商整体来料PPM从860降至510，主导连接器根因分析消除间歇断路问题，并协调跨部门专项小组处理重大异常。擅长供应商审核、过程能力评估与数据驱动的分层改善。\n\n## 核心能力\n- 供应商质量管控与审核（VDA 6.3, IATF 16949）\n- 质量工具应用：APQP, PPAP, FMEA, SPC, MSA, 8D, 5Why, 鱼骨图, Minitab\n- 根本原因分析与防再发\n- 新项目质量策划与项目推动\n- 跨部门沟通与专项协调\n\n## 工作经历\n\n### 高级供应商质量工程师\n**苏州朗岳汽车电子有限公司** | 2021.03 - 至今\n- 管理PCB、连接器、注塑件及外协装配等32家供应商，通过审核、8D和绩效跟踪驱动供应商质量改善，2025年负责部分使来料PPM从860降至510（团队协同）。\n- 主导连接器间歇断路根因分析，通过截面、尺寸和插拔测试定位端子压接窗口，推动供应商调整参数实现连续3个月零复发。\n- 参与6个新项目供应商定点与APQP，审核PPAP文件、过程能力与量产准备，确保SOP前关闭主要问题。\n- 每年开展约18次现场/远程审核，问题关闭及时率约92%，持续跟踪整改有效性。\n- 作为专项小组负责人，协调3名工程师处理跨部门重大异常，涵盖采购、研发与生产接口。\n\n### 质量工程师\n**常州锐达电控有限公司** | 2018.07 - 2021.02\n- 负责来料检验标准制定、异常处理及供应商8D跟踪，参与IATF 16949外审准备。\n- 接触注塑、冲压工艺，掌握基础过程审核。\n\n## 项目经历\n\n### 新能源车载控制器项目APQP\n**供应商质量工程师** | 2023.05 - 2024.03\n- 负责11家关键供应商质量策划，跟踪特殊特性、MSA、过程能力及PPAP，SOP前关闭47项问题中的45项，确保项目顺利投产。\n- 处理量产前批量来料问题，完成围堵与8D闭环。\n\n### 供应商分层管理优化\n**高级供应商质量工程师** | 2025.01 - 2025.04\n- 按质量、交付、响应与审核结果对供应商分层，提出差异化审核频次方案，已推动质量部试行，为采购考核体系优化提供数据支撑。\n\n## 教育背景\n- 江苏科技大学 | 机械设计制造及其自动化 | 本科 | 2014.09 - 2018.06\n\n## 证书与语言\n- VDA 6.3 过程审核员（内部培训）\n- IATF 16949 内审员\n- 英语：邮件读写与基础会议沟通"
+  }
+}

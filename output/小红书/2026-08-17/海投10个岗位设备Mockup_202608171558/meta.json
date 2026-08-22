@@ -1,0 +1,186 @@
+{
+  "title": "海投10个岗位，还只用一份简历？",
+  "summary": "为每个目标岗位准备独立简历版本",
+  "author": "",
+  "platform": "小红书",
+  "created_at": "2026-08-17T16:47:56+08:00",
+  "post_format": "image",
+  "caption": "海投10个岗位，还在复制同一份“最终版”吗？😵‍💫 我们做 Reffo 时，最想解决的就是这个乱：保留一份源简历，每次贴入目标 JD，先看材料差距，再生成一个可编辑的岗位版本，还能顺手准备面试问题。不是为了把人设改得更厉害，而是把你已经做过的事放到更容易被看见的位置。AI 初稿仍要逐条核对，产品内评分也不等于 ATS 或录用概率。你改简历时最头疼哪一步？评论区聊聊👇",
+  "hashtags": [
+    "#AI简历",
+    "#简历优化",
+    "#一岗一简历",
+    "#求职工具",
+    "#校招求职",
+    "#社招求职",
+    "#JD匹配",
+    "#面试准备"
+  ],
+  "tags": [
+    "AI简历",
+    "简历优化",
+    "一岗一简历",
+    "求职工具"
+  ],
+  "poster_style": "简约清新·石墨色手机设备Mockup",
+  "word_count": 2179,
+  "cover_image": "images/card_01_cover.png",
+  "card_count": 7,
+  "cards": [
+    {
+      "page": 1,
+      "type": "cover",
+      "title": "海投10个岗位",
+      "content": "还只用一份简历？",
+      "synthesis_strategy": "img2img",
+      "material_refs": ["m002"],
+      "image_prompt": "米白背景与大字痛点提问，真实 Reffo 首页嵌入石墨色手机外壳，细边框、圆角与自然投影。",
+      "image_url": "images/card_01_cover.png"
+    },
+    {
+      "page": 2,
+      "type": "content",
+      "title": "问题可能不在你",
+      "content": "有相关经历，只是没放到 JD 最想看的位置。\n先看材料差距，再动手改。",
+      "synthesis_strategy": "img2img",
+      "material_refs": ["m007"],
+      "image_prompt": "米白背景与手绘箭头，岗位差距分析界面嵌入正面石墨色手机外壳。",
+      "image_url": "images/card_02_problem.png"
+    },
+    {
+      "page": 3,
+      "type": "content",
+      "title": "一份源简历",
+      "content": "每个目标岗位，单独留一个版本。\n投得再多，也不会混成一团。",
+      "synthesis_strategy": "img2img",
+      "material_refs": ["m012"],
+      "image_prompt": "米白背景与三台扇形排列的石墨色手机，每台展示一个独立岗位版本。",
+      "image_url": "images/card_03_versions.png"
+    },
+    {
+      "page": 4,
+      "type": "content",
+      "title": "流程其实很直",
+      "content": "① 放入源简历 ② 粘贴 JD\n③ 看材料差距 ④ 生成可编辑版本",
+      "synthesis_strategy": "collage",
+      "material_refs": ["m005", "m004", "m007", "m008"],
+      "image_prompt": "四张真实产品界面分别放入四台手机，以 2×2 排列和手绘箭头组成完整流程。",
+      "image_url": "images/card_04_workflow.png"
+    },
+    {
+      "page": 5,
+      "type": "content",
+      "title": "这点很重要",
+      "content": "材料没写 ≠ 你不会\n缺证据，先提醒你核实。\nAI 初稿仍要自己核对。",
+      "synthesis_strategy": "img2img",
+      "material_refs": ["m007"],
+      "image_prompt": "米白背景与醒目红色不等号，材料差距界面嵌入石墨色手机，突出人工核对边界。",
+      "image_url": "images/card_05_boundary.png"
+    },
+    {
+      "page": 6,
+      "type": "content",
+      "title": "改完简历，别急着投",
+      "content": "把可能的问题、故事思路、反问方向一起过一遍。\n面试前照着复盘。",
+      "synthesis_strategy": "img2img",
+      "material_refs": ["m009"],
+      "image_prompt": "米白背景与手绘问号气泡，面试建议界面嵌入略微倾斜的石墨色手机。",
+      "image_url": "images/card_06_interview.png"
+    },
+    {
+      "page": 7,
+      "type": "ending",
+      "title": "投下一个岗位前",
+      "content": "先给简历换个版本。\nAI 生成内容要自己核对。\n你最头疼的是哪一步？",
+      "synthesis_strategy": "img2img",
+      "material_refs": ["m013"],
+      "image_prompt": "温暖桌面场景与手绘箭头，新申请界面放入居中的石墨色手机外壳，以互动问题收尾。",
+      "image_url": "images/card_07_ending.png"
+    }
+  ],
+  "images": [
+    "images/card_01_cover.png",
+    "images/card_02_problem.png",
+    "images/card_03_versions.png",
+    "images/card_04_workflow.png",
+    "images/card_05_boundary.png",
+    "images/card_06_interview.png",
+    "images/card_07_ending.png"
+  ],
+  "materials": [
+    {
+      "id": "m002",
+      "path": "/Users/haishuanglong/Desktop/reffo/项目截图/01 - CN.jpg",
+      "kind": "image",
+      "caption": "一个岗位一份简历首页与岗位卡片堆",
+      "usage": "cover",
+      "strategy": "img2img"
+    },
+    {
+      "id": "m004",
+      "path": "/Users/haishuanglong/Desktop/reffo/项目截图/New application 01 - EN.jpg",
+      "kind": "image",
+      "caption": "新申请页面可填写公司岗位名称与 JD",
+      "usage": "content-4",
+      "strategy": "collage"
+    },
+    {
+      "id": "m005",
+      "path": "/Users/haishuanglong/Desktop/reffo/项目截图/Profile Upload  01 - EN.jpg",
+      "kind": "image",
+      "caption": "源简历支持上传文件或粘贴文字",
+      "usage": "content-4",
+      "strategy": "collage"
+    },
+    {
+      "id": "m007",
+      "path": "/Users/haishuanglong/Desktop/reffo/项目截图/Result - EN-1.jpg",
+      "kind": "image",
+      "caption": "岗位分析页面展示材料差距与优化策略",
+      "usage": "content-2,content-4,content-5",
+      "strategy": "img2img"
+    },
+    {
+      "id": "m008",
+      "path": "/Users/haishuanglong/Desktop/reffo/项目截图/Result - EN-2.jpg",
+      "kind": "image",
+      "caption": "生成后的 Markdown 简历预览与下载入口",
+      "usage": "content-4",
+      "strategy": "collage"
+    },
+    {
+      "id": "m009",
+      "path": "/Users/haishuanglong/Desktop/reffo/项目截图/Result - EN-3.jpg",
+      "kind": "image",
+      "caption": "面试建议页面展示问题故事与反问方向",
+      "usage": "content-6",
+      "strategy": "img2img"
+    },
+    {
+      "id": "m012",
+      "path": "/Users/haishuanglong/Desktop/reffo/项目截图/微信图片_2026-08-17_120509_871.png",
+      "kind": "image",
+      "caption": "教程页用三张岗位卡片说明源简历可复用",
+      "usage": "content-3",
+      "strategy": "img2img"
+    },
+    {
+      "id": "m013",
+      "path": "/Users/haishuanglong/Desktop/reffo/项目截图/微信图片_2026-08-17_121018_299.png",
+      "kind": "image",
+      "caption": "新申请卡片与人工核对提示",
+      "usage": "ending",
+      "strategy": "img2img"
+    }
+  ],
+  "references": {
+    "search_queries": [
+      "site:xiaohongshu.com/explore AI 简历优化 爆款 笔记 求职",
+      "site:xiaohongshu.com/explore 针对 JD 改简历 AI 求职",
+      "小红书 AI改简历 点赞",
+      "小红书 职徒简历 AI 优化"
+    ],
+    "source_count": 6,
+    "summary_file": "reference/summary.md"
+  }
+}

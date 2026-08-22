@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1242" height="1660" viewBox="0 0 1242 1660" role="img" aria-labelledby="title desc">
+  <title id="title">Reffo 小红书封面低保真，AI 先找哪里没证明</title>
+  <desc id="desc">实际 H5 岗位分析页在上方大幅裁切，标题从左下方切入，使用低饱和粉色标记材料差距。</desc>
+  <defs>
+    <linearGradient id="bg02" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EAF2FB"/>
+      <stop offset="0.55" stop-color="#F8F9FB"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <filter id="screenShadow02" x="-20%" y="-25%" width="150%" height="165%">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#151E2E" flood-opacity="0.16"/>
+    </filter>
+    <filter id="buttonShadow02" x="-35%" y="-60%" width="170%" height="230%">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#286FE7" flood-opacity="0.18"/>
+    </filter>
+    <clipPath id="screenClip02">
+      <rect x="196" y="132" width="1134" height="980" rx="34"/>
+    </clipPath>
+  </defs>
+
+  <g id="background-layer">
+    <rect width="1242" height="1660" fill="url(#bg02)"/>
+  </g>
+
+  <g id="product-screenshot-layer" filter="url(#screenShadow02)">
+    <rect x="166" y="102" width="1194" height="1040" rx="48" fill="#FFFFFF"/>
+    <g clip-path="url(#screenClip02)">
+      <image x="196" y="132" width="1134" height="980" preserveAspectRatio="xMidYMid slice" xlink:href="assets/actual-h5-result-header-393x340.png"/>
+    </g>
+  </g>
+
+  <g id="foreground-surface">
+    <path d="M0 842H646C730 842 784 904 784 988V1660H0Z" fill="#F8F9FB"/>
+    <rect x="90" y="858" width="386" height="18" rx="9" fill="#FFE0ED"/>
+  </g>
+
+  <g id="brand-layer">
+    <rect x="72" y="64" width="246" height="96" rx="48" fill="#FFFFFF" fill-opacity="0.94"/>
+    <image x="108" y="90" width="174" height="46" preserveAspectRatio="xMinYMid meet" xlink:href="assets/reffo-logo.png"/>
+    <g transform="translate(90 910)" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+      <rect x="0" y="0" width="5" height="34" rx="2.5" fill="#1C77EB"/>
+      <text x="24" y="28" fill="#4B4F56" font-size="27" font-weight="500" letter-spacing="1">产品透明</text>
+    </g>
+  </g>
+
+  <g id="copy-layer" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+    <text x="90" y="1080" fill="#111111" font-size="106" font-weight="600" letter-spacing="-3">
+      <tspan x="90" dy="0">AI 先找</tspan>
+      <tspan x="90" dy="126">哪里</tspan><tspan fill="#1C77EB">没证明</tspan>
+    </text>
+    <text x="92" y="1288" fill="#4B4F56" font-size="35" font-weight="400">先看材料差距，再决定怎么改</text>
+
+    <g id="selling-points" transform="translate(858 1180)" font-size="29" font-weight="500">
+      <rect x="0" y="-24" width="12" height="12" rx="3" fill="#1C77EB"/>
+      <text x="34" y="0" fill="#111111">匹配点</text>
+      <rect x="0" y="52" width="12" height="12" rx="3" fill="#FFE0ED" stroke="#111111" stroke-width="2"/>
+      <text x="34" y="76" fill="#111111">未证明项</text>
+      <rect x="0" y="128" width="12" height="12" rx="3" fill="#1C77EB"/>
+      <text x="34" y="152" fill="#111111">优化思路</text>
+    </g>
+
+    <g id="cta" transform="translate(90 1382)" filter="url(#buttonShadow02)">
+      <rect x="0" y="0" width="272" height="82" rx="41" fill="#286FE7"/>
+      <text x="136" y="54" fill="#FFFFFF" font-size="31" font-weight="600" text-anchor="middle">开始创建</text>
+    </g>
+  </g>
+
+  <g id="legal-layer" font-family="PingFang SC, Microsoft YaHei, Arial, sans-serif">
+    <text x="90" y="1574" fill="#7D8591" font-size="21">产品内参考评分，不代表招聘方结论。</text>
+  </g>
+</svg>
