@@ -2202,77 +2202,8 @@ export default function LandingPage() {
           )}
         </View>
 
-        <View className='reffo-landing-onboarding__queue-top'>
-          <View
-            className='reffo-landing-onboarding__skip reffo-landing-onboarding__skip--queue'
-            onClick={() => {
-              void completeOnboarding()
-            }}
-          >
-            <Text>跳过教程</Text>
-          </View>
-          <View className='reffo-landing-onboarding__pager' aria-label='教程页码'>
-            <View className={classNames('reffo-landing-onboarding__pager-dot', {
-              'reffo-landing-onboarding__pager-dot--active': !isQueueFolderStep && !isInlineLandingActive,
-            })} />
-            <View className={classNames('reffo-landing-onboarding__pager-dot', {
-              'reffo-landing-onboarding__pager-dot--active': isQueueFolderStep && inlineLandingPhase !== 'result',
-            })} />
-            <View className={classNames('reffo-landing-onboarding__pager-dot', {
-              'reffo-landing-onboarding__pager-dot--active': inlineLandingPhase === 'result',
-            })} />
-          </View>
-          <View className='reffo-landing-onboarding__queue-top-spacer' aria-hidden='true' />
-        </View>
-
         {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
           <>
-            <View className='reffo-landing-onboarding__detail-chrome'>
-              <View
-                className={classNames('reffo-landing-onboarding__detail-return', {
-                  'reffo-landing-onboarding__detail-return--completion': inlineLandingPhase === 'result',
-                  'reffo-landing-onboarding__detail-return--completion-ready':
-                    inlineLandingPhase === 'result' && isLandingResultComplete,
-                })}
-                role='button'
-                aria-disabled={inlineLandingPhase === 'result' && !isLandingResultComplete}
-                onClick={event => {
-                  event.stopPropagation?.()
-
-                  if (inlineLandingPhase === 'result') {
-                    landingResultCompleteRef.current?.()
-                    return
-                  }
-
-                  if (inlineLandingPhase === 'analysis') {
-                    runLandingViewTransition(() => {
-                      setInlineLandingPhase(null)
-                    })
-                    return
-                  }
-
-                  if (queueMotionPhase === 'job-selecting') {
-                    closeJobFolder()
-                    return
-                  }
-
-                  if (queueMotionPhase === 'folder') {
-                    exitQueueFolder()
-                    return
-                  }
-
-                  if (queueMotionPhase === 'detail') {
-                    exitSelectedQueueDetail()
-                  }
-
-                  if (queueMotionPhase === 'creating') {
-                    returnFromLandingJobDescription()
-                  }
-                }}
-              >
-                <Text>{inlineLandingPhase === 'result' ? '完成' : '返回'}</Text>
-              </View>
-            </View>
             {shouldShowDetailProgress ? (
               <View
                 className='reffo-landing-onboarding__detail-folder'
@@ -2392,6 +2323,78 @@ export default function LandingPage() {
             ) : null}
           </>
         ) : null}
+        </View>
+
+        <View className='reffo-landing-onboarding__queue-top'>
+          <View
+            className='reffo-landing-onboarding__skip reffo-landing-onboarding__skip--queue'
+            onClick={() => {
+              void completeOnboarding()
+            }}
+          >
+            <Text>跳过教程</Text>
+          </View>
+          <View className='reffo-landing-onboarding__pager' aria-label='教程页码'>
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': !isQueueFolderStep && !isInlineLandingActive,
+            })} />
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': isQueueFolderStep && inlineLandingPhase !== 'result',
+            })} />
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': inlineLandingPhase === 'result',
+            })} />
+          </View>
+          {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
+            <View className='reffo-landing-onboarding__detail-chrome'>
+              <View
+                className={classNames('reffo-landing-onboarding__detail-return', {
+                  'reffo-landing-onboarding__detail-return--completion': inlineLandingPhase === 'result',
+                  'reffo-landing-onboarding__detail-return--completion-ready':
+                    inlineLandingPhase === 'result' && isLandingResultComplete,
+                })}
+                role='button'
+                aria-disabled={inlineLandingPhase === 'result' && !isLandingResultComplete}
+                onClick={event => {
+                  event.stopPropagation?.()
+
+                  if (inlineLandingPhase === 'result') {
+                    landingResultCompleteRef.current?.()
+                    return
+                  }
+
+                  if (inlineLandingPhase === 'analysis') {
+                    runLandingViewTransition(() => {
+                      setInlineLandingPhase(null)
+                    })
+                    return
+                  }
+
+                  if (queueMotionPhase === 'job-selecting') {
+                    closeJobFolder()
+                    return
+                  }
+
+                  if (queueMotionPhase === 'folder') {
+                    exitQueueFolder()
+                    return
+                  }
+
+                  if (queueMotionPhase === 'detail') {
+                    exitSelectedQueueDetail()
+                  }
+
+                  if (queueMotionPhase === 'creating') {
+                    returnFromLandingJobDescription()
+                  }
+                }}
+              >
+                <Text>{inlineLandingPhase === 'result' ? '完成' : '返回'}</Text>
+              </View>
+            </View>
+          ) : (
+            <View className='reffo-landing-onboarding__queue-top-spacer' aria-hidden='true' />
+          )}
         </View>
 
         {onboardingStep !== 'queue' ? (
