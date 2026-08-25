@@ -1,0 +1,25 @@
+doc/Taro前端重构TODO.md
+  s_ffa066f5605909::t_d86028447ad2e9 1-177
+frontend/Taro/reffo-taro/src/pages/create/__tests__/index.test.tsx
+  s_ffa066f5605909::t_60e1357153b4e7 356-358,361,364-365,449,482,616,662
+frontend/Taro/reffo-taro/src/pages/index/__tests__/usePageModel.test.tsx
+  s_ffa066f5605909::t_45947e27d86561 5,18-20,26,222,250
+frontend/Taro/reffo-taro/src/utils/__tests__/navigation-transition.test.ts
+  s_ffa066f5605909::t_0813fd611eae87 70-71,74-75,94-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "84fb799fe6c0f134a74f158421597c651af07dc3",
+  "prompts": {},
+  "sessions": {
+    "s_ffa066f5605909": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02872-1aca-7f62-afc7-111db70231cc",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
