@@ -1,0 +1,21 @@
+frontend/Taro/reffo-taro/src/pages/landing/__tests__/index.test.tsx
+  s_ffa066f5605909::t_91284964f7512e 748-754,773-774,782-790,972-973,1058
+frontend/Taro/reffo-taro/src/pages/landing/index.tsx
+  s_ffa066f5605909::t_5945ac88a0fe6b 16,77-78,317-327,333,1014,1062-1076,1937,1947-1951,2033,2352,2486
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7550af9cf28ec90462909b093275f9774d0a83a6",
+  "prompts": {},
+  "sessions": {
+    "s_ffa066f5605909": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02872-1aca-7f62-afc7-111db70231cc",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
