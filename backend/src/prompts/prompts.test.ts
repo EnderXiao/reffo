@@ -77,7 +77,8 @@ function promptText(messages: ReturnType<typeof buildResumeAnalysisMessages>) {
 
 describe('prompt suite', () => {
   test('uses the current prompt version for every legacy selector', () => {
-    expect(PROMPT_VERSION).toBe('3.0.0')
+    expect(PROMPT_VERSION).toBe('4.2.1')
+    expect(PROMPT_VARIANT).toBe('scope-aware-v4.2')
     expect(resolvePromptVariant()).toBe(PROMPT_VARIANT)
     expect(resolvePromptVariant('v1')).toBe(PROMPT_VARIANT)
     expect(resolvePromptVariant('v2')).toBe(PROMPT_VARIANT)
@@ -116,13 +117,22 @@ describe('prompt suite', () => {
   test('removes fabricated metric examples from the resume generation prompt', () => {
     const generationPrompt = promptText(buildResumeGenerationMessages(sourceResume, jd, matching))
 
-    expect(generationPrompt).toContain('不得计算、外推或改写精度')
+    expect(generationPrompt).toContain('不得计算、外推、重新取整、换阈值或改写精度')
     expect(generationPrompt).toContain('JD 中出现不代表候选人拥有')
     expect(generationPrompt).toContain('不得把项目行动搬进工作经历')
     expect(generationPrompt).toContain('职业摘要不得声称')
     expect(generationPrompt).not.toContain('1000万')
     expect(generationPrompt).not.toContain('99.99%')
     expect(generationPrompt).not.toContain('500 万元营收')
+  })
+
+  test('keeps external application gaps outside resume quality', () => {
+    const matchingPrompt = promptText(buildMatchingMessages(sourceResume, jd))
+    const generationPrompt = promptText(buildResumeGenerationMessages(sourceResume, jd, matching))
+
+    expect(matchingPrompt).toContain('不得把它们算作简历输出质量缺陷')
+    expect(generationPrompt).toContain('不得写入简历正文')
+    expect(generationPrompt).toContain('不得把“约 2180 万”改成“超 2000 万”')
   })
 
   test('limits JSON repair to structural changes', () => {
