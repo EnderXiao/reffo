@@ -24,7 +24,8 @@ export default function LandingFlowHeader({
       </View>
       <View
         className={classNames('reffo-create__landing-progress', `reffo-create__landing-progress--step-${progressStep}`)}
-        aria-label={`教程进度，第${progressStep}步`}
+        aria-label='教程进度'
+        data-step={progressStep}
         role='img'
       >
         {([1, 2, 3] as const).map(step => (

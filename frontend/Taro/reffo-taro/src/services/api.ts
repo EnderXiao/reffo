@@ -1,4 +1,5 @@
-import {TaroRequestAdapter, RequestError} from '@/utils/request';
+import * as requestTransport from '@/utils/httpTransport';
+import {RequestError} from '@/utils/httpTransport';
 import type {RequestConfig, Response} from '@/utils/request';
 import {retry, type RetryOptions} from '@/utils/retry';
 import {redactSensitiveData} from '@/utils/redact';
@@ -18,7 +19,7 @@ export interface ApiResponse<T> {
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   /** 可选的消息 */
   message?: string;
@@ -76,7 +77,7 @@ export {redactSensitiveData};
  */
 export class ApiClient {
   /** 请求适配器 */
-  private adapter: TaroRequestAdapter;
+  private adapter: requestTransport.TaroRequestAdapter;
 
   /** API 基础 URL */
   private baseURL: string;
@@ -117,7 +118,7 @@ export class ApiClient {
     }
 
     // 创建请求适配器
-    this.adapter = new TaroRequestAdapter();
+    this.adapter = new requestTransport.TaroRequestAdapter();
     this.adapter.setDefaultTimeout(this.timeout);
 
     // 配置拦截器
@@ -177,7 +178,7 @@ export class ApiClient {
       }
 
       // 检查业务错误
-      const apiResponse = response.data as ApiResponse<any>;
+      const apiResponse = response.data as ApiResponse<unknown>;
       if (apiResponse && apiResponse.success === false) {
         throw new RequestError(
           getClientErrorMessage(
@@ -262,7 +263,7 @@ export class ApiClient {
    * const data = await apiClient.get('/mvp/health')
    * ```
    */
-  async get<T = any>(
+  async get<T = unknown>(
     url: string,
     config?: Omit<RequestConfig, 'url' | 'method'>,
   ): Promise<T> {
@@ -288,9 +289,9 @@ export class ApiClient {
    * })
    * ```
    */
-  async post<T = any>(
+  async post<T = unknown>(
     url: string,
-    data?: any,
+    data?: unknown,
     config?: Omit<RequestConfig, 'url' | 'method' | 'data'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
@@ -319,9 +320,9 @@ export class ApiClient {
    * })
    * ```
    */
-  async put<T = any>(
+  async put<T = unknown>(
     url: string,
-    data?: any,
+    data?: unknown,
     config?: Omit<RequestConfig, 'url' | 'method' | 'data'>,
   ): Promise<T> {
     return this.executeWithRetry(async () => {
@@ -347,7 +348,7 @@ export class ApiClient {
    * await apiClient.delete('/users/1')
    * ```
    */
-  async delete<T = any>(
+  async delete<T = unknown>(
     url: string,
     config?: Omit<RequestConfig, 'url' | 'method'>,
   ): Promise<T> {
@@ -374,7 +375,7 @@ export class ApiClient {
    * })
    * ```
    */
-  async request<T = any>(config: RequestConfig): Promise<Response<T>> {
+  async request<T = unknown>(config: RequestConfig): Promise<Response<T>> {
     return this.adapter.request<T>(config);
   }
 }
