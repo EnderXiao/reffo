@@ -91,7 +91,7 @@ export class ResumeOptimizationWorkflow {
 
   async run(input: ResumeOptimizationWorkflowInput): Promise<MvpProcessResponse> {
     const promptVariant = resolvePromptVariant(input.prompt_variant)
-    const runContext = createRunContext(`v2:${promptVariant}`)
+    const runContext = createRunContext(`v4.2:${promptVariant}`)
     const runtimeState = createRunRuntimeState(runContext)
     const steps = runtimeState.steps
     const recoverableErrors: NonNullable<MvpProcessResponse['recoverable_errors']> = []
