@@ -67,12 +67,12 @@ describe('navigation-transition', () => {
   })
 
   test('uses View Transition API when available', async () => {
-    const startViewTransition = jest.fn(async callback => {
-      await callback()
+    const startViewTransition = jest.fn(callback => {
+      const updateCallbackDone = Promise.resolve().then(callback)
       return {
         ready: Promise.resolve(),
-        finished: Promise.resolve(),
-        updateCallbackDone: Promise.resolve(),
+        finished: updateCallbackDone.then(() => undefined),
+        updateCallbackDone,
         skipTransition: jest.fn(),
       }
     })
@@ -89,6 +89,53 @@ describe('navigation-transition', () => {
     await expect(runWithNavigationTransition(action, {kind: 'forward'})).resolves.toBeUndefined()
     expect(action).toHaveBeenCalledTimes(1)
     expect(startViewTransition).toHaveBeenCalledTimes(1)
+  })
+
+  test('treats skipped or timed-out View Transitions as visual fallback', async () => {
+    const abortError = new DOMException('Transition was skipped', 'AbortError')
+    const timeoutError = new DOMException('Transition timed out', 'TimeoutError')
+    const action = jest.fn(async () => 'done')
+    const startViewTransition = jest.fn(callback => {
+      const actionDone = Promise.resolve().then(callback)
+      return {
+        ready: Promise.reject(abortError),
+        finished: Promise.reject(abortError),
+        updateCallbackDone: actionDone.then(() => Promise.reject(timeoutError)),
+        skipTransition: jest.fn(),
+      }
+    })
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: startViewTransition,
+    })
+
+    await expect(runWithNavigationTransition(action, {kind: 'forward'})).resolves.toBeUndefined()
+    expect(action).toHaveBeenCalledTimes(1)
+  })
+
+  test('still rejects when navigation action fails', async () => {
+    const navigationError = new Error('navigateTo failed')
+    const action = jest.fn(async () => {
+      throw navigationError
+    })
+    const startViewTransition = jest.fn(callback => {
+      const updateCallbackDone = Promise.resolve().then(callback)
+      return {
+        ready: Promise.resolve(),
+        finished: updateCallbackDone.then(() => undefined),
+        updateCallbackDone,
+        skipTransition: jest.fn(),
+      }
+    })
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: startViewTransition,
+    })
+
+    await expect(runWithNavigationTransition(action, {kind: 'forward'})).rejects.toBe(navigationError)
+    expect(action).toHaveBeenCalledTimes(1)
   })
 
   test('initializes Taro page fade styles once', () => {

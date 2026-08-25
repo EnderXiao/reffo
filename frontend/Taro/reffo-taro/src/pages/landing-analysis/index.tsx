@@ -1,21 +1,15 @@
-import {useCallback, useEffect, useState} from 'react'
-import {flushSync} from 'react-dom'
+import {useCallback, useEffect} from 'react'
 import {View} from '@tarojs/components'
 import type {LatestResultSession} from '@/utils/result-session'
-import AnalysisPageView from './PageView'
-import ResultPageView from '../result/PageView'
+import AnalysisPageView from './PageView.h5'
+import ResultPageView from '../result/PageView.h5'
 import {usePageModel as useCreatePageModel} from '../create/usePageModel'
 import {usePageModel as useResultPageModel} from '../result/usePageModel'
+import {usePageStateRoute} from '@/shared/routing'
 
 type LandingAnalysisPhase =
   | {kind: 'analysis'}
   | {kind: 'result'; session: LatestResultSession}
-
-type DocumentWithViewTransition = Document & {
-  startViewTransition?: (callback: () => void) => {
-    finished: Promise<void>
-  }
-}
 
 function LandingInlineResult({
   session,
@@ -69,38 +63,11 @@ export default function LandingAnalysisPage({
   onResultCompleteReady,
   onResultCompletionChange,
 }: LandingAnalysisPageProps) {
-  const [phase, setPhase] = useState<LandingAnalysisPhase>({kind: 'analysis'})
+  const {state: phase, transitionTo} = usePageStateRoute<LandingAnalysisPhase>({kind: 'analysis'})
   const handleGenerationComplete = useCallback(async (session: LatestResultSession) => {
-    const showResult = () => {
-      setPhase({kind: 'result', session})
-    }
-
-    if (
-      typeof document === 'undefined'
-      || typeof (document as DocumentWithViewTransition).startViewTransition !== 'function'
-    ) {
-      showResult()
-      onPhaseChange?.('result')
-      return
-    }
-
-    const root = document.documentElement
-    root.dataset.reffoViewTransition = 'forward'
-    const transition = (document as DocumentWithViewTransition).startViewTransition?.(() => {
-      flushSync(showResult)
-    })
-
-    if (!transition) {
-      delete root.dataset.reffoViewTransition
-      showResult()
-      onPhaseChange?.('result')
-      return
-    }
-
-    await transition.finished.catch(() => undefined)
-    delete root.dataset.reffoViewTransition
+    await transitionTo({kind: 'result', session}, 'forward')
     onPhaseChange?.('result')
-  }, [onPhaseChange])
+  }, [onPhaseChange, transitionTo])
   const model = useCreatePageModel({
     autoGenerateLanding: true,
     onLandingGenerationComplete: handleGenerationComplete,

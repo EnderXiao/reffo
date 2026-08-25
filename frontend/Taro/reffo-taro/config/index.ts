@@ -127,25 +127,6 @@ export default defineConfig<'webpack5'>(async (merge, { mode }) => {
         );
       },
     },
-    rn: {
-      appName: 'taroDemo',
-      entry: 'app',
-      port: 8083,
-      output: {
-        ios: './ios/main.jsbundle',
-        iosAssetsDest: './ios',
-        android: './android/app/src/main/assets/index.android.bundle',
-        androidAssetsDest: './android/app/src/main/res',
-        iosSourcemapOutput: './ios/main.map',
-        androidSourcemapOutput:
-          './android/app/src/main/assets/index.android.map',
-      },
-      postcss: {
-        cssModules: {
-          enable: false,
-        },
-      },
-    },
   };
 
   return merge({}, baseConfig, isDevelopment ? devConfig : prodConfig);

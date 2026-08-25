@@ -13,8 +13,8 @@ import {
   type VerifySignupOtpInput,
   type VerifyEmailOtpInput,
 } from '@/services/auth'
-import {clearPersistedUserData} from '@/utils/user-data-storage'
 import {profileApi, type UserProfile} from '@/services/profile'
+import {clearUserSessionData} from './sessionManager'
 
 interface AuthState {
   session: AuthSession | null
@@ -44,24 +44,6 @@ let restoreSessionPromise: Promise<AuthSession | null> | null = null
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
-}
-
-async function resetUserBusinessState(userId?: string | null) {
-  const [historyModule, sourceResumeModule, resumeModule, jdModule, landingFlowModule] = await Promise.all([
-    import('./historyStore'),
-    import('./sourceResumeStore'),
-    import('./resumeStore'),
-    import('./jdStore'),
-    import('./landingFlowStore'),
-  ])
-
-  historyModule.useHistoryStore.getState().reset()
-  sourceResumeModule.useSourceResumeStore.getState().reset()
-  resumeModule.useResumeStore.getState().reset()
-  jdModule.useJDStore.getState().reset()
-  landingFlowModule.useLandingFlowStore.getState().clear()
-
-  await clearPersistedUserData(userId)
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -288,7 +270,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
-      await resetUserBusinessState(userId)
+      await clearUserSessionData(userId)
     } catch (error) {
       cleanupError = error
       console.error('[AuthStore] Failed to clear user data after sign out:', error)

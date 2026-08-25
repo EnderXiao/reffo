@@ -6,6 +6,7 @@ import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import type {CSSProperties} from 'react'
 import {useDidShow} from '@tarojs/taro'
 import {useVisualTier} from '@/utils'
+import {routePaths, useRouteTransition} from '@/shared/routing'
 import {
   clearSharedElementSnapshot,
   readSharedElementSnapshot,
@@ -16,7 +17,6 @@ import type {IndexPageViewModel} from './model/usePageModel'
 import {HOME_PAGE_CONTENT} from './constants/content'
 import {resolveUserAvatar} from '@/utils/generated-avatar'
 import {useAuthStore} from '@/store/authStore'
-import {navigation} from '@/utils/navigation'
 import './index.h5.scss'
 
 type HeroMode = 'brand' | 'strategy' | 'create'
@@ -309,6 +309,8 @@ export default function PageView({
   currentCard,
   currentProgress,
   displayTotal,
+  isLoading,
+  loadingError,
   hasHistories,
   hasSourceResume,
   sourceResumeTitle,
@@ -325,6 +327,7 @@ export default function PageView({
   handleDeckFirstInteraction,
   logoSource,
 }: IndexPageViewModel) {
+  const route = useRouteTransition()
   const visualCapability = useVisualTier({benchmark: true})
   const session = useAuthStore(state => state.session)
   const profile = useAuthStore(state => state.profile)
@@ -429,6 +432,14 @@ export default function PageView({
     }
   }, [])
 
+  if (isLoading || loadingError) {
+    return (
+      <View className='reffo-home reffo-home--status'>
+        <Text>{loadingError ? `加载失败: ${loadingError}` : '加载中...'}</Text>
+      </View>
+    )
+  }
+
   return (
     <View
       className={classNames('reffo-home', {
@@ -486,7 +497,7 @@ export default function PageView({
           {session ? (
             <View
               className='reffo-home__account-button reffo-home__account-button--avatar'
-              onClick={() => void navigation.navigateTo('/pages/profile/index')}
+              onClick={() => void route.navigate(routePaths.profile)}
               aria-label='打开用户资料'
             >
               <Image
@@ -498,7 +509,7 @@ export default function PageView({
           ) : (
             <View
               className='reffo-home__account-button reffo-home__account-button--guest'
-              onClick={() => void navigation.navigateTo('/pages/auth/index')}
+              onClick={() => void route.navigate(routePaths.auth)}
               aria-label='登录'
             >
               <Text>登录</Text>

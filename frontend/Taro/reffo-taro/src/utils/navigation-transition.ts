@@ -353,24 +353,42 @@ export async function runWithNavigationTransition(
   const root = document.documentElement
   const startViewTransition = (document as DocumentWithViewTransition).startViewTransition
   let actionStarted = false
+  let actionPromise: Promise<unknown> | null = null
 
   root.dataset.reffoViewTransition = options.kind
 
   try {
-    const transition = startViewTransition?.(async () => {
+    const transition = startViewTransition?.call(document, async () => {
       actionStarted = true
-      await action()
-      await waitForNextPaint()
+      actionPromise = Promise.resolve().then(action)
+      await actionPromise
     })
 
     if (!transition) {
       return action()
     }
 
-    await transition.finished
+    const ready = transition.ready.catch(() => undefined)
+    const updateCallbackDone = transition.updateCallbackDone.catch(() => undefined)
+    const finished = transition.finished.catch(() => undefined)
+
+    void ready
+    await updateCallbackDone
+
+    if (!actionStarted) {
+      return action()
+    }
+
+    await actionPromise
+    await finished
     return undefined
   } catch (error) {
     if (actionStarted) {
+      if (actionPromise) {
+        await actionPromise
+        return undefined
+      }
+
       throw error
     }
 
@@ -403,12 +421,15 @@ export function startResultCardReturnTransition(
   sourceElement.style.setProperty('view-transition-name', RESULT_CARD_RETURN_TRANSITION_NAME)
 
   try {
-    const transition = startViewTransition(async () => {
+    const transition = startViewTransition.call(document, async () => {
       actionStarted = true
       shouldSuppressNextTransition = true
       await action()
       await waitForNextPaint()
     })
+
+    void transition.ready.catch(() => undefined)
+    void transition.updateCallbackDone.catch(() => undefined)
 
     transition.finished
       .catch(error => {

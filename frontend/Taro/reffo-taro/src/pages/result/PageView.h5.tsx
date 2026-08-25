@@ -28,7 +28,6 @@ import alertIcon from '@/assets/result/alert-hex.svg'
 import confirmIcon from '@/assets/result/confirm.svg'
 import chatTagIcon from '@/assets/result/chat-tag.svg'
 import exitIcon from '@/assets/result/exit.svg'
-import '@/pages/index/index.h5.scss'
 import './index.h5.scss'
 
 type ResultStageKey = 'analysis' | 'resume' | 'interview'

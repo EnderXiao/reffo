@@ -134,8 +134,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           t.Literal('v1'),
           t.Literal('v2'),
           t.Literal('final-v3'),
+          t.Literal('scope-aware-v4.2'),
         ], {
-          description: '兼容旧客户端的提示词版本字段；服务端统一使用 final-v3',
+          description: '兼容旧客户端的提示词版本字段；服务端统一使用 scope-aware-v4.2（v4.2.1）',
         })),
         enable_llm_judge: t.Optional(t.Boolean({
           description: '是否异步触发 LLM Judge，不默认阻塞主链路',
@@ -315,7 +316,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const resumeMarkdown = normalizeMarkdownText(body.resume_markdown)
         const analyzer = new ResumeAnalyzerAgent()
         const { result, meta } = await runHarnessedStep({
-          workflowVersion: 'single:v2:analyze_resume',
+          workflowVersion: 'single:v4.2:analyze_resume',
           stepName: 'analyze_resume',
           inputDigestSource: { resume_markdown: resumeMarkdown },
           stepTimeoutMs: 120000,
@@ -395,7 +396,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const parser = new JDParserAgent()
         const matcher = new MatchingAgent()
         const { result, meta } = await runHarnessedRequest({
-          workflowVersion: 'single:v2:match_resume_to_jd',
+          workflowVersion: 'single:v4.2:match_resume_to_jd',
           inputDigestSource: {
             structured_resume: body.structured_resume,
             jd_text: jdText,
@@ -501,7 +502,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const generator = new ResumeGeneratorAgent()
         const reviser = new ResumeRevisionAgent()
         const { result: optimizedResume, meta } = await runHarnessedRequest({
-          workflowVersion: 'single:v2:generate_resume',
+          workflowVersion: 'single:v4.2:generate_resume',
           inputDigestSource: {
             structured_resume: body.structured_resume,
             matching: body.matching,
@@ -711,7 +712,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       try {
         const advisor = new InterviewAdvisorAgent()
         const { result, meta } = await runHarnessedStep({
-          workflowVersion: 'single:v2:generate_interview_advice',
+          workflowVersion: 'single:v4.2:generate_interview_advice',
           stepName: 'generate_interview_advice',
           inputDigestSource: {
             analysis: body.analysis,

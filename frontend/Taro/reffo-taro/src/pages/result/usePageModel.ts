@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from 'react'
 import Taro, {useRouter} from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {useHistoryStore} from '@/store/historyStore'
+import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import type {ProcessResult, ResumeHistory} from '@/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {
@@ -13,7 +14,7 @@ import {
 } from '@/utils/result-session'
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
-import {navigation} from '@/utils/navigation'
+import {appendRouteParams, routePaths, useRouteTransition} from '@/shared/routing'
 import {savePendingLandingHistory} from '@/utils/pending-landing-data'
 import {useAuthStore} from '@/store/authStore'
 import {toHistoryCardItem} from '../index/model/homeCardData'
@@ -124,6 +125,15 @@ function buildContextFromHistory(history: ResumeHistory): LatestResultSessionCon
   }
 }
 
+function syncWorkspaceResult(result: ProcessResult, context?: LatestResultSessionContext | null) {
+  resumeWorkspaceActions.setAnalysis(result.analysis)
+  resumeWorkspaceActions.setMatching(result.matching)
+  resumeWorkspaceActions.setOptimizedResume(result.optimized)
+  resumeWorkspaceActions.setInterview(normalizeInterviewResult(result))
+  if (context?.resumeContent) resumeWorkspaceActions.setSourceResume(context.resumeContent)
+  if (context?.jdContent) resumeWorkspaceActions.setJobDescription(context.jdContent)
+}
+
 export interface ResultPageViewModel {
   result: ProcessResult | null
   resumeContent: string
@@ -153,6 +163,7 @@ interface ResultPageModelOptions {
 
 export function usePageModel(options: ResultPageModelOptions = {}): ResultPageViewModel {
   const router = useRouter()
+  const route = useRouteTransition()
   const {addHistory} = useHistoryStore()
   const enteredFromCard = router.params.fromCard === '1'
   const enteredFromLanding = options.enteredFromLanding === true
@@ -232,14 +243,16 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           ...history.progress,
         }
 
+        const context = buildContextFromHistory(history)
         setResult(processResult)
-        setResultContext(buildContextFromHistory(history))
+        setResultContext(context)
+        syncWorkspaceResult(processResult, context)
         setProgress(historyProgress)
         setSaved(true)
         setSavedHistoryId(id)
       } else {
         feedback.message('未找到结果')
-        void navigation.returnHome()
+        void route.reset(routePaths.home)
       }
     } catch (error) {
       console.error('加载历史记录失败:', error)
@@ -265,6 +278,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         }
         setResult(sessionResult)
         setResultContext(session.context)
+        syncWorkspaceResult(sessionResult, session.context)
         setReturnCard(null)
         setProgress(sessionProgress)
         void continueLatestSession({
@@ -274,7 +288,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         })
       } else {
         feedback.message('未找到结果')
-        void navigation.returnHome()
+        void route.reset(routePaths.home)
       }
     } catch (error) {
       console.error('加载结果失败:', error)
@@ -298,6 +312,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     await saveLatestResultSession(nextSession)
     setResult(nextResult)
     setProgress(nextProgress)
+    syncWorkspaceResult(nextResult, nextSession.context)
 
     return nextSession
   }
@@ -494,7 +509,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
 
     continuationRef.current += 1
-    void navigation.navigateTo(`/pages/complete/index?historyId=${encodeURIComponent(historyId)}`)
+    void route.navigate(appendRouteParams(routePaths.complete, {historyId}))
   }
 
   const handleShare = async () => {
@@ -509,10 +524,10 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   const handleBackHome = () => {
     continuationRef.current += 1
     if (enteredFromCard) {
-      return navigation.returnHome()
+      return route.reset(routePaths.home)
     }
 
-    return navigation.reLaunch('/pages/index/index')
+    return route.reset(routePaths.home)
   }
 
   const handleEditHistory = async () => {
@@ -522,7 +537,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
 
     continuationRef.current += 1
-    await navigation.navigateTo('/pages/create/index', {
+    await route.navigate(routePaths.create, {
       step: 'jobDescription',
       mode: 'editHistory',
       historyId: savedHistoryId,
@@ -545,6 +560,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
 
     setResult(nextResult)
+    syncWorkspaceResult(nextResult, resultContext)
     setSaved(false)
 
     if (!resultContext) return
