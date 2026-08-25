@@ -1,6 +1,5 @@
 import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react'
 import type {CSSProperties} from 'react'
-import {flushSync} from 'react-dom'
 import {Image, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
 import REFFO_LOGO from '@/assets/branding/reffo-logo.png'
@@ -14,6 +13,7 @@ import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import {resolveH5CardScale} from '@/components/business/HomeCardDeck/motion.h5'
 import {useAuthStore} from '@/store/authStore'
+import {runViewTransition} from '@/shared/motion'
 import {useHistoryStore} from '@/store/historyStore'
 import {useResumeStore} from '@/store/resumeStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
@@ -74,7 +74,8 @@ const ONBOARDING_QUEUE_SNAP_MS = 520
 const ONBOARDING_QUEUE_MAX_INERTIA_PROGRESS = 1.32
 const ONBOARDING_QUEUE_DISMISS_SELECTED_MIN_MS = 260
 const ONBOARDING_QUEUE_DISMISS_SELECTED_MAX_MS = 460
-const ONBOARDING_QUEUE_DETAIL_EXIT_MS = 420
+const ONBOARDING_QUEUE_DETAIL_CARD_EXIT_MS = 420
+const ONBOARDING_QUEUE_DETAIL_EXIT_MS = 820
 const ONBOARDING_QUEUE_UPLOAD_REMOVE_MS = 520
 const ONBOARDING_QUEUE_FOLDER_EXIT_MS = 820
 const ONBOARDING_JOB_FOLDER_OPEN_MS = 2200
@@ -113,38 +114,6 @@ interface QueueSlot {
 
 type LandingQueueUploadFile = Omit<ParsedResumeUploadFile, 'extractedText'> & {
   sizeLabel: string
-}
-
-type DocumentWithViewTransition = Document & {
-  startViewTransition?: (callback: () => void) => {
-    finished: Promise<void>
-  }
-}
-
-function runLandingViewTransition(update: () => void) {
-  if (
-    typeof document === 'undefined'
-    || typeof (document as DocumentWithViewTransition).startViewTransition !== 'function'
-  ) {
-    update()
-    return
-  }
-
-  const root = document.documentElement
-  root.dataset.reffoViewTransition = 'landing-analysis'
-  const transition = (document as DocumentWithViewTransition).startViewTransition?.(() => {
-    flushSync(update)
-  })
-
-  if (!transition) {
-    delete root.dataset.reffoViewTransition
-    update()
-    return
-  }
-
-  void transition.finished.finally(() => {
-    delete root.dataset.reffoViewTransition
-  })
 }
 
 const ONBOARDING_CARD_SEEDS: Record<string, string> = {
@@ -329,7 +298,11 @@ function resolveQueueLaneFrame(index: number, progress: number): QueueTrackFrame
 }
 
 function resolveQueueTransform(frame: QueueTrackFrame) {
-  return `translate3d(${frame.x}px, ${frame.y}px, ${frame.z}PX) rotateZ(var(--queue-rotate-z, -1deg)) rotateY(var(--queue-rotate-y, -6deg)) rotateX(var(--queue-rotate-x, 0deg)) scale(${frame.scale})`
+  const viewportX = frame.x >= 0
+    ? `clamp(0px, ${(frame.x / 3.93).toFixed(3)}vw, ${frame.x}px)`
+    : `clamp(${frame.x}px, ${(frame.x / 3.93).toFixed(3)}vw, 0px)`
+
+  return `translate3d(${viewportX}, ${frame.y}px, ${frame.z}PX) rotateZ(var(--queue-rotate-z, -1deg)) rotateY(var(--queue-rotate-y, -6deg)) rotateX(var(--queue-rotate-x, 0deg)) scale(${frame.scale})`
 }
 
 function resolveSelectedQueueY() {
@@ -341,14 +314,23 @@ function resolveSelectedQueueY() {
   return quantizeQueueValue((viewportHeight / 2) - queueBaseTop - ONBOARDING_QUEUE_SELECTED_CENTER_Y)
 }
 
+function resolveLandingFolderOriginOffset(scale: number) {
+  const viewportHeight = typeof window === 'undefined'
+    ? 852
+    : window.visualViewport?.height
+      || window.innerHeight
+      || document.documentElement.clientHeight
+      || 852
+
+  return quantizeQueueValue(((1 - scale) * viewportHeight) / (2 * scale))
+}
+
 function resolveSelectedQueueTransform() {
-  return `translate3d(${ONBOARDING_QUEUE_SELECTED_X}px, ${resolveSelectedQueueY()}px, ${ONBOARDING_QUEUE_SELECTED_Z}PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(${ONBOARDING_QUEUE_SELECTED_SCALE})`
+  return `translate3d(clamp(${ONBOARDING_QUEUE_SELECTED_X}px, ${(ONBOARDING_QUEUE_SELECTED_X / 3.93).toFixed(3)}vw, 0px), ${resolveSelectedQueueY()}px, ${ONBOARDING_QUEUE_SELECTED_Z}PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(${ONBOARDING_QUEUE_SELECTED_SCALE})`
 }
 
 function resolveSelectedDetailQueueTransform() {
-  const detailY = resolveSelectedQueueY() + ONBOARDING_QUEUE_DETAIL_DROP_Y
-
-  return `translate3d(${ONBOARDING_QUEUE_SELECTED_X}px, ${detailY}px, ${ONBOARDING_QUEUE_DETAIL_Z}PX) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(${ONBOARDING_QUEUE_DETAIL_SCALE})`
+  return `translate3d(clamp(${ONBOARDING_QUEUE_SELECTED_X}px, ${(ONBOARDING_QUEUE_SELECTED_X / 3.93).toFixed(3)}vw, 0px), var(--queue-detail-y), var(--queue-detail-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-detail-scale))`
 }
 
 function resolveQueueProgress(elapsedMs: number) {
@@ -1029,7 +1011,7 @@ export default function LandingPage() {
       id: LANDING_PRESET_JOB_DESCRIPTIONS[selectedJobIndex]?.id,
     })
     setIsLandingResultComplete(false)
-    runLandingViewTransition(() => {
+    void runViewTransition('forward', () => {
       setInlineLandingPhase('analysis')
     })
   }
@@ -1071,24 +1053,27 @@ export default function LandingPage() {
       setQueueUploadProgress(0)
       setQueueUploadedFile(null)
     }
-    setIsQueueSelectionDetail(false)
     setIsQueueDetailLeaving(true)
     setIsQueueDetailRestored(false)
     setIsQueueSelectionExpanded(true)
     setQueueClearanceSourceOffset(selectedQueueSourceOffset)
-    setQueueMotionPhase('selected')
-    applyQueueProgress(queueProgressRef.current, {
-      selectedSourceOffset: selectedQueueSourceOffset,
-      clearanceSourceOffset: selectedQueueSourceOffset,
-      isSelectedExpanded: true,
-      isSelectedDetail: false,
-    })
 
     queueDetailExitTimerRef.current = window.setTimeout(() => {
-      queueDetailExitTimerRef.current = null
-      setIsQueueDetailLeaving(false)
-      setSelectedQueueDetailMode(null)
-    }, ONBOARDING_QUEUE_DETAIL_EXIT_MS)
+      setIsQueueSelectionDetail(false)
+      setQueueMotionPhase('selected')
+      applyQueueProgress(queueProgressRef.current, {
+        selectedSourceOffset: selectedQueueSourceOffset,
+        clearanceSourceOffset: selectedQueueSourceOffset,
+        isSelectedExpanded: true,
+        isSelectedDetail: false,
+      })
+
+      queueDetailExitTimerRef.current = window.setTimeout(() => {
+        queueDetailExitTimerRef.current = null
+        setIsQueueDetailLeaving(false)
+        setSelectedQueueDetailMode(null)
+      }, ONBOARDING_QUEUE_DETAIL_EXIT_MS - ONBOARDING_QUEUE_DETAIL_CARD_EXIT_MS)
+    }, ONBOARDING_QUEUE_DETAIL_CARD_EXIT_MS)
   }
 
   const handleRemoveQueueResumeUpload = () => {
@@ -1949,6 +1934,7 @@ export default function LandingPage() {
       && isQueueUploadPending
       && !isQueueUploading
     const shouldShowDetailProgress = selectedQueueDetailMode === 'resume' || isQueueUploadComplete
+    const landingFolderOriginOffset = resolveLandingFolderOriginOffset(landingVisualScale)
     const queueCycleStyle = isQueueStep
       ? ({
         '--queue-rotate-x': ONBOARDING_QUEUE_CARD_ROTATE_X,
@@ -1958,6 +1944,11 @@ export default function LandingPage() {
         '--queue-selected-y': `${resolveSelectedQueueY()}px`,
         '--queue-selected-z': `${ONBOARDING_QUEUE_SELECTED_Z}PX`,
         '--queue-selected-scale': ONBOARDING_QUEUE_SELECTED_SCALE,
+        '--queue-detail-y': `${resolveSelectedQueueY() + ONBOARDING_QUEUE_DETAIL_DROP_Y + landingFolderOriginOffset}px`,
+        '--queue-detail-z': `${ONBOARDING_QUEUE_DETAIL_Z}PX`,
+        '--queue-detail-scale': ONBOARDING_QUEUE_DETAIL_SCALE,
+        '--landing-folder-origin-offset-y': `${landingFolderOriginOffset}px`,
+        '--landing-folder-origin-bottom': `${-landingFolderOriginOffset}px`,
         '--queue-dismiss-ms': `${selectedDismissDurationMs}ms`,
       } as CSSProperties)
       : undefined
@@ -2039,9 +2030,7 @@ export default function LandingPage() {
         ) : null}
 
         <View
-          className={classNames('reffo-landing-onboarding__visual-scale', {
-            'reffo-landing-onboarding__visual-scale--folder': isQueueFolderStep,
-          })}
+          className='reffo-landing-onboarding__visual-scale'
           style={{'--landing-visual-scale': landingVisualScale} as CSSProperties}
         >
         <View className='reffo-landing-onboarding__cards reffo-home-deck-wrap--enhanced'>
@@ -2198,76 +2187,8 @@ export default function LandingPage() {
           )}
         </View>
 
-        <View className='reffo-landing-onboarding__queue-top'>
-          <View
-            className='reffo-landing-onboarding__skip reffo-landing-onboarding__skip--queue'
-            onClick={() => {
-              void completeOnboarding()
-            }}
-          >
-            <Text>跳过教程</Text>
-          </View>
-          <View className='reffo-landing-onboarding__pager' aria-label='教程页码'>
-            <View className={classNames('reffo-landing-onboarding__pager-dot', {
-              'reffo-landing-onboarding__pager-dot--active': !isQueueFolderStep && !isInlineLandingActive,
-            })} />
-            <View className={classNames('reffo-landing-onboarding__pager-dot', {
-              'reffo-landing-onboarding__pager-dot--active': isQueueFolderStep && inlineLandingPhase !== 'result',
-            })} />
-            <View className={classNames('reffo-landing-onboarding__pager-dot', {
-              'reffo-landing-onboarding__pager-dot--active': inlineLandingPhase === 'result',
-            })} />
-          </View>
-        </View>
-
         {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
           <>
-            <View className='reffo-landing-onboarding__detail-chrome'>
-              <View
-                className={classNames('reffo-landing-onboarding__detail-return', {
-                  'reffo-landing-onboarding__detail-return--completion': inlineLandingPhase === 'result',
-                  'reffo-landing-onboarding__detail-return--completion-ready':
-                    inlineLandingPhase === 'result' && isLandingResultComplete,
-                })}
-                role='button'
-                aria-disabled={inlineLandingPhase === 'result' && !isLandingResultComplete}
-                onClick={event => {
-                  event.stopPropagation?.()
-
-                  if (inlineLandingPhase === 'result') {
-                    landingResultCompleteRef.current?.()
-                    return
-                  }
-
-                  if (inlineLandingPhase === 'analysis') {
-                    runLandingViewTransition(() => {
-                      setInlineLandingPhase(null)
-                    })
-                    return
-                  }
-
-                  if (queueMotionPhase === 'job-selecting') {
-                    closeJobFolder()
-                    return
-                  }
-
-                  if (queueMotionPhase === 'folder') {
-                    exitQueueFolder()
-                    return
-                  }
-
-                  if (queueMotionPhase === 'detail') {
-                    exitSelectedQueueDetail()
-                  }
-
-                  if (queueMotionPhase === 'creating') {
-                    returnFromLandingJobDescription()
-                  }
-                }}
-              >
-                <Text>{inlineLandingPhase === 'result' ? '完成' : '返回'}</Text>
-              </View>
-            </View>
             {shouldShowDetailProgress ? (
               <View
                 className='reffo-landing-onboarding__detail-folder'
@@ -2389,6 +2310,78 @@ export default function LandingPage() {
         ) : null}
         </View>
 
+        <View className='reffo-landing-onboarding__queue-top'>
+          <View
+            className='reffo-landing-onboarding__skip reffo-landing-onboarding__skip--queue'
+            onClick={() => {
+              void completeOnboarding()
+            }}
+          >
+            <Text>跳过教程</Text>
+          </View>
+          <View className='reffo-landing-onboarding__pager' aria-label='教程页码'>
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': !isQueueFolderStep && !isInlineLandingActive,
+            })} />
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': isQueueFolderStep && inlineLandingPhase !== 'result',
+            })} />
+            <View className={classNames('reffo-landing-onboarding__pager-dot', {
+              'reffo-landing-onboarding__pager-dot--active': inlineLandingPhase === 'result',
+            })} />
+          </View>
+          {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
+            <View className='reffo-landing-onboarding__detail-chrome'>
+              <View
+                className={classNames('reffo-landing-onboarding__detail-return', {
+                  'reffo-landing-onboarding__detail-return--completion': inlineLandingPhase === 'result',
+                  'reffo-landing-onboarding__detail-return--completion-ready':
+                    inlineLandingPhase === 'result' && isLandingResultComplete,
+                })}
+                role='button'
+                aria-disabled={inlineLandingPhase === 'result' && !isLandingResultComplete}
+                onClick={event => {
+                  event.stopPropagation?.()
+
+                  if (inlineLandingPhase === 'result') {
+                    landingResultCompleteRef.current?.()
+                    return
+                  }
+
+                  if (inlineLandingPhase === 'analysis') {
+                    void runViewTransition('forward', () => {
+                      setInlineLandingPhase(null)
+                    })
+                    return
+                  }
+
+                  if (queueMotionPhase === 'job-selecting') {
+                    closeJobFolder()
+                    return
+                  }
+
+                  if (queueMotionPhase === 'folder') {
+                    exitQueueFolder()
+                    return
+                  }
+
+                  if (queueMotionPhase === 'detail') {
+                    exitSelectedQueueDetail()
+                  }
+
+                  if (queueMotionPhase === 'creating') {
+                    returnFromLandingJobDescription()
+                  }
+                }}
+              >
+                <Text>{inlineLandingPhase === 'result' ? '完成' : '返回'}</Text>
+              </View>
+            </View>
+          ) : (
+            <View className='reffo-landing-onboarding__queue-top-spacer' aria-hidden='true' />
+          )}
+        </View>
+
         {onboardingStep !== 'queue' ? (
           <View className='reffo-landing-onboarding__headline reffo-landing-onboarding__headline--target'>
             <Text>一个</Text>
@@ -2490,7 +2483,7 @@ export default function LandingPage() {
             onResultCompletionChange={handleLandingResultCompletionChange}
             onExit={() => {
               setIsLandingResultComplete(false)
-              runLandingViewTransition(() => {
+              void runViewTransition('forward', () => {
                 setInlineLandingPhase(null)
               })
             }}

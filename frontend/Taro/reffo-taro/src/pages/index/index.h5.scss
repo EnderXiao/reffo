@@ -171,6 +171,10 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
   animation-delay: 520ms;
 }
 
+.reffo-home.reffo-home--landing-entry .reffo-home__hero {
+  animation-delay: 1120ms;
+}
+
 .reffo-home--entry-active .reffo-home-deck__rail {
   animation: reffo-home-return-rail-in 460ms cubic-bezier(0.16, 1, 0.3, 1) 580ms both;
 }
@@ -599,7 +603,41 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   font-size: 12px;
   line-height: 14px;
   font-weight: 500;
+}
+
+.reffo-home__hero-label-row {
+  display: flex;
+  align-items: flex-start;
   margin-bottom: 7px;
+}
+
+.reffo-home__hero-label-spark {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 16px;
+  margin-top: -2px;
+  margin-left: 3px;
+}
+
+.reffo-home__hero-label-spark-main,
+.reffo-home__hero-label-spark-small {
+  position: absolute;
+  color: #1c77eb;
+  line-height: 1;
+}
+
+.reffo-home__hero-label-spark-main {
+  left: 0;
+  top: 2px;
+  font-size: 16px;
+}
+
+.reffo-home__hero-label-spark-small {
+  right: 0;
+  top: 0;
+  font-size: 8px;
+  opacity: 0.86;
 }
 
 .reffo-home__hero-create-body {

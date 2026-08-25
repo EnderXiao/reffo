@@ -87,7 +87,7 @@ export default function GenerationStageH5({
   }, [state.baseLocation, state.companyName, state.monogram, state.positionName, state.resumeTitle])
 
   return (
-    <View className='reffo-create-generation'>
+    <View className='reffo-create-generation' data-testid='create-analysis-stage'>
       <View className='reffo-create-generation__backdrop' />
       {isLandingFlow && onLandingBack && onLandingSkip ? (
         <LandingFlowHeader
@@ -127,7 +127,7 @@ export default function GenerationStageH5({
             </Text>
           </View>
         </View>
-        <View className='reffo-create-generation__cancel' onClick={onCancelGeneration}>
+        <View className='reffo-create-generation__cancel' onClick={onCancelGeneration} data-testid='analysis-cancel-action'>
           <Text>× 取消生成</Text>
         </View>
       </View>

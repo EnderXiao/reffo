@@ -2,9 +2,9 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {useDidShow, useRouter} from '@tarojs/taro'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import {useHistoryStore} from '@/store/historyStore'
-import {useJDStore} from '@/store/jdStore'
+import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
-import {navigation} from '@/utils/navigation'
+import {appendRouteParams, routePaths, useRouteTransition} from '@/shared/routing'
 import {toHistoryCardItems} from './homeCardData'
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
@@ -95,6 +95,7 @@ export interface IndexPageViewModel {
 
 export function usePageModel(logoSource: string): IndexPageViewModel {
   const router = useRouter()
+  const route = useRouteTransition()
   const {histories, loading, loadHistories} = useHistoryStore()
   const {
     latestSourceResume,
@@ -210,13 +211,9 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [])
 
   const handleConfirmCreate = useCallback(() => {
-    useJDStore.getState().reset()
+    resumeWorkspaceActions.reset()
 
-    void navigation.navigateTo(
-      latestSourceResume
-        ? '/pages/create/index?step=jobDescription'
-        : '/pages/create/index',
-    )
+    void route.navigate(appendRouteParams(routePaths.create, latestSourceResume ? {step: 'jobDescription'} : undefined))
   }, [latestSourceResume])
 
   const handleCancelCreate = useCallback(() => {
@@ -226,11 +223,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [shouldShowCreateCard])
 
   const handleViewHistory = useCallback(() => {
-    void navigation.navigateTo(
-      latestSourceResume
-        ? '/pages/create/index?step=resumeSummary'
-        : '/pages/create/index',
-    )
+    void route.navigate(appendRouteParams(routePaths.create, latestSourceResume ? {step: 'resumeSummary'} : undefined))
   }, [latestSourceResume])
 
   const handleCardPress = useCallback((card: HomeCardItem) => {
@@ -243,9 +236,10 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
       return
     }
 
-    void navigation.navigateTo(
-      `/pages/result/index?id=${encodeURIComponent(targetHistory.id)}&fromCard=1`,
-    )
+    void route.navigate(appendRouteParams(routePaths.result, {
+      id: targetHistory.id,
+      fromCard: 1,
+    }))
   }, [histories, resolvedCreateMode])
 
   const handleCardChange = useCallback((_: HomeCardItem, index: number) => {

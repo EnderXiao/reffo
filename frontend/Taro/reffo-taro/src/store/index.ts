@@ -33,6 +33,8 @@ export {useHistoryStore} from './historyStore';
 export {useSourceResumeStore} from './sourceResumeStore';
 export {useAuthStore} from './authStore';
 export {useLandingFlowStore} from './landingFlowStore';
+export {resumeWorkspaceActions, useResumeWorkspaceStore} from './resumeWorkspaceStore';
+export type {ResumeWorkspaceState, GenerationStatus} from './resumeWorkspaceStore';
 
 // 以下 Store 将在后续任务中实现
 // export { useOptimizedStore } from './optimizedStore';

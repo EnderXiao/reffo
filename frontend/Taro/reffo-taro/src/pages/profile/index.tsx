@@ -1,12 +1,13 @@
 import {Image, Text, View} from '@tarojs/components'
 import {useEffect} from 'react'
 import {useAuthStore} from '@/store/authStore'
-import {navigation} from '@/utils/navigation'
 import {feedback} from '@/utils/feedback'
 import {resolveUserAvatar} from '@/utils/generated-avatar'
+import {routePaths, useRouteTransition} from '@/shared/routing'
 import './index.scss'
 
 export default function ProfilePage() {
+  const route = useRouteTransition()
   const session = useAuthStore(state => state.session)
   const profile = useAuthStore(state => state.profile)
   const loadProfile = useAuthStore(state => state.loadProfile)
@@ -14,7 +15,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!session) {
-      void navigation.redirectTo('/pages/auth/index')
+      void route.replace(routePaths.auth)
       return
     }
     if (!profile) {
@@ -25,13 +26,13 @@ export default function ProfilePage() {
   const handleSignOut = async () => {
     await signOut()
     feedback.success('已退出登录', {duration: 1000})
-    void navigation.reLaunch('/pages/index/index')
+    void route.reset(routePaths.home)
   }
 
   return (
     <View className='reffo-profile'>
       <View className='reffo-profile__topbar'>
-        <View className='reffo-profile__back' onClick={() => void navigation.navigateBack()} aria-label='返回'>‹</View>
+        <View className='reffo-profile__back' onClick={() => void route.back()} aria-label='返回'>‹</View>
         <Text className='reffo-profile__heading'>个人资料</Text>
         <View className='reffo-profile__topbar-spacer' />
       </View>

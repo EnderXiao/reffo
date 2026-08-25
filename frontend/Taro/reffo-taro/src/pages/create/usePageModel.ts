@@ -2,7 +2,12 @@ import {useEffect, useMemo, useRef, useState} from 'react'
 import {useRouter} from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {useHistoryStore, useJDStore, useLandingFlowStore, useResumeStore, useSourceResumeStore} from '@/store'
+import {
+  useHistoryStore,
+  useLandingFlowStore,
+  useResumeWorkspaceStore,
+  useSourceResumeStore,
+} from '@/store'
 import type {
   MatchingResult,
   ProcessResult,
@@ -12,7 +17,7 @@ import type {
 } from '@/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {feedback} from '@/utils/feedback'
-import {navigation} from '@/utils/navigation'
+import {routePaths, useRouteTransition} from '@/shared/routing'
 import {storage} from '@/utils/storage'
 import {
   saveLatestResultSession,
@@ -349,6 +354,13 @@ function buildGenerationState(args: {
 
 export function usePageModel(options: CreatePageModelOptions = {}): CreatePageViewModel {
   const router = useRouter()
+  const route = useRouteTransition()
+  const workspaceSourceResume = useResumeWorkspaceStore(state => state.sourceResume)
+  const workspaceJobDescription = useResumeWorkspaceStore(state => state.jobDescription)
+  const setWorkspaceSourceResume = useResumeWorkspaceStore(state => state.setSourceResume)
+  const setWorkspaceJobDescription = useResumeWorkspaceStore(state => state.setJobDescription)
+  const setWorkspaceAnalysis = useResumeWorkspaceStore(state => state.setAnalysis)
+  const setWorkspaceMatching = useResumeWorkspaceStore(state => state.setMatching)
   const initialLandingFlow = useLandingFlowStore.getState()
   const isLandingFlow = useLandingFlowStore(state => state.source === 'landing')
   const shouldAutoGenerateLanding = isLandingFlow && (
@@ -391,7 +403,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   const [jobDescriptionState, setJobDescriptionState] =
     useState<JobDescriptionStepState>(() => {
       const initial = createInitialJobDescriptionState(
-        landingJob?.content || useJDStore.getState().jdContent,
+        landingJob?.content || workspaceJobDescription,
       )
       return landingJob
         ? {
@@ -502,16 +514,16 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
 
         if (!history) {
           feedback.message('未找到要编辑的简历')
-          void navigation.returnHome()
+          void route.reset(routePaths.home)
           return
         }
 
         setEditingHistory(history)
         setJobDescriptionState(buildJobDescriptionStateFromHistory(history))
-        useResumeStore.getState().setResumeContent(
+        setWorkspaceSourceResume(
           history.resultContext?.resumeContent || history.resumeContent,
         )
-        useJDStore.getState().setJDContent(
+        setWorkspaceJobDescription(
           history.resultContext?.jdContent || history.jdContent,
         )
         setCurrentStep('jobDescription')
@@ -552,7 +564,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       return
     }
 
-    useResumeStore.getState().setResumeContent(latestSourceResume.resumeMarkdown)
+      setWorkspaceSourceResume(latestSourceResume.resumeMarkdown)
     setResumeUploadState(previous => {
       if (previous.markdown.trim()) {
         return previous
@@ -742,7 +754,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       return
     }
 
-    useResumeStore.getState().setResumeContent(sourceResume.resumeMarkdown)
+      setWorkspaceSourceResume(sourceResume.resumeMarkdown)
     setResumeUploadState(previous => ({
       ...previous,
       status: 'success',
@@ -793,7 +805,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       await useSourceResumeStore
         .getState()
         .deleteLatestSourceResume(sourceResume.id)
-      useResumeStore.getState().setResumeContent('')
+      setWorkspaceSourceResume('')
       feedback.success('请上传新的源简历', {duration: 1400})
     } catch (error) {
       console.error('delete source resume failed', error)
@@ -1011,7 +1023,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
           original_file_name: payload.originalFileName,
         })
 
-        useResumeStore.getState().setResumeContent(payload.resumeMarkdown)
+        setWorkspaceSourceResume(payload.resumeMarkdown)
         await useSourceResumeStore
           .getState()
           .setLatestSourceResume(savedSourceResume)
@@ -1059,7 +1071,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         })
 
         feedback.success('信息已更新', {duration: 1200})
-        await navigation.redirectTo('/pages/result/index', {
+        await route.replace(routePaths.result, {
           id: editHistoryId,
           fromCard: 1,
         })
@@ -1082,7 +1094,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       const resumeMarkdown = isLandingFlow
         ? landingResume?.markdown.trim() || ''
         : latestSourceResume?.resumeMarkdown.trim() ||
-          useResumeStore.getState().resumeContent.trim() ||
+          workspaceSourceResume.trim() ||
           resumeUploadState.markdown.trim()
       const jdText = buildJobDescriptionPayload(jobDescriptionState)
 
@@ -1102,8 +1114,8 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         }),
       )
 
-      useResumeStore.getState().setResumeContent(resumeMarkdown)
-      useJDStore.getState().setJDContent(jdText)
+      setWorkspaceSourceResume(resumeMarkdown)
+      setWorkspaceJobDescription(jdText)
 
       const presetJdId = isLandingFlow ? landingJob?.id : undefined
       const analysis = isLandingFlow
@@ -1153,8 +1165,8 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
 
       const processResult = buildInitialProcessResult(analysis, matching)
 
-      useResumeStore.getState().setAnalysis(processResult.analysis)
-      useJDStore.getState().setMatching(processResult.matching)
+      setWorkspaceAnalysis(processResult.analysis)
+      setWorkspaceMatching(processResult.matching)
 
       const initialResultSession: LatestResultSession = {
         result: processResult,
@@ -1190,9 +1202,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         return true
       }
 
-      await navigation.navigateTo(
-        isLandingFlow ? '/pages/landing-result/index' : '/pages/result/index',
-      )
+      await route.navigate(isLandingFlow ? routePaths.landingResult : routePaths.result)
       return true
     } catch (error) {
       if (generationRequestRef.current !== requestId) {
@@ -1213,7 +1223,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     const resumeMarkdown = isLandingFlow
       ? landingResume?.markdown.trim() || ''
       : latestSourceResume?.resumeMarkdown.trim() ||
-        useResumeStore.getState().resumeContent.trim() ||
+        workspaceSourceResume.trim() ||
         resumeUploadState.markdown.trim()
 
     if (
@@ -1274,20 +1284,20 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   }
 
   const handleReturnHome = () => {
-    return navigation.reLaunch('/pages/index/index')
+    return route.reset(routePaths.home)
   }
 
   const handleClose = () => {
     if (isLandingFlow) {
       useLandingFlowStore.getState().clear()
     }
-    void navigation.navigateBack()
+    void route.back()
   }
 
   const handleLandingSkip = async () => {
     await storage.setItem('reffo.landing.seen', '1')
     useLandingFlowStore.getState().clear()
-    await navigation.reLaunch('/pages/index/index')
+    await route.reset(routePaths.home)
   }
 
   const resumeUploadViewState: ResumeUploadStepState = {

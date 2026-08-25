@@ -745,6 +745,13 @@ describe('启动封页', () => {
     })
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail')
+    const queueRoot = container.firstElementChild as HTMLElement
+    const detailSourceBeforeFolder = container.querySelector<HTMLElement>('[data-queue-offset="3"]')
+    const detailTransformBeforeFolder = detailSourceBeforeFolder?.style.transform
+
+    expect(queueRoot.style.getPropertyValue('--queue-detail-y')).not.toBe('')
+    expect(queueRoot.style.getPropertyValue('--landing-folder-origin-offset-y')).not.toBe('')
+    expect(detailTransformBeforeFolder).toContain('var(--queue-detail-y)')
     expect(container.querySelector('.reffo-landing-onboarding__queue-detail-back')).not.toBeNull()
     expect(container.querySelector('.reffo-home-card__queue-face--resume-back')).not.toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
@@ -763,10 +770,21 @@ describe('启动封页', () => {
     })
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail-leaving')
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail')
+    expect(detailSourceBeforeFolder?.style.transform).toBe(detailTransformBeforeFolder)
     expect(container.querySelector('.reffo-landing-onboarding__queue-detail-back')).not.toBeNull()
 
     await act(async () => {
       jest.advanceTimersByTime(430)
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail-leaving')
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-selected')
+    expect(detailSourceBeforeFolder?.style.transform).not.toBe(detailTransformBeforeFolder)
+
+    await act(async () => {
+      jest.advanceTimersByTime(400)
       await Promise.resolve()
     })
 
@@ -951,6 +969,8 @@ describe('启动封页', () => {
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail-restored')
     expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[0]?.className)
       .toContain('reffo-landing-onboarding__pager-dot--active')
+    expect(container.querySelector<HTMLElement>('[data-queue-offset="3"]')?.style.transform)
+      .toBe(detailTransformBeforeFolder)
     expect(mockStorageSetItem).not.toHaveBeenCalled()
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
@@ -1035,7 +1055,7 @@ describe('启动封页', () => {
 
     await act(async () => {
       fireEvent.click(screen.getByText('返回'))
-      jest.advanceTimersByTime(430)
+      jest.advanceTimersByTime(830)
       await Promise.resolve()
     })
 

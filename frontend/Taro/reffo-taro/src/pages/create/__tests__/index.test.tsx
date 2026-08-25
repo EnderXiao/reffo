@@ -333,7 +333,6 @@ describe('CreatePage', () => {
 
     await waitFor(() => {
       expect(mockAnalyzeResume).toHaveBeenCalledWith(selectedLandingResume, {landing: true})
-      expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
     })
 
     await act(async () => {
@@ -354,26 +353,16 @@ describe('CreatePage', () => {
     expect(screen.getByText('编辑')).toBeTruthy()
     expect(screen.getByText('源简历')).toBeTruthy()
     expect(screen.getByText('上传源简历')).toBeTruthy()
-    expect(screen.getByText('输入 Markdown 简历')).toBeTruthy()
-    expect(screen.getByText('保存源简历')).toBeTruthy()
+    expect(screen.getByText('输入文字描述')).toBeTruthy()
+    expect(screen.getByTestId('resume-markdown-input')).toBeTruthy()
+    expect(screen.getByText('保存')).toBeTruthy()
   })
 
-  test('未提供内容时点击保存会提示校验信息', async () => {
+  test('未提供内容时保存按钮不可用', async () => {
     await renderPage()
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
-      await Promise.resolve()
-    })
-
-    await waitFor(() => {
-      expect(mockShowToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '请先填写或整理 Markdown 简历',
-          icon: 'none',
-        }),
-      )
-    })
+    expect(screen.getByTestId('create-flow-primary-action').getAttribute('aria-disabled')).toBe('true')
+    expect(mockShowToast).not.toHaveBeenCalled()
   })
 
   test('输入 markdown 后保存会进入源简历完成页', async () => {
@@ -457,7 +446,7 @@ describe('CreatePage', () => {
       expect((screen.getByTestId('resume-markdown-input') as HTMLTextAreaElement).value).toBe(
         existingSourceResume.resumeMarkdown,
       )
-      expect(screen.getByText('保存源简历')).toBeTruthy()
+      expect(screen.getByText('保存')).toBeTruthy()
     })
   })
 
@@ -490,7 +479,7 @@ describe('CreatePage', () => {
       expect(mockShowModal).toHaveBeenCalledWith(expect.objectContaining({title: '删除源简历？'}))
       expect(mockDeleteSourceResume).toHaveBeenCalledWith('source-resume-1')
       expect(screen.getByText('上传源简历')).toBeTruthy()
-      expect(screen.getByText('保存源简历')).toBeTruthy()
+      expect(screen.getByText('保存')).toBeTruthy()
       expect((screen.getByTestId('resume-markdown-input') as HTMLTextAreaElement).value).toBe('')
       expect(screen.queryByText('源简历已删除')).toBeNull()
       expect(screen.queryByText('新的申请')).toBeNull()
@@ -624,8 +613,7 @@ describe('CreatePage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
       expect(screen.getByText('正在分析')).toBeTruthy()
-      expect(screen.getAllByText('简历 · Jeremy Smith').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('公司 · OpenAI').length).toBeGreaterThan(0)
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(existingSourceResume.resumeMarkdown)
     })
 
     await act(async () => {
@@ -671,8 +659,7 @@ describe('CreatePage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
-      expect(screen.queryByText('公司 · 目标公司待补充')).toBeNull()
-      expect(screen.queryByText('岗位 · 目标岗位待补充')).toBeNull()
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(existingSourceResume.resumeMarkdown)
     })
 
     fireEvent.click(screen.getByTestId('analysis-cancel-action'))

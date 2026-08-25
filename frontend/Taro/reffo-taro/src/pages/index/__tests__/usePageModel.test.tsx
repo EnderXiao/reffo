@@ -2,7 +2,7 @@ import React from 'react'
 import {act, fireEvent, render, screen} from '@testing-library/react'
 import Taro from '@tarojs/taro'
 import {useHistoryStore} from '@/store/historyStore'
-import {useJDStore} from '@/store/jdStore'
+import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import type {ResumeHistory} from '@/types'
 import {usePageModel} from '../model/usePageModel'
@@ -15,15 +15,15 @@ jest.mock('@tarojs/taro', () => ({
 }))
 
 jest.mock('@/store/historyStore')
-jest.mock('@/store/jdStore', () => ({
-  useJDStore: {
-    getState: jest.fn(),
+jest.mock('@/store/resumeWorkspaceStore', () => ({
+  resumeWorkspaceActions: {
+    reset: jest.fn(),
   },
 }))
 jest.mock('@/store/sourceResumeStore')
 
 const mockUseHistoryStore = useHistoryStore as jest.MockedFunction<typeof useHistoryStore>
-const mockUseJDStoreGetState = useJDStore.getState as jest.Mock
+const mockResetWorkspace = resumeWorkspaceActions.reset as jest.Mock
 const mockUseRouter = (Taro as any).useRouter as jest.Mock
 const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
@@ -63,18 +63,12 @@ function HookProbe() {
 describe('usePageModel', () => {
   const mockLoadHistories = jest.fn()
   const mockLoadLatestSourceResume = jest.fn()
-  const mockResetJDStore = jest.fn()
-
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
     window.history.replaceState(null, '', '/')
     window.sessionStorage.removeItem(RESULT_RETURN_HOME_STORAGE_KEY)
     mockUseRouter.mockReturnValue({params: {}})
-    mockUseJDStoreGetState.mockReturnValue({
-      reset: mockResetJDStore,
-    })
-
     mockUseHistoryStore.mockReturnValue({
       histories: [],
       loading: {isLoading: false, error: null},
@@ -225,7 +219,7 @@ describe('usePageModel', () => {
 
     fireEvent.click(screen.getByRole('button', {name: 'confirm-create'}))
 
-    expect(mockResetJDStore).toHaveBeenCalledTimes(1)
+    expect(mockResetWorkspace).toHaveBeenCalledTimes(1)
     expect(Taro.navigateTo).toHaveBeenCalledWith({
       url: '/pages/create/index',
     })
@@ -253,7 +247,7 @@ describe('usePageModel', () => {
 
     fireEvent.click(screen.getByRole('button', {name: 'confirm-create'}))
 
-    expect(mockResetJDStore).toHaveBeenCalledTimes(1)
+    expect(mockResetWorkspace).toHaveBeenCalledTimes(1)
     expect(Taro.navigateTo).toHaveBeenCalledWith({
       url: '/pages/create/index?step=jobDescription',
     })

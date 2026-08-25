@@ -1,6 +1,6 @@
 import {Component, type ErrorInfo, type PropsWithChildren} from 'react'
 import REFFO_LOGO from '../../assets/branding/reffo-logo.png'
-import PageView from './PageView'
+import PageView from './PageView.h5'
 import {usePageModel} from './model/usePageModel'
 
 class LocalErrorBoundary extends Component<PropsWithChildren, {error: Error | null}> {

@@ -21,7 +21,6 @@ import type {
   JobDescriptionStepState,
   ResumeUploadStepState,
 } from './types'
-import '@/pages/index/index.h5.scss'
 import './index.h5.scss'
 
 type DocumentWithViewTransition = Document & {
@@ -265,7 +264,7 @@ function ResumeUploadStepH5({
           value={state.markdown}
           placeholder='描述你的简历内容'
           maxlength={20000}
-          onInput={event => onMarkdownChange(event.detail.value)}
+          onInput={event => onMarkdownChange(event.detail?.value ?? event.target?.value ?? '')}
           className='reffo-create-textarea reffo-create-textarea--resume'
           data-testid='resume-markdown-input'
         />

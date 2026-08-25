@@ -8,10 +8,10 @@ export const HOME_PAGE_CONTENT = {
     titleMiddle: '，',
     titleSuffixPrefix: '一份',
     titleAccentTwo: '简历',
-    strategyLabel: 'Reffo 优化策略 ✦',
+    strategyLabel: 'Reffo 优化策略',
     createTitlePrefix: '量身定制',
     createTitleAccent: '简历',
-    createGuideLabel: 'Reffo是如何工作的 ✦',
+    createGuideLabel: 'Reffo是如何工作的',
     createGuideBody: '智能弥合简历和工作岗位之间的差距，提高在就业市场的竞争力',
   },
   footer: {

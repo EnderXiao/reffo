@@ -8,6 +8,7 @@ import ReffoGlyph from '@/components/business/HomeCardDeck/ReffoGlyph.h5'
 import {type EmailOtpConfig, type OAuthProvider} from '@/services/auth'
 import {useAuthStore} from '@/store/authStore'
 import {feedback} from '@/utils/feedback'
+import {routePaths, useRouteTransition} from '@/shared/routing'
 
 import './index.scss'
 
@@ -95,6 +96,7 @@ function getPhaseContent(phase: AuthPhase, email: string) {
 }
 
 export default function AuthPage() {
+  const route = useRouteTransition()
   const [phase, setPhase] = useState<AuthPhase>('login')
   const [transitionDirection, setTransitionDirection] = useState<TransitionDirection>('forward')
   const [email, setEmail] = useState('')
@@ -136,7 +138,7 @@ export default function AuthPage() {
       return
     }
 
-    void Taro.redirectTo({url: '/pages/index/index'})
+    void route.reset(routePaths.home)
   }
 
   useEffect(() => {
@@ -459,7 +461,7 @@ export default function AuthPage() {
     if (pages.length > 1) {
       void Taro.navigateBack()
     } else {
-      void Taro.redirectTo({url: '/pages/index/index'})
+      void route.reset(routePaths.home)
     }
   }
 
@@ -589,9 +591,9 @@ export default function AuthPage() {
         {resendSeconds > 0 ? (
           <Text>{resendSeconds} 秒后可重新发送</Text>
         ) : (
-          <Text className='reffo-auth__resend-action' role='button' onClick={() => void handleResend()}>
+          <View className='reffo-auth__resend-action' role='button' onClick={() => void handleResend()}>
             重新发送验证码
-          </Text>
+          </View>
         )}
       </View>
       {loading ? (
