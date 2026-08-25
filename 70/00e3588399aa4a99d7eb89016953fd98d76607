@@ -1,0 +1,45 @@
+backend/.env.example
+  s_ffa066f5605909::t_4396b84e886c05 77,81
+backend/src/prompts/prompts.test.ts
+  s_ffa066f5605909::t_74f9bfa617495d 80-81,120,129-137
+backend/src/prompts/prompts.ts
+  s_ffa066f5605909::t_4512fa601d2fcb 3-7,16-19,80-81,219,270,279-280,283-284,316-317,321-323,355,423-425
+backend/src/prompts/v42-prompts.ts
+  s_ffa066f5605909::t_20791d6928d15a 1-34
+backend/src/routes/mvp.ts
+  s_ffa066f5605909::t_68f7f4957cc7e0 137,139,319,399,505,715
+backend/src/workflows/resume-optimization-workflow.ts
+  s_ffa066f5605909::t_f233c8a139c914 94
+docs/compliance/01-隐私政策.md
+  s_ffa066f5605909::t_634deba3527e24 1-278
+docs/compliance/02-用户协议.md
+  s_ffa066f5605909::t_78be9598f12902 1-234
+docs/compliance/03-AI如何处理我的简历.md
+  s_ffa066f5605909::t_c8880a3fe11737 1-170
+docs/compliance/03-个人信息处理清单.md
+  s_ffa066f5605909::t_796f9cc47616fe 1-67
+docs/compliance/04-第三方服务清单.md
+  s_ffa066f5605909::t_3fc9a991ec4b93 1-81
+docs/compliance/05-协议与同意触发矩阵.md
+  s_ffa066f5605909::t_39fd281750d612 1-70
+docs/compliance/06-待补充信息与合规风险.md
+  s_ffa066f5605909::t_8df14e8103d73e 1-187
+docs/compliance/07-协议与代码一致性报告.md
+  s_ffa066f5605909::t_23bdad84e147cb 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7000e3588399aa4a99d7eb89016953fd98d76607",
+  "prompts": {},
+  "sessions": {
+    "s_ffa066f5605909": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02872-1aca-7f62-afc7-111db70231cc",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
