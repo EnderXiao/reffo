@@ -1,0 +1,85 @@
+frontend/Taro/reffo-taro/src/pages/auth/index.tsx
+  s_ffa066f5605909::t_1a177c639e24d4 11,99,141,464,594,596
+frontend/Taro/reffo-taro/src/pages/complete/usePageModel.ts
+  s_ffa066f5605909::t_1d04d31bdd118a 6,20,61-62,65
+frontend/Taro/reffo-taro/src/pages/create/PageView.h5.tsx
+  s_ffa066f5605909::t_3b08018a0e15f0 267
+frontend/Taro/reffo-taro/src/pages/create/components/GenerationStageH5.tsx
+  s_ffa066f5605909::t_3d41e506298566 90,130
+frontend/Taro/reffo-taro/src/pages/create/components/JobDescriptionFormH5.tsx
+  s_ffa066f5605909::t_b77fb1fbb24354 30-31,35-41,55,59,64,80,92
+frontend/Taro/reffo-taro/src/pages/create/components/LandingFlowHeader.h5.tsx
+  s_ffa066f5605909::t_383b93203e0243 27-28
+frontend/Taro/reffo-taro/src/pages/create/usePageModel.ts
+  s_ffa066f5605909::t_e97e7d929d17b5 5-10,20,357-363,406,517,523,526,567,757,808,1026,1074,1097,1117-1118,1168-1169,1205,1226,1287,1294,1300
+frontend/Taro/reffo-taro/src/pages/index/PageView.h5.tsx
+  s_ffa066f5605909::t_12f30b2ba9fc09 9,312-313,330,435-442,500,512
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  s_ffa066f5605909::t_5afb84efc1c196 5,7,98,214,216,226,239-242
+frontend/Taro/reffo-taro/src/pages/landing-analysis/index.tsx
+  s_ffa066f5605909::t_6cb935e22ae89c 1,4-5,8,66,68,70
+frontend/Taro/reffo-taro/src/pages/profile/index.tsx
+  s_ffa066f5605909::t_5ec716543751f9 6,10,18,29,35
+frontend/Taro/reffo-taro/src/pages/result/usePageModel.ts
+  s_ffa066f5605909::t_2af9c6f284132b 5,17,128-136,166,246,248-249,255,281,291,315,512,527,530,540,563
+frontend/Taro/reffo-taro/src/services/api.ts
+  s_ffa066f5605909::t_16823aae57aeda 1-2,22,80,121,181,266,292,294,323,325,351,378
+frontend/Taro/reffo-taro/src/shared/motion/index.ts
+  s_ffa066f5605909::t_c67f7f81330cc1 1-4
+frontend/Taro/reffo-taro/src/shared/motion/useAnimationLifecycle.ts
+  s_ffa066f5605909::t_d47ee989c9f397 1-32
+frontend/Taro/reffo-taro/src/shared/motion/useManagedTimers.ts
+  s_ffa066f5605909::t_da61d5b893f6b1 1-34
+frontend/Taro/reffo-taro/src/shared/motion/viewTransition.ts
+  s_ffa066f5605909::t_8fb7b95bc30e22 1-38
+frontend/Taro/reffo-taro/src/shared/routing/index.ts
+  s_ffa066f5605909::t_3ddd026579fe47 1-9
+frontend/Taro/reffo-taro/src/shared/routing/pageState.ts
+  s_ffa066f5605909::t_3d3f024da3f233 1-9
+frontend/Taro/reffo-taro/src/shared/routing/routeParams.ts
+  s_ffa066f5605909::t_14bdb4fdf76406 1-30
+frontend/Taro/reffo-taro/src/shared/routing/routePaths.ts
+  s_ffa066f5605909::t_2fce4ea86f6cfa 1-13
+frontend/Taro/reffo-taro/src/shared/routing/usePageRoute.ts
+  s_ffa066f5605909::t_f8336b15c9ffdf 1-16
+frontend/Taro/reffo-taro/src/shared/routing/usePageStateRoute.ts
+  s_ffa066f5605909::t_5bfaf877ec0f5a 1-15
+frontend/Taro/reffo-taro/src/shared/routing/useRouteTransition.ts
+  s_ffa066f5605909::t_ea5cc22cd272c3 1-36
+frontend/Taro/reffo-taro/src/store/authStore.ts
+  s_ffa066f5605909::t_c52fb71e72da17 17,273
+frontend/Taro/reffo-taro/src/store/index.ts
+  s_ffa066f5605909::t_a105c619519982 36-37
+frontend/Taro/reffo-taro/src/store/jdStore.ts
+  s_ffa066f5605909::t_c3e60191a64ab0 1-33,35
+frontend/Taro/reffo-taro/src/store/resumeStore.ts
+  s_ffa066f5605909::t_6d52716393af38 1-33,35
+frontend/Taro/reffo-taro/src/store/resumeWorkspaceStore.ts
+  s_ffa066f5605909::t_e64c54ded775cd 1-73
+frontend/Taro/reffo-taro/src/store/sessionManager.ts
+  s_ffa066f5605909::t_164479909527f3 1-39
+frontend/Taro/reffo-taro/src/utils/httpTransport.ts
+  s_ffa066f5605909::t_690ab8b1e794d5 1-3,5,7,10-12,14-28,32-34,36-44,48-50,52-54,56-63,66-68,70,73-75,77-85,89-102,107-111,113-128,130-135,137-142,146-185,187-226,228-281,283-284,286-333,335,337-358,360-379,382-402,404-416,418-438,441-465,467-514,516-530
+frontend/Taro/reffo-taro/src/utils/navigation-transition.ts
+  s_ffa066f5605909::t_7bb5b95332c515 356,361,363-364,371-383,387-391,424,431-433
+frontend/Taro/reffo-taro/src/utils/navigation.ts
+  s_ffa066f5605909::t_eec2031d07f527 40
+frontend/Taro/reffo-taro/src/utils/request.ts
+  s_ffa066f5605909::t_162672a7a9fc89 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4e01ff26741bd8e80f8a4639d8f60151a7ba5282",
+  "prompts": {},
+  "sessions": {
+    "s_ffa066f5605909": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02872-1aca-7f62-afc7-111db70231cc",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
