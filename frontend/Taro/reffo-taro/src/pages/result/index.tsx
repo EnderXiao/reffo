@@ -1,4 +1,4 @@
-import PageView from './PageView'
+import PageView from './PageView.h5'
 import {usePageModel} from './usePageModel'
 
 export default function ResultPage() {
