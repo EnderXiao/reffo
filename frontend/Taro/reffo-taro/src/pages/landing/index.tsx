@@ -91,9 +91,9 @@ const ONBOARDING_QUEUE_SELECTED_X = -118
 const ONBOARDING_QUEUE_SELECTED_Z = 170
 const ONBOARDING_QUEUE_SELECTED_SCALE = 0.832
 const ONBOARDING_QUEUE_SELECTED_CENTER_Y = 191
-const ONBOARDING_QUEUE_DETAIL_SCALE = 0.72
+const ONBOARDING_QUEUE_DETAIL_SCALE = ONBOARDING_QUEUE_SELECTED_SCALE
 const ONBOARDING_QUEUE_DETAIL_Z = 210
-const ONBOARDING_QUEUE_DETAIL_DROP_Y = 44
+const ONBOARDING_QUEUE_DETAIL_DROP_Y = 0
 const ONBOARDING_QUEUE_CARD_ROTATE_X = '0deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Y = '-15deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Z = '0deg'
@@ -1944,7 +1944,8 @@ export default function LandingPage() {
         '--queue-selected-y': `${resolveSelectedQueueY()}px`,
         '--queue-selected-z': `${ONBOARDING_QUEUE_SELECTED_Z}PX`,
         '--queue-selected-scale': ONBOARDING_QUEUE_SELECTED_SCALE,
-        '--queue-detail-y': `${resolveSelectedQueueY() + ONBOARDING_QUEUE_DETAIL_DROP_Y + landingFolderOriginOffset}px`,
+        // Selected resume stays centered. Folder origin compensation applies to folder only.
+        '--queue-detail-y': `${resolveSelectedQueueY() + ONBOARDING_QUEUE_DETAIL_DROP_Y}px`,
         '--queue-detail-z': `${ONBOARDING_QUEUE_DETAIL_Z}PX`,
         '--queue-detail-scale': ONBOARDING_QUEUE_DETAIL_SCALE,
         '--landing-folder-origin-offset-y': `${landingFolderOriginOffset}px`,
