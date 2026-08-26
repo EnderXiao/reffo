@@ -16,6 +16,23 @@ taro-page-core,
   text-size-adjust: 100%;
 }
 
+:root {
+  --reffo-safe-area-top: 0px;
+  --reffo-safe-area-bottom: 0px;
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  :root {
+    --reffo-safe-area-top: env(safe-area-inset-top);
+    --reffo-safe-area-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+html.reffo-standalone {
+  --reffo-safe-area-top: env(safe-area-inset-top);
+  --reffo-safe-area-bottom: env(safe-area-inset-bottom);
+}
+
 .reffo-home {
   min-height: 100vh;
   min-height: 100dvh;
@@ -49,7 +66,7 @@ taro-page-core,
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0 auto;
-  padding: max(16px, env(safe-area-inset-top)) 0 max(18px, env(safe-area-inset-bottom));
+  padding: max(16px, var(--reffo-safe-area-top)) 0 max(18px, var(--reffo-safe-area-bottom));
   position: relative;
   display: flex;
   flex-direction: column;
@@ -792,6 +809,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
 .reffo-home-card--queue3d {
   overflow: visible;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .reffo-home-card__thickness {
@@ -1242,6 +1260,8 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   border-radius: var(--card-radius);
   clip-path: inset(0 round var(--card-radius));
   isolation: isolate;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   z-index: 1;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--card-bg) 82%, var(--card-accent) 18%) 0%, color-mix(in srgb, var(--card-bg) 88%, #ffffff 12%) 48%, rgba(255, 255, 255, 0.18) 100%),
