@@ -1,0 +1,32 @@
+frontend/Taro/reffo-taro/src/index.html
+  s_ce88868e5c5f1f::t_786b9f85b493f0 16-22
+  s_ce88868e5c5f1f::t_c7d5055829828c 5,10
+frontend/Taro/reffo-taro/src/pages/landing/index.scss
+  s_ce88868e5c5f1f::t_c28d7bbf672bec 115,336,1308,1320,1327,1344
+  s_ce88868e5c5f1f::t_c3250d7204a546 819,826
+  s_ce88868e5c5f1f::t_24ac389a954a5a 809
+  s_ce88868e5c5f1f::t_d10764f45c38b3 1342-1343,1348-1358
+  s_ce88868e5c5f1f::t_5cf762b1dc3888 1359
+frontend/Taro/reffo-taro/src/pages/index/index.h5.scss
+  s_ce88868e5c5f1f::t_786b9f85b493f0 31-35
+  s_ce88868e5c5f1f::t_c7d5055829828c 19-30,69,812,1263-1264
+frontend/Taro/reffo-taro/src/pages/landing/index.tsx
+  s_ce88868e5c5f1f::t_b47669b01e5213 1947-1948
+  s_ce88868e5c5f1f::t_c28d7bbf672bec 94,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4d299176ce723680892e50ffe53cd903d1514794",
+  "prompts": {},
+  "sessions": {
+    "s_ce88868e5c5f1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0381c-afe8-7433-b475-8f18a1ed710e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
