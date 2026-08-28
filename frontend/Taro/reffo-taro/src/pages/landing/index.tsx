@@ -14,8 +14,9 @@ import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import {resolveH5CardScale} from '@/components/business/HomeCardDeck/motion.h5'
 import {useAuthStore} from '@/store/authStore'
 import {runViewTransition} from '@/shared/motion'
+import {routePaths} from '@/shared/routing'
 import {useHistoryStore} from '@/store/historyStore'
-import {useResumeStore} from '@/store/resumeStore'
+import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {sourceResumeApi} from '@/services/sourceResume'
 import {apiClient} from '@/services/api'
@@ -48,7 +49,6 @@ import {
 
 import './index.scss'
 
-const HOME_URL = '/pages/index/index'
 const LANDING_SEEN_STORAGE_KEY = 'reffo.landing.seen'
 const LANDING_TO_HOME_STORAGE_KEY = 'reffo.landingToHome'
 const START_LANDING_QUERY_KEY = 'startLanding'
@@ -625,7 +625,7 @@ function recordLandingTransition(selector = '.reffo-landing__logo') {
 async function enterHome(selector?: string) {
   recordLandingTransition(selector)
   await wait(EXIT_TRANSITION_MS)
-  void navigation.reLaunch(HOME_URL)
+  void navigation.reLaunch(routePaths.home)
 }
 
 export default function LandingPage() {
@@ -1084,7 +1084,7 @@ export default function LandingPage() {
     queueUploadRequestRef.current += 1
     setIsQueueUploading(false)
     setIsQueueUploadRemoving(true)
-    useResumeStore.getState().setResumeContent('')
+    resumeWorkspaceActions.setSourceResume('')
     useLandingFlowStore.getState().clearResume()
 
     clearQueueUploadRemoveTimer()
@@ -1139,7 +1139,7 @@ export default function LandingPage() {
         sizeLabel: formatResumeFileSize(parsedFile.size),
       })
       setQueueUploadProgress(100)
-      useResumeStore.getState().setResumeContent(parsedFile.extractedText)
+      resumeWorkspaceActions.setSourceResume(parsedFile.extractedText)
       useLandingFlowStore.getState().selectResume({
         source: 'upload',
         id: 'landing-upload',
