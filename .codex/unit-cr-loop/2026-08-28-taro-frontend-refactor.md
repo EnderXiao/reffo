@@ -35,8 +35,8 @@
 | U6 | 清理无引用的 RN/Expo H5 alias 与 mock | config、H5 mock | Jest、H5 build、git diff check | 通过 | `cbfa13c` | committed |
 | U7 | 治理组件职责和公共状态展示 | common/business/page components | 组件 Jest、H5 build | 通过 | `6f994f5` | committed |
 | U8 | 恢复质量门禁并治理 TypeScript 遗留 | tests、CI、TypeScript | 全量 Jest、H5 build、diff check | 通过 | `528af3e` | committed |
-| U9 | 完成 bundle 分析和性能收口 | build config、route loading、文档 | bundle 报告、H5 build | 待用户 CR | 未提交 | regression_passed |
-| U10 | 总回归和 TODO 收口 | 全部相关文件 | 全量验证 | 待执行 | 未提交 | proposed |
+| U9 | 完成 bundle 分析和性能收口 | build config、route loading、文档 | bundle 报告、H5 build | 通过 | `d5ae481` | committed |
+| U10 | 总回归和 TODO 收口 | 全部相关文件 | 全量验证 | 执行中 | 未提交 | in_progress |
 
 ## Unit Logs
 
@@ -57,16 +57,16 @@
 
 ## Remaining Items
 
-- Remaining functional units: U5-U10。
+- Remaining functional units: 无；U1-U10 均已完成并通过对应回归。
 - Cleanup-only units: Watchman、Playwright 截图、dist 等本地产物仅报告，不纳入提交。
-- Open risks: 工作区已有 Profile/配额未提交改动；TypeScript 当前存在大量历史 H5/RN 类型边界错误；性能单元可能需要浏览器服务和 bundle analyzer 配置。
+- Open risks: 工作区已有 Profile/配额未提交改动；TypeScript 当前存在 327 条历史 H5/RN 类型边界错误；RN/Expo 传递依赖、动画生命周期迁移和 393/430/桌面性能指标仍是明确延期项。
 
 ## Final Summary
 
-- Functional commits: `40ea00d`、`f0026a2`、`18099f8`。
+- Functional commits: `40ea00d`、`f0026a2`、`18099f8`、`6d3c30f`、`6d904be`、`cbfa13c`、`6f994f5`、`528af3e`、`d5ae481`。
 - Cleanup commits: 无。
-- Final validation: U4 回归通过，待用户 CR；U5-U10 待执行。
-- Deferred items: 无。
+- Final validation: 全量 Jest 44 suites/520 tests、H5 build、bundle 分析脚本和 `git diff --check` 均通过。
+- Deferred items: RN/Expo 深层依赖清理、剩余动画生命周期迁移、路由级性能指标与 bundle warning 治理。
 
 ### U2
 
@@ -174,4 +174,17 @@
 - CR findings: 自查未发现功能问题；工具只读构建目录，不改变构建产物。
 - Resolution: 待用户 CR。
 - Commit message: `perf: 增加 H5 bundle 分析基线工具`
+- Commit: `d5ae481`。
+
+### U10
+
+- Objective: 汇总已完成重构单元，更新 TODO 完成状态，并执行最终 H5 回归。
+- Files: `doc/Taro前端重构TODO.md`、本 tracker。
+- Code changes: 将 U1-U9 已验证事项标记为完成；未完成项保留明确状态，包括 RN/Expo 深层依赖、动画生命周期迁移、TypeScript 债务和性能优化。
+- Regression executor: 仓库原生命令。
+- Validation commands: `corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（44 suites、520 tests passed）；`corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist/webpackExports 警告）；`node tools/analyze-h5-bundle.mjs dist`（成功，8.7 MiB、32 个 JS/CSS 资产，`app.*` 359.2 KiB）；`git diff --check`（通过）。
+- Validation artifacts: 无；不提交 `dist`、截图、Watchman 文件。
+- CR findings: 自查未发现本次重构回归；TODO 保留未完成项，未将 RN/Expo 深层依赖、动画迁移和性能指标标记为完成。
+- Resolution: 待用户 CR。
+- Commit message: `docs: 收口 Taro 前端重构 TODO 与回归记录`
 - Commit: 未提交。
