@@ -12,7 +12,6 @@ module.exports = {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(png|jpg|jpeg|gif|webp|svg)$': '<rootDir>/src/__mocks__/fileMock.js',
     '^react-native$': '<rootDir>/src/__mocks__/react-native.tsx',
-    '^react-native-gesture-handler$': '<rootDir>/src/__mocks__/react-native-gesture-handler.tsx',
     '^@tarojs/taro$': '<rootDir>/src/__mocks__/@tarojs/taro.ts',
     '^@tarojs/components$': '<rootDir>/src/__mocks__/@tarojs/components.tsx',
     '^react-native-svg$': '<rootDir>/src/__mocks__/react-native-svg.tsx',
