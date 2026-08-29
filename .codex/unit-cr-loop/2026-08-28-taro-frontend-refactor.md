@@ -27,8 +27,8 @@
 
 | Unit | Goal | Scope | Validation | CR | Commit | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| U1 | 移除 Landing 对旧 resume Store 和硬编码首页路由依赖 | Landing 页面及测试 | Landing Jest、H5 build | 通过 | 待提交 | cr_passed |
-| U2 | 收口 workspace Store 状态机与兼容层 | Store、创建页、结果页、测试 | Store/Page Jest、H5 build | 待执行 | 未提交 | in_progress |
+| U1 | 移除 Landing 对旧 resume Store 和硬编码首页路由依赖 | Landing 页面及测试 | Landing Jest、H5 build | 通过 | `40ea00d` | committed |
+| U2 | 收口 workspace Store 状态机与兼容层 | Store、创建页、结果页、测试 | Store/Page Jest、全量 Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
 | U3 | 收敛 HTTP transport 和错误语义 | API、transport、service 测试与文档 | request/API Jest、H5 build | 待执行 | 未提交 | proposed |
 | U4 | 完成路由常量、参数和页面栈迁移 | routing、页面、导航兼容层 | routing/Page Jest、H5 build | 待执行 | 未提交 | proposed |
 | U5 | 收口动画生命周期和边界 | shared motion、页面动画、navigation transition | motion/Page Jest、Playwright、H5 build | 待执行 | 未提交 | proposed |
@@ -52,12 +52,12 @@
 - CR findings: 自查无功能问题；用户确认继续 U2。
 - Resolution: U1 CR 通过。
 - Commit message: `refactor: 收口 Landing 状态与路由依赖`
-- Commit: 未提交。
+- Commit: `40ea00d`。
 - Remaining follow-up: U2-U10。
 
 ## Remaining Items
 
-- Remaining functional units: U1-U10。
+- Remaining functional units: U2-U10。
 - Cleanup-only units: Watchman、Playwright 截图、dist 等本地产物仅报告，不纳入提交。
 - Open risks: 工作区已有 Profile/配额未提交改动；TypeScript 当前存在大量历史 H5/RN 类型边界错误；性能单元可能需要浏览器服务和 bundle analyzer 配置。
 
@@ -67,3 +67,17 @@
 - Cleanup commits: 无。
 - Final validation: 待执行。
 - Deferred items: 无。
+
+### U2
+
+- Objective: 将 workspace Store 收口为带请求失效保护的生成状态机，并删除旧 `resumeStore`/`jdStore` 状态源。
+- Files: `src/store/resumeWorkspaceStore.ts`、`src/pages/create/usePageModel.ts`、`src/pages/result/usePageModel.ts`、相关测试、Store 文档和导出。
+- Code changes: 增加 `generationRunId`、阶段顺序校验、完成/失败/取消/重置命令；创建页和结果页接入分析、匹配、优化、面试状态；页面卸载和导航取消执行中的请求；删除旧 Store、测试和过期 setup 文档。
+- Regression added or updated: workspace Store 状态迁移/并发失效/取消测试；结果页继续生成完成、失败、卸载取消测试；创建页补充分析态、匹配态和取消断言；认证 Store 改用 workspace Store。
+- Regression executor: 仓库原生命令。
+- Validation commands: `corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（40 suites、510 tests passed）；`corepack pnpm@10.33.2 build:h5`（passed）；相关范围 TypeScript 检查无新增错误；`git diff --check`（passed）。
+- Validation artifacts: 无。
+- CR findings: 自查未发现功能问题；待用户 CR。
+- Resolution: 待用户确认。
+- Commit message: `refactor: 收口 workspace Store 状态机`
+- Commit: 未提交。

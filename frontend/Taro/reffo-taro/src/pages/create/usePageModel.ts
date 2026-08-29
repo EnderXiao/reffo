@@ -5,6 +5,7 @@ import {sourceResumeApi} from '@/services/sourceResume'
 import {
   useHistoryStore,
   useLandingFlowStore,
+  resumeWorkspaceActions,
   useResumeWorkspaceStore,
   useSourceResumeStore,
 } from '@/store'
@@ -377,6 +378,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   const jobAttachmentRequestRef = useRef(0)
   const jobAttachmentProgressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const generationRequestRef = useRef(0)
+  const workspaceGenerationRunRef = useRef<number | null>(null)
   const autoGenerateStartedRef = useRef(false)
   const initialSourceResume = useSourceResumeStore.getState().latestSourceResume
   const [currentStep, setCurrentStep] = useState<CreateStepId>(() =>
@@ -428,6 +430,10 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       uploadRequestRef.current += 1
       jobAttachmentRequestRef.current += 1
       generationRequestRef.current += 1
+      if (workspaceGenerationRunRef.current != null) {
+        resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
+        workspaceGenerationRunRef.current = null
+      }
       if (jobAttachmentProgressTimerRef.current) {
         clearInterval(jobAttachmentProgressTimerRef.current)
       }
@@ -1088,6 +1094,8 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     setIsSavingCurrentStep(true)
     const requestId = generationRequestRef.current + 1
     generationRequestRef.current = requestId
+    const workspaceRunId = resumeWorkspaceActions.startGeneration('analyzing')
+    workspaceGenerationRunRef.current = workspaceRunId
 
     try {
       // Landing must analyze the resume explicitly selected in the onboarding deck.
@@ -1125,6 +1133,8 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       if (generationRequestRef.current !== requestId) {
         return false
       }
+
+      resumeWorkspaceActions.transitionGeneration(workspaceRunId, 'matching')
 
       const matching = await resumeApi.matchResume(
         analysis,
@@ -1208,8 +1218,10 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       if (generationRequestRef.current !== requestId) {
         return false
       }
+      const message = error instanceof Error ? error.message : '生成失败，请重试'
+      resumeWorkspaceActions.failGeneration(workspaceRunId, message)
       console.error('process resume failed', error)
-      feedback.error(error instanceof Error ? error.message : '生成失败，请重试')
+      feedback.error(message)
       return false
     } finally {
       if (generationRequestRef.current === requestId) {
@@ -1259,6 +1271,10 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     }
 
     generationRequestRef.current += 1
+    if (workspaceGenerationRunRef.current != null) {
+      resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
+      workspaceGenerationRunRef.current = null
+    }
     setGenerationState(null)
     setIsSavingCurrentStep(false)
   }

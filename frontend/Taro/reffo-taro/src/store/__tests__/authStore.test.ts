@@ -18,15 +18,14 @@ import {clearPersistedUserData} from '@/utils/user-data-storage'
 import {useAuthStore} from '../authStore'
 import {useHistoryStore} from '../historyStore'
 import {useSourceResumeStore} from '../sourceResumeStore'
-import {useResumeStore} from '../resumeStore'
-import {useJDStore} from '../jdStore'
+import {useResumeWorkspaceStore} from '../resumeWorkspaceStore'
 import {useLandingFlowStore} from '../landingFlowStore'
 
 describe('AuthStore signOut', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(authApi.signOut as jest.Mock).mockResolvedValue(undefined)
-    ;(clearPersistedUserData as jest.Mock).mockResolvedValue(undefined)
+    jest.mocked(authApi.signOut).mockResolvedValue(undefined)
+    jest.mocked(clearPersistedUserData).mockResolvedValue(undefined)
     useAuthStore.setState({
       session: {
         accessToken: 'token',
@@ -38,8 +37,8 @@ describe('AuthStore signOut', () => {
     })
     useHistoryStore.setState({histories: [{id: 'history-1'} as never], initialized: true})
     useSourceResumeStore.setState({latestSourceResume: {id: 'resume-1'} as never, initialized: true})
-    useResumeStore.getState().setResumeContent('private resume')
-    useJDStore.getState().setJDContent('private jd')
+    useResumeWorkspaceStore.getState().setSourceResume('private resume')
+    useResumeWorkspaceStore.getState().setJobDescription('private jd')
     useLandingFlowStore.getState().startJobDescription({
       content: 'private jd',
       companyName: 'Company',
@@ -56,8 +55,8 @@ describe('AuthStore signOut', () => {
     expect(useAuthStore.getState().session).toBeNull()
     expect(useHistoryStore.getState().histories).toEqual([])
     expect(useSourceResumeStore.getState().latestSourceResume).toBeNull()
-    expect(useResumeStore.getState().resumeContent).toBe('')
-    expect(useJDStore.getState().jdContent).toBe('')
+    expect(useResumeWorkspaceStore.getState().sourceResume).toBe('')
+    expect(useResumeWorkspaceStore.getState().jobDescription).toBe('')
     expect(useLandingFlowStore.getState().source).toBeNull()
   })
 })
