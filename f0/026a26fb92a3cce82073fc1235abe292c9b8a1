@@ -1,0 +1,56 @@
+frontend/Taro/reffo-taro/src/utils/__tests__/storage.test.ts
+  s_ce88868e5c5f1f::t_9f69f5cb4404e5 11,123-135
+  s_ce88868e5c5f1f::t_beb8da108a9afc 136-138
+frontend/Taro/reffo-taro/src/pages/result/usePageModel.ts
+  s_4cd234b0f544a9::t_f287a5c2bcd6c0 216-223
+  s_4cd234b0f544a9::t_d08223d4ea1f91 5-8,81-89,213,271,352-368,405,434,462,467,480-482,558-561,576-579,594-597
+frontend/Taro/reffo-taro/src/store/__tests__/resumeWorkspaceStore.test.ts
+  s_4cd234b0f544a9::t_7cf96601b45aaf 1-94
+frontend/Taro/reffo-taro/src/pages/create/__tests__/index.test.tsx
+  s_4cd234b0f544a9::t_d2daeb82064415 7,220,616,628,670
+frontend/Taro/reffo-taro/src/pages/result/__tests__/usePageModel.test.tsx
+  s_4cd234b0f544a9::t_032a5cbd78f2b2 1-177
+.codex/unit-cr-loop/2026-08-28-taro-frontend-refactor.md
+  s_4cd234b0f544a9::t_2ad6c3f8c404ff 30-31,70-83
+  s_4cd234b0f544a9::t_82613994ed8a59 55,60
+frontend/Taro/reffo-taro/src/store/README.md
+  s_4cd234b0f544a9::t_32ec8d1e84217a 1,3,5-10,12,14,17-18,21,23-26,29,31-32,37,39-43
+  s_4cd234b0f544a9::t_f287a5c2bcd6c0 35
+frontend/Taro/reffo-taro/src/store/resumeWorkspaceStore.ts
+  s_4cd234b0f544a9::t_29a6cd6d8d6e89 18-26,35,43-48,60,64,72-126,137-142
+frontend/Taro/reffo-taro/src/utils/storage.ts
+  s_ce88868e5c5f1f::t_af08df6c19572c 351-364
+  s_ce88868e5c5f1f::t_7cd4cf0865a475 350
+frontend/Taro/reffo-taro/src/pages/create/usePageModel.ts
+  s_4cd234b0f544a9::t_d2daeb82064415 8,381,1097-1098,1137-1138,1221-1222,1224,1274-1277
+  s_4cd234b0f544a9::t_f287a5c2bcd6c0 433-436
+frontend/Taro/reffo-taro/src/store/__tests__/authStore.test.ts
+  s_4cd234b0f544a9::t_085d54457f4159 27-28
+  s_4cd234b0f544a9::t_d2daeb82064415 21,40-41,58-59
+frontend/Taro/reffo-taro/src/store/index.ts
+  s_4cd234b0f544a9::t_7cf96601b45aaf 8,11,33-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f0026a26fb92a3cce82073fc1235abe292c9b8a1",
+  "prompts": {},
+  "sessions": {
+    "s_4cd234b0f544a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a046f6-aa66-73b2-9969-58e9f68452d6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    },
+    "s_ce88868e5c5f1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0381c-afe8-7433-b475-8f18a1ed710e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
