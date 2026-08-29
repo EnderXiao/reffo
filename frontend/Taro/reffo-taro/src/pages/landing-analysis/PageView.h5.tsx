@@ -1,5 +1,7 @@
 import {View} from '@tarojs/components'
-import GenerationStageH5, {buildPendingGenerationState} from '../create/components/GenerationStageH5'
+import GenerationStageH5 from '@/components/business/GenerationStageH5'
+import {buildPendingGenerationState} from '../create/utils/generationState'
+import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
 import type {CreatePageViewModel} from '../create/usePageModel'
 import '../index/index.h5.scss'
 import '../create/index.h5.scss'
@@ -34,9 +36,14 @@ export default function LandingAnalysisPageView({
     <GenerationStageH5
       state={visibleGenerationState}
       onCancelGeneration={handleCancel}
-      isLandingFlow={showLandingHeader}
-      onLandingBack={handleClose}
-      onLandingSkip={handleLandingSkip}
+      header={showLandingHeader ? (
+        <LandingFlowHeader
+          className='reffo-create__landing-header--analysis'
+          onBack={handleClose}
+          onSkip={handleLandingSkip}
+          progressStep={2}
+        />
+      ) : null}
     />
   )
 

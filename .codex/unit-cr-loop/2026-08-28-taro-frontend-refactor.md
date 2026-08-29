@@ -32,8 +32,8 @@
 | U3 | 收敛 HTTP transport 和错误语义 | API、transport、service 测试与文档 | request/API Jest、H5 build | 通过 | `18099f8` | committed |
 | U4 | 完成路由常量、参数和页面栈迁移 | routing、页面、导航兼容层 | routing/Page Jest、H5 build | 待用户 CR | 未提交 | regression_passed |
 | U5 | 收口公共 View Transition 合约并迁移创建页生成态 | shared motion、创建页生成态 | motion/Create Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
-| U6 | 清理无引用的 RN/Expo H5 alias 与 mock | config、H5 mock | Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
-| U7 | 治理组件职责和公共状态展示 | common/business/page components | 组件 Jest、Playwright、H5 build | 待执行 | 未提交 | proposed |
+| U6 | 清理无引用的 RN/Expo H5 alias 与 mock | config、H5 mock | Jest、H5 build、git diff check | 通过 | `cbfa13c` | committed |
+| U7 | 治理组件职责和公共状态展示 | common/business/page components | 组件 Jest、H5 build | 待用户 CR | 未提交 | regression_passed |
 | U8 | 恢复质量门禁并治理 TypeScript 遗留 | tests、CI、TypeScript | 全量 Jest、TypeScript、H5 build、diff check | 待执行 | 未提交 | proposed |
 | U9 | 完成 bundle 分析和性能收口 | build config、route loading、文档 | bundle 报告、Playwright、H5 build | 待执行 | 未提交 | proposed |
 | U10 | 总回归和 TODO 收口 | 全部相关文件 | 全量验证 | 待执行 | 未提交 | proposed |
@@ -135,4 +135,17 @@
 - CR findings: 自查未发现功能问题；仅删除已确认无生产引用的 alias/mock。
 - Resolution: 待用户 CR。
 - Commit message: `refactor: 清理无引用的 RN Expo H5 兼容层`
+- Commit: `cbfa13c`。
+
+### U7
+
+- Objective: 将跨页复用的生成态展示组件移出 create 页面私有目录，建立独立 props 契约并分离页面状态构造逻辑。
+- Files: `src/components/business/GenerationStageH5/`、`src/pages/create/utils/generationState.ts`、create/landing-analysis 页面入口及组件测试。
+- Code changes: 生成态视图只接收展示状态和交互回调；`buildPendingGenerationState` 保留在 create 页面工具层；landing-analysis 与 create 统一从 business 组件导入。
+- Regression executor: 仓库原生命令。
+- Validation commands: `corepack pnpm@10.33.2 exec jest src/components/business/GenerationStageH5/__tests__/index.test.tsx src/pages/create/__tests__/index.test.tsx --runInBand --no-watchman`（2 suites、26 tests passed）；`corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（44 suites、521 tests passed）；`corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist/webpackExports 警告）；`git diff --check`（通过）。
+- Validation artifacts: 无。
+- CR findings: 待执行。
+- Resolution: 待用户 CR。
+- Commit message: `refactor: 收口跨页生成态组件职责`
 - Commit: 未提交。
