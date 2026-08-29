@@ -1,0 +1,21 @@
+.codex/unit-cr-loop/2026-08-28-taro-frontend-refactor.md
+  s_4cd234b0f544a9::t_5f888dcdc22def 31,33-34,56,80,123,125,148
+  s_4cd234b0f544a9::t_2c97d86f018e3e 39,188,190
+  s_4cd234b0f544a9::t_562d9c106099a8 94,136,149,161-162,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a8f8c59298a4db0dc67f0b3712318de9b7b6a097",
+  "prompts": {},
+  "sessions": {
+    "s_4cd234b0f544a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a046f6-aa66-73b2-9969-58e9f68452d6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
