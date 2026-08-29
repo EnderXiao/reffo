@@ -1,0 +1,24 @@
+.github/workflows/taro-quality.yml
+  s_4cd234b0f544a9::t_5aa05f566cde49 1-49
+doc/Taro前端TypeScript遗留.md
+  s_4cd234b0f544a9::t_5aa05f566cde49 1-34
+.codex/unit-cr-loop/2026-08-28-taro-frontend-refactor.md
+  s_4cd234b0f544a9::t_3546e36f14fdbe 159
+  s_4cd234b0f544a9::t_50a1fc7b64857f 36-37,151-158,160-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "528af3e46c68a713847f6ad67385c7700ebc1a07",
+  "prompts": {},
+  "sessions": {
+    "s_4cd234b0f544a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a046f6-aa66-73b2-9969-58e9f68452d6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
