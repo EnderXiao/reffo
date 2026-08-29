@@ -1,0 +1,47 @@
+frontend/Taro/reffo-taro/src/pages/complete/usePageModel.ts
+  s_4cd234b0f544a9::t_af8d628ff98833 5,18,23
+frontend/Taro/reffo-taro/src/app.ts
+  s_4cd234b0f544a9::t_1d30302b8053fa 9,19,22
+frontend/Taro/reffo-taro/src/components/ErrorBoundary/index.tsx
+  s_4cd234b0f544a9::t_1d30302b8053fa 5,84
+frontend/Taro/reffo-taro/src/pages/result/__tests__/usePageModel.test.tsx
+  s_4cd234b0f544a9::t_c3d9de0cc61c75 27-33
+frontend/Taro/reffo-taro/src/pages/create/usePageModel.ts
+  s_4cd234b0f544a9::t_af8d628ff98833 20,356,367,371-373
+frontend/Taro/reffo-taro/src/services/auth.ts
+  s_4cd234b0f544a9::t_65a09da90f9636 6,193,314
+frontend/Taro/reffo-taro/src/pages/auth/index.tsx
+  s_4cd234b0f544a9::t_65a09da90f9636 137,462
+.codex/unit-cr-loop/2026-08-28-taro-frontend-refactor.md
+  s_4cd234b0f544a9::t_23ef6f6857d8d9 33,60,66,68,95,97-110
+  s_4cd234b0f544a9::t_d298651f725f17 32
+frontend/Taro/reffo-taro/src/utils/navigation.ts
+  s_4cd234b0f544a9::t_bac0703c40a30c 2,467
+frontend/Taro/reffo-taro/src/shared/routing/__tests__/useRouteTransition.test.ts
+  s_4cd234b0f544a9::t_36f4272ab686ce 38
+  s_4cd234b0f544a9::t_a282ede4f80a76 1-37,39-50
+frontend/Taro/reffo-taro/src/shared/routing/__tests__/routeParams.test.ts
+  s_4cd234b0f544a9::t_8801097b4069be 1-25,27-30
+  s_4cd234b0f544a9::t_36f4272ab686ce 26
+frontend/Taro/reffo-taro/src/pages/result/usePageModel.ts
+  s_4cd234b0f544a9::t_eaf6cf2020bda9 181,206,240
+  s_4cd234b0f544a9::t_af8d628ff98833 2,20,177,180
+frontend/Taro/reffo-taro/src/components/AppPageShell/index.tsx
+  s_4cd234b0f544a9::t_1d30302b8053fa 7,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6d3c30f38e3a5edd7188f6afe25a091481920e99",
+  "prompts": {},
+  "sessions": {
+    "s_4cd234b0f544a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a046f6-aa66-73b2-9969-58e9f68452d6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
