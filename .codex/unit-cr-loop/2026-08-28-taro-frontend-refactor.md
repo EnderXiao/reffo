@@ -31,7 +31,7 @@
 | U2 | 收口 workspace Store 状态机与兼容层 | Store、创建页、结果页、测试 | Store/Page Jest、全量 Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
 | U3 | 收敛 HTTP transport 和错误语义 | API、transport、service 测试与文档 | request/API Jest、H5 build | 通过 | `18099f8` | committed |
 | U4 | 完成路由常量、参数和页面栈迁移 | routing、页面、导航兼容层 | routing/Page Jest、H5 build | 待用户 CR | 未提交 | regression_passed |
-| U5 | 收口动画生命周期和边界 | shared motion、页面动画、navigation transition | motion/Page Jest、Playwright、H5 build | 待执行 | 未提交 | proposed |
+| U5 | 收口公共 View Transition 合约并迁移创建页生成态 | shared motion、创建页生成态 | motion/Create Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
 | U6 | 清理 RN/Expo 残留和 H5 mock | components、utils、config、package、lockfile | Jest、TypeScript、H5 build | 待执行 | 未提交 | proposed |
 | U7 | 治理组件职责和公共状态展示 | common/business/page components | 组件 Jest、Playwright、H5 build | 待执行 | 未提交 | proposed |
 | U8 | 恢复质量门禁并治理 TypeScript 遗留 | tests、CI、TypeScript | 全量 Jest、TypeScript、H5 build、diff check | 待执行 | 未提交 | proposed |
@@ -106,6 +106,20 @@
 - Validation commands: `corepack pnpm@10.33.2 exec jest src/shared/routing src/utils/__tests__/navigation.test.ts src/utils/__tests__/navigation-transition.test.ts src/pages/create/__tests__/index.test.tsx src/pages/auth/__tests__/index.test.tsx src/pages/result/__tests__/usePageModel.test.tsx src/pages/result/__tests__/interviewReferences.test.ts src/pages/index/__tests__/index.test.tsx src/pages/index/__tests__/usePageModel.test.tsx --runInBand --no-watchman`（10 suites、114 tests passed）；`corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist 警告）；`git diff --check`（通过）。
 - Validation artifacts: 无。
 - CR findings: 初次定向测试发现查询编码断言错误、`reLaunch` 第二参数断言缺失，以及结果页依赖整个路由对象导致重复请求；已修复并重新验证。
-- Resolution: 待用户 CR。
+- Resolution: U4 CR 通过。
 - Commit message: `refactor: 收口页面路由与参数依赖`
+- Commit: `6d3c30f`。
+
+### U5
+
+- Objective: 将创建页生成态的通用 View Transition 接入公共入口，并统一 reduced-motion、同步异常和过渡标记清理。
+- Files: `src/shared/motion/viewTransition.ts`、`src/shared/motion/__tests__/viewTransition.test.ts`、`src/pages/create/PageView.h5.tsx`。
+- Code changes: `runViewTransition` 在无 API 或 reduced-motion 时直接更新；同步启动异常回退更新；无论过渡 promise 成功或拒绝均清理 `data-reffo-view-transition`；创建页生成态切换移除直接 `startViewTransition` 调用，改走公共入口。删除卡片破裂等业务专属动画保持在页面组件内。
+- Regression added or updated: 覆盖无 API fallback、ready/update/finished 拒绝、reduced-motion、同步启动异常四类公共契约。
+- Regression executor: 仓库原生命令。
+- Validation commands: `corepack pnpm@10.33.2 exec jest src/shared/motion/__tests__/viewTransition.test.ts src/pages/create/__tests__/index.test.tsx --runInBand --no-watchman`（2 suites、27 tests passed）；`corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist 警告）；`git diff --check`（通过）。
+- Validation artifacts: 无。
+- CR findings: 自查未发现功能问题；业务专属删除/卡片动画未抽离。
+- Resolution: 待用户 CR。
+- Commit message: `refactor: 收口公共 View Transition 生命周期`
 - Commit: 未提交。

@@ -10,6 +10,7 @@ import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import ResumeUploadIcon from '@/components/business/ResumeUploadIcon/index.h5'
 import {useVisualTier} from '@/utils'
+import {runViewTransition} from '@/shared/motion'
 import JobDescriptionFormH5 from './components/JobDescriptionFormH5'
 import CreatePrimaryActionH5 from './components/CreatePrimaryActionH5'
 import GenerationStageH5, {buildPendingGenerationState} from './components/GenerationStageH5'
@@ -767,13 +768,9 @@ export default function PageView({
       }
 
       if (canUseViewTransition()) {
-        const transition = (document as DocumentWithViewTransition).startViewTransition?.(() => {
-          flushSync(() => {
-            setPendingGenerationState(nextGenerationState)
-          })
-        })
-
-        void transition?.finished.finally(() => {
+        void runViewTransition('forward', () => {
+          setPendingGenerationState(nextGenerationState)
+        }).then(() => {
           setIsLaunchingGeneration(false)
           void handlePrimaryAction().then(finishGeneration).finally(() => {
             setPendingGenerationState(null)
