@@ -28,6 +28,7 @@ import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
+import {consumeResumeQuota, ensureResumeQuotaAvailable, ResumeQuotaError} from '@/services/resume-quota'
 
 function getHarnessRunRepository() {
   return new HarnessRunRepository()
@@ -93,14 +94,22 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .post(
     '/process',
-    async ({ body, set }) => {
+    async ({ body, headers, set }) => {
       try {
+        const userContext = await resolveRequestUser(headers)
+        await ensureResumeQuotaAvailable(userContext)
         const { prompt_variant, enable_llm_judge } = body
         const resume_markdown = normalizeMarkdownText(body.resume_markdown)
         const jd_text = normalizeMarkdownText(body.jd_text)
 
         const workflow = new ResumeOptimizationWorkflow()
-        const result = await workflow.run({ resume_markdown, jd_text, prompt_variant, enable_llm_judge })
+        const result = await workflow.run({
+          resume_markdown,
+          jd_text,
+          prompt_variant,
+          enable_llm_judge,
+          onAnalysisSucceeded: () => consumeResumeQuota(userContext),
+        })
 
         const response: ApiResponse<MvpProcessResponse> = {
           success: true,
@@ -109,6 +118,10 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         return response
       } catch (error) {
+        if (error instanceof ResumeQuotaError) {
+          set.status = error.status
+          return {success: false, error: {code: error.code, message: error.message, details: {limit: error.limit, used: error.used}}} satisfies ApiResponse<never>
+        }
         console.error('流程处理失败:', error)
         set.status = 500
 
@@ -311,8 +324,10 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .post(
     '/analyze',
-    async ({ body, set }) => {
+    async ({ body, headers, set }) => {
       try {
+        const userContext = body.landing === true ? null : await resolveRequestUser(headers)
+        if (userContext) await ensureResumeQuotaAvailable(userContext)
         const resumeMarkdown = normalizeMarkdownText(body.resume_markdown)
         const analyzer = new ResumeAnalyzerAgent()
         const { result, meta } = await runHarnessedStep({
@@ -346,6 +361,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           },
         })
 
+        if (userContext) await consumeResumeQuota(userContext)
         const response: ApiResponse<typeof result> = {
           success: true,
           data: result,
@@ -354,6 +370,10 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         return response
       } catch (error) {
+        if (error instanceof ResumeQuotaError) {
+          set.status = error.status
+          return {success: false, error: {code: error.code, message: error.message, details: {limit: error.limit, used: error.used}}} satisfies ApiResponse<never>
+        }
         console.error('简历分析失败:', error)
         set.status = 500
 

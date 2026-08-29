@@ -39,6 +39,7 @@ export interface ResumeOptimizationWorkflowInput {
   workflowTimeoutMs?: number
   prompt_variant?: string
   enable_llm_judge?: boolean
+  onAnalysisSucceeded?: () => void | Promise<void>
 }
 
 export interface ResumeOptimizationWorkflowAgents {
@@ -142,6 +143,7 @@ export class ResumeOptimizationWorkflow {
         },
       })
       steps.push(analysisStep.step)
+      await input.onAnalysisSucceeded?.()
 
       const jdStep = await runStep({
         runContext,
