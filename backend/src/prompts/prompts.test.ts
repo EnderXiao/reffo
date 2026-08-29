@@ -77,7 +77,8 @@ function promptText(messages: ReturnType<typeof buildResumeAnalysisMessages>) {
 
 describe('prompt suite', () => {
   test('uses the current prompt version for every legacy selector', () => {
-    expect(PROMPT_VERSION).toBe('3.0.0')
+    expect(PROMPT_VERSION).toBe('4.4.4')
+    expect(PROMPT_VARIANT).toBe('one-job-v4.4')
     expect(resolvePromptVariant()).toBe(PROMPT_VARIANT)
     expect(resolvePromptVariant('v1')).toBe(PROMPT_VARIANT)
     expect(resolvePromptVariant('v2')).toBe(PROMPT_VARIANT)
@@ -116,7 +117,7 @@ describe('prompt suite', () => {
   test('removes fabricated metric examples from the resume generation prompt', () => {
     const generationPrompt = promptText(buildResumeGenerationMessages(sourceResume, jd, matching))
 
-    expect(generationPrompt).toContain('不得计算、外推或改写精度')
+    expect(generationPrompt).toContain('不得计算、外推、重新取整')
     expect(generationPrompt).toContain('JD 中出现不代表候选人拥有')
     expect(generationPrompt).toContain('不得把项目行动搬进工作经历')
     expect(generationPrompt).toContain('职业摘要不得声称')

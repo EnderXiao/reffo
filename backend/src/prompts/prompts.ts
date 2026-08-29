@@ -1,10 +1,10 @@
 import type { EvaluationResult } from '@/harness/evaluators/markdown-resume-evaluator'
 import type { ChatMessage } from '@/providers/llm-provider'
 import {
-  V4_PROMPT_VARIANT,
-  V4_PROMPT_VERSION,
-  V42_SHARED_CONTRACT,
-} from '@/prompts/v42-prompts'
+  PROMPT_VARIANT,
+  PROMPT_VERSION,
+  SHARED_FACT_SAFETY_CONTRACT,
+} from '@/prompts/prompt-foundation'
 import type {
   JDStructure,
   InterviewSuggestions,
@@ -13,10 +13,9 @@ import type {
   ResumeStructure,
 } from '@/types'
 
-export const PROMPT_VERSION = V4_PROMPT_VERSION
-export const PROMPT_VARIANT = V4_PROMPT_VARIANT
+export { PROMPT_VERSION, PROMPT_VARIANT }
 
-const FACT_SAFETY_CONTRACT = V42_SHARED_CONTRACT
+const FACT_SAFETY_CONTRACT = SHARED_FACT_SAFETY_CONTRACT
 
 const CONTEXT_REASONING_CONTRACT = `
 公司与工作地上下文规则：

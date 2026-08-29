@@ -91,7 +91,7 @@ export class ResumeOptimizationWorkflow {
 
   async run(input: ResumeOptimizationWorkflowInput): Promise<MvpProcessResponse> {
     const promptVariant = resolvePromptVariant(input.prompt_variant)
-    const runContext = createRunContext(`v4.2:${promptVariant}`)
+    const runContext = createRunContext(`v4.4:${promptVariant}`)
     const runtimeState = createRunRuntimeState(runContext)
     const steps = runtimeState.steps
     const recoverableErrors: NonNullable<MvpProcessResponse['recoverable_errors']> = []
@@ -201,7 +201,7 @@ export class ResumeOptimizationWorkflow {
         runContext,
         eventBus: this.eventBus,
         stepName: 'generate_resume',
-        timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
+        timeoutMs: Math.min(240000, getRemainingWorkflowTimeout()),
         execute: (stepContext) =>
           this.generator.generate(
             analysisStep.result.structured_resume,
