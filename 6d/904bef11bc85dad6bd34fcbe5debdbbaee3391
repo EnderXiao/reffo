@@ -1,0 +1,26 @@
+frontend/Taro/reffo-taro/src/pages/create/PageView.h5.tsx
+  s_4cd234b0f544a9::t_f214526a76ea14 13,771-773
+frontend/Taro/reffo-taro/src/shared/motion/viewTransition.ts
+  s_4cd234b0f544a9::t_f214526a76ea14 26,28-38,42-52
+frontend/Taro/reffo-taro/src/shared/motion/__tests__/viewTransition.test.ts
+  s_4cd234b0f544a9::t_d9835d89d2781b 1-96
+.codex/unit-cr-loop/2026-08-28-taro-frontend-refactor.md
+  s_4cd234b0f544a9::t_1c268b6fd2432b 34,112-124
+  s_4cd234b0f544a9::t_982fb5cb1a0f6e 109,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6d904bef11bc85dad6bd34fcbe5debdbbaee3391",
+  "prompts": {},
+  "sessions": {
+    "s_4cd234b0f544a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a046f6-aa66-73b2-9969-58e9f68452d6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
