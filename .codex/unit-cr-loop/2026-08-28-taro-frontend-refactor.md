@@ -34,8 +34,8 @@
 | U5 | 收口公共 View Transition 合约并迁移创建页生成态 | shared motion、创建页生成态 | motion/Create Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
 | U6 | 清理无引用的 RN/Expo H5 alias 与 mock | config、H5 mock | Jest、H5 build、git diff check | 通过 | `cbfa13c` | committed |
 | U7 | 治理组件职责和公共状态展示 | common/business/page components | 组件 Jest、H5 build | 通过 | `6f994f5` | committed |
-| U8 | 恢复质量门禁并治理 TypeScript 遗留 | tests、CI、TypeScript | 全量 Jest、H5 build、diff check | 执行中 | 未提交 | in_progress |
-| U9 | 完成 bundle 分析和性能收口 | build config、route loading、文档 | bundle 报告、Playwright、H5 build | 待执行 | 未提交 | proposed |
+| U8 | 恢复质量门禁并治理 TypeScript 遗留 | tests、CI、TypeScript | 全量 Jest、H5 build、diff check | 通过 | `528af3e` | committed |
+| U9 | 完成 bundle 分析和性能收口 | build config、route loading、文档 | bundle 报告、H5 build | 待用户 CR | 未提交 | regression_passed |
 | U10 | 总回归和 TODO 收口 | 全部相关文件 | 全量验证 | 待执行 | 未提交 | proposed |
 
 ## Unit Logs
@@ -161,4 +161,17 @@
 - CR findings: 待执行。
 - Resolution: 待用户 CR。
 - Commit message: `chore: 建立 Taro H5 质量门禁并记录类型债务`
+- Commit: `528af3e`。
+
+### U9
+
+- Objective: 提供无需额外依赖的 H5 bundle 分析入口，确认大体积资产并沉淀当前拆包基线。
+- Files: `frontend/Taro/reffo-taro/tools/analyze-h5-bundle.mjs`。
+- Code changes: 递归扫描 `dist` 的 JS/CSS 资产，按体积排序输出最大文件、总量和入口文件；支持 `--json` 供 CI 或后续性能脚本消费。
+- Regression executor: 仓库原生命令。
+- Validation commands: `corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist/webpackExports 警告）；`node tools/analyze-h5-bundle.mjs dist`（输出 8.7 MiB、32 个 JS/CSS 资产，`app.*` 入口 359.2 KiB）；`node tools/analyze-h5-bundle.mjs dist --json`（成功）；`git diff --check`（通过）。
+- Validation artifacts: 终端报告，不提交 `dist` 或分析产物。
+- CR findings: 自查未发现功能问题；工具只读构建目录，不改变构建产物。
+- Resolution: 待用户 CR。
+- Commit message: `perf: 增加 H5 bundle 分析基线工具`
 - Commit: 未提交。
