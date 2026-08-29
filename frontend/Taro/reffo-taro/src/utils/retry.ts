@@ -63,9 +63,12 @@ export interface RetryOptions {
  * @param error 错误对象
  * @returns 是否应该重试
  */
-function defaultShouldRetry(error: any): boolean {
+function defaultShouldRetry(error: unknown): boolean {
   // 使用 error.ts 中的工具函数判断是否是网络错误
-  return isNetworkError(error);
+  if (isNetworkError(error)) return true
+  if (!error || typeof error !== 'object') return false
+  const code = (error as {code?: unknown}).code
+  return code === 'NETWORK_ERROR' || code === 'TIMEOUT'
 }
 
 /**

@@ -29,7 +29,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | U1 | 移除 Landing 对旧 resume Store 和硬编码首页路由依赖 | Landing 页面及测试 | Landing Jest、H5 build | 通过 | `40ea00d` | committed |
 | U2 | 收口 workspace Store 状态机与兼容层 | Store、创建页、结果页、测试 | Store/Page Jest、全量 Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
-| U3 | 收敛 HTTP transport 和错误语义 | API、transport、service 测试与文档 | request/API Jest、H5 build | 待执行 | 未提交 | proposed |
+| U3 | 收敛 HTTP transport 和错误语义 | API、transport、service 测试与文档 | request/API Jest、H5 build | 待用户 CR | 未提交 | regression_passed |
 | U4 | 完成路由常量、参数和页面栈迁移 | routing、页面、导航兼容层 | routing/Page Jest、H5 build | 待执行 | 未提交 | proposed |
 | U5 | 收口动画生命周期和边界 | shared motion、页面动画、navigation transition | motion/Page Jest、Playwright、H5 build | 待执行 | 未提交 | proposed |
 | U6 | 清理 RN/Expo 残留和 H5 mock | components、utils、config、package、lockfile | Jest、TypeScript、H5 build | 待执行 | 未提交 | proposed |
@@ -53,7 +53,7 @@
 - Resolution: U1 CR 通过。
 - Commit message: `refactor: 收口 Landing 状态与路由依赖`
 - Commit: `40ea00d`。
-- Remaining follow-up: U2-U10。
+- Remaining follow-up: U3-U10。
 
 ## Remaining Items
 
@@ -63,9 +63,9 @@
 
 ## Final Summary
 
-- Functional commits: 无。
+- Functional commits: `40ea00d`、`f0026a2`。
 - Cleanup commits: 无。
-- Final validation: 待执行。
+- Final validation: U3 待 CR，其余单元待执行。
 - Deferred items: 无。
 
 ### U2
@@ -77,7 +77,21 @@
 - Regression executor: 仓库原生命令。
 - Validation commands: `corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（40 suites、510 tests passed）；`corepack pnpm@10.33.2 build:h5`（passed）；相关范围 TypeScript 检查无新增错误；`git diff --check`（passed）。
 - Validation artifacts: 无。
+- CR findings: 用户确认继续。
+- Resolution: U2 CR 通过。
+- Commit message: `refactor: 收口 workspace Store 状态机`
+- Commit: `f0026a2`。
+
+### U3
+
+- Objective: 收敛 API client 与 Taro transport 职责，统一 HTTP、业务、网络、超时和取消错误语义。
+- Files: `src/utils/httpTransport.ts`、`src/services/api.ts`、`src/utils/retry.ts`、对应测试和 `src/services/README.md`。
+- Code changes: 移除 transport 拦截器扩展；ApiClient 统一负责 base URL、认证头、业务响应解析、日志和重试；transport 增加 AbortSignal 取消和底层错误归一化；默认重试识别 `RequestError` 的网络/超时错误且不重试取消；文档同步当前边界。
+- Regression added or updated: 删除拦截器契约测试，增加取消请求测试；补 API 默认网络重试测试；HTTP 业务错误映射保持兼容。
+- Regression executor: 仓库原生命令。
+- Validation commands: `corepack pnpm@10.33.2 exec jest src/utils/__tests__/request.test.ts src/services/__tests__/api.test.ts src/utils/__tests__/retry.test.ts --runInBand --no-watchman`（70 tests passed）；`corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（40 suites、509 tests passed）；`corepack pnpm@10.33.2 build:h5`（passed）；`git diff --check`（passed）；全量 TypeScript 仅保留既有平台/测试类型错误。
+- Validation artifacts: 无。
 - CR findings: 自查未发现功能问题；待用户 CR。
 - Resolution: 待用户确认。
-- Commit message: `refactor: 收口 workspace Store 状态机`
+- Commit message: `refactor: 收敛 API transport 与错误语义`
 - Commit: 未提交。

@@ -104,7 +104,7 @@ interface ApiResponse<T> {
     // 错误信息（仅在失败时）
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   message?: string; // 可选的消息
 }
@@ -192,33 +192,10 @@ try {
 }
 ```
 
-## 拦截器
+## 请求职责
 
-API 客户端内置了请求/响应拦截器：
-
-### 请求拦截器
-
-自动处理：
-
-- 添加 baseURL
-- 添加 `Content-Type: application/json` 头
-- 添加认证 token（如果已设置）
-- 记录请求日志
-
-### 响应拦截器
-
-自动处理：
-
-- 检查业务错误（`success: false`）
-- 提取 `data` 字段
-- 记录响应日志
-
-### 错误拦截器
-
-自动处理：
-
-- 记录错误日志
-- 统一错误格式
+`ApiClient` 负责 baseURL、认证头、业务响应解析、日志和重试。
+底层 Taro transport 只负责发送请求、HTTP 状态检查、超时和取消；业务代码不直接依赖 transport 细节。
 
 ## 配置
 
@@ -296,7 +273,7 @@ bun test src/services/__tests__/api.test.ts
 - ✅ GET/POST/PUT/DELETE 请求
 - ✅ 错误处理（业务错误、HTTP 错误、网络错误）
 - ✅ 响应格式处理
-- ✅ 请求拦截器
+- ✅ 请求配置、业务响应和重试边界
 - ✅ TypeScript 类型安全
 
 ## 最佳实践
@@ -388,7 +365,7 @@ const slowClient = new ApiClient({
 
 ## 相关文档
 
-- [请求适配器](../utils/request.ts) - 底层网络请求实现
+- [请求 transport](../utils/httpTransport.ts) - Taro 底层网络请求实现
 - [API 开发规范](../../../../.kiro/steering/05-api-development.md) - API 开发指南
 - [错误处理](../utils/README.md#错误处理) - 错误处理工具
 
@@ -396,9 +373,9 @@ const slowClient = new ApiClient({
 
 计划添加的功能：
 
-- [ ] 请求重试机制
+- [x] 请求重试机制
 - [ ] 请求缓存
-- [ ] 请求取消
+- [x] 请求取消
 - [ ] 上传进度
 - [ ] 下载进度
 - [ ] 批量请求
@@ -947,7 +924,7 @@ bun test src/services/__tests__/resume.test.ts
 
 - ✅ 实现 API 客户端基类
 - ✅ 支持 GET/POST/PUT/DELETE 方法
-- ✅ 实现请求/响应拦截器
+- ✅ 拆分 API client 与底层 transport 职责
 - ✅ 实现统一错误处理
 - ✅ 添加认证 token 支持
 - ✅ 添加日志记录

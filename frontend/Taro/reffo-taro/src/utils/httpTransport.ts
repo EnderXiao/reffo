@@ -1,5 +1,4 @@
-import Taro from '@tarojs/taro';
-import {getClientErrorMessage} from './client-error';
+import Taro from '@tarojs/taro'
 
 /**
  * HTTP 请求方法
@@ -26,6 +25,8 @@ export interface RequestConfig {
   dataType?: 'json' | 'text' | 'html';
   /** 响应类型，默认 text */
   responseType?: 'text' | 'arraybuffer';
+  /** 可选取消信号 */
+  signal?: AbortSignal;
 }
 
 /**
@@ -49,26 +50,6 @@ export interface Response<T = unknown> {
  *
  * 在请求发送前调用，可以修改请求配置
  */
-export type RequestInterceptor = (
-  config: RequestConfig,
-) => RequestConfig | Promise<RequestConfig>;
-
-/**
- * 响应拦截器函数类型
- *
- * 在响应返回后调用，可以处理响应数据
- */
-export type ResponseInterceptor = <T>(
-  response: Response<T>,
-) => Response<T> | Promise<Response<T>>;
-
-/**
- * 错误拦截器函数类型
- *
- * 在请求或响应出错时调用
- */
-export type ErrorInterceptor = (error: RequestError) => void | Promise<void>;
-
 /**
  * 请求错误类
  *
@@ -83,23 +64,6 @@ export class RequestError extends Error {
   ) {
     super(message);
     this.name = 'RequestError';
-  }
-}
-
-function getApiErrorPayload(data: unknown) {
-  if (!data || typeof data !== 'object' || !('success' in data)) {
-    return null
-  }
-
-  const payload = data as { success?: unknown; error?: { code?: unknown; message?: unknown; details?: unknown } }
-  if (payload.success !== false || !payload.error) {
-    return null
-  }
-
-  return {
-    code: typeof payload.error.code === 'string' ? payload.error.code : 'API_ERROR',
-    message: typeof payload.error.message === 'string' ? payload.error.message : '请求失败',
-    details: payload.error.details,
   }
 }
 
@@ -119,27 +83,61 @@ export interface RequestAdapter {
    * @throws {RequestError} 当请求失败时抛出错误
    */
   request<T = unknown>(config: RequestConfig): Promise<Response<T>>;
+  /** 设置底层默认超时时间 */
+  setDefaultTimeout(timeout: number): void;
+}
 
-  /**
-   * 添加请求拦截器
-   *
-   * @param interceptor 拦截器函数
-   */
-  addRequestInterceptor(interceptor: RequestInterceptor): void;
+function normalizeRequestError(error: unknown): RequestError {
+  if (error instanceof RequestError) return error
 
-  /**
-   * 添加响应拦截器
-   *
-   * @param interceptor 拦截器函数
-   */
-  addResponseInterceptor(interceptor: ResponseInterceptor): void;
+  if (error && typeof error === 'object') {
+    const err = error as {errMsg?: unknown; message?: unknown}
+    const errMsg = typeof err.errMsg === 'string' ? err.errMsg : ''
+    if (errMsg.includes('abort') || errMsg.includes('cancel')) {
+      return new RequestError('请求已取消', 'CANCELLED')
+    }
+    if (errMsg.includes('timeout')) {
+      return new RequestError('请求超时，请检查网络连接', 'TIMEOUT')
+    }
+    if (errMsg.includes('fail')) {
+      return new RequestError('网络请求失败，请检查网络连接', 'NETWORK_ERROR')
+    }
+    return new RequestError(
+      errMsg || (typeof err.message === 'string' ? err.message : '未知错误'),
+      errMsg ? 'REQUEST_ERROR' : 'UNKNOWN_ERROR',
+    )
+  }
 
-  /**
-   * 添加错误拦截器
-   *
-   * @param interceptor 拦截器函数
-   */
-  addErrorInterceptor(interceptor: ErrorInterceptor): void;
+  return new RequestError('未知错误', 'UNKNOWN_ERROR')
+}
+
+async function resolveRequestTask<T extends PromiseLike<unknown> & {abort?: () => void}>(
+  task: T,
+  signal?: AbortSignal,
+): Promise<Awaited<T>> {
+  if (!signal) return task as unknown as Promise<Awaited<T>>
+  if (signal.aborted) {
+    task.abort?.()
+    throw new RequestError('请求已取消', 'CANCELLED')
+  }
+
+  return new Promise<Awaited<T>>((resolve, reject) => {
+    const onAbort = () => {
+      task.abort?.()
+      reject(new RequestError('请求已取消', 'CANCELLED'))
+    }
+    signal.addEventListener('abort', onAbort, {once: true})
+    Promise.resolve(task).then(
+      value => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value as Awaited<T>)
+      },
+      error => {
+        signal.removeEventListener('abort', onAbort)
+        reject(error)
+      },
+    )
+  })
 }
 
 /**
@@ -151,22 +149,13 @@ export interface RequestAdapter {
  * - 自动处理不同平台的请求 API 差异
  * - 统一的 Promise 接口
  * - 完善的错误处理
- * - 支持请求/响应拦截器
+ * - 支持请求取消和超时控制
  * - 超时控制
  * - 类型安全
  *
  * @example
  * ```typescript
  * const request = new TaroRequestAdapter()
- *
- * // 添加请求拦截器（添加 token）
- * request.addRequestInterceptor((config) => {
- *   config.header = {
- *     ...config.header,
- *     'Authorization': `Bearer ${token}`
- *   }
- *   return config
- * })
  *
  * // 发起 GET 请求
  * const response = await request.request({
@@ -185,22 +174,13 @@ export interface RequestAdapter {
  * **Validates: Requirements 3.4**
  */
 export class TaroRequestAdapter implements RequestAdapter {
-  /** 请求拦截器列表 */
-  private requestInterceptors: RequestInterceptor[] = [];
-
-  /** 响应拦截器列表 */
-  private responseInterceptors: ResponseInterceptor[] = [];
-
-  /** 错误拦截器列表 */
-  private errorInterceptors: ErrorInterceptor[] = [];
-
   /** 默认超时时间（毫秒） */
   private defaultTimeout = 30000;
 
   /**
    * 发起网络请求
    *
-   * 使用 Taro.request 发起网络请求，支持拦截器和错误处理
+   * 使用 Taro.request 发起网络请求，统一错误和取消语义
    *
    * @param config 请求配置
    * @returns Promise<Response<T>> 响应数据
@@ -225,180 +205,53 @@ export class TaroRequestAdapter implements RequestAdapter {
    */
   async request<T = unknown>(config: RequestConfig): Promise<Response<T>> {
     try {
-      // 应用请求拦截器
-      let finalConfig = config;
-      for (const interceptor of this.requestInterceptors) {
-        finalConfig = await interceptor(finalConfig);
-      }
-
       // 设置默认值
       const requestConfig = {
-        url: finalConfig.url,
-        method: finalConfig.method || 'GET',
-        data: finalConfig.data,
+        url: config.url,
+        method: config.method || 'GET',
+        data: config.data,
         header: {
           'Content-Type': 'application/json',
-          ...finalConfig.header,
+          ...config.header,
         },
-        timeout: finalConfig.timeout || this.defaultTimeout,
-        dataType: finalConfig.dataType || 'json',
-        responseType: finalConfig.responseType || 'text',
+        timeout: config.timeout || this.defaultTimeout,
+        dataType: config.dataType || 'json',
+        responseType: config.responseType || 'text',
       };
 
       // 发起请求
-      const taroResponse = await Taro.request(
+      const requestTask = Taro.request(
         requestConfig as Parameters<typeof Taro.request>[0],
-      );
+      ) as PromiseLike<{
+        data: unknown;
+        statusCode: number;
+        header?: Record<string, string>;
+      }> & {abort?: () => void};
+      const taroResponse = await resolveRequestTask(requestTask, config.signal);
 
       // 构建响应对象
       const response: Response<T> = {
         data: taroResponse.data as T,
         statusCode: taroResponse.statusCode,
-        header: taroResponse.header as Record<string, string>,
+        header: taroResponse.header || {},
         success:
           taroResponse.statusCode >= 200 && taroResponse.statusCode < 300,
       };
 
       // 检查 HTTP 状态码
       if (!response.success) {
-        const apiError = getApiErrorPayload(response.data)
         throw new RequestError(
-          apiError
-            ? getClientErrorMessage(apiError.code, response.statusCode, apiError.message)
-            : `HTTP 错误: ${response.statusCode}`,
-          apiError?.code || 'HTTP_ERROR',
+          `HTTP 错误: ${response.statusCode}`,
+          'HTTP_ERROR',
           response.statusCode,
-          apiError?.details ?? response.data,
+          response.data,
         );
       }
 
-      // 应用响应拦截器
-      let finalResponse = response;
-      for (const interceptor of this.responseInterceptors) {
-        finalResponse = await interceptor(finalResponse);
-      }
-
-      return finalResponse;
+      return response;
     } catch (error) {
-      // 构建错误对象
-      let requestError: RequestError;
-
-      if (error instanceof RequestError) {
-        requestError = error;
-      } else if (error && typeof error === 'object') {
-        const err = error as {errMsg?: unknown; message?: unknown};
-
-        // 处理 Taro 请求错误
-        if (err.errMsg) {
-          const errMsg = typeof err.errMsg === 'string' ? err.errMsg : '';
-          if (errMsg.includes('timeout')) {
-            requestError = new RequestError(
-              '请求超时，请检查网络连接',
-              'TIMEOUT',
-            );
-          } else if (errMsg.includes('fail')) {
-            requestError = new RequestError(
-              '网络请求失败，请检查网络连接',
-              'NETWORK_ERROR',
-            );
-          } else {
-            requestError = new RequestError(
-              errMsg || '请求失败',
-              'REQUEST_ERROR',
-            );
-          }
-        } else {
-          requestError = new RequestError(
-            typeof err.message === 'string' ? err.message : '未知错误',
-            'UNKNOWN_ERROR',
-          );
-        }
-      } else {
-        requestError = new RequestError('未知错误', 'UNKNOWN_ERROR');
-      }
-
-      // 记录错误日志
-      console.error('[Request Error]', {
-        method: config.method,
-        url: config.url,
-        code: requestError.code,
-        message: requestError.message,
-      });
-
-      // 应用错误拦截器
-      for (const interceptor of this.errorInterceptors) {
-        await interceptor(requestError);
-      }
-
-      throw requestError;
+      throw normalizeRequestError(error)
     }
-  }
-
-  /**
-   * 添加请求拦截器
-   *
-   * 在请求发送前调用，可以修改请求配置（如添加 token）
-   *
-   * @param interceptor 拦截器函数
-   *
-   * @example
-   * ```typescript
-   * request.addRequestInterceptor((config) => {
-   *   // 添加认证 token
-   *   config.header = {
-   *     ...config.header,
-   *     'Authorization': `Bearer ${getToken()}`
-   *   }
-   *   return config
-   * })
-   * ```
-   */
-  addRequestInterceptor(interceptor: RequestInterceptor): void {
-    this.requestInterceptors.push(interceptor);
-  }
-
-  /**
-   * 添加响应拦截器
-   *
-   * 在响应返回后调用，可以处理响应数据
-   *
-   * @param interceptor 拦截器函数
-   *
-   * @example
-   * ```typescript
-   * request.addResponseInterceptor((response) => {
-   *   // 统一处理业务错误
-   *   if (response.data.code !== 0) {
-   *     throw new Error(response.data.message)
-   *   }
-   *   return response
-   * })
-   * ```
-   */
-  addResponseInterceptor(interceptor: ResponseInterceptor): void {
-    this.responseInterceptors.push(interceptor);
-  }
-
-  /**
-   * 添加错误拦截器
-   *
-   * 在请求或响应出错时调用，可以统一处理错误（如显示提示）
-   *
-   * @param interceptor 拦截器函数
-   *
-   * @example
-   * ```typescript
-   * request.addErrorInterceptor((error) => {
-   *   // 显示错误提示
-   *   Taro.showToast({
-   *     title: error.message,
-   *     icon: 'none'
-   *   })
-   * })
-   * ```
-   */
-  addErrorInterceptor(interceptor: ErrorInterceptor): void {
-    this.errorInterceptors.push(interceptor);
   }
 
   /**
