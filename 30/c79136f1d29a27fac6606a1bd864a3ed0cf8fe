@@ -1,0 +1,19 @@
+frontend/Taro/reffo-taro/jest.config.js
+  s_4cd234b0f544a9::t_0a5b448a9e4b26 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "30c79136f1d29a27fac6606a1bd864a3ed0cf8fe",
+  "prompts": {},
+  "sessions": {
+    "s_4cd234b0f544a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a046f6-aa66-73b2-9969-58e9f68452d6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
