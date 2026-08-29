@@ -4,7 +4,7 @@ import Taro, {useRouter} from '@tarojs/taro'
 import {parseApi} from '@/services/parse'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {useAuthStore, useJDStore, useLandingFlowStore, useResumeStore, useSourceResumeStore} from '@/store'
+import {useAuthStore, useLandingFlowStore, useResumeWorkspaceStore, useSourceResumeStore} from '@/store'
 import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
 
@@ -217,8 +217,7 @@ describe('CreatePage', () => {
     jest.clearAllMocks()
     jest.useRealTimers()
     mockUseRouter.mockReturnValue({params: {}})
-    useResumeStore.getState().reset()
-    useJDStore.getState().reset()
+    useResumeWorkspaceStore.getState().reset()
     useLandingFlowStore.getState().clear()
     useSourceResumeStore.getState().reset()
     useAuthStore.setState({
@@ -614,6 +613,7 @@ describe('CreatePage', () => {
       expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
       expect(screen.getByText('正在分析')).toBeTruthy()
       expect(mockAnalyzeResume).toHaveBeenCalledWith(existingSourceResume.resumeMarkdown)
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('analyzing')
     })
 
     await act(async () => {
@@ -625,6 +625,7 @@ describe('CreatePage', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith({
         url: '/pages/result/index',
       })
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('matching')
     })
   })
 
@@ -666,6 +667,7 @@ describe('CreatePage', () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId('create-analysis-stage')).toBeNull()
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('idle')
     })
 
     await act(async () => {

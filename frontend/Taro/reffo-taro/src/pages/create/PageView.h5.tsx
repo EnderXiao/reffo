@@ -9,10 +9,12 @@ import DeleteBreakCard from '@/components/business/DeleteBreakCard/index.h5'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import ResumeUploadIcon from '@/components/business/ResumeUploadIcon/index.h5'
+import GenerationStageH5 from '@/components/business/GenerationStageH5'
 import {useVisualTier} from '@/utils'
+import {runViewTransition} from '@/shared/motion'
 import JobDescriptionFormH5 from './components/JobDescriptionFormH5'
 import CreatePrimaryActionH5 from './components/CreatePrimaryActionH5'
-import GenerationStageH5, {buildPendingGenerationState} from './components/GenerationStageH5'
+import {buildPendingGenerationState} from './utils/generationState'
 import LandingFlowHeader from './components/LandingFlowHeader.h5'
 import type {CreatePageViewModel} from './usePageModel'
 import type {
@@ -767,13 +769,9 @@ export default function PageView({
       }
 
       if (canUseViewTransition()) {
-        const transition = (document as DocumentWithViewTransition).startViewTransition?.(() => {
-          flushSync(() => {
-            setPendingGenerationState(nextGenerationState)
-          })
-        })
-
-        void transition?.finished.finally(() => {
+        void runViewTransition('forward', () => {
+          setPendingGenerationState(nextGenerationState)
+        }).then(() => {
           setIsLaunchingGeneration(false)
           void handlePrimaryAction().then(finishGeneration).finally(() => {
             setPendingGenerationState(null)
@@ -967,9 +965,14 @@ export default function PageView({
         <GenerationStageH5
           state={visibleGenerationState}
           onCancelGeneration={handleGenerationCancelClick}
-          isLandingFlow={isLandingFlow}
-          onLandingBack={handleClose}
-          onLandingSkip={handleLandingSkip}
+          header={isLandingFlow ? (
+            <LandingFlowHeader
+              className='reffo-create__landing-header--analysis'
+              onBack={handleClose}
+              onSkip={handleLandingSkip}
+              progressStep={2}
+            />
+          ) : null}
         />
       ) : null}
       {isDeletePreviewActive ? (

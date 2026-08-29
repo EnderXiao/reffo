@@ -23,16 +23,31 @@ export async function runViewTransition(
   root.dataset.reffoViewTransition = kind
   const start = (document as ViewTransitionDocument).startViewTransition
 
-  if (!start) {
-    update()
+  const cleanup = () => {
     delete root.dataset.reffoViewTransition
+  }
+
+  const reducedMotion = typeof window !== 'undefined'
+    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+  if (!start || reducedMotion) {
+    try {
+      update()
+    } finally {
+      cleanup()
+    }
     return
   }
 
-  // View Transition API is a Web IDL method; preserve document as `this`.
-  const transition = start.call(document, () => flushSync(update))
-  void transition.ready.catch(() => undefined)
-  void transition.updateCallbackDone.catch(() => undefined)
-  await transition.finished.catch(() => undefined)
-  delete root.dataset.reffoViewTransition
+  try {
+    // View Transition API is a Web IDL method; preserve document as `this`.
+    const transition = start.call(document, () => flushSync(update))
+    void transition.ready.catch(() => undefined)
+    void transition.updateCallbackDone.catch(() => undefined)
+    await transition.finished.catch(() => undefined)
+  } catch {
+    update()
+  } finally {
+    cleanup()
+  }
 }

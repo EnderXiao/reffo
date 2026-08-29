@@ -8,6 +8,7 @@ import {
   hasKey,
   getAllKeys,
   getStorageInfo,
+  clearBusinessCache,
 } from '../storage';
 
 // Mock Taro API
@@ -116,6 +117,22 @@ describe('TaroStorageAdapter', () => {
 
       await expect(adapter.clear()).rejects.toThrow('清空存储失败');
     });
+  });
+});
+
+describe('clearBusinessCache', () => {
+  test('保留 Landing 完成标志和登录会话', async () => {
+    (Taro.getStorageInfo as jest.Mock).mockResolvedValue({
+      keys: ['reffo.landing.seen', 'reffo.auth.session.local', 'resume_histories', 'reffo.visualTier'],
+    });
+    (Taro.removeStorage as jest.Mock).mockResolvedValue(undefined);
+
+    await expect(clearBusinessCache()).resolves.toBe(2);
+    expect(Taro.removeStorage).toHaveBeenCalledTimes(2);
+    expect(Taro.removeStorage).toHaveBeenCalledWith({key: 'resume_histories'});
+    expect(Taro.removeStorage).toHaveBeenCalledWith({key: 'reffo.visualTier'});
+    expect(Taro.removeStorage).not.toHaveBeenCalledWith({key: 'reffo.landing.seen'});
+    expect(Taro.removeStorage).not.toHaveBeenCalledWith({key: 'reffo.auth.session.local'});
   });
 });
 

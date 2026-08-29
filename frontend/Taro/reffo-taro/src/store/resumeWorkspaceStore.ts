@@ -15,6 +15,15 @@ export type GenerationStatus =
   | 'completed'
   | 'failed'
 
+export type ActiveGenerationStatus = Exclude<GenerationStatus, 'idle' | 'completed' | 'failed'>
+
+const GENERATION_SEQUENCE: ActiveGenerationStatus[] = [
+  'analyzing',
+  'matching',
+  'optimizing',
+  'interviewing',
+]
+
 export interface ResumeWorkspaceState {
   sourceResume: string
   jobDescription: string
@@ -23,6 +32,7 @@ export interface ResumeWorkspaceState {
   optimizedResume: OptimizedResume | null
   interview: InterviewSuggestions | null
   generationStatus: GenerationStatus
+  generationRunId: number
   error: string | null
   setSourceResume: (value: string) => void
   setJobDescription: (value: string) => void
@@ -30,8 +40,12 @@ export interface ResumeWorkspaceState {
   setMatching: (value: MatchingResult | null) => void
   setOptimizedResume: (value: OptimizedResume | null) => void
   setInterview: (value: InterviewSuggestions | null) => void
-  setGenerationStatus: (value: GenerationStatus) => void
-  setError: (value: string | null) => void
+  startGeneration: (initialStatus?: ActiveGenerationStatus) => number
+  transitionGeneration: (runId: number, nextStatus: ActiveGenerationStatus) => boolean
+  completeGeneration: (runId: number) => boolean
+  failGeneration: (runId: number, error: string) => boolean
+  cancelGeneration: (runId: number) => boolean
+  markGenerationCompleted: () => void
   reset: () => void
 }
 
@@ -43,10 +57,11 @@ export const initialResumeWorkspaceState = {
   optimizedResume: null,
   interview: null,
   generationStatus: 'idle' as GenerationStatus,
+  generationRunId: 0,
   error: null,
 }
 
-export const useResumeWorkspaceStore = create<ResumeWorkspaceState>(set => ({
+export const useResumeWorkspaceStore = create<ResumeWorkspaceState>((set, get) => ({
   ...initialResumeWorkspaceState,
   setSourceResume: sourceResume => set({sourceResume}),
   setJobDescription: jobDescription => set({jobDescription}),
@@ -54,9 +69,61 @@ export const useResumeWorkspaceStore = create<ResumeWorkspaceState>(set => ({
   setMatching: matching => set({matching}),
   setOptimizedResume: optimizedResume => set({optimizedResume}),
   setInterview: interview => set({interview}),
-  setGenerationStatus: generationStatus => set({generationStatus}),
-  setError: error => set({error}),
-  reset: () => set(initialResumeWorkspaceState),
+  startGeneration: (initialStatus = 'analyzing') => {
+    const generationRunId = get().generationRunId + 1
+    set({generationRunId, generationStatus: initialStatus, error: null})
+    return generationRunId
+  },
+  transitionGeneration: (runId, nextStatus) => {
+    const state = get()
+    if (state.generationRunId !== runId) return false
+
+    const currentIndex = GENERATION_SEQUENCE.indexOf(state.generationStatus as ActiveGenerationStatus)
+    const nextIndex = GENERATION_SEQUENCE.indexOf(nextStatus)
+    if (currentIndex < 0 || (nextIndex !== currentIndex && nextIndex !== currentIndex + 1)) {
+      return false
+    }
+
+    set({generationStatus: nextStatus, error: null})
+    return true
+  },
+  completeGeneration: runId => {
+    const state = get()
+    if (state.generationRunId !== runId || state.generationStatus !== 'interviewing') {
+      return false
+    }
+    set({generationStatus: 'completed', error: null})
+    return true
+  },
+  failGeneration: (runId, error) => {
+    const state = get()
+    if (state.generationRunId !== runId || !GENERATION_SEQUENCE.includes(state.generationStatus as ActiveGenerationStatus)) {
+      return false
+    }
+    set({generationStatus: 'failed', error})
+    return true
+  },
+  cancelGeneration: runId => {
+    const state = get()
+    if (state.generationRunId !== runId || !GENERATION_SEQUENCE.includes(state.generationStatus as ActiveGenerationStatus)) {
+      return false
+    }
+    set({
+      generationRunId: state.generationRunId + 1,
+      generationStatus: 'idle',
+      error: null,
+    })
+    return true
+  },
+  markGenerationCompleted: () => set(state => ({
+    generationRunId: state.generationRunId + 1,
+    generationStatus: 'completed',
+    error: null,
+  })),
+  reset: () => set(state => ({
+    ...initialResumeWorkspaceState,
+    generationRunId: state.generationRunId + 1,
+  })),
 }))
 
 // Imperative entry point for page commands. Pages should read state through selectors.
@@ -67,7 +134,11 @@ export const resumeWorkspaceActions = {
   setMatching: (value: MatchingResult | null) => useResumeWorkspaceStore.getState().setMatching(value),
   setOptimizedResume: (value: OptimizedResume | null) => useResumeWorkspaceStore.getState().setOptimizedResume(value),
   setInterview: (value: InterviewSuggestions | null) => useResumeWorkspaceStore.getState().setInterview(value),
-  setGenerationStatus: (value: GenerationStatus) => useResumeWorkspaceStore.getState().setGenerationStatus(value),
-  setError: (value: string | null) => useResumeWorkspaceStore.getState().setError(value),
+  startGeneration: (initialStatus?: ActiveGenerationStatus) => useResumeWorkspaceStore.getState().startGeneration(initialStatus),
+  transitionGeneration: (runId: number, nextStatus: ActiveGenerationStatus) => useResumeWorkspaceStore.getState().transitionGeneration(runId, nextStatus),
+  completeGeneration: (runId: number) => useResumeWorkspaceStore.getState().completeGeneration(runId),
+  failGeneration: (runId: number, error: string) => useResumeWorkspaceStore.getState().failGeneration(runId, error),
+  cancelGeneration: (runId: number) => useResumeWorkspaceStore.getState().cancelGeneration(runId),
+  markGenerationCompleted: () => useResumeWorkspaceStore.getState().markGenerationCompleted(),
   reset: () => useResumeWorkspaceStore.getState().reset(),
 }

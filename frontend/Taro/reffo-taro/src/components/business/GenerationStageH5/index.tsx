@@ -1,57 +1,31 @@
 import {useMemo} from 'react'
 import {Text, View} from '@tarojs/components'
+import type {ReactNode} from 'react'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import {useVisualTier} from '@/utils'
-import type {
-  CreateGenerationState,
-  JobDescriptionStepState,
-  ResumeSummaryStepState,
-} from '../types'
-import type {CreatePageViewModel} from '../usePageModel'
-import LandingFlowHeader from './LandingFlowHeader.h5'
 
 const GENERATION_CARD_PALETTE = deriveCardPalette('#FF6A43')
 
-export function buildPendingGenerationState({
-  resumeSummaryState,
-  jobDescriptionState,
-}: {
-  resumeSummaryState: ResumeSummaryStepState | null
-  jobDescriptionState: JobDescriptionStepState
-}): CreateGenerationState {
-  const companyName = jobDescriptionState.companyName.trim()
-  const positionName = jobDescriptionState.positionName.trim()
-  const baseLocation = jobDescriptionState.baseLocation.trim()
-  const resumeTitle = resumeSummaryState?.title || resumeSummaryState?.fileName || '源简历'
-  const resumeMonogram = resumeTitle.trim().match(/[A-Za-z0-9\u4e00-\u9fa5]/u)?.[0] || 'R'
-  const monogram = /[A-Za-z]/.test(resumeMonogram) ? resumeMonogram.toUpperCase() : resumeMonogram
-
-  return {
-    resumeTitle,
-    companyName,
-    positionName,
-    baseLocation,
-    monogram,
-    detailItems: [],
-  }
+export interface GenerationStageState {
+  resumeTitle: string
+  companyName: string
+  positionName: string
+  baseLocation: string
+  monogram: string
 }
 
-interface GenerationStageH5Props {
-  state: CreateGenerationState
-  onCancelGeneration: CreatePageViewModel['handleCancelGeneration']
-  isLandingFlow?: boolean
-  onLandingBack?: () => void
-  onLandingSkip?: () => Promise<void>
+export interface GenerationStageH5Props {
+  state: GenerationStageState
+  onCancelGeneration: () => void
+  header?: ReactNode
 }
 
 export default function GenerationStageH5({
   state,
   onCancelGeneration,
-  isLandingFlow = false,
-  onLandingBack,
-  onLandingSkip,
+  header,
 }: GenerationStageH5Props) {
   const {tier: visualTier} = useVisualTier({benchmark: false})
   const titleReelItems = useMemo(() => {
@@ -89,14 +63,7 @@ export default function GenerationStageH5({
   return (
     <View className='reffo-create-generation' data-testid='create-analysis-stage'>
       <View className='reffo-create-generation__backdrop' />
-      {isLandingFlow && onLandingBack && onLandingSkip ? (
-        <LandingFlowHeader
-          className='reffo-create__landing-header--analysis'
-          onBack={onLandingBack}
-          onSkip={onLandingSkip}
-          progressStep={2}
-        />
-      ) : null}
+      {header}
       <View className='reffo-create-generation__content'>
         <View className='reffo-create-generation__main'>
           <View className='reffo-create-generation__card-stage reffo-home-deck-wrap--enhanced'>

@@ -3,6 +3,7 @@ import {getJSON, setJSON, storage} from '@/utils/storage'
 import {encryptPasswordPayload, type PasswordEncryptionConfig} from '@/utils/password-encryption'
 import {RequestError} from '@/utils/request'
 import {getPublicRuntimeConfig} from './runtime-config'
+import {routePaths} from '@/shared/routing'
 
 function getLegacyAuthSessionStorageKey() {
   const env = process.env.REFFO_ENV?.trim() || process.env.API_BASE_URL?.trim() || 'local'
@@ -189,7 +190,7 @@ function cleanOAuthCallbackUrl() {
     return
   }
 
-  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/pages/auth/index`)
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${routePaths.auth}`)
 }
 
 export class AuthApi {
@@ -310,7 +311,7 @@ export class AuthApi {
       throw new AuthRequestError('当前平台暂不支持网页授权登录', 'OAUTH_PLATFORM_UNSUPPORTED')
     }
 
-    const redirectTo = `${window.location.origin}${window.location.pathname}#/pages/auth/index`
+    const redirectTo = `${window.location.origin}${window.location.pathname}#${routePaths.auth}`
     const response = await apiClient.post<{authorize_url: string}>('/auth/oauth-url', {
       provider,
       redirect_to: redirectTo,

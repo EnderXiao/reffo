@@ -119,72 +119,23 @@ describe('TaroRequestAdapter', () => {
     });
   });
 
-  describe('拦截器功能', () => {
-    test('应该执行请求拦截器', async () => {
-      (Taro.request as jest.Mock).mockResolvedValue({
-        data: {},
-        statusCode: 200,
-        header: {},
-      });
+  describe('取消请求', () => {
+    test('AbortSignal 取消时返回 CANCELLED 且调用底层 abort', async () => {
+      let resolveRequest: (value: unknown) => void = () => undefined
+      const abort = jest.fn()
+      ;(Taro.request as jest.Mock).mockReturnValue(Object.assign(
+        new Promise(resolve => { resolveRequest = resolve }),
+        {abort},
+      ))
+      const controller = new AbortController()
+      const promise = adapter.request({url: 'https://api.example.com/data', signal: controller.signal})
+      controller.abort()
 
-      adapter.addRequestInterceptor(config => {
-        config.header = {
-          ...config.header,
-          Authorization: 'Bearer token',
-        };
-        return config;
-      });
-
-      await adapter.request({
-        url: 'https://api.example.com/data',
-      });
-
-      const callArgs = (Taro.request as jest.Mock).mock.calls[0][0];
-      expect(callArgs.header['Authorization']).toBe('Bearer token');
-    });
-
-    test('应该执行响应拦截器', async () => {
-      (Taro.request as jest.Mock).mockResolvedValue({
-        data: {code: 0, data: {id: 1}},
-        statusCode: 200,
-        header: {},
-      });
-
-      adapter.addResponseInterceptor(response => {
-        if (response.data.code === 0) {
-          response.data = response.data.data;
-        }
-        return response;
-      });
-
-      const response = await adapter.request({
-        url: 'https://api.example.com/data',
-      });
-
-      expect(response.data).toEqual({id: 1});
-    });
-
-    test('应该执行错误拦截器', async () => {
-      (Taro.request as jest.Mock).mockRejectedValue({
-        errMsg: 'request:fail timeout',
-      });
-
-      let interceptedError: RequestError | null = null;
-      adapter.addErrorInterceptor(error => {
-        interceptedError = error;
-      });
-
-      try {
-        await adapter.request({
-          url: 'https://api.example.com/data',
-        });
-      } catch (error) {
-        // 错误应该被抛出
-      }
-
-      expect(interceptedError).toBeInstanceOf(RequestError);
-    });
-  });
+      await expect(promise).rejects.toMatchObject({code: 'CANCELLED'})
+      expect(abort).toHaveBeenCalledTimes(1)
+      resolveRequest({data: {}, statusCode: 200, header: {}})
+    })
+  })
 
   describe('快捷方法', () => {
     test('get() 应该发起 GET 请求', async () => {

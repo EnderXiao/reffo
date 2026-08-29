@@ -284,7 +284,12 @@ describe('ApiClient', () => {
         errMsg: '',
       });
 
-      await expect(apiClient.get('/test')).rejects.toThrow();
+      const client = new ApiClient({
+        baseURL: 'http://localhost:3000/api/v1',
+        enableLog: false,
+        retry: false,
+      });
+      await expect(client.get('/test')).rejects.toThrow();
     });
 
     test('应该处理网络错误', async () => {
@@ -292,7 +297,30 @@ describe('ApiClient', () => {
         errMsg: 'request:fail timeout',
       });
 
-      await expect(apiClient.get('/test')).rejects.toThrow();
+      const client = new ApiClient({
+        baseURL: 'http://localhost:3000/api/v1',
+        enableLog: false,
+        retry: false,
+      });
+      await expect(client.get('/test')).rejects.toThrow();
+    });
+
+    test('默认重试只针对网络错误', async () => {
+      mockRequest
+        .mockRejectedValueOnce({errMsg: 'request:fail timeout'})
+        .mockResolvedValueOnce({
+          data: {success: true, data: {retried: true}},
+          statusCode: 200,
+          header: {},
+        });
+      const client = new ApiClient({
+        baseURL: 'http://localhost:3000/api/v1',
+        enableLog: false,
+        retry: {maxRetries: 1, delay: 0},
+      });
+
+      await expect(client.get('/test')).resolves.toEqual({retried: true});
+      expect(mockRequest).toHaveBeenCalledTimes(2);
     });
 
     test('业务错误应该包含错误码', async () => {

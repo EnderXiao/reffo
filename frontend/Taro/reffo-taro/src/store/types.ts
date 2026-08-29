@@ -3,8 +3,6 @@
  */
 
 import type {
-  ResumeAnalysis,
-  MatchingResult,
   OptimizedResume,
   ResumeHistory,
   SourceResumeSummary,
@@ -20,46 +18,6 @@ export interface LoadingState {
 export interface LoadOptions {
   skipIfLoaded?: boolean;
   force?: boolean;
-}
-
-// ============ Resume Store ============
-
-export interface ResumeState {
-  // 简历内容
-  resumeContent: string;
-
-  // 分析结果
-  analysis: ResumeAnalysis | null;
-
-  // 加载状态
-  loading: LoadingState;
-
-  // Actions
-  setResumeContent: (content: string) => void;
-  setAnalysis: (analysis: ResumeAnalysis | null) => void;
-  setLoading: (isLoading: boolean) => void;
-  setError: (error: string | null) => void;
-  reset: () => void;
-}
-
-// ============ JD Store ============
-
-export interface JDState {
-  // JD 内容
-  jdContent: string;
-
-  // 匹配结果
-  matching: MatchingResult | null;
-
-  // 加载状态
-  loading: LoadingState;
-
-  // Actions
-  setJDContent: (content: string) => void;
-  setMatching: (matching: MatchingResult | null) => void;
-  setLoading: (isLoading: boolean) => void;
-  setError: (error: string | null) => void;
-  reset: () => void;
 }
 
 // ============ Optimized Store ============
