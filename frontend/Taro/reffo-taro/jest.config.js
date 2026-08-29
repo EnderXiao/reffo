@@ -15,6 +15,8 @@ module.exports = {
     '^@tarojs/taro$': '<rootDir>/src/__mocks__/@tarojs/taro.ts',
     '^@tarojs/components$': '<rootDir>/src/__mocks__/@tarojs/components.tsx',
     '^react-native-svg$': '<rootDir>/src/__mocks__/react-native-svg.tsx',
+    '^expo-file-system$': '<rootDir>/src/__mocks__/h5/expo-file-system.js',
+    '^expo-image-picker$': '<rootDir>/src/__mocks__/h5/expo-image-picker.js',
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   collectCoverageFrom: [
