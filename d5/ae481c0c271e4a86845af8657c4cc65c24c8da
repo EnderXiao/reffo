@@ -1,0 +1,24 @@
+frontend/Taro/reffo-taro/tools/analyze-h5-bundle.mjs
+  s_4cd234b0f544a9::t_a9b95f99ff6cc0 1-65
+.codex/unit-cr-loop/2026-08-28-taro-frontend-refactor.md
+  s_4cd234b0f544a9::t_a05220e3ea48dd 37,164-168,171,173,175-176
+  s_4cd234b0f544a9::t_347c0e085af81a 172,174
+  s_4cd234b0f544a9::t_44c8b110854c4a 38
+  s_4cd234b0f544a9::t_651ff488b2c235 169-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d5ae481c0c271e4a86845af8657c4cc65c24c8da",
+  "prompts": {},
+  "sessions": {
+    "s_4cd234b0f544a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a046f6-aa66-73b2-9969-58e9f68452d6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
