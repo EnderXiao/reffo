@@ -29,8 +29,8 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | U1 | 移除 Landing 对旧 resume Store 和硬编码首页路由依赖 | Landing 页面及测试 | Landing Jest、H5 build | 通过 | `40ea00d` | committed |
 | U2 | 收口 workspace Store 状态机与兼容层 | Store、创建页、结果页、测试 | Store/Page Jest、全量 Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
-| U3 | 收敛 HTTP transport 和错误语义 | API、transport、service 测试与文档 | request/API Jest、H5 build | 待用户 CR | 未提交 | regression_passed |
-| U4 | 完成路由常量、参数和页面栈迁移 | routing、页面、导航兼容层 | routing/Page Jest、H5 build | 待执行 | 未提交 | proposed |
+| U3 | 收敛 HTTP transport 和错误语义 | API、transport、service 测试与文档 | request/API Jest、H5 build | 通过 | `18099f8` | committed |
+| U4 | 完成路由常量、参数和页面栈迁移 | routing、页面、导航兼容层 | routing/Page Jest、H5 build | 待用户 CR | 未提交 | regression_passed |
 | U5 | 收口动画生命周期和边界 | shared motion、页面动画、navigation transition | motion/Page Jest、Playwright、H5 build | 待执行 | 未提交 | proposed |
 | U6 | 清理 RN/Expo 残留和 H5 mock | components、utils、config、package、lockfile | Jest、TypeScript、H5 build | 待执行 | 未提交 | proposed |
 | U7 | 治理组件职责和公共状态展示 | common/business/page components | 组件 Jest、Playwright、H5 build | 待执行 | 未提交 | proposed |
@@ -57,15 +57,15 @@
 
 ## Remaining Items
 
-- Remaining functional units: U2-U10。
+- Remaining functional units: U5-U10。
 - Cleanup-only units: Watchman、Playwright 截图、dist 等本地产物仅报告，不纳入提交。
 - Open risks: 工作区已有 Profile/配额未提交改动；TypeScript 当前存在大量历史 H5/RN 类型边界错误；性能单元可能需要浏览器服务和 bundle analyzer 配置。
 
 ## Final Summary
 
-- Functional commits: `40ea00d`、`f0026a2`。
+- Functional commits: `40ea00d`、`f0026a2`、`18099f8`。
 - Cleanup commits: 无。
-- Final validation: U3 待 CR，其余单元待执行。
+- Final validation: U4 回归通过，待用户 CR；U5-U10 待执行。
 - Deferred items: 无。
 
 ### U2
@@ -92,6 +92,20 @@
 - Validation commands: `corepack pnpm@10.33.2 exec jest src/utils/__tests__/request.test.ts src/services/__tests__/api.test.ts src/utils/__tests__/retry.test.ts --runInBand --no-watchman`（70 tests passed）；`corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（40 suites、509 tests passed）；`corepack pnpm@10.33.2 build:h5`（passed）；`git diff --check`（passed）；全量 TypeScript 仅保留既有平台/测试类型错误。
 - Validation artifacts: 无。
 - CR findings: 自查未发现功能问题；待用户 CR。
-- Resolution: 待用户确认。
+- Resolution: U3 CR 通过。
 - Commit message: `refactor: 收敛 API transport 与错误语义`
+- Commit: `18099f8`。
+
+### U4
+
+- Objective: 页面路由统一使用公共路径、参数解析和页面栈迁移，避免页面继续依赖硬编码路径或直接读取 `useRouter`。
+- Files: `src/shared/routing/`、`src/app.ts`、`src/components/AppPageShell/index.tsx`、`src/components/ErrorBoundary/index.tsx`、`src/pages/auth/index.tsx`、`src/pages/create/usePageModel.ts`、`src/pages/result/usePageModel.ts`、`src/pages/complete/usePageModel.ts`、`src/services/auth.ts`、`src/utils/navigation.ts` 及路由测试。
+- Code changes: 新增 `usePageRoute`、路由参数读写和 `useRouteTransition` 测试；页面参数读取迁移到统一 hook；Landing 启动守卫、错误边界、OAuth 回调、返回首页和认证返回统一使用 `routePaths`/导航封装；结果页 effect 改为依赖稳定 `resultId`，防止路由对象重建触发重复加载和重复生成。
+- Regression added or updated: `routeParams.test.ts`、`useRouteTransition.test.ts`；结果页测试 mock 和异步生成断言同步更新。
+- Regression executor: 仓库原生命令。
+- Validation commands: `corepack pnpm@10.33.2 exec jest src/shared/routing src/utils/__tests__/navigation.test.ts src/utils/__tests__/navigation-transition.test.ts src/pages/create/__tests__/index.test.tsx src/pages/auth/__tests__/index.test.tsx src/pages/result/__tests__/usePageModel.test.tsx src/pages/result/__tests__/interviewReferences.test.ts src/pages/index/__tests__/index.test.tsx src/pages/index/__tests__/usePageModel.test.tsx --runInBand --no-watchman`（10 suites、114 tests passed）；`corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist 警告）；`git diff --check`（通过）。
+- Validation artifacts: 无。
+- CR findings: 初次定向测试发现查询编码断言错误、`reLaunch` 第二参数断言缺失，以及结果页依赖整个路由对象导致重复请求；已修复并重新验证。
+- Resolution: 待用户 CR。
+- Commit message: `refactor: 收口页面路由与参数依赖`
 - Commit: 未提交。

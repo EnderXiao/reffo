@@ -134,7 +134,7 @@ export default function AuthPage() {
     const pages = Taro.getCurrentPages()
 
     if (pages.length > 1) {
-      void Taro.navigateBack()
+      void route.back()
       return
     }
 
@@ -459,7 +459,7 @@ export default function AuthPage() {
 
     const pages = Taro.getCurrentPages()
     if (pages.length > 1) {
-      void Taro.navigateBack()
+      void route.back()
     } else {
       void route.reset(routePaths.home)
     }

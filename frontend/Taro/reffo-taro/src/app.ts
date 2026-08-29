@@ -6,6 +6,7 @@ import {useHistoryStore} from '@/store/historyStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {storage} from '@/utils/storage'
 import {syncPendingLandingData} from '@/utils/pending-landing-data'
+import {routePaths} from '@/shared/routing'
 
 import './app.scss'
 
@@ -15,10 +16,10 @@ async function guardLandingEntry() {
   const pages = Taro.getCurrentPages()
   if (pages.length === 0) return
   const route = pages[pages.length - 1]?.route || ''
-  if (route === 'pages/landing/index') return
+  if (route === routePaths.landing.slice(1)) return
 
   const seen = await storage.getItem(LANDING_SEEN_STORAGE_KEY)
-  if (seen !== '1') await Taro.reLaunch({url: '/pages/landing/index'})
+  if (seen !== '1') await Taro.reLaunch({url: routePaths.landing})
 }
 
 class App extends Component<PropsWithChildren> {

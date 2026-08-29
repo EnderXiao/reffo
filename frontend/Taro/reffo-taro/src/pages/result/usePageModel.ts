@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from 'react'
-import Taro, {useRouter} from '@tarojs/taro'
+import Taro from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {useHistoryStore} from '@/store/historyStore'
 import {
@@ -17,7 +17,7 @@ import {
 } from '@/utils/result-session'
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
-import {appendRouteParams, routePaths, useRouteTransition} from '@/shared/routing'
+import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import {savePendingLandingHistory} from '@/utils/pending-landing-data'
 import {useAuthStore} from '@/store/authStore'
 import {toHistoryCardItem} from '../index/model/homeCardData'
@@ -174,10 +174,11 @@ interface ResultPageModelOptions {
 }
 
 export function usePageModel(options: ResultPageModelOptions = {}): ResultPageViewModel {
-  const router = useRouter()
+  const pageRoute = usePageRoute()
   const route = useRouteTransition()
   const {addHistory} = useHistoryStore()
-  const enteredFromCard = router.params.fromCard === '1'
+  const enteredFromCard = pageRoute.readBoolean('fromCard')
+  const resultId = pageRoute.readString('id')
   const enteredFromLanding = options.enteredFromLanding === true
   const initialSessionRef = useRef<LatestResultSession | null>(options.initialSession
     ? {
@@ -202,7 +203,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   const [loading, setLoading] = useState(() => !initialSessionRef.current)
   const [saved, setSaved] = useState(false)
   const [savedHistoryId, setSavedHistoryId] = useState<string | null>(
-    typeof router.params.id === 'string' ? router.params.id : null,
+    resultId,
   )
   const [progress, setProgress] = useState<LatestResultSessionProgress>(
     () => initialSessionRef.current?.progress ?? getDefaultProgress(null),
@@ -230,15 +231,13 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       return
     }
 
-    const resultId = router.params.id
-
     if (resultId) {
       void loadFromHistory(resultId)
       return
     }
 
     void loadFromLatestSession()
-  }, [router.params.id])
+  }, [resultId])
 
   const loadFromHistory = async (id: string) => {
     try {

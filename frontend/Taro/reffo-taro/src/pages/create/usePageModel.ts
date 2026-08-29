@@ -1,5 +1,4 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
-import {useRouter} from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
 import {
@@ -18,7 +17,7 @@ import type {
 } from '@/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {feedback} from '@/utils/feedback'
-import {routePaths, useRouteTransition} from '@/shared/routing'
+import {routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import {storage} from '@/utils/storage'
 import {
   saveLatestResultSession,
@@ -354,7 +353,7 @@ function buildGenerationState(args: {
 }
 
 export function usePageModel(options: CreatePageModelOptions = {}): CreatePageViewModel {
-  const router = useRouter()
+  const pageRoute = usePageRoute()
   const route = useRouteTransition()
   const workspaceSourceResume = useResumeWorkspaceStore(state => state.sourceResume)
   const workspaceJobDescription = useResumeWorkspaceStore(state => state.jobDescription)
@@ -365,15 +364,13 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   const initialLandingFlow = useLandingFlowStore.getState()
   const isLandingFlow = useLandingFlowStore(state => state.source === 'landing')
   const shouldAutoGenerateLanding = isLandingFlow && (
-    options.autoGenerateLanding === true || router.params?.autoGenerate === '1'
+    options.autoGenerateLanding === true || pageRoute.readBoolean('autoGenerate')
   )
   const landingJob = useLandingFlowStore(state => state.selectedJob)
   const landingResume = useLandingFlowStore(state => state.selectedResume)
-  const requestedStepRef = useRef(normalizeRouteStep(router.params?.step))
-  const editHistoryId = typeof router.params?.historyId === 'string'
-    ? router.params.historyId
-    : null
-  const isHistoryEditMode = router.params?.mode === 'editHistory' && Boolean(editHistoryId)
+  const requestedStepRef = useRef(normalizeRouteStep(pageRoute.readString('step')))
+  const editHistoryId = pageRoute.readString('historyId')
+  const isHistoryEditMode = pageRoute.readString('mode') === 'editHistory' && Boolean(editHistoryId)
   const uploadRequestRef = useRef(0)
   const jobAttachmentRequestRef = useRef(0)
   const jobAttachmentProgressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)

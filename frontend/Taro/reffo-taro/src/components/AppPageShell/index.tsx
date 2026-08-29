@@ -4,6 +4,7 @@ import Taro from '@tarojs/taro'
 import {StatusBar, StyleProp, StyleSheet, ViewStyle} from 'react-native'
 import {getStatusBarHeight} from '@/utils'
 import {navigation} from '@/utils/navigation'
+import {routePaths} from '@/shared/routing'
 
 interface AppPageShellProps extends PropsWithChildren {
   title?: string
@@ -107,7 +108,7 @@ export default function AppPageShell({
       return
     }
 
-    void navigation.reLaunch('/pages/index/index')
+    void navigation.reLaunch(routePaths.home)
   }
 
   return (

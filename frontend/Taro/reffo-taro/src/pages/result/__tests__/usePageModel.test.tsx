@@ -24,6 +24,13 @@ jest.mock('@/utils/result-session', () => ({
 }))
 
 jest.mock('@/shared/routing', () => ({
+  usePageRoute: () => ({
+    params: {},
+    path: '/pages/result/index',
+    readString: (key: string) => key === 'id' ? null : null,
+    readBoolean: () => false,
+    readNumber: () => null,
+  }),
   appendRouteParams: (path: string) => path,
   routePaths: {
     complete: '/pages/complete/index',

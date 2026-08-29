@@ -2,6 +2,7 @@ import {Component, ReactNode} from 'react';
 import {View, Text} from '@tarojs/components';
 import {Button} from '@/components';
 import {navigation} from '@/utils/navigation';
+import {routePaths} from '@/shared/routing';
 import styles from './index.module.scss';
 
 interface ErrorBoundaryProps {
@@ -80,7 +81,7 @@ export class ErrorBoundary extends Component<
    * 刷新页面
    */
   handleReload = () => {
-    void navigation.reLaunch('/pages/index/index');
+    void navigation.reLaunch(routePaths.home);
   };
 
   render() {
