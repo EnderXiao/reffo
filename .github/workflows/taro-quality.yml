@@ -1,0 +1,49 @@
+name: Taro H5 Quality
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/Taro/reffo-taro/**'
+      - '.github/workflows/taro-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: taro-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/Taro/reffo-taro
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/Taro/reffo-taro/pnpm-lock.yaml
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.2 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Jest
+        run: pnpm exec jest --runInBand --no-watchman
+
+      - name: Build H5
+        run: pnpm build:h5
+
+      - name: Check diff
+        run: git diff --check

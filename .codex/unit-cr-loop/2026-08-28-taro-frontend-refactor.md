@@ -33,8 +33,8 @@
 | U4 | 完成路由常量、参数和页面栈迁移 | routing、页面、导航兼容层 | routing/Page Jest、H5 build | 待用户 CR | 未提交 | regression_passed |
 | U5 | 收口公共 View Transition 合约并迁移创建页生成态 | shared motion、创建页生成态 | motion/Create Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
 | U6 | 清理无引用的 RN/Expo H5 alias 与 mock | config、H5 mock | Jest、H5 build、git diff check | 通过 | `cbfa13c` | committed |
-| U7 | 治理组件职责和公共状态展示 | common/business/page components | 组件 Jest、H5 build | 待用户 CR | 未提交 | regression_passed |
-| U8 | 恢复质量门禁并治理 TypeScript 遗留 | tests、CI、TypeScript | 全量 Jest、TypeScript、H5 build、diff check | 待执行 | 未提交 | proposed |
+| U7 | 治理组件职责和公共状态展示 | common/business/page components | 组件 Jest、H5 build | 通过 | `6f994f5` | committed |
+| U8 | 恢复质量门禁并治理 TypeScript 遗留 | tests、CI、TypeScript | 全量 Jest、H5 build、diff check | 执行中 | 未提交 | in_progress |
 | U9 | 完成 bundle 分析和性能收口 | build config、route loading、文档 | bundle 报告、Playwright、H5 build | 待执行 | 未提交 | proposed |
 | U10 | 总回归和 TODO 收口 | 全部相关文件 | 全量验证 | 待执行 | 未提交 | proposed |
 
@@ -148,4 +148,17 @@
 - CR findings: 待执行。
 - Resolution: 待用户 CR。
 - Commit message: `refactor: 收口跨页生成态组件职责`
+- Commit: `6f994f5`。
+
+### U8
+
+- Objective: 建立 Taro H5 最小 CI 质量门禁，并把当前 TypeScript 遗留错误单独记录，避免质量状态和历史债务混淆。
+- Files: `.github/workflows/taro-quality.yml`、`doc/Taro前端TypeScript遗留.md`。
+- Code changes: PR/手动触发时安装锁定 pnpm 依赖，执行全量 Jest、H5 build 和 `git diff --check`；记录 `tsc --noEmit` 当前 327 条错误及分类，暂不将历史类型债务接入阻断门禁。
+- Regression executor: GitHub Actions 配置静态检查 + 仓库原生命令。
+- Validation commands: 本地全量 Jest（44 suites、521 tests passed）、H5 build（成功，保留既有 bundle/Browserslist/webpackExports 警告）、`git diff --check`（通过）；`tsc --noEmit --pretty false` 仅用于债务基线记录（327 条历史错误）。
+- Validation artifacts: 无。
+- CR findings: 待执行。
+- Resolution: 待用户 CR。
+- Commit message: `chore: 建立 Taro H5 质量门禁并记录类型债务`
 - Commit: 未提交。
