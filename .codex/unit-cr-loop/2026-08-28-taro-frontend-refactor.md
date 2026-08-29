@@ -28,15 +28,15 @@
 | Unit | Goal | Scope | Validation | CR | Commit | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | U1 | 移除 Landing 对旧 resume Store 和硬编码首页路由依赖 | Landing 页面及测试 | Landing Jest、H5 build | 通过 | `40ea00d` | committed |
-| U2 | 收口 workspace Store 状态机与兼容层 | Store、创建页、结果页、测试 | Store/Page Jest、全量 Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
+| U2 | 收口 workspace Store 状态机与兼容层 | Store、创建页、结果页、测试 | Store/Page Jest、全量 Jest、H5 build、git diff check | 通过 | `f0026a2` | committed |
 | U3 | 收敛 HTTP transport 和错误语义 | API、transport、service 测试与文档 | request/API Jest、H5 build | 通过 | `18099f8` | committed |
-| U4 | 完成路由常量、参数和页面栈迁移 | routing、页面、导航兼容层 | routing/Page Jest、H5 build | 待用户 CR | 未提交 | regression_passed |
-| U5 | 收口公共 View Transition 合约并迁移创建页生成态 | shared motion、创建页生成态 | motion/Create Jest、H5 build、git diff check | 待用户 CR | 未提交 | regression_passed |
+| U4 | 完成路由常量、参数和页面栈迁移 | routing、页面、导航兼容层 | routing/Page Jest、H5 build | 通过 | `6d3c30f` | committed |
+| U5 | 收口公共 View Transition 合约并迁移创建页生成态 | shared motion、创建页生成态 | motion/Create Jest、H5 build、git diff check | 通过 | `6d904be` | committed |
 | U6 | 清理无引用的 RN/Expo H5 alias 与 mock | config、H5 mock | Jest、H5 build、git diff check | 通过 | `cbfa13c` | committed |
 | U7 | 治理组件职责和公共状态展示 | common/business/page components | 组件 Jest、H5 build | 通过 | `6f994f5` | committed |
 | U8 | 恢复质量门禁并治理 TypeScript 遗留 | tests、CI、TypeScript | 全量 Jest、H5 build、diff check | 通过 | `528af3e` | committed |
 | U9 | 完成 bundle 分析和性能收口 | build config、route loading、文档 | bundle 报告、H5 build | 通过 | `d5ae481` | committed |
-| U10 | 总回归和 TODO 收口 | 全部相关文件 | 全量验证 | 执行中 | 未提交 | in_progress |
+| U10 | 总回归和 TODO 收口 | 全部相关文件 | 全量验证 | 通过 | `9ab65d2` | committed |
 
 ## Unit Logs
 
@@ -53,7 +53,7 @@
 - Resolution: U1 CR 通过。
 - Commit message: `refactor: 收口 Landing 状态与路由依赖`
 - Commit: `40ea00d`。
-- Remaining follow-up: U3-U10。
+- Remaining follow-up: 无；延期项见 Final Summary。
 
 ## Remaining Items
 
@@ -77,7 +77,7 @@
 - Regression executor: 仓库原生命令。
 - Validation commands: `corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（40 suites、510 tests passed）；`corepack pnpm@10.33.2 build:h5`（passed）；相关范围 TypeScript 检查无新增错误；`git diff --check`（passed）。
 - Validation artifacts: 无。
-- CR findings: 用户确认继续。
+- CR findings: 无阻塞问题；用户确认继续。
 - Resolution: U2 CR 通过。
 - Commit message: `refactor: 收口 workspace Store 状态机`
 - Commit: `f0026a2`。
@@ -91,7 +91,7 @@
 - Regression executor: 仓库原生命令。
 - Validation commands: `corepack pnpm@10.33.2 exec jest src/utils/__tests__/request.test.ts src/services/__tests__/api.test.ts src/utils/__tests__/retry.test.ts --runInBand --no-watchman`（70 tests passed）；`corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（40 suites、509 tests passed）；`corepack pnpm@10.33.2 build:h5`（passed）；`git diff --check`（passed）；全量 TypeScript 仅保留既有平台/测试类型错误。
 - Validation artifacts: 无。
-- CR findings: 自查未发现功能问题；待用户 CR。
+- CR findings: 自查未发现功能问题；用户确认继续。
 - Resolution: U3 CR 通过。
 - Commit message: `refactor: 收敛 API transport 与错误语义`
 - Commit: `18099f8`。
@@ -120,9 +120,9 @@
 - Validation commands: `corepack pnpm@10.33.2 exec jest src/shared/motion/__tests__/viewTransition.test.ts src/pages/create/__tests__/index.test.tsx --runInBand --no-watchman`（2 suites、27 tests passed）；`corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist 警告）；`git diff --check`（通过）。
 - Validation artifacts: 无。
 - CR findings: 自查未发现功能问题；业务专属删除/卡片动画未抽离。
-- Resolution: 待用户 CR。
+- Resolution: U5 CR 通过。
 - Commit message: `refactor: 收口公共 View Transition 生命周期`
-- Commit: 未提交。
+- Commit: `6d904be`。
 
 ### U6
 
@@ -133,7 +133,7 @@
 - Validation commands: `corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（43 suites、517 tests passed）；`corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist/webpackExports 警告）；`git diff --check`（通过）。
 - Validation artifacts: 无。
 - CR findings: 自查未发现功能问题；仅删除已确认无生产引用的 alias/mock。
-- Resolution: 待用户 CR。
+- Resolution: U6 CR 通过。
 - Commit message: `refactor: 清理无引用的 RN Expo H5 兼容层`
 - Commit: `cbfa13c`。
 
@@ -145,8 +145,8 @@
 - Regression executor: 仓库原生命令。
 - Validation commands: `corepack pnpm@10.33.2 exec jest src/components/business/GenerationStageH5/__tests__/index.test.tsx src/pages/create/__tests__/index.test.tsx --runInBand --no-watchman`（2 suites、26 tests passed）；`corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（44 suites、521 tests passed）；`corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist/webpackExports 警告）；`git diff --check`（通过）。
 - Validation artifacts: 无。
-- CR findings: 待执行。
-- Resolution: 待用户 CR。
+- CR findings: 自查未发现功能问题；用户已确认继续。
+- Resolution: U7 CR 通过。
 - Commit message: `refactor: 收口跨页生成态组件职责`
 - Commit: `6f994f5`。
 
@@ -158,8 +158,8 @@
 - Regression executor: GitHub Actions 配置静态检查 + 仓库原生命令。
 - Validation commands: 本地全量 Jest（44 suites、521 tests passed）、H5 build（成功，保留既有 bundle/Browserslist/webpackExports 警告）、`git diff --check`（通过）；`tsc --noEmit --pretty false` 仅用于债务基线记录（327 条历史错误）。
 - Validation artifacts: 无。
-- CR findings: 待执行。
-- Resolution: 待用户 CR。
+- CR findings: 自查未发现门禁配置问题；用户确认继续。
+- Resolution: U8 CR 通过。
 - Commit message: `chore: 建立 Taro H5 质量门禁并记录类型债务`
 - Commit: `528af3e`。
 
@@ -172,7 +172,7 @@
 - Validation commands: `corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist/webpackExports 警告）；`node tools/analyze-h5-bundle.mjs dist`（输出 8.7 MiB、32 个 JS/CSS 资产，`app.*` 入口 359.2 KiB）；`node tools/analyze-h5-bundle.mjs dist --json`（成功）；`git diff --check`（通过）。
 - Validation artifacts: 终端报告，不提交 `dist` 或分析产物。
 - CR findings: 自查未发现功能问题；工具只读构建目录，不改变构建产物。
-- Resolution: 待用户 CR。
+- Resolution: U9 CR 通过。
 - Commit message: `perf: 增加 H5 bundle 分析基线工具`
 - Commit: `d5ae481`。
 
@@ -185,6 +185,6 @@
 - Validation commands: `corepack pnpm@10.33.2 exec jest --runInBand --no-watchman`（44 suites、520 tests passed）；`corepack pnpm@10.33.2 build:h5`（成功，保留既有 bundle/Browserslist/webpackExports 警告）；`node tools/analyze-h5-bundle.mjs dist`（成功，8.7 MiB、32 个 JS/CSS 资产，`app.*` 359.2 KiB）；`git diff --check`（通过）。
 - Validation artifacts: 无；不提交 `dist`、截图、Watchman 文件。
 - CR findings: 自查未发现本次重构回归；TODO 保留未完成项，未将 RN/Expo 深层依赖、动画迁移和性能指标标记为完成。
-- Resolution: 待用户 CR。
+- Resolution: U10 CR 通过。
 - Commit message: `docs: 收口 Taro 前端重构 TODO 与回归记录`
-- Commit: 未提交。
+- Commit: `9ab65d2`。
