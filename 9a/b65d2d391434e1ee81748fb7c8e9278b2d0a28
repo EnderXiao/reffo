@@ -1,0 +1,26 @@
+doc/Taro前端重构TODO.md
+  s_4cd234b0f544a9::t_dacc758e09dc98 119-120
+  s_4cd234b0f544a9::t_f287a5c2bcd6c0 74,76-80
+  s_4cd234b0f544a9::t_0b247fd98bd903 84-89,93-97,101,103,105,114,121,129-133,137
+  s_4cd234b0f544a9::t_1b93dc9914ecc0 115,170-177
+.codex/unit-cr-loop/2026-08-28-taro-frontend-refactor.md
+  s_4cd234b0f544a9::t_8c85314a236c14 38-39,177-184,186,188-189
+  s_4cd234b0f544a9::t_b430614fa6da87 60,62,66,68-69
+  s_4cd234b0f544a9::t_36700dddd5d5a8 185,187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9ab65d2d391434e1ee81748fb7c8e9278b2d0a28",
+  "prompts": {},
+  "sessions": {
+    "s_4cd234b0f544a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a046f6-aa66-73b2-9969-58e9f68452d6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
