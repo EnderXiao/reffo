@@ -1,7 +1,11 @@
 import {useEffect, useRef, useState} from 'react'
-import Taro, {useRouter} from '@tarojs/taro'
+import Taro from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {useHistoryStore} from '@/store/historyStore'
+import {
+  resumeWorkspaceActions,
+  type ActiveGenerationStatus,
+} from '@/store/resumeWorkspaceStore'
 import type {ProcessResult, ResumeHistory} from '@/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {
@@ -13,7 +17,9 @@ import {
 } from '@/utils/result-session'
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
-import {navigation} from '@/utils/navigation'
+import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
+import {savePendingLandingHistory} from '@/utils/pending-landing-data'
+import {useAuthStore} from '@/store/authStore'
 import {toHistoryCardItem} from '../index/model/homeCardData'
 
 const DONE_PROGRESS: LatestResultSessionProgress = {
@@ -72,6 +78,15 @@ function getProgressPercent(progress: LatestResultSessionProgress) {
   return 0
 }
 
+function getPendingGenerationStage(
+  progress: LatestResultSessionProgress,
+): ActiveGenerationStatus | null {
+  if (progress.matching !== 'done') return 'matching'
+  if (progress.optimized !== 'done') return 'optimizing'
+  if (progress.interview !== 'done') return 'interviewing'
+  return null
+}
+
 function buildFallbackResultFromHistory(history: ResumeHistory): ProcessResult {
   return {
     analysis: {
@@ -122,6 +137,15 @@ function buildContextFromHistory(history: ResumeHistory): LatestResultSessionCon
   }
 }
 
+function syncWorkspaceResult(result: ProcessResult, context?: LatestResultSessionContext | null) {
+  resumeWorkspaceActions.setAnalysis(result.analysis)
+  resumeWorkspaceActions.setMatching(result.matching)
+  resumeWorkspaceActions.setOptimizedResume(result.optimized)
+  resumeWorkspaceActions.setInterview(normalizeInterviewResult(result))
+  if (context?.resumeContent) resumeWorkspaceActions.setSourceResume(context.resumeContent)
+  if (context?.jdContent) resumeWorkspaceActions.setJobDescription(context.jdContent)
+}
+
 export interface ResultPageViewModel {
   result: ProcessResult | null
   resumeContent: string
@@ -132,6 +156,7 @@ export interface ResultPageViewModel {
   progressPercent: number
   generationError: string | null
   enteredFromCard: boolean
+  enteredFromLanding: boolean
   returnCard: HomeCardItem | null
   handleSave: () => Promise<string | null>
   handleComplete: () => Promise<void>
@@ -143,28 +168,68 @@ export interface ResultPageViewModel {
   canEditHistory: boolean
 }
 
-export function usePageModel(): ResultPageViewModel {
-  const router = useRouter()
+interface ResultPageModelOptions {
+  enteredFromLanding?: boolean
+  initialSession?: LatestResultSession
+}
+
+export function usePageModel(options: ResultPageModelOptions = {}): ResultPageViewModel {
+  const pageRoute = usePageRoute()
+  const route = useRouteTransition()
   const {addHistory} = useHistoryStore()
-  const enteredFromCard = router.params.fromCard === '1'
-  const [result, setResult] = useState<ProcessResult | null>(null)
+  const enteredFromCard = pageRoute.readBoolean('fromCard')
+  const resultId = pageRoute.readString('id')
+  const enteredFromLanding = options.enteredFromLanding === true
+  const initialSessionRef = useRef<LatestResultSession | null>(options.initialSession
+    ? {
+        ...options.initialSession,
+        result: {
+          ...options.initialSession.result,
+          interview: normalizeInterviewResult(options.initialSession.result),
+        },
+        progress: {
+          ...getDefaultProgress(options.initialSession.result),
+          ...options.initialSession.progress,
+          interview: options.initialSession.progress?.interview
+            ?? getDefaultProgress(options.initialSession.result).interview,
+        },
+      }
+    : null)
+  const [result, setResult] = useState<ProcessResult | null>(
+    () => initialSessionRef.current?.result ?? null,
+  )
   const [resultContext, setResultContext] =
-    useState<LatestResultSessionContext | null>(null)
-  const [loading, setLoading] = useState(true)
+    useState<LatestResultSessionContext | null>(() => initialSessionRef.current?.context ?? null)
+  const [loading, setLoading] = useState(() => !initialSessionRef.current)
   const [saved, setSaved] = useState(false)
   const [savedHistoryId, setSavedHistoryId] = useState<string | null>(
-    typeof router.params.id === 'string' ? router.params.id : null,
+    resultId,
   )
   const [progress, setProgress] = useState<LatestResultSessionProgress>(
-    getDefaultProgress(null),
+    () => initialSessionRef.current?.progress ?? getDefaultProgress(null),
   )
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [returnCard, setReturnCard] = useState<HomeCardItem | null>(null)
   const continuationRef = useRef(0)
+  const workspaceGenerationRunRef = useRef<number | null>(null)
   const isContinuingRef = useRef(false)
 
+  useEffect(() => () => {
+    continuationRef.current += 1
+    if (workspaceGenerationRunRef.current != null) {
+      resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
+      workspaceGenerationRunRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
-    const resultId = router.params.id
+    const initialSession = initialSessionRef.current
+
+    if (initialSession) {
+      initialSessionRef.current = null
+      void continueLatestSession(initialSession)
+      return
+    }
 
     if (resultId) {
       void loadFromHistory(resultId)
@@ -172,7 +237,7 @@ export function usePageModel(): ResultPageViewModel {
     }
 
     void loadFromLatestSession()
-  }, [router.params.id])
+  }, [resultId])
 
   const loadFromHistory = async (id: string) => {
     try {
@@ -198,14 +263,17 @@ export function usePageModel(): ResultPageViewModel {
           ...history.progress,
         }
 
+        const context = buildContextFromHistory(history)
         setResult(processResult)
-        setResultContext(buildContextFromHistory(history))
+        setResultContext(context)
+        syncWorkspaceResult(processResult, context)
+        resumeWorkspaceActions.markGenerationCompleted()
         setProgress(historyProgress)
         setSaved(true)
         setSavedHistoryId(id)
       } else {
         feedback.message('未找到结果')
-        void navigation.returnHome()
+        void route.reset(routePaths.home)
       }
     } catch (error) {
       console.error('加载历史记录失败:', error)
@@ -231,6 +299,7 @@ export function usePageModel(): ResultPageViewModel {
         }
         setResult(sessionResult)
         setResultContext(session.context)
+        syncWorkspaceResult(sessionResult, session.context)
         setReturnCard(null)
         setProgress(sessionProgress)
         void continueLatestSession({
@@ -240,7 +309,7 @@ export function usePageModel(): ResultPageViewModel {
         })
       } else {
         feedback.message('未找到结果')
-        void navigation.returnHome()
+        void route.reset(routePaths.home)
       }
     } catch (error) {
       console.error('加载结果失败:', error)
@@ -264,6 +333,7 @@ export function usePageModel(): ResultPageViewModel {
     await saveLatestResultSession(nextSession)
     setResult(nextResult)
     setProgress(nextProgress)
+    syncWorkspaceResult(nextResult, nextSession.context)
 
     return nextSession
   }
@@ -278,6 +348,23 @@ export function usePageModel(): ResultPageViewModel {
     let currentSession = session
     let currentResult = session.result
     let currentProgress = session.progress || getDefaultProgress(session.result)
+    const initialStage = getPendingGenerationStage(currentProgress)
+
+    if (!initialStage) {
+      resumeWorkspaceActions.markGenerationCompleted()
+      isContinuingRef.current = false
+      return
+    }
+
+    const workspaceRunId = resumeWorkspaceActions.startGeneration(initialStage)
+    workspaceGenerationRunRef.current = workspaceRunId
+    let workspaceStage = initialStage
+    const transitionWorkspace = (nextStage: ActiveGenerationStatus) => {
+      if (workspaceStage === nextStage) return
+      if (resumeWorkspaceActions.transitionGeneration(workspaceRunId, nextStage)) {
+        workspaceStage = nextStage
+      }
+    }
 
     try {
       setGenerationError(null)
@@ -291,7 +378,9 @@ export function usePageModel(): ResultPageViewModel {
 
         const matching = await resumeApi.matchResume(
           currentResult.analysis,
-          currentSession.context.jdContent,
+          enteredFromLanding && currentSession.context.presetJdId
+            ? {presetJdId: currentSession.context.presetJdId}
+            : currentSession.context.jdContent,
         )
 
         if (continuationRef.current !== runId) return
@@ -312,6 +401,7 @@ export function usePageModel(): ResultPageViewModel {
       }
 
       if (currentProgress.optimized !== 'done') {
+        transitionWorkspace('optimizing')
         const generatingProgress: LatestResultSessionProgress = {
           ...currentProgress,
           optimized: 'generating',
@@ -321,6 +411,9 @@ export function usePageModel(): ResultPageViewModel {
         const optimized = await resumeApi.generateOptimizedResume(
           currentResult.analysis,
           currentResult.matching,
+          ...(enteredFromLanding
+            ? [{landing: true, presetJdId: currentSession.context.presetJdId}]
+            : []),
         )
 
         if (continuationRef.current !== runId) return
@@ -337,6 +430,7 @@ export function usePageModel(): ResultPageViewModel {
       }
 
       if (currentProgress.interview !== 'done') {
+        transitionWorkspace('interviewing')
         const generatingProgress: LatestResultSessionProgress = {
           ...currentProgress,
           interview: 'generating',
@@ -347,6 +441,9 @@ export function usePageModel(): ResultPageViewModel {
           currentResult.analysis,
           currentResult.matching,
           currentResult.optimized,
+          ...(enteredFromLanding
+            ? [{landing: true, presetJdId: currentSession.context.presetJdId}]
+            : []),
         )
 
         if (continuationRef.current !== runId) return
@@ -361,10 +458,12 @@ export function usePageModel(): ResultPageViewModel {
         }
         await persistSession(currentSession, currentResult, currentProgress)
       }
+      resumeWorkspaceActions.completeGeneration(workspaceRunId)
     } catch (error) {
       if (continuationRef.current !== runId) return
 
       const message = error instanceof Error ? error.message : '生成失败，请重试'
+      resumeWorkspaceActions.failGeneration(workspaceRunId, message)
       console.error('continue result generation failed', error)
       setGenerationError(message)
       setProgress({
@@ -377,6 +476,9 @@ export function usePageModel(): ResultPageViewModel {
     } finally {
       if (continuationRef.current === runId) {
         isContinuingRef.current = false
+        workspaceGenerationRunRef.current = null
+      } else {
+        resumeWorkspaceActions.cancelGeneration(workspaceRunId)
       }
     }
   }
@@ -404,7 +506,7 @@ export function usePageModel(): ResultPageViewModel {
         baseHistory.resultContext?.location?.trim() ||
         ''
 
-      const historyId = await addHistory({
+      const history = {
         ...baseHistory,
         position: resolvedPosition,
         company: resolvedCompany,
@@ -415,9 +517,13 @@ export function usePageModel(): ResultPageViewModel {
           ...(resolvedLocation ? {location: resolvedLocation} : {}),
           resumeContent: resultContext?.resumeContent || baseHistory.resumeContent,
           jdContent: resultContext?.jdContent || baseHistory.jdContent,
+          ...(resultContext?.presetJdId ? {presetJdId: resultContext.presetJdId} : {}),
         },
         progress,
-      })
+      }
+      const historyId = enteredFromLanding && !useAuthStore.getState().session
+        ? await savePendingLandingHistory(history)
+        : await addHistory(history)
 
       setSaved(true)
       setSavedHistoryId(historyId)
@@ -448,7 +554,11 @@ export function usePageModel(): ResultPageViewModel {
     }
 
     continuationRef.current += 1
-    void navigation.navigateTo(`/pages/complete/index?historyId=${encodeURIComponent(historyId)}`)
+    if (workspaceGenerationRunRef.current != null) {
+      resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
+      workspaceGenerationRunRef.current = null
+    }
+    void route.navigate(appendRouteParams(routePaths.complete, {historyId}))
   }
 
   const handleShare = async () => {
@@ -462,11 +572,15 @@ export function usePageModel(): ResultPageViewModel {
 
   const handleBackHome = () => {
     continuationRef.current += 1
+    if (workspaceGenerationRunRef.current != null) {
+      resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
+      workspaceGenerationRunRef.current = null
+    }
     if (enteredFromCard) {
-      return navigation.returnHome()
+      return route.reset(routePaths.home)
     }
 
-    return navigation.reLaunch('/pages/index/index')
+    return route.reset(routePaths.home)
   }
 
   const handleEditHistory = async () => {
@@ -476,7 +590,11 @@ export function usePageModel(): ResultPageViewModel {
     }
 
     continuationRef.current += 1
-    await navigation.navigateTo('/pages/create/index', {
+    if (workspaceGenerationRunRef.current != null) {
+      resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
+      workspaceGenerationRunRef.current = null
+    }
+    await route.navigate(routePaths.create, {
       step: 'jobDescription',
       mode: 'editHistory',
       historyId: savedHistoryId,
@@ -499,6 +617,7 @@ export function usePageModel(): ResultPageViewModel {
     }
 
     setResult(nextResult)
+    syncWorkspaceResult(nextResult, resultContext)
     setSaved(false)
 
     if (!resultContext) return
@@ -520,6 +639,7 @@ export function usePageModel(): ResultPageViewModel {
     progressPercent: getProgressPercent(progress),
     generationError,
     enteredFromCard,
+    enteredFromLanding,
     returnCard,
     canEditHistory: Boolean(savedHistoryId),
     handleSave,

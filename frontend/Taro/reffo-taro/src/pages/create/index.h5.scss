@@ -99,64 +99,6 @@ taro-page-core,
   box-shadow: 0 6PX 10PX rgba(140, 160, 190, 0.12);
 }
 
-.reffo-create__landing-header {
-  position: relative;
-  flex: 0 0 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #a0a4ab;
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.reffo-create__landing-skip,
-.reffo-create__landing-back {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 52px;
-  height: 34px;
-  cursor: pointer;
-}
-
-.reffo-create__landing-skip {
-  justify-content: flex-start;
-}
-
-.reffo-create__landing-back {
-  border: 1px solid rgba(222, 220, 220, 0.9);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 4PX 8PX rgba(112, 106, 103, 0.1);
-}
-
-.reffo-create__landing-progress {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  transform: translate3d(-50%, -50%, 0);
-}
-
-.reffo-create__landing-progress-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #c9c6c5;
-}
-
-.reffo-create__landing-progress-track {
-  width: 70px;
-  height: 7px;
-  border-radius: 4px;
-  background: #ff6037;
-}
-
 .reffo-create--landing-flow .reffo-create__hero {
   margin-top: clamp(28px, 5.2dvh, 44px);
 }

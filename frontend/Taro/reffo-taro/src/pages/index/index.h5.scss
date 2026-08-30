@@ -16,6 +16,23 @@ taro-page-core,
   text-size-adjust: 100%;
 }
 
+:root {
+  --reffo-safe-area-top: 0px;
+  --reffo-safe-area-bottom: 0px;
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  :root {
+    --reffo-safe-area-top: env(safe-area-inset-top);
+    --reffo-safe-area-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+html.reffo-standalone {
+  --reffo-safe-area-top: env(safe-area-inset-top);
+  --reffo-safe-area-bottom: env(safe-area-inset-bottom);
+}
+
 .reffo-home {
   min-height: 100vh;
   min-height: 100dvh;
@@ -49,7 +66,7 @@ taro-page-core,
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0 auto;
-  padding: max(16px, env(safe-area-inset-top)) 0 max(18px, env(safe-area-inset-bottom));
+  padding: max(16px, var(--reffo-safe-area-top)) 0 max(18px, var(--reffo-safe-area-bottom));
   position: relative;
   display: flex;
   flex-direction: column;
@@ -169,6 +186,10 @@ html[data-reffo-return-home-pending] .reffo-home__footer,
 
 .reffo-home--entry-active .reffo-home__header {
   animation-delay: 520ms;
+}
+
+.reffo-home.reffo-home--landing-entry .reffo-home__hero {
+  animation-delay: 1120ms;
 }
 
 .reffo-home--entry-active .reffo-home-deck__rail {
@@ -476,6 +497,39 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   justify-content: center;
 }
 
+.reffo-home__account-button {
+  width: 41px;
+  height: 41px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.reffo-home__account-button:active {
+  transform: scale(0.94);
+}
+
+.reffo-home__account-button--guest {
+  width: 58px;
+  height: 30px;
+  border-radius: 15px;
+  background: #24a46b;
+  color: #ffffff;
+  box-shadow: 0 4px 12PX rgba(36, 164, 107, 0.2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reffo-home__account-avatar {
+  width: 41px;
+  height: 41px;
+  display: block;
+}
+
 .reffo-home__github-icon {
   width: 41px;
   height: 41px;
@@ -566,7 +620,41 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   font-size: 12px;
   line-height: 14px;
   font-weight: 500;
+}
+
+.reffo-home__hero-label-row {
+  display: flex;
+  align-items: flex-start;
   margin-bottom: 7px;
+}
+
+.reffo-home__hero-label-spark {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 16px;
+  margin-top: -2px;
+  margin-left: 3px;
+}
+
+.reffo-home__hero-label-spark-main,
+.reffo-home__hero-label-spark-small {
+  position: absolute;
+  color: #1c77eb;
+  line-height: 1;
+}
+
+.reffo-home__hero-label-spark-main {
+  left: 0;
+  top: 2px;
+  font-size: 16px;
+}
+
+.reffo-home__hero-label-spark-small {
+  right: 0;
+  top: 0;
+  font-size: 8px;
+  opacity: 0.86;
 }
 
 .reffo-home__hero-create-body {
@@ -721,6 +809,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
 .reffo-home-card--queue3d {
   overflow: visible;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .reffo-home-card__thickness {
@@ -1171,6 +1260,8 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   border-radius: var(--card-radius);
   clip-path: inset(0 round var(--card-radius));
   isolation: isolate;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   z-index: 1;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--card-bg) 82%, var(--card-accent) 18%) 0%, color-mix(in srgb, var(--card-bg) 88%, #ffffff 12%) 48%, rgba(255, 255, 255, 0.18) 100%),
@@ -1224,47 +1315,6 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   z-index: 4;
 }
 
-.reffo-home-card__texture {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.reffo-home-card__logo-mark {
-  position: absolute;
-  z-index: 1;
-}
-
-.reffo-home-card__logo-repeat {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  opacity: 0.92;
-}
-
-.reffo-home-card__logo-tile {
-  position: absolute;
-}
-
-.reffo-home-card__texture--repeat .reffo-home-card__logo-repeat {
-  opacity: 0.58;
-}
-
-.reffo-home-card__logo-mark svg,
-.reffo-home-card__logo-tile svg {
-  display: block;
-}
-
-.reffo-home-card__theme-wash {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 10%, transparent) 0%, rgba(255, 255, 255, 0) 68%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 52%);
-}
-
 .reffo-home-card__score {
   position: absolute;
   left: 22px;
@@ -1292,35 +1342,18 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
 }
 
 .reffo-home-card__glass {
-  position: relative;
   width: 100%;
   height: 172px;
   margin-top: auto;
   padding: 15px 22px 13px;
   z-index: 4;
-  overflow: hidden;
   border-radius: 0 0 10px 10px;
-  background: rgba(255, 255, 255, 0.10);
-  background-clip: padding-box;
-  backdrop-filter: blur(5PX);
-  -webkit-backdrop-filter: blur(5PX);
-  border-top: 1px solid rgba(255, 255, 255, 0.26);
 }
 
 .reffo-home-card--company-wrap .reffo-home-card__glass {
   height: 190px;
   padding-top: 13px;
   padding-bottom: 34px;
-}
-
-.reffo-home-card__glass::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-  opacity: 0.22;
-  pointer-events: none;
 }
 
 .reffo-home-deck-wrap--basic .reffo-home-card__glass {

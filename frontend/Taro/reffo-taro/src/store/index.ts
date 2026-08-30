@@ -5,10 +5,10 @@
  *
  * @example
  * ```tsx
- * import { useResumeStore, useHistoryStore } from '@/store';
+ * import { useResumeWorkspaceStore, useHistoryStore } from '@/store';
  *
  * function MyComponent() {
- *   const { resumeContent, setResumeContent } = useResumeStore();
+ *   const sourceResume = useResumeWorkspaceStore(state => state.sourceResume);
  *   const { histories, loadHistories } = useHistoryStore();
  *
  *   // 使用 store...
@@ -18,8 +18,6 @@
 
 // 导出类型
 export type {
-  ResumeState,
-  JDState,
   OptimizedState,
   HistoryState,
   SourceResumeState,
@@ -27,12 +25,16 @@ export type {
 } from './types';
 
 // Store 实现
-export {useResumeStore} from './resumeStore';
-export {useJDStore} from './jdStore';
 export {useHistoryStore} from './historyStore';
 export {useSourceResumeStore} from './sourceResumeStore';
 export {useAuthStore} from './authStore';
 export {useLandingFlowStore} from './landingFlowStore';
+export {resumeWorkspaceActions, useResumeWorkspaceStore} from './resumeWorkspaceStore';
+export type {
+  ActiveGenerationStatus,
+  ResumeWorkspaceState,
+  GenerationStatus,
+} from './resumeWorkspaceStore';
 
 // 以下 Store 将在后续任务中实现
 // export { useOptimizedStore } from './optimizedStore';

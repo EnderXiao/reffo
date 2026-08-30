@@ -33,6 +33,7 @@ interface PickAndParseResumeFileOptions {
   isActive?: () => boolean
   onFileSelected?: (file: Omit<ParsedResumeUploadFile, 'extractedText'>) => void
   onProgress?: (progress: number) => void
+  allowGuest?: boolean
 }
 
 function wait(duration: number) {
@@ -85,6 +86,7 @@ export async function pickAndParseResumeFile({
   isActive = () => true,
   onFileSelected,
   onProgress,
+  allowGuest = false,
 }: PickAndParseResumeFileOptions = {}): Promise<ParsedResumeUploadFile | null> {
   const canPickBrowserFile = canUseBrowserFilePicker()
   const browserFile = canPickBrowserFile
@@ -141,7 +143,7 @@ export async function pickAndParseResumeFile({
       ? await readBrowserTextFile(selectedFile.file)
       : await readTextFile(selectedFile.path)
   } else if (extension === '.pdf') {
-    const parsedDocument = await parseApi.parseResumeFile(selectedFile)
+    const parsedDocument = await parseApi.parseResumeFile(selectedFile, {landing: allowGuest})
     extractedText = parsedDocument.markdown?.trim() || parsedDocument.rawText.trim()
   } else {
     throw new Error('暂不支持 DOC/DOCX 解析，请另存为 PDF、MD 或 TXT')

@@ -5,6 +5,10 @@ import { supabaseSourceResumeRepository } from '@/repositories/source-resume-rep
 
 function createSourceResumeRepository(): SourceResumeRepositoryContract {
   if (env.DATABASE_PROVIDER === 'sqlite') {
+    if (env.APP_ENV !== 'local') {
+      throw new Error('SQLite 数据存储仅允许在 local 环境使用')
+    }
+
     return sqliteSourceResumeRepository
   }
 

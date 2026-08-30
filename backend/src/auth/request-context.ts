@@ -67,7 +67,7 @@ export async function resolveRequestUser(headers: Record<string, string | undefi
 
     throw new RequestAuthError(
       'INVALID_ACCESS_TOKEN',
-      error instanceof Error ? error.message : '登录状态无效，请重新登录'
+      '登录状态无效，请重新登录'
     )
   }
 }

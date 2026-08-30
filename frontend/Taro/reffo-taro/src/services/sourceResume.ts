@@ -1,4 +1,4 @@
-import {apiClient, hasConfiguredApiBaseURL} from './api';
+import {apiClient} from './api';
 import type {SourceResumeSourceType, SourceResumeSummary} from '@/types';
 
 interface SourceResumeApiRecord {
@@ -37,10 +37,6 @@ export class SourceResumeApi {
   }
 
   async getLatestSourceResume(): Promise<SourceResumeSummary | null> {
-    if (!hasConfiguredApiBaseURL() && process.env.NODE_ENV === 'production') {
-      return null;
-    }
-
     const response = await apiClient.get<SourceResumeApiRecord | null>('/source-resume/latest');
     return response ? toSourceResumeSummary(response) : null;
   }

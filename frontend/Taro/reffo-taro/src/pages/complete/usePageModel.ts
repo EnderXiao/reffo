@@ -1,9 +1,8 @@
 import {useCallback, useEffect, useMemo, useRef} from 'react'
-import {useRouter} from '@tarojs/taro'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {useHistoryStore} from '@/store/historyStore'
 import type {ResumeHistory} from '@/types'
-import {navigation} from '@/utils/navigation'
+import {routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import {toHistoryCardItem} from '../index/model/homeCardData'
 
 const COMPLETE_AUTO_RETURN_DELAY_MS = 10000
@@ -16,13 +15,12 @@ export interface CompletePageViewModel {
 }
 
 export function usePageModel(): CompletePageViewModel {
-  const router = useRouter()
+  const pageRoute = usePageRoute()
+  const route = useRouteTransition()
   const {histories, loading, loadHistories} = useHistoryStore()
   const hasNavigatedRef = useRef(false)
   const autoReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const historyId = typeof router.params.historyId === 'string'
-    ? router.params.historyId
-    : null
+  const historyId = pageRoute.readString('historyId')
   const history = useMemo(() => {
     if (historyId) {
       return histories.find(item => item.id === historyId) ?? null
@@ -57,11 +55,11 @@ export function usePageModel(): CompletePageViewModel {
 
     clearAutoReturnTimer()
     hasNavigatedRef.current = true
-    void navigation.reLaunch(
-      '/pages/index/index',
+    void route.reset(
+      routePaths.home,
       enteringCardId ? {newCardId: enteringCardId} : undefined,
     )
-  }, [clearAutoReturnTimer, enteringCardId])
+  }, [clearAutoReturnTimer, enteringCardId, route])
 
   useEffect(() => {
     clearAutoReturnTimer()

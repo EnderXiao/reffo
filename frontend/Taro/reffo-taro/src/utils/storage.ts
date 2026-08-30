@@ -348,6 +348,21 @@ export async function getAllKeys(): Promise<string[]> {
 }
 
 /**
+ * 清理业务缓存，保留引导完成标志和登录会话。
+ * 登录态不是业务缓存，清理缓存不应意外退出当前账号。
+ */
+export async function clearBusinessCache(): Promise<number> {
+  const landingSeenKey = 'reffo.landing.seen'
+  const keys = await getAllKeys()
+  const cacheKeys = keys.filter(key => (
+    key !== landingSeenKey && !key.startsWith('reffo.auth.session.')
+  ))
+
+  await Promise.all(cacheKeys.map(key => storage.removeItem(key)))
+  return cacheKeys.length
+}
+
+/**
  * 存储工具函数：获取存储信息
  *
  * 获取当前存储的统计信息（键数量、占用空间等）

@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro';
+import {routePaths} from '@/shared/routing/routePaths';
 import {runWithNavigationTransition} from './navigation-transition';
 
 /**
@@ -37,7 +38,7 @@ export class NavigationError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: any,
+    public details?: unknown,
   ) {
     super(message);
     this.name = 'NavigationError';
@@ -463,7 +464,7 @@ export class TaroNavigationAdapter implements NavigationAdapter {
    *
    * @param url 首页路径，默认 /pages/index/index
    */
-  async returnHome(url: string = '/pages/index/index'): Promise<void> {
+  async returnHome(url: string = routePaths.home): Promise<void> {
     if (this.canGoBack()) {
       await this.navigateBack();
       return;

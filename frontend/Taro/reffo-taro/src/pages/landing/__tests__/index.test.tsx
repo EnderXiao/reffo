@@ -3,12 +3,13 @@ import {act, fireEvent, render, screen} from '@testing-library/react'
 import LandingPage from '../index'
 import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
-import {useResumeStore} from '@/store/resumeStore'
+import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
-import {storage} from '@/utils/storage'
+import {setJSON, storage} from '@/utils/storage'
 import {pickAndParseResumeFile} from '@/utils/resume-file-upload'
+import {routePaths} from '@/shared/routing'
 
 jest.mock('@/store/authStore', () => ({
   useAuthStore: {
@@ -22,9 +23,9 @@ jest.mock('@/store/historyStore', () => ({
   },
 }))
 
-jest.mock('@/store/resumeStore', () => ({
-  useResumeStore: {
-    getState: jest.fn(),
+jest.mock('@/store/resumeWorkspaceStore', () => ({
+  resumeWorkspaceActions: {
+    setSourceResume: jest.fn(),
   },
 }))
 
@@ -41,9 +42,12 @@ jest.mock('@/utils/navigation', () => ({
 }))
 
 jest.mock('@/utils/storage', () => ({
+  getJSON: jest.fn(),
+  setJSON: jest.fn(),
   storage: {
     getItem: jest.fn(),
     setItem: jest.fn(),
+    removeItem: jest.fn(),
   },
 }))
 
@@ -58,6 +62,12 @@ jest.mock('@/utils/resume-file-upload', () => ({
   formatResumeFileSize: (size: number) => `${Math.max(1, Math.round(size / 1024))} Kb`,
   isResumeFileUploadCancelled: (error: unknown) => /cancel|取消/i.test(String(error || '')),
   pickAndParseResumeFile: jest.fn(),
+}))
+
+jest.mock('@/pages/create/utils/jobDescriptionAttachment', () => ({
+  getJobDescriptionFileValidationMessage: jest.fn(() => null),
+  parseJobDescriptionAttachment: jest.fn(),
+  pickJobDescriptionFile: jest.fn(),
 }))
 
 jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
@@ -104,7 +114,7 @@ jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
 
 const mockUseAuthStoreGetState = useAuthStore.getState as jest.Mock
 const mockUseHistoryStoreGetState = useHistoryStore.getState as jest.Mock
-const mockUseResumeStoreGetState = useResumeStore.getState as jest.Mock
+const mockSetSourceResume = resumeWorkspaceActions.setSourceResume as jest.Mock
 const mockUseSourceResumeStoreGetState = useSourceResumeStore.getState as jest.Mock
 const mockFeedbackSuccess = feedback.success as jest.Mock
 const mockFeedbackError = feedback.error as jest.Mock
@@ -112,6 +122,7 @@ const mockPickAndParseResumeFile = pickAndParseResumeFile as jest.Mock
 const mockReLaunch = navigation.reLaunch as jest.Mock
 const mockStorageGetItem = storage.getItem as jest.Mock
 const mockStorageSetItem = storage.setItem as jest.Mock
+const mockSetJSON = setJSON as jest.Mock
 
 async function enterQueueStep(container: HTMLElement) {
   await act(async () => {
@@ -179,8 +190,6 @@ describe('启动封页', () => {
   const restoreSession = jest.fn()
   const loadHistories = jest.fn()
   const loadLatestSourceResume = jest.fn()
-  const setResumeContent = jest.fn()
-
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
@@ -189,14 +198,14 @@ describe('启动封页', () => {
     restoreSession.mockResolvedValue(null)
     loadHistories.mockResolvedValue(undefined)
     loadLatestSourceResume.mockResolvedValue(undefined)
-    setResumeContent.mockReset()
+    mockSetSourceResume.mockReset()
     mockReLaunch.mockResolvedValue(undefined)
     mockStorageGetItem.mockResolvedValue('1')
     mockStorageSetItem.mockResolvedValue(undefined)
+    mockSetJSON.mockResolvedValue(undefined)
 
     mockUseAuthStoreGetState.mockReturnValue({restoreSession})
     mockUseHistoryStoreGetState.mockReturnValue({loadHistories})
-    mockUseResumeStoreGetState.mockReturnValue({setResumeContent})
     mockUseSourceResumeStoreGetState.mockReturnValue({loadLatestSourceResume})
     mockPickAndParseResumeFile.mockResolvedValue(null)
   })
@@ -238,7 +247,7 @@ describe('启动封页', () => {
       await Promise.resolve()
     })
 
-    expect(mockReLaunch).toHaveBeenCalledWith('/pages/index/index')
+    expect(mockReLaunch).toHaveBeenCalledWith(routePaths.home)
   })
 
   test('未看过 landing 时预取后停留在第一步引导页', async () => {
@@ -734,6 +743,13 @@ describe('启动封页', () => {
     })
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail')
+    const queueRoot = container.firstElementChild as HTMLElement
+    const detailSourceBeforeFolder = container.querySelector<HTMLElement>('[data-queue-offset="3"]')
+    const detailTransformBeforeFolder = detailSourceBeforeFolder?.style.transform
+
+    expect(queueRoot.style.getPropertyValue('--queue-detail-y')).not.toBe('')
+    expect(queueRoot.style.getPropertyValue('--landing-folder-origin-offset-y')).not.toBe('')
+    expect(detailTransformBeforeFolder).toContain('var(--queue-detail-y)')
     expect(container.querySelector('.reffo-landing-onboarding__queue-detail-back')).not.toBeNull()
     expect(container.querySelector('.reffo-home-card__queue-face--resume-back')).not.toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
@@ -752,10 +768,21 @@ describe('启动封页', () => {
     })
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail-leaving')
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail')
+    expect(detailSourceBeforeFolder?.style.transform).toBe(detailTransformBeforeFolder)
     expect(container.querySelector('.reffo-landing-onboarding__queue-detail-back')).not.toBeNull()
 
     await act(async () => {
       jest.advanceTimersByTime(430)
+      await Promise.resolve()
+    })
+
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail-leaving')
+    expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-selected')
+    expect(detailSourceBeforeFolder?.style.transform).not.toBe(detailTransformBeforeFolder)
+
+    await act(async () => {
+      jest.advanceTimersByTime(400)
       await Promise.resolve()
     })
 
@@ -793,13 +820,12 @@ describe('启动封页', () => {
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-folder')
     expect(screen.getByText('目标岗位')).not.toBeNull()
     expect(screen.getByText(/重新匹配简历与岗位的价值/)).not.toBeNull()
-    expect(screen.getByText('自定义岗位描述')).not.toBeNull()
     expect(screen.getByText('软件工程师')).not.toBeNull()
     expect(screen.getByText('互联网产品经理')).not.toBeNull()
     expect(screen.getByText('数据分析师')).not.toBeNull()
     expect(screen.getByText('UX 设计师')).not.toBeNull()
     expect(screen.getByText('用户运营经理')).not.toBeNull()
-    expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(6)
+    expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(5)
     const collapsedJobNodes = Array.from(container.querySelectorAll('[data-job-index]')) as HTMLElement[]
     expect(collapsedJobNodes.slice(0, 3).every(node => node.style.getPropertyValue('--job-folder-opacity') === '1')).toBe(true)
     expect(collapsedJobNodes.slice(3).every(node => node.style.getPropertyValue('--job-folder-opacity') === '0')).toBe(true)
@@ -831,8 +857,8 @@ describe('启动封页', () => {
     Array.from(container.querySelectorAll('[data-job-id]')).forEach((node, index) => {
       expect(node).toBe(targetFileNodes[index])
     })
-    expect(screen.getByText(/面议/)).not.toBeNull()
-    expect(screen.getByText(/使用真实岗位描述/)).not.toBeNull()
+    expect(screen.getByText(/25-40K/)).not.toBeNull()
+    expect(screen.getByText(/面向用户的 Web 产品/)).not.toBeNull()
 
     await act(async () => {
       fireEvent.touchStart(container.firstElementChild as Element, {
@@ -847,11 +873,11 @@ describe('启动封页', () => {
       await Promise.resolve()
     })
 
-    expect(screen.getByText(/25-40K/)).not.toBeNull()
-    expect(container.querySelector('[data-job-id="software"]')?.className)
+    expect(screen.getByText(/30-45K/)).not.toBeNull()
+    expect(container.querySelector('[data-job-id="product"]')?.className)
       .toContain('reffo-landing-onboarding__target-file--selected')
 
-    for (let swipe = 0; swipe < 4; swipe += 1) {
+    for (let swipe = 0; swipe < 3; swipe += 1) {
       await act(async () => {
         fireEvent.touchStart(container.firstElementChild as Element, {
           touches: [{clientX: 280, clientY: 430}],
@@ -928,7 +954,7 @@ describe('启动封页', () => {
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-folder-returning')
     expect(container.firstElementChild?.className).not.toContain('reffo-landing-onboarding--job-folder-restored')
-    expect(container.querySelectorAll('[data-job-id]')).toHaveLength(6)
+    expect(container.querySelectorAll('[data-job-id]')).toHaveLength(5)
     expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[0]?.className)
       .toContain('reffo-landing-onboarding__pager-dot--active')
 
@@ -941,6 +967,8 @@ describe('启动封页', () => {
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-detail-restored')
     expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[0]?.className)
       .toContain('reffo-landing-onboarding__pager-dot--active')
+    expect(container.querySelector<HTMLElement>('[data-queue-offset="3"]')?.style.transform)
+      .toBe(detailTransformBeforeFolder)
     expect(mockStorageSetItem).not.toHaveBeenCalled()
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
@@ -1003,7 +1031,15 @@ describe('启动封页', () => {
     })
 
     expect(mockPickAndParseResumeFile).toHaveBeenCalledTimes(1)
-    expect(setResumeContent).toHaveBeenCalledWith('# Melvin Kuffour\n\n## Experience')
+    expect(mockSetSourceResume).toHaveBeenCalledWith('# Melvin Kuffour\n\n## Experience')
+    expect(mockSetJSON).toHaveBeenCalledWith(
+      'reffo.landing.pendingSourceResume',
+      expect.objectContaining({
+        title: 'resume.pdf',
+        resumeMarkdown: '# Melvin Kuffour\n\n## Experience',
+        sourceType: 'file',
+      }),
+    )
     expect(mockFeedbackSuccess).toHaveBeenCalledWith('resume.pdf 已上传')
     expect(mockFeedbackError).not.toHaveBeenCalled()
     expect(container.firstElementChild?.className)
@@ -1017,7 +1053,7 @@ describe('启动封页', () => {
 
     await act(async () => {
       fireEvent.click(screen.getByText('返回'))
-      jest.advanceTimersByTime(430)
+      jest.advanceTimersByTime(830)
       await Promise.resolve()
     })
 
@@ -1037,7 +1073,7 @@ describe('启动封页', () => {
       await Promise.resolve()
     })
 
-    expect(setResumeContent).toHaveBeenLastCalledWith('')
+    expect(mockSetSourceResume).toHaveBeenLastCalledWith('')
     expect(container.firstElementChild?.className)
       .toContain('reffo-landing-onboarding--queue-upload-removing')
     expect(screen.getAllByText('resume.pdf').length).toBeGreaterThan(0)
@@ -1110,6 +1146,6 @@ describe('启动封页', () => {
       await Promise.resolve()
     })
 
-    expect(mockReLaunch).toHaveBeenCalledWith('/pages/index/index')
+    expect(mockReLaunch).toHaveBeenCalledWith(routePaths.home)
   })
 })

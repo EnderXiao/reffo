@@ -107,9 +107,7 @@ export default defineConfig<'webpack5'>(async (merge, { mode }) => {
           .set('@tarojs/components/global.css$', path.resolve(__dirname, '../src/styles/taro-components-global.h5.css'))
           .set('react-native$', path.resolve(__dirname, '../src/__mocks__/h5/react-native.js'))
           .set('@tarojs/components$', path.resolve(__dirname, '../src/__mocks__/h5/taro-components.js'))
-          .set('react-native-gesture-handler$', path.resolve(__dirname, '../src/__mocks__/h5/react-native-gesture-handler.js'))
           .set('react-native-svg$', path.resolve(__dirname, '../src/__mocks__/h5/react-native-svg.js'))
-          .set('expo-blur$', path.resolve(__dirname, '../src/__mocks__/h5/expo-blur.js'))
           .set('expo-image-picker$', path.resolve(__dirname, '../src/__mocks__/h5/expo-image-picker.js'))
           .set('expo-file-system$', path.resolve(__dirname, '../src/__mocks__/h5/expo-file-system.js'));
 
@@ -125,25 +123,6 @@ export default defineConfig<'webpack5'>(async (merge, { mode }) => {
             }),
           }],
         );
-      },
-    },
-    rn: {
-      appName: 'taroDemo',
-      entry: 'app',
-      port: 8083,
-      output: {
-        ios: './ios/main.jsbundle',
-        iosAssetsDest: './ios',
-        android: './android/app/src/main/assets/index.android.bundle',
-        androidAssetsDest: './android/app/src/main/res',
-        iosSourcemapOutput: './ios/main.map',
-        androidSourcemapOutput:
-          './android/app/src/main/assets/index.android.map',
-      },
-      postcss: {
-        cssModules: {
-          enable: false,
-        },
       },
     },
   };

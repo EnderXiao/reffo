@@ -16,6 +16,7 @@ import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
 import type {ResultPageViewModel} from './usePageModel'
 import {buildInterviewStoryViewItems} from './model/interviewReferences'
+import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
 import suggestionIcon from '@/assets/result/suggestion.svg'
@@ -27,7 +28,6 @@ import alertIcon from '@/assets/result/alert-hex.svg'
 import confirmIcon from '@/assets/result/confirm.svg'
 import chatTagIcon from '@/assets/result/chat-tag.svg'
 import exitIcon from '@/assets/result/exit.svg'
-import '@/pages/index/index.h5.scss'
 import './index.h5.scss'
 
 type ResultStageKey = 'analysis' | 'resume' | 'interview'
@@ -659,6 +659,10 @@ function ResultContent({
   return <InterviewPanel result={result} resumeContent={resumeContent} jdContent={jdContent} />
 }
 
+type ResultPageViewProps = ResultPageViewModel & {
+  hideLandingHeader?: boolean
+}
+
 export default function PageView({
   result,
   resumeContent,
@@ -668,13 +672,15 @@ export default function PageView({
   progressPercent,
   generationError,
   enteredFromCard,
+  enteredFromLanding,
   returnCard,
   canEditHistory,
   handleComplete,
   handleBackHome,
   handleEditHistory,
   handleOptimizedResumeChange,
-}: ResultPageViewModel) {
+  hideLandingHeader = false,
+}: ResultPageViewProps) {
   const [stageIndex, setStageIndex] = useState(0)
   const [isFromCardReady, setIsFromCardReady] = useState(!enteredFromCard)
   const [isEdgeEnterReady, setIsEdgeEnterReady] = useState(!enteredFromCard)
@@ -1124,10 +1130,23 @@ export default function PageView({
       <View
         className={classNames('reffo-result', 'reffo-result--loading', {
           'reffo-result--from-card': enteredFromCard,
+          'reffo-result--from-generation': !enteredFromCard,
           'reffo-result--from-card-ready': enteredFromCard && isFromCardReady,
+          'reffo-result--from-landing': enteredFromLanding,
           'reffo-result--returning-home': isReturningHome,
         })}
       >
+        {enteredFromLanding && !hideLandingHeader ? (
+          <LandingFlowHeader
+            className='reffo-create__landing-header--result'
+            onBack={() => {
+              void handleComplete()
+            }}
+            onSkip={handleBackHome}
+            progressStep={3}
+            backLabel='完成'
+          />
+        ) : null}
         <Text className='reffo-result__loading-text'>{loading ? '加载中...' : '未找到结果'}</Text>
       </View>
     )
@@ -1139,6 +1158,8 @@ export default function PageView({
       className={classNames('reffo-result', {
         'reffo-result--progress-complete': isComplete,
         'reffo-result--from-card': enteredFromCard,
+        'reffo-result--from-generation': !enteredFromCard,
+        'reffo-result--from-landing': enteredFromLanding,
         'reffo-result--from-card-ready': enteredFromCard && isFromCardReady,
         'reffo-result--edge-enter-ready': enteredFromCard && isEdgeEnterReady,
         'reffo-result--returning-home': isReturningHome,
@@ -1154,7 +1175,19 @@ export default function PageView({
       onTouchEnd={handleStageTouchEnd}
       onTouchCancel={handleStageTouchCancel}
     >
-      {enteredFromCard ? (
+      {enteredFromLanding ? (
+        hideLandingHeader ? null : (
+          <LandingFlowHeader
+            className='reffo-create__landing-header--result'
+            onBack={() => {
+              void handleComplete()
+            }}
+            onSkip={handleBackHome}
+            progressStep={3}
+            backLabel='完成'
+          />
+        )
+      ) : enteredFromCard ? (
         <>
           <View className='reffo-result__chrome reffo-result__chrome--back'>
             <View className='reffo-result__action reffo-result__action--back' onClick={handleReturnHome}>

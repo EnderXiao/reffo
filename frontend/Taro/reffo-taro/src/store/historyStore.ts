@@ -47,16 +47,59 @@ import {create} from 'zustand';
 import type {HistoryState, LoadOptions} from './types';
 import type {ResumeHistory} from '@/types';
 import {resumeHistoryApi} from '@/services/resumeHistory';
-import {getJSON, setJSON} from '@/utils/storage';
+import {isLocalRuntimeEnvironment} from '@/services/runtime-config';
+import {useAuthStore} from './authStore';
+import {getJSON, setJSON, storage} from '@/utils/storage';
+import {getUserStorageKey, HISTORY_STORAGE_KEY} from '@/utils/user-data-storage';
+import {PENDING_LANDING_HISTORIES_KEY} from '@/utils/pending-landing-data';
 
 /**
  * 历史记录存储键名
  */
-const STORAGE_KEY = 'resume_histories';
 const HISTORY_ID_PREFIX = 'JD';
 const HISTORY_ID_SEQUENCE_LENGTH = 5;
 const HISTORY_ID_MAX_SEQUENCE = 99999;
 let loadHistoriesPromise: Promise<void> | null = null;
+let historyStoreEpoch = 0;
+
+function allowsLocalFallback() {
+  return isLocalRuntimeEnvironment();
+}
+
+function hasAuthenticatedSession() {
+  return Boolean(useAuthStore.getState().session);
+}
+
+function getHistoryStorageKey() {
+  const userId = useAuthStore.getState().session?.user.id;
+  return getUserStorageKey(HISTORY_STORAGE_KEY, userId);
+}
+
+async function removeHistoryCache(storageKey: string) {
+  try {
+    await Promise.all([
+      storage.removeItem(storageKey),
+      storageKey === HISTORY_STORAGE_KEY
+        ? Promise.resolve()
+        : storage.removeItem(HISTORY_STORAGE_KEY),
+    ]);
+  } catch (error) {
+    console.warn('[HistoryStore] Failed to remove obsolete local cache:', error);
+  }
+}
+
+async function persistHistoryCache(
+  storageKey: string,
+  histories: ResumeHistory[],
+  allowLocalFallback: boolean,
+) {
+  if (allowLocalFallback) {
+    await setJSON(storageKey, histories);
+    return;
+  }
+
+  await removeHistoryCache(storageKey);
+}
 
 function padDatePart(value: number) {
   return String(value).padStart(2, '0');
@@ -191,6 +234,8 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     }
 
     loadHistoriesPromise = (async () => {
+      const operationEpoch = historyStoreEpoch;
+      const storageKey = getHistoryStorageKey();
       set(state => ({
         loading: {
           ...state.loading,
@@ -199,23 +244,74 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         },
       }));
 
+      // Guest users cannot read the JWT-protected history endpoint. Their
+      // landing results live in the unscoped local cache until login sync.
+      const isGuest = !hasAuthenticatedSession();
+      const allowLocalFallback = isGuest || await allowsLocalFallback();
       let cachedHistories: ResumeHistory[] = [];
 
-      try {
-        cachedHistories = await getJSON<ResumeHistory[]>(STORAGE_KEY) || [];
+      if (operationEpoch !== historyStoreEpoch) {
+        return;
+      }
 
-        if (cachedHistories.length > 0) {
-          set({histories: sortHistories(cachedHistories)});
+      if (allowLocalFallback) {
+        try {
+          const [storedHistories, pendingLandingHistories] = await Promise.all([
+            getJSON<ResumeHistory[]>(storageKey),
+            isGuest
+              ? getJSON<ResumeHistory[]>(PENDING_LANDING_HISTORIES_KEY)
+              : Promise.resolve(null),
+          ]);
+          cachedHistories = mergeHistories(
+            storedHistories || [],
+            pendingLandingHistories || [],
+          );
+
+          if (operationEpoch !== historyStoreEpoch) {
+            return;
+          }
+
+          if (cachedHistories.length > 0) {
+            set({histories: sortHistories(cachedHistories)});
+          }
+        } catch (error) {
+          console.warn('[HistoryStore] Failed to read cached histories:', error);
         }
-      } catch (error) {
-        console.warn('[HistoryStore] Failed to read cached histories:', error);
+      }
+
+      if (isGuest) {
+        await persistHistoryCache(storageKey, cachedHistories, true);
+
+        if (operationEpoch !== historyStoreEpoch) {
+          return;
+        }
+
+        set({
+          histories: sortHistories(cachedHistories),
+          loading: {
+            isLoading: false,
+            error: null,
+          },
+          initialized: true,
+        });
+        return;
       }
 
       try {
         const remoteHistories = await resumeHistoryApi.getHistories();
-        const histories = await syncMissingLocalHistories(remoteHistories, cachedHistories);
+        const histories = allowLocalFallback
+          ? await syncMissingLocalHistories(remoteHistories, cachedHistories)
+          : sortHistories(remoteHistories);
 
-        await setJSON(STORAGE_KEY, histories);
+        if (operationEpoch !== historyStoreEpoch) {
+          return;
+        }
+
+        await persistHistoryCache(storageKey, histories, allowLocalFallback);
+
+        if (operationEpoch !== historyStoreEpoch) {
+          return;
+        }
 
         set({
           histories,
@@ -226,14 +322,20 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           initialized: true,
         });
       } catch (error) {
+        if (operationEpoch !== historyStoreEpoch) {
+          return;
+        }
+
         const errorMessage = error instanceof Error ? error.message : '加载历史记录失败';
 
         set(state => ({
-          histories: cachedHistories.length > 0 ? sortHistories(cachedHistories) : state.histories,
+          histories: allowLocalFallback && cachedHistories.length > 0
+            ? sortHistories(cachedHistories)
+            : [],
           loading: {
             ...state.loading,
             isLoading: false,
-            error: cachedHistories.length > 0 ? null : errorMessage,
+            error: allowLocalFallback && cachedHistories.length > 0 ? null : errorMessage,
           },
           initialized: true,
         }));
@@ -276,6 +378,9 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
    * ```
    */
   addHistory: async (history: ResumeHistory): Promise<string> => {
+    const operationEpoch = historyStoreEpoch;
+    const storageKey = getHistoryStorageKey();
+    const allowLocalFallback = await allowsLocalFallback();
     set(state => ({
       loading: {
         ...state.loading,
@@ -296,6 +401,10 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       try {
         savedHistory = await resumeHistoryApi.saveHistory(historyWithId);
       } catch (error) {
+        if (!allowLocalFallback) {
+          throw error;
+        }
+
         console.warn('[HistoryStore] Failed to save history remotely, fallback to local cache:', error);
       }
 
@@ -304,7 +413,15 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         ...histories.filter(item => item.id !== savedHistory.id),
       ]);
 
-      await setJSON(STORAGE_KEY, updatedHistories);
+      if (operationEpoch !== historyStoreEpoch) {
+        return savedHistory.id;
+      }
+
+      await persistHistoryCache(storageKey, updatedHistories, allowLocalFallback);
+
+      if (operationEpoch !== historyStoreEpoch) {
+        return savedHistory.id;
+      }
 
       set({
         histories: updatedHistories,
@@ -351,6 +468,9 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
    * ```
    */
   updateHistory: async (id: string, updates: Partial<ResumeHistory>) => {
+    const operationEpoch = historyStoreEpoch;
+    const storageKey = getHistoryStorageKey();
+    const allowLocalFallback = await allowsLocalFallback();
     set(state => ({
       loading: {
         ...state.loading,
@@ -377,13 +497,25 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       try {
         updatedHistory = await resumeHistoryApi.updateHistory(id, updates);
       } catch (error) {
+        if (!allowLocalFallback) {
+          throw error;
+        }
+
         console.warn('[HistoryStore] Failed to update history remotely, fallback to local cache:', error);
       }
 
       const updatedHistories = [...histories];
       updatedHistories[index] = updatedHistory;
 
-      await setJSON(STORAGE_KEY, updatedHistories);
+      if (operationEpoch !== historyStoreEpoch) {
+        return;
+      }
+
+      await persistHistoryCache(storageKey, updatedHistories, allowLocalFallback);
+
+      if (operationEpoch !== historyStoreEpoch) {
+        return;
+      }
 
       set({
         histories: updatedHistories,
@@ -424,6 +556,9 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
    * ```
    */
   deleteHistory: async (id: string) => {
+    const operationEpoch = historyStoreEpoch;
+    const storageKey = getHistoryStorageKey();
+    const allowLocalFallback = await allowsLocalFallback();
     set(state => ({
       loading: {
         ...state.loading,
@@ -438,12 +573,24 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       try {
         await resumeHistoryApi.deleteHistory(id);
       } catch (error) {
+        if (!allowLocalFallback) {
+          throw error;
+        }
+
         console.warn('[HistoryStore] Failed to delete history remotely, fallback to local cache:', error);
       }
 
       const updatedHistories = histories.filter(h => h.id !== id);
 
-      await setJSON(STORAGE_KEY, updatedHistories);
+      if (operationEpoch !== historyStoreEpoch) {
+        return;
+      }
+
+      await persistHistoryCache(storageKey, updatedHistories, allowLocalFallback);
+
+      if (operationEpoch !== historyStoreEpoch) {
+        return;
+      }
 
       // 如果删除的是当前选中的记录，清空选中状态
       const updatedCurrentHistory =
@@ -490,6 +637,9 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
    * ```
    */
   clearHistories: async () => {
+    const operationEpoch = historyStoreEpoch;
+    const storageKey = getHistoryStorageKey();
+    const allowLocalFallback = await allowsLocalFallback();
     set(state => ({
       loading: {
         ...state.loading,
@@ -502,10 +652,22 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       try {
         await resumeHistoryApi.clearHistories();
       } catch (error) {
+        if (!allowLocalFallback) {
+          throw error;
+        }
+
         console.warn('[HistoryStore] Failed to clear histories remotely, fallback to local cache:', error);
       }
 
-      await setJSON(STORAGE_KEY, []);
+      if (operationEpoch !== historyStoreEpoch) {
+        return;
+      }
+
+      await persistHistoryCache(storageKey, [], allowLocalFallback);
+
+      if (operationEpoch !== historyStoreEpoch) {
+        return;
+      }
 
       set({
         histories: [],
@@ -564,6 +726,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
    * ```
    */
   reset: () => {
+    historyStoreEpoch += 1;
     loadHistoriesPromise = null;
     set(initialState);
   },

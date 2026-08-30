@@ -33,7 +33,11 @@ export function getViewportSize() {
   }
 }
 
-export function resolveH5CardScale() {
+export type H5CardScaleOptions = {
+  amplification?: number
+}
+
+export function resolveH5CardScale({amplification = 1.33}: H5CardScaleOptions = {}) {
   const {width, height} = getViewportSize()
   const pagePadX = Math.min(Math.max(width * 0.076, 24), 31)
   const deckWidth = Math.min(width - pagePadX * 1.48, 346)
@@ -43,7 +47,7 @@ export function resolveH5CardScale() {
   const maxScale = width >= 768 ? 0.98 : 0.88
   const baseScale = Math.max(0.72, Math.min(widthScale, heightScale, maxScale))
 
-  return Math.min(baseScale * 1.33, width >= 768 ? 1.18 : 1.08)
+  return Math.min(baseScale * amplification, width >= 768 ? 1.18 : 1.08)
 }
 
 export function clamp(value: number, min: number, max: number) {

@@ -1,3 +1,5 @@
+const NONPROD_CORS_ORIGIN = 'https://reffo-web-nonprod.onrender.com'
+
 const DEFAULT_CORS_ORIGINS = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -5,9 +7,10 @@ const DEFAULT_CORS_ORIGINS = [
   'http://127.0.0.1:4173',
   'http://localhost:10086',
   'http://127.0.0.1:10086',
+  NONPROD_CORS_ORIGIN,
 ]
 
-function parseCorsOrigin(value: string | undefined) {
+function parseCorsOrigin(value: string | undefined, appEnv: AppEnv) {
   const normalizedValue = value?.trim()
   if (!normalizedValue) {
     return DEFAULT_CORS_ORIGINS
@@ -17,10 +20,16 @@ function parseCorsOrigin(value: string | undefined) {
     return true
   }
 
-  return normalizedValue
+  const origins = normalizedValue
     .split(',')
     .map(origin => origin.trim())
     .filter(Boolean)
+
+  if (appEnv === 'nonprod' && !origins.includes(NONPROD_CORS_ORIGIN)) {
+    origins.push(NONPROD_CORS_ORIGIN)
+  }
+
+  return origins
 }
 
 type AppEnv = 'local' | 'nonprod' | 'prod'
@@ -67,6 +76,12 @@ function parseBoolean(value: string | undefined, fallback: boolean) {
   return ['1', 'true', 'yes', 'on'].includes(normalizedValue)
 }
 
+function parsePositiveInteger(value: string | undefined, fallback: number) {
+  const parsed = Number.parseInt(value || '', 10)
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
 /**
  * 环境变量配置
  */
@@ -83,6 +98,9 @@ export const env = {
   SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY || '',
   SUPABASE_PROJECT_ENV: parseSupabaseProjectEnv(process.env.SUPABASE_PROJECT_ENV),
   SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || 'user-files',
+  AUTH_OTP_LENGTH: parsePositiveInteger(process.env.AUTH_OTP_LENGTH, 6),
+  AUTH_OTP_RESEND_SECONDS: parsePositiveInteger(process.env.AUTH_OTP_RESEND_SECONDS, 60),
+  AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY: process.env.AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY || '',
 
   // Harness runtime database
   HARNESS_DATABASE_PATH: process.env.HARNESS_DATABASE_PATH || '',
@@ -115,7 +133,7 @@ export const env = {
   HOST: process.env.HOST || '0.0.0.0',
 
   // CORS Configuration
-  CORS_ORIGIN: parseCorsOrigin(process.env.CORS_ORIGIN),
+  CORS_ORIGIN: parseCorsOrigin(process.env.CORS_ORIGIN, parseAppEnv(process.env.APP_ENV)),
 }
 
 export function getOcrEnvStatus() {
@@ -172,14 +190,21 @@ export function validateEnv() {
     throw new Error('HARNESS_MAX_RUNS must be a non-negative number')
   }
 
-  if (env.APP_ENV === 'prod') {
+  if (env.APP_ENV !== 'local') {
     if (env.DATABASE_PROVIDER !== 'supabase') {
-      throw new Error('DATABASE_PROVIDER must be supabase when APP_ENV=prod')
+      throw new Error('DATABASE_PROVIDER must be supabase when APP_ENV is non-local')
     }
 
     if (!env.AUTH_REQUIRED) {
-      throw new Error('AUTH_REQUIRED cannot be false when APP_ENV=prod')
+      throw new Error('AUTH_REQUIRED cannot be false when APP_ENV is non-local')
     }
+
+    if (!env.AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY) {
+      console.warn('⚠️ AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY 未配置，当前实例将使用临时密钥；多实例部署前必须配置稳定私钥')
+    }
+  }
+
+  if (env.APP_ENV === 'prod') {
 
     if (process.env.DEV_USER_ID) {
       throw new Error('DEV_USER_ID cannot be set when APP_ENV=prod')

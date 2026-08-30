@@ -4,7 +4,7 @@ import Taro, {useRouter} from '@tarojs/taro'
 import {parseApi} from '@/services/parse'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {useJDStore, useLandingFlowStore, useResumeStore, useSourceResumeStore} from '@/store'
+import {useAuthStore, useLandingFlowStore, useResumeWorkspaceStore, useSourceResumeStore} from '@/store'
 import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
 
@@ -94,6 +94,10 @@ jest.mock('@/services/resume', () => ({
     analyzeResume: jest.fn(),
     matchResume: jest.fn(),
   },
+}))
+
+jest.mock('@/services/runtime-config', () => ({
+  isLocalRuntimeEnvironment: jest.fn(async () => false),
 }))
 
 jest.mock('@/utils/result-session', () => ({
@@ -213,10 +217,16 @@ describe('CreatePage', () => {
     jest.clearAllMocks()
     jest.useRealTimers()
     mockUseRouter.mockReturnValue({params: {}})
-    useResumeStore.getState().reset()
-    useJDStore.getState().reset()
+    useResumeWorkspaceStore.getState().reset()
     useLandingFlowStore.getState().clear()
     useSourceResumeStore.getState().reset()
+    useAuthStore.setState({
+      session: {
+        accessToken: 'test-token',
+        user: {id: 'test-user', email: 'test@example.com'},
+      },
+      initialized: true,
+    })
     ;(Taro as any).chooseMessageFile = mockChooseMessageFile
     ;(Taro.getFileSystemManager as jest.Mock).mockReturnValue({
       readFile: mockReadFile,
@@ -289,32 +299,69 @@ describe('CreatePage', () => {
     expect(mockUseRouter().params).toEqual({})
   })
 
+  test('Landing 提交岗位后自动进入分析并带来源跳转结果页', async () => {
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    const selectedLandingResume = '# 小A\n\n## 项目经历\n- Landing 预设简历内容'
+    const deferred = createDeferredPromise<typeof defaultProcessResult.analysis>()
+    mockAnalyzeResume.mockReturnValue(deferred.promise)
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    useLandingFlowStore.getState().startJobDescription({
+      content: '负责核心产品体验优化',
+      companyName: 'reffo 科技',
+      positionName: 'UX 设计师',
+      baseLocation: '上海',
+    })
+    useLandingFlowStore.getState().selectResume({
+      source: 'preset',
+      id: 'landing-resume-design',
+      title: '小A的体验简历',
+      markdown: selectedLandingResume,
+    })
+    mockUseRouter.mockReturnValue({params: {autoGenerate: '1'}})
+
+    await renderPage()
+
+    await waitFor(() => {
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(selectedLandingResume, {landing: true})
+    })
+
+    await act(async () => {
+      deferred.resolve(defaultProcessResult.analysis)
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(mockNavigateTo).toHaveBeenCalledWith({
+        url: '/pages/landing-result/index',
+      })
+    })
+  })
+
   test('应该渲染新的单页流程容器', async () => {
     await renderPage()
 
     expect(screen.getByText('编辑')).toBeTruthy()
     expect(screen.getByText('源简历')).toBeTruthy()
     expect(screen.getByText('上传源简历')).toBeTruthy()
-    expect(screen.getByText('输入 Markdown 简历')).toBeTruthy()
-    expect(screen.getByText('保存源简历')).toBeTruthy()
+    expect(screen.getByText('输入文字描述')).toBeTruthy()
+    expect(screen.getByTestId('resume-markdown-input')).toBeTruthy()
+    expect(screen.getByText('保存')).toBeTruthy()
   })
 
-  test('未提供内容时点击保存会提示校验信息', async () => {
+  test('未提供内容时保存按钮不可用', async () => {
     await renderPage()
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
-      await Promise.resolve()
-    })
-
-    await waitFor(() => {
-      expect(mockShowToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '请先填写或整理 Markdown 简历',
-          icon: 'none',
-        }),
-      )
-    })
+    expect(screen.getByTestId('create-flow-primary-action').getAttribute('aria-disabled')).toBe('true')
+    expect(mockShowToast).not.toHaveBeenCalled()
   })
 
   test('输入 markdown 后保存会进入源简历完成页', async () => {
@@ -398,7 +445,7 @@ describe('CreatePage', () => {
       expect((screen.getByTestId('resume-markdown-input') as HTMLTextAreaElement).value).toBe(
         existingSourceResume.resumeMarkdown,
       )
-      expect(screen.getByText('保存源简历')).toBeTruthy()
+      expect(screen.getByText('保存')).toBeTruthy()
     })
   })
 
@@ -431,7 +478,7 @@ describe('CreatePage', () => {
       expect(mockShowModal).toHaveBeenCalledWith(expect.objectContaining({title: '删除源简历？'}))
       expect(mockDeleteSourceResume).toHaveBeenCalledWith('source-resume-1')
       expect(screen.getByText('上传源简历')).toBeTruthy()
-      expect(screen.getByText('保存源简历')).toBeTruthy()
+      expect(screen.getByText('保存')).toBeTruthy()
       expect((screen.getByTestId('resume-markdown-input') as HTMLTextAreaElement).value).toBe('')
       expect(screen.queryByText('源简历已删除')).toBeNull()
       expect(screen.queryByText('新的申请')).toBeNull()
@@ -565,8 +612,8 @@ describe('CreatePage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
       expect(screen.getByText('正在分析')).toBeTruthy()
-      expect(screen.getAllByText('简历 · Jeremy Smith').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('公司 · OpenAI').length).toBeGreaterThan(0)
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(existingSourceResume.resumeMarkdown)
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('analyzing')
     })
 
     await act(async () => {
@@ -578,6 +625,7 @@ describe('CreatePage', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith({
         url: '/pages/result/index',
       })
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('matching')
     })
   })
 
@@ -612,14 +660,14 @@ describe('CreatePage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
-      expect(screen.queryByText('公司 · 目标公司待补充')).toBeNull()
-      expect(screen.queryByText('岗位 · 目标岗位待补充')).toBeNull()
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(existingSourceResume.resumeMarkdown)
     })
 
     fireEvent.click(screen.getByTestId('analysis-cancel-action'))
 
     await waitFor(() => {
       expect(screen.queryByTestId('create-analysis-stage')).toBeNull()
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('idle')
     })
 
     await act(async () => {

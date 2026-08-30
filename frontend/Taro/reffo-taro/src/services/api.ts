@@ -1,6 +1,9 @@
-import {TaroRequestAdapter, RequestError} from '@/utils/request';
-import type {RequestConfig, Response} from '@/utils/request';
+import * as requestTransport from '@/utils/httpTransport';
+import {RequestError} from '@/utils/httpTransport';
+import type {RequestConfig, Response} from '@/utils/httpTransport';
 import {retry, type RetryOptions} from '@/utils/retry';
+import {redactSensitiveData} from '@/utils/redact';
+import {getClientErrorMessage} from '@/utils/client-error';
 
 /**
  * API 响应格式
@@ -16,7 +19,7 @@ export interface ApiResponse<T> {
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   /** 可选的消息 */
   message?: string;
@@ -37,6 +40,19 @@ export interface ApiConfig {
 }
 
 type ReffoEnv = 'local' | 'nonprod' | 'prod';
+
+export {redactSensitiveData};
+
+function getApiErrorPayload(data: unknown) {
+  if (!data || typeof data !== 'object' || !('success' in data)) return null
+  const payload = data as {success?: unknown; error?: {code?: unknown; message?: unknown; details?: unknown}}
+  if (payload.success !== false || !payload.error) return null
+  return {
+    code: typeof payload.error.code === 'string' ? payload.error.code : 'API_ERROR',
+    message: typeof payload.error.message === 'string' ? payload.error.message : '请求失败',
+    details: payload.error.details,
+  }
+}
 
 /**
  * API 客户端基类
@@ -72,7 +88,7 @@ type ReffoEnv = 'local' | 'nonprod' | 'prod';
  */
 export class ApiClient {
   /** 请求适配器 */
-  private adapter: TaroRequestAdapter;
+  private adapter: requestTransport.RequestAdapter;
 
   /** API 基础 URL */
   private baseURL: string;
@@ -113,91 +129,77 @@ export class ApiClient {
     }
 
     // 创建请求适配器
-    this.adapter = new TaroRequestAdapter();
+    this.adapter = new requestTransport.TaroRequestAdapter();
     this.adapter.setDefaultTimeout(this.timeout);
-
-    // 配置拦截器
-    this.setupInterceptors();
   }
 
-  /**
-   * 配置请求/响应拦截器
-   *
-   * **实现要点：**
-   * 1. 请求拦截器：添加 baseURL、通用请求头、认证 token
-   * 2. 响应拦截器：统一处理响应格式、业务错误
-   * 3. 错误拦截器：记录错误日志
-   */
-  private setupInterceptors(): void {
-    // 请求拦截器
-    this.adapter.addRequestInterceptor(config => {
-      // 添加 baseURL
-      if (!config.url.startsWith('http')) {
-        config.url = `${this.baseURL}${config.url}`;
-      }
-
-      // 添加通用请求头
-      config.header = {
+  private buildRequestConfig(config: RequestConfig): RequestConfig {
+    const url = config.url.startsWith('http') ? config.url : `${this.baseURL}${config.url}`
+    return {
+      ...config,
+      url,
+      header: {
         'Content-Type': 'application/json',
         ...config.header,
-      };
+        ...(this.authToken ? {Authorization: `Bearer ${this.authToken}`} : {}),
+      },
+    }
+  }
 
-      // 添加认证 token
-      if (this.authToken) {
-        config.header['Authorization'] = `Bearer ${this.authToken}`;
-      }
+  private async send<T>(config: RequestConfig, unwrap = true): Promise<T | Response<T>> {
+    const requestConfig = this.buildRequestConfig(config)
+    if (this.enableLog) {
+      console.log('[API Request]', {
+        method: requestConfig.method || 'GET',
+        url: requestConfig.url,
+        data: redactSensitiveData(requestConfig.data),
+        timestamp: new Date().toISOString(),
+      })
+    }
 
-      // 记录请求日志
-      if (this.enableLog) {
-        console.log('[API Request]', {
-          method: config.method,
-          url: config.url,
-          data: config.data,
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      return config;
-    });
-
-    // 响应拦截器
-    this.adapter.addResponseInterceptor(response => {
-      // 记录响应日志
+    try {
+      const response = await this.adapter.request<ApiResponse<T> | T>(requestConfig)
       if (this.enableLog) {
         console.log('[API Response]', {
-          url: response.header['url'] || 'unknown',
+          url: requestConfig.url,
           statusCode: response.statusCode,
           success: response.success,
           timestamp: new Date().toISOString(),
-        });
+        })
       }
-
-      // 检查业务错误
-      const apiResponse = response.data as ApiResponse<any>;
-      if (apiResponse && apiResponse.success === false) {
+      const apiError = getApiErrorPayload(response.data)
+      if (apiError) {
         throw new RequestError(
-          apiResponse.error?.message || '请求失败',
-          apiResponse.error?.code || 'API_ERROR',
+          getClientErrorMessage(apiError.code, response.statusCode, apiError.message),
+          apiError.code,
           response.statusCode,
-          apiResponse.error?.details,
-        );
+          apiError.details,
+        )
       }
-
-      return response;
-    });
-
-    // 错误拦截器
-    this.adapter.addErrorInterceptor(error => {
-      // 记录错误日志
-      if (this.enableLog) {
+      return unwrap ? (response.data as ApiResponse<T>).data as T : response as Response<T>
+    } catch (error) {
+      let requestError = error
+      if (error instanceof RequestError && error.code === 'HTTP_ERROR') {
+        const apiError = getApiErrorPayload(error.response)
+        if (apiError) {
+          requestError = new RequestError(
+            getClientErrorMessage(apiError.code, error.statusCode, apiError.message),
+            apiError.code,
+            error.statusCode,
+            apiError.details,
+          )
+        }
+      }
+      if (this.enableLog && requestError instanceof RequestError) {
         console.error('[API Error]', {
-          code: error.code,
-          message: error.message,
-          statusCode: error.statusCode,
+          code: requestError.code,
+          message: requestError.message,
+          statusCode: requestError.statusCode,
           timestamp: new Date().toISOString(),
-        });
+        })
       }
-    });
+      throw requestError
+    }
   }
 
   /**
@@ -254,14 +256,11 @@ export class ApiClient {
    * const data = await apiClient.get('/mvp/health')
    * ```
    */
-  async get<T = any>(
+  async get<T = unknown>(
     url: string,
     config?: Omit<RequestConfig, 'url' | 'method'>,
   ): Promise<T> {
-    return this.executeWithRetry(async () => {
-      const response = await this.adapter.get<ApiResponse<T>>(url, config);
-      return response.data.data as T;
-    });
+    return this.executeWithRetry(() => this.send<T>({...config, url, method: 'GET'} as RequestConfig) as Promise<T>);
   }
 
   /**
@@ -280,19 +279,12 @@ export class ApiClient {
    * })
    * ```
    */
-  async post<T = any>(
+  async post<T = unknown>(
     url: string,
-    data?: any,
+    data?: unknown,
     config?: Omit<RequestConfig, 'url' | 'method' | 'data'>,
   ): Promise<T> {
-    return this.executeWithRetry(async () => {
-      const response = await this.adapter.post<ApiResponse<T>>(
-        url,
-        data,
-        config,
-      );
-      return response.data.data as T;
-    });
+    return this.executeWithRetry(() => this.send<T>({...config, url, method: 'POST', data} as RequestConfig) as Promise<T>);
   }
 
   /**
@@ -311,19 +303,12 @@ export class ApiClient {
    * })
    * ```
    */
-  async put<T = any>(
+  async put<T = unknown>(
     url: string,
-    data?: any,
+    data?: unknown,
     config?: Omit<RequestConfig, 'url' | 'method' | 'data'>,
   ): Promise<T> {
-    return this.executeWithRetry(async () => {
-      const response = await this.adapter.put<ApiResponse<T>>(
-        url,
-        data,
-        config,
-      );
-      return response.data.data as T;
-    });
+    return this.executeWithRetry(() => this.send<T>({...config, url, method: 'PUT', data} as RequestConfig) as Promise<T>);
   }
 
   /**
@@ -339,14 +324,11 @@ export class ApiClient {
    * await apiClient.delete('/users/1')
    * ```
    */
-  async delete<T = any>(
+  async delete<T = unknown>(
     url: string,
     config?: Omit<RequestConfig, 'url' | 'method'>,
   ): Promise<T> {
-    return this.executeWithRetry(async () => {
-      const response = await this.adapter.delete<ApiResponse<T>>(url, config);
-      return response.data.data as T;
-    });
+    return this.executeWithRetry(() => this.send<T>({...config, url, method: 'DELETE'} as RequestConfig) as Promise<T>);
   }
 
   /**
@@ -366,8 +348,8 @@ export class ApiClient {
    * })
    * ```
    */
-  async request<T = any>(config: RequestConfig): Promise<Response<T>> {
-    return this.adapter.request<T>(config);
+  async request<T = unknown>(config: RequestConfig): Promise<Response<T>> {
+    return this.send<T>(config, false) as Promise<Response<T>>;
   }
 }
 
@@ -412,19 +394,32 @@ function getH5DevServerApiBaseURL(): string | undefined {
   return '/api/v1';
 }
 
-function getReffoEnv(): ReffoEnv {
+export function getReffoEnv(): ReffoEnv {
   const env = process.env.REFFO_ENV?.trim().toLowerCase();
 
   if (env === 'nonprod' || env === 'prod') {
     return env;
   }
 
+  const configuredBaseURL = getConfiguredApiBaseURL()?.toLowerCase();
+  if (configuredBaseURL?.includes('api-nonprod.reffo.app')) {
+    return 'nonprod';
+  }
+
+  if (configuredBaseURL?.includes('api.reffo.app')) {
+    return 'prod';
+  }
+
   return 'local';
+}
+
+export function isLocalApiEnvironment(): boolean {
+  return getReffoEnv() === 'local';
 }
 
 function getApiBaseURLByReffoEnv(reffoEnv: ReffoEnv): string {
   if (reffoEnv === 'nonprod') {
-    return 'https://api-nonprod.reffo.app/api/v1';
+    return 'https://reffo-api-nonprod.onrender.com/api/v1';
   }
 
   if (reffoEnv === 'prod') {

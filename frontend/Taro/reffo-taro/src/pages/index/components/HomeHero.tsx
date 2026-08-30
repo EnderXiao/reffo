@@ -15,6 +15,27 @@ interface HomeHeroProps {
   compact?: boolean
 }
 
+function HeroLabel({children, compact, strategy}: {children: string; compact: boolean; strategy?: boolean}) {
+  return (
+    <View style={styles.heroLabelRow as any}>
+      <Text
+        style={[
+          (strategy ? styles.heroStrategyLabel : styles.heroCreateLabel) as any,
+          compact
+            ? (strategy ? styles.heroStrategyLabelCompact : styles.heroCreateLabelCompact) as any
+            : null,
+        ] as any}
+      >
+        {children}
+      </Text>
+      <View style={styles.heroLabelSpark as any}>
+        <Text style={styles.heroLabelSparkMain as any}>✦</Text>
+        <Text style={styles.heroLabelSparkSmall as any}>✦</Text>
+      </View>
+    </View>
+  )
+}
+
 export default function HomeHero({
   currentCard,
   isStrategyVisible,
@@ -103,14 +124,7 @@ export default function HomeHero({
               {HOME_PAGE_CONTENT.hero.createTitlePrefix}
               <Text style={styles.heroHighlight as any}>{HOME_PAGE_CONTENT.hero.createTitleAccent}</Text>
             </Text>
-            <Text
-              style={[
-                styles.heroCreateLabel as any,
-                compact ? styles.heroCreateLabelCompact : null,
-              ] as any}
-            >
-              {HOME_PAGE_CONTENT.hero.createGuideLabel}
-            </Text>
+            <HeroLabel compact={compact}>{HOME_PAGE_CONTENT.hero.createGuideLabel}</HeroLabel>
             <Text
               style={[
                 styles.heroCreateBody as any,
@@ -124,14 +138,7 @@ export default function HomeHero({
           <View
             style={[styles.heroStrategyWrap as any, compact ? styles.heroStrategyWrapCompact : null] as any}
           >
-            <Text
-              style={[
-                styles.heroStrategyLabel as any,
-                compact ? styles.heroStrategyLabelCompact : null,
-              ] as any}
-            >
-              {HOME_PAGE_CONTENT.hero.strategyLabel}
-            </Text>
+            <HeroLabel compact={compact} strategy>{HOME_PAGE_CONTENT.hero.strategyLabel}</HeroLabel>
             <View
               style={[
                 styles.heroStrategyBodyGroup as any,

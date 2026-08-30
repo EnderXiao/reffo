@@ -140,4 +140,20 @@ describe('parseRoutes storage upload flow', () => {
       purpose: 'resume',
     })
   })
+
+  test('allows unauthenticated inline resume parsing for Landing', async () => {
+    const response = await parseRoutes.handle(new Request('http://localhost/api/v1/parse/resume-file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_name: 'resume.pdf',
+        mime_type: 'application/pdf',
+        content_base64: 'JVBERg==',
+        landing: true,
+      }),
+    }))
+
+    expect(response.status).not.toBe(401)
+    expect(workflowInputs).toHaveLength(1)
+  })
 })

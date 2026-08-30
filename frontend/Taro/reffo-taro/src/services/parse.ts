@@ -40,6 +40,7 @@ interface ParseFilePayload {
   bucket?: string
   storage_path?: string
   size_bytes?: number
+  landing?: boolean
 }
 
 function readFileAsBase64(file: File): Promise<string> {
@@ -195,8 +196,11 @@ async function buildPayload(
 }
 
 export class ParseApi {
-  async parseResumeFile(file: BrowserPickedFile): Promise<ParsedDocumentResult> {
+  async parseResumeFile(file: BrowserPickedFile, options: {landing?: boolean} = {}): Promise<ParsedDocumentResult> {
     const payload = await buildPayload(file, 'application/pdf', 'resume')
+    if (options.landing) {
+      payload.landing = true
+    }
     return apiClient.post<ParsedDocumentResult>('/parse/resume-file', payload, {timeout: 180000})
   }
 

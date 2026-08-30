@@ -5,6 +5,7 @@ import { MatchingAgent } from '@/agents/matching-agent'
 import { ResumeGeneratorAgent } from '@/agents/resume-generator'
 import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
 import { ResumeRevisionAgent } from '@/agents/resume-revision'
+import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { createHarnessEvent } from '@/harness/events'
 import {
   assertBusinessEvaluationPassed,
@@ -24,6 +25,7 @@ import { buildQualityGateAttempt, classifyAttemptResult, decideNextAction } from
 import { runStep } from '@/harness/run-step'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
+import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 
@@ -34,7 +36,7 @@ function getHarnessRunRepository() {
 function buildErrorPayload(code: string, fallbackMessage: string, error: unknown): ApiResponse<never>['error'] {
   return {
     code,
-    message: error instanceof Error ? error.message : fallbackMessage,
+    message: fallbackMessage,
     details: getBusinessEvaluationErrorDetails(error),
   }
 }
@@ -44,6 +46,47 @@ function buildErrorPayload(code: string, fallbackMessage: string, error: unknown
  * 提供完整的简历优化流程接口
  */
 export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
+  .onBeforeHandle(async ({ headers, path, body, set }) => {
+    if (path === '/api/v1/mvp/health') {
+      return
+    }
+
+    const requestBody = body && typeof body === 'object'
+      ? body as Record<string, unknown>
+      : null
+    const isGuestLandingRequest = (
+      path === '/api/v1/mvp/analyze'
+      && requestBody?.landing === true
+    ) || (
+      path === '/api/v1/mvp/match'
+      && isLandingPresetJobId(requestBody?.preset_jd_id)
+    ) || (
+      (path === '/api/v1/mvp/generate' || path === '/api/v1/mvp/interview')
+      && requestBody?.landing === true
+      && isLandingPresetJobId(requestBody?.preset_jd_id)
+    )
+
+    if (isGuestLandingRequest) {
+      return
+    }
+
+    try {
+      await resolveRequestUser(headers)
+    } catch (error) {
+      if (!(error instanceof RequestAuthError)) {
+        throw error
+      }
+
+      set.status = error.status
+      return {
+        success: false,
+        error: {
+          code: error.code,
+          message: error.message,
+        },
+      } satisfies ApiResponse<never>
+    }
+  })
   /**
    * POST /api/v1/mvp/process
    * 完整流程：简历分析 -> 匹配分析 -> 简历生成 -> 面试建议
@@ -329,6 +372,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           description: 'Markdown 格式的简历内容',
           minLength: 10,
         }),
+        landing: t.Optional(t.Boolean({
+          description: '是否为未登录 Landing 体验流程',
+        })),
       }),
       detail: {
         summary: '分析简历',
@@ -346,7 +392,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/match',
     async ({ body, set }) => {
       try {
-        const jdText = normalizeMarkdownText(body.jd_text)
+        const presetJob = resolveLandingPresetJob(body.preset_jd_id)
+        const jdText = normalizeMarkdownText(presetJob || body.jd_text || '')
         const parser = new JDParserAgent()
         const matcher = new MatchingAgent()
         const { result, meta } = await runHarnessedRequest({
@@ -429,10 +476,13 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         structured_resume: t.Any({
           description: '结构化简历数据',
         }),
-        jd_text: t.String({
+        jd_text: t.Optional(t.String({
           description: '岗位描述（JD）文本',
           minLength: 10,
-        }),
+        })),
+        preset_jd_id: t.Optional(t.String({
+          description: 'Landing 预设岗位 ID',
+        })),
       }),
       detail: {
         summary: '匹配分析',
@@ -642,6 +692,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         matching: t.Any({
           description: '匹配分析结果，需包含 jd_structure',
         }),
+        landing: t.Optional(t.Boolean({description: '是否为未登录 Landing 体验流程'})),
+        preset_jd_id: t.Optional(t.String({description: 'Landing 预设岗位 ID'})),
       }),
       detail: {
         summary: '生成优化简历',
@@ -738,6 +790,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           description: '优化后的 Markdown 简历',
           minLength: 10,
         }),
+        landing: t.Optional(t.Boolean({description: '是否为未登录 Landing 体验流程'})),
+        preset_jd_id: t.Optional(t.String({description: 'Landing 预设岗位 ID'})),
       }),
       detail: {
         summary: '生成面试建议',
