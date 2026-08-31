@@ -4,6 +4,16 @@ html, body, #app, .taro_page, .taro_page_show {
   background: #f6f9fd;
 }
 
+html:has(.reffo-profile),
+body:has(.reffo-profile),
+taro-page-core:has(.reffo-profile),
+.taro_page:has(.reffo-profile),
+.taro_page_show:has(.reffo-profile),
+.taro_page_stationed:has(.reffo-profile) {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
 .reffo-profile {
   min-height: 100vh;
   min-height: 100dvh;

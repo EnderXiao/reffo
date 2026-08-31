@@ -218,19 +218,23 @@ describe('首页组件', () => {
     expect(screen.getByText('取消')).toBeTruthy()
   })
 
-  test('加载状态应显示加载提示', () => {
+  test('加载状态应保留首页内容并静默刷新', () => {
     mockLoading.isLoading = true
 
     render(<Index />)
 
-    expect(screen.getByText('加载中...')).toBeTruthy()
+    expect(screen.getByText('新的申请')).toBeTruthy()
+    expect(screen.queryByText('加载中...')).toBeNull()
+    expect(document.querySelector('.reffo-home')?.getAttribute('aria-busy')).toBe('true')
   })
 
-  test('错误状态应显示错误提示', () => {
+  test('错误状态应保留首页内容而不覆盖页面', () => {
     mockLoading.error = '加载失败'
 
     render(<Index />)
 
-    expect(screen.getByText(/加载失败/)).toBeTruthy()
+    expect(screen.getByText('新的申请')).toBeTruthy()
+    expect(screen.queryByText(/加载失败/)).toBeNull()
+    expect(document.querySelector('.reffo-home')?.getAttribute('data-loading-error')).toBe('加载失败')
   })
 })
