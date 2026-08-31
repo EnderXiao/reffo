@@ -1,0 +1,71 @@
+frontend/Taro/reffo-taro/src/utils/__tests__/history-helper.test.ts
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 48
+frontend/Taro/reffo-taro/src/pages/result/model/interviewReferences.ts
+  s_9e25da5bc10f38::t_d54e09d0784351 108-110,123
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 90,96
+backend/src/harness/evaluators/business-evaluators.ts
+  s_9e25da5bc10f38::t_30ef0a6ba1f18f 193-198,200,202-203
+  s_9e25da5bc10f38::t_517fc85a29c29c 264
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 251-255,258
+  s_9e25da5bc10f38::t_97be515510bc8a 256-257
+backend/src/schemas/match-analysis.ts
+  s_9e25da5bc10f38::t_a1de237b519159 95-98,138,161
+  s_9e25da5bc10f38::t_30ef0a6ba1f18f 92,94
+  s_9e25da5bc10f38::t_b9bd2849e37ce3 73-91,93
+backend/src/types/index.ts
+  s_9e25da5bc10f38::t_30ef0a6ba1f18f 104-111,125
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 146
+backend/src/schemas/interview-suggestions.test.ts
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 21
+backend/src/prompts/prompts.test.ts
+  s_9e25da5bc10f38::t_d54e09d0784351 115-116
+  s_9e25da5bc10f38::t_9343c994edee08 131-141
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 618-629
+backend/src/prompts/prompts.ts
+  s_9e25da5bc10f38::t_e24661ac5cb939 252
+  s_9e25da5bc10f38::t_30ef0a6ba1f18f 187-193,217-219
+  s_9e25da5bc10f38::t_889488fb837687 364,397
+  s_9e25da5bc10f38::t_9343c994edee08 300-301
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 358,393
+  s_9e25da5bc10f38::t_b9bd2849e37ce3 253
+backend/src/harness/evaluators/business-evaluators.test.ts
+  s_9e25da5bc10f38::t_d54e09d0784351 168-179
+  s_9e25da5bc10f38::t_97be515510bc8a 60-63
+  s_9e25da5bc10f38::t_e24661ac5cb939 111-133,180
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 56-59,64
+backend/src/workflows/resume-optimization-workflow.test.ts
+  s_9e25da5bc10f38::t_97be515510bc8a 93-96
+backend/src/schemas/match-analysis.test.ts
+  s_9e25da5bc10f38::t_a1de237b519159 68-77
+  s_9e25da5bc10f38::t_e24661ac5cb939 29-33,51
+  s_9e25da5bc10f38::t_b9bd2849e37ce3 52-67
+frontend/Taro/reffo-taro/src/types/index.ts
+  s_9e25da5bc10f38::t_e24661ac5cb939 200-204
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 226
+frontend/Taro/reffo-taro/src/services/resume.ts
+  s_9e25da5bc10f38::t_97be515510bc8a 285
+  s_9e25da5bc10f38::t_d54e09d0784351 287
+  s_9e25da5bc10f38::t_e24661ac5cb939 164
+  s_9e25da5bc10f38::t_0a839c51cafa35 172-177,179-180,182-185,205,258-260
+  s_9e25da5bc10f38::t_a1de237b519159 178,181
+backend/src/schemas/interview-suggestions.ts
+  s_9e25da5bc10f38::t_6b663197e22983 69
+  s_9e25da5bc10f38::t_81ca6a6a23f18c 60,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "839e713b0a9c73765d5d90845ff9c05ba79b8f06",
+  "prompts": {},
+  "sessions": {
+    "s_9e25da5bc10f38": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04c2c-0af0-7153-800b-b9b9e423bfd0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
