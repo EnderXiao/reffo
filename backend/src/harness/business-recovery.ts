@@ -26,7 +26,6 @@ const recoveryPoliciesByStep: Record<string, BusinessRecoveryPolicy> = {
       'MISSING_EXPERIENCE_MATCH',
       'MISSING_WEAKNESS_EVIDENCE_TYPE',
       'INVALID_WEAKNESS_EVIDENCE_TYPE',
-      'JD_REQUIRED_SKILLS_NOT_CHECKED',
     ]),
   },
   generate_interview_advice: {

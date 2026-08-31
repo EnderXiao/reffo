@@ -18,6 +18,7 @@ describe('interview suggestion schema normalization', () => {
       title: '企业客户需求管理',
       background: '负责访谈和需求分析',
       result: '推动方案上线；不补充未知数字',
+      storytelling_approach: [],
     }])
     expect(parsed.follow_up_questions).toEqual(['这个岗位的成功标准是什么？'])
   })

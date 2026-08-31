@@ -197,6 +197,11 @@ export interface SkillMatch {
   matched_skills: string[];
   missing_skills: string[];
   match_percentage: number;
+  required_skill_checks?: Array<{
+    requirement: string;
+    status: 'matched' | 'missing' | 'unclear';
+    evidence: string;
+  }>;
 }
 
 export interface ExperienceMatch {
@@ -218,6 +223,7 @@ export interface InterviewStoryRecommendation {
   title: string;
   background: string;
   result: string;
+  storytelling_approach: string[];
 }
 
 export interface InterviewSuggestions {

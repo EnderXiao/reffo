@@ -184,7 +184,13 @@ export function buildMatchingMessages(resume: ResumeStructure, jd: JDStructure):
 {
   "match_score": 0,
   "hard_requirements_match": {},
-  "skill_match": { "matched": [], "missing": [] },
+  "skill_match": {
+    "required_skill_checks": [
+      { "requirement": "JD 中的必备技能原文", "status": "matched", "evidence": "候选人简历中的证据或未证明说明" }
+    ],
+    "matched": [],
+    "missing": []
+  },
   "experience_match": "",
   "soft_skills_match": "",
   "strengths": [],
@@ -208,7 +214,9 @@ export function buildMatchingMessages(resume: ResumeStructure, jd: JDStructure):
 - match_score 使用固定权重：明示硬要求 35、相关经历与结果 30、技能/方法 20、可迁移能力与语境适配 10、证据清晰度 5。
 - JD 未说明的门槛不得扣分；上下文假设对总分影响不得超过 5 分，也不能成为硬性不匹配。
 - hard_requirements_match 只逐项判断 JD 明示 must-have。true 表示有直接或语义等价证据；false 表示“当前材料未证明”，不等于候选人确定不具备。
-- matched 只放有证据的直接匹配或强等价技能；missing 只放 JD 明示关键要求且材料未证明的技能，不能把公司/地点假设放入 missing。
+- 先判断源简历和 JD 的主要语言。语言不同不代表不匹配：按跨语言语义和上下文判断，不要求中英文词面重合；不得仅因语言不同把技能判为 missing。
+- required_skill_checks 必须尽量逐项覆盖 JD hard_requirements.required_skills，requirement 保留 JD 原文，status 只能是 matched、missing、unclear，evidence 写明简历证据或为何当前材料无法确认。OCR 不完整、语言转换或证据不足时使用 unclear。
+- matched 只放有证据的直接匹配或强等价技能；missing 只放 JD 明示关键要求且材料未证明的技能，不能把公司/地点假设放入 missing。required_skill_checks 不完整时仍继续输出完整匹配分析。
 - 积极识别三类差距：direct_missing=材料确无证据；implicit_evidence=具体经历可间接证明；wording_gap=事实具备但术语未对齐。不得把后两类写成“候选人不会”。
 - direct_missing 也只能表示“当前材料没有证据”，不能断言候选人现实中缺乏该能力。positioning_strategy、context_fit、weaknesses 和 suggestion 均必须遵守这一措辞边界。
 - strengths 输出 3-5 个最能提高胜率的证据点；weaknesses 输出 2-4 个最重要差距，并与 weakness_details 一一对应。
@@ -241,7 +249,8 @@ export function buildMatchingBusinessRepairMessages(input: {
 - 只修复 business_evaluation 中指出的问题，不要重写无关字段。
 - 若缺少 experience_match，基于源简历和 JD 补充经验匹配说明。
 - 若 weakness_details 缺失、数量不一致或 evidence_type 不合法，补齐为 direct_missing、implicit_evidence 或 wording_gap，并保持与 weaknesses 一一对应。
-- 若 skill_match 没有覆盖 JD required_skills，需要重新检查 required_skills，把已有证据支持的技能写入 matched，把当前材料未证明的明示关键技能写入 missing。
+- 若 required_skill_checks 没有覆盖 JD required_skills，需要重新检查并尽量逐项补齐；requirement 保留 JD 原文，status 使用 matched、missing 或 unclear。该问题属于质量警告，修复失败也不能阻断后续流程。
+- required_skill_checks 是质量信号，不是流程门禁；即使缺失、部分不确定或格式不完整，也必须继续返回可用的匹配分析。
 - missing 只能表示“当前材料未证明”，不能断言候选人现实中不会或不具备。
 - optimization_suggestions 仍只能基于已有源简历事实做重排和改写建议，不得要求新增项目、技能、数字或经历。
 - 不要输出 jd_structure；服务端会附加原始结构化 JD。
@@ -288,7 +297,8 @@ export function buildResumeGenerationMessages(
 - 不得输出“待补充”“可量化”“XXX”等占位符；信息缺失时省略相应字段或章节。
 
 输出规范：
-- 使用源简历主要语言；中文内容使用自然、克制、专业的中文。
+- 先判断源简历和 JD 的主要语言。两者语言一致时沿用该语言；语言不一致时，将职业摘要、经历、项目、教育和技能说明翻译为 JD 的主要语言，同时保留姓名、公司名、岗位名、项目名、工具名、证书名和数字等事实原子，不改变事实、强度、时间和归属。翻译只改变表达语言，不得新增或删减候选人证据。
+- 中文内容使用自然、克制、专业的中文；英文 JD 使用自然、专业的英文。无法可靠判断语言时沿用源简历主要语言。
 - 仅输出完整 Markdown 简历，不要解释、注释、事实审计表或代码块。
 - 建议结构：姓名与已有联系方式、职业摘要、工作/实践经历、项目经历（有则输出）、教育背景（有则输出）、专业技能。若 personal_info.name 非空，一级标题必须使用该姓名，不能用当前职位代替。
 - 标题层级清晰，列表简洁，避免表格、花哨符号、关键词堆砌和面向模型的说明。`,
@@ -345,12 +355,13 @@ export function buildInterviewAdviceMessages(
 {
   "questions": [],
   "story_recommendations": [
-    { "title": "", "background": "", "result": "" }
+    { "title": "", "background": "", "result": "", "storytelling_approach": [] }
   ],
   "follow_up_questions": []
 执行标准：
 - questions 输出 4 个高概率、高区分度问题，覆盖：核心任务/方法、真实项目深挖、关键差距或迁移能力、公司或工作地语境下的情境题。问题不得预设候选人做过源简历之外的事情。
 - story_recommendations 输出 2 个最值得准备的真实经历。title 必须指向源简历已有经历；background 说明可核验的背景、职责边界和应强调的行动；result 只使用已有成果。若源材料没有结果，明确建议候选人准备真实可核验的结果或反馈，不提供示例数字。
+- 每个故事必须输出 storytelling_approach 数组，包含 2-3 条只针对该故事和目标岗位、可直接展示的完整讲述要点：明确讲述顺序、需要强调的真实行动/结果，以及如何回应岗位要求或诚实处理能力缺口。前端会逐条原样展示，不要依赖前端补充主语、引用或结论。禁止复用通用模板句，禁止输出“从岗位描述中……对齐讲述重点”之类空泛文案，禁止编造事实或数字，禁止放入原文引用占位符。
 - 对 implicit_evidence 和 wording_gap，给出“如何把真实经历讲清楚”的方向；对 direct_missing，设计诚实的应对与学习迁移思路，不能伪装已有经验。
 - 作品集、SQL 测试、证书原件、语言证明等申请包材料可以作为准备提醒，但不得被描述成简历输出失败；回答只能帮助候选人核验和组织真实材料。
 - 公司人才偏好和工作地影响只能用于选择问题、压力测试和反问方向。若依据是上下文假设，使用条件式问法，不宣称公司内部事实。
@@ -379,10 +390,11 @@ export function buildInterviewBusinessRepairMessages(input: {
 修复范围：
 - 只修复 business_evaluation 中指出的问题，不要重写无关字段。
 - 若缺少 story_recommendations，基于优化简历和匹配分析补充 1-2 个真实经历准备建议。
-- 每个 story_recommendations 项必须包含 title、background、result。
+- 每个 story_recommendations 项必须包含 title、background、result、storytelling_approach。
 - title 必须指向源简历或优化简历中已有的真实经历、项目、工作或能力主题。
 - background 只描述可从材料中核验的背景、职责边界和行动。
 - result 只能使用材料已有结果；如果材料没有结果，写成“建议候选人准备真实可核验的结果或反馈”，不要编造数字。
+- storytelling_approach 必须是 2-3 条针对当前故事、可直接展示的完整讲述要点，只能基于材料和岗位分析生成，不能使用通用模板句或编造事实。
 - questions 和 follow_up_questions 可以保留当前输出；只有明显为空或不完整时再基于材料补足。
 
 只返回 JSON，不要输出答案范文、解释、Markdown 代码块或修复说明。`,
