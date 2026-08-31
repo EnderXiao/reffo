@@ -45,6 +45,7 @@ describe('history-helper', () => {
           title: '增长项目',
           background: '介绍项目背景',
           result: '强调量化结果',
+          storytelling_approach: ['按背景、行动、结果顺序讲述。'],
         },
       ],
     },

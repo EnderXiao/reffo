@@ -90,6 +90,10 @@ const interviewSuggestions: InterviewSuggestions = {
       title: '订单系统性能优化',
       background: '电商平台订单量增长。',
       result: '系统吞吐量提升 3 倍。',
+      storytelling_approach: [
+        '先说明订单量增长背景，再说明性能优化动作和结果。',
+        '突出个人负责的性能优化范围和可核验结果。',
+      ],
     },
   ],
   follow_up_questions: ['如何保证分布式事务一致性？'],
