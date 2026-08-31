@@ -1,3 +1,15 @@
+.reffo-profile-content,
+html:has(.reffo-profile-content),
+body:has(.reffo-profile-content),
+taro-page-core:has(.reffo-profile-content),
+.taro_page:has(.reffo-profile-content),
+.taro_page_show:has(.reffo-profile-content),
+.taro_page_stationed:has(.reffo-profile-content) {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-width: auto;
+}
+
 .reffo-profile-content { min-height: 100vh; min-height: 100dvh; box-sizing: border-box; padding: max(16px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); color: #17212b; background: linear-gradient(180deg, #dce9f9 0%, #f7fafc 44%, #fff 100%); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
 .reffo-profile-content__topbar { width: min(100%, 760px); height: 44px; margin: 0 auto 24px; display: flex; align-items: center; justify-content: space-between; }
 .reffo-profile-content__back { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 32px; line-height: 1; }
