@@ -1,0 +1,184 @@
+backend/src/v5/tests/canonical-evidence.test.ts
+  s_e85657a2be7dec::t_d8efb2106300c4 5
+backend/src/v5/prompts/P03.md
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+backend/src/v5/prompts/P10R.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+docs/v5-工作流默认化与插件化-TODO.md
+  s_e85657a2be7dec::t_008844d7f12c84 18,29,58,215
+  s_e85657a2be7dec::t_ae71a562de88d6 20-21,127,177,179-180,188,221-222
+  s_e85657a2be7dec::t_7f6fc702f17952 80,217
+  s_e85657a2be7dec::t_a097c139ef11a2 22,225
+  s_e85657a2be7dec::t_2b855ed610aaf3 23,185-186,226
+  s_e85657a2be7dec::t_fa495dc36d97dd 19
+  s_e85657a2be7dec::t_e015d5eef4e808 1-8,11-17,24-26,28,41,43-49,51,59-63,65-67,74,82-83,91,99-126,128-130,136-138,147-149,161-168,170-176,178,181-182,184,187,190,192,194-213
+  s_e85657a2be7dec::t_851cf374e2155d 84-90,92-93,95-98,218
+  s_e85657a2be7dec::t_fcafbc7ba411be 30,38-39,52-55,57
+  s_e85657a2be7dec::t_e8ec4728ab0bd3 50,56,77,94,157,169
+  s_e85657a2be7dec::t_a3ee465edf6c49 68-73,75-76,78-79,81,216
+  s_e85657a2be7dec::t_fcd880f1438c3f 64,131-135,139-146,150-156,158-160
+  s_e85657a2be7dec::t_d053fde23820fe 219-220
+  s_e85657a2be7dec::t_3668d2165abb9a 223-224
+  s_e85657a2be7dec::t_5811a360b17930 9-10,27,31-37,40,42,183,189,191,193,214
+backend/src/workflows/resume-optimization-workflow.test.ts
+  s_e85657a2be7dec::t_760fdff1669bb3 3,7-22,25-39,41-42,45-59,62-69,72-76,78-86,89
+  s_e85657a2be7dec::t_d8efb2106300c4 4
+backend/src/v5/tests/README.md
+  s_e85657a2be7dec::t_92a8fb96226933 1-10
+backend/src/v5/tests/workflow.test.ts
+  s_e85657a2be7dec::t_d8efb2106300c4 6,18
+docs/v5-llm-调用流程升级清单.md
+  s_e85657a2be7dec::t_9d2f8cdc00f983 11
+  s_e85657a2be7dec::t_3668d2165abb9a 154-166
+  s_e85657a2be7dec::t_6f731174ed8536 1-10,12-59,62-63,65-76,80-95,97,99-100,102-107,109-115,117-120,124,126,129-131,133-134,136-137,140-142,144-150,152-153
+  s_e85657a2be7dec::t_4a7203319a7631 77-79,98
+  s_e85657a2be7dec::t_f70b9bed9be923 121-123,143,151
+  s_e85657a2be7dec::t_e7d8bb9d786c2b 60-61,64,96,101,108,116,125,127-128,132,135,138-139
+backend/src/v5/prompts/P08.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/tests/evaluation-runner-support.test.ts
+  s_e85657a2be7dec::t_81b8d8a6173674 59,63
+backend/src/v5/prompt-compiler.ts
+  s_e85657a2be7dec::t_6ea8c3dd320f22 18,90-91,173,207-208
+backend/src/v5/prompts/core.md
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/routes/mvp.ts
+  s_e85657a2be7dec::t_9d2f8cdc00f983 105,154,164
+  s_e85657a2be7dec::t_d8efb2106300c4 30
+backend/src/v5/prompts/output.md
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/prompts/P10.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/scripts/run-v5-nonprod-nine-case-blind-eval.ts
+  s_e85657a2be7dec::t_d8efb2106300c4 661
+backend/src/v5/prompts/P06.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/tests/policy-score-validator.test.ts
+  s_e85657a2be7dec::t_d8efb2106300c4 5
+backend/README.md
+  s_e85657a2be7dec::t_21044f60d5f985 27-31,76,80-95
+  s_e85657a2be7dec::t_9d2f8cdc00f983 78
+  s_e85657a2be7dec::t_f70b9bed9be923 142
+  s_e85657a2be7dec::t_bb4dbe7fd5dce5 96
+backend/src/v5/tests/registry.test.ts
+  s_e85657a2be7dec::t_d8efb2106300c4 1-191
+backend/src/v5/prompts/P03R.md
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+backend/src/types/index.ts
+  s_e85657a2be7dec::t_9d2f8cdc00f983 209
+backend/src/workflows/resume-optimization-workflow.ts
+  s_e85657a2be7dec::t_d8efb2106300c4 8
+  s_e85657a2be7dec::t_760fdff1669bb3 1,20,25,34,44
+  s_e85657a2be7dec::t_4fc95a866390b4 7
+backend/src/v5/prompts/P07.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/plugins/registry.ts
+  s_e85657a2be7dec::t_c309099dd84f30 47-53,55-71,74-76,79-88,90-102,104,106-109,114,118,123,183,189,200,231,249,291-292,294,353-354
+  s_e85657a2be7dec::t_bf7b935c75ab97 208
+  s_e85657a2be7dec::t_982e3d4ac06b99 222-226,355,364,401-403
+  s_e85657a2be7dec::t_1112ff29200db1 2,4,36-38,54,89,190-191,193-195,202-204,206-207,209-221,299-300,308-318,326-327,345,356,367-400,404-414,416
+  s_e85657a2be7dec::t_f1477f1edcc813 1,3,5-35,39-46,72-73,77-78,103,105,110-113,115-117,119-122,124-182,184-188,192,196-199,201,205,227-230,232-248,250-290,293,295-298,301-307,319-325,328-344,346-352,357-363,365-366,415,417-418
+backend/src/v5/prompts/P02.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/tests/ab-compatibility.test.ts
+  s_e85657a2be7dec::t_d8efb2106300c4 5
+  s_e85657a2be7dec::t_4fc95a866390b4 4
+backend/src/v5/prompts/P05.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/package.json
+  s_e85657a2be7dec::t_f70b9bed9be923 18
+backend/src/v5/types.ts
+  s_e85657a2be7dec::t_05b30574d290fe 590-591
+README.md
+  s_e85657a2be7dec::t_21044f60d5f985 11,25,30-40
+  s_e85657a2be7dec::t_99daa2e7065722 41
+backend/src/v5/prompts/P04.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/main/README.md
+  s_e85657a2be7dec::t_bb4dbe7fd5dce5 6
+  s_e85657a2be7dec::t_92a8fb96226933 1-5
+backend/src/v5/prompts/P02R.md
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+backend/src/v5/tests/resume-extraction-cache.test.ts
+  s_e85657a2be7dec::t_d8efb2106300c4 7
+backend/src/v5/plugins/contract.ts
+  s_e85657a2be7dec::t_f1477f1edcc813 1-3,5-20,41-46,49-62,64-89,91
+  s_e85657a2be7dec::t_1112ff29200db1 4,21-40,47-48,63,90
+backend/src/v5/prompts/manifest.json
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1-15
+.codex/unit-cr-loop/2026-09-01-v5-workflow-plugin-refactor.md
+  s_e85657a2be7dec::t_d1389e5e3d0147 33,82-89
+  s_e85657a2be7dec::t_43e12184d4a6f7 48
+  s_e85657a2be7dec::t_18846ee48ad0f3 81
+  s_e85657a2be7dec::t_57b36fe64c9d5c 34,72,99-105
+  s_e85657a2be7dec::t_03dc982d59ade3 35,106
+  s_e85657a2be7dec::t_402d78843b183d 115-116
+  s_e85657a2be7dec::t_2e94a2e2bf507b 1-4,6-14,18-21,23,25-29,37-41,46-47,50,53-54,70-71,108-114
+  s_e85657a2be7dec::t_008844d7f12c84 30
+  s_e85657a2be7dec::t_af70309a90a6cf 5,15-17,22,24,42,44-45,49,51-52
+  s_e85657a2be7dec::t_7f6fc702f17952 31,65
+  s_e85657a2be7dec::t_a3ee465edf6c49 55-64,66-69
+  s_e85657a2be7dec::t_3088d9363bc458 32,73-80,107
+  s_e85657a2be7dec::t_fcafbc7ba411be 43
+  s_e85657a2be7dec::t_90cc45bc0e54b2 36,90-98
+backend/src/v5/README.md
+  s_e85657a2be7dec::t_9d2f8cdc00f983 63,65,90
+  s_e85657a2be7dec::t_d31eb77314e33f 8,14
+  s_e85657a2be7dec::t_92a8fb96226933 3-7,9-13,15
+  s_e85657a2be7dec::t_e7d8bb9d786c2b 16,67,79,81,85-87
+  s_e85657a2be7dec::t_1ba144aa5a6c27 41-42
+backend/src/v5/prompts/P11.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/prompts.ts
+  s_e85657a2be7dec::t_2dfd60cd44d35f 1-3,10-11,13-15,17-27,29,31-37,39,41-44,47-50,54,58
+  s_e85657a2be7dec::t_05b30574d290fe 38
+backend/src/v5/main/workflow.ts
+  s_e85657a2be7dec::t_d8efb2106300c4 27-35,90,93-105,160-171,225,241,248,325,351-362,389-412,416-436,438-470,472,475-476,481-512,517-533,592-598,601-642,646-657,781-785,787-799,872-876,878-903,905-928,930-988,990-991,993-1039,1043,1071-1086
+backend/src/v5/prompts/P09.md
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+backend/src/v5/prompts/P05R.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/prompts/P01.md
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+backend/src/v5/prompts/P01R.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/prompts/P12.md
+  s_e85657a2be7dec::t_2243941f18c1f1 2-5
+  s_e85657a2be7dec::t_51c2cc3bfbe190 1
+backend/src/v5/tests/prompt-schema.test.ts
+  s_e85657a2be7dec::t_b31423dc41b256 3,17-18
+backend/src/v5/tests/stage-runner.test.ts
+  s_e85657a2be7dec::t_9013b997e1439c 3,23,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4c74a14a06572bb83c248748cdfa4aa53bd80453",
+  "prompts": {},
+  "sessions": {
+    "s_e85657a2be7dec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05bc0-81c2-7771-9e06-7a71e1467dfe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
