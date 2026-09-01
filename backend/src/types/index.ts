@@ -4,6 +4,7 @@
 
 import type { RecoverySummary } from '@/harness/runtime-state'
 import type { HarnessResponseMeta } from '@/harness/harnessed-request'
+import type { ResumeAgentState, V5ReleaseStatus } from '@/v5/types'
 
 /**
  * 简历结构化数据
@@ -100,12 +101,31 @@ export interface JDStructure {
  * 匹配分析结果
  */
 export type WeaknessEvidenceType = 'direct_missing' | 'implicit_evidence' | 'wording_gap'
+export type MatchGapPriority = 'high' | 'medium' | 'low'
 
 export interface MatchWeaknessDetail {
+  id?: string
+  priority?: MatchGapPriority
   weakness: string
   evidence_type: WeaknessEvidenceType
+  jd_requirement?: string
   evidence: string
+  impact?: string
   suggestion: string
+}
+
+export interface MatchOptimizationExample {
+  source_path: string
+  source_quote: string
+  optimized_content: string
+}
+
+export interface MatchOptimizationStrategyDetail {
+  id: string
+  related_gap_ids: string[]
+  strategy_point: string
+  rationale: string
+  optimization_example: MatchOptimizationExample
 }
 
 export interface MatchAnalysis {
@@ -122,6 +142,7 @@ export interface MatchAnalysis {
   weakness_details?: MatchWeaknessDetail[]
   positioning_strategy?: string
   optimization_suggestions?: string[]
+  optimization_strategy_details?: MatchOptimizationStrategyDetail[]
   context_fit?: {
     company_alignment: string
     location_alignment: string
@@ -185,6 +206,10 @@ export interface MvpProcessResponse {
   step_statuses?: MvpStepStatus[]
   recoverable_errors?: MvpRecoverableError[]
   recovery_summary?: RecoverySummary[]
+  agent_version?: '4.4.6' | '5.0.0'
+  agent_state?: ResumeAgentState
+  release_status?: V5ReleaseStatus
+  used_safe_fallback?: boolean
   step1_analysis: ResumeAnalysis
   step2_matching: MatchAnalysis
   step3_optimized_resume: string

@@ -1,14 +1,49 @@
 import OpenAI from 'openai'
+import { zodResponseFormat } from 'openai/helpers/zod'
 import { env } from '@/config/env'
 import { createHarnessEvent } from '@/harness/events'
 import { createDigest } from '@/harness/run-context'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
 
+function composeAbortSignals(...candidates: Array<AbortSignal | undefined>) {
+  const signals = [...new Set(candidates.filter((signal): signal is AbortSignal => Boolean(signal)))]
+
+  if (signals.length <= 1) {
+    return {
+      signal: signals[0],
+      dispose: () => undefined,
+    }
+  }
+
+  const controller = new AbortController()
+  const listeners = new Map<AbortSignal, () => void>()
+
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort(signal.reason)
+      break
+    }
+
+    const listener = () => controller.abort(signal.reason)
+    listeners.set(signal, listener)
+    signal.addEventListener('abort', listener, { once: true })
+  }
+
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      for (const [signal, listener] of listeners) {
+        signal.removeEventListener('abort', listener)
+      }
+    },
+  }
+}
+
 export class DeepSeekProvider implements LlmProvider {
   private readonly client: OpenAI
 
-  constructor() {
-    this.client = new OpenAI({
+  constructor(client?: OpenAI) {
+    this.client = client ?? new OpenAI({
       apiKey: env.OPENAI_API_KEY,
       baseURL: env.OPENAI_BASE_URL,
     })
@@ -17,7 +52,10 @@ export class DeepSeekProvider implements LlmProvider {
   async complete(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     const model = input.model ?? env.AI_MODEL
     const startedAt = Date.now()
+    const startedAtIso = new Date(startedAt).toISOString()
     const inputDigest = createDigest(input.messages.map((message) => message.content).join('\n'))
+    const nativeStructuredOutput = env.V5_STRUCTURED_OUTPUT_MODE === 'native'
+      || (env.V5_STRUCTURED_OUTPUT_MODE === 'auto' && /^https:\/\/api\.openai\.com(?:\/|$)/i.test(env.OPENAI_BASE_URL))
 
     if (input.eventBus && input.stepContext) {
       await input.eventBus.publish(
@@ -32,20 +70,46 @@ export class DeepSeekProvider implements LlmProvider {
             model,
             promptVersion: input.promptVersion,
             inputDigest,
+            temperature: input.temperature,
+            maxOutputTokens: input.maxOutputTokens,
+            strictSchema: input.structuredOutput?.name,
+            strictSchemaTransport: input.structuredOutput
+              ? nativeStructuredOutput ? 'native_json_schema' : 'json_object_plus_server_zod'
+              : null,
+            promptManifest: input.promptManifest,
           },
         })
       )
     }
 
-    const response = await this.client.chat.completions.create(
-      {
-        model,
-        messages: input.messages,
-        response_format: input.responseFormat ? { type: input.responseFormat } : undefined,
-        temperature: input.temperature,
-      },
-      input.stepContext?.signal ? { signal: input.stepContext.signal } : undefined
-    )
+    const responseFormat = input.structuredOutput
+      ? nativeStructuredOutput
+        ? zodResponseFormat(input.structuredOutput.schema, input.structuredOutput.name)
+        : { type: 'json_object' as const }
+      : input.responseFormat
+        ? { type: input.responseFormat }
+        : undefined
+    const requestSignal = composeAbortSignals(input.signal, input.stepContext?.signal)
+    const response = await (async () => {
+      try {
+        return await this.client.chat.completions.create(
+          {
+            model,
+            messages: input.messages,
+            response_format: responseFormat,
+            temperature: input.temperature,
+            max_tokens: input.maxOutputTokens,
+          },
+          {
+            signal: requestSignal.signal,
+            // Physical retries must stay observable to the outer workflow budget.
+            maxRetries: 0,
+          }
+        )
+      } finally {
+        requestSignal.dispose()
+      }
+    })()
     const latencyMs = Date.now() - startedAt
     const content = response.choices[0]?.message?.content
 
@@ -81,6 +145,17 @@ export class DeepSeekProvider implements LlmProvider {
             inputTokens: result.inputTokens,
             outputTokens: result.outputTokens,
             outputDigest: createDigest(result.content),
+            promptManifest: input.promptManifest
+              ? {
+                  ...input.promptManifest,
+                  modelProvider: result.provider,
+                  modelSnapshot: result.model,
+                  startedAt: startedAtIso,
+                  durationMs: result.latencyMs,
+                  inputTokens: result.inputTokens ?? null,
+                  outputTokens: result.outputTokens ?? null,
+                }
+              : undefined,
           },
         })
       )

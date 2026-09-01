@@ -159,12 +159,31 @@ export interface JobDescriptionStructure {
 }
 
 export type WeaknessEvidenceType = 'direct_missing' | 'implicit_evidence' | 'wording_gap';
+export type MatchGapPriority = 'high' | 'medium' | 'low';
 
 export interface MatchWeaknessDetail {
+  id?: string;
+  priority?: MatchGapPriority;
   weakness: string;
   evidence_type: WeaknessEvidenceType;
+  jd_requirement?: string;
   evidence: string;
+  impact?: string;
   suggestion: string;
+}
+
+export interface MatchOptimizationExample {
+  source_path: string;
+  source_quote: string;
+  optimized_content: string;
+}
+
+export interface MatchOptimizationStrategyDetail {
+  id: string;
+  related_gap_ids: string[];
+  strategy_point: string;
+  rationale: string;
+  optimization_example: MatchOptimizationExample;
 }
 
 export interface MatchingResult {
@@ -176,6 +195,7 @@ export interface MatchingResult {
   strengths?: string[];
   weaknesses?: string[];
   weakness_details?: MatchWeaknessDetail[];
+  optimization_strategy_details?: MatchOptimizationStrategyDetail[];
   soft_skills_match?: string;
   positioning_strategy?: string;
   context_fit?: {

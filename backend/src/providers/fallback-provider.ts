@@ -2,6 +2,7 @@ import { env } from '@/config/env'
 import { createHarnessEvent } from '@/harness/events'
 import { deepSeekProvider } from '@/providers/deepseek-provider'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
+import { APIUserAbortError } from 'openai'
 
 const DEFAULT_MAX_PROVIDER_ATTEMPTS = 2
 
@@ -31,7 +32,17 @@ function getErrorMessage(error: unknown) {
 }
 
 function isAbortError(error: unknown) {
-  return error instanceof Error && error.name === 'AbortError'
+  if (error instanceof APIUserAbortError) {
+    return true
+  }
+
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  return error.name === 'AbortError'
+    || error.name === 'APIUserAbortError'
+    || (error as Error & { code?: unknown }).code === 'ABORT_ERR'
 }
 
 function isProviderTransientError(error: unknown) {
@@ -91,6 +102,10 @@ export class FallbackLlmProvider implements LlmProvider {
           return result
         } catch (error) {
           lastError = error
+          if (isAbortError(error) || input.signal?.aborted || input.stepContext?.signal?.aborted) {
+            throw error
+          }
+
           const transient = isProviderTransientError(error)
           const errorCode = getErrorCode(error)
           const errorMessage = getErrorMessage(error)

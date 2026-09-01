@@ -88,12 +88,40 @@ export class HarnessRunRepository {
       )
       .get()
     const failureSampleCount = this.db.query('SELECT COUNT(*) AS count FROM failure_samples').get()
+    const agentStateCounts = this.db
+      .query(`
+        SELECT workflow_version, agent_state, release_status, used_safe_fallback, COUNT(*) AS count
+        FROM process_runs
+        WHERE workflow_version LIKE '5.%'
+        GROUP BY workflow_version, agent_state, release_status, used_safe_fallback
+        ORDER BY workflow_version, agent_state
+      `)
+      .all()
+    const promptMetrics = this.db
+      .query(`
+        SELECT
+          component_prompt_id,
+          component_prompt_version,
+          model,
+          COUNT(*) AS attempts,
+          SUM(is_repair_attempt) AS repair_attempts,
+          AVG(latency_ms) AS avg_latency_ms,
+          SUM(input_tokens) AS input_tokens,
+          SUM(output_tokens) AS output_tokens
+        FROM step_attempts
+        WHERE schema_version = '5.0.0'
+        GROUP BY component_prompt_id, component_prompt_version, model
+        ORDER BY component_prompt_id, component_prompt_version, model
+      `)
+      .all()
 
     return {
       runStatusCounts,
       stepStatusCounts,
       attemptMetrics,
       failureSampleCount,
+      agentStateCounts,
+      promptMetrics,
     }
   }
 

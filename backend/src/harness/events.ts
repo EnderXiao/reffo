@@ -9,6 +9,7 @@ export type HarnessEventType =
   | 'workflow.succeeded'
   | 'workflow.failed'
   | 'workflow.partial'
+  | 'workflow.state.changed'
   | 'step.started'
   | 'step.succeeded'
   | 'step.failed'

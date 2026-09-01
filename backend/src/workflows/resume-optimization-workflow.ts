@@ -4,6 +4,7 @@ import { MatchingAgent } from '@/agents/matching-agent'
 import { ResumeAnalyzerAgent } from '@/agents/resume-analyzer'
 import { ResumeGeneratorAgent } from '@/agents/resume-generator'
 import { ResumeRevisionAgent } from '@/agents/resume-revision'
+import { env, type ResumeAgentMode } from '@/config/env'
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
 import {
   assertBusinessEvaluationPassed,
@@ -32,6 +33,8 @@ import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscri
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 import type { MvpProcessResponse } from '@/types'
+import { toLegacyMvpProcessResponse } from '@/v5/compatibility'
+import { V5ResumeOptimizationWorkflow } from '@/v5/workflow'
 
 export interface ResumeOptimizationWorkflowInput {
   resume_markdown: string
@@ -39,6 +42,8 @@ export interface ResumeOptimizationWorkflowInput {
   workflowTimeoutMs?: number
   prompt_variant?: string
   enable_llm_judge?: boolean
+  agent_version?: 'v4.4' | 'v5.0'
+  output_language?: string
 }
 
 export interface ResumeOptimizationWorkflowAgents {
@@ -53,6 +58,7 @@ export interface ResumeOptimizationWorkflowAgents {
 export interface ResumeOptimizationWorkflowOptions {
   enableDefaultSubscribers?: boolean
   enableFailureSampleAutoCapture?: boolean
+  agentMode?: ResumeAgentMode
 }
 
 export class ResumeOptimizationWorkflow {
@@ -64,6 +70,7 @@ export class ResumeOptimizationWorkflow {
   private readonly reviser: Pick<ResumeRevisionAgent, 'revise'>
   private readonly advisor: Pick<InterviewAdvisorAgent, 'advise' | 'repairBusinessOutput'>
   private readonly enableFailureSampleAutoCapture: boolean
+  private readonly agentMode: ResumeAgentMode
   private readonly traceSubscriber = new TraceSubscriber()
   private readonly persistenceSubscriber = new PersistenceSubscriber()
 
@@ -81,6 +88,7 @@ export class ResumeOptimizationWorkflow {
     this.advisor = agents.advisor ?? new InterviewAdvisorAgent()
     this.enableFailureSampleAutoCapture =
       options.enableFailureSampleAutoCapture ?? options.enableDefaultSubscribers !== false
+    this.agentMode = options.agentMode ?? (Object.keys(agents).length > 0 ? 'v4' : env.RESUME_AGENT_MODE)
 
     if (options.enableDefaultSubscribers !== false) {
       this.eventBus.subscribe('*', this.traceSubscriber.handle)
@@ -90,6 +98,18 @@ export class ResumeOptimizationWorkflow {
   }
 
   async run(input: ResumeOptimizationWorkflowInput): Promise<MvpProcessResponse> {
+    const selectedMode = input.agent_version === 'v5.0'
+      ? 'v5'
+      : input.agent_version === 'v4.4'
+        ? 'v4'
+        : this.agentMode
+    if (selectedMode === 'v5') {
+      return this.runV5(input)
+    }
+    if (selectedMode === 'shadow') {
+      this.scheduleV5Shadow(input)
+    }
+
     const promptVariant = resolvePromptVariant(input.prompt_variant)
     const runContext = createRunContext(`v4.4:${promptVariant}`)
     const runtimeState = createRunRuntimeState(runContext)
@@ -173,7 +193,10 @@ export class ResumeOptimizationWorkflow {
             stepContext,
             outputName: 'MatchAnalysis',
             currentOutput: matchAnalysis,
-            evaluate: evaluateMatchAnalysisBusiness,
+            evaluate: (output) => evaluateMatchAnalysisBusiness(
+              output,
+              analysisStep.result.structured_resume
+            ),
             repair: ({ currentOutput, evaluation }) =>
               this.matcher.repairBusinessOutput(
                 analysisStep.result.structured_resume,
@@ -415,6 +438,7 @@ export class ResumeOptimizationWorkflow {
           step_statuses: steps,
           recoverable_errors: recoverableErrors,
           recovery_summary: runtimeState.recoverySummary,
+          agent_version: '4.4.6',
           step1_analysis: analysisStep.result,
           step2_matching: matchingStep.result,
           step3_optimized_resume: optimizedResume,
@@ -505,6 +529,7 @@ export class ResumeOptimizationWorkflow {
         step_statuses: steps,
         recoverable_errors: recoverableErrors.length > 0 ? recoverableErrors : undefined,
         recovery_summary: runtimeState.recoverySummary.length > 0 ? runtimeState.recoverySummary : undefined,
+        agent_version: '4.4.6',
         step1_analysis: analysisStep.result,
         step2_matching: matchingStep.result,
         step3_optimized_resume: optimizedResume,
@@ -527,6 +552,29 @@ export class ResumeOptimizationWorkflow {
 
       throw error instanceof StepRunError ? error.cause : error
     }
+  }
+
+  private async runV5(input: ResumeOptimizationWorkflowInput) {
+    const workflow = new V5ResumeOptimizationWorkflow({
+      eventBus: this.eventBus,
+      enableDefaultSubscribers: false,
+    })
+    const result = await workflow.run({
+      resumeMarkdown: input.resume_markdown,
+      jobDescription: input.jd_text,
+      outputLanguage: input.output_language,
+      enableQualityJudge: input.enable_llm_judge ?? env.V5_QUALITY_JUDGE_ENABLED,
+      workflowTimeoutMs: input.workflowTimeoutMs,
+    })
+    return toLegacyMvpProcessResponse(result)
+  }
+
+  private scheduleV5Shadow(input: ResumeOptimizationWorkflowInput) {
+    void this.runV5({ ...input, agent_version: 'v5.0' }).catch(error => {
+      console.error('[ResumeOptimizationWorkflow] v5 shadow failed:', {
+        code: typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : 'V5_SHADOW_FAILED',
+      })
+    })
   }
 
   private async runRecoverableStep<TResult>(

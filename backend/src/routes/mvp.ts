@@ -27,6 +27,7 @@ import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
+import { V5WorkflowBlockedError } from '@/v5/workflow'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 
 function getHarnessRunRepository() {
@@ -37,7 +38,13 @@ function buildErrorPayload(code: string, fallbackMessage: string, error: unknown
   return {
     code,
     message: fallbackMessage,
-    details: getBusinessEvaluationErrorDetails(error),
+    details: error instanceof V5WorkflowBlockedError
+      ? {
+          agent_state: error.state,
+          issue_codes: [...new Set(error.issues.map(item => item.code))],
+          retryable: error.state === 'provider_failure',
+        }
+      : getBusinessEvaluationErrorDetails(error),
   }
 }
 
@@ -95,12 +102,19 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/process',
     async ({ body, set }) => {
       try {
-        const { prompt_variant, enable_llm_judge } = body
+        const { prompt_variant, enable_llm_judge, agent_version, output_language } = body
         const resume_markdown = normalizeMarkdownText(body.resume_markdown)
         const jd_text = normalizeMarkdownText(body.jd_text)
 
         const workflow = new ResumeOptimizationWorkflow()
-        const result = await workflow.run({ resume_markdown, jd_text, prompt_variant, enable_llm_judge })
+        const result = await workflow.run({
+          resume_markdown,
+          jd_text,
+          prompt_variant,
+          enable_llm_judge,
+          agent_version,
+          output_language,
+        })
 
         const response: ApiResponse<MvpProcessResponse> = {
           success: true,
@@ -110,11 +124,19 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         return response
       } catch (error) {
         console.error('流程处理失败:', error)
-        set.status = 500
+        set.status = error instanceof V5WorkflowBlockedError
+          ? error.state === 'provider_failure' ? 503 : 422
+          : 500
 
         const response: ApiResponse<never> = {
           success: false,
-          error: buildErrorPayload('PROCESS_FAILED', '处理失败', error),
+          error: buildErrorPayload(
+            error instanceof V5WorkflowBlockedError ? error.code : 'PROCESS_FAILED',
+            error instanceof V5WorkflowBlockedError
+              ? error.state === 'provider_failure' ? '模型服务暂时不可用' : '生成结果未通过事实或结构安全门禁'
+              : '处理失败',
+            error
+          ),
         }
 
         return response
@@ -137,15 +159,26 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           t.Literal('scope-aware-v4.2'),
           t.Literal('one-job-v4.4'),
         ], {
-          description: '兼容旧客户端的提示词版本字段；服务端统一使用 one-job-v4.4（v4.4.4）',
+          description: '兼容旧客户端的提示词版本字段；服务端统一使用 one-job-v4.4（v4.4.6）',
         })),
         enable_llm_judge: t.Optional(t.Boolean({
           description: '是否异步触发 LLM Judge，不默认阻塞主链路',
         })),
+        agent_version: t.Optional(t.Union([
+          t.Literal('v4.4'),
+          t.Literal('v5.0'),
+        ], {
+          description: '可选链路版本覆盖；未提供时使用 RESUME_AGENT_MODE。',
+        })),
+        output_language: t.Optional(t.String({
+          description: 'v5 输出语言偏好，例如 zh-CN 或 en-US。',
+          minLength: 2,
+          maxLength: 32,
+        })),
       }),
       detail: {
         summary: 'MVP 完整流程',
-        description: '串联 Agent 完成简历优化：1) 分析简历 2) 匹配分析 3) 生成优化简历 4) 生成面试建议',
+        description: '按 RESUME_AGENT_MODE 或 agent_version 串联 v4.4.6 / v5.0.0。v5 采用原子证据、自适应策略、严格 Schema、最多两次 Artifact 修复和阻断式事实门禁，同时保持旧响应结构兼容。',
         tags: ['MVP'],
       },
     }
@@ -431,7 +464,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
                   stepContext,
                   outputName: 'MatchAnalysis',
                   currentOutput: matchAnalysis,
-                  evaluate: evaluateMatchAnalysisBusiness,
+                  evaluate: (output) => evaluateMatchAnalysisBusiness(output, body.structured_resume),
                   repair: ({ currentOutput, evaluation }) =>
                     matcher.repairBusinessOutput(body.structured_resume, jdStep.result, currentOutput, evaluation, {
                       eventBus,

@@ -187,33 +187,62 @@ export function buildMatchingMessages(resume: ResumeStructure, jd: JDStructure):
   "experience_match": "",
   "soft_skills_match": "",
   "strengths": [],
-  "weaknesses": [],
   "weakness_details": [
     {
+      "id": "G1",
+      "priority": "high",
       "weakness": "",
       "evidence_type": "direct_missing",
+      "jd_requirement": "",
       "evidence": "",
+      "impact": "",
       "suggestion": ""
     }
   ],
   "positioning_strategy": "",
-  "optimization_suggestions": [],
+  "optimization_strategy_details": [
+    {
+      "id": "S1",
+      "related_gap_ids": ["G1"],
+      "strategy_point": "",
+      "rationale": "",
+      "optimization_example": {
+        "source_path": "experience[0].responsibilities[0]",
+        "source_quote": "",
+        "optimized_content": ""
+      }
+    }
+  ],
   "context_fit": {
     "company_alignment": "",
     "location_alignment": "",
     "hypotheses_used": []
   }
+}
+
 评分与判断规则：
 - match_score 使用固定权重：明示硬要求 35、相关经历与结果 30、技能/方法 20、可迁移能力与语境适配 10、证据清晰度 5。
 - JD 未说明的门槛不得扣分；上下文假设对总分影响不得超过 5 分，也不能成为硬性不匹配。
 - hard_requirements_match 只逐项判断 JD 明示 must-have。true 表示有直接或语义等价证据；false 表示“当前材料未证明”，不等于候选人确定不具备。
 - matched 只放有证据的直接匹配或强等价技能；missing 只放 JD 明示关键要求且材料未证明的技能，不能把公司/地点假设放入 missing。
-- 积极识别三类差距：direct_missing=材料确无证据；implicit_evidence=具体经历可间接证明；wording_gap=事实具备但术语未对齐。不得把后两类写成“候选人不会”。
-- direct_missing 也只能表示“当前材料没有证据”，不能断言候选人现实中缺乏该能力。positioning_strategy、context_fit、weaknesses 和 suggestion 均必须遵守这一措辞边界。
-- strengths 输出 3-5 个最能提高胜率的证据点；weaknesses 输出 2-4 个最重要差距，并与 weakness_details 一一对应。
 - positioning_strategy 用 2-3 句给出本次申请的核心定位：应主打什么已有证据、如何回应目标任务、哪些边界不能越过。若源简历没有目标行业/公司/地域背景，必须明确“不将其写成已有经验”，不能要求主动连接成候选人事实。
-- optimization_suggestions 输出 3-5 条仅凭现有源简历事实即可执行的改写动作；每条都要指出应前置、重组或对齐的已有证据和 JD 优先级。
-- optimization_suggestions 禁止要求新增当前材料没有的项目、课程、经历、技能、语言、工具、职责、结果或数字；禁止“补充量化数据/将成果量化”等建议。direct_missing 只保留在 weaknesses/weakness_details 中，不得进入 optimization_suggestions；后者只允许重排和改写已有证据。
+- strengths 输出 3-5 个最能提高胜率的证据点。
+
+差距分析结构化规则：
+- 只识别真实影响岗位匹配的 1-4 个关键差距；没有关键差距时 weakness_details 输出空数组，禁止为凑数量制造问题。
+- 按 high、medium、low 排序，并依次使用 G1、G2、G3、G4。每项只讲一个差距：weakness 是一句可独立阅读的结论；jd_requirement 是对应的 JD 明示要求或核心交付；evidence 是判断依据；impact 说明它为何影响本次申请；suggestion 给出边界清晰的一句话处理方向。
+- evidence_type 只能是 direct_missing、implicit_evidence、wording_gap：direct_missing=当前材料确无证据；implicit_evidence=已有具体经历可间接证明；wording_gap=事实具备但术语或呈现重点未对齐。不得把后两类写成“候选人不会”。
+- direct_missing 只能表述为“当前材料未证明”，evidence 要说明检查了哪些相关材料但未找到证据，不能断言候选人现实中缺乏该能力；其 suggestion 只能提示诚实说明、面试核验或后续补充真实材料，不能要求生成 Agent 写入简历。
+- 不要另行输出 weaknesses；服务端会从 weakness_details 中的 weakness 同序派生兼容摘要。不得另写一套口径，也不得把通用排版问题混入岗位差距。
+
+优化策略结构化规则：
+- 只为 implicit_evidence、wording_gap 等可由现有事实解决的差距输出 1-4 个策略；没有可安全改写的策略时，optimization_strategy_details 输出空数组。direct_missing 不得进入优化策略。
+- 每项依次使用 S1、S2、S3、S4；related_gap_ids 至少关联一个 G 编号。strategy_point 用一句动作化标题说明“改什么”；rationale 用 1-2 句说明“为何这样改、回应哪个 JD 优先级以及预期改善什么”，不能与策略标题重复。
+- optimization_example 必须给出一组可直接对照的“优化前原文 -> 优化后内容”：source_path 精确定位 structured_source_resume 中单个字符串字段；source_quote 必须逐字复制该字段的完整原文，不得概括、拼接、截断或添加引号；optimized_content 是基于同一证据可直接用于简历的改写内容，不加“建议改为”等元话语。
+- optimized_content 只能重排、压缩或使用安全等价的 JD 术语，禁止新增当前材料没有的项目、课程、经历、技能、语言、工具、职责、结果、数字、因果或所有权；禁止“补充量化数据/将成果量化”等建议。
+- 不要另行输出 optimization_suggestions；服务端会从 optimization_strategy_details 中的 strategy_point 同序派生兼容摘要。
+
+其他输出规则：
 - context_fit 只描述基于现有证据的适配或待验证点。hypotheses_used 必须逐条写明采用了哪些非明示假设；未采用则为空数组。
 - 作品集、代码仓库、证书原件、SQL 测试、案例作业、推荐信、语言证明等简历外材料，只能作为申请准备缺口或核验项描述；不得把它们算作简历输出质量缺陷，也不得要求生成 Agent 伪造。
 - 只输出 JSON，不要输出解释、Markdown 代码块或 jd_structure；服务端会附加原始结构化 JD。`,
@@ -239,10 +268,11 @@ export function buildMatchingBusinessRepairMessages(input: {
 修复范围：
 - 只修复 business_evaluation 中指出的问题，不要重写无关字段。
 - 若缺少 experience_match，基于源简历和 JD 补充经验匹配说明。
-- 若 weakness_details 缺失、数量不一致或 evidence_type 不合法，补齐为 direct_missing、implicit_evidence 或 wording_gap，并保持与 weaknesses 一一对应。
+- 若 weakness_details 缺失或字段不完整，按 G1-G4、priority、weakness、evidence_type、jd_requirement、evidence、impact、suggestion 的结构补齐；不要另行输出 weaknesses，服务端会自动派生。
 - 若 skill_match 没有覆盖 JD required_skills，需要重新检查 required_skills，把已有证据支持的技能写入 matched，把当前材料未证明的明示关键技能写入 missing。
 - missing 只能表示“当前材料未证明”，不能断言候选人现实中不会或不具备。
-- optimization_suggestions 仍只能基于已有源简历事实做重排和改写建议，不得要求新增项目、技能、数字或经历。
+- 若 optimization_strategy_details 缺失或字段不完整，按 S1-S4、related_gap_ids、strategy_point、rationale、optimization_example 的结构补齐；不要另行输出 optimization_suggestions，服务端会自动派生。
+- optimization_example.source_path 必须定位 structured_source_resume 中一个现有字符串字段，source_quote 必须逐字复制该字段的完整值，optimized_content 只能改写同一证据。不得把 direct_missing 变成简历改写策略，不得新增项目、技能、数字、职责、结果或经历。
 - 不要输出 jd_structure；服务端会附加原始结构化 JD。
 
 只返回 JSON，不要输出解释、Markdown 代码块或修复说明。`,
@@ -274,7 +304,7 @@ export function buildResumeGenerationMessages(
 7. 技能清单只保留源简历可证明的技能，并把与 JD 直接相关的放在前面；软技能尽量通过经历体现。
 8. 删除空泛自评、重复职责、与目标无关的细枝末节和模板话术，但不能删除形成职业连续性所需的真实经历。
 9. 每条工作经历 bullet 只能使用同一条 source experience 中的事实；每条项目 bullet 只能使用同一条 source project 中的事实。除非源简历明确说明归属，否则不得把项目行动搬进工作经历，也不得把不同公司/项目的事实拼成一条。
-10. positioning_strategy、optimization_suggestions、JD 职责和上下文假设都不是候选人事实，不能直接复制进职业摘要或经历。源简历没有目标公司、行业、地域经历或求职意向时，职业摘要不得声称“致力于/专注于/深耕/服务于”该目标语境。
+10. positioning_strategy、optimization_suggestions、optimization_strategy_details、JD 职责和上下文假设都不是独立的候选人事实源；其中的改写示例只能在重新核对 structured_source_resume 后使用。源简历没有目标公司、行业、地域经历或求职意向时，职业摘要不得声称“致力于/专注于/深耕/服务于”该目标语境。
 11. “驱动决策、赋能、保障效率、管理期望、主导、全流程、决策支持”等结果、所有权或范围升级词，只有 structured_source_resume 明示同等语义时才可使用；否则只陈述已证实的动作、对象与指标。
 12. 作品集、代码仓库、SQL 测试、证书原件、语言证明等需要产品外提供的材料不得写入简历正文，也不得成为简历生成阻断项。
 
@@ -347,6 +377,7 @@ export function buildInterviewAdviceMessages(
     { "title": "", "background": "", "result": "" }
   ],
   "follow_up_questions": []
+}
 执行标准：
 - questions 输出 4 个高概率、高区分度问题，覆盖：核心任务/方法、真实项目深挖、关键差距或迁移能力、公司或工作地语境下的情境题。问题不得预设候选人做过源简历之外的事情。
 - story_recommendations 输出 2 个最值得准备的真实经历。title 必须指向源简历已有经历；background 说明可核验的背景、职责边界和应强调的行动；result 只使用已有成果。若源材料没有结果，明确建议候选人准备真实可核验的结果或反馈，不提供示例数字。

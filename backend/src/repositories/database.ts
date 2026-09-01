@@ -17,6 +17,13 @@ function configureDatabase(db: Database) {
   `)
 }
 
+function ensureColumn(db: Database, table: string, column: string, definition: string) {
+  const columns = db.query(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+  if (!columns.some(item => item.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+  }
+}
+
 export function getDatabase() {
   if (database) {
     return database
@@ -261,6 +268,23 @@ export function initializeHarnessDatabase() {
     CREATE INDEX IF NOT EXISTS idx_failure_samples_run_id
     ON failure_samples(run_id);
   `)
+
+  ensureColumn(db, 'process_runs', 'agent_state', 'TEXT')
+  ensureColumn(db, 'process_runs', 'release_status', 'TEXT')
+  ensureColumn(db, 'process_runs', 'used_safe_fallback', 'INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'step_attempts', 'max_output_tokens', 'INTEGER')
+  ensureColumn(db, 'step_attempts', 'compiled_prompt_sha256', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'schema_version', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'validator_version', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'adaptive_policy_version', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'score_formula_version', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'component_prompt_id', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'component_prompt_version', 'TEXT')
+  db.query(`
+    INSERT INTO schema_versions (name, version, updated_at)
+    VALUES ('harness', 2, datetime('now'))
+    ON CONFLICT(name) DO UPDATE SET version = excluded.version, updated_at = excluded.updated_at
+  `).run()
 
   enforceHarnessRetention(db)
 

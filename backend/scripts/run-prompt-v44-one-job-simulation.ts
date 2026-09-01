@@ -4,12 +4,23 @@ import { basename, dirname, resolve } from 'node:path'
 import OpenAI from 'openai'
 import {
   V44_ONE_JOB_PROMPT_VERSION,
-  buildV44AggressiveGenerationMessages,
-  buildV44BlindJudgeMessages,
   buildV44FinalAuditMessages,
   buildV44ResumePlanMessages,
+  buildV44TargetedGenerationMessages,
 } from '@/prompts/v44-one-job-one-resume-prompts'
+import {
+  V44_PROMPT_AB_JUDGE_VERSION,
+  buildV44PromptABJudgeMessages,
+} from '@/prompts/v44-one-job-one-resume-evaluation-prompts'
+import { normalizeV44PromptABJudge } from '@/prompts/v44-one-job-one-resume-evaluation-support'
+import {
+  compactResumePlanForAudit,
+  postProcessV44Resume,
+  sanitizeResumePlan,
+} from '@/agents/resume-generator-v44-support'
+import { evaluateMarkdownResume } from '@/harness/evaluators/markdown-resume-evaluator'
 import type { ChatMessage } from '@/providers/llm-provider'
+import type { ResumeStructure } from '@/types'
 
 type JsonObject = Record<string, unknown>
 
@@ -37,6 +48,8 @@ interface TextMetrics {
   bullets: number
   headings: number
   projectHeadings: number
+  emptyWorkEntries: number
+  emptyProjectEntries: number
   unsupportedNumbers: string[]
   addedAttributionTerms: string[]
   internalAuditMarkers: string[]
@@ -49,6 +62,10 @@ interface CaseResult {
   candidateResume: string
   plan: JsonObject
   judge: JsonObject
+  judgeAssignment: {
+    baselineCandidateId: 'A' | 'B'
+    candidateCandidateId: 'A' | 'B'
+  }
   baselineMetrics: TextMetrics
   candidateMetrics: TextMetrics
   baselineScore: number | null
@@ -214,127 +231,6 @@ function sourceProfile(structuredResume: JsonObject, rawResume: string, matching
   }
 }
 
-const selfReportedPattern = /个人(?:简历|材料)(?:自述|记录)|简历记录|经本人确认/
-const excludedEvidencePattern = /需[^，。；）)]{0,10}(?:确认|说明|核验)|待确认|待核验|口径冲突|口径.*(?:不一致|冲突)|不足以证明|因果(?:不足|不明|无法)|PRD记录|受[^，。；）)]{0,20}(?:影响|推动)|不(?:能|可)[^，。；）)]{0,12}归因|不等同于/
-const auditClausePattern = /个人(?:简历|材料)(?:自述|记录)|简历记录|经本人确认/
-const actionVerbs = ['主导', '统筹', '独立', '负责', '推动', '组织', '设计', '搭建', '建设', '参与', '协同', '支持', '协助', '承担']
-
-function valueAtSourcePath(source: unknown, sourcePath: string) {
-  const parts = sourcePath.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean)
-  let current: unknown = source
-  for (const part of parts) {
-    if (!current || typeof current !== 'object') return undefined
-    current = (current as Record<string, unknown>)[part]
-  }
-  return current
-}
-
-function cleanAuditClauses(value: string) {
-  return value.replace(/（([^）]*)）|\(([^)]*)\)/g, (full, chinese: string | undefined, ascii: string | undefined) => {
-    const content = chinese || ascii || ''
-    const kept = content
-      .split(/[，,；;]/)
-      .map(item => item.trim())
-      .filter(item => item && !auditClausePattern.test(item))
-    return kept.length ? `（${kept.join('，')}）` : ''
-  }).replace(/\s+/g, ' ').trim()
-}
-
-function safeEvidenceUsage(value: string) {
-  return value
-    .split(/[；;]/)
-    .map(segment => segment.trim())
-    .filter(segment => segment && !excludedEvidencePattern.test(segment))
-    .map(cleanAuditClauses)
-    .filter(Boolean)
-    .join('；')
-}
-
-function compactPlanForAudit(plan: JsonObject) {
-  const compactRows = (value: unknown) => (Array.isArray(value) ? value : []).map(item => {
-    const row = item && typeof item === 'object' ? item as JsonObject : {}
-    return {
-      source_path: row.source_path,
-      company: row.company,
-      position: row.position,
-      time_range: row.time_range,
-      name: row.name,
-      role: row.role,
-      treatment: row.treatment,
-      bullet_budget: row.bullet_budget,
-      selected_evidence_paths: row.selected_evidence_paths,
-    }
-  })
-  return {
-    target_value_proposition: plan.target_value_proposition,
-    jd_core_priorities: plan.jd_core_priorities,
-    evidence_pillars: plan.evidence_pillars,
-    experience_plan: compactRows(plan.experience_plan),
-    project_plan: compactRows(plan.project_plan),
-    skills_to_feature: plan.skills_to_feature,
-    forbidden_claims: plan.forbidden_claims,
-    content_budget: plan.content_budget,
-  }
-}
-
-function sanitizePlanEvidence(plan: JsonObject, structuredResume: JsonObject) {
-  const removedPaths = new Set<string>()
-  const pillars = Array.isArray(plan.evidence_pillars) ? plan.evidence_pillars : []
-  for (const pillar of pillars) {
-    if (!pillar || typeof pillar !== 'object') continue
-    const row = pillar as JsonObject
-    const evidence = Array.isArray(row.selected_evidence) ? row.selected_evidence : []
-    row.selected_evidence = evidence.filter(item => {
-      if (!item || typeof item !== 'object') return false
-      const evidenceRow = item as JsonObject
-      const sourcePath = typeof evidenceRow.source_path === 'string' ? evidenceRow.source_path : ''
-      const sourceValue = valueAtSourcePath(structuredResume, sourcePath)
-      const sourceQuote = typeof sourceValue === 'string' ? sourceValue.trim() : ''
-      const safeUsage = sourceQuote ? safeEvidenceUsage(sourceQuote) : ''
-      const keep = Boolean(sourceQuote) && Boolean(safeUsage)
-      if (!keep && typeof evidenceRow.source_path === 'string') removedPaths.add(evidenceRow.source_path)
-      if (keep) {
-        evidenceRow.source_quote = sourceQuote
-        evidenceRow.safe_usage = safeUsage
-        evidenceRow.verification_status = selfReportedPattern.test(sourceQuote) ? 'self_reported' : 'verified'
-        evidenceRow.source_scope = sourcePath.match(/^(?:experience|projects)\[\d+\]/)?.[0] || sourcePath.split('.')[0]
-        evidenceRow.source_action_verb = actionVerbs.find(verb => sourceQuote.includes(verb)) || ''
-      }
-      return keep
-    })
-  }
-
-  for (const planKey of ['experience_plan', 'project_plan']) {
-    const rows = Array.isArray(plan[planKey]) ? plan[planKey] as unknown[] : []
-    for (const item of rows) {
-      if (!item || typeof item !== 'object') continue
-      const row = item as JsonObject
-      if (Array.isArray(row.selected_evidence_paths)) {
-        row.selected_evidence_paths = row.selected_evidence_paths.filter(path => (
-          typeof path === 'string' && !removedPaths.has(path)
-        ))
-      }
-    }
-  }
-
-  const forbiddenClaims = Array.isArray(plan.forbidden_claims) ? plan.forbidden_claims : []
-  plan.forbidden_claims = [
-    ...forbiddenClaims,
-    ...[...removedPaths].map(path => `不确定证据已由规则门禁删除：${path}`),
-  ]
-  const skills = Array.isArray(plan.skills_to_feature) ? plan.skills_to_feature : []
-  plan.skills_to_feature = skills.filter(item => {
-    if (!item || typeof item !== 'object') return false
-    const row = item as JsonObject
-    const path = typeof row.source_path === 'string' ? row.source_path : ''
-    const sourceValue = valueAtSourcePath(structuredResume, path)
-    if (typeof sourceValue !== 'string') return false
-    row.skill = sourceValue
-    return true
-  })
-  return { plan, removedUncertainEvidence: removedPaths.size }
-}
-
 function planBudget(plan: JsonObject) {
   const budget = plan.content_budget && typeof plan.content_budget === 'object'
     ? plan.content_budget as JsonObject
@@ -353,77 +249,26 @@ function exceedsPlanBudget(markdown: string, plan: JsonObject) {
     || markdown.length > budget.chars
 }
 
-function compactSupportingLists(markdown: string) {
-  let section = ''
-  return markdown.split(/\r?\n/).map(line => {
-    const heading = line.match(/^##\s+(.+)/)
-    if (heading) section = heading[1].trim()
-    if (/^(技能|专业技能|教育背景)/.test(section) && /^\s*[-*]\s+/.test(line)) {
-      return line.replace(/^\s*[-*]\s+/, '')
-    }
-    return line
-  }).join('\n')
-}
-
-function dedupeResumeBullets(markdown: string) {
-  const kept: string[] = []
-  return markdown.split(/\r?\n/).filter(line => {
-    if (!/^\s*[-*]\s+/.test(line)) return true
-    const content = line.replace(/^\s*[-*]\s+/, '').trim()
-    const numericSignature = [...content.matchAll(numberPattern)].map(match => normalize(match[0])).join('|')
-    const duplicate = kept.some(previous => {
-      const currentNumbers = numericSignature.split('|').filter(Boolean)
-      const previousNumbers = [...previous.matchAll(numberPattern)].map(match => normalize(match[0])).filter(Boolean)
-      const previousSignature = previousNumbers.join('|')
-      const sharesNumber = currentNumbers.some(number => previousNumbers.includes(number))
-      return similarity(content, previous) >= 0.78
-        || Boolean(numericSignature && previousSignature && numericSignature === previousSignature)
-        || (sharesNumber && similarity(content, previous) >= 0.35)
-    })
-    if (!duplicate) kept.push(content)
-    return !duplicate
-  }).join('\n')
-}
-
-function removeUnsupportedNumericClaims(markdown: string, sourceResume: string) {
-  const sourceNormalized = normalize(sourceResume)
-  return markdown.split(/\r?\n/).flatMap(line => {
-    const unsupported = [...line.matchAll(numberPattern)]
-      .map(match => match[0].trim())
-      .filter(atom => atom && !sourceNormalized.includes(normalize(atom)))
-    if (!unsupported.length) return [line]
-    if (/^\s*[-*]\s+/.test(line)) return []
-    let repaired = line
-    for (const atom of unsupported) repaired = repaired.replace(atom, '')
-    repaired = repaired.replace(/\s{2,}/g, ' ').replace(/，\s*[，。]/g, '。').trim()
-    return repaired ? [repaired] : []
-  }).join('\n')
-}
-
-function stripInternalAuditPhrases(markdown: string) {
-  return markdown
-    .replace(/个人(?:简历|材料)(?:自述|记录)[：:]?\s*/g, '')
-    .replace(/简历记录[：:]?\s*/g, '')
-    .replace(/经本人确认\s*/g, '')
-    .replace(/（\s*）|\(\s*\)/g, '')
-}
-
 const normalize = (value: string) => value.replace(/[\s,，]/g, '').toLowerCase()
 const numberPattern = /(?:约|近|超过|超|至少|最多|不足|逾|低于|高于)?\s*\d+(?:[.,，]\d+)*(?:\.\d+)?\s*(?:%|％|万\+?|亿\+?|[Kk]\+?|元|人|家|份|款|项|个|年|月|天|小时|分钟|次|篇|名|所|级|分|\/\d+)?/g
 const attributionTerms = ['主导', '独立', '统筹', '精通', '熟练', '全流程', '驱动', '赋能', '保障', '确保']
 const auditPattern = /个人(?:简历|材料)(?:自述|记录)|PRD记录|需(?:确认|说明|核验)|待确认|待核验|证据等级|当前为(?:研究|规划|方案)阶段/g
+const projectSectionPattern = /^(?:(?:核心|代表|精选)?项目(?:经历|经验|成果|案例)?)(?:[（(].*[）)])?$/
 
-function analyzeText(markdown: string, sourceResume: string): TextMetrics {
+function analyzeText(markdown: string, sourceResume: string, structuredResume: ResumeStructure): TextMetrics {
   const sourceNormalized = normalize(sourceResume)
   const numericAtoms = [...markdown.matchAll(numberPattern)].map(match => match[0].trim()).filter(Boolean)
   const unsupportedNumbers = [...new Set(
     numericAtoms.filter(atom => !sourceNormalized.includes(normalize(atom)))
   )]
+  const evaluation = evaluateMarkdownResume(markdown, structuredResume)
   return {
     chars: markdown.length,
     bullets: markdown.split(/\r?\n/).filter(line => /^\s*[-*]\s+/.test(line)).length,
     headings: markdown.split(/\r?\n/).filter(line => /^#{1,3}\s+/.test(line)).length,
     projectHeadings: extractProjectHeadings(markdown).length,
+    emptyWorkEntries: evaluation.issues.filter(issue => issue.code === 'EMPTY_WORK_ENTRY').length,
+    emptyProjectEntries: evaluation.issues.filter(issue => issue.code === 'EMPTY_PROJECT_ENTRY').length,
     unsupportedNumbers,
     addedAttributionTerms: attributionTerms.filter(
       term => markdown.includes(term) && !sourceResume.includes(term)
@@ -436,7 +281,8 @@ function extractProjectHeadings(markdown: string) {
   const headings: string[] = []
   let inProjects = false
   for (const line of markdown.split(/\r?\n/)) {
-    if (/^##\s+项目经历/.test(line)) {
+    const sectionHeading = line.match(/^##\s+(.+)/)
+    if (sectionHeading && projectSectionPattern.test(sectionHeading[1].trim())) {
       inProjects = true
       continue
     }
@@ -444,29 +290,6 @@ function extractProjectHeadings(markdown: string) {
     if (inProjects && /^###\s+/.test(line)) headings.push(line.replace(/^###\s+/, '').trim())
   }
   return headings
-}
-
-function numberValue(value: unknown) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
-}
-
-function normalizeJudge(judge: JsonObject) {
-  const evaluations = Array.isArray(judge.evaluations) ? judge.evaluations : []
-  const objects = evaluations.filter(item => item && typeof item === 'object') as JsonObject[]
-  const baseline = objects.find(item => item.candidate_id === 'X') || {}
-  const candidate = objects.find(item => item.candidate_id === 'Y') || {}
-  const winnerValue = judge.winner
-  return {
-    baselineScore: numberValue(baseline.total_score),
-    candidateScore: numberValue(candidate.total_score),
-    winner: winnerValue === 'X'
-      ? 'baseline' as const
-      : winnerValue === 'Y'
-        ? 'candidate' as const
-        : winnerValue === 'tie'
-          ? 'tie' as const
-          : 'unknown' as const,
-  }
 }
 
 function ngrams(value: string, size = 4) {
@@ -563,11 +386,13 @@ function renderReport(results: CaseResult[], metadata: JsonObject) {
     return `| ${result.caseNumber} | ${result.target} | ${result.baselineScore ?? '-'} | ${result.candidateScore ?? '-'} | ${result.baselineMetrics.bullets} → ${result.candidateMetrics.bullets} | ${result.baselineMetrics.chars} → ${result.candidateMetrics.chars} | ${result.winner} | [候选简历](${candidatePath}) |`
   }).join('\n')
 
-  return `# Reffo v4.4 “一岗一简历”激进候选版模拟与质量评估
+  return `# Reffo v4.4.5 “一岗一简历”平衡证据版模拟与质量评估
 
 运行时间：${metadata.completedAt}
 
 候选提示词：${V44_ONE_JOB_PROMPT_VERSION}
+
+评审提示词：${V44_PROMPT_AB_JUDGE_VERSION}
 
 生成模型：${generationModel}
 
@@ -585,6 +410,8 @@ function renderReport(results: CaseResult[], metadata: JsonObject) {
 - 平均项目数：${fixed(averageMetric('baselineMetrics', 'projectHeadings'), 1)} → ${fixed(averageMetric('candidateMetrics', 'projectHeadings'), 1)}
 - 同源六岗位正文相似度中位数：${baselineDifferentiation.medianBodySimilarity} → ${candidateDifferentiation.medianBodySimilarity}
 - 同源六岗位平均 bullet 复用率：${baselineDifferentiation.averageBulletReuseRatio} → ${candidateDifferentiation.averageBulletReuseRatio}
+- 空工作条目：${results.reduce((sum, result) => sum + (result.baselineMetrics.emptyWorkEntries || 0), 0)} → ${results.reduce((sum, result) => sum + (result.candidateMetrics.emptyWorkEntries || 0), 0)}
+- 空项目条目：${results.reduce((sum, result) => sum + (result.baselineMetrics.emptyProjectEntries || 0), 0)} → ${results.reduce((sum, result) => sum + (result.candidateMetrics.emptyProjectEntries || 0), 0)}
 - 本地规则发现的新增数字风险：${riskCount('baselineMetrics', 'unsupportedNumbers')} → ${riskCount('candidateMetrics', 'unsupportedNumbers')}
 - 本地规则发现的归因升级词：${riskCount('baselineMetrics', 'addedAttributionTerms')} → ${riskCount('candidateMetrics', 'addedAttributionTerms')}
 - 内部审计标记：${riskCount('baselineMetrics', 'internalAuditMarkers')} → ${riskCount('candidateMetrics', 'internalAuditMarkers')}
@@ -601,11 +428,12 @@ ${rows}
 
 候选版：${JSON.stringify(candidateDifferentiation)}
 
-衡量目标不是让稳定事实变动，而是让项目选择、bullet 集合、证据优先级和篇幅分配随 JD 变化。候选版只有在正文相似度和 bullet 复用率下降，同时盲评、事实风险和可投递性不恶化时才应晋级。
+衡量目标不是让稳定事实变动，也不是追求 bullet 零复用；相近 JD 可以共享真实的职业锚点。候选版应在价值主线、定制证据、项目组合、证据优先级和篇幅分配上形成可解释差异，并且只有在绝对质量门禁通过、事实风险不增加、证据覆盖与可投递性改善时才应晋级。
 
 ## 解释边界
 
 - 本次隔离测试“岗位证据规划 + 最终简历生成”，复用历史结构化简历、JD 和匹配分析，没有重新运行 OCR、简历分析或 JD 解析。
+- 当评审模型与生成模型相同时，A/B 结果只作为回归信号，不视为独立质量证明；晋级仍需确定性门禁和人工抽查。
 - 本地新增数字检查是字符串级启发式，日期格式变化可能产生误报；最终以逐案 Judge 和人工复核为准。
 - 完整源材料、计划、两版简历和 Judge 输出均保存在本地忽略目录，不应提交或外发。
 `
@@ -650,12 +478,13 @@ for (let index = 0; index < histories.length; index += 1) {
       sourceProfile: sourceProfile(structuredResume, history.resume_content, matching),
     })
   )
-  const { plan } = sanitizePlanEvidence(rawPlan, structuredResume)
+  const typedSourceResume = structuredResume as unknown as ResumeStructure
+  const plan = sanitizeResumePlan(rawPlan, typedSourceResume)
   const timeline = identityTimeline(structuredResume)
   const draftResume = stripFence(await complete(
     `${prefix}:generate`,
     generationModel,
-    buildV44AggressiveGenerationMessages({
+    buildV44TargetedGenerationMessages({
       identityTimeline: timeline,
       resumePlan: plan,
     }),
@@ -666,7 +495,7 @@ for (let index = 0; index < histories.length; index += 1) {
     generationModel,
     buildV44FinalAuditMessages({
       identityTimeline: timeline,
-      resumePlan: compactPlanForAudit(plan),
+      resumePlan: compactResumePlanForAudit(plan),
       draftResume,
     }),
     { temperature: 0.05, maxTokens: 5000 }
@@ -677,7 +506,7 @@ for (let index = 0; index < histories.length; index += 1) {
     const currentProjects = extractProjectHeadings(candidateResume).length
     const repairMessages = buildV44FinalAuditMessages({
       identityTimeline: timeline,
-      resumePlan: compactPlanForAudit(plan),
+      resumePlan: compactResumePlanForAudit(plan),
       draftResume: candidateResume,
     })
     repairMessages.push({
@@ -691,21 +520,21 @@ for (let index = 0; index < histories.length; index += 1) {
       { temperature: 0, maxTokens: 4500 }
     ))
   }
-  candidateResume = stripInternalAuditPhrases(removeUnsupportedNumericClaims(
-    compactSupportingLists(dedupeResumeBullets(candidateResume)),
-    history.resume_content
-  ))
+  candidateResume = postProcessV44Resume(candidateResume, typedSourceResume)
+  const baselineCandidateId = caseNumber % 2 === 0 ? 'A' as const : 'B' as const
+  const candidateA = baselineCandidateId === 'A' ? history.optimized_content : candidateResume
+  const candidateB = baselineCandidateId === 'B' ? history.optimized_content : candidateResume
   const judge = await completeJson(
     `${prefix}:judge`,
-    buildV44BlindJudgeMessages({
+    buildV44PromptABJudgeMessages({
       sourceResume: history.resume_content,
       jobDescription: history.jd_content,
-      baselineResume: history.optimized_content,
-      candidateResume,
+      candidateA,
+      candidateB,
     }),
     judgeModel
   )
-  const normalizedJudge = normalizeJudge(judge)
+  const normalizedJudge = normalizeV44PromptABJudge(judge, baselineCandidateId)
   const result: CaseResult = {
     caseNumber,
     target,
@@ -713,8 +542,12 @@ for (let index = 0; index < histories.length; index += 1) {
     candidateResume,
     plan,
     judge,
-    baselineMetrics: analyzeText(history.optimized_content, history.resume_content),
-    candidateMetrics: analyzeText(candidateResume, history.resume_content),
+    judgeAssignment: {
+      baselineCandidateId,
+      candidateCandidateId: baselineCandidateId === 'A' ? 'B' : 'A',
+    },
+    baselineMetrics: analyzeText(history.optimized_content, history.resume_content, typedSourceResume),
+    candidateMetrics: analyzeText(candidateResume, history.resume_content, typedSourceResume),
     ...normalizedJudge,
   }
   results.push(result)
@@ -740,6 +573,7 @@ const completedAt = new Date().toISOString()
 const metadata = {
   completedAt,
   promptVersion: V44_ONE_JOB_PROMPT_VERSION,
+  judgePromptVersion: V44_PROMPT_AB_JUDGE_VERSION,
   generationModel,
   judgeModel,
   historyFile: basename(historyPath),

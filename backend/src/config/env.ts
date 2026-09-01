@@ -35,6 +35,8 @@ function parseCorsOrigin(value: string | undefined, appEnv: AppEnv) {
 type AppEnv = 'local' | 'nonprod' | 'prod'
 type SupabaseProjectEnv = 'nonprod' | 'prod' | ''
 type DatabaseProvider = 'sqlite' | 'supabase'
+export type ResumeAgentMode = 'v4' | 'v5' | 'shadow'
+export type V5StructuredOutputMode = 'auto' | 'native' | 'json_object'
 
 function parseAppEnv(value: string | undefined): AppEnv {
   const normalizedValue = value?.trim().toLowerCase()
@@ -64,6 +66,18 @@ function parseSupabaseProjectEnv(value: string | undefined): SupabaseProjectEnv 
   }
 
   return ''
+}
+
+function parseResumeAgentMode(value: string | undefined): ResumeAgentMode {
+  const normalizedValue = value?.trim().toLowerCase()
+  if (normalizedValue === 'v5' || normalizedValue === 'shadow') return normalizedValue
+  return 'v4'
+}
+
+function parseV5StructuredOutputMode(value: string | undefined): V5StructuredOutputMode {
+  const normalizedValue = value?.trim().toLowerCase()
+  if (normalizedValue === 'native' || normalizedValue === 'json_object') return normalizedValue
+  return 'auto'
 }
 
 function parseBoolean(value: string | undefined, fallback: boolean) {
@@ -115,6 +129,10 @@ export const env = {
     .split(',')
     .map((model) => model.trim())
     .filter(Boolean),
+  RESUME_AGENT_MODE: parseResumeAgentMode(process.env.RESUME_AGENT_MODE),
+  V5_QUALITY_JUDGE_ENABLED: parseBoolean(process.env.V5_QUALITY_JUDGE_ENABLED, false),
+  V5_CONTEXT_WINDOW_TOKENS: parsePositiveInteger(process.env.V5_CONTEXT_WINDOW_TOKENS, 64000),
+  V5_STRUCTURED_OUTPUT_MODE: parseV5StructuredOutputMode(process.env.V5_STRUCTURED_OUTPUT_MODE),
   JINA_API_KEY: process.env.JINA_API_KEY || '',
   WEB_RESEARCH_TIMEOUT_MS: parseInt(process.env.WEB_RESEARCH_TIMEOUT_MS || '20000', 10),
   // GLM-OCR Configuration

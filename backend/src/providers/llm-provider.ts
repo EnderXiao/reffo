@@ -1,5 +1,6 @@
 import type { HarnessEventBus } from '@/harness/event-bus'
 import type { StepExecutionContext } from '@/harness/run-context'
+import type { ZodTypeAny } from 'zod'
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
@@ -10,8 +11,28 @@ export interface ChatCompletionInput {
   messages: ChatMessage[]
   model?: string
   temperature?: number
+  signal?: AbortSignal
   responseFormat?: 'json_object'
+  structuredOutput?: {
+    name: string
+    schema: ZodTypeAny
+    strict: true
+  }
+  maxOutputTokens?: number
   promptVersion?: string
+  promptManifest?: {
+    workflowVersion: string
+    componentPromptId: string
+    componentPromptVersion: string
+    compiledPromptSha256: string
+    schemaVersion: string
+    validatorVersion: string
+    adaptivePolicyVersion: string
+    scoreFormulaVersion: string
+    temperature: number
+    inputDocumentIds: string[]
+    repairAttempt: number
+  }
   maxProviderAttempts?: number
   eventBus?: HarnessEventBus
   stepContext?: StepExecutionContext

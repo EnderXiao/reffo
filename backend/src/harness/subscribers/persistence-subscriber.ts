@@ -88,8 +88,9 @@ export class PersistenceSubscriber {
                 workflow_version,
                 status,
                 input_digest,
-                started_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                started_at,
+                release_status
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
@@ -99,8 +100,13 @@ export class PersistenceSubscriber {
             asString(payload.workflowVersion) ?? 'v1',
             'running',
             asString(payload.inputDigest),
-            event.occurredAt
+            event.occurredAt,
+            asString(payload.releaseStatus)
           )
+        return
+      case 'workflow.state.changed':
+        db.query('UPDATE process_runs SET agent_state = ? WHERE id = ?')
+          .run(asString(payload.state), event.runId)
         return
       case 'workflow.succeeded':
       case 'workflow.failed':
@@ -109,7 +115,9 @@ export class PersistenceSubscriber {
           .query(
             `
               UPDATE process_runs
-              SET status = ?, finished_at = ?, error_code = ?, error_message = ?
+              SET status = ?, finished_at = ?, error_code = ?, error_message = ?,
+                  agent_state = COALESCE(?, agent_state),
+                  used_safe_fallback = COALESCE(?, used_safe_fallback)
               WHERE id = ?
             `
           )
@@ -118,6 +126,8 @@ export class PersistenceSubscriber {
             asString(payload.finishedAt) ?? event.occurredAt,
             asString(payload.errorCode),
             asString(payload.errorMessage),
+            asString(payload.agentState),
+            typeof payload.usedSafeFallback === 'boolean' ? (payload.usedSafeFallback ? 1 : 0) : null,
             event.runId
           )
         return
@@ -177,11 +187,17 @@ export class PersistenceSubscriber {
           .run(event.attemptId ?? null, event.stepRunId ?? null, asNumber(payload.attemptNumber) ?? 1, 'running', event.occurredAt)
         return
       case 'provider.requested':
+        {
+          const manifest = asRecord(payload.promptManifest)
         db
           .query(
             `
               UPDATE step_attempts
-              SET provider = ?, model = ?, prompt_version = ?, raw_output_digest = COALESCE(raw_output_digest, ?)
+              SET provider = ?, model = ?, prompt_version = ?, raw_output_digest = COALESCE(raw_output_digest, ?),
+                  temperature = ?, max_output_tokens = ?, is_repair_attempt = ?,
+                  compiled_prompt_sha256 = ?, schema_version = ?, validator_version = ?,
+                  adaptive_policy_version = ?, score_formula_version = ?,
+                  component_prompt_id = ?, component_prompt_version = ?
               WHERE id = ?
             `
           )
@@ -190,9 +206,20 @@ export class PersistenceSubscriber {
             asString(payload.model),
             asString(payload.promptVersion),
             asString(payload.inputDigest),
+            asNumber(payload.temperature),
+            asNumber(payload.maxOutputTokens),
+            (asNumber(manifest.repairAttempt) ?? 0) > 0 ? 1 : 0,
+            asString(manifest.compiledPromptSha256),
+            asString(manifest.schemaVersion),
+            asString(manifest.validatorVersion),
+            asString(manifest.adaptivePolicyVersion),
+            asString(manifest.scoreFormulaVersion),
+            asString(manifest.componentPromptId),
+            asString(manifest.componentPromptVersion),
             event.attemptId ?? null
           )
         return
+        }
       case 'provider.responded':
         db
           .query(

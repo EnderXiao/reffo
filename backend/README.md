@@ -24,6 +24,7 @@ backend/
 │   ├── workflows/        # 简历优化与 OCR 工作流
 │   ├── config/           # 环境变量配置
 │   ├── types/            # TypeScript 类型定义
+│   ├── v5/               # v5.0.0 证据优先、自适应、阻断式门禁正式链路
 │   ├── index.ts          # 应用入口
 │   └── test.ts           # 联调测试脚本
 ├── package.json
@@ -78,6 +79,8 @@ bun run migrate:sqlite-to-supabase:prod
 6. 最多 2 次自愈修订。
 7. 面试建议生成。
 
+该接口支持 `RESUME_AGENT_MODE=v4|shadow|v5` 和请求级 `agent_version=v4.4|v5.0`。v5 保留旧响应结构，同时增加 Agent 状态、release status 和安全回退标识；架构、迁移、调用成本与发布门槛见 [`src/v5/README.md`](src/v5/README.md)。
+
 ### 单步 Agent 接口
 
 - `POST /api/v1/mvp/analyze`: 单独分析简历。
@@ -121,5 +124,7 @@ OCR 会优先读取 `GLM_OCR_API_KEY`，缺省时回退到 `GLM_API_KEY`。接�
 ## 测试
 
 ```bash
+bunx tsc --noEmit
+bun test ./src/v5
 bun test ./src
 ```

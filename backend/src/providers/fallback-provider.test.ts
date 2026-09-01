@@ -78,4 +78,28 @@ describe('FallbackLlmProvider transient retry', () => {
       attempts: 1,
     })
   })
+
+  test('stops immediately when the caller signal aborts during a provider failure', async () => {
+    const eventBus = new FakeHarnessEventBus()
+    const controller = new AbortController()
+    let callCount = 0
+    const provider: LlmProvider = {
+      complete: async () => {
+        callCount += 1
+        controller.abort('evaluation budget exceeded')
+        const error = new Error('temporary upstream timeout') as Error & { status: number }
+        error.status = 503
+        throw error
+      },
+    }
+    const fallback = new FallbackLlmProvider(provider)
+    const input = createStepInput(eventBus)
+    input.signal = controller.signal
+    input.maxProviderAttempts = 3
+
+    await expect(fallback.complete(input)).rejects.toThrow('temporary upstream timeout')
+
+    expect(callCount).toBe(1)
+    expect(eventBus.events.filter((event) => event.type.startsWith('recovery.'))).toHaveLength(0)
+  })
 })

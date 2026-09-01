@@ -71,15 +71,30 @@ describe('business evaluators', () => {
       weaknesses: ['Redis 高可用经验表达不够贴近 JD'],
       weakness_details: [
         {
+          id: 'G1',
+          priority: 'high',
           weakness: 'Redis 高可用经验表达不够贴近 JD',
           evidence_type: 'wording_gap',
+          jd_requirement: '具备 Redis 高可用实践',
           evidence: '源简历写到了 Redis，但没有显式描述高可用设计。',
+          impact: '核心技术要求的证据不够醒目。',
           suggestion: '在相关项目中补充 Redis 高可用使用场景和职责边界。',
         },
       ],
+      optimization_strategy_details: [{
+        id: 'S1',
+        related_gap_ids: ['G1'],
+        strategy_point: '前置 Redis 实践证据',
+        rationale: '使已有 Redis 使用经历更直接回应 JD 的技术要求。',
+        optimization_example: {
+          source_path: 'skills.hard_skills[1]',
+          source_quote: 'Redis',
+          optimized_content: '技术栈：Java、Redis',
+        },
+      }],
     }
 
-    expect(evaluateMatchAnalysisBusiness(matchWithWeaknessEvidence).passed).toBe(true)
+    expect(evaluateMatchAnalysisBusiness(matchWithWeaknessEvidence, sourceResume).passed).toBe(true)
   })
 
   test('passes when compound JD skills are covered by split match skills', () => {
@@ -129,6 +144,50 @@ describe('business evaluators', () => {
 
     expect(evaluation.passed).toBe(false)
     expect(evaluation.issues.some((issue) => issue.code === 'MISSING_WEAKNESS_EVIDENCE_TYPE')).toBe(true)
+  })
+
+  test('fails an optimization example that does not quote its source path exactly', () => {
+    const invalidMatch: MatchAnalysis = {
+      ...matchAnalysis,
+      weaknesses: ['Redis 表达未对齐'],
+      weakness_details: [{
+        id: 'G1',
+        priority: 'high',
+        weakness: 'Redis 表达未对齐',
+        evidence_type: 'wording_gap',
+        jd_requirement: '具备 Redis 实践',
+        evidence: '源简历技能包含 Redis。',
+        impact: '关键技术证据不够醒目。',
+        suggestion: '前置 Redis 证据。',
+      }],
+      optimization_strategy_details: [{
+        id: 'S1',
+        related_gap_ids: ['G1'],
+        strategy_point: '前置 Redis 证据',
+        rationale: '回应 JD 技术优先级。',
+        optimization_example: {
+          source_path: 'skills.hard_skills[1]',
+          source_quote: '精通 Redis',
+          optimized_content: '技术栈：Redis',
+        },
+      }],
+    }
+
+    const evaluation = evaluateMatchAnalysisBusiness(invalidMatch, sourceResume)
+
+    expect(evaluation.passed).toBe(false)
+    expect(evaluation.issues.some((issue) => issue.code === 'INVALID_OPTIMIZATION_SOURCE_QUOTE')).toBe(true)
+  })
+
+  test('fails new matching output that only returns legacy strategy strings', () => {
+    const evaluation = evaluateMatchAnalysisBusiness({
+      ...matchAnalysis,
+      optimization_suggestions: ['前置 Redis 证据'],
+      optimization_strategy_details: [],
+    }, sourceResume)
+
+    expect(evaluation.passed).toBe(false)
+    expect(evaluation.issues.some((issue) => issue.code === 'UNSTRUCTURED_OPTIMIZATION_SUGGESTIONS')).toBe(true)
   })
 
   test('fails interview suggestions without stories', () => {

@@ -1,8 +1,8 @@
 import { getPromptVersion, resolvePromptVariant } from '@/harness/prompt-variant'
 import {
-  buildV44AggressiveGenerationMessages,
   buildV44FinalAuditMessages,
   buildV44ResumePlanMessages,
+  buildV44TargetedGenerationMessages,
 } from '@/prompts/v44-one-job-one-resume-prompts'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'
 import type { ChatMessage, LlmProvider } from '@/providers/llm-provider'
@@ -62,7 +62,7 @@ export class ResumeGeneratorAgent {
       const identityTimeline = buildIdentityTimeline(sourceResume)
 
       const draftResponse = await this.provider.complete({
-        messages: buildV44AggressiveGenerationMessages({ identityTimeline, resumePlan }),
+        messages: buildV44TargetedGenerationMessages({ identityTimeline, resumePlan }),
         temperature: 0.25,
         promptVersion: getPromptVersion('resume-generator.draft', promptVariant),
         eventBus: options.eventBus,

@@ -15,6 +15,8 @@
     "start:prod": "bun --env-file=.env.prod run src/index.ts",
     "test": "bun run src/test.ts",
     "test:unit": "bun test ./src",
+    "test:v5": "bun test ./src/v5",
+    "v5:nonprod-nine:blind-eval": "bun --env-file=.env.nonprod run scripts/run-v5-nonprod-nine-case-blind-eval.ts",
     "migrate:sqlite-to-supabase": "bun --env-file=.env.nonprod run scripts/migrate-sqlite-to-supabase.ts",
     "migrate:sqlite-to-supabase:nonprod": "bun --env-file=.env.nonprod run scripts/migrate-sqlite-to-supabase.ts",
     "migrate:sqlite-to-supabase:prod": "bun --env-file=.env.prod run scripts/migrate-sqlite-to-supabase.ts",

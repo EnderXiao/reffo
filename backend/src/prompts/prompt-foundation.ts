@@ -1,4 +1,4 @@
-export const PROMPT_VERSION = '4.4.4'
+export const PROMPT_VERSION = '4.4.6'
 export const PROMPT_VARIANT = 'one-job-v4.4' as const
 
 export const SHARED_FACT_SAFETY_CONTRACT = `
@@ -8,7 +8,7 @@ export const SHARED_FACT_SAFETY_CONTRACT = `
 1. 候选人事实的唯一来源是 source_resume 或 structured_source_resume。
 2. JD 只能改变筛选、排序、术语对齐和风险判断，绝不能变成候选人的经历、技能、成果、意愿或可到岗信息。
 3. 每个候选人陈述必须能回溯到源简历；无法回溯的陈述必须删除。
-4. 激进只用于删减、重排、聚焦、句式、术语对齐和价值定位；对硬事实零扩写。
+4. 岗位化只用于选材、重排、详略、句式、术语对齐和价值定位；对硬事实零扩写，不以更短或零复用作为质量目标。
 5. 禁止新增或升级数字、因果、所有权、熟练度、项目归属、客户、行业、证书、地点、日期和任职时长。
 6. “参与/协助/了解/接触”不得升级为“主导/负责/独立/精通/熟练”；职责不得升级为结果。
 7. “材料未证明”不等于候选人现实中没有。除非源材料明确否定，否则不得断言“不会/不具备”。
