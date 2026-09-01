@@ -1,0 +1,34 @@
+backend/src/repositories/resume-history-repository.sqlite.ts
+  s_ce88868e5c5f1f::t_41d522d3bc606f 2,45-46,48-50,193,212,214,236,267,273,276,284,288-289,324,327,333,336
+  s_ce88868e5c5f1f::t_ba1c3144d49002 182-188,233
+  s_ce88868e5c5f1f::t_1ef782f16c862a 13,17,47
+doc/服务端Harness校验规则说明.md
+  s_9e25da5bc10f38::t_17da935a0c7bd0 243
+  s_9e25da5bc10f38::t_bcd0a3f2e4ec50 231
+  s_9e25da5bc10f38::t_3ef63de1db1726 153,270
+  s_9e25da5bc10f38::t_a5e7b6e9794a6c 272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "899e2d79ce4a31a2259151fad7e928e7985e0b2e",
+  "prompts": {},
+  "sessions": {
+    "s_9e25da5bc10f38": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04c2c-0af0-7153-800b-b9b9e423bfd0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    },
+    "s_ce88868e5c5f1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0381c-afe8-7433-b475-8f18a1ed710e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
