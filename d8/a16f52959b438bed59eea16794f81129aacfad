@@ -1,0 +1,43 @@
+doc/Profile与内测配额版本发布TODO.md
+  s_ce88868e5c5f1f::t_48276a784a3e45 1-18,24-26,30-33,38-40,45-50,57-60,65-67,71-81,83-100
+  s_ce88868e5c5f1f::t_6cebf203f35c87 19-23,27-29,34-35,41-44
+  s_ce88868e5c5f1f::t_acd0d3c23ea08b 51,54-55,63-64,68-70
+  s_ce88868e5c5f1f::t_e798deb16ca918 52-53,56,61-62
+  s_ce88868e5c5f1f::t_e4be572cfd0432 36-37,82
+doc/版本Tag发布流程.md
+  s_ce88868e5c5f1f::t_f06f433890d071 12
+  s_ce88868e5c5f1f::t_2d5e378d85c500 1-11,13-14
+.github/workflows/release-tag.yml
+  s_ce88868e5c5f1f::t_2d5e378d85c500 1-5,7-28,33,38-53,57,63-68,72-80,87-88
+  s_ce88868e5c5f1f::t_a70bf561885973 34-36
+  s_ce88868e5c5f1f::t_24f1d410836d28 6,29-32
+  s_ce88868e5c5f1f::t_fbe0d5b00aa2da 54-56
+  s_ce88868e5c5f1f::t_811124aecd3bbd 69-71
+  s_ce88868e5c5f1f::t_0f231af190a299 58-62
+  s_ce88868e5c5f1f::t_62d67f4062f463 81-86
+  s_4cd234b0f544a9::t_1ced1cc61374af 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d8a16f52959b438bed59eea16794f81129aacfad",
+  "prompts": {},
+  "sessions": {
+    "s_4cd234b0f544a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a046f6-aa66-73b2-9969-58e9f68452d6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    },
+    "s_ce88868e5c5f1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0381c-afe8-7433-b475-8f18a1ed710e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
