@@ -1,10 +1,10 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {useDidShow, useRouter} from '@tarojs/taro'
+import {useDidShow} from '@tarojs/taro'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import {useHistoryStore} from '@/store/historyStore'
 import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
-import {appendRouteParams, routePaths, useRouteTransition} from '@/shared/routing'
+import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import {toHistoryCardItems} from './homeCardData'
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
@@ -94,7 +94,7 @@ export interface IndexPageViewModel {
 }
 
 export function usePageModel(logoSource: string): IndexPageViewModel {
-  const router = useRouter()
+  const pageRoute = usePageRoute()
   const route = useRouteTransition()
   const {histories, loading, loadHistories} = useHistoryStore()
   const {
@@ -107,7 +107,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   const [isStrategyVisible, setIsStrategyVisible] = useState(initialReturningHomeState.isReturning)
   const [isCreateMode, setIsCreateMode] = useState(false)
   const [enteringCardId, setEnteringCardId] = useState<string | null>(
-    typeof router.params[NEW_CARD_ID_QUERY_KEY] === 'string' ? router.params[NEW_CARD_ID_QUERY_KEY] : null,
+    pageRoute.readString(NEW_CARD_ID_QUERY_KEY),
   )
   const [returningCardId, setReturningCardId] = useState<string | null>(initialReturningHomeState.cardId)
   const consumedEntryCardIdRef = useRef<string | null>(null)
@@ -123,10 +123,10 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [initialReturningHomeState.isReturning, loadHistories, loadLatestSourceResume])
 
   useEffect(() => {
-    if (typeof router.params[NEW_CARD_ID_QUERY_KEY] === 'string') {
+    if (pageRoute.readString(NEW_CARD_ID_QUERY_KEY)) {
       removeNewCardIdFromHashUrl()
     }
-  }, [router.params])
+  }, [pageRoute])
 
   const cardItems = useMemo(() => {
     return histories.length > 0 ? toHistoryCardItems(histories) : []
@@ -149,9 +149,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     : 0
 
   useDidShow(() => {
-    const nextEnteringCardId = typeof router.params[NEW_CARD_ID_QUERY_KEY] === 'string'
-      ? router.params[NEW_CARD_ID_QUERY_KEY]
-      : null
+    const nextEnteringCardId = pageRoute.readString(NEW_CARD_ID_QUERY_KEY)
     const returningHomeState = readReturningHomeState()
     const isFirstHomeShow = !hasShownHomeRef.current
 
