@@ -150,7 +150,7 @@ Steps：`parse_jd`、`match_resume_to_jd`
 | `weaknesses` 与 `weakness_details` 数量 | error | `MISSING_WEAKNESS_EVIDENCE_TYPE` | 当 `weaknesses` 非空时，`weakness_details.length` 必须等于 `weaknesses.length` | 每条弱点都必须有对应的证据类型标注，避免只给结论不给依据。 |
 | `weakness_details[].evidence_type` | error | `INVALID_WEAKNESS_EVIDENCE_TYPE` | 必须是 `direct_missing`、`implicit_evidence`、`wording_gap` 之一 | 弱点分类必须落在约定枚举内，便于后续生成时区分“真实缺失”和“表达不足”。 |
 | `weakness_details[].weakness`、`evidence`、`suggestion` | warning | `INCOMPLETE_WEAKNESS_EVIDENCE_DETAIL` | 建议都为非空字符串 | 弱点证据详情应包含弱点描述、判断依据和改写建议；缺失不阻断，但会降低可解释性。 |
-| `skill_match.matched + skill_match.missing` | error | `JD_REQUIRED_SKILLS_NOT_CHECKED` | 当 JD 中有必备技能时，已匹配和缺失技能合并后至少要覆盖其中一个必备技能 | 匹配分析必须真正检查 JD 的必备技能，不能完全绕开关键技能要求。 |
+| `skill_match.required_skill_checks` | warning | `JD_REQUIRED_SKILLS_NOT_CHECKED` | 当 JD 中有必备技能时，逐项检查可能不完整 | 作为匹配评分、优化建议和面试问题的质量信号，不阻断匹配流程。 |
 | `jd_structure.basic_info.title` | error | `MISSING_JD_TITLE` | 必须存在且非空 | 匹配结果必须带有岗位标题，方便展示和后续生成。 |
 
 ## generate 校验规则
@@ -228,6 +228,7 @@ Step：`generate_interview_advice`
 | `story_recommendations[].title` | 必须是字符串 | 无默认值 | 故事或项目标题。 |
 | `story_recommendations[].background` | 必须是字符串 | 无默认值 | 建议如何介绍项目背景和个人职责。 |
 | `story_recommendations[].result` | 必须是字符串 | 无默认值 | 建议强调的结果、指标或影响。 |
+| `story_recommendations[].storytelling_approach` | 必须是 2-3 条非空字符串 | 缺失时默认空数组，业务校验阻断 | 针对当前故事和目标岗位生成的讲述顺序、强调重点及缺口应对思路。 |
 | `follow_up_questions` | 字符串数组 | 缺失时默认空数组 | 候选人可反问面试官的问题列表。 |
 
 ### 业务校验
@@ -239,7 +240,7 @@ Step：`generate_interview_advice`
 | `questions` | warning | `INSUFFICIENT_INTERVIEW_QUESTIONS` | 数量建议不少于 3 个 | 面试问题少于 3 个不会阻断，但覆盖面偏弱。 |
 | `story_recommendations` | error | `MISSING_STORY_RECOMMENDATIONS` | 必须是非空数组 | 面试建议必须包含故事或项目准备建议，否则缺少核心准备材料。 |
 | `follow_up_questions` | warning | `MISSING_FOLLOW_UP_QUESTIONS` | 建议为非空数组 | 反问问题缺失不会阻断，但会降低面试准备完整度。 |
-| `story_recommendations[].title`、`background`、`result` | error | `INCOMPLETE_STORY_RECOMMENDATION` | 每条故事建议都必须有非空标题、背景和结果 | 故事建议必须完整，方便候选人按 STAR 或项目叙事准备。 |
+| `story_recommendations[].title`、`background`、`result`、`storytelling_approach` | error | `INCOMPLETE_STORY_RECOMMENDATION` | 每条故事建议都必须有非空标题、背景、结果和讲述思路 | 故事建议必须完整，方便候选人按岗位要求组织真实经历。 |
 
 ## TODO：业务校验失败后的 LLM Recovery 策略
 
@@ -266,9 +267,9 @@ Step：`generate_interview_advice`
 | `match` | `MISSING_EXPERIENCE_MATCH` | `repair_business_output` | 经验匹配说明可以基于结构化简历和 JD 重新生成。 |
 | `match` | `MISSING_WEAKNESS_EVIDENCE_TYPE` | `repair_business_output` | 弱点证据类型缺失属于解释不完整，适合让 LLM 补齐证据分类。 |
 | `match` | `INVALID_WEAKNESS_EVIDENCE_TYPE` | `repair_business_output` | 证据类型不合法可以让 LLM 映射到允许的三类枚举。 |
-| `match` | `JD_REQUIRED_SKILLS_NOT_CHECKED` | `repair_business_output` | 可能是模型漏检 JD 必备技能，也可能简历中存在相近表述，适合二次检查。 |
+| `match` | `JD_REQUIRED_SKILLS_NOT_CHECKED` | 不恢复 | 作为质量警告保留，供评分、优化建议和面试问题使用；不因中英文表达差异阻断流程。 |
 | `interview` | `MISSING_STORY_RECOMMENDATIONS` | `repair_business_output` | 故事建议可以基于优化简历重新生成，风险相对可控。 |
-| `interview` | `INCOMPLETE_STORY_RECOMMENDATION` | `repair_business_output` | 标题、背景、结果缺失属于建议内容不完整，适合修复输出。 |
+| `interview` | `INCOMPLETE_STORY_RECOMMENDATION` | `repair_business_output` | 标题、背景、结果或讲述思路缺失属于建议内容不完整，适合修复输出。 |
 | `analyze` | `MISSING_HARD_SKILLS` | `reextract_from_source` | 技能可能隐含在项目和经历描述中，适合基于原文重新抽取，但不能编造。 |
 | `analyze` | `MISSING_PERSON_NAME` | `reextract_from_source` 或 `fail_with_missing_input` | 如果原文包含姓名但模型漏抽，可重抽；如果原文确实没有，应失败并提示补充。 |
 | `analyze` | `MISSING_SOURCE_EXPERIENCE` | `reextract_from_source` 或 `fail_with_missing_input` | 如果原文存在经历但模型漏抽，可重抽；如果候选人确实没有经历，不能硬造。 |
