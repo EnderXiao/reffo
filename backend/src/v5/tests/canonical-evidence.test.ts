@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { canonicalizeSourceDocument } from '@/v5/canonical-source'
 import { mergeResumeExtractionCandidates, splitResumeDocument } from '@/v5/chunked-resume-extraction'
 import { validateJobExtractionCandidate, validateResumeExtractionCandidate } from '@/v5/evidence'
-import { createResumeFixture } from '@/v5/test-fixtures'
+import { createResumeFixture } from '@/v5/tests/fixtures'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 
 describe('v5 canonical source and atomic evidence', () => {

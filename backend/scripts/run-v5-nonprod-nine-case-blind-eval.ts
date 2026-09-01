@@ -658,7 +658,7 @@ async function main() {
     ] = await Promise.all([
       import('@/providers/deepseek-provider'),
       import('@/harness/event-bus'),
-      import('@/v5/workflow'),
+      import('@/v5/main/workflow'),
       import('@/v5/ab-evaluator'),
     ])
 

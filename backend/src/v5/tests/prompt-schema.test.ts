@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { compileV5Prompt, schemaForV5Component } from '@/v5/prompt-compiler'
-import { V5_PROMPT_VERSIONS, type V5PromptComponent } from '@/v5/prompts'
+import { loadV5Prompt, V5_PROMPT_VERSIONS, type V5PromptComponent } from '@/v5/prompts'
 
 const COMPONENTS = Object.keys(V5_PROMPT_VERSIONS) as V5PromptComponent[]
 
@@ -14,6 +14,8 @@ describe('v5 prompt compiler and strict schemas', () => {
       expect(compiled.promptSha256).toHaveLength(64)
       expect(compiled.manifest.componentPromptId).toBe(component)
       expect(compiled.manifest.compiledPromptSha256).toBe(compiled.promptSha256)
+      expect(compiled.manifest.promptFileSha256).toBe(loadV5Prompt(component).sha256)
+      expect(compiled.manifest.promptFilePath).toBe(`prompts/${component}.md`)
       expect(compiled.maxOutputTokens).toBeGreaterThan(0)
       expect(schemaForV5Component(component)).toBeDefined()
     }

@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import type { ChatCompletionInput, LlmProvider } from '@/providers/llm-provider'
 import { runDoubleOrderBlindAb } from '@/v5/ab-evaluator'
-import { toLegacyMvpProcessResponse } from '@/v5/compatibility'
-import { createV5ResultFixture } from '@/v5/test-fixtures'
+import { toLegacyMvpProcessResponse } from '@/v5/main/compatibility'
+import { createV5ResultFixture } from '@/v5/tests/fixtures'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 
 function parseCandidates(input: ChatCompletionInput) {

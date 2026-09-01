@@ -587,6 +587,8 @@ export interface PromptRunManifest {
   inputTokens: number | null
   outputTokens: number | null
   repairAttempt: number
+  promptFileSha256?: string
+  promptFilePath?: string
 }
 
 export type ResumeAgentState =

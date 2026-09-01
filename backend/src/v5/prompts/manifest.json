@@ -1,0 +1,15 @@
+{
+  "formatVersion": "1.0.0",
+  "defaultVersion": "5.0.0",
+  "components": {
+    "P01": "5.0.0-p01-resume-evidence", "P01R": "5.0.0-p01r-resume-evidence-repair",
+    "P02": "5.0.0-p02-job-requirements", "P02R": "5.0.0-p02r-job-requirements-repair",
+    "P03": "5.0.0-p03-match-positioning", "P03R": "5.0.0-p03r-match-repair",
+    "P04": "5.0.0-p04-strategy-resolution", "P05": "5.0.0-p05-resume-plan-r2",
+    "P05R": "5.0.0-p05r-resume-plan-repair-r2", "P06": "5.0.0-p06-draft-artifact-r2",
+    "P07": "5.0.0-p07-final-review-artifact", "P08": "5.0.0-p08-gate-repair-r2",
+    "P09": "5.0.0-p09-blocking-fact-judge", "P10": "5.0.0-p10-interview-preparation",
+    "P10R": "5.0.0-p10r-interview-repair", "P11": "5.0.0-p11-quality-judge",
+    "P12": "5.0.0-p12-double-order-ab"
+  }
+}

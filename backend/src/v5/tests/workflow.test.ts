@@ -3,7 +3,7 @@ import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/p
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { renderSourcePreservingArtifact } from '@/v5/safe-renderer'
 import { createTrustedResumeExtractionCache } from '@/v5/resume-extraction-cache'
-import { createJobFixture, createMatchFixture, createResumeFixture, FIXTURE_JD, FIXTURE_RESUME } from '@/v5/test-fixtures'
+import { createJobFixture, createMatchFixture, createResumeFixture, FIXTURE_JD, FIXTURE_RESUME } from '@/v5/tests/fixtures'
 import type {
   CanonicalSourceDocument,
   EvidenceAtom,
@@ -15,7 +15,7 @@ import type {
   V5ResumePlan,
 } from '@/v5/types'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
-import { V5ResumeOptimizationWorkflow, V5WorkflowBlockedError } from '@/v5/workflow'
+import { V5ResumeOptimizationWorkflow, V5WorkflowBlockedError } from '@/v5/main/workflow'
 
 interface TestEnvelopePayload {
   strategyProfile?: ResumeStrategyProfile

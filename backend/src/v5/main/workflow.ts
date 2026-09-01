@@ -24,6 +24,15 @@ import {
 import { calculateV5MatchScore } from '@/v5/match-score'
 import { renderSourcePreservingArtifact } from '@/v5/safe-renderer'
 import { V5PromptBudgetError } from '@/v5/prompt-compiler'
+import type {
+  V5WorkflowPlugin,
+  V5WorkflowPluginContext,
+  V5WorkflowPluginManifest,
+} from '@/v5/plugins/contract'
+import {
+  V5PluginExecutionError,
+  V5WorkflowPluginRegistry,
+} from '@/v5/plugins/registry'
 import {
   V5ResumeExtractionCacheError,
   type ResumeExtractionComputeContext,
@@ -78,7 +87,21 @@ export interface V5WorkflowOptions {
   resumeExtractionCache?: TrustedResumeExtractionCache
   eventBus?: HarnessEventBus
   enableDefaultSubscribers?: boolean
+  pluginOverrides?: Partial<Record<V5BuiltinPluginId, V5WorkflowPlugin<unknown, unknown>>>
 }
+
+export type V5BuiltinPluginId =
+  | 'canonical-source'
+  | 'resume-extraction'
+  | 'job-extraction'
+  | 'matching'
+  | 'adaptive-policy'
+  | 'resume-planning'
+  | 'artifact-generation'
+  | 'fact-judge'
+  | 'interview-preparation'
+  | 'quality-judge'
+  | 'response-compatibility'
 
 function createDefaultEventBus() {
   const eventBus = createHarnessEventBus()
@@ -134,8 +157,18 @@ function judgeIssues(result: BlockingFactJudgeResult): ValidationIssue[] {
   }))
 }
 
-function normalizeBlockedError(error: unknown) {
-  const cause = error instanceof StepRunError ? error.cause : error
+function normalizeBlockedError(error: unknown): V5WorkflowBlockedError {
+  let cause = error
+  while (cause instanceof StepRunError) cause = cause.cause
+  if (cause instanceof V5PluginExecutionError) {
+    const nested = normalizeBlockedError(cause.cause)
+    if (nested.code !== 'V5_PROVIDER_OR_WORKFLOW_FAILURE') return nested
+    return new V5WorkflowBlockedError({
+      code: 'V5_PROVIDER_OR_WORKFLOW_FAILURE',
+      state: 'provider_failure',
+      message: cause.message,
+    })
+  }
   if (cause instanceof V5WorkflowBlockedError) return cause
   if (cause instanceof V5PromptBudgetError) {
     return new V5WorkflowBlockedError({
@@ -189,6 +222,7 @@ export class V5WorkflowBlockedError extends Error {
   readonly code: string
   readonly state: ResumeAgentState
   readonly issues: ValidationIssue[]
+  runId?: string
 
   constructor(input: { code: string; state: ResumeAgentState; message: string; issues?: ValidationIssue[] }) {
     super(input.message)
@@ -204,12 +238,14 @@ export class V5ResumeOptimizationWorkflow {
   private readonly judgeProvider?: LlmProvider
   private readonly resumeExtractionCache?: TrustedResumeExtractionCache
   private readonly eventBus: HarnessEventBus
+  private readonly pluginOverrides: V5WorkflowOptions['pluginOverrides']
 
   constructor(options: V5WorkflowOptions = {}) {
     this.provider = options.provider
     this.judgeProvider = options.judgeProvider ?? options.provider
     this.resumeExtractionCache = options.resumeExtractionCache
     this.eventBus = options.eventBus ?? (options.enableDefaultSubscribers === false ? createHarnessEventBus() : createDefaultEventBus())
+    this.pluginOverrides = options.pluginOverrides
   }
 
   async extractResume(input: V5ResumeExtractionInput): Promise<V5ResumeExtractionResult> {
@@ -286,6 +322,7 @@ export class V5ResumeOptimizationWorkflow {
       }
     } catch (error) {
       const blocked = normalizeBlockedError(error)
+      blocked.runId ??= runContext.runId
       await setState(blocked.state)
       await this.eventBus.publish(createHarnessEvent({
         type: 'workflow.failed',
@@ -311,6 +348,18 @@ export class V5ResumeOptimizationWorkflow {
     const steps: StepRunSnapshot[] = []
     const deadline = Date.now() + (input.workflowTimeoutMs ?? 600000)
     const remaining = () => Math.max(1, deadline - Date.now())
+    const pluginRegistry = new V5WorkflowPluginRegistry()
+    const pluginManifest: V5WorkflowPluginManifest = { plugins: [] }
+    const pluginContext: V5WorkflowPluginContext = {
+      runContext,
+      eventBus: this.eventBus,
+      remainingMs: remaining,
+      shared: {},
+      config: { enableQualityJudge: input.enableQualityJudge ?? false },
+      manifest: pluginManifest,
+      completedPluginIds: new Set(),
+      providers: { primary: this.provider, judge: this.judgeProvider },
+    }
     let state: ResumeAgentState = 'received'
     const setState = async (next: ResumeAgentState) => {
       const previous = state
@@ -337,82 +386,151 @@ export class V5ResumeOptimizationWorkflow {
     }))
 
     try {
-      const sourceDocument = canonicalizeSourceDocument(input.resumeMarkdown)
-      const jobDocument = canonicalizeSourceDocument(input.jobDescription)
-      if (sourceDocument.canonicalDocument.blocks.length === 0 || jobDocument.canonicalDocument.blocks.length === 0) {
-        throw new V5WorkflowBlockedError({
-          code: 'CANONICAL_INPUT_EMPTY',
-          state: 'blocked_input_validation',
-          message: '源简历或 JD 规范化后没有可处理内容。',
-        })
-      }
-      await setState('normalized')
+      const { sourceDocument, jobDocument } = await this.executePlugin({
+        registry: pluginRegistry,
+        context: pluginContext,
+        plugin: {
+          id: 'canonical-source',
+          version: '5.0.0',
+          stage: 'normalize',
+          failureMapping: { apiCode: 'CANONICAL_INPUT_INVALID', agentState: 'blocked_input_validation' },
+          run: async (_context, workflowInput: V5WorkflowInput) => {
+            const normalizedResume = canonicalizeSourceDocument(workflowInput.resumeMarkdown)
+            const normalizedJob = canonicalizeSourceDocument(workflowInput.jobDescription)
+            if (normalizedResume.canonicalDocument.blocks.length === 0 || normalizedJob.canonicalDocument.blocks.length === 0) {
+              throw new V5WorkflowBlockedError({
+                code: 'CANONICAL_INPUT_EMPTY',
+                state: 'blocked_input_validation',
+                message: '源简历或 JD 规范化后没有可处理内容。',
+              })
+            }
+            await setState('normalized')
+            return { sourceDocument: normalizedResume, jobDocument: normalizedJob }
+          },
+        },
+        input,
+      })
 
       await setState('resume_extracting')
       await setState('job_extracting')
-      const [resumeStep, jobStep] = await Promise.all([
-        this.runResumeExtractionStep({
-          document: sourceDocument.canonicalDocument,
-          runContext,
-          timeoutMs: Math.min(300000, remaining()),
-        }),
-        runStep({
-          runContext,
-          eventBus: this.eventBus,
-          stepName: 'v5_p02_job_extract',
-          timeoutMs: Math.min(300000, remaining()),
-          execute: async stepContext => {
-            const envelope = this.envelope(runContext.runId, {
-              canonicalJobDocument: jobDocument.canonicalDocument,
-              sourcedContext: [],
-            })
-            return this.runRepairableStage<JobExtractionCandidate>({
-              component: 'P02',
-              repairComponent: 'P02R',
-              envelope,
-              stepContext,
-              documentIds: [jobDocument.canonicalDocument.documentId],
-              validate: value => validateJobExtractionCandidate(jobDocument.canonicalDocument, value),
-            })
+      const [resumeResult, jobCandidate] = await Promise.all([
+        this.executePlugin({
+          registry: pluginRegistry,
+          context: pluginContext,
+          plugin: {
+            id: 'resume-extraction',
+            version: '5.0.0-p01',
+            stage: 'extract',
+            dependencies: ['canonical-source'],
+            failureMapping: { apiCode: 'V5_RESUME_EXTRACTION_FAILED', agentState: 'blocked_input_validation' },
+            run: async () => {
+              const resumeStep = await this.runResumeExtractionStep({
+                document: sourceDocument.canonicalDocument,
+                runContext,
+                timeoutMs: Math.min(300000, remaining()),
+              })
+              steps.push(resumeStep.step)
+              return resumeStep.result
+            },
           },
+          input,
+        }),
+        this.executePlugin({
+          registry: pluginRegistry,
+          context: pluginContext,
+          plugin: {
+            id: 'job-extraction',
+            version: '5.0.0-p02',
+            stage: 'extract',
+            dependencies: ['canonical-source'],
+            failureMapping: { apiCode: 'V5_JOB_EXTRACTION_FAILED', agentState: 'blocked_input_validation' },
+            run: async () => {
+              const jobStep = await runStep({
+                runContext,
+                eventBus: this.eventBus,
+                stepName: 'v5_p02_job_extract',
+                timeoutMs: Math.min(300000, remaining()),
+                execute: async stepContext => {
+                  const envelope = this.envelope(runContext.runId, {
+                    canonicalJobDocument: jobDocument.canonicalDocument,
+                    sourcedContext: [],
+                  })
+                  return this.runRepairableStage<JobExtractionCandidate>({
+                    component: 'P02',
+                    repairComponent: 'P02R',
+                    envelope,
+                    stepContext,
+                    documentIds: [jobDocument.canonicalDocument.documentId],
+                    validate: value => validateJobExtractionCandidate(jobDocument.canonicalDocument, value),
+                  })
+                },
+              })
+              steps.push(jobStep.step)
+              return jobStep.result
+            },
+          },
+          input,
         }),
       ])
-      steps.push(resumeStep.step, jobStep.step)
-      const resumeEvidenceBundle = resumeStep.result.resumeEvidenceBundle
-      const jobRequirementBundle = buildJobRequirementBundle(jobDocument.canonicalDocument, jobStep.result)
+      const resumeEvidenceBundle = resumeResult.resumeEvidenceBundle
+      const jobRequirementBundle = buildJobRequirementBundle(jobDocument.canonicalDocument, jobCandidate)
       await setState('resume_extracted')
       await setState('job_extracted')
 
       await setState('matching')
-      const matchStep = await runStep({
-        runContext,
-        eventBus: this.eventBus,
-        stepName: 'v5_p03_match',
-        timeoutMs: Math.min(120000, remaining()),
-        execute: stepContext => this.runRepairableStage<V5MatchAnalysis>({
-          component: 'P03',
-          repairComponent: 'P03R',
-          envelope: this.envelope(runContext.runId, {
-            resumeEvidenceBundle: this.withoutNonessentialPii(resumeEvidenceBundle),
-            jobRequirementBundle,
-          }),
-          stepContext,
-          documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
-          validate: value => validateV5MatchAnalysis({ resume: resumeEvidenceBundle, job: jobRequirementBundle, match: value }),
-        }),
+      const matchAnalysis = await this.executePlugin({
+        registry: pluginRegistry,
+        context: pluginContext,
+        plugin: {
+          id: 'matching',
+          version: '5.0.0-p03',
+          stage: 'match',
+          dependencies: ['resume-extraction', 'job-extraction'],
+          failureMapping: { apiCode: 'V5_MATCHING_FAILED', agentState: 'blocked_fact_validation' },
+          run: async () => {
+            const matchStep = await runStep({
+              runContext,
+              eventBus: this.eventBus,
+              stepName: 'v5_p03_match',
+              timeoutMs: Math.min(120000, remaining()),
+              execute: stepContext => this.runRepairableStage<V5MatchAnalysis>({
+                component: 'P03',
+                repairComponent: 'P03R',
+                envelope: this.envelope(runContext.runId, {
+                  resumeEvidenceBundle: this.withoutNonessentialPii(resumeEvidenceBundle),
+                  jobRequirementBundle,
+                }),
+                stepContext,
+                documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                validate: value => validateV5MatchAnalysis({ resume: resumeEvidenceBundle, job: jobRequirementBundle, match: value }),
+              }),
+            })
+            steps.push(matchStep.step)
+            return matchStep.result
+          },
+        },
+        input,
       })
-      steps.push(matchStep.step)
-      const matchAnalysis = matchStep.result
       const matchScore = calculateV5MatchScore({ resume: resumeEvidenceBundle, job: jobRequirementBundle, match: matchAnalysis })
       await setState('matched')
 
-      let { profile: strategyProfile, policy: generationPolicy, requiresResolution } = buildAdaptiveStrategy({
-        resume: resumeEvidenceBundle,
-        job: jobRequirementBundle,
-        match: matchAnalysis,
-        requestedOutputLanguage: input.outputLanguage,
-      })
-      if (requiresResolution) {
+      const { strategyProfile, generationPolicy } = await this.executePlugin({
+        registry: pluginRegistry,
+        context: pluginContext,
+        plugin: {
+          id: 'adaptive-policy',
+          version: '5.0.0-p04',
+          stage: 'strategy',
+          dependencies: ['matching'],
+          failureMapping: { apiCode: 'V5_ADAPTIVE_POLICY_FAILED', agentState: 'blocked_fact_validation' },
+          run: async () => {
+            let { profile: strategyProfile, policy: generationPolicy, requiresResolution } = buildAdaptiveStrategy({
+              resume: resumeEvidenceBundle,
+              job: jobRequirementBundle,
+              match: matchAnalysis,
+              requestedOutputLanguage: input.outputLanguage,
+            })
+            if (requiresResolution) {
         const conservativeProfile = {
           ...strategyProfile,
           evidenceRichness: 'sparse' as const,
@@ -471,43 +589,72 @@ export class V5ResumeOptimizationWorkflow {
         generationPolicy = selectedPairIsValid
           ? policyCandidates.get(resolutionStep.result.selectedPolicyId) ?? sourcePreservingPolicy
           : sourcePreservingPolicy
-      }
-      await setState('policy_ready')
+            }
+            await setState('policy_ready')
+            return { strategyProfile, generationPolicy }
+          },
+        },
+        input,
+      })
 
       await setState('planning')
-      const planStep = await runStep({
-        runContext,
-        eventBus: this.eventBus,
-        stepName: 'v5_p05_plan',
-        timeoutMs: Math.min(150000, remaining()),
-        execute: stepContext => this.runRepairableStage<V5ResumePlan>({
-          component: 'P05',
-          repairComponent: 'P05R',
-          envelope: this.envelope(runContext.runId, {
-            resumeEvidenceBundle: this.withoutNonessentialPii(resumeEvidenceBundle),
-            jobRequirementBundle,
-            matchAnalysis,
-            strategyProfile,
-            generationPolicy,
-          }),
-          stepContext,
-          documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
-          validate: value => validateV5ResumePlan({
-            resume: resumeEvidenceBundle,
-            job: jobRequirementBundle,
-            match: matchAnalysis,
-            plan: value,
-            policy: generationPolicy,
-            profile: strategyProfile,
-          }),
-        }),
+      const resumePlan = await this.executePlugin({
+        registry: pluginRegistry,
+        context: pluginContext,
+        plugin: {
+          id: 'resume-planning',
+          version: '5.0.0-p05',
+          stage: 'plan',
+          dependencies: ['adaptive-policy'],
+          failureMapping: { apiCode: 'V5_RESUME_PLANNING_FAILED', agentState: 'blocked_fact_validation' },
+          run: async () => {
+            const planStep = await runStep({
+              runContext,
+              eventBus: this.eventBus,
+              stepName: 'v5_p05_plan',
+              timeoutMs: Math.min(150000, remaining()),
+              execute: stepContext => this.runRepairableStage<V5ResumePlan>({
+                component: 'P05',
+                repairComponent: 'P05R',
+                envelope: this.envelope(runContext.runId, {
+                  resumeEvidenceBundle: this.withoutNonessentialPii(resumeEvidenceBundle),
+                  jobRequirementBundle,
+                  matchAnalysis,
+                  strategyProfile,
+                  generationPolicy,
+                }),
+                stepContext,
+                documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                validate: value => validateV5ResumePlan({
+                  resume: resumeEvidenceBundle,
+                  job: jobRequirementBundle,
+                  match: matchAnalysis,
+                  plan: value,
+                  policy: generationPolicy,
+                  profile: strategyProfile,
+                }),
+              }),
+            })
+            steps.push(planStep.step)
+            return planStep.result
+          },
+        },
+        input,
       })
-      steps.push(planStep.step)
-      const resumePlan = planStep.result
       await setState('planned')
 
-      const allowedEvidenceIds = plannedContentEvidenceIds(resumeEvidenceBundle, resumePlan)
-      const generationPayload = {
+      let { artifact, repairAttempts, validation, generationPayload, usedSafeFallback } = await this.executePlugin({
+        registry: pluginRegistry,
+        context: pluginContext,
+        plugin: {
+          id: 'artifact-generation',
+          version: '5.0.0-p06-p08',
+          stage: 'generate',
+          dependencies: ['resume-planning'],
+          failureMapping: { apiCode: 'V5_ARTIFACT_GENERATION_FAILED', agentState: 'blocked_fact_validation' },
+          run: async () => {
+            const allowedEvidenceIds = plannedContentEvidenceIds(resumeEvidenceBundle, resumePlan)
+            const generationPayload = {
         identityAndTimeline: {
           identity: resumeEvidenceBundle.identity,
           timeline: resumeEvidenceBundle.timeline,
@@ -631,9 +778,25 @@ export class V5ResumeOptimizationWorkflow {
         })
       }
       artifact = validation.value ?? artifact
+      return { artifact, repairAttempts, validation, generationPayload, usedSafeFallback }
+          },
+        },
+        input,
+      })
 
-      await setState('fact_judging')
-      let factJudge = await this.runFactJudge({
+      let factJudge: BlockingFactJudgeResult
+      ;({ artifact, repairAttempts, validation, usedSafeFallback, factJudge } = await this.executePlugin({
+        registry: pluginRegistry,
+        context: pluginContext,
+        plugin: {
+          id: 'fact-judge',
+          version: '5.0.0-p09',
+          stage: 'fact_judge',
+          dependencies: ['artifact-generation'],
+          failureMapping: { apiCode: 'V5_BLOCKING_FACT_JUDGE_FAILED', agentState: 'blocked_fact_validation' },
+          run: async () => {
+            await setState('fact_judging')
+            let factJudge = await this.runFactJudge({
         runContext,
         runId: runContext.runId,
         artifact,
@@ -706,131 +869,178 @@ export class V5ResumeOptimizationWorkflow {
           })
         }
       }
-
-      let interviewPreparation: InterviewPreparation | undefined
-      try {
-        const interviewStep = await runStep({
-          runContext,
-          eventBus: this.eventBus,
-          stepName: 'v5_p10_interview',
-          timeoutMs: Math.min(120000, remaining()),
-          execute: stepContext => this.runRepairableStage<InterviewPreparation>({
-            component: 'P10',
-            repairComponent: 'P10R',
-            envelope: this.envelope(runContext.runId, {
-              artifact,
-              evidenceAtoms: resumeEvidenceBundle.evidenceAtoms.filter(atom => artifact.usedEvidenceIds.includes(atom.evidenceId)),
-              requirementAtoms: jobRequirementBundle.requirementAtoms,
-              matchAnalysis,
-              sourcedContext: jobRequirementBundle.sourcedContext,
-            }),
-            stepContext,
-            documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
-            validate: value => validateInterviewPreparation({
-              preparation: value,
-              artifact,
-              resume: resumeEvidenceBundle,
-              job: jobRequirementBundle,
-              match: matchAnalysis,
-            }),
-          }),
-        })
-        steps.push(interviewStep.step)
-        interviewPreparation = interviewStep.result
-      } catch (error) {
-        await this.eventBus.publish(createHarnessEvent({
-          type: 'step.partial',
-          runId: runContext.runId,
-          requestId: runContext.requestId,
-          payload: { stepName: 'v5_p10_interview', errorCode: 'INTERVIEW_PREPARATION_FAILED' },
-        }))
-      }
-
-      if (input.enableQualityJudge) {
-        try {
-          const qualityStep = await runStep({
-            runContext,
-            eventBus: this.eventBus,
-            stepName: 'v5_p11_quality_judge',
-            timeoutMs: Math.min(120000, remaining()),
-            execute: stepContext => runV5StructuredStage<ResumeQualityJudgeResult>({
-              component: 'P11',
-              envelope: this.envelope(runContext.runId, {
-                artifact,
-                resumePlan,
-                strategyProfile,
-                generationPolicy,
-                primaryRequirementIds: resumePlan.primaryRequirementIds,
-                highValueEvidenceIds: resumePlan.stableCoreEvidenceIds,
-                blockingFactJudgeResult: factJudge,
-              }),
-              options: {
-                provider: this.judgeProvider,
-                eventBus: this.eventBus,
-                stepContext,
-                inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
-              },
-            }).then(result => result.value),
-          })
-          steps.push(qualityStep.step)
-          await this.eventBus.publish(createHarnessEvent({
-            type: 'evaluation.completed',
-            runId: runContext.runId,
-            requestId: runContext.requestId,
-            stepRunId: qualityStep.step.stepRunId,
-            payload: {
-              evaluatorName: 'v5_resume_quality_judge',
-              evaluatorVersion: '5.0.0-p11',
-              passed: qualityStep.result.deliverabilityGate === 'pass',
-              score: qualityStep.result.dimensions.reduce((sum, item) => sum + item.score, 0),
-              issues: qualityStep.result.dimensions.flatMap(item => item.issues),
-            },
-          }))
-        } catch (error) {
-          await this.eventBus.publish(createHarnessEvent({
-            type: 'step.partial',
-            runId: runContext.runId,
-            requestId: runContext.requestId,
-            payload: { stepName: 'v5_p11_quality_judge', errorCode: 'QUALITY_JUDGE_FAILED_NON_BLOCKING' },
-          }))
-        }
-      }
-
-      await setState(usedSafeFallback ? 'succeeded_with_safe_fallback' : 'succeeded')
-      const finishedAt = new Date().toISOString()
-      await this.eventBus.publish(createHarnessEvent({
-        type: 'workflow.succeeded',
-        runId: runContext.runId,
-        requestId: runContext.requestId,
-        payload: {
-          workflowName: runContext.workflowName,
-          workflowVersion: runContext.workflowVersion,
-          finishedAt,
-          agentState: state,
-          usedSafeFallback,
-          stepCount: steps.length,
+      return { artifact, repairAttempts, validation, usedSafeFallback, factJudge }
+          },
         },
+        input,
       }))
 
-      return {
-        state,
-        releaseStatus: 'preproduction_candidate',
-        runId: runContext.runId,
-        resumeEvidenceBundle,
-        jobRequirementBundle,
-        matchAnalysis,
-        matchScore,
-        strategyProfile,
-        generationPolicy,
-        resumePlan,
-        artifact,
-        interviewPreparation,
-        usedSafeFallback,
-        validationIssues: [...validation.issues, ...judgeIssues(factJudge)].filter(item => item.severity !== 'info'),
-      }
+      const interviewPreparation = await this.executePlugin({
+        registry: pluginRegistry,
+        context: pluginContext,
+        plugin: {
+          id: 'interview-preparation',
+          version: '5.0.0-p10',
+          stage: 'interview',
+          dependencies: ['fact-judge'],
+          optional: true,
+          failureMapping: { apiCode: 'INTERVIEW_PREPARATION_FAILED', agentState: 'provider_failure' },
+          run: async () => {
+            const interviewStep = await runStep({
+              runContext,
+              eventBus: this.eventBus,
+              stepName: 'v5_p10_interview',
+              timeoutMs: Math.min(120000, remaining()),
+              execute: stepContext => this.runRepairableStage<InterviewPreparation>({
+                component: 'P10',
+                repairComponent: 'P10R',
+                envelope: this.envelope(runContext.runId, {
+                  artifact,
+                  evidenceAtoms: resumeEvidenceBundle.evidenceAtoms.filter(atom => artifact.usedEvidenceIds.includes(atom.evidenceId)),
+                  requirementAtoms: jobRequirementBundle.requirementAtoms,
+                  matchAnalysis,
+                  sourcedContext: jobRequirementBundle.sourcedContext,
+                }),
+                stepContext,
+                documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                validate: value => validateInterviewPreparation({
+                  preparation: value,
+                  artifact,
+                  resume: resumeEvidenceBundle,
+                  job: jobRequirementBundle,
+                  match: matchAnalysis,
+                }),
+              }),
+            })
+            steps.push(interviewStep.step)
+            return interviewStep.result
+          },
+          onError: async () => {
+            await this.eventBus.publish(createHarnessEvent({
+              type: 'step.partial',
+              runId: runContext.runId,
+              requestId: runContext.requestId,
+              payload: { stepName: 'v5_p10_interview', errorCode: 'INTERVIEW_PREPARATION_FAILED' },
+            }))
+          },
+        },
+        input,
+      })
+
+      await this.executePlugin({
+        registry: pluginRegistry,
+        context: pluginContext,
+        enabled: input.enableQualityJudge ?? false,
+        plugin: {
+          id: 'quality-judge',
+          version: '5.0.0-p11',
+          stage: 'quality_judge',
+          dependencies: ['fact-judge'],
+          optional: true,
+          failureMapping: { apiCode: 'QUALITY_JUDGE_FAILED_NON_BLOCKING', agentState: 'provider_failure' },
+          run: async () => {
+            const qualityStep = await runStep({
+              runContext,
+              eventBus: this.eventBus,
+              stepName: 'v5_p11_quality_judge',
+              timeoutMs: Math.min(120000, remaining()),
+              execute: stepContext => runV5StructuredStage<ResumeQualityJudgeResult>({
+                component: 'P11',
+                envelope: this.envelope(runContext.runId, {
+                  artifact,
+                  resumePlan,
+                  strategyProfile,
+                  generationPolicy,
+                  primaryRequirementIds: resumePlan.primaryRequirementIds,
+                  highValueEvidenceIds: resumePlan.stableCoreEvidenceIds,
+                  blockingFactJudgeResult: factJudge,
+                }),
+                options: {
+                  provider: this.judgeProvider,
+                  eventBus: this.eventBus,
+                  stepContext,
+                  inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                },
+              }).then(result => result.value),
+            })
+            steps.push(qualityStep.step)
+            await this.eventBus.publish(createHarnessEvent({
+              type: 'evaluation.completed',
+              runId: runContext.runId,
+              requestId: runContext.requestId,
+              stepRunId: qualityStep.step.stepRunId,
+              payload: {
+                evaluatorName: 'v5_resume_quality_judge',
+                evaluatorVersion: '5.0.0-p11',
+                passed: qualityStep.result.deliverabilityGate === 'pass',
+                score: qualityStep.result.dimensions.reduce((sum, item) => sum + item.score, 0),
+                issues: qualityStep.result.dimensions.flatMap(item => item.issues),
+              },
+            }))
+          },
+          onError: async () => {
+            await this.eventBus.publish(createHarnessEvent({
+              type: 'step.partial',
+              runId: runContext.runId,
+              requestId: runContext.requestId,
+              payload: { stepName: 'v5_p11_quality_judge', errorCode: 'QUALITY_JUDGE_FAILED_NON_BLOCKING' },
+            }))
+          },
+        },
+        input,
+      })
+
+      return await this.executePlugin({
+        registry: pluginRegistry,
+        context: pluginContext,
+        plugin: {
+          id: 'response-compatibility',
+          version: '5.0.0',
+          stage: 'response',
+          dependencies: ['fact-judge'],
+          failureMapping: { apiCode: 'V5_RESPONSE_BUILD_FAILED', agentState: 'provider_failure' },
+          run: async (): Promise<V5WorkflowResult> => {
+            await setState(usedSafeFallback ? 'succeeded_with_safe_fallback' : 'succeeded')
+            const finishedAt = new Date().toISOString()
+            await this.eventBus.publish(createHarnessEvent({
+              type: 'workflow.succeeded',
+              runId: runContext.runId,
+              requestId: runContext.requestId,
+              payload: {
+                workflowName: runContext.workflowName,
+                workflowVersion: runContext.workflowVersion,
+                finishedAt,
+                agentState: state,
+                usedSafeFallback,
+                stepCount: steps.length,
+                pluginManifest: pluginManifest.plugins,
+              },
+            }))
+
+            return {
+              state,
+              releaseStatus: 'preproduction_candidate',
+              runId: runContext.runId,
+              resumeEvidenceBundle,
+              jobRequirementBundle,
+              matchAnalysis,
+              matchScore,
+              strategyProfile,
+              generationPolicy,
+              resumePlan,
+              artifact,
+              interviewPreparation,
+              usedSafeFallback,
+              validationIssues: [...validation.issues, ...judgeIssues(factJudge)].filter(item => item.severity !== 'info'),
+            }
+          },
+        },
+        input,
+      })
     } catch (error) {
       if (error instanceof StepRunError) steps.push(error.step)
       const blocked = normalizeBlockedError(error)
+      blocked.runId ??= runContext.runId
       await setState(blocked.state)
       await this.eventBus.publish(createHarnessEvent({
         type: 'workflow.failed',
@@ -856,6 +1066,22 @@ export class V5ResumeOptimizationWorkflow {
       }))
       throw blocked
     }
+  }
+
+  private async executePlugin<TInput, TOutput>(input: {
+    registry: V5WorkflowPluginRegistry
+    context: V5WorkflowPluginContext
+    plugin: V5WorkflowPlugin<TInput, TOutput> & { id: V5BuiltinPluginId }
+    input: TInput
+    enabled?: boolean
+  }): Promise<TOutput> {
+    input.registry.register(input.plugin)
+    const override = this.pluginOverrides?.[input.plugin.id]
+    if (override) input.registry.replace(override)
+    if (input.enabled === false) input.registry.disable(input.plugin.id)
+    input.registry.assertReady()
+    const result = await input.registry.execute<TInput, TOutput>(input.plugin.id, input.context, input.input)
+    return result.output as TOutput
   }
 
   private envelope<T>(runId: string, payload: T): V5StageEnvelope<T> {

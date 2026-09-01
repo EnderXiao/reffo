@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { calculateV5MatchScore } from '@/v5/match-score'
 import { renderSourcePreservingArtifact } from '@/v5/safe-renderer'
-import { createMatchFixture } from '@/v5/test-fixtures'
+import { createMatchFixture } from '@/v5/tests/fixtures'
 import type { BlockingFactJudgeResult, V5ResumePlan } from '@/v5/types'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 import {

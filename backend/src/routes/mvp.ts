@@ -27,7 +27,7 @@ import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
-import { V5WorkflowBlockedError } from '@/v5/workflow'
+import { V5WorkflowBlockedError } from '@/v5/main/workflow'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 
 function getHarnessRunRepository() {
@@ -102,7 +102,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/process',
     async ({ body, set }) => {
       try {
-        const { prompt_variant, enable_llm_judge, agent_version, output_language } = body
+        const { enable_llm_judge, output_language } = body
         const resume_markdown = normalizeMarkdownText(body.resume_markdown)
         const jd_text = normalizeMarkdownText(body.jd_text)
 
@@ -110,9 +110,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const result = await workflow.run({
           resume_markdown,
           jd_text,
-          prompt_variant,
           enable_llm_judge,
-          agent_version,
           output_language,
         })
 
@@ -152,23 +150,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           description: '岗位描述（JD）文本',
           minLength: 10,
         }),
-        prompt_variant: t.Optional(t.Union([
-          t.Literal('v1'),
-          t.Literal('v2'),
-          t.Literal('final-v3'),
-          t.Literal('scope-aware-v4.2'),
-          t.Literal('one-job-v4.4'),
-        ], {
-          description: '兼容旧客户端的提示词版本字段；服务端统一使用 one-job-v4.4（v4.4.6）',
-        })),
         enable_llm_judge: t.Optional(t.Boolean({
-          description: '是否异步触发 LLM Judge，不默认阻塞主链路',
-        })),
-        agent_version: t.Optional(t.Union([
-          t.Literal('v4.4'),
-          t.Literal('v5.0'),
-        ], {
-          description: '可选链路版本覆盖；未提供时使用 RESUME_AGENT_MODE。',
+          description: '是否启用 V5 非阻断 P11 质量 Judge',
         })),
         output_language: t.Optional(t.String({
           description: 'v5 输出语言偏好，例如 zh-CN 或 en-US。',
@@ -178,7 +161,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       }),
       detail: {
         summary: 'MVP 完整流程',
-        description: '按 RESUME_AGENT_MODE 或 agent_version 串联 v4.4.6 / v5.0.0。v5 采用原子证据、自适应策略、严格 Schema、最多两次 Artifact 修复和阻断式事实门禁，同时保持旧响应结构兼容。',
+        description: '固定执行 v5.0.0。V5 采用原子证据、自适应策略、严格 Schema、最多两次 Artifact 修复和阻断式事实门禁，同时保持旧响应结构兼容。',
         tags: ['MVP'],
       },
     }
