@@ -15,7 +15,7 @@ import {
   v5MatchAnalysisSchema,
   v5ResumePlanSchema,
 } from '@/v5/schemas'
-import { buildV5SystemPrompt, buildV5UserPrompt, type V5PromptComponent, V5_PROMPT_VERSIONS } from '@/v5/prompts'
+import { buildV5SystemPrompt, buildV5UserPrompt, loadV5Prompt, type V5PromptComponent, V5_PROMPT_VERSIONS } from '@/v5/prompts'
 import {
   V5_ADAPTIVE_POLICY_VERSION,
   V5_SCHEMA_VERSION,
@@ -87,6 +87,8 @@ export interface CompiledV5Prompt {
     temperature: number
     inputDocumentIds: string[]
     repairAttempt: number
+    promptFileSha256: string
+    promptFilePath: string
   }
 }
 
@@ -168,6 +170,7 @@ export function compileV5Prompt(input: {
   ]
   const promptSha256 = createDigest(messages)
   const promptVersion = V5_PROMPT_VERSIONS[input.component]
+  const promptFile = loadV5Prompt(input.component)
   const temperature = TEMPERATURES[input.component]
   const estimatedInputTokens = estimateTokens(messages.map(message => message.content).join('\n'))
   const desiredOutputTokens = calculateMaxOutputTokens(input.component, serializedEnvelope.length)
@@ -201,6 +204,8 @@ export function compileV5Prompt(input: {
       temperature,
       inputDocumentIds: input.inputDocumentIds ?? [],
       repairAttempt: input.repairAttempt ?? 0,
+      promptFileSha256: promptFile.sha256,
+      promptFilePath: promptFile.filePath,
     },
   }
 }

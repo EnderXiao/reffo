@@ -56,11 +56,11 @@ function request(overrides: Partial<ChatCompletionInput> = {}): ChatCompletionIn
 describe('evaluation runner CLI and immutable safety configuration', () => {
   test('keeps provider/workflow initialization behind the dry-run return and avoids SQLite persistence', async () => {
     const runnerSource = await readFile(
-      resolve(import.meta.dir, '../../scripts/run-v5-nonprod-nine-case-blind-eval.ts'),
+      resolve(import.meta.dir, '../../../scripts/run-v5-nonprod-nine-case-blind-eval.ts'),
       'utf8'
     )
     expect(runnerSource).not.toMatch(/^import\s+.*@\/providers\/deepseek-provider/m)
-    expect(runnerSource).not.toMatch(/^import\s+.*@\/v5\/workflow/m)
+    expect(runnerSource).not.toMatch(/^import\s+.*@\/v5\/main\/workflow/m)
     expect(runnerSource).toContain("import('@/providers/deepseek-provider')")
     expect(runnerSource.indexOf('if (args.dryRun) return')).toBeLessThan(
       runnerSource.indexOf("import('@/providers/deepseek-provider')")

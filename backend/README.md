@@ -24,7 +24,11 @@ backend/
 │   ├── workflows/        # 简历优化与 OCR 工作流
 │   ├── config/           # 环境变量配置
 │   ├── types/            # TypeScript 类型定义
-│   ├── v5/               # v5.0.0 证据优先、自适应、阻断式门禁正式链路
+│   ├── v5/               # v5.0.0 正式链路
+│   │   ├── main/         # 主流程编排、旧响应兼容
+│   │   ├── plugins/      # Plugin contract、registry
+│   │   ├── prompts/      # Prompt Markdown、manifest.json
+│   │   └── tests/        # V5 测试和 fixture
 │   ├── index.ts          # 应用入口
 │   └── test.ts           # 联调测试脚本
 ├── package.json
@@ -69,17 +73,27 @@ bun run migrate:sqlite-to-supabase:prod
 
 ### `POST /api/v1/mvp/process`
 
-完整简历优化流程：
+完整简历优化流程固定执行 V5：P01/P02 抽取、P03 匹配、P04 条件策略、P05 计划、P06-P08 Artifact 生成/修复、P09 阻断事实审查、P10 面试准备、可选 P11 质量审查，最后转换为旧 MVP 响应结构。
 
-1. 简历分析。
-2. JD 解析。
-3. 岗位匹配。
-4. 最佳简历生成。
-5. Markdown 质量门禁。
-6. 最多 2 次自愈修订。
-7. 面试建议生成。
+完整流程固定执行 V5，不再提供 V4、shadow 或请求级版本切换。响应保留旧步骤字段，同时增加 Agent 状态、release status 和安全回退标识；架构、调用成本与发布门槛见 [`src/v5/README.md`](src/v5/README.md)。当前改动只在测试分支验证，暂不合入 `main`。
 
-该接口支持 `RESUME_AGENT_MODE=v4|shadow|v5` 和请求级 `agent_version=v4.4|v5.0`。v5 保留旧响应结构，同时增加 Agent 状态、release status 和安全回退标识；架构、迁移、调用成本与发布门槛见 [`src/v5/README.md`](src/v5/README.md)。
+### V5 插件清单
+
+主流程通过 `V5WorkflowPluginRegistry` 调度以下插件：
+
+- `canonical-source`：简历/JD 规范化、空输入门禁。
+- `resume-extraction`：P01/P01R 源简历证据抽取、分块、缓存和合并校验。
+- `job-extraction`：P02/P02R JD 原子需求抽取。
+- `matching`：P03/P03R 证据与需求匹配、服务端评分输入。
+- `adaptive-policy`：确定性策略和低置信 P04 裁决。
+- `resume-planning`：P05/P05R ResumePlan 与计划门禁。
+- `artifact-generation`：P06/P07 生成与终审、P08 有界修复和安全回退。
+- `fact-judge`：P09 阻断式语义事实审查。
+- `interview-preparation`：P10/P10R 面试准备，可选失败不阻断主结果。
+- `quality-judge`：P11 综合质量审查，默认按请求开关启用，非阻断。
+- `response-compatibility`：转换为 `step1_analysis` 等旧 MVP 字段。
+
+插件可通过 `pluginOverrides` 替换；只有标记为 `optional` 的插件允许禁用。插件版本、状态、耗时和错误会写入 workflow manifest。当前内置插件的注册定义仍集中在 `src/v5/main/workflow.ts`，`src/v5/plugins/` 先承载通用 contract/registry；后续可将单个插件实现继续拆成独立文件。
 
 ### 单步 Agent 接口
 
@@ -125,6 +139,6 @@ OCR 会优先读取 `GLM_OCR_API_KEY`，缺省时回退到 `GLM_API_KEY`。接�
 
 ```bash
 bunx tsc --noEmit
-bun test ./src/v5
+bun test ./src/v5/tests
 bun test ./src
 ```
