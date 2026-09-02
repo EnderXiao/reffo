@@ -4,7 +4,7 @@ import {
   createTrustedResumeExtractionCache,
   V5ResumeExtractionCacheError,
 } from '@/v5/resume-extraction-cache'
-import { createResumeFixture, FIXTURE_RESUME } from '@/v5/test-fixtures'
+import { createResumeFixture, FIXTURE_RESUME } from '@/v5/tests/fixtures'
 import type { ResumeExtractionCandidate } from '@/v5/types'
 
 function createCache(overrides: Partial<Parameters<typeof createTrustedResumeExtractionCache>[0]> = {}) {

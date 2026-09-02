@@ -8,7 +8,7 @@
 reffo/
 ├── backend/          # 后端服务 (Bun + Elysia + TypeScript)
 ├── frontend/         # 前端应用，包括 MVP Web 与 Taro 主产品前端
-├── doc/              # 技术方案、TODO 和调研文档
+├── docs/             # 技术方案、TODO、升级清单和调研文档
 ├── .kiro/           # 项目文档和规范
 │   └── specs/       # 需求文档和技术设计
 └── README.md        # 项目说明
@@ -22,10 +22,22 @@ reffo/
 
 1. **源简历管理**：支持保存最新源简历，供首页和创建流程复用。
 2. **OCR 解析**：支持简历 PDF 解析和 JD 图片解析，基于 GLM-OCR。
-3. **Agent 编排**：包含简历分析、JD 解析、岗位匹配、最佳简历生成、质量门禁、自愈修订和面试建议。
+3. **V5 Agent 编排**：主流程与 Plugin Registry 分离，包含证据抽取、JD 原子需求、岗位匹配、策略、计划、Artifact 门禁、事实审查和面试建议。
 4. **生成历史**：已生成的一岗一简历卡片可持久化到本地 SQLite，并在 Taro 首页卡片堆展示。
 5. **Harness 观测**：后端记录 run、step、attempt、event、artifact、evaluation 和失败样本。
 6. **Taro H5 主链路**：首页、创建页、结果页、完成页已串起源简历、JD、生成、保存和回首页流程。
+
+V5 后端代码结构：
+
+```text
+backend/src/v5/
+├── main/       # 主流程编排和旧响应兼容
+├── plugins/    # 可插拔 Plugin contract、registry
+├── prompts/    # Markdown Prompt 和 manifest.json
+└── tests/      # V5 测试与 fixture
+```
+
+当前内置插件：`canonical-source`、`resume-extraction`、`job-extraction`、`matching`、`adaptive-policy`、`resume-planning`、`artifact-generation`、`fact-judge`、`interview-preparation`、`quality-judge`、`response-compatibility`。详细职责见 [`backend/README.md`](backend/README.md)。
 
 ## 🚀 快速开始
 
