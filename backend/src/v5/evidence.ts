@@ -3,12 +3,14 @@ import type {
   CanonicalSourceDocument,
   JobExtractionCandidate,
   JobRequirementBundle,
+  NumericAtom,
   ResumeEvidenceBundle,
   ResumeExtractionCandidate,
   ValidationIssue,
   ValidationResult,
 } from '@/v5/types'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
+import { resumeExtractionFactCandidateLimit } from '@/v5/chunked-resume-extraction'
 
 function stableId(prefix: string, parts: Array<string | number>) {
   const digest = createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 20)
@@ -53,6 +55,57 @@ function hasExecutableInputRisk(flags: string[]) {
   ].includes(flag))
 }
 
+function isLayoutOnlyBlockText(text: string) {
+  const trimmed = text.trim()
+  return /^!\[[^\]]*\]\([^)]*\)$/.test(trimmed) || /^(?:page|bbox)\s*[=:]/i.test(trimmed)
+}
+
+const SOURCE_NUMBER_PATTERN = /(?:(?:(?:日|周|月|季|年)均|每(?:日|周|月|季|年))\s*)?(?:(?:约|近|超过|超|至少|最多|不足|逾)\s*)?(?:[¥￥$]\s*)?\d+(?:[.,]\d+)*(?:%|％|万|亿|千|百|人|次|个|项|家|天|周|月|年|小时|分钟|QPS|ms|MB|GB)?/gi
+const SOURCE_NUMBER_QUALIFIERS = ['超过', '至少', '最多', '不足', '约', '近', '超', '逾']
+const SOURCE_NUMBER_PERIODS = ['日均', '周均', '月均', '季均', '年均', '每日', '每周', '每月', '每季', '每年']
+const SOURCE_NUMBER_UNITS = ['小时', '分钟', 'QPS', 'ms', 'MB', 'GB', '%', '％', '万', '亿', '千', '百', '人', '次', '个', '项', '家', '天', '周', '月', '年']
+
+function numericAtomIsSourceExact(quote: string, atom: NumericAtom) {
+  return quote.includes(atom.raw)
+    && atom.raw.includes(atom.valueText)
+    && (!atom.unit || atom.raw.includes(atom.unit))
+    && (!atom.qualifier || atom.raw.includes(atom.qualifier))
+    && (!atom.period || atom.raw.includes(atom.period))
+}
+
+function deriveSourceNumericAtoms(quote: string, ownerScope: string): NumericAtom[] {
+  return [...quote.matchAll(SOURCE_NUMBER_PATTERN)].flatMap(match => {
+    const raw = match[0]
+    const valueText = raw.match(/\d+(?:[.,]\d+)*/)?.[0]
+    if (!valueText) return []
+    const suffixUnit = SOURCE_NUMBER_UNITS.find(unit => raw.endsWith(unit)) ?? null
+    const currencyUnit = raw.match(/[¥￥$]/)?.[0] ?? null
+    return [{
+      raw,
+      valueText,
+      unit: suffixUnit ?? currencyUnit,
+      qualifier: SOURCE_NUMBER_QUALIFIERS.find(value => raw.includes(value)) ?? null,
+      period: SOURCE_NUMBER_PERIODS.find(value => raw.includes(value)) ?? null,
+      ownerScope,
+    }]
+  })
+}
+
+function normalizeSourceNumericAtoms(quote: string, ownerScope: string, atoms: NumericAtom[]) {
+  const exactModelAtoms = atoms
+    .filter(atom => numericAtomIsSourceExact(quote, atom))
+    .map(atom => ({ ...atom, ownerScope }))
+  const normalized: NumericAtom[] = []
+  const seen = new Set<string>()
+  for (const atom of [...deriveSourceNumericAtoms(quote, ownerScope), ...exactModelAtoms]) {
+    const key = `${atom.raw}\u0000${atom.valueText}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    normalized.push(atom)
+  }
+  return normalized
+}
+
 function validateRelativeQuote(input: {
   blockText: string
   span: { start: number; end: number }
@@ -82,6 +135,10 @@ function validateRelativeQuote(input: {
     }))
   }
   return issues
+}
+
+function isRelativeSpanInBounds(blockText: string, span: { start: number; end: number }) {
+  return span.start >= 0 && span.end > span.start && span.end <= blockText.length
 }
 
 function validateNumericAtoms(input: {
@@ -125,10 +182,107 @@ export function validateResumeExtractionCandidate(
 ): ValidationResult<ResumeExtractionCandidate> {
   const issues: ValidationIssue[] = []
   const blocks = new Map(document.blocks.map(block => [block.sourceBlockId, block]))
+  const existingMappedBlockIds = new Set(candidate.factCandidates.map(fact => fact.sourceBlockId))
+  const promotedUnresolvedFragments = candidate.unmappedFragments.filter(fragment => {
+    const block = blocks.get(fragment.sourceBlockId)
+    return fragment.importance === 'high'
+      && !existingMappedBlockIds.has(fragment.sourceBlockId)
+      && Boolean(block)
+      && block!.text === fragment.text
+      && !hasExecutableInputRisk(block!.inputRiskFlags)
+  })
+  if (promotedUnresolvedFragments.length > 0) {
+    const promotedBlockIds = new Set(promotedUnresolvedFragments.map(fragment => fragment.sourceBlockId))
+    candidate = {
+      ...candidate,
+      factCandidates: [
+        ...candidate.factCandidates,
+        ...promotedUnresolvedFragments.map(fragment => {
+          const block = blocks.get(fragment.sourceBlockId)!
+          return {
+            factLocalId: stableId('excluded_unresolved', [document.sha256, block.sourceBlockId]),
+            sourceBlockId: block.sourceBlockId,
+            blockRelativeSpan: { start: 0, end: block.text.length },
+            verbatimText: block.text,
+            normalizedClaim: block.text,
+            claimType: 'other' as const,
+            sourceScopeLocalId: 'excluded_unresolved',
+            proposedStatus: 'excluded' as const,
+            attributionLevel: 'unspecified' as const,
+            sourceActionVerb: null,
+            qualifiers: [],
+            numericAtoms: [],
+            riskFlags: ['uncertain' as const],
+          }
+        }),
+      ],
+      unmappedFragments: candidate.unmappedFragments.filter(
+        fragment => !promotedBlockIds.has(fragment.sourceBlockId)
+      ),
+    }
+    issues.push(createIssue({
+      code: 'HIGH_IMPORTANCE_AMBIGUITY_SERVER_EXCLUDED',
+      severity: 'warning',
+      outputPath: 'unmappedFragments',
+      message: `${promotedUnresolvedFragments.length} 个逐字可定位但语义未决的高重要度片段已转为 excluded 证据。`,
+      expectedConstraint: '真实材料中的歧义必须保留审计轨迹并禁止生成，但不得阻断其他已验证内容',
+    }))
+  }
+  const coveredAfterAmbiguityNormalization = new Set([
+    ...candidate.factCandidates.map(fact => fact.sourceBlockId),
+    ...candidate.unmappedFragments.map(fragment => fragment.sourceBlockId),
+  ])
+  const silentlyDroppedBlocks = document.blocks.filter(block => (
+    !coveredAfterAmbiguityNormalization.has(block.sourceBlockId)
+    && !isLayoutOnlyBlockText(block.text)
+  ))
+  if (silentlyDroppedBlocks.length > 0) {
+    candidate = {
+      ...candidate,
+      factCandidates: [
+        ...candidate.factCandidates,
+        ...silentlyDroppedBlocks.map(block => ({
+          factLocalId: stableId('excluded_omitted', [document.sha256, block.sourceBlockId]),
+          sourceBlockId: block.sourceBlockId,
+          blockRelativeSpan: { start: 0, end: block.text.length },
+          verbatimText: block.text,
+          normalizedClaim: block.text,
+          claimType: 'other' as const,
+          sourceScopeLocalId: 'excluded_unresolved',
+          proposedStatus: 'excluded' as const,
+          attributionLevel: 'unspecified' as const,
+          sourceActionVerb: null,
+          qualifiers: [],
+          numericAtoms: [],
+          riskFlags: hasExecutableInputRisk(block.inputRiskFlags)
+            ? ['prompt_injection_like_text' as const]
+            : ['uncertain' as const],
+        })),
+      ],
+    }
+    issues.push(createIssue({
+      code: 'SILENT_SOURCE_BLOCK_SERVER_EXCLUDED',
+      severity: 'warning',
+      outputPath: 'factCandidates',
+      message: `${silentlyDroppedBlocks.length} 个被模型漏掉的真实 source blocks 已按完整原文转为 excluded 证据。`,
+      expectedConstraint: '模型漏抽取不得制造可用事实，也不得阻断其他内容；服务端仅能保留逐字原文并强制 excluded',
+    }))
+  }
+  const factCandidateLimit = resumeExtractionFactCandidateLimit(document.blocks.length)
+  if (candidate.factCandidates.length > factCandidateLimit) {
+    issues.push(createIssue({
+      code: 'FACT_CANDIDATE_DENSITY_EXCEEDED',
+      outputPath: 'factCandidates',
+      message: `事实候选 ${candidate.factCandidates.length} 条，超过当前 ${document.blocks.length} 个 source blocks 的安全上限 ${factCandidateLimit}。`,
+      expectedConstraint: '默认每个 source block 提取一个完整事实，仅为同一行明确包含的独立身份/联系方式保留少量额外候选；禁止重叠子串重复提取',
+    }))
+  }
   const normalizedFacts = candidate.factCandidates.map((fact, index) => {
     const block = blocks.get(fact.sourceBlockId)
     if (!block) return fact
-    const quotedSlice = block.text.slice(fact.blockRelativeSpan.start, fact.blockRelativeSpan.end)
+    const quotedSlice = isRelativeSpanInBounds(block.text, fact.blockRelativeSpan)
+      ? block.text.slice(fact.blockRelativeSpan.start, fact.blockRelativeSpan.end)
+      : null
     let locatedText: string | null = quotedSlice === fact.verbatimText ? fact.verbatimText : null
     let locatedStart = fact.blockRelativeSpan.start
     if (!locatedText && fact.verbatimText.length >= 2) {
@@ -159,7 +313,21 @@ export function validateResumeExtractionCandidate(
         expectedConstraint: 'EvidenceAtom 的 quote 必须逐字可定位，且不得使用模型改写文本作为 verbatimText',
       }))
     }
-    return quoteAligned
+    const numericAtoms = normalizeSourceNumericAtoms(
+      quoteAligned.verbatimText,
+      quoteAligned.sourceScopeLocalId,
+      quoteAligned.numericAtoms
+    )
+    if (JSON.stringify(numericAtoms) !== JSON.stringify(quoteAligned.numericAtoms)) {
+      issues.push(createIssue({
+        code: 'NUMERIC_ATOMS_SERVER_ALIGNED',
+        severity: 'warning',
+        outputPath: `factCandidates[${index}].numericAtoms`,
+        message: '数字原子已由服务端按 verbatimText 重建；删除了非原文标注并补齐可逐字定位的阿拉伯数字短语。',
+        expectedConstraint: 'numericAtoms 只是源文派生索引，raw/value/unit/qualifier/period 必须逐字可定位',
+      }))
+    }
+    return { ...quoteAligned, numericAtoms }
   })
   const normalizedFactsById = new Map(normalizedFacts.map(fact => [fact.factLocalId, fact]))
   const scopeAlignedTimelineCandidates = candidate.timelineCandidates.map(timeline => ({
@@ -434,7 +602,7 @@ export function validateResumeExtractionCandidate(
   ])
   const layoutOnlyBlocks = document.blocks.filter(block => (
     !alreadyCoveredBlocks.has(block.sourceBlockId)
-    && (/^!\[[^\]]*\]\([^)]*\)$/.test(block.text.trim()) || /^(?:page|bbox)\s*[=:]/i.test(block.text.trim()))
+    && isLayoutOnlyBlockText(block.text)
   ))
   if (layoutOnlyBlocks.length > 0) {
     issues.push(createIssue({
@@ -745,10 +913,27 @@ export function validateJobExtractionCandidate(
   const blocks = new Map(document.blocks.map(block => [block.sourceBlockId, block]))
   candidate = {
     ...candidate,
-    requirementCandidates: candidate.requirementCandidates.map((requirement, index) => {
+    requirementCandidates: candidate.requirementCandidates.map((originalRequirement, index) => {
+      let requirement = originalRequirement
+      if (Boolean(requirement.logicGroupLocalId) !== Boolean(requirement.logicOperator)) {
+        issues.push(createIssue({
+          code: 'JD_INCOMPLETE_LOGIC_METADATA_CLEARED',
+          severity: 'warning',
+          outputPath: `requirementCandidates[${index}].logicGroupLocalId`,
+          message: '需求的逻辑分组与 operator 未成对提供，服务端已清空这组无效元数据并保留完整需求事实。',
+          expectedConstraint: 'logicGroupLocalId 与 logicOperator 必须同时为空或同时提供',
+        }))
+        requirement = {
+          ...requirement,
+          logicGroupLocalId: null,
+          logicOperator: null,
+        }
+      }
       const block = blocks.get(requirement.sourceBlockId)
       if (!block) return requirement
-      const quotedSlice = block.text.slice(requirement.blockRelativeSpan.start, requirement.blockRelativeSpan.end)
+      const quotedSlice = isRelativeSpanInBounds(block.text, requirement.blockRelativeSpan)
+        ? block.text.slice(requirement.blockRelativeSpan.start, requirement.blockRelativeSpan.end)
+        : null
       if (quotedSlice === requirement.verbatimText) return requirement
       const first = block.text.indexOf(requirement.verbatimText)
       const last = block.text.lastIndexOf(requirement.verbatimText)
@@ -833,14 +1018,6 @@ export function validateJobExtractionCandidate(
         outputPath: `${path}.importance`,
         message: '语义归纳项不得升级为 must-have。',
         expectedConstraint: 'must_have 必须有 explicit 原文依据',
-      }))
-    }
-    if (requirement.logicGroupLocalId && !requirement.logicOperator) {
-      issues.push(createIssue({
-        code: 'INVALID_REQUIREMENT_LOGIC',
-        outputPath: `${path}.logicOperator`,
-        message: '需求进入逻辑组但没有合法 operator。',
-        expectedConstraint: 'logicGroup 与 and/or/one_of operator 必须同时存在',
       }))
     }
   }

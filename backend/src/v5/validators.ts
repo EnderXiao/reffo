@@ -88,6 +88,59 @@ export function validateV5MatchAnalysis(input: {
   const issues: ValidationIssue[] = []
   const requirementIds = new Set(input.job.requirementAtoms.map(atom => atom.requirementId))
   const evidence = new Map(input.resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
+  const deduplicatedMatches: V5MatchAnalysis['requirementMatches'] = []
+  const firstMatchByRequirement = new Map<string, V5MatchAnalysis['requirementMatches'][number]>()
+  let sameStatusDuplicateCount = 0
+  const confidenceRank = { low: 0, medium: 1, high: 2 } as const
+  for (const match of input.match.requirementMatches) {
+    const existing = firstMatchByRequirement.get(match.requirementId)
+    if (!existing || existing.status !== match.status) {
+      const copy = { ...match, evidenceIds: [...match.evidenceIds] }
+      deduplicatedMatches.push(copy)
+      if (!existing) firstMatchByRequirement.set(match.requirementId, copy)
+      continue
+    }
+    existing.evidenceIds = [...new Set([...existing.evidenceIds, ...match.evidenceIds])]
+    if (confidenceRank[match.confidence] < confidenceRank[existing.confidence]) existing.confidence = match.confidence
+    sameStatusDuplicateCount += 1
+  }
+  if (sameStatusDuplicateCount > 0) {
+    issues.push(issue({
+      code: 'REQUIREMENT_MATCHES_SERVER_DEDUPED',
+      severity: 'warning',
+      outputPath: 'requirementMatches',
+      message: `服务端已合并 ${sameStatusDuplicateCount} 条 requirementId 与 status 均相同的机械重复匹配结论。`,
+      expectedConstraint: '仅合并同状态重复项、合并证据并取更低置信度；状态冲突仍阻断',
+    }))
+    input = { ...input, match: { ...input.match, requirementMatches: deduplicatedMatches } }
+  }
+  const statusByRequirement = new Map(input.match.requirementMatches.map(item => [item.requirementId, item.status]))
+  const normalizedGaps: V5MatchAnalysis['gaps'] = input.match.gaps.flatMap(gap => {
+    const validRequirementIds = [...new Set(gap.requirementIds.filter(id => requirementIds.has(id)))]
+    if (gap.evidenceType === 'direct_missing') {
+      const unprovenRequirementIds = validRequirementIds.filter(
+        id => statusByRequirement.get(id) === 'currently_unproven'
+      )
+      if (unprovenRequirementIds.length === 0) return []
+      return [{ ...gap, requirementIds: unprovenRequirementIds, evidenceIds: [] }]
+    }
+    const validEvidenceIds = [...new Set(gap.evidenceIds.filter(id => {
+      const atom = evidence.get(id)
+      return Boolean(atom && atom.status !== 'excluded')
+    }))]
+    if (validRequirementIds.length === 0 || validEvidenceIds.length === 0) return []
+    return [{ ...gap, requirementIds: validRequirementIds, evidenceIds: validEvidenceIds }]
+  })
+  if (JSON.stringify(normalizedGaps) !== JSON.stringify(input.match.gaps)) {
+    issues.push(issue({
+      code: 'ADVISORY_GAPS_SERVER_ALIGNED',
+      severity: 'warning',
+      outputPath: 'gaps',
+      message: '建议性 gaps 已按服务端验证的 requirement status 和 EvidenceAtom 对齐，无法成立的条目已删除。',
+      expectedConstraint: 'direct_missing 只保留 currently_unproven 且不得携带证据；其他 gap 必须有合法证据',
+    }))
+    input = { ...input, match: { ...input.match, gaps: normalizedGaps } }
+  }
   const matchesByRequirement = new Map<string, V5MatchAnalysis['requirementMatches']>()
   for (const match of input.match.requirementMatches) {
     matchesByRequirement.set(match.requirementId, [...(matchesByRequirement.get(match.requirementId) ?? []), match])
@@ -254,10 +307,12 @@ export function validateV5MatchAnalysis(input: {
   if (scoreMismatch) {
     issues.push(issue({
       code: 'SCORE_INPUT_MISMATCH',
+      severity: 'warning',
       outputPath: 'scoreInputs',
-      message: '模型 scoreInputs 与 RequirementMatch/EvidenceAtom 的服务端重算结果不一致。',
+      message: '模型 scoreInputs 与 RequirementMatch/EvidenceAtom 的服务端重算结果不一致，已由服务端强制覆盖。',
       expectedConstraint: JSON.stringify(expectedInputs),
     }))
+    input = { ...input, match: { ...input.match, scoreInputs: expectedInputs } }
   }
 
   return { passed: !issues.some(item => item.severity === 'error'), issues, value: input.match }
@@ -315,6 +370,116 @@ export function artifactEvidenceWhitelistIds(resume: ResumeEvidenceBundle, plan:
   ])
 }
 
+export function buildDeterministicV5ResumePlan(input: {
+  resume: ResumeEvidenceBundle
+  job: JobRequirementBundle
+  match: V5MatchAnalysis
+  policy: GenerationPolicy
+  profile: ResumeStrategyProfile
+}): V5ResumePlan {
+  const evidence = new Map(input.resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
+  const requirements = new Map(input.job.requirementAtoms.map(atom => [atom.requirementId, atom]))
+  const timeline = new Map(input.resume.timeline.map(item => [item.scopeId, item]))
+  const safeAtom = (id: string) => {
+    const atom = evidence.get(id)
+    return atom && atom.status !== 'excluded' && !atom.riskFlags.includes('sensitive_pii') ? atom : null
+  }
+  const contentAtom = (id: string) => {
+    const atom = safeAtom(id)
+    if (!atom) return null
+    if (atom.claimType === 'skill' || ANCILLARY_CLAIM_TYPES.has(atom.claimType)) return atom
+    if (!BUSINESS_TYPES.has(atom.claimType)) return null
+    const scope = timeline.get(atom.sourceScopeId)
+    return scope && ['experience', 'internship', 'project', 'research'].includes(scope.kind) ? atom : null
+  }
+  const matchedByRequirement = new Map(input.match.requirementMatches
+    .filter(item => item.status === 'direct_match' || item.status === 'transferable_match')
+    .map(item => [item.requirementId, item.evidenceIds
+      .map(id => contentAtom(id))
+      .filter((atom): atom is EvidenceAtom => Boolean(atom))]))
+  const primaryRequirementIds = [...new Set([
+    ...input.match.positioning.primaryRequirementIds,
+    ...input.match.requirementMatches.map(item => item.requirementId),
+  ])].filter(id => requirements.has(id) && (matchedByRequirement.get(id)?.length ?? 0) > 0).slice(0, 3)
+  const chosen = new Set<string>()
+  const contentLimit = input.policy.hardTotalListItemMax
+  const preference = (atom: EvidenceAtom) => BUSINESS_TYPES.has(atom.claimType) ? 0 : atom.claimType === 'skill' ? 1 : 2
+
+  for (const requirementId of primaryRequirementIds) {
+    const candidate = [...(matchedByRequirement.get(requirementId) ?? [])]
+      .sort((left, right) => preference(left) - preference(right))[0]
+    if (candidate && chosen.size < contentLimit) chosen.add(candidate.evidenceId)
+  }
+
+  const eligibleBusiness = input.resume.evidenceAtoms.filter(atom => (
+    Boolean(contentAtom(atom.evidenceId)) && BUSINESS_TYPES.has(atom.claimType)
+  ))
+  for (const atom of eligibleBusiness) {
+    const chosenBusinessCount = [...chosen].filter(id => BUSINESS_TYPES.has(evidence.get(id)?.claimType ?? '')).length
+    if (chosenBusinessCount >= input.policy.targetBusinessBulletMin || chosen.size >= contentLimit) break
+    chosen.add(atom.evidenceId)
+  }
+
+  const selectedBusiness = [...chosen]
+    .map(id => evidence.get(id))
+    .filter((atom): atom is EvidenceAtom => Boolean(atom && BUSINESS_TYPES.has(atom.claimType)))
+  const selectedByScope = new Map<string, string[]>()
+  for (const atom of selectedBusiness) {
+    selectedByScope.set(atom.sourceScopeId, [...(selectedByScope.get(atom.sourceScopeId) ?? []), atom.evidenceId])
+  }
+  const scopePlans: V5ResumePlan['scopePlans'] = input.resume.timeline
+    .filter(item => ['experience', 'internship', 'project', 'research'].includes(item.kind))
+    .map(item => {
+      const selectedEvidenceIds = selectedByScope.get(item.scopeId) ?? []
+      const isWork = item.kind === 'experience' || item.kind === 'internship'
+      const treatment: V5ResumePlan['scopePlans'][number]['treatment'] = isWork
+        ? selectedEvidenceIds.length >= 2 ? 'expand' : selectedEvidenceIds.length === 1 ? 'compress' : 'timeline_line'
+        : selectedEvidenceIds.length > 0 ? 'include' : 'omit'
+      return {
+        scopeId: item.scopeId,
+        scopeType: item.kind,
+        treatment,
+        selectedEvidenceIds,
+        bulletBudget: selectedEvidenceIds.length,
+        rewriteAngle: '保持原始事实、scope、数字、限定词和归因边界',
+      }
+    })
+  const featuredSkillEvidenceIds = [...chosen].filter(id => evidence.get(id)?.claimType === 'skill')
+  const ancillaryEvidenceIds = [...chosen].filter(id => ANCILLARY_CLAIM_TYPES.has(evidence.get(id)?.claimType ?? ''))
+  const evidencePillars = primaryRequirementIds.flatMap((requirementId, index) => {
+    const evidenceIds = (matchedByRequirement.get(requirementId) ?? [])
+      .map(atom => atom.evidenceId)
+      .filter(id => chosen.has(id))
+    if (evidenceIds.length === 0) return []
+    return [{
+      pillarId: `pillar_${index + 1}`,
+      title: requirements.get(requirementId)?.normalizedRequirement ?? `核心需求 ${index + 1}`,
+      requirementIds: [requirementId],
+      evidenceIds,
+      role: 'jd_primary' as const,
+    }]
+  })
+
+  return {
+    schemaVersion: input.resume.schemaVersion,
+    strategyProfile: input.profile,
+    generationPolicy: input.policy,
+    targetValueProposition: input.match.positioning.statement,
+    primaryRequirementIds,
+    stableCoreEvidenceIds: selectedBusiness.map(atom => atom.evidenceId),
+    customizedEvidenceIds: [...featuredSkillEvidenceIds, ...ancillaryEvidenceIds],
+    evidencePillars,
+    scopePlans,
+    featuredSkillEvidenceIds,
+    safeKeywordMappings: [],
+    forbiddenRequirementIds: input.match.requirementMatches
+      .filter(item => item.status === 'currently_unproven')
+      .map(item => item.requirementId),
+    omittedHighValueEvidence: [],
+    lowerBoundException: null,
+  }
+}
+
 export function validateV5ResumePlan(input: {
   resume: ResumeEvidenceBundle
   job: JobRequirementBundle
@@ -326,7 +491,7 @@ export function validateV5ResumePlan(input: {
   const issues: ValidationIssue[] = []
   const evidence = new Map(input.resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
   const normalizedScopePlans = input.plan.scopePlans
-  const normalizedPlan = input.plan
+  let normalizedPlan = input.plan
   const requirementIds = new Set(input.job.requirementAtoms.map(atom => atom.requirementId))
   const currentlyUnproven = new Set(input.match.requirementMatches
     .filter(item => item.status === 'currently_unproven')
@@ -697,7 +862,21 @@ export function validateV5ResumePlan(input: {
       expectedConstraint: '只有服务端判断可用业务证据或可匹配核心需求证据不足时才允许例外',
     }))
   }
-  const hasValidLowerBoundException = Boolean(input.plan.lowerBoundException && lowerBoundExceptionEligible)
+  if (lowerBoundExceptionEligible) {
+    const reasons = [
+      eligibleBusinessEvidenceCount < input.policy.targetBusinessBulletMin
+        ? `可用业务证据 ${eligibleBusinessEvidenceCount} 条，低于策略下限 ${input.policy.targetBusinessBulletMin} 条`
+        : null,
+      potentialPrimaryRatio < input.policy.primaryRequirementCoverageMin
+        ? `可证明核心需求覆盖率 ${potentialPrimaryRatio.toFixed(2)}，低于策略下限 ${input.policy.primaryRequirementCoverageMin.toFixed(2)}`
+        : null,
+    ].filter((reason): reason is string => Boolean(reason))
+    normalizedPlan = {
+      ...normalizedPlan,
+      lowerBoundException: `服务端确定性下限例外：${reasons.join('；')}。`,
+    }
+  }
+  const hasValidLowerBoundException = lowerBoundExceptionEligible
   const plannedBusinessBulletBudget = normalizedScopePlans
     .filter(item => ['experience', 'internship', 'project', 'research'].includes(timelineByScope.get(item.scopeId)?.kind ?? ''))
     .reduce((sum, item) => sum + item.bulletBudget, 0)
@@ -789,6 +968,10 @@ function timelineHeading(item: ResumeEvidenceBundle['timeline'][number]) {
   ].filter(Boolean).join('｜')
 }
 
+function timelineHeadingFormattingSignature(value: string) {
+  return value.replace(/[\s｜|/·—–-]+/g, '')
+}
+
 function claimMarkdownContext(markdown: string, outputText: string) {
   if (!outputText.trim() || outputText.includes('\n')) return null
   let currentSection: string | null = null
@@ -812,6 +995,250 @@ function claimMarkdownContext(markdown: string, outputText: string) {
   return null
 }
 
+function hasSubstantiveScopeBody(lines: string[]) {
+  return lines.some(line => {
+    const value = line.trim()
+    return Boolean(
+      value
+      && !/^[-*_]{3,}$/.test(value)
+      && !/^(?:公司|岗位|时间|地点|角色)\s*[:：]/.test(value)
+    )
+  })
+}
+
+function pruneEmptyMarkdownScopes(markdown: string) {
+  const lines = markdown.split(/\r?\n/)
+  const emptyScopeLineIndexes = new Set<number>()
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!/^###\s+/.test(lines[index].trim())) continue
+    let end = index + 1
+    while (end < lines.length && !/^#{2,3}\s+/.test(lines[end].trim())) end += 1
+    if (!hasSubstantiveScopeBody(lines.slice(index + 1, end))) emptyScopeLineIndexes.add(index)
+  }
+
+  const withoutEmptyScopes = lines.filter((_, index) => !emptyScopeLineIndexes.has(index))
+  const emptySectionLineIndexes = new Set<number>()
+  for (let index = 0; index < withoutEmptyScopes.length; index += 1) {
+    if (!/^##\s+/.test(withoutEmptyScopes[index].trim())) continue
+    let end = index + 1
+    while (end < withoutEmptyScopes.length && !/^##\s+/.test(withoutEmptyScopes[end].trim())) end += 1
+    if (!withoutEmptyScopes.slice(index + 1, end).some(line => line.trim())) emptySectionLineIndexes.add(index)
+  }
+
+  return withoutEmptyScopes
+    .filter((_, index) => !emptySectionLineIndexes.has(index))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function isTimelineOutputPath(outputPath: string) {
+  return outputPath.split(/[.\[\]]+/).some(segment => segment.toLowerCase() === 'timeline')
+}
+
+function isHeadingOutputPath(outputPath: string) {
+  return outputPath.split(/[.\[\]]+/).some(segment => segment.toLowerCase() === 'heading')
+}
+
+function isStandaloneDateRangeLine(value: string) {
+  return /^(?:\d{4}(?:\s*[./年-]\s*\d{1,2}(?:月)?)?)\s*(?:-|–|—|至|到)\s*(?:\d{4}(?:\s*[./年-]\s*\d{1,2}(?:月)?)?|至今|现在|present)$/i.test(value.trim())
+}
+
+function normalizedTimelineDisplayLine(value: string) {
+  return value.trim().replace(/^#{1,6}\s+/, '').replace(/^[-*+]\s+/, '').trim()
+}
+
+function timelineSectionKey(kind: ResumeEvidenceBundle['timeline'][number]['kind']) {
+  if (kind === 'experience' || kind === 'internship') return 'experience'
+  if (kind === 'project') return 'project'
+  if (kind === 'research') return 'research'
+  if (kind === 'education') return 'education'
+  return 'other'
+}
+
+function markdownSectionAtLine(lines: string[], targetIndex: number) {
+  let currentSection: string | null = null
+  for (let index = 0; index <= targetIndex; index += 1) {
+    const heading = lines[index].trim().match(/^##\s+(.+)/)
+    if (heading) currentSection = sectionKey(heading[1])
+  }
+  return currentSection
+}
+
+function normalizeArtifactMetadata(input: {
+  artifact: GeneratedResumeArtifact
+  resume: ResumeEvidenceBundle
+  plan: V5ResumePlan
+}) {
+  const evidence = new Map(input.resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
+  const lines = input.artifact.markdown.split(/\r?\n/)
+  const markerAlignedClaims = input.artifact.claims.map(claim => {
+    if (countExactMarkdownLines(input.artifact.markdown, claim.outputText) === 1) return claim
+    const target = claim.outputText.replace(/^[-*+]\s+/, '').trim()
+    const candidates = lines.filter(line => line.trim().replace(/^[-*+]\s+/, '').trim() === target)
+    return candidates.length === 1 ? { ...claim, outputText: candidates[0].trim() } : claim
+  })
+  const allowedTimelineEvidence = timelineEvidenceIds(input.resume)
+  const timelineByScope = new Map(input.resume.timeline.map(item => [item.scopeId, item]))
+  const scopePlanById = new Map(input.plan.scopePlans.map(item => [item.scopeId, item]))
+  const claimedTimelineLineIndexes = new Set<number>()
+  const timelineAlignedClaims = markerAlignedClaims.flatMap(claim => {
+    if (!isTimelineOutputPath(claim.outputPath)) return [claim]
+    const timelineEvidence = claim.evidenceIds.filter(id => allowedTimelineEvidence.has(id))
+    if (timelineEvidence.length === 0) return [claim]
+    const scopeIds = [...new Set(timelineEvidence
+      .map(id => evidence.get(id)?.sourceScopeId)
+      .filter((scopeId): scopeId is string => Boolean(scopeId)))]
+    if (scopeIds.length !== 1) return [{ ...claim, evidenceIds: timelineEvidence }]
+    const scopeId = scopeIds[0]
+    const timeline = timelineByScope.get(scopeId)
+    const matchingLineIndexes = lines.flatMap((line, index) => (
+      !claimedTimelineLineIndexes.has(index)
+      && normalizedTimelineDisplayLine(line) === normalizedTimelineDisplayLine(claim.outputText)
+        ? [index]
+        : []
+    ))
+    if (matchingLineIndexes.length === 0) return []
+    if (!timeline || scopePlanById.get(scopeId)?.treatment !== 'timeline_line') {
+      return [{ ...claim, evidenceIds: timelineEvidence }]
+    }
+    const candidates = matchingLineIndexes.filter(index => (
+      markdownSectionAtLine(lines, index) === timelineSectionKey(timeline.kind)
+    ))
+    if (candidates.length === 0) return []
+    const lineIndex = candidates[0]
+    const canonicalText = timelineHeading(timeline)
+    if (!canonicalText) return []
+    claimedTimelineLineIndexes.add(lineIndex)
+    lines[lineIndex] = canonicalText
+    return [{
+      ...claim,
+      outputPath: `timeline.${scopeId}`,
+      outputText: canonicalText,
+      evidenceIds: timelineEvidence,
+    }]
+  })
+  const transformationAlignedClaims = timelineAlignedClaims.map(claim => {
+    if (claim.transformation !== 'verbatim') return claim
+    const atoms = claim.evidenceIds
+      .map(id => evidence.get(id))
+      .filter((atom): atom is EvidenceAtom => Boolean(atom))
+    if (atoms.length !== 1) return claim
+    const atom = atoms[0]
+    if (
+      normalizedVerbatimText(claim.outputText, claim.outputPath, atom)
+      === normalizedVerbatimText(atom.verbatimText, claim.outputPath, atom)
+    ) return claim
+    return { ...claim, transformation: 'safe_paraphrase' as const }
+  })
+  const allowedTimelineHeadings = new Set(input.resume.timeline.map(timelineHeading).filter(Boolean))
+  const headingRequirements = new Map<number, Set<string>>()
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const heading = lines[index].trim().match(/^###\s+(.+)/)
+    if (!heading) continue
+    const currentHeading = heading[1].trim()
+    if (allowedTimelineHeadings.has(currentHeading)) {
+      headingRequirements.set(index, new Set([currentHeading]))
+      continue
+    }
+    let end = index + 1
+    while (end < lines.length && !/^#{2,3}\s+/.test(lines[end].trim())) end += 1
+    const dateLines = lines
+      .slice(index + 1, end)
+      .map((line, offset) => ({ line: line.trim(), index: index + 1 + offset }))
+      .filter(item => isStandaloneDateRangeLine(item.line))
+    for (const dateLine of dateLines) {
+      const combined = timelineHeadingFormattingSignature(`${currentHeading}｜${dateLine.line}`)
+      const matching = [...allowedTimelineHeadings].filter(candidate => timelineHeadingFormattingSignature(candidate) === combined)
+      if (matching.length === 1) {
+        headingRequirements.set(index, new Set([matching[0]]))
+        break
+      }
+    }
+  }
+
+  for (const claim of transformationAlignedClaims) {
+    const claimLineIndexes = lines.flatMap((line, index) => line.trim() === claim.outputText.trim() ? [index] : [])
+    if (claimLineIndexes.length !== 1) continue
+    const atoms = claim.evidenceIds.map(id => evidence.get(id)).filter((atom): atom is EvidenceAtom => Boolean(atom))
+    const businessScopes = [...new Set(atoms.filter(atom => BUSINESS_TYPES.has(atom.claimType)).map(atom => atom.sourceScopeId))]
+    if (businessScopes.length !== 1) continue
+    const requiredTimeline = timelineByScope.get(businessScopes[0])
+    if (!requiredTimeline) continue
+    const requiredHeading = timelineHeading(requiredTimeline)
+    if (!requiredHeading) continue
+    for (let index = claimLineIndexes[0] - 1; index >= 0; index -= 1) {
+      if (/^##\s+/.test(lines[index].trim())) break
+      if (!/^###\s+/.test(lines[index].trim())) continue
+      const currentHeading = lines[index].trim().replace(/^###\s+/, '')
+      const currentSignature = timelineHeadingFormattingSignature(currentHeading)
+      const requiredSignature = timelineHeadingFormattingSignature(requiredHeading)
+      if (currentSignature !== requiredSignature && !requiredSignature.startsWith(currentSignature)) break
+      headingRequirements.set(index, new Set([...(headingRequirements.get(index) ?? []), requiredHeading]))
+      break
+    }
+  }
+
+  const structuralDateLineIndexes = new Set<number>()
+  for (const [index, requirements] of headingRequirements) {
+    if (requirements.size !== 1) continue
+    lines[index] = `### ${[...requirements][0]}`
+    let end = index + 1
+    while (end < lines.length && !/^#{2,3}\s+/.test(lines[end].trim())) end += 1
+    for (let lineIndex = index + 1; lineIndex < end; lineIndex += 1) {
+      if (isStandaloneDateRangeLine(lines[lineIndex])) structuralDateLineIndexes.add(lineIndex)
+    }
+  }
+  const structuralAlignedClaims = transformationAlignedClaims.filter(claim => {
+    const matchingLineIndexes = lines.flatMap((line, index) => line.trim() === claim.outputText.trim() ? [index] : [])
+    if (isHeadingOutputPath(claim.outputPath) && matchingLineIndexes.length === 0) return false
+    return matchingLineIndexes.length === 0 || !matchingLineIndexes.every(index => (
+      structuralDateLineIndexes.has(index) || /^###\s+/.test(lines[index].trim())
+    ))
+  })
+  const redundantClaimIds = new Set<string>()
+  const redundantClaimLineIndexes = new Set<number>()
+  const seenBusinessEvidence = new Set<string>()
+  for (const claim of structuralAlignedClaims) {
+    if (/^identity(?:\.|\[|$)/i.test(claim.outputPath) || isTimelineOutputPath(claim.outputPath) || /summary/i.test(claim.outputPath)) continue
+    const atoms = claim.evidenceIds.map(id => evidence.get(id)).filter((atom): atom is EvidenceAtom => Boolean(atom))
+    const businessEvidenceIds = atoms.filter(atom => BUSINESS_TYPES.has(atom.claimType)).map(atom => atom.evidenceId)
+    const isPureBusinessClaim = atoms.length === claim.evidenceIds.length && businessEvidenceIds.length === atoms.length
+    const matchingLineIndexes = lines.flatMap((line, index) => line.trim() === claim.outputText.trim() ? [index] : [])
+    if (
+      isPureBusinessClaim
+      && businessEvidenceIds.every(id => seenBusinessEvidence.has(id))
+      && matchingLineIndexes.length === 1
+    ) {
+      redundantClaimIds.add(claim.claimId)
+      redundantClaimLineIndexes.add(matchingLineIndexes[0])
+      continue
+    }
+    for (const evidenceId of businessEvidenceIds) seenBusinessEvidence.add(evidenceId)
+  }
+  const claims = structuralAlignedClaims.filter(claim => !redundantClaimIds.has(claim.claimId))
+  const retainedOutputTexts = new Set(claims.map(claim => claim.outputText.trim()))
+  const markdown = pruneEmptyMarkdownScopes(lines
+    .filter((line, index) => (
+      !structuralDateLineIndexes.has(index)
+      && !(redundantClaimLineIndexes.has(index) && !retainedOutputTexts.has(line.trim()))
+    ))
+    .join('\n'))
+  const usedEvidenceIds = [...new Set(claims.flatMap(claim => claim.evidenceIds))]
+  const plannedEvidenceIds = [...plannedContentEvidenceIds(input.resume, input.plan)]
+  const omittedPlannedEvidenceIds = plannedEvidenceIds.filter(id => !usedEvidenceIds.includes(id))
+  return {
+    ...input.artifact,
+    markdown,
+    claims,
+    usedEvidenceIds,
+    omittedPlannedEvidenceIds,
+    renderStats: measureArtifactMarkdown(markdown),
+  }
+}
+
 function inspectMarkdownStructure(markdown: string) {
   const lines = markdown.split(/\r?\n/)
   const emptyScopes: string[] = []
@@ -826,10 +1253,7 @@ function inspectMarkdownStructure(markdown: string) {
     if (!scope) continue
     let end = index + 1
     while (end < lines.length && !/^#{2,3}\s+/.test(lines[end])) end += 1
-    const body = lines.slice(index + 1, end).some(line => {
-      const value = line.trim()
-      return Boolean(value && !/^[-*_]{3,}$/.test(value) && !/^(?:公司|岗位|时间|地点|角色)\s*[:：]/.test(value))
-    })
+    const body = hasSubstantiveScopeBody(lines.slice(index + 1, end))
     if (!body) emptyScopes.push(scope[1].trim())
   }
   return { emptyScopes, sectionOrder }
@@ -846,6 +1270,15 @@ function hasUnsafeStrongVerb(claim: string, atoms: EvidenceAtom[]) {
 
 function normalizedNumbers(value: string) {
   return (value.match(NUMBER_PATTERN) ?? []).map(item => item.replace(/\s/g, ''))
+}
+
+function normalizedVerbatimText(value: string, outputPath: string, atom: EvidenceAtom) {
+  let normalized = value.trim().replace(/^[-*+]\s+/, '').trim()
+  if (/^identity\.name$/i.test(outputPath)) normalized = normalized.replace(/^#{1,6}\s+/, '').trim()
+  if (atom.claimType === 'skill' && /^skills?(?:\.|\[|$)/i.test(outputPath)) {
+    normalized = normalized.replace(/^(?:专业技能|技能|skills?)\s*[:：]\s*/i, '').trim()
+  }
+  return normalized
 }
 
 function validateClaimNumbers(claim: GeneratedResumeArtifact['claims'][number], atoms: EvidenceAtom[]) {
@@ -891,7 +1324,119 @@ export function validateGeneratedResumeArtifact(input: {
   policy: GenerationPolicy
 }): ValidationResult<GeneratedResumeArtifact> {
   const issues: ValidationIssue[] = []
-  const { artifact, resume, plan, policy } = input
+  const { resume, plan, policy } = input
+  const artifact = normalizeArtifactMetadata({ artifact: input.artifact, resume, plan })
+  const originalStructure = inspectMarkdownStructure(input.artifact.markdown)
+  const normalizedStructure = inspectMarkdownStructure(artifact.markdown)
+  if (normalizedStructure.emptyScopes.length < originalStructure.emptyScopes.length) {
+    issues.push(issue({
+      code: 'EMPTY_STRUCTURE_SERVER_PRUNED',
+      severity: 'warning',
+      outputPath: 'markdown',
+      message: `服务端已删除 ${originalStructure.emptyScopes.length - normalizedStructure.emptyScopes.length} 个无正文的三级标题及其空章节。`,
+      expectedConstraint: '空 scope 不承载候选人事实，必须省略且不得因此补造正文',
+    }))
+  }
+  const originalClaims = new Map(input.artifact.claims.map(claim => [claim.claimId, claim]))
+  const alignedTransformationClaims = artifact.claims.filter(claim => (
+    originalClaims.get(claim.claimId)?.transformation !== claim.transformation
+  ))
+  if (alignedTransformationClaims.length > 0) {
+    issues.push(issue({
+      code: 'TRANSFORMATION_METADATA_SERVER_ALIGNED',
+      severity: 'warning',
+      outputPath: 'claims',
+      evidenceIds: [...new Set(alignedTransformationClaims.flatMap(claim => claim.evidenceIds))],
+      message: `服务端已将 ${alignedTransformationClaims.length} 条非逐字 claim 的 transformation 从 verbatim 对齐为 safe_paraphrase。`,
+      expectedConstraint: '只校正描述文本变换方式的元数据，不修改候选人事实文本',
+    }))
+  }
+  if (
+    !sameSet(input.artifact.usedEvidenceIds, artifact.usedEvidenceIds)
+    || !sameSet(input.artifact.omittedPlannedEvidenceIds, artifact.omittedPlannedEvidenceIds)
+  ) {
+    issues.push(issue({
+      code: 'ARTIFACT_EVIDENCE_SETS_SERVER_ALIGNED',
+      severity: 'warning',
+      outputPath: 'usedEvidenceIds/omittedPlannedEvidenceIds',
+      message: '服务端已按 claims 与计划正文白名单重算 usedEvidenceIds 和 omittedPlannedEvidenceIds。',
+      expectedConstraint: '集合元数据由服务端确定性计算，不修改 Markdown、claim 文本或证据映射',
+    }))
+  }
+  const normalizedClaimsById = new Map(artifact.claims.map(claim => [claim.claimId, claim]))
+  const timelineEvidenceAlignedClaims = input.artifact.claims.filter(claim => {
+    const normalized = normalizedClaimsById.get(claim.claimId)
+    return normalized && isTimelineOutputPath(claim.outputPath) && !sameSet(claim.evidenceIds, normalized.evidenceIds)
+  })
+  if (timelineEvidenceAlignedClaims.length > 0) {
+    issues.push(issue({
+      code: 'TIMELINE_EVIDENCE_SERVER_ALIGNED',
+      severity: 'warning',
+      outputPath: 'claims',
+      evidenceIds: [...new Set(timelineEvidenceAlignedClaims.flatMap(claim => claim.evidenceIds))],
+      message: `服务端已从 ${timelineEvidenceAlignedClaims.length} 条时间线 claim 中移除非 timeline 证据引用。`,
+      expectedConstraint: '时间线 claim 只描述已验证任职元数据，不得重复引用业务正文证据',
+    }))
+  }
+  const canonicalizedTimelineClaims = input.artifact.claims.filter(claim => {
+    const normalized = normalizedClaimsById.get(claim.claimId)
+    return normalized
+      && isTimelineOutputPath(claim.outputPath)
+      && (normalized.outputPath !== claim.outputPath || normalized.outputText !== claim.outputText)
+  })
+  if (canonicalizedTimelineClaims.length > 0) {
+    issues.push(issue({
+      code: 'TIMELINE_CLAIMS_SERVER_CANONICALIZED',
+      severity: 'warning',
+      outputPath: 'markdown/claims',
+      evidenceIds: [...new Set(canonicalizedTimelineClaims.flatMap(claim => claim.evidenceIds))],
+      message: `服务端已将 ${canonicalizedTimelineClaims.length} 条计划内 timeline_line 按唯一 timeline scope 规范为完整时间线文本和路径。`,
+      expectedConstraint: '只使用同 scope 的已验证 timeline 元数据生成 organization｜title｜start - end，不改写业务正文',
+    }))
+  }
+  const removedClaims = input.artifact.claims.filter(claim => !normalizedClaimsById.has(claim.claimId))
+  const structuralHeadingClaims = removedClaims.filter(claim => (
+    isHeadingOutputPath(claim.outputPath) || isStandaloneDateRangeLine(claim.outputText)
+  ))
+  const structuralHeadingClaimIds = new Set(structuralHeadingClaims.map(claim => claim.claimId))
+  const staleClaims = removedClaims.filter(claim => (
+    !structuralHeadingClaimIds.has(claim.claimId)
+    && countExactMarkdownLines(input.artifact.markdown, claim.outputText) === 0
+  ))
+  const redundantClaims = removedClaims.filter(claim => (
+    !structuralHeadingClaimIds.has(claim.claimId)
+    && countExactMarkdownLines(input.artifact.markdown, claim.outputText) === 1
+  ))
+  if (structuralHeadingClaims.length > 0) {
+    issues.push(issue({
+      code: 'STRUCTURAL_HEADING_CLAIM_SERVER_PRUNED',
+      severity: 'warning',
+      outputPath: 'markdown/claims',
+      evidenceIds: [...new Set(structuralHeadingClaims.flatMap(claim => claim.evidenceIds))],
+      message: `服务端已删除 ${structuralHeadingClaims.length} 条把三级标题或独立日期误登记为正文的 claim，并将时间线信息归入规范标题。`,
+      expectedConstraint: '三级标题和其重复日期属于服务端结构，不作为候选人正文 claim',
+    }))
+  }
+  if (staleClaims.length > 0) {
+    issues.push(issue({
+      code: 'STALE_TIMELINE_CLAIM_SERVER_PRUNED',
+      severity: 'warning',
+      outputPath: 'claims',
+      evidenceIds: [...new Set(staleClaims.flatMap(claim => claim.evidenceIds))],
+      message: `服务端已删除 ${staleClaims.length} 条在 Markdown 中不存在的旧时间线 claim 元数据。`,
+      expectedConstraint: '删除悬空 claim 记录，不增加、删除或改写 Markdown 事实文本',
+    }))
+  }
+  if (redundantClaims.length > 0) {
+    issues.push(issue({
+      code: 'REDUNDANT_BUSINESS_CLAIM_SERVER_PRUNED',
+      severity: 'warning',
+      outputPath: 'markdown/claims',
+      evidenceIds: [...new Set(redundantClaims.flatMap(claim => claim.evidenceIds))],
+      message: `服务端已删除 ${redundantClaims.length} 条全部证据均已在前文使用的重复业务 claim 及其唯一对应行。`,
+      expectedConstraint: '仅删除可由相同原子证据确定性证明完全重复的后置 claim；部分重叠继续阻断',
+    }))
+  }
   const evidence = new Map(resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
   const plannedBody = plannedContentEvidenceIds(resume, plan)
   const allowedIdentityEvidence = identityEvidenceIds(resume)
@@ -938,7 +1483,7 @@ export function validateGeneratedResumeArtifact(input: {
     }
     const allowedForPath = /^identity(?:\.|\[|$)/i.test(claim.outputPath)
       ? allowedIdentityEvidence
-      : /^timeline(?:\.|\[|$)/i.test(claim.outputPath)
+      : isTimelineOutputPath(claim.outputPath)
         ? allowedTimelineEvidence
         : plannedBody
     const unplannedEvidence = claim.evidenceIds.filter(id => !allowedForPath.has(id))
@@ -966,7 +1511,7 @@ export function validateGeneratedResumeArtifact(input: {
     }
     const markdownContext = claimMarkdownContext(artifact.markdown, claim.outputText)
     if (markdownContext?.section && BUSINESS_SECTION_KEYS.has(markdownContext.section)) {
-      if (/^timeline(?:\.|\[|$)/i.test(claim.outputPath)) {
+      if (isTimelineOutputPath(claim.outputPath)) {
         if (atoms.some(atom => atom.claimType !== 'timeline')) {
           issues.push(issue({
             code: 'TIMELINE_BODY_EVIDENCE_MISMATCH',
@@ -1019,7 +1564,9 @@ export function validateGeneratedResumeArtifact(input: {
       }))
     }
     const scopes = new Set(atoms.map(atom => atom.sourceScopeId))
-    if (scopes.size > 1 || (claim.transformation === 'same_scope_merge' && atoms.length < 2)) {
+    const isSummaryClaim = /^summary(?:\.|\[|$)/i.test(claim.outputPath)
+    const invalidCrossScope = scopes.size > 1 && (!isSummaryClaim || claim.transformation === 'same_scope_merge')
+    if (invalidCrossScope || (claim.transformation === 'same_scope_merge' && atoms.length < 2)) {
       issues.push(issue({
         code: 'SCOPE_MIGRATION',
         outputPath: claim.outputPath,
@@ -1031,7 +1578,11 @@ export function validateGeneratedResumeArtifact(input: {
     }
     if (
       claim.transformation === 'verbatim'
-      && (atoms.length !== 1 || claim.outputText.replace(/^[-*+]\s+/, '').trim() !== atoms[0].verbatimText.trim())
+      && (
+        atoms.length !== 1
+        || normalizedVerbatimText(claim.outputText, claim.outputPath, atoms[0])
+          !== normalizedVerbatimText(atoms[0].verbatimText, claim.outputPath, atoms[0])
+      )
     ) {
       issues.push(issue({
         code: 'TRANSFORMATION_CONTRACT_MISMATCH',
@@ -1099,6 +1650,7 @@ export function validateGeneratedResumeArtifact(input: {
     }
     if (!/summary/i.test(claim.outputPath)) {
       for (const evidenceId of claim.evidenceIds) {
+        if (!BUSINESS_TYPES.has(evidence.get(evidenceId)?.claimType ?? '')) continue
         bodyEvidenceUse.set(evidenceId, [...(bodyEvidenceUse.get(evidenceId) ?? []), claim.claimId])
       }
     }
@@ -1305,9 +1857,11 @@ export function validateGeneratedResumeArtifact(input: {
 
 export function normalizeBlockingFactJudgeResult(
   result: BlockingFactJudgeResult,
-  artifact: GeneratedResumeArtifact
+  artifact: GeneratedResumeArtifact,
+  resume: ResumeEvidenceBundle
 ): BlockingFactJudgeResult {
   const claims = new Map(artifact.claims.map(claim => [claim.claimId, claim]))
+  const evidence = new Map(resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
   const issues = result.issues.map(item => {
     const claim = item.claimId ? claims.get(item.claimId) : undefined
     const evidenceOutsideClaim = claim
@@ -1327,6 +1881,38 @@ export function normalizeBlockingFactJudgeResult(
     }
     if (item.code === 'writing_quality_only') {
       return { ...item, severity: item.severity === 'info' ? 'info' as const : 'warning' as const }
+    }
+    const atoms = claim.evidenceIds
+      .map(id => evidence.get(id))
+      .filter((atom): atom is EvidenceAtom => Boolean(atom))
+    const hasCompleteEvidence = atoms.length === claim.evidenceIds.length && atoms.length > 0
+    const sameScope = hasCompleteEvidence && new Set(atoms.map(atom => atom.sourceScopeId)).size === 1
+    const normalizedOutput = claim.outputText.replace(/^[-*+]\s+/, '').trim()
+    const exactVerbatim = claim.transformation === 'verbatim'
+      && atoms.length === 1
+      && normalizedVerbatimText(claim.outputText, claim.outputPath, atoms[0])
+        === normalizedVerbatimText(atoms[0].verbatimText, claim.outputPath, atoms[0])
+    const exactSameScopeMerge = claim.transformation === 'same_scope_merge'
+      && atoms.length >= 2
+      && sameScope
+      && normalizedOutput === atoms
+        .map(atom => atom.verbatimText.trim().replace(/^[-*+]\s+/, '').trim())
+        .join('；')
+    const canonicalTimelineProof = isTimelineOutputPath(claim.outputPath)
+      && sameScope
+      && atoms.every(atom => atom.claimType === 'timeline')
+      && resume.timeline.some(item => (
+        item.scopeId === atoms[0]?.sourceScopeId && timelineHeading(item) === claim.outputText.trim()
+      ))
+    const sourcePreservingProof = exactVerbatim || exactSameScopeMerge || canonicalTimelineProof
+    const semanticFactCode = item.code !== 'claim_mapping_insufficient'
+    if (sourcePreservingProof && sameScope && semanticFactCode) {
+      return {
+        ...item,
+        severity: 'warning' as const,
+        message: `Judge 结论已被确定性源文保真证明否定：claim 仅逐字使用同一 sourceScopeId 的已映射证据。原结论：${item.message}`,
+        safeRepairDirection: '无需改写；保留源文和现有 claim-evidence 映射。',
+      }
     }
     return item
   })

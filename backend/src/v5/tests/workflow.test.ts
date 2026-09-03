@@ -15,12 +15,18 @@ import type {
   V5ResumePlan,
 } from '@/v5/types'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
-import { V5ResumeOptimizationWorkflow, V5WorkflowBlockedError } from '@/v5/main/workflow'
+import {
+  buildModelSafeResumeEvidenceBundle,
+  calculateResumeExtractionTimeoutMs,
+  V5ResumeOptimizationWorkflow,
+  V5WorkflowBlockedError,
+} from '@/v5/main/workflow'
 
 interface TestEnvelopePayload {
   strategyProfile?: ResumeStrategyProfile
   generationPolicy?: GenerationPolicy
   resumePlan?: V5ResumePlan
+  currentOutput?: V5ResumePlan
   draftArtifact?: GeneratedResumeArtifact
   artifact?: GeneratedResumeArtifact
   evidenceAtoms?: EvidenceAtom[]
@@ -76,7 +82,9 @@ class RoutingProvider implements LlmProvider {
 
   constructor(
     private readonly blockFactJudge = false,
-    private readonly forceDraftRepair = false
+    private readonly forceDraftRepair = false,
+    private readonly forcePlanFailure = false,
+    private readonly forceSafeFallback = false
   ) {}
 
   async complete(input: ChatCompletionInput): Promise<ChatCompletionResult> {
@@ -102,17 +110,26 @@ class RoutingProvider implements LlmProvider {
     }
     else if (version.includes('-p02-')) value = createJobFixture().candidate
     else if (version.includes('-p03-')) value = createMatchFixture().match
-    else if (version.includes('-p05-')) value = createPlan({
-      strategyProfile: envelope.payload.strategyProfile!,
-      generationPolicy: envelope.payload.generationPolicy!,
-    })
+    else if (version.includes('-p05-') || version.includes('-p05r-')) {
+      const plan = version.includes('-p05r-')
+        ? structuredClone(envelope.payload.currentOutput!)
+        : createPlan({
+            strategyProfile: envelope.payload.strategyProfile!,
+            generationPolicy: envelope.payload.generationPolicy!,
+          })
+      if (this.forcePlanFailure) {
+        plan.scopePlans[0].treatment = 'expand'
+        plan.scopePlans[0].bulletBudget = 2
+      }
+      value = plan
+    }
     else if (version.includes('-p06-')) {
       const plan = createPlan({
         strategyProfile: buildAdaptiveStrategy(createMatchFixture()).profile,
         generationPolicy: envelope.payload.resumePlan!.generationPolicy,
       })
       value = renderSourcePreservingArtifact({ resume: createResumeFixture().bundle, plan })
-      if (this.forceDraftRepair) {
+      if (this.forceDraftRepair || this.forceSafeFallback) {
         const artifact = value as GeneratedResumeArtifact
         artifact.markdown = artifact.markdown.replace('### 甲公司', '### 假公司')
       }
@@ -126,7 +143,7 @@ class RoutingProvider implements LlmProvider {
         issues: this.blockFactJudge ? [{
           issueId: 'judge_issue_1',
           severity: 'error',
-          code: 'unsupported_claim',
+          code: 'claim_mapping_insufficient',
           claimId: claims[0]?.claimId ?? null,
           evidenceIds: [],
           message: '测试阻断',
@@ -156,6 +173,10 @@ class RoutingProvider implements LlmProvider {
     } else if (version.includes('-p08-')) {
       this.p08EvidenceAtoms.push(envelope.payload.evidenceAtoms ?? [])
       value = renderSourcePreservingArtifact({ resume: createResumeFixture().bundle, plan: envelope.payload.resumePlan! })
+      if (this.forceSafeFallback) {
+        const artifact = value as GeneratedResumeArtifact
+        artifact.markdown = artifact.markdown.replace('### 甲公司', '### 假公司')
+      }
     } else throw new Error(`unexpected prompt version: ${version}`)
 
     const parsed = input.structuredOutput?.schema.safeParse(value)
@@ -260,6 +281,34 @@ class TruncatedResumeExtractionProvider implements LlmProvider {
 }
 
 describe('v5 production adaptive workflow', () => {
+  test('allocates more extraction time to large workflows while reserving downstream time', () => {
+    expect(calculateResumeExtractionTimeoutMs(900000)).toBe(600000)
+    expect(calculateResumeExtractionTimeoutMs(600000)).toBe(420000)
+    expect(calculateResumeExtractionTimeoutMs(240000)).toBe(240000)
+  })
+
+  test('keeps excluded audit evidence out of model planning context', () => {
+    const bundle = structuredClone(createResumeFixture().bundle)
+    const excluded = bundle.evidenceAtoms.find(atom => atom.claimType === 'deliverable')!
+    excluded.status = 'excluded'
+    excluded.riskFlags = ['uncertain']
+    bundle.unmappedFragments = [{ sourceBlockId: excluded.sourceBlockId, text: excluded.verbatimText, reason: 'test', importance: 'high' }]
+    bundle.conflicts = [{
+      conflictId: 'conflict_test',
+      evidenceIds: [excluded.evidenceId],
+      description: 'test ambiguity',
+      resolution: 'needs_user_confirmation',
+    }]
+
+    const safe = buildModelSafeResumeEvidenceBundle(bundle)
+
+    expect(safe.evidenceAtoms.some(atom => atom.evidenceId === excluded.evidenceId)).toBe(false)
+    expect(safe.timeline.flatMap(item => item.evidenceIds)).not.toContain(excluded.evidenceId)
+    expect(safe.sections.flatMap(item => item.evidenceIds)).not.toContain(excluded.evidenceId)
+    expect(safe.unmappedFragments).toEqual([])
+    expect(safe.conflicts).toEqual([])
+  })
+
   test('exposes a typed extract-only result without entering P02 or later stages', async () => {
     const provider = new ResumeExtractionCacheProbeProvider()
     const workflow = new V5ResumeOptimizationWorkflow({ provider, enableDefaultSubscribers: false })
@@ -372,7 +421,19 @@ describe('v5 production adaptive workflow', () => {
     expect(result.usedSafeFallback).toBe(false)
   })
 
-  test('fails closed when the blocking semantic fact judge keeps rejecting output', async () => {
+  test('uses a deterministic valid plan when P05 and P05R both remain invalid', async () => {
+    const provider = new RoutingProvider(false, false, true)
+    const workflow = new V5ResumeOptimizationWorkflow({ provider, judgeProvider: provider, enableDefaultSubscribers: false })
+
+    const result = await workflow.run({ resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD })
+
+    expect(result.state).toBe('succeeded')
+    expect(result.resumePlan.strategyProfile).toEqual(buildAdaptiveStrategy(createMatchFixture()).profile)
+    expect(result.resumePlan.scopePlans[0]).toMatchObject({ treatment: 'compress', bulletBudget: 1 })
+    expect(result.usedSafeFallback).toBe(false)
+  })
+
+  test('fails closed when the blocking fact judge cannot establish a claim mapping', async () => {
     const provider = new RoutingProvider(true)
     const workflow = new V5ResumeOptimizationWorkflow({ provider, judgeProvider: provider, enableDefaultSubscribers: false })
     try {
@@ -393,5 +454,17 @@ describe('v5 production adaptive workflow', () => {
     expect(provider.p08EvidenceAtoms).toHaveLength(1)
     expect(provider.p08EvidenceAtoms[0]).toHaveLength(4)
     expect(provider.p08EvidenceAtoms[0].some(atom => atom.normalizedClaim === '额外未计划动作')).toBe(false)
+  })
+
+  test('retains the deterministic errors that triggered a successful safe fallback', async () => {
+    const provider = new RoutingProvider(false, false, false, true)
+    const workflow = new V5ResumeOptimizationWorkflow({ provider, judgeProvider: provider, enableDefaultSubscribers: false })
+
+    const result = await workflow.run({ resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD })
+
+    expect(result.state).toBe('succeeded_with_safe_fallback')
+    expect(result.usedSafeFallback).toBe(true)
+    expect(result.validationIssues.some(item => item.severity === 'error')).toBe(true)
+    expect(result.validationIssues.some(item => /HEADING|SCOPE/.test(item.code))).toBe(true)
   })
 })

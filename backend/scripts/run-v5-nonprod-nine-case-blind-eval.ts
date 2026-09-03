@@ -105,7 +105,12 @@ interface CaseStatus {
   stage: 'running' | 'extracted' | 'generated' | 'evaluated' | 'completed' | 'failed'
   updatedAt: string
   fingerprints: EvaluationCheckpointFingerprints
-  error?: { name: string; message: string; code?: string }
+  error?: {
+    name: string
+    message: string
+    code?: string
+    issues?: Array<{ code: string; outputPath: string | null }>
+  }
   budget: ReturnType<EvaluationBudgetController['snapshot']>
 }
 
@@ -191,10 +196,24 @@ function casePrefix(caseNumber: number, target: string) {
 function serializedError(error: unknown) {
   if (error instanceof Error) {
     const code = 'code' in error && typeof error.code === 'string' ? error.code : undefined
+    const issues = 'issues' in error && Array.isArray(error.issues)
+      ? error.issues.flatMap(item => {
+          if (!isRecord(item) || typeof item.code !== 'string') return []
+          return [{
+            code: item.code,
+            outputPath: typeof item.outputPath === 'string' ? item.outputPath : null,
+            claimId: typeof item.claimId === 'string' ? item.claimId : null,
+            evidenceIds: Array.isArray(item.evidenceIds)
+              ? item.evidenceIds.filter(id => typeof id === 'string').slice(0, 10)
+              : [],
+          }]
+        }).slice(0, 30)
+      : []
     return {
       name: error.name || 'Error',
       message: error.message.slice(0, 500),
       ...(code ? { code } : {}),
+      ...(issues.length > 0 ? { issues } : {}),
     }
   }
   return { name: 'Error', message: String(error).slice(0, 500) }
@@ -426,7 +445,13 @@ async function main() {
   }
   await assertOutputDirectoryPolicy(args.outputRoot, args.resume)
 
-  const budgetProfile = budgetProfileForCases(args.selectedCases, args.stage)
+  const requiredPhysicalCalls = Math.max(...selected.map(({ history }) => (
+    v5CasePhysicalCallUpperBound(
+      splitResumeDocument(canonicalizeSourceDocument(history.resume_content).canonicalDocument).length,
+      args.stage
+    )
+  )))
+  const budgetProfile = budgetProfileForCases(args.selectedCases, args.stage, requiredPhysicalCalls)
   const implementationDigest = await createImplementationDigest(backendRoot)
   const model = process.env.AI_MODEL?.trim() || 'deepseek-chat'
   if (model !== 'deepseek-chat') {

@@ -55,6 +55,13 @@ export const FULL_CASE_LIMITS: EvaluationBudgetLimits = {
   maxWallTimeMs: 10 * 60_000,
 }
 
+export const LARGE_RESUME_SINGLE_CASE_LIMITS: EvaluationBudgetLimits = {
+  maxPhysicalCalls: 64,
+  maxInputTokens: 900_000,
+  maxOutputTokens: 300_000,
+  maxWallTimeMs: 15 * 60_000,
+}
+
 export interface EvaluationRunnerCliOptions {
   historyPath: string
   outputRoot: string
@@ -267,7 +274,8 @@ export function parseEvaluationRunnerArgs(
 
 export function budgetProfileForCases(
   selectedCases: readonly number[],
-  stage: EvaluationRunStage = 'full'
+  stage: EvaluationRunStage = 'full',
+  requiredPhysicalCalls = 0
 ) {
   const isCase2Canary = selectedCases.length === 1 && selectedCases[0] === 2
   if (isCase2Canary && stage === 'extract-only') {
@@ -282,6 +290,16 @@ export function budgetProfileForCases(
       name: 'case_2_judge_canary' as const,
       runLimits: { ...JUDGE_ONLY_CANARY_LIMITS },
       caseLimits: { ...JUDGE_ONLY_CANARY_LIMITS },
+    }
+  }
+  if (
+    selectedCases.length === 1
+    && requiredPhysicalCalls > FULL_CASE_LIMITS.maxPhysicalCalls
+  ) {
+    return {
+      name: 'large_resume_single_case' as const,
+      runLimits: { ...LARGE_RESUME_SINGLE_CASE_LIMITS },
+      caseLimits: { ...LARGE_RESUME_SINGLE_CASE_LIMITS },
     }
   }
   return {

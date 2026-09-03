@@ -6,15 +6,18 @@ import { zodResponseFormat } from 'openai/helpers/zod'
 import {
   blindABEvaluationSchema,
   blockingFactJudgeResultSchema,
+  blockingFactJudgeResultSchemaWithIssueLimit,
   generatedResumeArtifactSchema,
   interviewPreparationSchema,
   jobExtractionCandidateSchema,
   resumeExtractionCandidateSchema,
+  resumeExtractionCandidateSchemaWithFactLimit,
   resumeQualityJudgeResultSchema,
   strategyResolutionSchema,
   v5MatchAnalysisSchema,
   v5ResumePlanSchema,
 } from '@/v5/schemas'
+import { resumeExtractionFactCandidateLimit } from '@/v5/chunked-resume-extraction'
 import { buildV5SystemPrompt, buildV5UserPrompt, loadV5Prompt, type V5PromptComponent, V5_PROMPT_VERSIONS } from '@/v5/prompts'
 import {
   V5_ADAPTIVE_POLICY_VERSION,
@@ -45,8 +48,8 @@ const TEMPERATURES: Record<V5PromptComponent, number> = {
 }
 
 const OUTPUT_TOKEN_BASE: Record<V5PromptComponent, number> = {
-  P01: 9000,
-  P01R: 9000,
+  P01: 12000,
+  P01R: 12000,
   P02: 6000,
   P02R: 6000,
   P03: 5000,
@@ -57,7 +60,7 @@ const OUTPUT_TOKEN_BASE: Record<V5PromptComponent, number> = {
   P06: 8000,
   P07: 8000,
   P08: 8000,
-  P09: 5000,
+  P09: 8000,
   P10: 4500,
   P10R: 4500,
   P11: 3500,
@@ -92,11 +95,59 @@ export interface CompiledV5Prompt {
   }
 }
 
-export function schemaForV5Component(component: V5PromptComponent): ZodTypeAny {
+function canonicalResumeBlockCount(value: unknown, depth = 0): number | null {
+  if (depth > 8 || typeof value !== 'object' || value === null) return null
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = canonicalResumeBlockCount(item, depth + 1)
+      if (found !== null) return found
+    }
+    return null
+  }
+  const record = value as Record<string, unknown>
+  const document = record.canonicalSourceDocument
+  if (typeof document === 'object' && document !== null) {
+    const blocks = (document as Record<string, unknown>).blocks
+    if (Array.isArray(blocks)) return blocks.length
+  }
+  for (const nested of Object.values(record)) {
+    const found = canonicalResumeBlockCount(nested, depth + 1)
+    if (found !== null) return found
+  }
+  return null
+}
+
+function artifactClaimCount(value: unknown, depth = 0): number | null {
+  if (depth > 8 || typeof value !== 'object' || value === null) return null
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = artifactClaimCount(item, depth + 1)
+      if (found !== null) return found
+    }
+    return null
+  }
+  const record = value as Record<string, unknown>
+  const artifact = record.artifact
+  if (typeof artifact === 'object' && artifact !== null) {
+    const claims = (artifact as Record<string, unknown>).claims
+    if (Array.isArray(claims)) return claims.length
+  }
+  for (const nested of Object.values(record)) {
+    const found = artifactClaimCount(nested, depth + 1)
+    if (found !== null) return found
+  }
+  return null
+}
+
+export function schemaForV5Component(component: V5PromptComponent, envelope?: unknown): ZodTypeAny {
   switch (component) {
     case 'P01':
-    case 'P01R':
-      return resumeExtractionCandidateSchema
+    case 'P01R': {
+      const blockCount = canonicalResumeBlockCount(envelope)
+      return blockCount === null
+        ? resumeExtractionCandidateSchema
+        : resumeExtractionCandidateSchemaWithFactLimit(resumeExtractionFactCandidateLimit(blockCount))
+    }
     case 'P02':
     case 'P02R':
       return jobExtractionCandidateSchema
@@ -112,8 +163,12 @@ export function schemaForV5Component(component: V5PromptComponent): ZodTypeAny {
     case 'P07':
     case 'P08':
       return generatedResumeArtifactSchema
-    case 'P09':
-      return blockingFactJudgeResultSchema
+    case 'P09': {
+      const claimCount = artifactClaimCount(envelope)
+      return claimCount === null
+        ? blockingFactJudgeResultSchema
+        : blockingFactJudgeResultSchemaWithIssueLimit(claimCount)
+    }
     case 'P10':
     case 'P10R':
       return interviewPreparationSchema
@@ -158,7 +213,7 @@ export function compileV5Prompt(input: {
   repairAttempt?: number
 }): CompiledV5Prompt {
   const serializedEnvelope = JSON.stringify(input.envelope)
-  const schema = schemaForV5Component(input.component)
+  const schema = schemaForV5Component(input.component, input.envelope)
   const schemaName = `reffo_${input.component.toLowerCase()}_${V5_SCHEMA_VERSION.replaceAll('.', '_')}`
   const outputContract = zodResponseFormat(schema, schemaName).json_schema.schema
   const messages: ChatMessage[] = [

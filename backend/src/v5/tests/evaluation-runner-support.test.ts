@@ -9,6 +9,7 @@ import {
   CASE_2_CANARY_LIMITS,
   FULL_CASE_LIMITS,
   FULL_RUN_LIMITS,
+  LARGE_RESUME_SINGLE_CASE_LIMITS,
   EvaluationRunnerSafetyError,
   assertResumeExtractionReplaySafe,
   acquireEvaluationRunLock,
@@ -123,6 +124,11 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
       name: 'bounded_batch',
       runLimits: FULL_RUN_LIMITS,
       caseLimits: FULL_CASE_LIMITS,
+    })
+    expect(budgetProfileForCases([3], 'full', 61)).toEqual({
+      name: 'large_resume_single_case',
+      runLimits: LARGE_RESUME_SINGLE_CASE_LIMITS,
+      caseLimits: LARGE_RESUME_SINGLE_CASE_LIMITS,
     })
   })
 

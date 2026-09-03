@@ -5,7 +5,10 @@ const nonEmptyString = z.string().min(1)
 const nullableString = z.string().nullable()
 const stringArray = z.array(z.string())
 const confidenceSchema = z.enum(['high', 'medium', 'low'])
-const spanSchema = z.object({ start: z.number().int().nonnegative(), end: z.number().int().nonnegative() }).strict()
+const spanSchema = z.object({
+  start: z.number().int().nonnegative().describe('相对 block.text 的 UTF-16 索引，包含该位置；完整 block 必须为 0'),
+  end: z.number().int().positive().describe('半开区间的排他末端，必须等于 start + verbatimText.length；完整 block 必须为 block.text.length'),
+}).strict().describe('JavaScript 半开区间 [start, end)，必须满足 block.text.slice(start, end) 与 verbatimText 逐字相等')
 const evidenceStatusSchema = z.enum(['source_supported', 'source_qualified', 'excluded'])
 const attributionLevelSchema = z.enum(['owned', 'drove', 'contributed', 'supported', 'unspecified'])
 const scopeKindSchema = z.enum(['experience', 'internship', 'project', 'education', 'research', 'volunteer', 'other'])
@@ -37,12 +40,12 @@ const riskFlagSchema = z.enum([
 ])
 
 export const numericAtomSchema = z.object({
-  raw: nonEmptyString,
-  valueText: nonEmptyString,
-  unit: nullableString,
-  qualifier: nullableString,
-  period: nullableString,
-  ownerScope: nullableString,
+  raw: nonEmptyString.describe('verbatimText 中逐字连续的原文数字短语，不得补写原文没有的单位或词语'),
+  valueText: nonEmptyString.describe('raw 内逐字存在的数值文本，不做格式改写'),
+  unit: nullableString.describe('仅填写 raw 内逐字存在的单位，否则为 null'),
+  qualifier: nullableString.describe('仅填写 raw 内逐字存在的约、超过、至少等原文限定词；不得填写开始时间、结束时间、功能数量等解释性标签，否则为 null'),
+  period: nullableString.describe('仅填写原文逐字存在的周期文本，否则为 null'),
+  ownerScope: nullableString.describe('数字所属的 sourceScopeLocalId；无法安全归属时为 null'),
 }).strict()
 
 export const sourceBlockSchema = z.object({
@@ -156,7 +159,7 @@ export const resumeExtractionCandidateSchema = z.object({
     verbatimText: nonEmptyString,
     normalizedClaim: nonEmptyString,
     claimType: claimTypeSchema,
-    sourceScopeLocalId: nonEmptyString,
+    sourceScopeLocalId: nonEmptyString.describe('必填且绝不能为 null；时间线事实使用对应 timeline.scopeLocalId，身份事实使用 identity，技能等非时间线章节使用稳定的非空本地 ID（如 skills）'),
     proposedStatus: evidenceStatusSchema,
     attributionLevel: attributionLevelSchema,
     sourceActionVerb: nullableString,
@@ -177,6 +180,15 @@ export const resumeExtractionCandidateSchema = z.object({
   }).strict(),
   qualityAssessment: qualityAssessmentSchema,
 }).strict()
+
+export function resumeExtractionCandidateSchemaWithFactLimit(maxFactCandidates: number) {
+  if (!Number.isSafeInteger(maxFactCandidates) || maxFactCandidates < 1) {
+    throw new RangeError('maxFactCandidates must be a positive safe integer')
+  }
+  return resumeExtractionCandidateSchema.extend({
+    factCandidates: resumeExtractionCandidateSchema.shape.factCandidates.max(maxFactCandidates),
+  }).strict()
+}
 
 export const resumeEvidenceBundleSchema = z.object({
   schemaVersion: z.literal(V5_SCHEMA_VERSION),
@@ -413,8 +425,8 @@ export const v5ResumePlanSchema = z.object({
   generationPolicy: generationPolicySchema,
   targetValueProposition: z.string(),
   primaryRequirementIds: z.array(nonEmptyString).max(3),
-  stableCoreEvidenceIds: stringArray,
-  customizedEvidenceIds: stringArray,
+  stableCoreEvidenceIds: stringArray.describe('稳定核心内容证据；不得包含 identity/timeline，业务证据还必须进入同 scope 的 scopePlan，skill 必须 featured'),
+  customizedEvidenceIds: stringArray.describe('针对当前 JD 的内容证据；不得包含 identity/timeline，业务证据还必须进入同 scope 的 scopePlan，skill 必须 featured'),
   evidencePillars: z.array(z.object({
     pillarId: nonEmptyString,
     title: nonEmptyString,
@@ -425,12 +437,12 @@ export const v5ResumePlanSchema = z.object({
   scopePlans: z.array(z.object({
     scopeId: nonEmptyString,
     scopeType: scopeKindSchema,
-    treatment: z.enum(['expand', 'compress', 'timeline_line', 'include', 'omit']),
-    selectedEvidenceIds: stringArray,
-    bulletBudget: z.number().int().nonnegative(),
+    treatment: z.enum(['expand', 'compress', 'timeline_line', 'include', 'omit']).describe('工作/实习：至少2条已选证据才能 expand，1条必须 compress，0条必须 timeline_line；项目/研究：至少1条才能 include，否则 omit'),
+    selectedEvidenceIds: stringArray.describe('仅限与 scopeId 相同的合法业务证据；identity、timeline 和 skill 不得放入'),
+    bulletBudget: z.number().int().nonnegative().describe('expand 为 2..已选证据数；compress 为1；timeline_line/omit 为0；include 为1..已选证据数'),
     rewriteAngle: z.string(),
-  }).strict()),
-  featuredSkillEvidenceIds: stringArray,
+  }).strict()).describe('若完整合法业务证据数量足够，所有业务 scope 的 bulletBudget 总和必须达到 generationPolicy.targetBusinessBulletMin'),
+  featuredSkillEvidenceIds: stringArray.describe('仅放 claimType=skill 的合法证据；所有被上层列表选中的 skill 都必须在此分配'),
   safeKeywordMappings: z.array(z.object({
     requirementId: nonEmptyString,
     evidenceIds: z.array(nonEmptyString).min(1),
@@ -438,15 +450,15 @@ export const v5ResumePlanSchema = z.object({
   }).strict()),
   forbiddenRequirementIds: stringArray,
   omittedHighValueEvidence: z.array(z.object({ evidenceId: nonEmptyString, reason: nonEmptyString }).strict()),
-  lowerBoundException: nullableString,
+  lowerBoundException: nullableString.describe('模型必须返回 null；服务端仅在完整证据客观不足时确定性填充例外说明'),
 }).strict()
 
 const claimSchema = z.object({
   claimId: nonEmptyString,
-  outputPath: nonEmptyString,
-  outputText: nonEmptyString,
+  outputPath: nonEmptyString.describe('稳定逻辑路径；identity.* 仅用于身份，timeline.* 仅用于时间线，其余正文使用章节.scope.bullets[index]'),
+  outputText: nonEmptyString.describe('必须逐字等于 Markdown 中唯一一整行，包含该行原有的 - 列表标记，不得只写去掉列表标记后的正文'),
   evidenceIds: z.array(nonEmptyString).min(1),
-  transformation: z.enum(['verbatim', 'compress', 'reorder', 'safe_paraphrase', 'same_scope_merge']),
+  transformation: z.enum(['verbatim', 'compress', 'reorder', 'safe_paraphrase', 'same_scope_merge']).describe('verbatim 仅用于单一证据逐字呈现（允许 Markdown 标题/列表符与“技能：”展示标签差异）；摘要跨 scope 综合使用 compress 或 safe_paraphrase；same_scope_merge 必须至少两条且同 scope'),
   attributionLevel: attributionLevelSchema,
 }).strict()
 
@@ -456,7 +468,7 @@ const renderStatsSchema = z.object({
   projectCount: z.number().int().nonnegative(),
   cjkCharacterCount: z.number().int().nonnegative(),
   wordCount: z.number().int().nonnegative(),
-}).strict()
+}).strict().describe('由服务端按 markdown 确定性重算；模型只需提供满足类型的暂存值，不能据此改变内容')
 
 export const generatedResumeArtifactSchema = z.object({
   schemaVersion: z.literal(V5_SCHEMA_VERSION),
@@ -480,30 +492,36 @@ export const validationIssueSchema = z.object({
   replacementText: nullableString,
 }).strict()
 
-export const blockingFactJudgeResultSchema = z.object({
-  schemaVersion: z.literal(V5_SCHEMA_VERSION),
-  passed: z.boolean(),
-  auditedClaimCount: z.number().int().nonnegative(),
-  issues: z.array(z.object({
-    issueId: nonEmptyString,
-    severity: z.enum(['error', 'warning', 'info']),
-    code: z.enum([
-      'unsupported_claim',
-      'number_or_qualifier_change',
-      'attribution_upgrade',
-      'scope_migration',
-      'stage_upgrade',
-      'causality_invented',
-      'jd_or_context_leak',
-      'claim_mapping_insufficient',
-      'writing_quality_only',
-    ]),
-    claimId: nonEmptyString,
-    evidenceIds: stringArray,
-    message: nonEmptyString,
-    safeRepairDirection: nonEmptyString,
-  }).strict()),
+const blockingFactJudgeIssueSchema = z.object({
+  issueId: nonEmptyString,
+  severity: z.enum(['error', 'warning', 'info']),
+  code: z.enum([
+    'unsupported_claim',
+    'number_or_qualifier_change',
+    'attribution_upgrade',
+    'scope_migration',
+    'stage_upgrade',
+    'causality_invented',
+    'jd_or_context_leak',
+    'claim_mapping_insufficient',
+    'writing_quality_only',
+  ]),
+  claimId: nonEmptyString,
+  evidenceIds: stringArray,
+  message: z.string().min(1).max(400),
+  safeRepairDirection: z.string().min(1).max(300),
 }).strict()
+
+export function blockingFactJudgeResultSchemaWithIssueLimit(maxIssues: number) {
+  return z.object({
+    schemaVersion: z.literal(V5_SCHEMA_VERSION),
+    passed: z.boolean(),
+    auditedClaimCount: z.number().int().nonnegative(),
+    issues: z.array(blockingFactJudgeIssueSchema).max(Math.max(0, Math.floor(maxIssues))),
+  }).strict()
+}
+
+export const blockingFactJudgeResultSchema = blockingFactJudgeResultSchemaWithIssueLimit(64)
 
 export const interviewPreparationSchema = z.object({
   schemaVersion: z.literal(V5_SCHEMA_VERSION),

@@ -32,6 +32,14 @@ function strongestAllowedAttribution(atoms: EvidenceAtom[]) {
   return [...atoms].sort((left, right) => rank[left.attributionLevel] - rank[right.attributionLevel])[0]?.attributionLevel ?? 'unspecified'
 }
 
+function withoutMarkdownListMarker(value: string) {
+  return value.trim().replace(/^[-*+]\s+/, '').trim()
+}
+
+function markdownListItem(values: string[]) {
+  return `- ${values.map(withoutMarkdownListMarker).join('；')}`
+}
+
 export function renderSourcePreservingArtifact(input: {
   resume: ResumeEvidenceBundle
   plan: V5ResumePlan
@@ -50,8 +58,8 @@ export function renderSourcePreservingArtifact(input: {
     const normalizedLine = outputText.trim()
     if (renderedClaimLines.has(normalizedLine)) return
     renderedClaimLines.add(normalizedLine)
-    const normalizedOutput = outputText.replace(/^[-*+]\s+/, '').trim()
-    const transformation = atoms.length === 1 && normalizedOutput === atoms[0].verbatimText.trim()
+    const normalizedOutput = withoutMarkdownListMarker(outputText)
+    const transformation = atoms.length === 1 && normalizedOutput === withoutMarkdownListMarker(atoms[0].verbatimText)
       ? 'verbatim'
       : atoms.length > 1
         ? 'same_scope_merge'
@@ -141,7 +149,7 @@ export function renderSourcePreservingArtifact(input: {
         sectionLines.push({
           kind: 'claim',
           path: `${key}.${scope.scopeId}.bullets[${index}]`,
-          text: `- ${atomGroup.map(atom => atom.verbatimText).join('；')}`,
+          text: markdownListItem(atomGroup.map(atom => atom.verbatimText)),
           atoms: atomGroup,
         })
         for (const atom of atomGroup) used.add(atom.evidenceId)
@@ -169,7 +177,7 @@ export function renderSourcePreservingArtifact(input: {
     lines.push(`## ${sectionTitle(key, resume.sourceDocument.primaryLanguage)}`)
     lines.push('')
     for (const [index, atom] of atoms.entries()) {
-      appendClaim(`${key}[${index}]`, `- ${atom.verbatimText}`, [atom])
+      appendClaim(`${key}[${index}]`, markdownListItem([atom.verbatimText]), [atom])
       used.add(atom.evidenceId)
       remainingListItems -= 1
     }
@@ -203,7 +211,7 @@ export function renderSourcePreservingArtifact(input: {
         lines.push(`## ${sectionTitle('skills', resume.sourceDocument.primaryLanguage)}`)
         lines.push('')
         for (const [index, atom] of atoms.entries()) {
-          appendClaim(`skills[${index}]`, `- ${atom.verbatimText}`, [atom])
+          appendClaim(`skills[${index}]`, markdownListItem([atom.verbatimText]), [atom])
           used.add(atom.evidenceId)
           remainingListItems -= 1
         }

@@ -6,6 +6,7 @@ import {
   DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
   RESUME_EXTRACTION_CHUNK_PLAN_VERSION,
   splitResumeDocument,
+  type ResumeExtractionChunk,
 } from '@/v5/chunked-resume-extraction'
 import { buildResumeEvidenceBundle, validateResumeExtractionCandidate } from '@/v5/evidence'
 import { V5_PROMPT_VERSIONS } from '@/v5/prompts'
@@ -36,7 +37,7 @@ export interface ResumeExtractionCacheStats {
 }
 
 export interface ResumeExtractionComputeContext {
-  chunks: CanonicalSourceDocument[]
+  chunks: ResumeExtractionChunk[]
   concurrency: number
 }
 
@@ -219,7 +220,19 @@ class InMemoryTrustedResumeExtractionCache implements TrustedResumeExtractionCac
       sectionHint: block.sectionHint,
       inputRiskFlags: [...block.inputRiskFlags],
     }))
-    const chunkPlan = chunks.map(chunk => chunk.blocks.map(block => block.sourceBlockId))
+    const chunkPlan = chunks.map(chunk => ({
+      targetSourceBlockIds: chunk.blocks.map(block => block.sourceBlockId),
+      scopeContext: chunk.extractionScopeContext
+        ? {
+            serverScopeLocalId: chunk.extractionScopeContext.serverScopeLocalId,
+            sourceBlockIds: chunk.extractionScopeContext.blocks.map(block => block.sourceBlockId),
+          }
+        : null,
+      scopeAssignments: (chunk.extractionScopeAssignments ?? []).map(assignment => ({
+        serverScopeLocalId: assignment.serverScopeLocalId,
+        sourceBlockIds: assignment.sourceBlockIds,
+      })),
+    }))
     const key = createDigest({
       cacheVersion: V5_RESUME_EXTRACTION_CACHE_VERSION,
       resumeSha256: document.sha256,

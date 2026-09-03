@@ -10,6 +10,7 @@ import { canonicalizeSourceDocument } from '@/v5/canonical-source'
 import {
   DEFAULT_RESUME_EXTRACTION_CONCURRENCY,
   mergeResumeExtractionCandidates,
+  normalizeResumeExtractionChunkCandidate,
   ResumeExtractionChunkCapacityError,
   splitResumeDocument,
 } from '@/v5/chunked-resume-extraction'
@@ -60,6 +61,7 @@ import type {
 import { V5_SCHEMA_VERSION, V5_WORKFLOW_VERSION } from '@/v5/types'
 import {
   artifactEvidenceWhitelistIds,
+  buildDeterministicV5ResumePlan,
   normalizeBlockingFactJudgeResult,
   plannedContentEvidenceIds,
   validateGeneratedResumeArtifact,
@@ -90,6 +92,15 @@ export interface V5WorkflowOptions {
   pluginOverrides?: Partial<Record<V5BuiltinPluginId, V5WorkflowPlugin<unknown, unknown>>>
 }
 
+export function calculateResumeExtractionTimeoutMs(remainingMs: number) {
+  const safeRemainingMs = Math.max(1, Math.floor(remainingMs))
+  return Math.min(
+    safeRemainingMs,
+    600000,
+    Math.max(300000, Math.floor(safeRemainingMs * 0.7))
+  )
+}
+
 export type V5BuiltinPluginId =
   | 'canonical-source'
   | 'resume-extraction'
@@ -111,6 +122,47 @@ function createDefaultEventBus() {
   eventBus.subscribe('*', persistenceSubscriber.handle)
   eventBus.subscribe('*', logHarnessEvent)
   return eventBus
+}
+
+export function buildModelSafeResumeEvidenceBundle(bundle: V5WorkflowResult['resumeEvidenceBundle']) {
+  const evidenceAtoms = bundle.evidenceAtoms.filter(atom => (
+    atom.status !== 'excluded' && !atom.riskFlags.includes('sensitive_pii')
+  ))
+  const allowedEvidenceIds = new Set(evidenceAtoms.map(atom => atom.evidenceId))
+  const filterEvidenceIds = (ids: string[]) => ids.filter(id => allowedEvidenceIds.has(id))
+  const timeline = bundle.timeline
+    .map(item => ({ ...item, evidenceIds: filterEvidenceIds(item.evidenceIds) }))
+    .filter(item => item.evidenceIds.length > 0)
+  const allowedScopeIds = new Set(timeline.map(item => item.scopeId))
+  return {
+    ...bundle,
+    identity: {
+      name: {
+        value: bundle.identity.name.value,
+        evidenceIds: filterEvidenceIds(bundle.identity.name.evidenceIds),
+      },
+      email: { value: null, evidenceIds: [] },
+      phone: { value: null, evidenceIds: [] },
+      cityLevelLocation: {
+        value: bundle.identity.cityLevelLocation.value,
+        evidenceIds: filterEvidenceIds(bundle.identity.cityLevelLocation.evidenceIds),
+      },
+      links: [],
+    },
+    timeline,
+    sections: bundle.sections
+      .map(item => ({
+        ...item,
+        scopeIds: item.scopeIds.filter(id => allowedScopeIds.has(id)),
+        evidenceIds: filterEvidenceIds(item.evidenceIds),
+      }))
+      .filter(item => item.scopeIds.length > 0 || item.evidenceIds.length > 0),
+    evidenceAtoms,
+    unmappedFragments: [],
+    conflicts: bundle.conflicts
+      .map(item => ({ ...item, evidenceIds: filterEvidenceIds(item.evidenceIds) }))
+      .filter(item => item.evidenceIds.length > 0),
+  }
 }
 
 function structuredIssues(error: V5StructuredOutputError): ValidationIssue[] {
@@ -293,7 +345,7 @@ export class V5ResumeOptimizationWorkflow {
       const resumeStep = await this.runResumeExtractionStep({
         document: sourceDocument.canonicalDocument,
         runContext,
-        timeoutMs: Math.min(300000, remaining()),
+        timeoutMs: remaining(),
       })
       await setState('resume_extracted')
 
@@ -427,7 +479,7 @@ export class V5ResumeOptimizationWorkflow {
               const resumeStep = await this.runResumeExtractionStep({
                 document: sourceDocument.canonicalDocument,
                 runContext,
-                timeoutMs: Math.min(300000, remaining()),
+                timeoutMs: calculateResumeExtractionTimeoutMs(remaining()),
               })
               steps.push(resumeStep.step)
               return resumeStep.result
@@ -633,6 +685,13 @@ export class V5ResumeOptimizationWorkflow {
                   policy: generationPolicy,
                   profile: strategyProfile,
                 }),
+                fallback: () => buildDeterministicV5ResumePlan({
+                  resume: resumeEvidenceBundle,
+                  job: jobRequirementBundle,
+                  match: matchAnalysis,
+                  policy: generationPolicy,
+                  profile: strategyProfile,
+                }),
               }),
             })
             steps.push(planStep.step)
@@ -643,7 +702,7 @@ export class V5ResumeOptimizationWorkflow {
       })
       await setState('planned')
 
-      let { artifact, repairAttempts, validation, generationPayload, usedSafeFallback } = await this.executePlugin({
+      let { artifact, repairAttempts, validation, generationPayload, usedSafeFallback, fallbackIssues } = await this.executePlugin({
         registry: pluginRegistry,
         context: pluginContext,
         plugin: {
@@ -759,7 +818,9 @@ export class V5ResumeOptimizationWorkflow {
       }
 
       let usedSafeFallback = false
+      let fallbackIssues: ValidationIssue[] = []
       if (!validation.passed) {
+        fallbackIssues = validation.issues.filter(item => item.severity !== 'info')
         artifact = renderSourcePreservingArtifact({ resume: resumeEvidenceBundle, plan: resumePlan })
         await setState('validating')
         validation = validateGeneratedResumeArtifact({ artifact, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy })
@@ -778,14 +839,14 @@ export class V5ResumeOptimizationWorkflow {
         })
       }
       artifact = validation.value ?? artifact
-      return { artifact, repairAttempts, validation, generationPayload, usedSafeFallback }
+      return { artifact, repairAttempts, validation, generationPayload, usedSafeFallback, fallbackIssues }
           },
         },
         input,
       })
 
       let factJudge: BlockingFactJudgeResult
-      ;({ artifact, repairAttempts, validation, usedSafeFallback, factJudge } = await this.executePlugin({
+      ;({ artifact, repairAttempts, validation, usedSafeFallback, factJudge, fallbackIssues } = await this.executePlugin({
         registry: pluginRegistry,
         context: pluginContext,
         plugin: {
@@ -843,6 +904,10 @@ export class V5ResumeOptimizationWorkflow {
       }
       if (!factJudge.passed) {
         if (!usedSafeFallback) {
+          fallbackIssues = [
+            ...fallbackIssues,
+            ...judgeIssues(factJudge).filter(item => item.severity === 'error'),
+          ]
           artifact = renderSourcePreservingArtifact({ resume: resumeEvidenceBundle, plan: resumePlan })
           validation = validateGeneratedResumeArtifact({ artifact, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy })
           if (validation.passed) {
@@ -869,7 +934,7 @@ export class V5ResumeOptimizationWorkflow {
           })
         }
       }
-      return { artifact, repairAttempts, validation, usedSafeFallback, factJudge }
+      return { artifact, repairAttempts, validation, usedSafeFallback, factJudge, fallbackIssues }
           },
         },
         input,
@@ -1031,7 +1096,11 @@ export class V5ResumeOptimizationWorkflow {
               artifact,
               interviewPreparation,
               usedSafeFallback,
-              validationIssues: [...validation.issues, ...judgeIssues(factJudge)].filter(item => item.severity !== 'info'),
+              validationIssues: [
+                ...fallbackIssues,
+                ...validation.issues,
+                ...judgeIssues(factJudge),
+              ].filter(item => item.severity !== 'info'),
             }
           },
         },
@@ -1089,16 +1158,7 @@ export class V5ResumeOptimizationWorkflow {
   }
 
   private withoutNonessentialPii(bundle: V5WorkflowResult['resumeEvidenceBundle']) {
-    return {
-      ...bundle,
-      identity: {
-        ...bundle.identity,
-        email: { value: null, evidenceIds: [] },
-        phone: { value: null, evidenceIds: [] },
-        links: [],
-      },
-      evidenceAtoms: bundle.evidenceAtoms.filter(atom => !atom.riskFlags.includes('sensitive_pii')),
-    }
+    return buildModelSafeResumeEvidenceBundle(bundle)
   }
 
   private runResumeExtractionStep(input: {
@@ -1149,7 +1209,10 @@ export class V5ResumeOptimizationWorkflow {
         envelope: this.envelope(input.runId, { canonicalSourceDocument: chunk }),
         stepContext: input.stepContext,
         documentIds: [chunk.documentId],
-        validate: value => validateResumeExtractionCandidate(chunk, value),
+        validate: value => validateResumeExtractionCandidate(
+          chunk,
+          normalizeResumeExtractionChunkCandidate(chunk, value)
+        ),
       }))))
     }
     const merged = extracted.length === 1 ? extracted[0] : mergeResumeExtractionCandidates(extracted)
@@ -1172,6 +1235,7 @@ export class V5ResumeOptimizationWorkflow {
     stepContext: StepExecutionContext
     documentIds: string[]
     validate: (value: T) => ValidationResult<T>
+    fallback?: () => T
   }): Promise<T> {
     let currentOutput: unknown
     let validationIssues: ValidationIssue[] = []
@@ -1214,6 +1278,11 @@ export class V5ResumeOptimizationWorkflow {
     })
     const repairedValidation = input.validate(repairResult.value)
     if (!repairedValidation.passed) {
+      if (input.fallback) {
+        const fallback = input.fallback()
+        const fallbackValidation = input.validate(fallback)
+        if (fallbackValidation.passed) return fallbackValidation.value ?? fallback
+      }
       throw new V5WorkflowBlockedError({
         code: `${input.component}_VALIDATION_FAILED`,
         state: input.component === 'P01' || input.component === 'P02' ? 'blocked_input_validation' : 'blocked_fact_validation',
@@ -1359,7 +1428,7 @@ export class V5ResumeOptimizationWorkflow {
           stepContext,
           inputDocumentIds: input.documentIds,
         },
-      }).then(result => normalizeBlockingFactJudgeResult(result.value, input.artifact)),
+      }).then(result => normalizeBlockingFactJudgeResult(result.value, input.artifact, input.resumeEvidenceBundle)),
     })
     input.steps.push(step.step)
     return step.result

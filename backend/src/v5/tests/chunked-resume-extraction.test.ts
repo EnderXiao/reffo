@@ -17,9 +17,9 @@ function chunksFor(markdown: string, maxBlocks: number) {
 describe('v5 resume extraction chunk boundaries', () => {
   test('uses a conservative extraction concurrency default', () => {
     expect(DEFAULT_RESUME_EXTRACTION_CONCURRENCY).toBe(2)
-    expect(DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS).toBe(24)
+    expect(DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS).toBe(16)
     expect(DEFAULT_RESUME_EXTRACTION_MAX_CHARACTERS).toBe(1_000)
-    expect(DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS).toBe(12_500)
+    expect(DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS).toBe(13_500)
   })
 
   test('avoids over-fragmenting a compact resume while preserving scope boundaries', () => {
@@ -35,8 +35,9 @@ describe('v5 resume extraction chunk boundaries', () => {
 
     const chunks = splitResumeDocument(document)
 
-    expect(chunks).toHaveLength(8)
-    expect(chunks.every(chunk => chunk.blocks.length <= DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS)).toBe(true)
+    expect(chunks).toHaveLength(9)
+    expect(chunks[0].blocks).toHaveLength(2)
+    expect(chunks.slice(1).every(chunk => chunk.blocks.length === 20)).toBe(true)
     expect(chunks.flatMap(chunk => chunk.blocks.map(block => block.sourceBlockId)))
       .toEqual(document.blocks.map(block => block.sourceBlockId))
   })
@@ -77,6 +78,29 @@ describe('v5 resume extraction chunk boundaries', () => {
       ['# Candidate', '## Work Experience', '### Company A | Engineer', '- Built A'],
       ['### Company B | Engineer', '- Built B', '## Skills', '- TypeScript'],
     ])
+    expect(chunks.map(chunk => chunk.extractionScopeAssignments?.length ?? 0)).toEqual([1, 1])
+    expect(chunks.flatMap(chunk => chunk.extractionScopeAssignments ?? [])
+      .every(assignment => assignment.sourceBlockIds.length === 2)).toBe(true)
+  })
+
+  test('splits a dense 21-block batch before it reaches the P01 output ceiling', () => {
+    const document = canonicalizeSourceDocument([
+      '# Candidate',
+      '## Work Experience',
+      ...Array.from({ length: 3 }, (_, scopeIndex) => [
+        `### Company ${scopeIndex + 1} | Engineer`,
+        ...Array.from({ length: 5 }, (__, bulletIndex) => `- Delivered item ${scopeIndex + 1}.${bulletIndex + 1}`),
+      ]).flat(),
+      '## Skills',
+    ].join('\n'), 'dense-21-block-resume').canonicalDocument
+
+    expect(document.blocks).toHaveLength(21)
+    const chunks = splitResumeDocument(document)
+
+    expect(chunks.length).toBeGreaterThan(1)
+    expect(chunks.every(chunk => chunk.blocks.length <= DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS)).toBe(true)
+    expect(chunks.flatMap(chunk => chunk.blocks.map(block => block.sourceBlockId)))
+      .toEqual(document.blocks.map(block => block.sourceBlockId))
   })
 
   test('treats an unheaded document as one unknown scope instead of hard-splitting it', () => {
@@ -141,5 +165,45 @@ describe('v5 resume extraction chunk boundaries', () => {
     ].join('\n'), 'oversized-scope').canonicalDocument
 
     expect(() => splitResumeDocument(document)).toThrow(ResumeExtractionChunkCapacityError)
+  })
+
+  test('shards oversized output while repeating complete scope context and targeting every block once', () => {
+    const document = canonicalizeSourceDocument([
+      '# Candidate',
+      '## Work Experience',
+      '### Company A | Product Manager | 2021-Present',
+      ...Array.from({ length: 30 }, (_, index) => `- Delivered result ${index + 1}`),
+    ].join('\n'), 'scope-output-shards').canonicalDocument
+
+    const chunks = splitResumeDocument(document)
+    const scopedChunks = chunks.filter(chunk => chunk.extractionScopeContext)
+    const targetIds = chunks.flatMap(chunk => chunk.blocks.map(block => block.sourceBlockId))
+
+    expect(scopedChunks).toHaveLength(2)
+    expect(targetIds).toEqual(document.blocks.map(block => block.sourceBlockId))
+    expect(new Set(targetIds).size).toBe(document.blocks.length)
+    expect(scopedChunks.every(chunk => chunk.blocks.length <= DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS)).toBe(true)
+    expect(scopedChunks.every(chunk => chunk.extractionScopeContext?.blocks.length === 31)).toBe(true)
+    expect(new Set(scopedChunks.map(chunk => chunk.extractionScopeContext?.serverScopeLocalId)).size).toBe(1)
+  })
+
+  test('assigns an H1 current-role header with an explicit date range to its own server scope', () => {
+    const document = canonicalizeSourceDocument([
+      '# Company A | Product',
+      'Current role overview',
+      'Product Manager',
+      '2025. 06-Present',
+      'Owned product delivery',
+      '## Product portfolio',
+      '- Delivered module A',
+    ].join('\n'), 'h1-current-role').canonicalDocument
+
+    const chunks = splitResumeDocument(document, 5)
+    const assignments = chunks.flatMap(chunk => chunk.extractionScopeAssignments ?? [])
+
+    expect(assignments).toHaveLength(2)
+    expect(assignments[0].sourceBlockIds).toEqual(['B0001', 'B0002', 'B0003', 'B0004', 'B0005'])
+    expect(assignments[1].sourceBlockIds).toEqual(['B0006', 'B0007'])
+    expect(assignments[0].serverScopeLocalId).not.toBe(assignments[1].serverScopeLocalId)
   })
 })
