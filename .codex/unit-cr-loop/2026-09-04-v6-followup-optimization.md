@@ -1,0 +1,64 @@
+# Tracker
+
+- Task: V6 后续优化：降低修复上下文、调用成本和异常退出率
+- Workspace: `/Users/mi/code/reffo`
+- Mode: `human-gated`
+- Validation stack: `cd backend && bun test ./src/v5 && bunx tsc --noEmit && git diff --check`
+- Regression executor: repo-native backend tests；最终再跑一次本地真实 `/api/v1/mvp/process`
+- Reviewer mode: `user`
+- Current branch: `private/v6-prompt-hsl`
+
+## Problem
+
+- User-reported issue: V6 修复调用仍复制过多上下文，P08 输入 Token 高；确定性选材可能遗漏项目；需要继续插件化和可观测性优化。
+- Root cause summary: `ContextBuilder` 的 `scoped` 与 `full` 当前等价；P08 使用完整 Artifact 修复；Patch Schema 和服务端 Patch 合并器尚未落地；计划预算优先满足下限，未固定项目槽位。
+- Constraints: 保持事实安全、严格 Schema、Harness 可审计；不在 `main` 修改；不重复调用真实 API 做纯代码验证。
+- Out-of-scope items: 本轮不重写全部 V5 workflow，不修改前端，不把 P09 变成业务改写器。
+
+## Solution
+
+- Chosen approach: 分单元落地。先实现最小上下文选择器和 contract tests，再接入 Patch Schema/合并器，随后修正选材、物理调用预算、P01 幂等和发布门禁。
+- Rejected options: 直接把默认模式改成 `patch`；当前 Patch 合并契约未完成，可能造成修复字段丢失或误放行。
+- Why this boundary is minimal: U1 只改变上下文构建输出和测试，不改变生产 workflow 调用次数；风险可通过单元测试隔离。
+
+## Units
+
+| Unit | Goal | Scope | Validation | CR | Commit | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| U1 | 实现按 issue 选择的 scoped/patch ContextBuilder | `backend/src/v5/plugins/context-builder.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
+| U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-*`、测试 | 目标单测 + `bun test ./src/v5` | user | - | proposed |
+| U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、stage runner、repair policy | v5 单测 + 类型检查 | user | - | proposed |
+| U4 | 修正确定性选材，保留项目和关键教育信息 | validators、safe renderer、测试 | 计划/渲染单测 | user | - | proposed |
+| U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测 | user | - | proposed |
+| U6 | P01 幂等重传和 Chunk 插件边界 | chunk extraction、plugins、测试 | chunk/并发/重传单测 | user | - | proposed |
+| U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | 离线评估 + canary | user | - | proposed |
+
+## Unit Logs
+
+### U1
+
+- Objective: `scoped` 只返回失败路径相关的最小结构；`patch` 只返回 Patch 所需当前字段和校验问题；保留 `full` 显式兼容模式。
+- Files: `backend/src/v5/plugins/context-builder.ts`、`backend/src/v5/tests/context-builder.test.ts`
+- Code changes: `scoped` 按 issue.outputPath 选择当前输出字段；按 evidence/requirement/claim ID 选择关联记录；`patch` 额外输出 patchHints；`full` 保持兼容。
+- Regression added or updated: 扩展 `v6-foundation.test.ts`，覆盖 scoped 不复制无关 envelope、patch 最小字段和关联记录。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/v5/tests/v6-foundation.test.ts`（4 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: U2 负责 Patch Schema 和合并；U3 再接入生产 P08。
+
+## Remaining Items
+
+- Remaining functional units: U1-U7
+- Cleanup-only units: none
+- Open risks: 当前生产默认仍为 `full`；U1 完成前不切换默认模式。
+
+## Final Summary
+
+- Functional commits: pending
+- Cleanup commits: none
+- Final validation: pending
+- Deferred items: pending
