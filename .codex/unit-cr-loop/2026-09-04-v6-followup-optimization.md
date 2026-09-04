@@ -25,13 +25,13 @@
 
 | Unit | Goal | Scope | Validation | CR | Commit | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| U1 | 实现按 issue 选择的 scoped/patch ContextBuilder | `backend/src/v5/plugins/context-builder.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
-| U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-merger.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
+| U1 | 实现按 issue 选择的 scoped/patch ContextBuilder | `backend/src/v5/plugins/context-builder.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | `d79fc64` | committed |
+| U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-merger.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | `1c47494` | committed |
 | U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、prompt compiler、P08R prompt、patch merger、测试 | `bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | `0775d2c` | committed |
-| U4 | 修正确定性选材，保留项目和关键教育信息 | `backend/src/v5/validators.ts`、测试 | `bun test ./src/v5/tests/policy-score-validator.test.ts`、`bun test ./src/v5/tests/workflow.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
+| U4 | 修正确定性选材，保留项目和关键教育信息 | `backend/src/v5/validators.ts`、测试 | `bun test ./src/v5/tests/policy-score-validator.test.ts`、`bun test ./src/v5/tests/workflow.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | `cdc160e` | committed |
 | U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测、类型检查 | user | `1a24fe8` | committed |
 | U6 | P01 幂等重传和 Chunk 插件边界 | `chunked-resume-extraction.ts`、workflow、测试 | chunk/workflow 单测、类型检查 | user | `80cb15d` | committed |
-| U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | `bun test ./src/repositories/harness-metrics.test.ts`、全量 V5、类型检查、diff 检查 | user | pending | regression_passed |
+| U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | `bun test ./src/repositories/harness-metrics.test.ts`、全量 V5、类型检查、diff 检查 | user | `1c41286` | committed |
 
 ## Unit Logs
 
@@ -46,8 +46,8 @@
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: `perf: 将V6业务修复收敛为Patch`
-- Commit: `0775d2c`
+- Commit message: `refactor: 实现V6局部修复上下文`
+- Commit: `d79fc64`
 - Remaining follow-up: U2 负责 Patch Schema 和合并；U3 再接入生产 P08。
 
 ### U2
@@ -61,8 +61,8 @@
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: `perf: 收敛V6物理模型调用`
-- Commit: `1a24fe8`
+- Commit message: `feat: 增加V6安全修复补丁合并器`
+- Commit: `1c47494`
 - Remaining follow-up: U3 将 P08/P08R 接入 Patch 输出和服务端合并；当前生产流程尚未改变。
 
 ### U3
@@ -76,8 +76,8 @@
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: `fix: 增加P01分块幂等重传`
-- Commit: `80cb15d`
+- Commit message: `perf: 将V6业务修复收敛为Patch`
+- Commit: `0775d2c`
 - Remaining follow-up: 当前只在业务修复路径使用 P08R；P06/P07 解析失败仍走 P08 全量兼容路径。
 
 ### U4
@@ -91,8 +91,8 @@
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: pending
-- Commit: `76a6909`
+- Commit message: `perf: 保留V6关键项目和教育证据`
+- Commit: `cdc160e`
 - Remaining follow-up: U5 统一 Provider 物理 attempt 预算；当前真实 API 尚未重新验证项目保留效果。
 
 ### U5
@@ -106,8 +106,8 @@
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: pending
-- Commit: pending
+- Commit message: `perf: 收敛V6物理模型调用`
+- Commit: `1a24fe8`
 - Remaining follow-up: U6 实现 P01 幂等重传和 Chunk 插件边界。
 
 ### U6
@@ -121,8 +121,8 @@
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: pending
-- Commit: pending
+- Commit message: `fix: 增加P01分块幂等重传`
+- Commit: `80cb15d`
 - Remaining follow-up: U7 指标汇总、黄金集和发布门禁。
 
 ### U7
@@ -133,22 +133,23 @@
 - Regression added or updated: 覆盖语义/确定性门禁分类、物理 attempt、Token/成本、阶段 P95 和超预算/安全事故拒绝。
 - Regression executor: repo-native backend unit test
 - Validation commands: `bun test ./src/repositories/harness-metrics.test.ts`（2 pass）；`bun test ./src/v5`（162 pass）；`bun test`（243 pass）；`bunx tsc --noEmit`；`git diff --check`
-- Validation artifacts: 无临时产物
+- Real regression: `POST /api/v1/mvp/process` 使用 PDF `/Users/mi/Downloads/肖淦匀-58同城-前端开发.pdf` 文本和 JD 图片 `/Users/mi/Downloads/字节前端工程师.jpg` 人工转写，Run `7e2091ee-cde3-46b1-9030-5d1c9898d6d8` 成功；7 次逻辑调用、7 次物理 attempt、82,825 Token、1 次 P08R、1 次 P09、`succeeded_with_safe_fallback`。
+- Validation artifacts: 临时请求/响应位于 `/tmp/reffo-pdf/`，未纳入版本库
 - CR findings: pending user review
 - Resolution: pending
 - Commit message: `feat: 增加V6 Harness指标与发布门禁`
-- Commit: pending
-- Remaining follow-up: 黄金集、故障注入和真实 canary 属发布前回归，不在本单元扩展生产 workflow。
+- Commit: `1c41286`
+- Remaining follow-up: 黄金集、故障注入和多样本真实 canary 属发布前回归，不在本单元扩展生产 workflow。
 
 ## Remaining Items
 
 - Remaining functional units: none
 - Cleanup-only units: none
-- Open risks: 当前生产默认仍为 `full`；U1 完成前不切换默认模式。
+- Open risks: Harness SQLite 历史文件在本地服务并发写入时出现 `SQLITE_CORRUPT`，本轮已恢复干净副本；需单独排查数据库连接/并发持久化稳定性。黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
 - Functional commits: U1-U7 已完成
 - Cleanup commits: none
-- Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`
-- Deferred items: 黄金集、故障注入和真实 canary 属发布前回归任务，未扩展本单元生产 workflow。
+- Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
+- Deferred items: 黄金集、故障注入和多样本真实 canary 属发布前回归任务，未扩展本单元生产 workflow。
