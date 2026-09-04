@@ -34,7 +34,7 @@
 | U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | `bun test ./src/repositories/harness-metrics.test.ts`、全量 V5、类型检查、diff 检查 | user | `1c41286` | committed |
 | U8 | Harness SQLite 单写队列与事务持久化 | `backend/src/harness/subscribers/persistence-subscriber.ts`、写队列、测试 | `bun test ./src/harness/subscribers/write-queue.test.ts`、全量 backend、类型检查、diff 检查 | user | `0c12924` | committed |
 | U9 | Harness 数据库健康检查与运行库隔离 | `backend/src/repositories/database.ts`、`backend/src/routes/mvp.ts`、`.gitignore` | 健康接口、全量 backend、类型检查、diff 检查 | user | `958f2b3` | committed |
-| U10 | 多进程访问隔离与 Harness 备份工具 | `backend/src/repositories/database.ts`、维护脚本、Git 索引 | 并发进程验证、维护脚本 check/backup、全量 backend、类型检查、diff 检查 | user | pending | in_progress |
+| U10 | 多进程访问隔离与 Harness 备份工具 | `backend/src/repositories/database.ts`、维护脚本、Git 索引 | 并发进程验证、维护脚本 check/backup、全量 backend、类型检查、diff 检查 | user | `44a057a` | committed |
 
 ## Unit Logs
 
@@ -182,23 +182,23 @@
 - Code changes: 增加 `${HARNESS_DATABASE_PATH}.lock` 进程锁，支持存活 PID 检查和陈旧锁回收；第二进程返回 `HARNESS_DATABASE_IN_USE`；新增 maintenance `check`/`backup`，备份使用 `VACUUM INTO`；运行库从 Git 索引移除但保留本地文件。
 - Regression added or updated: 第二进程竞争验证返回降级而非打开数据库；临时数据库 check、backup、备份再 check 全部通过。
 - Regression executor: repo-native backend unit test and local process regression
-- Validation commands: pending
+- Validation commands: 目标测试（6 pass）；`bun test`（245 pass）；`bunx tsc --noEmit`；`git diff --check`；第二进程竞争返回 `HARNESS_DATABASE_IN_USE`；维护脚本 `check`/`backup` 及备份完整性检查通过。
 - Validation artifacts: 临时数据库位于 `/tmp/reffo-*`，未纳入版本库
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: pending
-- Commit: pending
+- Commit message: `fix: 隔离Harness多进程访问并增加备份工具`
+- Commit: `44a057a`
 - Remaining follow-up: 检查线上多实例部署是否为每实例独立 Harness 路径；必要时迁移到共享服务数据库。
 
 ## Remaining Items
 
-- Remaining functional units: U10
+- Remaining functional units: none
 - Cleanup-only units: none
-- Open risks: U10 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: 线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U9 已完成
+- Functional commits: U1-U10 已完成
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
-- Deferred items: 多进程访问隔离、数据库健康检查、运行库脱离 Git 跟踪、黄金集、故障注入和多样本真实 canary 属后续发布前任务。
+- Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。
