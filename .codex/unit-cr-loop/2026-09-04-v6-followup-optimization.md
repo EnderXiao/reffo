@@ -29,7 +29,7 @@
 | U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-merger.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、prompt compiler、P08R prompt、patch merger、测试 | `bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | `0775d2c` | committed |
 | U4 | 修正确定性选材，保留项目和关键教育信息 | `backend/src/v5/validators.ts`、测试 | `bun test ./src/v5/tests/policy-score-validator.test.ts`、`bun test ./src/v5/tests/workflow.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
-| U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测、类型检查 | user | - | regression_passed |
+| U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测、类型检查 | user | `1a24fe8` | committed |
 | U6 | P01 幂等重传和 Chunk 插件边界 | chunk extraction、plugins、测试 | chunk/并发/重传单测 | user | - | proposed |
 | U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | 离线评估 + canary | user | - | proposed |
 
@@ -61,8 +61,8 @@
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: pending
-- Commit: pending
+- Commit message: `perf: 收敛V6物理模型调用`
+- Commit: `1a24fe8`
 - Remaining follow-up: U3 将 P08/P08R 接入 Patch 输出和服务端合并；当前生产流程尚未改变。
 
 ### U3
@@ -112,7 +112,7 @@
 
 ## Remaining Items
 
-- Remaining functional units: U4-U7
+- Remaining functional units: U6-U7
 - Cleanup-only units: none
 - Open risks: 当前生产默认仍为 `full`；U1 完成前不切换默认模式。
 
