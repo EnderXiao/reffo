@@ -14,9 +14,21 @@ describe('harness metrics aggregation', () => {
         { id: 'attempt-p09', step_run_id: 'step-p09', provider: 'deepseek', model: 'deepseek-chat', input_tokens: 2000, output_tokens: 300, latency_ms: 1800, is_repair_attempt: 0 },
       ],
       events: [
-        { attempt_id: 'attempt-p08', type: 'provider.requested', payload_json: JSON.stringify({ callReason: 'validation_repair' }) },
+        { attempt_id: 'attempt-p08', type: 'provider.requested', payload_json: JSON.stringify({
+          callReason: 'validation_repair',
+          promptManifest: {
+            componentPromptId: 'P08',
+            inputSummary: { envelopeBytes: 800, estimatedInputTokens: 700, messageCharacterCounts: [100, 200] },
+          },
+        }) },
         { attempt_id: 'attempt-p08', type: 'provider.responded', payload_json: JSON.stringify({ physicalAttempts: 1 }) },
-        { attempt_id: 'attempt-p09', type: 'provider.requested', payload_json: JSON.stringify({ callReason: 'semantic_gate' }) },
+        { attempt_id: 'attempt-p09', type: 'provider.requested', payload_json: JSON.stringify({
+          callReason: 'semantic_gate',
+          promptManifest: {
+            componentPromptId: 'P09',
+            inputSummary: { envelopeBytes: 1200, estimatedInputTokens: 1100, messageCharacterCounts: [100, 300] },
+          },
+        }) },
         { attempt_id: 'attempt-p09', type: 'provider.responded', payload_json: JSON.stringify({ physicalAttempts: 2 }) },
         { type: 'evaluation.completed', payload_json: JSON.stringify({ evaluatorName: 'markdown-resume-rules' }) },
         { type: 'evaluation.completed', payload_json: JSON.stringify({ evaluatorName: 'v5_resume_quality_judge' }) },
@@ -41,6 +53,16 @@ describe('harness metrics aggregation', () => {
       expect.objectContaining({ stepName: 'v5_p08_repair_1', llmCalls: 1, repairCalls: 1, totalTokens: 1500, p95LatencyMs: 1000 }),
       expect.objectContaining({ stepName: 'v5_p09_fact_judge', llmCalls: 1, repairCalls: 0, totalTokens: 2300, p95LatencyMs: 2000 }),
     ]))
+    expect(metrics.promptInputSummary).toMatchObject({
+      observedCalls: 2,
+      envelopeBytes: 2000,
+      estimatedInputTokens: 1800,
+      messageCharacters: 700,
+    })
+    expect(metrics.promptInputSummary.byComponent).toEqual([
+      expect.objectContaining({ component: 'P08', calls: 1, estimatedInputTokens: 700 }),
+      expect.objectContaining({ component: 'P09', calls: 1, estimatedInputTokens: 1100 }),
+    ])
   })
 
   test('发布门禁拒绝超预算和安全事故', () => {

@@ -110,6 +110,20 @@ export interface HarnessStageMetrics {
   p95LatencyMs: number
 }
 
+export interface HarnessPromptInputSummaryMetrics {
+  observedCalls: number
+  envelopeBytes: number
+  estimatedInputTokens: number
+  messageCharacters: number
+  byComponent: Array<{
+    component: string
+    calls: number
+    envelopeBytes: number
+    estimatedInputTokens: number
+    messageCharacters: number
+  }>
+}
+
 export interface HarnessMetrics {
   runCount: number
   runStatusCounts: Record<string, number>
@@ -126,6 +140,7 @@ export interface HarnessMetrics {
   p95LatencyMs: number
   estimatedCostCny: number
   stageMetrics: HarnessStageMetrics[]
+  promptInputSummary: HarnessPromptInputSummaryMetrics
   safetyIncidents: number
   chunkIntegrityFailures: number
 }
@@ -163,6 +178,57 @@ export function aggregateHarnessMetrics(input: {
   let outputTokens = 0
   let physicalAttempts = 0
   let llmCalls = 0
+  const promptInputByComponent = new Map<string, HarnessPromptInputSummaryMetrics['byComponent'][number]>()
+  let promptInputSummary: HarnessPromptInputSummaryMetrics = {
+    observedCalls: 0,
+    envelopeBytes: 0,
+    estimatedInputTokens: 0,
+    messageCharacters: 0,
+    byComponent: [],
+  }
+
+  input.events.forEach((event) => {
+    if (event.type !== 'provider.requested') return
+    const payload = parsePayload(event)
+    const manifest = payload.promptManifest && typeof payload.promptManifest === 'object' && !Array.isArray(payload.promptManifest)
+      ? payload.promptManifest as Record<string, unknown>
+      : null
+    const summary = manifest?.inputSummary && typeof manifest.inputSummary === 'object' && !Array.isArray(manifest.inputSummary)
+      ? manifest.inputSummary as Record<string, unknown>
+      : null
+    if (!manifest || !summary) return
+    const envelopeBytes = finiteNumber(summary.envelopeBytes)
+    const estimatedInputTokens = finiteNumber(summary.estimatedInputTokens)
+    const messageCharacters = Array.isArray(summary.messageCharacterCounts)
+      ? summary.messageCharacterCounts.reduce((sum, value) => sum + finiteNumber(value), 0)
+      : 0
+    const component = typeof manifest.componentPromptId === 'string' ? manifest.componentPromptId : 'unknown'
+    promptInputSummary = {
+      observedCalls: promptInputSummary.observedCalls + 1,
+      envelopeBytes: promptInputSummary.envelopeBytes + envelopeBytes,
+      estimatedInputTokens: promptInputSummary.estimatedInputTokens + estimatedInputTokens,
+      messageCharacters: promptInputSummary.messageCharacters + messageCharacters,
+      byComponent: [],
+    }
+    const current = promptInputByComponent.get(component) ?? {
+      component,
+      calls: 0,
+      envelopeBytes: 0,
+      estimatedInputTokens: 0,
+      messageCharacters: 0,
+    }
+    promptInputByComponent.set(component, {
+      ...current,
+      calls: current.calls + 1,
+      envelopeBytes: current.envelopeBytes + envelopeBytes,
+      estimatedInputTokens: current.estimatedInputTokens + estimatedInputTokens,
+      messageCharacters: current.messageCharacters + messageCharacters,
+    })
+  })
+  promptInputSummary = {
+    ...promptInputSummary,
+    byComponent: [...promptInputByComponent.values()].sort((left, right) => left.component.localeCompare(right.component)),
+  }
 
   input.attempts.forEach((attempt) => {
     const metadata = attempt.id ? eventByAttempt.get(attempt.id) : undefined
@@ -259,6 +325,7 @@ export function aggregateHarnessMetrics(input: {
     p95LatencyMs: percentile(latencyValues, 0.95),
     estimatedCostCny,
     stageMetrics: stages,
+    promptInputSummary,
     safetyIncidents,
     chunkIntegrityFailures,
   }

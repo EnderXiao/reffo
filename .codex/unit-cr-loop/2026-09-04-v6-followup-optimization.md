@@ -35,6 +35,7 @@
 | U8 | Harness SQLite 单写队列与事务持久化 | `backend/src/harness/subscribers/persistence-subscriber.ts`、写队列、测试 | `bun test ./src/harness/subscribers/write-queue.test.ts`、全量 backend、类型检查、diff 检查 | user | `0c12924` | committed |
 | U9 | Harness 数据库健康检查与运行库隔离 | `backend/src/repositories/database.ts`、`backend/src/routes/mvp.ts`、`.gitignore` | 健康接口、全量 backend、类型检查、diff 检查 | user | `958f2b3` | committed |
 | U10 | 多进程访问隔离与 Harness 备份工具 | `backend/src/repositories/database.ts`、维护脚本、Git 索引 | 并发进程验证、维护脚本 check/backup、全量 backend、类型检查、diff 检查 | user | `44a057a` | committed |
+| U12 | Dashboard 汇总 Prompt 输入摘要 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
 | U11 | Prompt manifest 字段摘要与 Token 观测 | `backend/src/v5/prompt-compiler.ts`、Provider contract、Prompt 测试、V6 TODO | Prompt manifest 单测、全量 backend、类型检查、diff 检查 | user | `888783c` | committed |
 
 ## Unit Logs
@@ -206,15 +207,30 @@
 - Commit: `888783c`
 - Remaining follow-up: 将摘要接入 dashboard 聚合，增加上下文超限和预算耗尽错误码恢复建议。
 
+### U12
+
+- Objective: 将 Prompt manifest 输入摘要汇总到 Harness dashboard，支持按组件比较 envelope 大小、估算 Token 与消息字符量。
+- Files: `backend/src/repositories/harness-metrics.ts`、`backend/src/repositories/harness-metrics.test.ts`。
+- Code changes: `aggregateHarnessMetrics` 新增 `promptInputSummary`，按调用总量和组件维度汇总 envelope 字节数、估算输入 Token、消息字符数；只读取事件中的结构元数据，不解析原文。
+- Regression added or updated: 指标测试覆盖 P08/P09 组件汇总、总量和排序。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/repositories/harness-metrics.test.ts`（2 pass）；`bun test`（245 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: 增加预算耗尽、上下文超限、Provider 超时和安全回退的统一恢复建议。
+
 ## Remaining Items
 
-- Remaining functional units: none
+- Remaining functional units: U12
 - Cleanup-only units: none
-- Open risks: 摘要尚未接入 dashboard 聚合；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: U12 尚未提交；预算耗尽、上下文超限和 Provider 超时仍缺少统一恢复建议；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U11 已完成
+- Functional commits: U1-U11 已完成；U12 进行中
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。
