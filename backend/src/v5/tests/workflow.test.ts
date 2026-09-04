@@ -32,6 +32,7 @@ interface TestEnvelopePayload {
   draftArtifact?: GeneratedResumeArtifact
   artifact?: GeneratedResumeArtifact
   evidenceAtoms?: EvidenceAtom[]
+  validationIssues?: Array<{ outputPath?: string | null; evidenceIds?: string[] }>
   canonicalJobDocument?: CanonicalSourceDocument
 }
 
@@ -173,6 +174,19 @@ class RoutingProvider implements LlmProvider {
           { question: '当前优先挑战是什么？', purpose: '确认挑战', relatedRequirementIds: requirementIds, assumptionContextIds: [] },
           { question: '如何协作？', purpose: '确认协作方式', relatedRequirementIds: requirementIds, assumptionContextIds: [] },
         ],
+      }
+    } else if (version.includes('-p08r-')) {
+      this.p08EvidenceAtoms.push((envelope.payload.relatedRecords ?? []).filter((item: unknown): item is EvidenceAtom => (
+        typeof item === 'object' && item !== null && 'evidenceId' in item
+      )))
+      const issue = envelope.payload.validationIssues?.[0]
+      value = {
+        schemaVersion: V5_SCHEMA_VERSION,
+        operations: issue?.outputPath ? [{
+          operationId: 'patch-1', op: 'replace', path: issue.outputPath,
+          originalDigest: null, value: '修复后的内容', evidenceIds: issue.evidenceIds ?? [],
+          sourceBlockIds: [], reason: '测试局部修复',
+        }] : [],
       }
     } else if (version.includes('-p08-')) {
       this.p08EvidenceAtoms.push(envelope.payload.evidenceAtoms ?? [])
@@ -494,9 +508,9 @@ describe('v5 production adaptive workflow', () => {
     const provider = new RoutingProvider(false, true)
     const workflow = new V5ResumeOptimizationWorkflow({ provider, judgeProvider: provider, enableDefaultSubscribers: false })
     const result = await workflow.run({ resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD })
-    expect(result.state).toBe('succeeded')
+    expect(result.state).toBe('succeeded_with_safe_fallback')
     expect(provider.p08EvidenceAtoms).toHaveLength(1)
-    expect(provider.p08EvidenceAtoms[0]).toHaveLength(4)
+    expect(provider.p08EvidenceAtoms[0]).toHaveLength(1)
     expect(provider.p08EvidenceAtoms[0].some(atom => atom.normalizedClaim === '额外未计划动作')).toBe(false)
   })
 

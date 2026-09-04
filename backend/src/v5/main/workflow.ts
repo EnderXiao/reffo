@@ -42,6 +42,7 @@ import {
   BoundedV6LlmCallPolicy,
   type V6LlmCallPolicy,
 } from '@/v5/plugins/llm-call-policy'
+import { mergeRepairPatch, RepairPatchMergeError, type RepairPatch } from '@/v5/plugins/patch-merger'
 import {
   V5ResumeExtractionCacheError,
   type ResumeExtractionComputeContext,
@@ -1591,40 +1592,53 @@ export class V5ResumeOptimizationWorkflow {
     callPolicy: V6LlmCallPolicy
   }) {
     const allowedEvidenceIds = artifactEvidenceWhitelistIds(input.resumeEvidenceBundle, input.resumePlan)
+    const repairScope = [...new Set(input.issues.map(issue => issue.outputPath).filter((path): path is string => Boolean(path)))]
     const repairStep = await runStep({
       runContext: input.runContext,
       eventBus: this.eventBus,
       stepName: `v5_p08_repair_${input.repairAttempt}`,
       timeoutMs: Math.min(180000, input.remaining()),
-      execute: stepContext => runV5StructuredStage<GeneratedResumeArtifact>({
-        component: 'P08',
-        envelope: this.envelope(input.runId, {
-          evidenceAtoms: input.resumeEvidenceBundle.evidenceAtoms.filter(atom => allowedEvidenceIds.has(atom.evidenceId)),
-          requirementAtoms: input.jobRequirementBundle.requirementAtoms,
-          identityAndTimeline: {
-            identity: input.resumeEvidenceBundle.identity,
-            timeline: input.resumeEvidenceBundle.timeline,
-          },
-          matchAnalysis: input.matchAnalysis,
-          strategyProfile: input.strategyProfile,
-          generationPolicy: input.generationPolicy,
-          resumePlan: input.resumePlan,
-          generationPayload: input.generationPayload,
-          previousArtifact: input.artifact,
-          validationIssues: input.issues,
-          serverMeasuredStats: input.artifact.renderStats,
-          repairAttempt: input.repairAttempt,
-          inputDocumentIds: input.documentIds,
-        }),
-        options: {
-          provider: this.provider,
-          eventBus: this.eventBus,
-          stepContext,
-          repairAttempt: input.repairAttempt,
-          inputDocumentIds: input.documentIds,
-          callPolicy: input.callPolicy,
-        },
-      }).then(result => result.value),
+      execute: async stepContext => {
+        try {
+          const result = await runV5StructuredStage<RepairPatch>({
+            component: 'P08R',
+            envelope: this.envelope(input.runId, buildRepairContext({
+              runId: input.runId,
+              originalEnvelope: {
+                evidenceAtoms: input.resumeEvidenceBundle.evidenceAtoms.filter(atom => allowedEvidenceIds.has(atom.evidenceId)),
+                requirementAtoms: input.jobRequirementBundle.requirementAtoms,
+                resumePlan: input.resumePlan,
+                generationPolicy: input.generationPolicy,
+              },
+              currentOutput: input.artifact,
+              validationIssues: input.issues,
+              mode: 'patch',
+            })),
+            options: {
+              provider: this.provider,
+              eventBus: this.eventBus,
+              stepContext,
+              repairAttempt: input.repairAttempt,
+              inputDocumentIds: input.documentIds,
+              callReason: 'validation_repair',
+              contextMode: 'patch',
+              repairScope,
+              callPolicy: input.callPolicy,
+            },
+          })
+          const merged = mergeRepairPatch({ currentOutput: input.artifact, patch: result.value, allowedPaths: repairScope })
+          const validation = validateGeneratedResumeArtifact({
+            artifact: merged.value as GeneratedResumeArtifact,
+            resume: input.resumeEvidenceBundle,
+            plan: input.resumePlan,
+            policy: input.generationPolicy,
+          })
+          return validation.passed ? (validation.value ?? merged.value as GeneratedResumeArtifact) : input.artifact
+        } catch (error) {
+          if (error instanceof RepairPatchMergeError) return input.artifact
+          throw error
+        }
+      },
     })
     input.steps.push(repairStep.step)
     return repairStep.result

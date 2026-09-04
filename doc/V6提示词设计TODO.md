@@ -11,7 +11,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 - [ ] 默认一次调用完成一个阶段；门禁优先使用服务端确定性校验。
 - [ ] 修复只发送失败字段、相关记录和最小证据窗口；禁止默认复制完整阶段输入和完整旧输出。
 - [ ] 能由代码修复的 span、ID、排序、计数、去重、scoreInputs、格式问题，不调用 LLM。
-- [ ] LLM 修复输出优先采用 patch；服务端合并 patch 后重新校验。
+- [x] LLM 修复输出优先采用 patch；服务端合并 patch 后重新校验。（2026-09-04；P08R 已接入业务门禁修复）
 - [x] 低成本与严格审查配置设置全局调用、修复调用和 Token 预算；工作流 deadline 限制墙钟时间；调用前超预算明确失败。（2026-09-04）
 - [x] 所有请求继续记录 prompt 版本、上下文模式、修复范围、Token、延迟、重试原因和最终结果。（2026-09-04）
 
@@ -50,8 +50,8 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 - [ ] 将“字段级确定性问题”从修复 Prompt 中移出：quote/span、sourceBlockId、scope、重复项、派生计数和排序由服务端修复。
 - [ ] 定义统一 `ValidationIssue` 分类：`deterministic_fix`、`local_llm_fix`、`global_llm_fix`、`blocking`。
 - [ ] `deterministic_fix` 不触发 LLM；仅 `local_llm_fix` 才允许一次局部修复调用。
-- [ ] 设计统一 Patch Schema：包含操作路径、原值摘要、替换值、关联证据 ID 和操作原因；禁止返回无关完整对象。
-- [ ] 修复上下文只包含失败路径、相关 source block/EvidenceAtom/RequirementAtom、必要父级结构和 validator 规则。
+- [x] 设计统一 Patch Schema：包含操作路径、原值摘要、替换值、关联证据 ID 和操作原因；禁止返回无关完整对象。（2026-09-04；`RepairPatch` + `mergeRepairPatch`）
+- [x] 修复上下文只包含失败路径、相关 source block/EvidenceAtom/RequirementAtom、必要父级结构和 validator 规则。（2026-09-04；scoped/patch ContextBuilder）
 - [x] 修复后由服务端合并、全量校验；禁止“修复失败后再次自动调用同一修复器”。（2026-09-04；默认修复策略单次调用）
 - [ ] 对不可安全修复的问题直接降级或阻断，不以重复 LLM 调用换取通过率。
 - [ ] P10/P10R 改为可选异步任务；主简历结果不等待面试建议修复。

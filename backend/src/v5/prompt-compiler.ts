@@ -16,6 +16,7 @@ import {
   strategyResolutionSchema,
   v5MatchAnalysisSchema,
   v5ResumePlanSchema,
+  repairPatchSchema,
 } from '@/v5/schemas'
 import { resumeExtractionFactCandidateLimit } from '@/v5/chunked-resume-extraction'
 import { buildV5SystemPrompt, buildV5UserPrompt, loadV5Prompt, type V5PromptComponent, V5_PROMPT_VERSIONS } from '@/v5/prompts'
@@ -40,6 +41,7 @@ const TEMPERATURES: Record<V5PromptComponent, number> = {
   P06: 0.15,
   P07: 0.05,
   P08: 0,
+  P08R: 0,
   P09: 0,
   P10: 0.2,
   P10R: 0,
@@ -60,6 +62,7 @@ const OUTPUT_TOKEN_BASE: Record<V5PromptComponent, number> = {
   P06: 8000,
   P07: 8000,
   P08: 8000,
+  P08R: 2400,
   P09: 8000,
   P10: 4500,
   P10R: 4500,
@@ -163,6 +166,8 @@ export function schemaForV5Component(component: V5PromptComponent, envelope?: un
     case 'P07':
     case 'P08':
       return generatedResumeArtifactSchema
+    case 'P08R':
+      return repairPatchSchema
     case 'P09': {
       const claimCount = artifactClaimCount(envelope)
       return claimCount === null

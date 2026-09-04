@@ -4,6 +4,21 @@ import { V5_ADAPTIVE_POLICY_VERSION, V5_SCHEMA_VERSION } from '@/v5/types'
 const nonEmptyString = z.string().min(1)
 const nullableString = z.string().nullable()
 const stringArray = z.array(z.string())
+export const repairPatchOperationSchema = z.object({
+  operationId: nonEmptyString,
+  op: z.enum(['replace', 'remove']),
+  path: nonEmptyString,
+  originalDigest: z.string().nullable(),
+  value: z.unknown(),
+  evidenceIds: stringArray,
+  sourceBlockIds: stringArray,
+  reason: nonEmptyString,
+}).strict()
+
+export const repairPatchSchema = z.object({
+  schemaVersion: z.literal(V5_SCHEMA_VERSION),
+  operations: z.array(repairPatchOperationSchema).max(20),
+}).strict()
 const confidenceSchema = z.enum(['high', 'medium', 'low'])
 const spanSchema = z.object({
   start: z.number().int().nonnegative().describe('相对 block.text 的 UTF-16 索引，包含该位置；完整 block 必须为 0'),

@@ -1,24 +1,6 @@
 import { z } from 'zod'
 import { createDigest } from '@/harness/run-context'
-import { V5_SCHEMA_VERSION } from '@/v5/types'
-
-const nonEmptyString = z.string().min(1)
-
-export const repairPatchOperationSchema = z.object({
-  operationId: nonEmptyString,
-  op: z.enum(['replace', 'remove']),
-  path: nonEmptyString,
-  originalDigest: z.string().nullable(),
-  value: z.unknown(),
-  evidenceIds: z.array(nonEmptyString),
-  sourceBlockIds: z.array(nonEmptyString),
-  reason: nonEmptyString,
-}).strict()
-
-export const repairPatchSchema = z.object({
-  schemaVersion: z.literal(V5_SCHEMA_VERSION),
-  operations: z.array(repairPatchOperationSchema).max(20),
-}).strict()
+import { repairPatchSchema } from '@/v5/schemas'
 
 export type RepairPatch = z.infer<typeof repairPatchSchema>
 

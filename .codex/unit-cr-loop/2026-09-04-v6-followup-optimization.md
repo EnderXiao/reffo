@@ -27,7 +27,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | U1 | 实现按 issue 选择的 scoped/patch ContextBuilder | `backend/src/v5/plugins/context-builder.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-merger.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
-| U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、stage runner、repair policy | v5 单测 + 类型检查 | user | - | proposed |
+| U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、prompt compiler、P08R prompt、patch merger、测试 | `bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U4 | 修正确定性选材，保留项目和关键教育信息 | validators、safe renderer、测试 | 计划/渲染单测 | user | - | proposed |
 | U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测 | user | - | proposed |
 | U6 | P01 幂等重传和 Chunk 插件边界 | chunk extraction、plugins、测试 | chunk/并发/重传单测 | user | - | proposed |
@@ -64,6 +64,21 @@
 - Commit message: pending
 - Commit: pending
 - Remaining follow-up: U3 将 P08/P08R 接入 Patch 输出和服务端合并；当前生产流程尚未改变。
+
+### U3
+
+- Objective: 业务门禁修复改走 P08R Patch；P06/P07 结构化输出异常继续保留 P08 全量兼容修复。
+- Files: `backend/src/v5/main/workflow.ts`、`backend/src/v5/prompt-compiler.ts`、`backend/src/v5/prompts.ts`、`backend/src/v5/prompts/P08R.md`、`backend/src/v5/prompts/manifest.json`、`backend/src/v5/schemas.ts`、`backend/src/v5/plugins/patch-merger.ts`、测试。
+- Code changes: 增加 P08R Patch Schema 和 Prompt；P08 repair 使用 issue outputPath 作为授权范围，Patch 合并后执行完整 Artifact 门禁；越权或合并失败保留原 Artifact，后续走安全回退。
+- Regression added or updated: RoutingProvider 支持 P08R；修复路径断言 patch 上下文和安全回退。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/v5`（160 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: 当前只在业务修复路径使用 P08R；P06/P07 解析失败仍走 P08 全量兼容路径。
 
 ## Remaining Items
 
