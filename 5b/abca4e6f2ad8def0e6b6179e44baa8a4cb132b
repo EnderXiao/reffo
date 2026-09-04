@@ -1,0 +1,59 @@
+backend/src/v5/plugins/execution-profile.ts
+  s_e328faee98ba0c::t_f407239c30ac90 6-7,14-16,24-25
+  s_e328faee98ba0c::t_d6a3686c5c09a6 1-5,8-13,17-23,26
+backend/src/v5/types.ts
+  s_e328faee98ba0c::t_bc4916275fc028 2
+backend/src/types/index.ts
+  s_e328faee98ba0c::t_8acf6e4d0b7264 209
+backend/src/v5/tests/chunked-resume-extraction.test.ts
+  s_e328faee98ba0c::t_275a46978a3e9e 20
+backend/src/v5/tests/ab-compatibility.test.ts
+  s_e328faee98ba0c::t_8acf6e4d0b7264 50
+backend/src/providers/llm-provider.ts
+  s_e328faee98ba0c::t_51d65cdce1183f 36-42
+backend/src/v5/stage-runner.ts
+  s_e328faee98ba0c::t_4bb9e90f8b2da3 6,16-17,90-97
+  s_e328faee98ba0c::t_51d65cdce1183f 18-20
+doc/V6提示词设计TODO.md
+  s_e328faee98ba0c::t_028f7b0d7cd87b 3,16,31,105,114,117
+  s_e328faee98ba0c::t_3285de725af604 44,111,116
+backend/src/v5/main/compatibility.ts
+  s_e328faee98ba0c::t_bc4916275fc028 190
+backend/src/routes/mvp.ts
+  s_e328faee98ba0c::t_bc4916275fc028 164
+backend/src/providers/deepseek-provider.ts
+  s_e328faee98ba0c::t_51d65cdce1183f 79-83,153-157
+backend/src/workflows/resume-optimization-workflow.ts
+  s_e328faee98ba0c::t_3269b7098e9d82 3,10-22,63
+backend/src/providers/deepseek-provider.test.ts
+  s_e328faee98ba0c::t_43a80dfa7f74f6 4,39-70
+backend/src/v5/tests/workflow.test.ts
+  s_e328faee98ba0c::t_d72de0384216fb 6,83,94,425-426,429-444
+  s_e328faee98ba0c::t_cbaaf744c27a8d 427-428,445,470
+backend/src/v5/chunked-resume-extraction.ts
+  s_e328faee98ba0c::t_275a46978a3e9e 8
+backend/src/workflows/resume-optimization-workflow.test.ts
+  s_e328faee98ba0c::t_bc4916275fc028 10,69
+backend/src/v5/main/workflow.ts
+  s_e328faee98ba0c::t_8f44f5195df8fe 1264,1336,1349-1351,1366-1382,1387-1406,1410-1420,1431-1438,1454-1457,1474-1481,1506
+  s_e328faee98ba0c::t_d6a3686c5c09a6 40,99,325,335
+  s_e328faee98ba0c::t_3883f65dca8a31 703
+  s_e328faee98ba0c::t_2f9ca8d5e858f3 704,710-734,810,1037
+  s_e328faee98ba0c::t_f407239c30ac90 787,836,909-914
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5babca4e6f2ad8def0e6b6179e44baa8a4cb132b",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
