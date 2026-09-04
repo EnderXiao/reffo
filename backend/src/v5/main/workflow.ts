@@ -35,6 +35,8 @@ import {
   V5PluginExecutionError,
   V5WorkflowPluginRegistry,
 } from '@/v5/plugins/registry'
+import { buildRepairContext } from '@/v5/plugins/context-builder'
+import { defaultV6RepairPolicy, type V6RepairPolicy } from '@/v5/plugins/repair-policy'
 import {
   V5ResumeExtractionCacheError,
   type ResumeExtractionComputeContext,
@@ -91,6 +93,7 @@ export interface V5WorkflowOptions {
   eventBus?: HarnessEventBus
   enableDefaultSubscribers?: boolean
   pluginOverrides?: Partial<Record<V5BuiltinPluginId, V5WorkflowPlugin<unknown, unknown>>>
+  repairPolicy?: V6RepairPolicy
 }
 
 export function calculateResumeExtractionTimeoutMs(remainingMs: number) {
@@ -314,6 +317,7 @@ export class V5ResumeOptimizationWorkflow {
   private readonly resumeExtractionCache?: TrustedResumeExtractionCache
   private readonly eventBus: HarnessEventBus
   private readonly pluginOverrides: V5WorkflowOptions['pluginOverrides']
+  private readonly repairPolicy: V6RepairPolicy
 
   constructor(options: V5WorkflowOptions = {}) {
     this.provider = options.provider
@@ -321,6 +325,7 @@ export class V5ResumeOptimizationWorkflow {
     this.resumeExtractionCache = options.resumeExtractionCache
     this.eventBus = options.eventBus ?? (options.enableDefaultSubscribers === false ? createHarnessEventBus() : createDefaultEventBus())
     this.pluginOverrides = options.pluginOverrides
+    this.repairPolicy = options.repairPolicy ?? defaultV6RepairPolicy
   }
 
   async extractResume(input: V5ResumeExtractionInput): Promise<V5ResumeExtractionResult> {
@@ -1335,13 +1340,32 @@ export class V5ResumeOptimizationWorkflow {
       validationIssues = structuredIssues(error)
     }
 
+    const repairDecision = this.repairPolicy.decide({
+      issues: validationIssues,
+      hasDeterministicFallback: Boolean(input.fallback),
+    })
+    if (repairDecision === 'deterministic_fallback' && input.fallback) {
+      const fallback = input.fallback()
+      const fallbackValidation = input.validate(fallback)
+      if (fallbackValidation.passed) return fallbackValidation.value ?? fallback
+    }
+    if (repairDecision === 'skip') {
+      throw new V5WorkflowBlockedError({
+        code: `${input.component}_VALIDATION_FAILED`,
+        state: input.component === 'P01' || input.component === 'P02' ? 'blocked_input_validation' : 'blocked_fact_validation',
+        message: `${input.component} 修复策略跳过 LLM 调用。`,
+        issues: validationIssues,
+      })
+    }
+
     const repairResult = await runV5StructuredStage<T>({
       component: input.repairComponent,
-      envelope: this.envelope(input.stepContext.runId, {
+      envelope: this.envelope(input.stepContext.runId, buildRepairContext({
+        runId: input.stepContext.runId,
         originalEnvelope: input.envelope,
         currentOutput,
         validationIssues,
-      }),
+      })),
       options: {
         provider: this.provider,
         eventBus: this.eventBus,

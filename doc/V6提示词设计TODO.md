@@ -26,7 +26,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 ## T1. 抽离可复用的 LLM 调用基础设施
 
 - [ ] 抽象统一 `runStructuredStage`：Prompt 编译、Schema、Provider 调用、AbortSignal、超时、Token/延迟记录、解析和错误映射只实现一次。
-- [ ] 抽象统一 `ContextBuilder`：输入文档、证据、旧输出、问题列表、白名单和字段选择按阶段声明，不在 workflow 中重复拼装。
+- [x] 抽象统一 `ContextBuilder`：输入文档、证据、旧输出、问题列表、白名单和字段选择按阶段声明，不在 workflow 中重复拼装。（2026-09-04；首轮 `buildRepairContext`）
 - [ ] 上下文构建支持 `full`、`scoped`、`patch` 三种模式，默认 `scoped` 或 `patch`。
 - [ ] 增加上下文摘要和稳定 digest；相同上下文可缓存，避免重试时重新序列化和重复计算。
 - [ ] 统一结构化输出清理、截断检测、JSON 解析和 Schema 校验；`finish_reason=length` 不进入无效修复循环。
@@ -52,7 +52,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 - [ ] `deterministic_fix` 不触发 LLM；仅 `local_llm_fix` 才允许一次局部修复调用。
 - [ ] 设计统一 Patch Schema：包含操作路径、原值摘要、替换值、关联证据 ID 和操作原因；禁止返回无关完整对象。
 - [ ] 修复上下文只包含失败路径、相关 source block/EvidenceAtom/RequirementAtom、必要父级结构和 validator 规则。
-- [ ] 修复后由服务端合并、全量校验；禁止“修复失败后再次自动调用同一修复器”。
+- [x] 修复后由服务端合并、全量校验；禁止“修复失败后再次自动调用同一修复器”。（2026-09-04；默认修复策略单次调用）
 - [ ] 对不可安全修复的问题直接降级或阻断，不以重复 LLM 调用换取通过率。
 - [ ] P10/P10R 改为可选异步任务；主简历结果不等待面试建议修复。
 - [ ] P08 统一纳入同一修复预算，避免 P06/P07/P09 之间重复修复同一 Artifact。
@@ -98,7 +98,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 
 - [ ] scope 分组、证据归属、bulletBudget、上下限和 policy 约束由服务端计算。
 - [ ] P05R 只发送非法 scopePlan、受影响证据和对应策略约束。
-- [ ] 能生成合法计划时使用确定性计划构建器，不为计划格式错误调用 P05R。
+- [x] 能生成合法计划时使用确定性计划构建器，不为计划格式错误调用 P05R。（2026-09-04；默认 `RepairPolicy` 优先确定性回退）
 
 ### P10/P10R：面试准备
 
