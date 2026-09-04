@@ -21,6 +21,7 @@ import {
 import { assertBusinessEvaluation, publishEvaluationCompleted } from '@/harness/evaluators/evaluation-events'
 import { evaluateMarkdownResume } from '@/harness/evaluators/markdown-resume-evaluator'
 import { runHarnessedRequest, runHarnessedStep } from '@/harness/harnessed-request'
+import { recoveryAdviceForErrorCode } from '@/harness/recovery-advice'
 import { buildQualityGateAttempt, classifyAttemptResult, decideNextAction } from '@/harness/runtime-state'
 import { runStep } from '@/harness/run-step'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
@@ -36,16 +37,25 @@ function getHarnessRunRepository() {
 }
 
 function buildErrorPayload(code: string, fallbackMessage: string, error: unknown): ApiResponse<never>['error'] {
+  const errorCode = error && typeof error === 'object' && 'code' in error && typeof (error as { code?: unknown }).code === 'string'
+    ? (error as { code: string }).code
+    : undefined
+  const details = error instanceof V5WorkflowBlockedError
+    ? {
+        agent_state: error.state,
+        issue_codes: [...new Set(error.issues.map(item => item.code))],
+        retryable: error.state === 'provider_failure',
+      }
+    : getBusinessEvaluationErrorDetails(error)
+  const recoveryAdvice = recoveryAdviceForErrorCode(errorCode)
   return {
     code,
     message: fallbackMessage,
-    details: error instanceof V5WorkflowBlockedError
-      ? {
-          agent_state: error.state,
-          issue_codes: [...new Set(error.issues.map(item => item.code))],
-          retryable: error.state === 'provider_failure',
-        }
-      : getBusinessEvaluationErrorDetails(error),
+    details: {
+      ...(details && typeof details === 'object' && !Array.isArray(details) ? details : {}),
+      ...(errorCode ? { error_code: errorCode } : {}),
+      recovery_advice: recoveryAdvice,
+    },
   }
 }
 

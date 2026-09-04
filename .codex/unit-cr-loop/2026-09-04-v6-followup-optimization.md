@@ -37,6 +37,7 @@
 | U10 | 多进程访问隔离与 Harness 备份工具 | `backend/src/repositories/database.ts`、维护脚本、Git 索引 | 并发进程验证、维护脚本 check/backup、全量 backend、类型检查、diff 检查 | user | `44a057a` | committed |
 | U12 | Dashboard 汇总 Prompt 输入摘要 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
 | U13 | Harness 失败恢复建议 | `backend/src/harness/recovery-advice.ts`、`run-step.ts`、测试、V6 TODO | 恢复建议单测、全量 backend、类型检查、diff 检查 | user | `8c695a6` | committed |
+| U14 | API 错误响应携带恢复建议 | `backend/src/routes/mvp.ts`、V6 TODO | 路由鉴权测试、恢复建议测试、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
 | U11 | Prompt manifest 字段摘要与 Token 观测 | `backend/src/v5/prompt-compiler.ts`、Provider contract、Prompt 测试、V6 TODO | Prompt manifest 单测、全量 backend、类型检查、diff 检查 | user | `888783c` | committed |
 
 ## Unit Logs
@@ -238,15 +239,30 @@
 - Commit: pending
 - Remaining follow-up: 将恢复建议接入 dashboard/API 错误响应，并为真实 canary 汇总恢复动作命中率。
 
+### U14
+
+- Objective: 将统一恢复建议暴露到 MVP API 错误响应，调用方无需读取 Harness 事件即可决定是否重试或缩小输入。
+- Files: `backend/src/routes/mvp.ts`。
+- Code changes: `buildErrorPayload` 提取底层错误码，保留既有业务详情并追加 `error_code` 与 `recovery_advice`；未知错误继续返回安全兜底动作。
+- Regression added or updated: 路由鉴权、恢复建议和全量 backend 测试通过。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/routes/mvp-auth.test.ts ./src/harness/recovery-advice.test.ts`（4 pass）；`bun test`（247 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: 为真实 canary 汇总恢复动作命中率，并推进黄金集/故障注入回归。
+
 ## Remaining Items
 
-- Remaining functional units: none
+- Remaining functional units: U14
 - Cleanup-only units: none
-- Open risks: 恢复建议尚未接入 dashboard/API 错误响应；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: U14 尚未提交；恢复动作命中率尚未接入 dashboard；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U13 已完成
+- Functional commits: U1-U13 已完成；U14 进行中
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。
