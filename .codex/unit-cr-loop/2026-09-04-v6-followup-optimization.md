@@ -31,7 +31,7 @@
 | U4 | 修正确定性选材，保留项目和关键教育信息 | `backend/src/v5/validators.ts`、测试 | `bun test ./src/v5/tests/policy-score-validator.test.ts`、`bun test ./src/v5/tests/workflow.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测、类型检查 | user | `1a24fe8` | committed |
 | U6 | P01 幂等重传和 Chunk 插件边界 | `chunked-resume-extraction.ts`、workflow、测试 | chunk/workflow 单测、类型检查 | user | `80cb15d` | committed |
-| U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | 离线评估 + canary | user | - | proposed |
+| U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | `bun test ./src/repositories/harness-metrics.test.ts`、全量 V5、类型检查、diff 检查 | user | pending | regression_passed |
 
 ## Unit Logs
 
@@ -92,7 +92,7 @@
 - CR findings: pending user review
 - Resolution: pending
 - Commit message: pending
-- Commit: pending
+- Commit: `76a6909`
 - Remaining follow-up: U5 统一 Provider 物理 attempt 预算；当前真实 API 尚未重新验证项目保留效果。
 
 ### U5
@@ -125,15 +125,30 @@
 - Commit: pending
 - Remaining follow-up: U7 指标汇总、黄金集和发布门禁。
 
+### U7
+
+- Objective: 汇总 Harness run/step/attempt/event 指标，区分业务调用、语义门禁、确定性门禁和修复调用，并提供 P95、物理 attempt、成本估算及 V6 发布门禁。
+- Files: `backend/src/repositories/harness-metrics.ts`、`backend/src/repositories/harness-run-repository.ts`、`backend/src/repositories/harness-metrics.test.ts`、`doc/V6后续优化TODO.md`
+- Code changes: 新增纯函数指标聚合器；dashboard 返回兼容旧字段的 `metrics` 和 `releaseGate`；按阶段汇总 P01/P08/P09 等步骤；发布门禁检查最多 8 次逻辑调用、最多 1 次修复、Token 上限、事实安全和 chunk 完整性。
+- Regression added or updated: 覆盖语义/确定性门禁分类、物理 attempt、Token/成本、阶段 P95 和超预算/安全事故拒绝。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/repositories/harness-metrics.test.ts`（2 pass）；`bun test ./src/v5`（162 pass）；`bun test`（243 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: `feat: 增加V6 Harness指标与发布门禁`
+- Commit: pending
+- Remaining follow-up: 黄金集、故障注入和真实 canary 属发布前回归，不在本单元扩展生产 workflow。
+
 ## Remaining Items
 
-- Remaining functional units: U7
+- Remaining functional units: none
 - Cleanup-only units: none
 - Open risks: 当前生产默认仍为 `full`；U1 完成前不切换默认模式。
 
 ## Final Summary
 
-- Functional commits: pending
+- Functional commits: U1-U7 已完成
 - Cleanup commits: none
-- Final validation: pending
-- Deferred items: pending
+- Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Deferred items: 黄金集、故障注入和真实 canary 属发布前回归任务，未扩展本单元生产 workflow。

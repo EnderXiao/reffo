@@ -1,5 +1,13 @@
 import { initializeHarnessDatabase } from '@/repositories/database'
 import { randomUUID } from 'node:crypto'
+import {
+  aggregateHarnessMetrics,
+  evaluateV6ReleaseGate,
+  type HarnessMetricAttempt,
+  type HarnessMetricEvent,
+  type HarnessMetricRun,
+  type HarnessMetricStep,
+} from '@/repositories/harness-metrics'
 
 export class HarnessRunRepository {
   private readonly db = initializeHarnessDatabase()
@@ -69,6 +77,10 @@ export class HarnessRunRepository {
   }
 
   getDashboardMetrics() {
+    const runs = this.db.query('SELECT id, status FROM process_runs').all() as HarnessMetricRun[]
+    const steps = this.db.query('SELECT id, run_id, step_name, started_at, finished_at FROM step_runs').all() as HarnessMetricStep[]
+    const attempts = this.db.query('SELECT id, step_run_id, provider, model, input_tokens, output_tokens, latency_ms, is_repair_attempt FROM step_attempts').all() as HarnessMetricAttempt[]
+    const events = this.db.query('SELECT run_id, step_run_id, attempt_id, type, payload_json FROM harness_events').all() as HarnessMetricEvent[]
     const runStatusCounts = this.db
       .query('SELECT status, COUNT(*) AS count FROM process_runs GROUP BY status ORDER BY status ASC')
       .all()
@@ -115,6 +127,8 @@ export class HarnessRunRepository {
       `)
       .all()
 
+    const metrics = aggregateHarnessMetrics({ runs, steps, attempts, events })
+
     return {
       runStatusCounts,
       stepStatusCounts,
@@ -122,6 +136,8 @@ export class HarnessRunRepository {
       failureSampleCount,
       agentStateCounts,
       promptMetrics,
+      metrics,
+      releaseGate: evaluateV6ReleaseGate(metrics),
     }
   }
 

@@ -93,10 +93,10 @@
 
 ## P3：可观测性和故障定位
 
-- [ ] Provider 事件同时记录调用前预算和调用后预算，避免 `budgetRemaining` 语义歧义。
-- [ ] 每个阶段记录输入/输出 Token、延迟、上下文模式、修复范围、重试次数、物理 attempt 数和成本估算。
-- [ ] 增加 run 级汇总：业务 LLM 调用、语义门禁调用、确定性门禁、修复调用分别统计。
-- [ ] 增加 P01 chunk、P08 repair、P09 judge 的阶段耗时和 Token 分布查询。
+- [x] Provider 事件同时记录调用前预算和调用后预算，避免 `budgetRemaining` 语义歧义。（已有事件字段；指标聚合已接入）
+- [x] 每个阶段记录输入/输出 Token、延迟、上下文模式、修复范围、重试次数、物理 attempt 数和成本估算。（`harness-metrics.ts`）
+- [x] 增加 run 级汇总：业务 LLM 调用、语义门禁调用、确定性门禁、修复调用分别统计。（`/api/v1/mvp/dashboard`）
+- [x] 增加 P01 chunk、P08 repair、P09 judge 的阶段耗时和 Token 分布查询。（dashboard `metrics.stageMetrics`）
 - [ ] 保留 prompt digest 和字段摘要，不记录完整简历、JD、API Key 或完整隐私内容。
 - [ ] 为预算耗尽、上下文超限、Provider 超时和安全回退生成可读错误码及恢复建议。
 
@@ -106,7 +106,7 @@
 - [ ] 每次变更对比成功率、事实事故率、关键 JD 覆盖率、项目保留率、LLM 调用数、Token、P95 和成本。
 - [ ] 增加随机乱序响应、部分 chunk 失败、重复重传、并发预算竞争和进程重启恢复测试。
 - [ ] 增加 P01/P02/P03/P05/P06/P08/P09 的离线 Prompt contract tests，禁止依赖真实 API 才能验证结构约束。
-- [ ] 发布前要求：无新增阻断事实事故、chunk 无乱序/丢块/重复、低成本主链路最多 8 次调用、修复最多 1 次。
+- [x] 发布前要求：无新增阻断事实事故、chunk 无乱序/丢块/重复、低成本主链路最多 8 次调用、修复最多 1 次。（`evaluateV6ReleaseGate`）
 - [ ] 真实 API canary 通过后再切换默认版本；保留 V5 回滚开关和失败样本审计。
 
 ## 建议实施顺序
@@ -124,3 +124,10 @@
 - P08：默认 patch/scoped，上下文不包含完整旧 Artifact；`repairScope` 非空且可审计。
 - P01：合并结果按 canonical source block 顺序 100% 稳定；成功 chunk 不重复调用。
 - 端到端：黄金集成功率、事实安全、项目保留率和 P95 均不劣于 V5；失败可定位、可回放、可回滚。
+
+## U7 落地说明（2026-09-04）
+
+- 新增 `backend/src/repositories/harness-metrics.ts`：纯函数聚合 run/step/attempt/event，计算逻辑调用、语义门禁、修复、重试、物理 attempt、Token、平均延迟、P95 和可配置成本。
+- `HarnessRunRepository.getDashboardMetrics()` 返回 `metrics` 与 `releaseGate`，保留原有字段兼容旧 dashboard。
+- 默认成本按 DeepSeek 公开默认价估算：输入 ¥2/百万 Token、输出 ¥8/百万 Token；调用方可注入其他 Provider 价格。
+- 当前 U7 只落地离线指标和发布门禁计算；黄金集、故障注入和真实 canary 继续作为发布前回归任务，不阻塞指标接口。
