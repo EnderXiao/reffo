@@ -1,0 +1,31 @@
+backend/src/v5/main/workflow.ts
+  s_e328faee98ba0c::t_1badd29c02cf0c 38-39,96,320,328
+  s_e328faee98ba0c::t_4bfc0804d83163 1343-1360,1364
+  s_e328faee98ba0c::t_ccb323dcf315fa 1363,1368
+backend/src/v5/plugins/context-builder.ts
+  s_e328faee98ba0c::t_bb46a3762f7f43 1-43
+doc/V6提示词设计TODO.md
+  s_e328faee98ba0c::t_59591b5c592d99 101
+  s_e328faee98ba0c::t_a1fec7d8b09d1c 29,55
+backend/src/v5/tests/v6-foundation.test.ts
+  s_e328faee98ba0c::t_f9519c22fbaa53 1-23,25,27,29-30,34-37
+  s_e328faee98ba0c::t_6b8a21f40972b7 24,26,28,31-33
+backend/src/v5/plugins/repair-policy.ts
+  s_e328faee98ba0c::t_bb46a3762f7f43 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3ba975c090d9fbd79776f971bfaae2ebc183d1d8",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
