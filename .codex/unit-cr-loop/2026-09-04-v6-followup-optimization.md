@@ -27,7 +27,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | U1 | 实现按 issue 选择的 scoped/patch ContextBuilder | `backend/src/v5/plugins/context-builder.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-merger.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
-| U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、prompt compiler、P08R prompt、patch merger、测试 | `bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
+| U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、prompt compiler、P08R prompt、patch merger、测试 | `bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | `0775d2c` | committed |
 | U4 | 修正确定性选材，保留项目和关键教育信息 | validators、safe renderer、测试 | 计划/渲染单测 | user | - | proposed |
 | U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测 | user | - | proposed |
 | U6 | P01 幂等重传和 Chunk 插件边界 | chunk extraction、plugins、测试 | chunk/并发/重传单测 | user | - | proposed |
@@ -46,8 +46,8 @@
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: pending
-- Commit: pending
+- Commit message: `perf: 将V6业务修复收敛为Patch`
+- Commit: `0775d2c`
 - Remaining follow-up: U2 负责 Patch Schema 和合并；U3 再接入生产 P08。
 
 ### U2
@@ -82,7 +82,7 @@
 
 ## Remaining Items
 
-- Remaining functional units: U1-U7
+- Remaining functional units: U4-U7
 - Cleanup-only units: none
 - Open risks: 当前生产默认仍为 `full`；U1 完成前不切换默认模式。
 
