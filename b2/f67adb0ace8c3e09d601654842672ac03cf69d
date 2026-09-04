@@ -1,0 +1,25 @@
+doc/V6提示词设计TODO.md
+  s_e328faee98ba0c::t_79a1abe8de391e 82
+backend/src/v5/tests/canonical-evidence.test.ts
+  s_e328faee98ba0c::t_6be0a1dc13aea1 184-197
+backend/src/v5/evidence.ts
+  s_e328faee98ba0c::t_06e5785bf76c49 316-338,340-342,344,353
+backend/src/v5/validators.ts
+  s_e328faee98ba0c::t_9b72dd2913d715 38-59,436-437,865,1845
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b2f67adb0ace8c3e09d601654842672ac03cf69d",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
