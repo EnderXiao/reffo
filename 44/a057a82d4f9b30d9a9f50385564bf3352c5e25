@@ -1,0 +1,26 @@
+backend/scripts/harness-database-maintenance.ts
+  s_e328faee98ba0c::t_34263b3fa9c820 1-43,47-52
+  s_e328faee98ba0c::t_3bf0c7a5349ec5 44-46
+backend/src/repositories/database.ts
+  s_e328faee98ba0c::t_c3551564debb2a 1,11-82,130
+.gitignore
+  s_e328faee98ba0c::t_7cd9d5cd632624 9
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_4a951d0c8419ec 37,178-192,195,197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "44a057a82d4f9b30d9a9f50385564bf3352c5e25",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
