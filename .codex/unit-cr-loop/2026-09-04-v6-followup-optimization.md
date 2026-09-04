@@ -35,6 +35,7 @@
 | U8 | Harness SQLite 单写队列与事务持久化 | `backend/src/harness/subscribers/persistence-subscriber.ts`、写队列、测试 | `bun test ./src/harness/subscribers/write-queue.test.ts`、全量 backend、类型检查、diff 检查 | user | `0c12924` | committed |
 | U9 | Harness 数据库健康检查与运行库隔离 | `backend/src/repositories/database.ts`、`backend/src/routes/mvp.ts`、`.gitignore` | 健康接口、全量 backend、类型检查、diff 检查 | user | `958f2b3` | committed |
 | U10 | 多进程访问隔离与 Harness 备份工具 | `backend/src/repositories/database.ts`、维护脚本、Git 索引 | 并发进程验证、维护脚本 check/backup、全量 backend、类型检查、diff 检查 | user | `44a057a` | committed |
+| U11 | Prompt manifest 字段摘要与 Token 观测 | `backend/src/v5/prompt-compiler.ts`、Provider contract、Prompt 测试、V6 TODO | Prompt manifest 单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
 
 ## Unit Logs
 
@@ -190,15 +191,30 @@
 - Commit: `44a057a`
 - Remaining follow-up: 检查线上多实例部署是否为每实例独立 Harness 路径；必要时迁移到共享服务数据库。
 
+### U11
+
+- Objective: 在不记录简历、JD 或 Prompt 原文的前提下，为每次 V5 调用保留可审计的输入字段摘要和字符/Token 计数。
+- Files: `backend/src/v5/prompt-compiler.ts`、`backend/src/providers/llm-provider.ts`、`backend/src/v5/tests/prompt-schema.test.ts`、`doc/V6后续优化TODO.md`。
+- Code changes: 编译 manifest 增加 `inputSummary`，记录 envelope 字节数、Top-level 字段名、消息数量、每条消息字符数和估算输入 Token；DeepSeek Harness 事件沿用 manifest 传递摘要，不携带原文。
+- Regression added or updated: 每个 P01-P12 组件均断言摘要字段稳定、消息计数正确、估算 Token 与编译结果一致。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/v5/tests/prompt-schema.test.ts`（16 pass）；`bun test`（245 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: 将摘要接入 dashboard 聚合，增加上下文超限和预算耗尽错误码恢复建议。
+
 ## Remaining Items
 
-- Remaining functional units: none
+- Remaining functional units: U11
 - Cleanup-only units: none
-- Open risks: 线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: U11 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U10 已完成
+- Functional commits: U1-U10 已完成；U11 进行中
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。

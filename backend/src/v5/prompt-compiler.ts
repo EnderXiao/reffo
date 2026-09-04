@@ -95,7 +95,16 @@ export interface CompiledV5Prompt {
     repairAttempt: number
     promptFileSha256: string
     promptFilePath: string
+    inputSummary: V5PromptInputSummary
   }
+}
+
+export interface V5PromptInputSummary {
+  envelopeBytes: number
+  envelopeTopLevelFields: string[]
+  messageCount: number
+  messageCharacterCounts: number[]
+  estimatedInputTokens: number
 }
 
 function canonicalResumeBlockCount(value: unknown, depth = 0): number | null {
@@ -190,6 +199,11 @@ function estimateTokens(value: string) {
   return Math.ceil(cjk / 1.6 + remaining / 4)
 }
 
+function topLevelFields(value: unknown) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return []
+  return Object.keys(value as Record<string, unknown>).sort()
+}
+
 function calculateMaxOutputTokens(component: V5PromptComponent, envelopeLength: number) {
   const structuralHeadroom = Math.ceil(OUTPUT_TOKEN_BASE[component] * 1.2)
   if (component === 'P01' || component === 'P01R') {
@@ -233,6 +247,13 @@ export function compileV5Prompt(input: {
   const promptFile = loadV5Prompt(input.component)
   const temperature = TEMPERATURES[input.component]
   const estimatedInputTokens = estimateTokens(messages.map(message => message.content).join('\n'))
+  const inputSummary: V5PromptInputSummary = {
+    envelopeBytes: new TextEncoder().encode(serializedEnvelope).byteLength,
+    envelopeTopLevelFields: topLevelFields(input.envelope),
+    messageCount: messages.length,
+    messageCharacterCounts: messages.map(message => message.content.length),
+    estimatedInputTokens,
+  }
   const desiredOutputTokens = calculateMaxOutputTokens(input.component, serializedEnvelope.length)
   const availableOutputTokens = env.V5_CONTEXT_WINDOW_TOKENS - estimatedInputTokens - 2048
   const minimumOutputTokens = Math.min(OUTPUT_TOKEN_BASE[input.component], desiredOutputTokens)
@@ -266,6 +287,7 @@ export function compileV5Prompt(input: {
       repairAttempt: input.repairAttempt ?? 0,
       promptFileSha256: promptFile.sha256,
       promptFilePath: promptFile.filePath,
+      inputSummary,
     },
   }
 }

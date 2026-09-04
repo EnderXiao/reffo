@@ -32,6 +32,13 @@ export interface ChatCompletionInput {
     temperature: number
     inputDocumentIds: string[]
     repairAttempt: number
+    inputSummary?: {
+      envelopeBytes: number
+      envelopeTopLevelFields: string[]
+      messageCount: number
+      messageCharacterCounts: number[]
+      estimatedInputTokens: number
+    }
   }
   callMetadata?: {
     callReason: 'business_stage' | 'validation_repair' | 'network_retry' | 'semantic_gate'
