@@ -1,0 +1,26 @@
+backend/src/v5/tests/workflow.test.ts
+  s_e328faee98ba0c::t_82d2100c628cec 36
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_73397e5a551ec4 31,83-96
+  s_e328faee98ba0c::t_df0a6942f01287 97
+backend/src/v5/tests/policy-score-validator.test.ts
+  s_e328faee98ba0c::t_157f39c5ff1f73 423-452
+backend/src/v5/validators.ts
+  s_e328faee98ba0c::t_157f39c5ff1f73 444-461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "cdc160e6cc20480f745e8f1c61d9b74fcabecb31",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
