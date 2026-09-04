@@ -1,0 +1,45 @@
+backend/src/v5/tests/workflow.test.ts
+  s_e328faee98ba0c::t_3175df2afee066 7,432-447
+  s_e328faee98ba0c::t_0fb97718ba1447 448-449
+backend/src/v5/tests/llm-call-policy.test.ts
+  s_e328faee98ba0c::t_5fb6661402315b 1-88
+backend/src/v5/validators.ts
+  s_e328faee98ba0c::t_68c53465f37b8a 444-449,453-464,472,489-508
+  s_e328faee98ba0c::t_1c226722b05d4d 450-452
+backend/src/v5/plugins/llm-call-policy.ts
+  s_e328faee98ba0c::t_5fb6661402315b 1-131
+backend/src/v5/tests/policy-score-validator.test.ts
+  s_e328faee98ba0c::t_eba3d999636049 373-422
+backend/src/v5/stage-runner.ts
+  s_e328faee98ba0c::t_4233daba617ce2 8,22,84,102-109
+backend/src/v5/plugins/execution-profile.ts
+  s_e328faee98ba0c::t_d4e2e3986f301c 1-2,10,20,30
+backend/src/v5/main/workflow.ts
+  s_e328faee98ba0c::t_78473d5184bd22 374-375,411,440,487-488,1159-1160,1213-1214
+  s_e328faee98ba0c::t_4558f18d3fb329 535,569,611,688,745,800,829,851,880,934,960,975,998,1045,1104
+  s_e328faee98ba0c::t_b918a8f3a17c15 42-44,104,331,342-343
+  s_e328faee98ba0c::t_5587b5975fb925 1249,1263,1285,1304,1377,1393,1500,1534,1546,1591,1642,1670
+  s_e328faee98ba0c::t_cdd0c367599712 1567-1568,1624-1625
+  s_e328faee98ba0c::t_7feafb42687482 348,395,449
+  s_e328faee98ba0c::t_1c226722b05d4d 1438
+  s_e328faee98ba0c::t_d60343dec0c537 41
+doc/V6提示词设计TODO.md
+  s_e328faee98ba0c::t_1c226722b05d4d 15
+  s_e328faee98ba0c::t_01840935b57cad 34,99,112,115,117-118,125,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9fb9d5fdaedb6f995389eea94f9ca5e55c31f769",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
