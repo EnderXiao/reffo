@@ -34,6 +34,7 @@
 | U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | `bun test ./src/repositories/harness-metrics.test.ts`、全量 V5、类型检查、diff 检查 | user | `1c41286` | committed |
 | U8 | Harness SQLite 单写队列与事务持久化 | `backend/src/harness/subscribers/persistence-subscriber.ts`、写队列、测试 | `bun test ./src/harness/subscribers/write-queue.test.ts`、全量 backend、类型检查、diff 检查 | user | `0c12924` | committed |
 | U9 | Harness 数据库健康检查与运行库隔离 | `backend/src/repositories/database.ts`、`backend/src/routes/mvp.ts`、`.gitignore` | 健康接口、全量 backend、类型检查、diff 检查 | user | `958f2b3` | committed |
+| U10 | 多进程访问隔离与 Harness 备份工具 | `backend/src/repositories/database.ts`、维护脚本、Git 索引 | 并发进程验证、维护脚本 check/backup、全量 backend、类型检查、diff 检查 | user | pending | in_progress |
 
 ## Unit Logs
 
@@ -174,11 +175,26 @@
 - Commit: `958f2b3`
 - Remaining follow-up: 将已跟踪的历史 `backend/data/harness.sqlite` 从 Git 索引移除；补多进程访问隔离策略。
 
+### U10
+
+- Objective: 阻止多个 Bun 进程同时打开同一 Harness SQLite，提供安全的离线完整性检查和备份路径，并移除运行库的 Git 跟踪。
+- Files: `backend/src/repositories/database.ts`、`backend/scripts/harness-database-maintenance.ts`、`.gitignore`、`backend/data/harness.sqlite`（移除索引）。
+- Code changes: 增加 `${HARNESS_DATABASE_PATH}.lock` 进程锁，支持存活 PID 检查和陈旧锁回收；第二进程返回 `HARNESS_DATABASE_IN_USE`；新增 maintenance `check`/`backup`，备份使用 `VACUUM INTO`；运行库从 Git 索引移除但保留本地文件。
+- Regression added or updated: 第二进程竞争验证返回降级而非打开数据库；临时数据库 check、backup、备份再 check 全部通过。
+- Regression executor: repo-native backend unit test and local process regression
+- Validation commands: pending
+- Validation artifacts: 临时数据库位于 `/tmp/reffo-*`，未纳入版本库
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: 检查线上多实例部署是否为每实例独立 Harness 路径；必要时迁移到共享服务数据库。
+
 ## Remaining Items
 
-- Remaining functional units: none
+- Remaining functional units: U10
 - Cleanup-only units: none
-- Open risks: 多进程访问隔离、历史数据库脱离 Git 索引、黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: U10 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
