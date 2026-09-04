@@ -1,0 +1,20 @@
+backend/src/v5/main/workflow.ts
+  s_e328faee98ba0c::t_1e88ff19ceef67 1338
+  s_e328faee98ba0c::t_23dc18d2c95a5e 38,97,322,331,1372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4b48cee29838ff96c26e5fd4a94a00fbc774b460",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
