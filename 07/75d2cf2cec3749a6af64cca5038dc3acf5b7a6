@@ -1,0 +1,42 @@
+backend/src/v5/prompts.ts
+  s_e328faee98ba0c::t_2101166139e50e 7
+backend/src/v5/plugins/patch-merger.ts
+  s_e328faee98ba0c::t_4c40524c3aa18c 3
+backend/src/v5/main/workflow.ts
+  s_e328faee98ba0c::t_3ce6ced07760eb 45
+  s_e328faee98ba0c::t_2ae7ddb9f2c42c 1595,1601-1641
+backend/src/v5/tests/workflow.test.ts
+  s_e328faee98ba0c::t_7f1b37457ba57e 35
+  s_e328faee98ba0c::t_f6ecbbce0199a0 178,182-190
+  s_e328faee98ba0c::t_25c6f972b30a7c 179-181,511
+  s_e328faee98ba0c::t_c6af9f965fb628 513
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_73255ab3f870df 30,68-81
+  s_e328faee98ba0c::t_0f6c75e7369051 82
+backend/src/v5/schemas.ts
+  s_e328faee98ba0c::t_8e1866d1f58141 7-21
+backend/src/v5/prompts/manifest.json
+  s_e328faee98ba0c::t_2101166139e50e 10
+backend/src/v5/prompt-compiler.ts
+  s_e328faee98ba0c::t_2101166139e50e 19,44,65,169-170
+backend/src/v5/prompts/P08R.md
+  s_e328faee98ba0c::t_2101166139e50e 1-12
+doc/V6提示词设计TODO.md
+  s_e328faee98ba0c::t_ce7b5915e1690f 14,53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0775d2cf2cec3749a6af64cca5038dc3acf5b7a6",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
