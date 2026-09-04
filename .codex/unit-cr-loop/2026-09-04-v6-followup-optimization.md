@@ -32,6 +32,7 @@
 | U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测、类型检查 | user | `1a24fe8` | committed |
 | U6 | P01 幂等重传和 Chunk 插件边界 | `chunked-resume-extraction.ts`、workflow、测试 | chunk/workflow 单测、类型检查 | user | `80cb15d` | committed |
 | U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | `bun test ./src/repositories/harness-metrics.test.ts`、全量 V5、类型检查、diff 检查 | user | `1c41286` | committed |
+| U8 | Harness SQLite 单写队列与事务持久化 | `backend/src/harness/subscribers/persistence-subscriber.ts`、写队列、测试 | `bun test ./src/harness/subscribers/write-queue.test.ts`、全量 backend、类型检查、diff 检查 | user | `0c12924` | committed |
 
 ## Unit Logs
 
@@ -141,15 +142,31 @@
 - Commit: `1c41286`
 - Remaining follow-up: 黄金集、故障注入和多样本真实 canary 属发布前回归，不在本单元扩展生产 workflow。
 
+### U8
+
+- Objective: 消除多个请求/订阅器并发写 Harness SQLite 时的连接重置竞态，保证事件和状态原子落库。
+- Files: `backend/src/harness/subscribers/persistence-subscriber.ts`、`backend/src/harness/subscribers/write-queue.ts`、测试。
+- Code changes: 所有 PersistenceSubscriber 共享模块级串行写队列；`harness_events` 与对应状态更新放入同一 transaction；失败后只在当前队列任务内重建连接并重试一次，避免任意订阅器直接打断其他写入。
+- Regression added or updated: 覆盖跨订阅器写入顺序和失败后队列释放。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/harness/subscribers/write-queue.test.ts`（2 pass）；`bun test`（245 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Concurrency regression: 8 个 `PersistenceSubscriber` 并发提交 200 个 workflow 事件到临时 SQLite，`PRAGMA integrity_check=ok`，事件/运行记录均为 200 条。
+- Validation artifacts: 临时数据库位于 `/tmp/reffo-persistence.sqlite*`，未纳入版本库
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: `fix: 串行化Harness SQLite持久化`
+- Commit: `0c12924`
+- Remaining follow-up: 多进程访问隔离、数据库健康检查和运行库脱离 Git 跟踪可作为后续运维单元。
+
 ## Remaining Items
 
 - Remaining functional units: none
 - Cleanup-only units: none
-- Open risks: Harness SQLite 历史文件在本地服务并发写入时出现 `SQLITE_CORRUPT`，本轮已恢复干净副本；需单独排查数据库连接/并发持久化稳定性。黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: 多进程访问隔离、数据库健康检查和运行库脱离 Git 跟踪仍待处理。黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U7 已完成
+- Functional commits: U1-U8 已完成
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
-- Deferred items: 黄金集、故障注入和多样本真实 canary 属发布前回归任务，未扩展本单元生产 workflow。
+- Deferred items: 多进程访问隔离、数据库健康检查、运行库脱离 Git 跟踪、黄金集、故障注入和多样本真实 canary 属后续发布前任务。

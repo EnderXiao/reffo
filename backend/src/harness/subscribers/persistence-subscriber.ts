@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { initializeHarnessDatabase, resetHarnessDatabaseConnection } from '@/repositories/database'
 import type { HarnessEvent } from '@/harness/events'
+import { enqueueHarnessWrite } from '@/harness/subscribers/write-queue'
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}
@@ -17,21 +18,38 @@ function asNumber(value: unknown) {
 export class PersistenceSubscriber {
   private db: ReturnType<typeof initializeHarnessDatabase> | null = null
 
-  handle = (event: HarnessEvent) => {
+  handle = (event: HarnessEvent) => enqueueHarnessWrite(async () => {
     try {
-      this.persistEvent(event)
-      this.persistState(event)
+      this.persistAtomically(event)
     } catch (error) {
-      console.error('[PersistenceSubscriber] persist failed', {
-        eventType: event.type,
-        runId: event.runId,
-        stepRunId: event.stepRunId,
-        message: error instanceof Error ? error.message : String(error),
-      })
-
-      resetHarnessDatabaseConnection()
-      this.db = null
+      // Reopen once after an I/O/connection failure. Harness telemetry must not
+      // block the business workflow, but later events should get a fresh handle.
+      this.resetLocalConnection()
+      try {
+        this.persistAtomically(event)
+      } catch (retryError) {
+        console.error('[PersistenceSubscriber] persist failed', {
+          eventType: event.type,
+          runId: event.runId,
+          stepRunId: event.stepRunId,
+          message: retryError instanceof Error ? retryError.message : String(retryError),
+        })
+        this.resetLocalConnection()
+      }
     }
+  })
+
+  private persistAtomically(event: HarnessEvent) {
+    const db = this.getDb()
+    db.transaction(() => {
+      this.persistEvent(event, db)
+      this.persistState(event, db)
+    })()
+  }
+
+  private resetLocalConnection() {
+    resetHarnessDatabaseConnection()
+    this.db = null
   }
 
   private getDb() {
@@ -42,8 +60,8 @@ export class PersistenceSubscriber {
     return this.db
   }
 
-  private persistEvent(event: HarnessEvent) {
-    this.getDb()
+  private persistEvent(event: HarnessEvent, db: ReturnType<typeof initializeHarnessDatabase>) {
+    db
       .query(
         `
           INSERT OR IGNORE INTO harness_events (
@@ -72,9 +90,8 @@ export class PersistenceSubscriber {
       )
   }
 
-  private persistState(event: HarnessEvent) {
+  private persistState(event: HarnessEvent, db: ReturnType<typeof initializeHarnessDatabase>) {
     const payload = asRecord(event.payload)
-    const db = this.getDb()
 
     switch (event.type) {
       case 'workflow.started':
@@ -250,7 +267,7 @@ export class PersistenceSubscriber {
           )
         return
       case 'output.parsed':
-        this.persistArtifact(event)
+        this.persistArtifact(event, db)
         return
       case 'output.validated':
         db
@@ -277,17 +294,16 @@ export class PersistenceSubscriber {
           )
         return
       case 'evaluation.completed':
-        this.persistEvaluation(event)
+        this.persistEvaluation(event, db)
         return
       default:
         return
     }
   }
 
-  private persistArtifact(event: HarnessEvent) {
+  private persistArtifact(event: HarnessEvent, db: ReturnType<typeof initializeHarnessDatabase>) {
     const payload = asRecord(event.payload)
     const artifactId = randomUUID()
-    const db = this.getDb()
 
     db
       .query(
@@ -324,9 +340,8 @@ export class PersistenceSubscriber {
     }
   }
 
-  private persistEvaluation(event: HarnessEvent) {
+  private persistEvaluation(event: HarnessEvent, db: ReturnType<typeof initializeHarnessDatabase>) {
     const payload = asRecord(event.payload)
-    const db = this.getDb()
 
     db
       .query(
