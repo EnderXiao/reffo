@@ -98,7 +98,7 @@
 - [x] 增加 run 级汇总：业务 LLM 调用、语义门禁调用、确定性门禁、修复调用分别统计。（`/api/v1/mvp/dashboard`）
 - [x] 增加 P01 chunk、P08 repair、P09 judge 的阶段耗时和 Token 分布查询。（dashboard `metrics.stageMetrics`）
 - [x] 保留 prompt digest 和字段摘要，不记录完整简历、JD、API Key 或完整隐私内容。（P01-P12 manifest 记录摘要字段、字符计数和 Top-level 字段，不落原文）
-- [ ] 为预算耗尽、上下文超限、Provider 超时和安全回退生成可读错误码及恢复建议。
+- [x] 为预算耗尽、上下文超限、Provider 超时和安全回退生成可读错误码及恢复建议。（Harness step/attempt 失败事件携带 `recoveryAdvice`）
 
 ## P4：回归和发布门禁
 
