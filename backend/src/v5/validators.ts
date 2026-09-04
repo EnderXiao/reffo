@@ -441,6 +441,24 @@ export function buildDeterministicV5ResumePlan(input: {
     chosen.add(atom.evidenceId)
   }
 
+  // Preserve one legal project/research evidence when policy permits projects.
+  // This prevents the business lower-bound and skills from consuming every slot.
+  if (input.policy.hardProjectMax > 0 && chosen.size < contentLimit) {
+    const projectEvidence = eligibleBusiness.find(atom => {
+      const scope = timeline.get(atom.sourceScopeId)
+      return scope?.kind === 'project' || scope?.kind === 'research'
+    })
+    if (projectEvidence) chosen.add(projectEvidence.evidenceId)
+  }
+
+  // Keep one education atom before optional skills/ancillary evidence.
+  if (chosen.size < contentLimit) {
+    const educationEvidence = input.resume.evidenceAtoms.find(atom => (
+      atom.claimType === 'education' && Boolean(safeAtom(atom.evidenceId))
+    ))
+    if (educationEvidence) chosen.add(educationEvidence.evidenceId)
+  }
+
   const matchedEvidenceIds = new Set(input.match.requirementMatches
     .filter(item => item.status === 'direct_match' || item.status === 'transferable_match')
     .flatMap(item => item.evidenceIds))

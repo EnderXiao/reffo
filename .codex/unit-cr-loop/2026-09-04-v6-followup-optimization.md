@@ -28,7 +28,7 @@
 | U1 | 实现按 issue 选择的 scoped/patch ContextBuilder | `backend/src/v5/plugins/context-builder.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-merger.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、prompt compiler、P08R prompt、patch merger、测试 | `bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | `0775d2c` | committed |
-| U4 | 修正确定性选材，保留项目和关键教育信息 | validators、safe renderer、测试 | 计划/渲染单测 | user | - | proposed |
+| U4 | 修正确定性选材，保留项目和关键教育信息 | `backend/src/v5/validators.ts`、测试 | `bun test ./src/v5/tests/policy-score-validator.test.ts`、`bun test ./src/v5/tests/workflow.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测 | user | - | proposed |
 | U6 | P01 幂等重传和 Chunk 插件边界 | chunk extraction、plugins、测试 | chunk/并发/重传单测 | user | - | proposed |
 | U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | 离线评估 + canary | user | - | proposed |
@@ -79,6 +79,21 @@
 - Commit message: pending
 - Commit: pending
 - Remaining follow-up: 当前只在业务修复路径使用 P08R；P06/P07 解析失败仍走 P08 全量兼容路径。
+
+### U4
+
+- Objective: 确定性计划满足业务下限后，保留合法项目/研究槽位，并优先保留一条教育证据，减少成功结果内容过短或项目缺失。
+- Files: `backend/src/v5/validators.ts`、`backend/src/v5/tests/policy-score-validator.test.ts`、`backend/src/v5/tests/workflow.test.ts`
+- Code changes: 计划先选择一个合法 project/research 证据，再补一条 education 证据，之后选择技能和其他辅助证据；不突破总列表项与项目硬上限。
+- Regression added or updated: 新增项目槽位测试；保留原有技能/教育和安全回退测试。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/v5/tests/policy-score-validator.test.ts`（33 pass）；`bun test ./src/v5/tests/workflow.test.ts`（15 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: U5 统一 Provider 物理 attempt 预算；当前真实 API 尚未重新验证项目保留效果。
 
 ## Remaining Items
 

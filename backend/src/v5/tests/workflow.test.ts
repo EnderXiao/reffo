@@ -33,6 +33,7 @@ interface TestEnvelopePayload {
   artifact?: GeneratedResumeArtifact
   evidenceAtoms?: EvidenceAtom[]
   validationIssues?: Array<{ outputPath?: string | null; evidenceIds?: string[] }>
+  relatedRecords?: unknown[]
   canonicalJobDocument?: CanonicalSourceDocument
 }
 

@@ -420,6 +420,36 @@ describe('v5 adaptive policy, scoring and gates', () => {
     expect(artifact.markdown).toContain('## 专业技能')
   })
 
+  test('reserves a project slot after satisfying the business lower bound', () => {
+    const fixture = setupPlan()
+    const resume = structuredClone(fixture.resume)
+    const projectEvidence = {
+      ...structuredClone(fixture.deliverable),
+      evidenceId: 'ev_project',
+      sourceScopeId: 'project_1',
+      sourceBlockId: fixture.deliverable.sourceBlockId,
+      verbatimText: '使用 React 完成在线播放器项目',
+      normalizedClaim: '使用 React 完成在线播放器项目',
+      claimType: 'deliverable' as const,
+    }
+    resume.evidenceAtoms.push(projectEvidence)
+    resume.timeline.push({
+      scopeId: 'project_1', kind: 'project', organization: '个人项目', title: '在线播放器',
+      start: '2023', end: '2023', evidenceIds: [projectEvidence.evidenceId],
+    })
+    const strategy = buildAdaptiveStrategy({ resume, job: fixture.job, match: fixture.match })
+    const plan = buildDeterministicV5ResumePlan({
+      resume, job: fixture.job, match: fixture.match, policy: strategy.policy, profile: strategy.profile,
+    })
+    const projectPlan = plan.scopePlans.find(item => item.scopeId === 'project_1')
+
+    expect(projectPlan).toMatchObject({ treatment: 'include', bulletBudget: 1 })
+    expect(projectPlan?.selectedEvidenceIds).toContain(projectEvidence.evidenceId)
+    expect(validateV5ResumePlan({
+      resume, job: fixture.job, match: fixture.match, plan, policy: strategy.policy, profile: strategy.profile,
+    }).passed).toBe(true)
+  })
+
   test('normalizes unambiguous artifact claim markers, unsupported headings and render stats', () => {
     const fixture = setupPlan()
     const artifact = renderSourcePreservingArtifact({ resume: fixture.resume, plan: fixture.plan })
