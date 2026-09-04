@@ -1,0 +1,29 @@
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_daa4c34c445d00 35,157-158,165,169,172
+  s_e328faee98ba0c::t_25f0bbcd4dc4e5 145-151,155-156,159-160
+  s_e328faee98ba0c::t_3966bc5c8f9c9e 152-154
+backend/src/harness/subscribers/write-queue.test.ts
+  s_e328faee98ba0c::t_985deed65329e9 1-30
+backend/src/harness/subscribers/write-queue.ts
+  s_e328faee98ba0c::t_9fcb7af9d1c6cc 1-12
+backend/src/harness/subscribers/persistence-subscriber.ts
+  s_e328faee98ba0c::t_70bf313ee119c2 41
+  s_e328faee98ba0c::t_69bb1309320dbc 40
+  s_e328faee98ba0c::t_4f8324f0f8a723 4,21,23,25-38,42-52,63-64,93,270,297,304,343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d45e77c7faaf7e5f2a931d68cffe2cf8061a6cb4",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
