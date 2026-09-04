@@ -1,0 +1,32 @@
+backend/src/v5/tests/chunked-resume-extraction.test.ts
+  s_e328faee98ba0c::t_7399fa19bcbdae 134-138
+backend/src/v5/main/workflow.ts
+  s_e328faee98ba0c::t_8291d4f3405a59 12
+  s_e328faee98ba0c::t_de5d2713ce4071 105-126
+  s_e328faee98ba0c::t_8212e6e1c3b708 1226-1229,1232-1283,1285-1292
+backend/src/v5/chunked-resume-extraction.ts
+  s_e328faee98ba0c::t_9bd91c08af725d 26-29,293-295,522-537,539-570,573-578
+  s_e328faee98ba0c::t_4e1a33efca0acc 5
+backend/src/v5/tests/canonical-evidence.test.ts
+  s_e328faee98ba0c::t_ec776bfc1a6e12 31-53
+doc/V6提示词设计TODO.md
+  s_e328faee98ba0c::t_95a3ce2358b099 7-8,36-47,73-74,118-121
+  s_e328faee98ba0c::t_3996fe4838f1da 1-6,9-35,48-63,65,69-70,72,75-117,122-148
+  s_e328faee98ba0c::t_7127699cc782b7 64,66-68,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b7da51a4dab91a770219963a8c28fa357b0c19e8",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
