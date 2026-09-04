@@ -131,6 +131,7 @@ export class DeepSeekProvider implements LlmProvider {
       finishReason: response.choices[0]?.finish_reason,
       inputTokens: response.usage?.prompt_tokens,
       outputTokens: response.usage?.completion_tokens,
+      physicalAttempts: 1,
     }
 
     if (input.eventBus && input.stepContext) {
@@ -149,6 +150,7 @@ export class DeepSeekProvider implements LlmProvider {
             finishReason: result.finishReason,
             inputTokens: result.inputTokens,
             outputTokens: result.outputTokens,
+            physicalAttempts: result.physicalAttempts,
             outputDigest: createDigest(result.content),
             callReason: input.callMetadata?.callReason,
             contextMode: input.callMetadata?.contextMode,

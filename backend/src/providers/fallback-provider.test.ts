@@ -79,6 +79,22 @@ describe('FallbackLlmProvider transient retry', () => {
     })
   })
 
+  test('limits fallback model attempts when the caller supplies a physical model bound', async () => {
+    let callCount = 0
+    const provider: LlmProvider = {
+      complete: async () => {
+        callCount += 1
+        throw new Error('invalid api key')
+      },
+    }
+    const fallback = new FallbackLlmProvider(provider)
+    const input = createStepInput(new FakeHarnessEventBus())
+    input.model = 'primary'
+    input.maxProviderModels = 1
+    await expect(fallback.complete(input)).rejects.toThrow('invalid api key')
+    expect(callCount).toBe(1)
+  })
+
   test('stops immediately when the caller signal aborts during a provider failure', async () => {
     const eventBus = new FakeHarnessEventBus()
     const controller = new AbortController()

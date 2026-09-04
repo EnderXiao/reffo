@@ -29,7 +29,7 @@
 | U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-merger.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、prompt compiler、P08R prompt、patch merger、测试 | `bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | `0775d2c` | committed |
 | U4 | 修正确定性选材，保留项目和关键教育信息 | `backend/src/v5/validators.ts`、测试 | `bun test ./src/v5/tests/policy-score-validator.test.ts`、`bun test ./src/v5/tests/workflow.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
-| U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测 | user | - | proposed |
+| U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测、类型检查 | user | - | regression_passed |
 | U6 | P01 幂等重传和 Chunk 插件边界 | chunk extraction、plugins、测试 | chunk/并发/重传单测 | user | - | proposed |
 | U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | 离线评估 + canary | user | - | proposed |
 
@@ -94,6 +94,21 @@
 - Commit message: pending
 - Commit: pending
 - Remaining follow-up: U5 统一 Provider 物理 attempt 预算；当前真实 API 尚未重新验证项目保留效果。
+
+### U5
+
+- Objective: 限制 V6 隐藏 fallback 模型调用，并记录实际物理 attempt 数。
+- Files: `backend/src/providers/llm-provider.ts`、`fallback-provider.ts`、`deepseek-provider.ts`、`v5/plugins/llm-call-policy.ts`、相关测试。
+- Code changes: `FallbackLlmProvider` 支持 `maxProviderModels`；V6 policy 强制单模型、单次物理尝试；Provider 结果和预算快照记录 `physicalAttempts/physicalCalls`。
+- Regression added or updated: fallback 模型上限、预算物理调用和 DeepSeek Harness 事件测试。
+- Regression executor: repo-native backend unit test
+- Validation commands: provider/policy 单测（10 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: U6 实现 P01 幂等重传和 Chunk 插件边界。
 
 ## Remaining Items
 

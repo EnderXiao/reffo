@@ -11,6 +11,7 @@ export interface V6LlmCallBudgetSnapshot {
   repairCalls: number
   committedTokens: number
   pendingTokens: number
+  physicalCalls: number
   remainingCalls: number
   remainingRepairCalls: number
   remainingTokens: number
@@ -50,6 +51,7 @@ export class BoundedV6LlmCallPolicy implements V6LlmCallPolicy {
   private repairCalls = 0
   private committedTokens = 0
   private pendingTokens = 0
+  private physicalCalls = 0
 
   constructor(private readonly limits: V6LlmCallBudgetLimits) {
     requireBudgetInteger(limits.maxCalls, 'maxCalls')
@@ -67,6 +69,7 @@ export class BoundedV6LlmCallPolicy implements V6LlmCallPolicy {
       const result = await input.provider.complete({
         ...input.request,
         maxProviderAttempts: 1,
+        maxProviderModels: 1,
         callMetadata: {
           callReason: input.request.callMetadata?.callReason ?? 'business_stage',
           contextMode: input.request.callMetadata?.contextMode ?? 'scoped',
@@ -89,6 +92,7 @@ export class BoundedV6LlmCallPolicy implements V6LlmCallPolicy {
       repairCalls: this.repairCalls,
       committedTokens: this.committedTokens,
       pendingTokens: this.pendingTokens,
+      physicalCalls: this.physicalCalls,
       remainingCalls: Math.max(0, this.limits.maxCalls - this.calls),
       remainingRepairCalls: Math.max(0, this.limits.maxRepairCalls - this.repairCalls),
       remainingTokens: Math.max(0, this.limits.maxTotalTokens - this.committedTokens - this.pendingTokens),
@@ -126,6 +130,6 @@ export class BoundedV6LlmCallPolicy implements V6LlmCallPolicy {
     this.committedTokens += result?.inputTokens !== undefined && result.outputTokens !== undefined
       ? result.inputTokens + result.outputTokens
       : reservation.estimatedTokens
+    this.physicalCalls += result?.physicalAttempts ?? 1
   }
 }
-

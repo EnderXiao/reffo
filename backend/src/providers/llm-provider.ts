@@ -41,6 +41,7 @@ export interface ChatCompletionInput {
     budgetRemaining: number | null
   }
   maxProviderAttempts?: number
+  maxProviderModels?: number
   eventBus?: HarnessEventBus
   stepContext?: StepExecutionContext
 }
@@ -54,6 +55,7 @@ export interface ChatCompletionResult {
   finishReason?: string | null
   inputTokens?: number
   outputTokens?: number
+  physicalAttempts?: number
 }
 
 export interface LlmProvider {

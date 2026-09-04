@@ -14,10 +14,10 @@ const providerResult: ChatCompletionResult = {
   outputTokens: 20,
 }
 
-function provider(onCall?: (maxProviderAttempts: number | undefined, budgetRemaining: number | null | undefined) => void): LlmProvider {
+function provider(onCall?: (maxProviderAttempts: number | undefined, maxProviderModels: number | undefined, budgetRemaining: number | null | undefined) => void): LlmProvider {
   return {
     complete: async input => {
-      onCall?.(input.maxProviderAttempts, input.callMetadata?.budgetRemaining)
+      onCall?.(input.maxProviderAttempts, input.maxProviderModels, input.callMetadata?.budgetRemaining)
       return providerResult
     },
   }
@@ -26,19 +26,20 @@ function provider(onCall?: (maxProviderAttempts: number | undefined, budgetRemai
 describe('V6 LLM call policy', () => {
   test('records actual usage and exposes remaining call budget to Harness metadata', async () => {
     const policy = new BoundedV6LlmCallPolicy({ maxCalls: 2, maxRepairCalls: 1, maxTotalTokens: 2_000 })
-    let received: [number | undefined, number | null | undefined] | undefined
+    let received: [number | undefined, number | undefined, number | null | undefined] | undefined
     await policy.execute({
-      provider: provider((attempts, remaining) => { received = [attempts, remaining] }),
+      provider: provider((attempts, models, remaining) => { received = [attempts, models, remaining] }),
       request: { messages: [{ role: 'user', content: 'hello' }], maxOutputTokens: 100 },
       estimatedInputTokens: 100,
     })
 
-    expect(received).toEqual([1, 1])
+    expect(received).toEqual([1, 1, 1])
     expect(policy.snapshot()).toMatchObject({
       calls: 1,
       committedTokens: 120,
       pendingTokens: 0,
       remainingCalls: 1,
+      physicalCalls: 1,
     })
   })
 

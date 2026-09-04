@@ -31,6 +31,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 - [x] P01 使用稳定 digest 的进程内可信缓存；同一简历切换 JD 时复用已验证提取结果。（2026-09-04）
 - [ ] 统一结构化输出清理、截断检测、JSON 解析和 Schema 校验；`finish_reason=length` 不进入无效修复循环。
 - [ ] 统一 Provider 重试策略：取消不重试；网络/限流按预算进行有限重试；避免 SDK 重试与业务重试叠加。
+- [x] V6 调用策略限制 fallback 模型和同模型物理重试为单次，并在结果/Harness 中记录 `physicalAttempts`。（2026-09-04）
 - [x] 增加可替换调用预算器：并发调用先预留额度，响应后以实际 Token 结算；低成本配置限制 8 次调用、1 次修复和 120,000 Token。（2026-09-04）
 
 ## T1.1 基于现有 Plugin Framework 重构
