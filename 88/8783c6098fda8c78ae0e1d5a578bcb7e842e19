@@ -1,0 +1,28 @@
+doc/V6后续优化TODO.md
+  s_e328faee98ba0c::t_c9195f62c45a75 100
+backend/src/providers/llm-provider.ts
+  s_e328faee98ba0c::t_f81261477b68ef 35-41
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_c9195f62c45a75 38,194-208,211,213,217
+backend/src/v5/prompt-compiler.ts
+  s_e328faee98ba0c::t_f81261477b68ef 98,102-109,202-206,250,252-256,290
+  s_e328faee98ba0c::t_7d1044cdda39b1 251
+backend/src/v5/tests/prompt-schema.test.ts
+  s_e328faee98ba0c::t_f81261477b68ef 19-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "888783c6098fda8c78ae0e1d5a578bcb7e842e19",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
