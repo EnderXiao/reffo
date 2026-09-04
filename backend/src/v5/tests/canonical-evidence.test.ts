@@ -28,6 +28,29 @@ describe('v5 canonical source and atomic evidence', () => {
     expect(merged.factCandidates.at(-1)?.factLocalId).toStartWith('c02_')
   })
 
+  test('merges out-of-order chunk responses by canonical source block order', () => {
+    const { candidate } = createResumeFixture()
+    const subset = (sourceBlockIds: string[]) => {
+      const result = structuredClone(candidate)
+      result.factCandidates = result.factCandidates.filter(item => sourceBlockIds.includes(item.sourceBlockId))
+      result.coverageClaim = { mappedSourceBlockIds: sourceBlockIds, unmappedSourceBlockIds: [] }
+      result.identityCandidates = []
+      result.timelineCandidates = []
+      result.sectionCandidates = []
+      return result
+    }
+
+    const merged = mergeResumeExtractionCandidates([
+      subset(['B0003', 'B0004']),
+      subset(['B0001', 'B0002']),
+    ])
+
+    expect(merged.factCandidates.map(item => item.sourceBlockId))
+      .toEqual(['B0001', 'B0002', 'B0003', 'B0004'])
+    expect(merged.coverageClaim.mappedSourceBlockIds)
+      .toEqual(['B0001', 'B0002', 'B0003', 'B0004'])
+  })
+
   test('keeps a server-owned scope stable when normalizing and merging output shards', () => {
     const { document, candidate } = createResumeFixture()
     const serverScopeLocalId = 'srv_scope_test_B0002'

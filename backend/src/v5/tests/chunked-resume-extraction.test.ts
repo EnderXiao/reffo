@@ -131,6 +131,11 @@ describe('v5 resume extraction chunk boundaries', () => {
     const chunkedIds = chunks.flatMap(chunk => chunk.blocks.map(block => block.sourceBlockId))
     expect(chunkedIds).toEqual(document.blocks.map(block => block.sourceBlockId))
     expect(new Set(chunkedIds).size).toBe(document.blocks.length)
+    expect(chunks.map(chunk => chunk.chunkIndex)).toEqual(chunks.map((__, index) => index))
+    expect(chunks.every(chunk => (
+      chunk.sourceOrderStart === chunk.blocks[0]?.canonicalStart
+      && chunk.sourceOrderEnd === chunk.blocks.at(-1)?.canonicalEnd
+    ))).toBe(true)
   })
 
   test('rejects an invalid block target instead of entering a non-terminating split loop', () => {

@@ -9,6 +9,7 @@ import type { LlmProvider } from '@/providers/llm-provider'
 import { canonicalizeSourceDocument } from '@/v5/canonical-source'
 import {
   DEFAULT_RESUME_EXTRACTION_CONCURRENCY,
+  DEFAULT_RESUME_EXTRACTION_CHUNK_RETRY_ATTEMPTS,
   mergeResumeExtractionCandidates,
   normalizeResumeExtractionChunkCandidate,
   ResumeExtractionChunkCapacityError,
@@ -99,6 +100,28 @@ export function calculateResumeExtractionTimeoutMs(remainingMs: number) {
     600000,
     Math.max(300000, Math.floor(safeRemainingMs * 0.7))
   )
+}
+
+function isRetryableResumeChunkError(error: unknown) {
+  if (error instanceof V5StructuredOutputError || error instanceof V5PromptBudgetError) return false
+  if (!(error instanceof Error)) return false
+  const message = error.message.toLowerCase()
+  return [
+    'timeout',
+    'timed out',
+    'fetch failed',
+    'network',
+    'econnreset',
+    'etimedout',
+    'eai_again',
+    'rate limit',
+    'too many requests',
+    'temporarily',
+    'http_408',
+    'http_409',
+    'http_429',
+    'http_5',
+  ].some(pattern => message.includes(pattern))
 }
 
 export type V5BuiltinPluginId =
@@ -1200,22 +1223,73 @@ export class V5ResumeOptimizationWorkflow {
     runId: string
     stepContext: StepExecutionContext
   }) {
-    const extracted: ResumeExtractionCandidate[] = []
+    const extracted: Array<{
+      chunk: ReturnType<typeof splitResumeDocument>[number]
+      candidate: ResumeExtractionCandidate
+    }> = []
     for (let index = 0; index < input.chunks.length; index += input.extractionConcurrency) {
       const batch = input.chunks.slice(index, index + input.extractionConcurrency)
-      extracted.push(...await Promise.all(batch.map(chunk => this.runRepairableStage<ResumeExtractionCandidate>({
-        component: 'P01',
-        repairComponent: 'P01R',
-        envelope: this.envelope(input.runId, { canonicalSourceDocument: chunk }),
-        stepContext: input.stepContext,
-        documentIds: [chunk.documentId],
-        validate: value => validateResumeExtractionCandidate(
-          chunk,
-          normalizeResumeExtractionChunkCandidate(chunk, value)
-        ),
-      }))))
+      const batchResults = await Promise.all(batch.map(async chunk => {
+        let retryIndex = 0
+        while (true) {
+          try {
+            const candidate = await this.runRepairableStage<ResumeExtractionCandidate>({
+              component: 'P01',
+              repairComponent: 'P01R',
+              envelope: this.envelope(input.runId, { canonicalSourceDocument: chunk }),
+              stepContext: input.stepContext,
+              documentIds: [chunk.documentId],
+              validate: value => validateResumeExtractionCandidate(
+                chunk,
+                normalizeResumeExtractionChunkCandidate(chunk, value)
+              ),
+            })
+            return { chunk, candidate }
+          } catch (error) {
+            if (
+              retryIndex >= DEFAULT_RESUME_EXTRACTION_CHUNK_RETRY_ATTEMPTS
+              || input.stepContext.signal?.aborted
+              || !isRetryableResumeChunkError(error)
+            ) throw error
+            retryIndex += 1
+            const payload = {
+              triggerStep: input.stepContext.stepName,
+              action: 'retry_resume_chunk',
+              chunkIndex: chunk.chunkIndex ?? index,
+              chunkDocumentId: chunk.documentId,
+              retryIndex,
+              maxRetries: DEFAULT_RESUME_EXTRACTION_CHUNK_RETRY_ATTEMPTS,
+              reason: error instanceof Error ? error.message : String(error),
+            }
+            await this.eventBus.publish(createHarnessEvent({
+              type: 'recovery.planned',
+              runId: input.stepContext.runId,
+              requestId: input.stepContext.requestId,
+              stepRunId: input.stepContext.stepRunId,
+              attemptId: input.stepContext.attemptId,
+              payload,
+            }))
+            await this.eventBus.publish(createHarnessEvent({
+              type: 'recovery.started',
+              runId: input.stepContext.runId,
+              requestId: input.stepContext.requestId,
+              stepRunId: input.stepContext.stepRunId,
+              attemptId: input.stepContext.attemptId,
+              payload,
+            }))
+          }
+        }
+      }))
+      extracted.push(...batchResults)
     }
-    const merged = extracted.length === 1 ? extracted[0] : mergeResumeExtractionCandidates(extracted)
+    const ordered = extracted
+      .sort((left, right) => (
+        (left.chunk.chunkIndex ?? Number.MAX_SAFE_INTEGER) - (right.chunk.chunkIndex ?? Number.MAX_SAFE_INTEGER)
+        || (left.chunk.sourceOrderStart ?? Number.MAX_SAFE_INTEGER) - (right.chunk.sourceOrderStart ?? Number.MAX_SAFE_INTEGER)
+        || left.chunk.documentId.localeCompare(right.chunk.documentId)
+      ))
+      .map(item => item.candidate)
+    const merged = ordered.length === 1 ? ordered[0] : mergeResumeExtractionCandidates(ordered)
     const mergedValidation = validateResumeExtractionCandidate(input.document, merged)
     if (!mergedValidation.passed) {
       throw new V5WorkflowBlockedError({

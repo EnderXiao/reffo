@@ -2,6 +2,7 @@ import type { CanonicalSourceDocument, ResumeExtractionCandidate } from '@/v5/ty
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 
 export const DEFAULT_RESUME_EXTRACTION_CONCURRENCY = 2
+export const DEFAULT_RESUME_EXTRACTION_CHUNK_RETRY_ATTEMPTS = 1
 // Block count is a packing target. A single indivisible experience scope may
 // exceed it only while staying inside the hard character/output-cost limits.
 export const DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS = 16
@@ -22,6 +23,10 @@ export interface ResumeExtractionScopeAssignment {
 }
 
 export interface ResumeExtractionChunk extends CanonicalSourceDocument {
+  /** Stable metadata used to merge concurrent responses deterministically. */
+  chunkIndex?: number
+  sourceOrderStart?: number
+  sourceOrderEnd?: number
   /** Present only when one logical scope needs multiple bounded output shards. */
   extractionScopeContext?: ResumeExtractionScopeContext
   /** Server-owned business-scope membership for target blocks. */
@@ -285,6 +290,9 @@ export function splitResumeDocument(
       ...document,
       documentId: `${document.documentId}:chunk:${chunks.length + 1}`,
       blocks,
+      chunkIndex: chunks.length,
+      sourceOrderStart: blocks[0]?.canonicalStart,
+      sourceOrderEnd: blocks.at(-1)?.canonicalEnd,
       ...(extractionScopeContext ? { extractionScopeContext } : {}),
       ...(extractionScopeAssignments.length > 0 ? { extractionScopeAssignments } : {}),
     })
@@ -511,18 +519,63 @@ function namespaceCandidate(candidate: ResumeExtractionCandidate, chunkIndex: nu
 }
 
 export function mergeResumeExtractionCandidates(candidates: ResumeExtractionCandidate[]): ResumeExtractionCandidate {
-  const namespaced = candidates.map(namespaceCandidate)
+  const sourceBlockOrder = (sourceBlockId: string) => {
+    const match = sourceBlockId.match(/^(?:B|block[_-]?)(\d+)$/i)
+    return match ? Number(match[1]) : Number.POSITIVE_INFINITY
+  }
+  const firstSourceBlockOrder = (candidate: ResumeExtractionCandidate) => {
+    const ids = candidate.factCandidates.map(item => sourceBlockOrder(item.sourceBlockId))
+    return ids.length > 0 ? Math.min(...ids) : Number.POSITIVE_INFINITY
+  }
+  const orderedCandidates = candidates
+    .map((candidate, inputIndex) => ({ candidate, inputIndex }))
+    .sort((left, right) => (
+      firstSourceBlockOrder(left.candidate) - firstSourceBlockOrder(right.candidate)
+      || left.inputIndex - right.inputIndex
+    ))
+    .map(item => item.candidate)
+  const namespaced = orderedCandidates.map(namespaceCandidate)
   const unique = <T>(values: T[]) => [...new Set(values)]
-  const mapped = unique(namespaced.flatMap(item => item.coverageClaim.mappedSourceBlockIds))
-  const unmapped = unique(namespaced.flatMap(item => item.coverageClaim.unmappedSourceBlockIds)).filter(id => !mapped.includes(id))
+  const sortSourceBlockIds = (ids: string[]) => unique(ids).sort((left, right) => (
+    sourceBlockOrder(left) - sourceBlockOrder(right) || left.localeCompare(right)
+  ))
+  const mapped = sortSourceBlockIds(namespaced.flatMap(item => item.coverageClaim.mappedSourceBlockIds))
+  const unmapped = sortSourceBlockIds(namespaced.flatMap(item => item.coverageClaim.unmappedSourceBlockIds))
+    .filter(id => !mapped.includes(id))
+  const factOrder = new Map(mapped.concat(unmapped).map((id, index) => [id, index]))
+  const factSort = (left: { sourceBlockId: string }, right: { sourceBlockId: string }) => (
+    (factOrder.get(left.sourceBlockId) ?? Number.POSITIVE_INFINITY)
+      - (factOrder.get(right.sourceBlockId) ?? Number.POSITIVE_INFINITY)
+      || left.sourceBlockId.localeCompare(right.sourceBlockId)
+  )
+  const minFactOrder = (factLocalIds: string[]) => {
+    const indexByFactId = new Map(namespaced.flatMap(item => item.factCandidates)
+      .map((item, index) => [item.factLocalId, factOrder.get(item.sourceBlockId) ?? index]))
+    const orders = factLocalIds.map(id => indexByFactId.get(id) ?? Number.POSITIVE_INFINITY)
+    return orders.length > 0 ? Math.min(...orders) : Number.POSITIVE_INFINITY
+  }
+  const relatedSort = (left: { factLocalIds: string[] }, right: { factLocalIds: string[] }) => (
+    minFactOrder(left.factLocalIds) - minFactOrder(right.factLocalIds)
+  )
+  const sortedIdentity = namespaced.flatMap(item => item.identityCandidates)
+    .sort((left, right) => minFactOrder(left.factLocalIds) - minFactOrder(right.factLocalIds))
+  const sortedTimeline = namespaced.flatMap(item => item.timelineCandidates).sort(relatedSort)
+  const sortedSections = namespaced.flatMap(item => item.sectionCandidates).sort(relatedSort)
+  const sortedFacts = namespaced.flatMap(item => item.factCandidates).sort(factSort)
+  const sortedUnmapped = namespaced.flatMap(item => item.unmappedFragments)
+    .filter(item => unmapped.includes(item.sourceBlockId))
+    .sort(factSort)
+  const sortedConflicts = namespaced.flatMap(item => item.conflicts).sort((left, right) => (
+    minFactOrder(left.factLocalIds) - minFactOrder(right.factLocalIds)
+  ))
   return {
     schemaVersion: V5_SCHEMA_VERSION,
-    identityCandidates: namespaced.flatMap(item => item.identityCandidates),
-    timelineCandidates: namespaced.flatMap(item => item.timelineCandidates),
-    sectionCandidates: namespaced.flatMap(item => item.sectionCandidates),
-    factCandidates: namespaced.flatMap(item => item.factCandidates),
-    unmappedFragments: namespaced.flatMap(item => item.unmappedFragments).filter(item => unmapped.includes(item.sourceBlockId)),
-    conflicts: namespaced.flatMap(item => item.conflicts),
+    identityCandidates: sortedIdentity,
+    timelineCandidates: sortedTimeline,
+    sectionCandidates: sortedSections,
+    factCandidates: sortedFacts,
+    unmappedFragments: sortedUnmapped,
+    conflicts: sortedConflicts,
     coverageClaim: { mappedSourceBlockIds: mapped, unmappedSourceBlockIds: unmapped },
     qualityAssessment: {
       scoreInputs: {
