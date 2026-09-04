@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { buildRepairContext } from '@/v5/plugins/context-builder'
+import { createDigest } from '@/harness/run-context'
+import { mergeRepairPatch, RepairPatchMergeError } from '@/v5/plugins/patch-merger'
 import { defaultV6RepairPolicy } from '@/v5/plugins/repair-policy'
 
 describe('v6 low-cost repair foundation', () => {
@@ -95,5 +97,36 @@ describe('v6 low-cost repair foundation', () => {
       replacementText: null,
     }], hasDeterministicFallback: true })).toBe('deterministic_fallback')
     expect(defaultV6RepairPolicy.decide({ issues: [], hasDeterministicFallback: false })).toBe('skip')
+  })
+
+  test('merges an authorized patch only when original value digest matches', () => {
+    const patch = {
+      schemaVersion: '5.0.0' as const,
+      operations: [{
+        operationId: 'op-1', op: 'replace' as const, path: 'claims[0].outputText',
+        originalDigest: createDigest('旧内容'), value: '新内容', evidenceIds: ['ev-1'],
+        sourceBlockIds: ['B0001'], reason: '修复逐字引用',
+      }],
+    }
+    const merged = mergeRepairPatch({
+      currentOutput: { claims: [{ outputText: '旧内容' }] },
+      patch,
+      allowedPaths: ['claims[0].outputText'],
+    })
+    expect(merged.value).toEqual({ claims: [{ outputText: '新内容' }] })
+  })
+
+  test('rejects unauthorized, stale and duplicate patch operations', () => {
+    const base = { claims: [{ outputText: '旧内容', evidenceIds: ['ev-1'] }] }
+    const operation = {
+      operationId: 'op-1', op: 'replace' as const, path: 'claims[0].outputText',
+      originalDigest: null, value: '新内容', evidenceIds: ['ev-1'], sourceBlockIds: [], reason: '修复',
+    }
+    expect(() => mergeRepairPatch({ currentOutput: base, patch: { schemaVersion: '5.0.0', operations: [operation] }, allowedPaths: ['claims[0].evidenceIds'] }))
+      .toThrow(RepairPatchMergeError)
+    expect(() => mergeRepairPatch({ currentOutput: base, patch: { schemaVersion: '5.0.0', operations: [{ ...operation, originalDigest: createDigest('错误') }] }, allowedPaths: [operation.path] }))
+      .toThrow('原值摘要不匹配')
+    expect(() => mergeRepairPatch({ currentOutput: base, patch: { schemaVersion: '5.0.0', operations: [operation, operation] }, allowedPaths: [operation.path] }))
+      .toThrow('重复 operationId')
   })
 })

@@ -26,7 +26,7 @@
 | Unit | Goal | Scope | Validation | CR | Commit | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | U1 | 实现按 issue 选择的 scoped/patch ContextBuilder | `backend/src/v5/plugins/context-builder.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
-| U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-*`、测试 | 目标单测 + `bun test ./src/v5` | user | - | proposed |
+| U2 | 定义 RepairPatch Schema 和安全合并器 | `backend/src/v5/plugins/patch-merger.ts`、测试 | `bun test ./src/v5/tests/v6-foundation.test.ts`、`bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、stage runner、repair policy | v5 单测 + 类型检查 | user | - | proposed |
 | U4 | 修正确定性选材，保留项目和关键教育信息 | validators、safe renderer、测试 | 计划/渲染单测 | user | - | proposed |
 | U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测 | user | - | proposed |
@@ -49,6 +49,21 @@
 - Commit message: pending
 - Commit: pending
 - Remaining follow-up: U2 负责 Patch Schema 和合并；U3 再接入生产 P08。
+
+### U2
+
+- Objective: 定义版本化 RepairPatch，并在服务端执行授权路径、原值摘要、重复操作和 Schema 安全校验。
+- Files: `backend/src/v5/plugins/patch-merger.ts`、`backend/src/v5/tests/v6-foundation.test.ts`
+- Code changes: 支持 `replace/remove` 操作；只允许调用方声明的精确 path；校验原值 digest；拒绝越权、过期、重复 operationId/path；使用 immutable clone 合并。
+- Regression added or updated: 覆盖合法 Patch、越权路径、原值摘要不匹配、重复操作。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/v5/tests/v6-foundation.test.ts`（6 pass）；`bun test ./src/v5`（160 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: U3 将 P08/P08R 接入 Patch 输出和服务端合并；当前生产流程尚未改变。
 
 ## Remaining Items
 
