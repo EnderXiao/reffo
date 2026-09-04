@@ -3,6 +3,7 @@ import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/p
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { renderSourcePreservingArtifact } from '@/v5/safe-renderer'
 import { createTrustedResumeExtractionCache } from '@/v5/resume-extraction-cache'
+import { V6_STRICT_REVIEW_PROFILE } from '@/v5/plugins/execution-profile'
 import { createJobFixture, createMatchFixture, createResumeFixture, FIXTURE_JD, FIXTURE_RESUME } from '@/v5/tests/fixtures'
 import type {
   CanonicalSourceDocument,
@@ -79,6 +80,7 @@ function createPlan(payload: { strategyProfile: ResumeStrategyProfile; generatio
 
 class RoutingProvider implements LlmProvider {
   readonly p08EvidenceAtoms: EvidenceAtom[][] = []
+  readonly promptVersions: string[] = []
 
   constructor(
     private readonly blockFactJudge = false,
@@ -89,6 +91,7 @@ class RoutingProvider implements LlmProvider {
 
   async complete(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     const version = input.promptVersion ?? ''
+    this.promptVersions.push(version)
     const envelope = parseEnvelope(input)
     let value: unknown
     if (version.includes('-p01-')) {
@@ -419,6 +422,27 @@ describe('v5 production adaptive workflow', () => {
     expect(result.releaseStatus).toBe('preproduction_candidate')
     expect(result.artifact.markdown).toContain('参与团队产品迭代，交付3个功能')
     expect(result.usedSafeFallback).toBe(false)
+    expect(provider.promptVersions.some(version => version.includes('-p05-'))).toBe(false)
+    expect(provider.promptVersions.some(version => version.includes('-p07-'))).toBe(false)
+    expect(provider.promptVersions.some(version => version.includes('-p10-'))).toBe(false)
+    expect(result.interviewPreparation).toBeUndefined()
+  })
+
+  test('keeps LLM planning and final review available through a strict plugin profile', async () => {
+    const provider = new RoutingProvider()
+    const workflow = new V5ResumeOptimizationWorkflow({
+      provider,
+      judgeProvider: provider,
+      enableDefaultSubscribers: false,
+      executionProfile: V6_STRICT_REVIEW_PROFILE,
+    })
+
+    const result = await workflow.run({ resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD })
+
+    expect(result.state).toBe('succeeded')
+    expect(provider.promptVersions.some(version => version.includes('-p05-'))).toBe(true)
+    expect(provider.promptVersions.some(version => version.includes('-p07-'))).toBe(true)
+    expect(provider.promptVersions.some(version => version.includes('-p10-'))).toBe(true)
   })
 
   test('uses a deterministic valid plan when P05 and P05R both remain invalid', async () => {
@@ -443,6 +467,7 @@ describe('v5 production adaptive workflow', () => {
       expect(error).toBeInstanceOf(V5WorkflowBlockedError)
       expect((error as V5WorkflowBlockedError).state).toBe('blocked_fact_validation')
       expect((error as V5WorkflowBlockedError).code).toBe('V5_BLOCKING_FACT_JUDGE_FAILED')
+      expect(provider.promptVersions.some(version => version.includes('-p08-'))).toBe(false)
     }
   })
 

@@ -17,7 +17,7 @@ function chunksFor(markdown: string, maxBlocks: number) {
 describe('v5 resume extraction chunk boundaries', () => {
   test('uses a conservative extraction concurrency default', () => {
     expect(DEFAULT_RESUME_EXTRACTION_CONCURRENCY).toBe(2)
-    expect(DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS).toBe(16)
+    expect(DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS).toBe(20)
     expect(DEFAULT_RESUME_EXTRACTION_MAX_CHARACTERS).toBe(1_000)
     expect(DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS).toBe(13_500)
   })

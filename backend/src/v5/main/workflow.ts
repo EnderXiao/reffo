@@ -37,6 +37,7 @@ import {
 } from '@/v5/plugins/registry'
 import { buildRepairContext, type V6ContextMode } from '@/v5/plugins/context-builder'
 import { defaultV6RepairPolicy, type V6RepairPolicy } from '@/v5/plugins/repair-policy'
+import { V6_LOW_COST_PROFILE, type V6ExecutionProfile } from '@/v5/plugins/execution-profile'
 import {
   V5ResumeExtractionCacheError,
   type ResumeExtractionComputeContext,
@@ -95,6 +96,7 @@ export interface V5WorkflowOptions {
   pluginOverrides?: Partial<Record<V5BuiltinPluginId, V5WorkflowPlugin<unknown, unknown>>>
   repairPolicy?: V6RepairPolicy
   repairContextMode?: V6ContextMode
+  executionProfile?: V6ExecutionProfile
 }
 
 export function calculateResumeExtractionTimeoutMs(remainingMs: number) {
@@ -320,6 +322,7 @@ export class V5ResumeOptimizationWorkflow {
   private readonly pluginOverrides: V5WorkflowOptions['pluginOverrides']
   private readonly repairPolicy: V6RepairPolicy
   private readonly repairContextMode: V6ContextMode
+  private readonly executionProfile: V6ExecutionProfile
 
   constructor(options: V5WorkflowOptions = {}) {
     this.provider = options.provider
@@ -329,6 +332,7 @@ export class V5ResumeOptimizationWorkflow {
     this.pluginOverrides = options.pluginOverrides
     this.repairPolicy = options.repairPolicy ?? defaultV6RepairPolicy
     this.repairContextMode = options.repairContextMode ?? 'full'
+    this.executionProfile = options.executionProfile ?? V6_LOW_COST_PROFILE
   }
 
   async extractResume(input: V5ResumeExtractionInput): Promise<V5ResumeExtractionResult> {
@@ -696,34 +700,38 @@ export class V5ResumeOptimizationWorkflow {
               eventBus: this.eventBus,
               stepName: 'v5_p05_plan',
               timeoutMs: Math.min(150000, remaining()),
-              execute: stepContext => this.runRepairableStage<V5ResumePlan>({
-                component: 'P05',
-                repairComponent: 'P05R',
-                envelope: this.envelope(runContext.runId, {
-                  resumeEvidenceBundle: this.withoutNonessentialPii(resumeEvidenceBundle),
-                  jobRequirementBundle,
-                  matchAnalysis,
-                  strategyProfile,
-                  generationPolicy,
-                }),
-                stepContext,
-                documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
-                validate: value => validateV5ResumePlan({
-                  resume: resumeEvidenceBundle,
-                  job: jobRequirementBundle,
-                  match: matchAnalysis,
-                  plan: value,
-                  policy: generationPolicy,
-                  profile: strategyProfile,
-                }),
-                fallback: () => buildDeterministicV5ResumePlan({
+              execute: async stepContext => {
+                const deterministicPlan = () => buildDeterministicV5ResumePlan({
                   resume: resumeEvidenceBundle,
                   job: jobRequirementBundle,
                   match: matchAnalysis,
                   policy: generationPolicy,
                   profile: strategyProfile,
-                }),
-              }),
+                })
+                if (this.executionProfile.planning === 'deterministic') return deterministicPlan()
+                return this.runRepairableStage<V5ResumePlan>({
+                  component: 'P05',
+                  repairComponent: 'P05R',
+                  envelope: this.envelope(runContext.runId, {
+                    resumeEvidenceBundle: this.withoutNonessentialPii(resumeEvidenceBundle),
+                    jobRequirementBundle,
+                    matchAnalysis,
+                    strategyProfile,
+                    generationPolicy,
+                  }),
+                  stepContext,
+                  documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                  validate: value => validateV5ResumePlan({
+                    resume: resumeEvidenceBundle,
+                    job: jobRequirementBundle,
+                    match: matchAnalysis,
+                    plan: value,
+                    policy: generationPolicy,
+                    profile: strategyProfile,
+                  }),
+                  fallback: deterministicPlan,
+                })
+              },
             })
             steps.push(planStep.step)
             return planStep.result
@@ -776,7 +784,7 @@ export class V5ResumeOptimizationWorkflow {
 
       await setState('validating')
       let validation = validateGeneratedResumeArtifact({ artifact, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy })
-      while (!validation.passed && repairAttempts < 2) {
+      while (!validation.passed && repairAttempts < this.executionProfile.maxArtifactRepairCalls) {
         repairAttempts += 1
         await setState(repairAttempts === 1 ? 'repairing_1' : 'repairing_2')
         artifact = await this.repairArtifact({
@@ -799,7 +807,7 @@ export class V5ResumeOptimizationWorkflow {
         validation = validateGeneratedResumeArtifact({ artifact, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy })
       }
 
-      if (validation.passed) {
+      if (validation.passed && this.executionProfile.finalReview === 'llm') {
         await setState('reviewing')
         const reviewStep = await runStep({
           runContext,
@@ -825,7 +833,7 @@ export class V5ResumeOptimizationWorkflow {
         validation = validateGeneratedResumeArtifact({ artifact, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy })
       }
 
-      while (!validation.passed && repairAttempts < 2) {
+      while (!validation.passed && repairAttempts < this.executionProfile.maxArtifactRepairCalls) {
         repairAttempts += 1
         await setState(repairAttempts === 1 ? 'repairing_1' : 'repairing_2')
         artifact = await this.repairArtifact({
@@ -898,7 +906,12 @@ export class V5ResumeOptimizationWorkflow {
         remaining,
         steps,
       })
-      while (!factJudge.passed && repairAttempts < 2 && !usedSafeFallback) {
+      while (
+        !factJudge.passed
+        && repairAttempts < this.executionProfile.maxArtifactRepairCalls
+        && this.executionProfile.repairAfterFactJudge
+        && !usedSafeFallback
+      ) {
         repairAttempts += 1
         await setState(repairAttempts === 1 ? 'repairing_1' : 'repairing_2')
         artifact = await this.repairArtifact({
@@ -1021,6 +1034,7 @@ export class V5ResumeOptimizationWorkflow {
           },
         },
         input,
+        enabled: this.executionProfile.interview === 'sync',
       })
 
       await this.executePlugin({
@@ -1247,6 +1261,7 @@ export class V5ResumeOptimizationWorkflow {
               envelope: this.envelope(input.runId, { canonicalSourceDocument: chunk }),
               stepContext: input.stepContext,
               documentIds: [chunk.documentId],
+              retryIndex,
               validate: value => validateResumeExtractionCandidate(
                 chunk,
                 normalizeResumeExtractionChunkCandidate(chunk, value)
@@ -1318,6 +1333,7 @@ export class V5ResumeOptimizationWorkflow {
     documentIds: string[]
     validate: (value: T) => ValidationResult<T>
     fallback?: () => T
+    retryIndex?: number
   }): Promise<T> {
     let currentOutput: unknown
     let validationIssues: ValidationIssue[] = []
@@ -1330,6 +1346,9 @@ export class V5ResumeOptimizationWorkflow {
           eventBus: this.eventBus,
           stepContext: input.stepContext,
           inputDocumentIds: input.documentIds,
+          callReason: input.retryIndex ? 'network_retry' : 'business_stage',
+          contextMode: 'scoped',
+          retryIndex: input.retryIndex ?? 0,
         },
       })
       currentOutput = result.value
@@ -1344,14 +1363,61 @@ export class V5ResumeOptimizationWorkflow {
       validationIssues = structuredIssues(error)
     }
 
+    const repairScope = [...new Set(validationIssues.map(issue => issue.outputPath).filter((path): path is string => Boolean(path)))]
+    await this.eventBus.publish(createHarnessEvent({
+      type: 'output.validated',
+      runId: input.stepContext.runId,
+      requestId: input.stepContext.requestId,
+      stepRunId: input.stepContext.stepRunId,
+      attemptId: input.stepContext.attemptId,
+      payload: {
+        outputName: input.component,
+        outputDigest: createDigest(currentOutput),
+        passed: false,
+        validationLayer: 'business',
+        issueCodes: validationIssues.map(issue => issue.code),
+        validationIssues,
+      },
+    }))
+
     const repairDecision = this.repairPolicy.decide({
       issues: validationIssues,
       hasDeterministicFallback: Boolean(input.fallback),
     })
+    const recoveryPayload = {
+      triggerStep: input.stepContext.stepName,
+      component: input.component,
+      repairComponent: input.repairComponent,
+      action: repairDecision,
+      callReason: repairDecision === 'local_llm' ? 'validation_repair' : 'deterministic_repair',
+      contextMode: repairDecision === 'local_llm' ? this.repairContextMode : 'scoped',
+      repairScope,
+      retryIndex: input.retryIndex ?? 0,
+      budgetRemaining: null,
+      issueCodes: validationIssues.map(issue => issue.code),
+    }
+    await this.eventBus.publish(createHarnessEvent({
+      type: 'recovery.planned',
+      runId: input.stepContext.runId,
+      requestId: input.stepContext.requestId,
+      stepRunId: input.stepContext.stepRunId,
+      attemptId: input.stepContext.attemptId,
+      payload: recoveryPayload,
+    }))
     if (repairDecision === 'deterministic_fallback' && input.fallback) {
       const fallback = input.fallback()
       const fallbackValidation = input.validate(fallback)
-      if (fallbackValidation.passed) return fallbackValidation.value ?? fallback
+      if (fallbackValidation.passed) {
+        await this.eventBus.publish(createHarnessEvent({
+          type: 'recovery.succeeded',
+          runId: input.stepContext.runId,
+          requestId: input.stepContext.requestId,
+          stepRunId: input.stepContext.stepRunId,
+          attemptId: input.stepContext.attemptId,
+          payload: recoveryPayload,
+        }))
+        return fallbackValidation.value ?? fallback
+      }
     }
     if (repairDecision === 'skip') {
       throw new V5WorkflowBlockedError({
@@ -1362,6 +1428,14 @@ export class V5ResumeOptimizationWorkflow {
       })
     }
 
+    await this.eventBus.publish(createHarnessEvent({
+      type: 'recovery.started',
+      runId: input.stepContext.runId,
+      requestId: input.stepContext.requestId,
+      stepRunId: input.stepContext.stepRunId,
+      attemptId: input.stepContext.attemptId,
+      payload: recoveryPayload,
+    }))
     const repairResult = await runV5StructuredStage<T>({
       component: input.repairComponent,
       envelope: this.envelope(input.stepContext.runId, buildRepairContext({
@@ -1377,6 +1451,10 @@ export class V5ResumeOptimizationWorkflow {
         stepContext: input.stepContext,
         inputDocumentIds: input.documentIds,
         repairAttempt: 1,
+        callReason: 'validation_repair',
+        contextMode: this.repairContextMode,
+        repairScope,
+        retryIndex: input.retryIndex ?? 0,
       },
     })
     const repairedValidation = input.validate(repairResult.value)
@@ -1393,6 +1471,14 @@ export class V5ResumeOptimizationWorkflow {
         issues: repairedValidation.issues,
       })
     }
+    await this.eventBus.publish(createHarnessEvent({
+      type: 'recovery.succeeded',
+      runId: input.stepContext.runId,
+      requestId: input.stepContext.requestId,
+      stepRunId: input.stepContext.stepRunId,
+      attemptId: input.stepContext.attemptId,
+      payload: recoveryPayload,
+    }))
     return repairedValidation.value ?? repairResult.value
   }
 
@@ -1417,7 +1503,7 @@ export class V5ResumeOptimizationWorkflow {
       })
       return { artifact: result.value, repairAttempts: 0 }
     } catch (error) {
-      if (!(error instanceof V5StructuredOutputError) || input.repairAttempt >= 2) throw error
+      if (!(error instanceof V5StructuredOutputError) || input.repairAttempt >= this.executionProfile.maxArtifactRepairCalls) throw error
       if (error.code === 'V5_OUTPUT_TRUNCATED') throw error
       const repaired = await runV5StructuredStage<GeneratedResumeArtifact>({
         component: 'P08',

@@ -5,7 +5,7 @@ export const DEFAULT_RESUME_EXTRACTION_CONCURRENCY = 2
 export const DEFAULT_RESUME_EXTRACTION_CHUNK_RETRY_ATTEMPTS = 1
 // Block count is a packing target. A single indivisible experience scope may
 // exceed it only while staying inside the hard character/output-cost limits.
-export const DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS = 16
+export const DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS = 20
 export const DEFAULT_RESUME_EXTRACTION_MAX_CHARACTERS = 1_000
 export const DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS = 13_500
 export const RESUME_EXTRACTION_CHUNK_PLAN_VERSION = 'scope-context-output-shards-v5'

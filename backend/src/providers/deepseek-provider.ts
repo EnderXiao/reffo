@@ -76,6 +76,11 @@ export class DeepSeekProvider implements LlmProvider {
             strictSchemaTransport: input.structuredOutput
               ? nativeStructuredOutput ? 'native_json_schema' : 'json_object_plus_server_zod'
               : null,
+            callReason: input.callMetadata?.callReason,
+            contextMode: input.callMetadata?.contextMode,
+            repairScope: input.callMetadata?.repairScope,
+            retryIndex: input.callMetadata?.retryIndex ?? 0,
+            budgetRemaining: input.callMetadata?.budgetRemaining ?? null,
             promptManifest: input.promptManifest,
           },
         })
@@ -145,6 +150,11 @@ export class DeepSeekProvider implements LlmProvider {
             inputTokens: result.inputTokens,
             outputTokens: result.outputTokens,
             outputDigest: createDigest(result.content),
+            callReason: input.callMetadata?.callReason,
+            contextMode: input.callMetadata?.contextMode,
+            repairScope: input.callMetadata?.repairScope,
+            retryIndex: input.callMetadata?.retryIndex ?? 0,
+            budgetRemaining: input.callMetadata?.budgetRemaining ?? null,
             promptManifest: input.promptManifest
               ? {
                   ...input.promptManifest,

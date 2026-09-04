@@ -1,6 +1,6 @@
 # V6 提示词与 LLM 调用降本 TODO
 
-状态：`pending` / `in_progress` / `done` / `blocked`
+状态：`in_progress`
 
 目标：在保持事实安全、可审计和可投递结果的前提下，减少 LLM 调用次数、上下文重复和无效修复；完成可复用的上下文组装、LLM 调用封装，以及 P01 分 chunk 的稳定排序与失败重传。
 
@@ -13,7 +13,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 - [ ] 能由代码修复的 span、ID、排序、计数、去重、scoreInputs、格式问题，不调用 LLM。
 - [ ] LLM 修复输出优先采用 patch；服务端合并 patch 后重新校验。
 - [ ] 每个阶段设置调用次数、Token、墙钟时间和总成本预算；超预算进入安全回退或明确失败。
-- [ ] 所有请求继续记录 prompt 版本、上下文摘要、Token、延迟、重试原因和最终结果。
+- [x] 所有请求继续记录 prompt 版本、上下文模式、修复范围、Token、延迟、重试原因和最终结果。（2026-09-04）
 
 ## T0. V6 基线与目标（先完成）
 
@@ -28,7 +28,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 - [ ] 抽象统一 `runStructuredStage`：Prompt 编译、Schema、Provider 调用、AbortSignal、超时、Token/延迟记录、解析和错误映射只实现一次。
 - [x] 抽象统一 `ContextBuilder`：输入文档、证据、旧输出、问题列表、白名单和字段选择按阶段声明，不在 workflow 中重复拼装。（2026-09-04；首轮 `buildRepairContext`）
 - [ ] 上下文构建支持 `full`、`scoped`、`patch` 三种模式，默认 `scoped` 或 `patch`。
-- [ ] 增加上下文摘要和稳定 digest；相同上下文可缓存，避免重试时重新序列化和重复计算。
+- [x] P01 使用稳定 digest 的进程内可信缓存；同一简历切换 JD 时复用已验证提取结果。（2026-09-04）
 - [ ] 统一结构化输出清理、截断检测、JSON 解析和 Schema 校验；`finish_reason=length` 不进入无效修复循环。
 - [ ] 统一 Provider 重试策略：取消不重试；网络/限流按预算进行有限重试；避免 SDK 重试与业务重试叠加。
 - [ ] 增加调用预算器：调用前预估输入/输出 Token，超预算时直接选择确定性修复、缩小上下文或安全回退。
@@ -41,7 +41,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 - [ ] 通过 `register/replace/disable/enable` 支持能力插拔；必选安全门禁禁止被误禁用，可选 P10/P11 等允许关闭或异步化。
 - [ ] 插件之间只通过共享上下文中的版本化 Artifact/证据目录传递数据；禁止跨插件直接读取未声明的内部状态。
 - [ ] 为每次插件替换记录 plugin ID、版本、依赖、启用状态和配置 digest，写入 Harness manifest。
-- [ ] 设计 V6 默认插件组合、低成本插件组合、严格审计插件组合；同一主流程可按配置切换，不复制 workflow。
+- [x] 设计 V6 低成本插件组合、严格审查插件组合；同一主流程可按配置切换，不复制 workflow。（2026-09-04）
 - [ ] 为插件增加 contract tests：依赖顺序、替换、禁用、超时、取消、预算耗尽、部分成功和错误映射。
 - [ ] 内置阶段先保持兼容适配器，逐步把 `workflow.ts` 中现有闭包迁移到 `backend/src/v5/plugins/`，避免一次性重写。
 
@@ -102,19 +102,19 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 
 ### P10/P10R：面试准备
 
-- [ ] P10 默认异步/可关闭，不阻塞简历主链路。
+- [x] P10 默认关闭且可由严格审查配置同步启用，不阻塞低成本简历主链路。（2026-09-04）
 - [ ] P10R 只修复缺失引用、无效 ID 和结构字段；不重发完整 Artifact 和全部 RequirementAtom。
 - [ ] 面试建议失败只记录 partial，不触发主流程重跑。
 
 ## T5. 流程编排与调用次数收敛
 
-- [ ] 将 V6 主路径收敛为：P01、P02、P03、P05、P06/P07、P09；P04/P10/P11 按条件或异步执行。
+- [x] 将 V6 低成本主路径收敛为 P01、P02、P03、确定性 P05、P06、P09；P04/P10/P11 按条件或配置执行，P07 可由严格审查配置恢复。（2026-09-04）
 - [ ] 每个阶段最多一次初始 LLM 调用；局部修复最多一次；禁止跨阶段回跳重跑。
 - [ ] 同一阶段多个问题合并为一次局部修复请求，禁止“一条 issue 一次 LLM”。
-- [ ] P09 失败不自动回到 P08 多轮循环；先执行确定性修复，再按剩余预算决定一次局部复核。
+- [x] 低成本配置下 P09 失败不回到 P08；直接使用服务端安全回退，并最多对回退结果复核一次。（2026-09-04）
 - [ ] 为每个 Run 设置全局 LLM 调用预算和剩余时间；预算耗尽立即走安全路径。
-- [ ] 把“可选质量/面试输出”从主结果成功条件中剥离。
-- [ ] Harness 增加 `call_reason`、`context_mode`、`repair_scope`、`retry_index`、`budget_remaining` 字段，支持验证调用是否真正必要。
+- [x] 把“可选质量/面试输出”从主结果成功条件中剥离。（2026-09-04）
+- [x] Harness Provider 事件增加 `callReason`、`contextMode`、`repairScope`、`retryIndex`、`budgetRemaining` 字段，并记录业务校验失败和修复决策。（2026-09-04；调用预算器接入后再填充非空剩余额度）
 - [ ] 将调用收敛策略实现为可替换 `LlmCallPolicyPlugin`，支持严格模式、低成本模式和离线测试模式。
 - [ ] 将修复策略实现为可替换 `RepairPolicyPlugin`，支持“确定性优先”“局部 LLM”“直接安全回退”三种组合。
 - [ ] 主流程不感知具体 Prompt ID；由 Prompt Plugin 根据阶段、版本和输入能力解析实际 Prompt/Schema。

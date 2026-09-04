@@ -47,7 +47,7 @@ class AbProvider implements LlmProvider {
 describe('v5 compatibility and offline A/B', () => {
   test('preserves the legacy MVP response contract', () => {
     const response = toLegacyMvpProcessResponse(createV5ResultFixture())
-    expect(response.agent_version).toBe('5.0.0')
+    expect(response.agent_version).toBe('6.0.0')
     expect(response.workflow_status).toBe('succeeded')
     expect(response.step1_analysis.structured_resume.personal_info.name).toBe('张三')
     expect(response.step2_matching.match_score).toBeGreaterThan(0)

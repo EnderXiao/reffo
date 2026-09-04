@@ -3,7 +3,7 @@ import { createHarnessEvent } from '@/harness/events'
 import { createDigest, type StepExecutionContext } from '@/harness/run-context'
 import type { HarnessEventBus } from '@/harness/event-bus'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'
-import type { ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
+import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
 import { compileV5Prompt, type CompiledV5Prompt } from '@/v5/prompt-compiler'
 import type { V5PromptComponent } from '@/v5/prompts'
 
@@ -13,6 +13,11 @@ export interface V5StageRunOptions {
   stepContext?: StepExecutionContext
   inputDocumentIds?: string[]
   repairAttempt?: number
+  callReason?: NonNullable<ChatCompletionInput['callMetadata']>['callReason']
+  contextMode?: NonNullable<ChatCompletionInput['callMetadata']>['contextMode']
+  repairScope?: string[]
+  retryIndex?: number
+  budgetRemaining?: number | null
   model?: string
 }
 
@@ -82,6 +87,14 @@ export async function runV5StructuredStage<T>(input: {
     maxOutputTokens: compiled.maxOutputTokens,
     promptVersion: compiled.promptVersion,
     promptManifest: compiled.manifest,
+    callMetadata: {
+      callReason: input.options?.callReason
+        ?? (compiled.manifest.repairAttempt > 0 ? 'validation_repair' : input.component === 'P09' ? 'semantic_gate' : 'business_stage'),
+      contextMode: input.options?.contextMode ?? (compiled.manifest.repairAttempt > 0 ? 'full' : 'scoped'),
+      repairScope: input.options?.repairScope ?? [],
+      retryIndex: input.options?.retryIndex ?? 0,
+      budgetRemaining: input.options?.budgetRemaining ?? null,
+    },
     eventBus: input.options?.eventBus,
     stepContext: input.options?.stepContext,
   })

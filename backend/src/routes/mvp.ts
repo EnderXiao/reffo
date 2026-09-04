@@ -161,7 +161,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       }),
       detail: {
         summary: 'MVP 完整流程',
-        description: '固定执行 v5.0.0。V5 采用原子证据、自适应策略、严格 Schema、最多两次 Artifact 修复和阻断式事实门禁，同时保持旧响应结构兼容。',
+        description: '固定执行 v6.0.0。V6 复用插件框架，采用原子证据、确定性计划、一次生成、严格事实门禁和有界修复，同时保持旧响应结构兼容。',
         tags: ['MVP'],
       },
     }

@@ -7,7 +7,7 @@ import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-work
 const v5Response: MvpProcessResponse = {
   run_id: 'v5-run',
   workflow_status: 'succeeded',
-  agent_version: '5.0.0',
+  agent_version: '6.0.0',
   step1_analysis: {
     quality_score: 80,
     strengths: [],
@@ -66,7 +66,7 @@ describe('ResumeOptimizationWorkflow v5-only entry', () => {
 
     expect(receivedInput).toEqual(input)
     expect(result).toEqual(v5Response)
-    expect(result.agent_version).toBe('5.0.0')
+    expect(result.agent_version).toBe('6.0.0')
   })
 
   test('preserves a v5 blocked error without running another workflow', async () => {

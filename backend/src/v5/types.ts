@@ -1,5 +1,5 @@
 export const V5_SCHEMA_VERSION = '5.0.0' as const
-export const V5_WORKFLOW_VERSION = '5.0.0-production-adaptive' as const
+export const V5_WORKFLOW_VERSION = '6.0.0-low-cost-plugin' as const
 export const V5_VALIDATOR_VERSION = '5.0.0-validator-v5' as const
 export const V5_ADAPTIVE_POLICY_VERSION = 'adaptive-v1' as const
 export const V5_SCORE_FORMULA_VERSION = 'match-score-v1' as const

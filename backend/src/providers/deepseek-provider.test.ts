@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type OpenAI from 'openai'
 import { createRunContext, createStepExecutionContext } from '@/harness/run-context'
+import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
 import { DeepSeekProvider } from '@/providers/deepseek-provider'
 
 type FakeCompletionOptions = {
@@ -35,6 +36,38 @@ function createAbortError() {
 }
 
 describe('DeepSeekProvider abort signals', () => {
+  test('records V6 call reason, context and retry metadata in Harness events', async () => {
+    const eventBus = new FakeHarnessEventBus()
+    const runContext = createRunContext()
+    const provider = new DeepSeekProvider(createClient(async () => createResponse()))
+
+    await provider.complete({
+      messages: [{ role: 'user', content: 'hello' }],
+      eventBus,
+      stepContext: createStepExecutionContext(runContext, 'test-step'),
+      callMetadata: {
+        callReason: 'validation_repair',
+        contextMode: 'patch',
+        repairScope: ['requirements.0.quote'],
+        retryIndex: 1,
+        budgetRemaining: 3,
+      },
+    })
+
+    expect(eventBus.events.find(event => event.type === 'provider.requested')?.payload).toMatchObject({
+      callReason: 'validation_repair',
+      contextMode: 'patch',
+      repairScope: ['requirements.0.quote'],
+      retryIndex: 1,
+      budgetRemaining: 3,
+    })
+    expect(eventBus.events.find(event => event.type === 'provider.responded')?.payload).toMatchObject({
+      callReason: 'validation_repair',
+      contextMode: 'patch',
+      retryIndex: 1,
+    })
+  })
+
   test('passes a caller signal to the OpenAI SDK request', async () => {
     const controller = new AbortController()
     let receivedSignal: AbortSignal | null | undefined

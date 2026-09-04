@@ -33,6 +33,13 @@ export interface ChatCompletionInput {
     inputDocumentIds: string[]
     repairAttempt: number
   }
+  callMetadata?: {
+    callReason: 'business_stage' | 'validation_repair' | 'network_retry' | 'semantic_gate'
+    contextMode: 'full' | 'scoped' | 'patch'
+    repairScope: string[]
+    retryIndex: number
+    budgetRemaining: number | null
+  }
   maxProviderAttempts?: number
   eventBus?: HarnessEventBus
   stepContext?: StepExecutionContext

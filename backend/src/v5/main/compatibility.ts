@@ -187,7 +187,7 @@ export function toLegacyMvpProcessResponse(result: V5WorkflowResult): MvpProcess
   return {
     run_id: result.runId,
     workflow_status: 'succeeded',
-    agent_version: '5.0.0',
+    agent_version: '6.0.0',
     agent_state: result.state,
     release_status: result.releaseStatus,
     used_safe_fallback: result.usedSafeFallback,

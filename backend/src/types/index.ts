@@ -206,7 +206,7 @@ export interface MvpProcessResponse {
   step_statuses?: MvpStepStatus[]
   recoverable_errors?: MvpRecoverableError[]
   recovery_summary?: RecoverySummary[]
-  agent_version?: '5.0.0'
+  agent_version?: '5.0.0' | '6.0.0'
   agent_state?: ResumeAgentState
   release_status?: V5ReleaseStatus
   used_safe_fallback?: boolean
