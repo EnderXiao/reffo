@@ -24,6 +24,7 @@ import { runHarnessedRequest, runHarnessedStep } from '@/harness/harnessed-reque
 import { buildQualityGateAttempt, classifyAttemptResult, decideNextAction } from '@/harness/runtime-state'
 import { runStep } from '@/harness/run-step'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
+import { getHarnessDatabaseHealth } from '@/repositories/database'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
@@ -828,6 +829,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         status: 'ok',
         timestamp: new Date().toISOString(),
         service: 'reffo-mvp',
+        dependencies: {
+          harnessDatabase: getHarnessDatabaseHealth(),
+        },
       }
     },
     {

@@ -76,6 +76,32 @@ export function resetHarnessDatabaseConnection() {
   }
 }
 
+export interface HarnessDatabaseHealth {
+  status: 'ok' | 'degraded'
+  integrityCheck: string
+  errorCode?: string
+}
+
+/** Read-only health probe. Never rebuilds or deletes a potentially recoverable database. */
+export function getHarnessDatabaseHealth(): HarnessDatabaseHealth {
+  try {
+    const result = getHarnessDatabase().query('PRAGMA integrity_check').get() as { integrity_check?: unknown } | null
+    const integrityCheck = typeof result?.integrity_check === 'string' ? result.integrity_check : 'unknown'
+    return {
+      status: integrityCheck === 'ok' ? 'ok' : 'degraded',
+      integrityCheck,
+    }
+  } catch (error) {
+    return {
+      status: 'degraded',
+      integrityCheck: 'unavailable',
+      errorCode: error instanceof Error && 'code' in error
+        ? String((error as { code?: unknown }).code)
+        : 'HARNESS_DATABASE_UNAVAILABLE',
+    }
+  }
+}
+
 function deleteHarnessRuns(db: Database, runIds: string[]) {
   if (runIds.length === 0) {
     return

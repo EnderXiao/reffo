@@ -5,6 +5,7 @@ dist/
 .env.nonprod
 .env.prod
 *.log
+*.sqlite
 *.sqlite-shm
 *.sqlite-wal
 .DS_Store

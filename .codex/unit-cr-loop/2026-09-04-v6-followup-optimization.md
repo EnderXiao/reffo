@@ -33,6 +33,7 @@
 | U6 | P01 幂等重传和 Chunk 插件边界 | `chunked-resume-extraction.ts`、workflow、测试 | chunk/workflow 单测、类型检查 | user | `80cb15d` | committed |
 | U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | `bun test ./src/repositories/harness-metrics.test.ts`、全量 V5、类型检查、diff 检查 | user | `1c41286` | committed |
 | U8 | Harness SQLite 单写队列与事务持久化 | `backend/src/harness/subscribers/persistence-subscriber.ts`、写队列、测试 | `bun test ./src/harness/subscribers/write-queue.test.ts`、全量 backend、类型检查、diff 检查 | user | `0c12924` | committed |
+| U9 | Harness 数据库健康检查与运行库隔离 | `backend/src/repositories/database.ts`、`backend/src/routes/mvp.ts`、`.gitignore` | 健康接口、全量 backend、类型检查、diff 检查 | user | `958f2b3` | committed |
 
 ## Unit Logs
 
@@ -158,15 +159,30 @@
 - Commit: `0c12924`
 - Remaining follow-up: 多进程访问隔离、数据库健康检查和运行库脱离 Git 跟踪可作为后续运维单元。
 
+### U9
+
+- Objective: 暴露 Harness SQLite 完整性状态，避免损坏时误报服务完全健康；运行库默认不再产生新的 Git 跟踪文件。
+- Files: `backend/src/repositories/database.ts`、`backend/src/routes/mvp.ts`、`.gitignore`。
+- Code changes: 新增只读 `getHarnessDatabaseHealth()`，健康接口返回 `dependencies.harnessDatabase`；增加 `*.sqlite` 忽略规则；不自动删除或重建数据库。
+- Regression added or updated: 健康检查走真实 SQLite `PRAGMA integrity_check`；全量路由和后端测试覆盖。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/routes/mvp-auth.test.ts ./src/repositories/harness-metrics.test.ts`（4 pass）；`bun test`（245 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: `fix: 增加Harness数据库健康检查`
+- Commit: `958f2b3`
+- Remaining follow-up: 将已跟踪的历史 `backend/data/harness.sqlite` 从 Git 索引移除；补多进程访问隔离策略。
+
 ## Remaining Items
 
 - Remaining functional units: none
 - Cleanup-only units: none
-- Open risks: 多进程访问隔离、数据库健康检查和运行库脱离 Git 跟踪仍待处理。黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: 多进程访问隔离、历史数据库脱离 Git 索引、黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U8 已完成
+- Functional commits: U1-U9 已完成
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 多进程访问隔离、数据库健康检查、运行库脱离 Git 跟踪、黄金集、故障注入和多样本真实 canary 属后续发布前任务。
