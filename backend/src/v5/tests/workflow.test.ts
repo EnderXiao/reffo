@@ -4,6 +4,7 @@ import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { renderSourcePreservingArtifact } from '@/v5/safe-renderer'
 import { createTrustedResumeExtractionCache } from '@/v5/resume-extraction-cache'
 import { V6_STRICT_REVIEW_PROFILE } from '@/v5/plugins/execution-profile'
+import { BoundedV6LlmCallPolicy } from '@/v5/plugins/llm-call-policy'
 import { createJobFixture, createMatchFixture, createResumeFixture, FIXTURE_JD, FIXTURE_RESUME } from '@/v5/tests/fixtures'
 import type {
   CanonicalSourceDocument,
@@ -426,6 +427,24 @@ describe('v5 production adaptive workflow', () => {
     expect(provider.promptVersions.some(version => version.includes('-p07-'))).toBe(false)
     expect(provider.promptVersions.some(version => version.includes('-p10-'))).toBe(false)
     expect(result.interviewPreparation).toBeUndefined()
+  })
+
+  test('enforces one shared LLM call budget across parallel workflow plugins', async () => {
+    const provider = new RoutingProvider()
+    const workflow = new V5ResumeOptimizationWorkflow({
+      provider,
+      judgeProvider: provider,
+      enableDefaultSubscribers: false,
+      callPolicyFactory: () => new BoundedV6LlmCallPolicy({
+        maxCalls: 1,
+        maxRepairCalls: 0,
+        maxTotalTokens: 100_000,
+      }),
+    })
+
+    await expect(workflow.run({ resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD }))
+      .rejects.toMatchObject({ state: 'provider_failure' })
+    expect(provider.promptVersions).toHaveLength(1)
   })
 
   test('keeps LLM planning and final review available through a strict plugin profile', async () => {

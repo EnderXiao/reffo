@@ -370,6 +370,56 @@ describe('v5 adaptive policy, scoring and gates', () => {
     expect(validation.value?.evidencePillars.every(pillar => pillar.requirementIds.length === 1)).toBe(true)
   })
 
+  test('keeps verified skills and education in the deterministic low-cost plan', () => {
+    const fixture = setupPlan()
+    const resume = structuredClone(fixture.resume)
+    const educationEvidence = {
+      ...structuredClone(fixture.skill),
+      evidenceId: 'ev_education',
+      sourceScopeId: 'education_1',
+      verbatimText: '北京大学｜计算机科学｜本科',
+      normalizedClaim: '北京大学计算机科学本科',
+      claimType: 'education' as const,
+    }
+    resume.evidenceAtoms.push(educationEvidence)
+    resume.timeline.push({
+      scopeId: 'education_1',
+      kind: 'education',
+      organization: '北京大学',
+      title: '计算机科学',
+      start: '2018',
+      end: '2022',
+      evidenceIds: [educationEvidence.evidenceId],
+    })
+    const strategy = buildAdaptiveStrategy({ resume, job: fixture.job, match: fixture.match })
+    const plan = buildDeterministicV5ResumePlan({
+      resume,
+      job: fixture.job,
+      match: fixture.match,
+      policy: strategy.policy,
+      profile: strategy.profile,
+    })
+    const artifact = renderSourcePreservingArtifact({ resume, plan })
+    const validation = validateV5ResumePlan({
+      resume,
+      job: fixture.job,
+      match: fixture.match,
+      plan,
+      policy: strategy.policy,
+      profile: strategy.profile,
+    })
+
+    expect(validation.passed).toBe(true)
+    expect(plan.featuredSkillEvidenceIds).toContain(fixture.skill.evidenceId)
+    expect(plan.customizedEvidenceIds).toContain(educationEvidence.evidenceId)
+    expect(plan.scopePlans).toContainEqual(expect.objectContaining({
+      scopeId: 'education_1',
+      treatment: 'include',
+    }))
+    expect(artifact.markdown).toContain('## 教育背景')
+    expect(artifact.markdown).toContain('## 专业技能')
+  })
+
   test('normalizes unambiguous artifact claim markers, unsupported headings and render stats', () => {
     const fixture = setupPlan()
     const artifact = renderSourcePreservingArtifact({ resume: fixture.resume, plan: fixture.plan })

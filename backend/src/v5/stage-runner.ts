@@ -5,6 +5,7 @@ import type { HarnessEventBus } from '@/harness/event-bus'
 import { fallbackLlmProvider } from '@/providers/fallback-provider'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
 import { compileV5Prompt, type CompiledV5Prompt } from '@/v5/prompt-compiler'
+import type { V6LlmCallPolicy } from '@/v5/plugins/llm-call-policy'
 import type { V5PromptComponent } from '@/v5/prompts'
 
 export interface V5StageRunOptions {
@@ -18,6 +19,7 @@ export interface V5StageRunOptions {
   repairScope?: string[]
   retryIndex?: number
   budgetRemaining?: number | null
+  callPolicy?: V6LlmCallPolicy
   model?: string
 }
 
@@ -79,7 +81,7 @@ export async function runV5StructuredStage<T>(input: {
     repairAttempt: input.options?.repairAttempt,
   })
   const provider = input.options?.provider ?? fallbackLlmProvider
-  const providerResult = await provider.complete({
+  const request: ChatCompletionInput = {
     messages: compiled.messages,
     model: input.options?.model,
     temperature: compiled.temperature,
@@ -97,7 +99,14 @@ export async function runV5StructuredStage<T>(input: {
     },
     eventBus: input.options?.eventBus,
     stepContext: input.options?.stepContext,
-  })
+  }
+  const providerResult = input.options?.callPolicy
+    ? await input.options.callPolicy.execute({
+        provider,
+        request,
+        estimatedInputTokens: compiled.estimatedInputTokens,
+      })
+    : await provider.complete(request)
   if (providerResult.finishReason === 'length') {
     throw new V5StructuredOutputError({
       code: 'V5_OUTPUT_TRUNCATED',

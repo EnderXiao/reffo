@@ -39,6 +39,10 @@ import { buildRepairContext, type V6ContextMode } from '@/v5/plugins/context-bui
 import { defaultV6RepairPolicy, type V6RepairPolicy } from '@/v5/plugins/repair-policy'
 import { V6_LOW_COST_PROFILE, type V6ExecutionProfile } from '@/v5/plugins/execution-profile'
 import {
+  BoundedV6LlmCallPolicy,
+  type V6LlmCallPolicy,
+} from '@/v5/plugins/llm-call-policy'
+import {
   V5ResumeExtractionCacheError,
   type ResumeExtractionComputeContext,
   type TrustedResumeExtractionCache,
@@ -97,6 +101,7 @@ export interface V5WorkflowOptions {
   repairPolicy?: V6RepairPolicy
   repairContextMode?: V6ContextMode
   executionProfile?: V6ExecutionProfile
+  callPolicyFactory?: (input: { runId: string; profile: V6ExecutionProfile }) => V6LlmCallPolicy
 }
 
 export function calculateResumeExtractionTimeoutMs(remainingMs: number) {
@@ -323,6 +328,7 @@ export class V5ResumeOptimizationWorkflow {
   private readonly repairPolicy: V6RepairPolicy
   private readonly repairContextMode: V6ContextMode
   private readonly executionProfile: V6ExecutionProfile
+  private readonly callPolicyFactory: NonNullable<V5WorkflowOptions['callPolicyFactory']>
 
   constructor(options: V5WorkflowOptions = {}) {
     this.provider = options.provider
@@ -333,10 +339,13 @@ export class V5ResumeOptimizationWorkflow {
     this.repairPolicy = options.repairPolicy ?? defaultV6RepairPolicy
     this.repairContextMode = options.repairContextMode ?? 'full'
     this.executionProfile = options.executionProfile ?? V6_LOW_COST_PROFILE
+    this.callPolicyFactory = options.callPolicyFactory
+      ?? (({ profile }) => new BoundedV6LlmCallPolicy(profile.llmBudget))
   }
 
   async extractResume(input: V5ResumeExtractionInput): Promise<V5ResumeExtractionResult> {
     const runContext = createRunContext(V5_WORKFLOW_VERSION)
+    const callPolicy = this.callPolicyFactory({ runId: runContext.runId, profile: this.executionProfile })
     const deadline = Date.now() + (input.workflowTimeoutMs ?? 300000)
     const remaining = () => Math.max(1, deadline - Date.now())
     let state: ResumeAgentState = 'received'
@@ -362,6 +371,8 @@ export class V5ResumeOptimizationWorkflow {
         startedAt: runContext.startedAt,
         releaseStatus: 'preproduction_candidate',
         executionMode: 'extract_only',
+        executionProfile: this.executionProfile.id,
+        llmBudget: this.executionProfile.llmBudget,
       },
     }))
 
@@ -381,6 +392,7 @@ export class V5ResumeOptimizationWorkflow {
         document: sourceDocument.canonicalDocument,
         runContext,
         timeoutMs: remaining(),
+        callPolicy,
       })
       await setState('resume_extracted')
 
@@ -396,6 +408,7 @@ export class V5ResumeOptimizationWorkflow {
           usedSafeFallback: false,
           stepCount: 1,
           executionMode: 'extract_only',
+          llmBudgetUsage: callPolicy.snapshot(),
         },
       }))
 
@@ -424,6 +437,7 @@ export class V5ResumeOptimizationWorkflow {
           agentState: blocked.state,
           issueCodes: blocked.issues.map(item => item.code),
           executionMode: 'extract_only',
+          llmBudgetUsage: callPolicy.snapshot(),
         },
       }))
       throw blocked
@@ -432,6 +446,7 @@ export class V5ResumeOptimizationWorkflow {
 
   async run(input: V5WorkflowInput): Promise<V5WorkflowResult> {
     const runContext = createRunContext(V5_WORKFLOW_VERSION)
+    const callPolicy = this.callPolicyFactory({ runId: runContext.runId, profile: this.executionProfile })
     const steps: StepRunSnapshot[] = []
     const deadline = Date.now() + (input.workflowTimeoutMs ?? 600000)
     const remaining = () => Math.max(1, deadline - Date.now())
@@ -469,6 +484,8 @@ export class V5ResumeOptimizationWorkflow {
         inputDigest: createDigest({ resume: input.resumeMarkdown, jd: input.jobDescription }),
         startedAt: runContext.startedAt,
         releaseStatus: 'preproduction_candidate',
+        executionProfile: this.executionProfile.id,
+        llmBudget: this.executionProfile.llmBudget,
       },
     }))
 
@@ -515,6 +532,7 @@ export class V5ResumeOptimizationWorkflow {
                 document: sourceDocument.canonicalDocument,
                 runContext,
                 timeoutMs: calculateResumeExtractionTimeoutMs(remaining()),
+                callPolicy,
               })
               steps.push(resumeStep.step)
               return resumeStep.result
@@ -548,6 +566,7 @@ export class V5ResumeOptimizationWorkflow {
                     envelope,
                     stepContext,
                     documentIds: [jobDocument.canonicalDocument.documentId],
+                    callPolicy,
                     validate: value => validateJobExtractionCandidate(jobDocument.canonicalDocument, value),
                   })
                 },
@@ -589,6 +608,7 @@ export class V5ResumeOptimizationWorkflow {
                 }),
                 stepContext,
                 documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                callPolicy,
                 validate: value => validateV5MatchAnalysis({ resume: resumeEvidenceBundle, job: jobRequirementBundle, match: value }),
               }),
             })
@@ -665,6 +685,7 @@ export class V5ResumeOptimizationWorkflow {
               stepContext,
               repairAttempt: 0,
               inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+              callPolicy,
             },
           }).then(result => result.value),
         })
@@ -721,6 +742,7 @@ export class V5ResumeOptimizationWorkflow {
                   }),
                   stepContext,
                   documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                  callPolicy,
                   validate: value => validateV5ResumePlan({
                     resume: resumeEvidenceBundle,
                     job: jobRequirementBundle,
@@ -775,6 +797,7 @@ export class V5ResumeOptimizationWorkflow {
           stepContext,
           repairAttempt: 0,
           documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+          callPolicy,
         }),
       })
       steps.push(draftStep.step)
@@ -803,6 +826,7 @@ export class V5ResumeOptimizationWorkflow {
           documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
           remaining,
           steps,
+          callPolicy,
         })
         validation = validateGeneratedResumeArtifact({ artifact, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy })
       }
@@ -824,6 +848,7 @@ export class V5ResumeOptimizationWorkflow {
             stepContext,
             repairAttempt: repairAttempts,
             documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+            callPolicy,
           }),
         })
         steps.push(reviewStep.step)
@@ -852,6 +877,7 @@ export class V5ResumeOptimizationWorkflow {
           documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
           remaining,
           steps,
+          callPolicy,
         })
         validation = validateGeneratedResumeArtifact({ artifact, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy })
       }
@@ -905,6 +931,7 @@ export class V5ResumeOptimizationWorkflow {
         documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
         remaining,
         steps,
+        callPolicy,
       })
       while (
         !factJudge.passed
@@ -930,6 +957,7 @@ export class V5ResumeOptimizationWorkflow {
           documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
           remaining,
           steps,
+          callPolicy,
         })
         validation = validateGeneratedResumeArtifact({ artifact, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy })
         if (!validation.passed) continue
@@ -944,6 +972,7 @@ export class V5ResumeOptimizationWorkflow {
           documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
           remaining,
           steps,
+          callPolicy,
         })
       }
       if (!factJudge.passed) {
@@ -966,6 +995,7 @@ export class V5ResumeOptimizationWorkflow {
               documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
               remaining,
               steps,
+              callPolicy,
             })
           }
         }
@@ -1012,6 +1042,7 @@ export class V5ResumeOptimizationWorkflow {
                 }),
                 stepContext,
                 documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                callPolicy,
                 validate: value => validateInterviewPreparation({
                   preparation: value,
                   artifact,
@@ -1070,6 +1101,7 @@ export class V5ResumeOptimizationWorkflow {
                   eventBus: this.eventBus,
                   stepContext,
                   inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                  callPolicy,
                 },
               }).then(result => result.value),
             })
@@ -1124,6 +1156,8 @@ export class V5ResumeOptimizationWorkflow {
                 usedSafeFallback,
                 stepCount: steps.length,
                 pluginManifest: pluginManifest.plugins,
+                executionProfile: this.executionProfile.id,
+                llmBudgetUsage: callPolicy.snapshot(),
               },
             }))
 
@@ -1176,6 +1210,8 @@ export class V5ResumeOptimizationWorkflow {
             message: item.message,
             expectedConstraint: item.expectedConstraint,
           })),
+          executionProfile: this.executionProfile.id,
+          llmBudgetUsage: callPolicy.snapshot(),
         },
       }))
       throw blocked
@@ -1210,6 +1246,7 @@ export class V5ResumeOptimizationWorkflow {
     document: ReturnType<typeof canonicalizeSourceDocument>['canonicalDocument']
     runContext: RunContext
     timeoutMs: number
+    callPolicy: V6LlmCallPolicy
   }) {
     return runStep({
       runContext: input.runContext,
@@ -1223,6 +1260,7 @@ export class V5ResumeOptimizationWorkflow {
           extractionConcurrency: context.concurrency,
           runId: input.runContext.runId,
           stepContext,
+          callPolicy: input.callPolicy,
         })
         const resumeExtractionCandidate = this.resumeExtractionCache
           ? await this.resumeExtractionCache.resolve(input.document, compute)
@@ -1244,6 +1282,7 @@ export class V5ResumeOptimizationWorkflow {
     extractionConcurrency: number
     runId: string
     stepContext: StepExecutionContext
+    callPolicy: V6LlmCallPolicy
   }) {
     const extracted: Array<{
       chunk: ReturnType<typeof splitResumeDocument>[number]
@@ -1262,6 +1301,7 @@ export class V5ResumeOptimizationWorkflow {
               stepContext: input.stepContext,
               documentIds: [chunk.documentId],
               retryIndex,
+              callPolicy: input.callPolicy,
               validate: value => validateResumeExtractionCandidate(
                 chunk,
                 normalizeResumeExtractionChunkCandidate(chunk, value)
@@ -1334,6 +1374,7 @@ export class V5ResumeOptimizationWorkflow {
     validate: (value: T) => ValidationResult<T>
     fallback?: () => T
     retryIndex?: number
+    callPolicy: V6LlmCallPolicy
   }): Promise<T> {
     let currentOutput: unknown
     let validationIssues: ValidationIssue[] = []
@@ -1349,6 +1390,7 @@ export class V5ResumeOptimizationWorkflow {
           callReason: input.retryIndex ? 'network_retry' : 'business_stage',
           contextMode: 'scoped',
           retryIndex: input.retryIndex ?? 0,
+          callPolicy: input.callPolicy,
         },
       })
       currentOutput = result.value
@@ -1393,7 +1435,7 @@ export class V5ResumeOptimizationWorkflow {
       contextMode: repairDecision === 'local_llm' ? this.repairContextMode : 'scoped',
       repairScope,
       retryIndex: input.retryIndex ?? 0,
-      budgetRemaining: null,
+      budgetRemaining: input.callPolicy.snapshot().remainingCalls,
       issueCodes: validationIssues.map(issue => issue.code),
     }
     await this.eventBus.publish(createHarnessEvent({
@@ -1455,6 +1497,7 @@ export class V5ResumeOptimizationWorkflow {
         contextMode: this.repairContextMode,
         repairScope,
         retryIndex: input.retryIndex ?? 0,
+        callPolicy: input.callPolicy,
       },
     })
     const repairedValidation = input.validate(repairResult.value)
@@ -1488,6 +1531,7 @@ export class V5ResumeOptimizationWorkflow {
     stepContext: StepExecutionContext
     repairAttempt: number
     documentIds: string[]
+    callPolicy: V6LlmCallPolicy
   }): Promise<{ artifact: GeneratedResumeArtifact; repairAttempts: number }> {
     try {
       const result = await runV5StructuredStage<GeneratedResumeArtifact>({
@@ -1499,6 +1543,7 @@ export class V5ResumeOptimizationWorkflow {
           stepContext: input.stepContext,
           repairAttempt: input.repairAttempt,
           inputDocumentIds: input.documentIds,
+          callPolicy: input.callPolicy,
         },
       })
       return { artifact: result.value, repairAttempts: 0 }
@@ -1519,6 +1564,8 @@ export class V5ResumeOptimizationWorkflow {
           eventBus: this.eventBus,
           stepContext: input.stepContext,
           repairAttempt: input.repairAttempt + 1,
+          inputDocumentIds: input.documentIds,
+          callPolicy: input.callPolicy,
         },
       })
       return { artifact: repaired.value, repairAttempts: 1 }
@@ -1541,6 +1588,7 @@ export class V5ResumeOptimizationWorkflow {
     documentIds: string[]
     remaining: () => number
     steps: StepRunSnapshot[]
+    callPolicy: V6LlmCallPolicy
   }) {
     const allowedEvidenceIds = artifactEvidenceWhitelistIds(input.resumeEvidenceBundle, input.resumePlan)
     const repairStep = await runStep({
@@ -1573,6 +1621,8 @@ export class V5ResumeOptimizationWorkflow {
           eventBus: this.eventBus,
           stepContext,
           repairAttempt: input.repairAttempt,
+          inputDocumentIds: input.documentIds,
+          callPolicy: input.callPolicy,
         },
       }).then(result => result.value),
     })
@@ -1589,6 +1639,7 @@ export class V5ResumeOptimizationWorkflow {
     documentIds: string[]
     remaining: () => number
     steps: StepRunSnapshot[]
+    callPolicy: V6LlmCallPolicy
   }) {
     const step = await runStep({
       runContext: input.runContext,
@@ -1616,6 +1667,7 @@ export class V5ResumeOptimizationWorkflow {
           eventBus: this.eventBus,
           stepContext,
           inputDocumentIds: input.documentIds,
+          callPolicy: input.callPolicy,
         },
       }).then(result => normalizeBlockingFactJudgeResult(result.value, input.artifact, input.resumeEvidenceBundle)),
     })

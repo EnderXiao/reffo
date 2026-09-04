@@ -441,6 +441,27 @@ export function buildDeterministicV5ResumePlan(input: {
     chosen.add(atom.evidenceId)
   }
 
+  const matchedEvidenceIds = new Set(input.match.requirementMatches
+    .filter(item => item.status === 'direct_match' || item.status === 'transferable_match')
+    .flatMap(item => item.evidenceIds))
+  const eligibleSkills = input.resume.evidenceAtoms
+    .filter(atom => atom.claimType === 'skill' && Boolean(safeAtom(atom.evidenceId)))
+    .sort((left, right) => Number(matchedEvidenceIds.has(right.evidenceId)) - Number(matchedEvidenceIds.has(left.evidenceId)))
+  let selectedSkillCount = [...chosen]
+    .filter(id => evidence.get(id)?.claimType === 'skill')
+    .length
+  for (const atom of eligibleSkills) {
+    if (chosen.size >= contentLimit || selectedSkillCount >= 4) break
+    if (!chosen.has(atom.evidenceId)) {
+      chosen.add(atom.evidenceId)
+      selectedSkillCount += 1
+    }
+  }
+  for (const atom of input.resume.evidenceAtoms) {
+    if (chosen.size >= contentLimit) break
+    if (ANCILLARY_CLAIM_TYPES.has(atom.claimType) && safeAtom(atom.evidenceId)) chosen.add(atom.evidenceId)
+  }
+
   const selectedBusiness = [...chosen]
     .map(id => evidence.get(id))
     .filter((atom): atom is EvidenceAtom => Boolean(atom && BUSINESS_TYPES.has(atom.claimType)))
@@ -448,7 +469,7 @@ export function buildDeterministicV5ResumePlan(input: {
   for (const atom of selectedBusiness) {
     selectedByScope.set(atom.sourceScopeId, [...(selectedByScope.get(atom.sourceScopeId) ?? []), atom.evidenceId])
   }
-  const scopePlans: V5ResumePlan['scopePlans'] = input.resume.timeline
+  const businessScopePlans: V5ResumePlan['scopePlans'] = input.resume.timeline
     .filter(item => ['experience', 'internship', 'project', 'research'].includes(item.kind))
     .map(item => {
       const selectedEvidenceIds = selectedByScope.get(item.scopeId) ?? []
@@ -465,6 +486,26 @@ export function buildDeterministicV5ResumePlan(input: {
         rewriteAngle: '保持原始事实、scope、数字、限定词和归因边界',
       }
     })
+  const educationScopePlans: V5ResumePlan['scopePlans'] = input.resume.timeline
+    .filter(item => item.kind === 'education')
+    .map(item => {
+      const selectedEvidenceIds = input.resume.evidenceAtoms
+        .filter(atom => (
+          chosen.has(atom.evidenceId)
+          && atom.sourceScopeId === item.scopeId
+          && atom.claimType === 'education'
+        ))
+        .map(atom => atom.evidenceId)
+      return {
+        scopeId: item.scopeId,
+        scopeType: item.kind,
+        treatment: selectedEvidenceIds.length > 0 ? 'include' as const : 'timeline_line' as const,
+        selectedEvidenceIds,
+        bulletBudget: selectedEvidenceIds.length,
+        rewriteAngle: '保留教育背景的原始学校、专业、学历和时间信息',
+      }
+    })
+  const scopePlans = [...businessScopePlans, ...educationScopePlans]
   const featuredSkillEvidenceIds = [...chosen].filter(id => evidence.get(id)?.claimType === 'skill')
   const ancillaryEvidenceIds = [...chosen].filter(id => ANCILLARY_CLAIM_TYPES.has(evidence.get(id)?.claimType ?? ''))
   const evidencePillars = primaryRequirementIds.flatMap((requirementId, index) => {
