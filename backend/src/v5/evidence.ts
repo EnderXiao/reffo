@@ -313,12 +313,35 @@ export function validateResumeExtractionCandidate(
         expectedConstraint: 'EvidenceAtom 的 quote 必须逐字可定位，且不得使用模型改写文本作为 verbatimText',
       }))
     }
+    const riskFlags = hasExecutableInputRisk(block.inputRiskFlags)
+      ? [...new Set([...quoteAligned.riskFlags, 'prompt_injection_like_text' as const])]
+      : quoteAligned.riskFlags
+    const mustExclude = riskFlags.includes('prompt_injection_like_text')
+      || (
+        quoteAligned.proposedStatus === 'source_supported'
+        && (riskFlags.includes('conflicting') || riskFlags.includes('future_or_planned'))
+      )
+    const safetyAligned = mustExclude
+      ? { ...quoteAligned, riskFlags, proposedStatus: 'excluded' as const }
+      : { ...quoteAligned, riskFlags }
+    if (
+      safetyAligned.proposedStatus !== quoteAligned.proposedStatus
+      || safetyAligned.riskFlags.length !== quoteAligned.riskFlags.length
+    ) {
+      issues.push(createIssue({
+        code: 'UNSAFE_EVIDENCE_SERVER_EXCLUDED',
+        severity: 'warning',
+        outputPath: `factCandidates[${index}].proposedStatus`,
+        message: '风险事实已由服务端补齐风险标记并强制设为 excluded。',
+        expectedConstraint: '注入、冲突或未来规划事实不得作为可用简历证据',
+      }))
+    }
     const numericAtoms = normalizeSourceNumericAtoms(
-      quoteAligned.verbatimText,
-      quoteAligned.sourceScopeLocalId,
-      quoteAligned.numericAtoms
+      safetyAligned.verbatimText,
+      safetyAligned.sourceScopeLocalId,
+      safetyAligned.numericAtoms
     )
-    if (JSON.stringify(numericAtoms) !== JSON.stringify(quoteAligned.numericAtoms)) {
+    if (JSON.stringify(numericAtoms) !== JSON.stringify(safetyAligned.numericAtoms)) {
       issues.push(createIssue({
         code: 'NUMERIC_ATOMS_SERVER_ALIGNED',
         severity: 'warning',
@@ -327,7 +350,7 @@ export function validateResumeExtractionCandidate(
         expectedConstraint: 'numericAtoms 只是源文派生索引，raw/value/unit/qualifier/period 必须逐字可定位',
       }))
     }
-    return { ...quoteAligned, numericAtoms }
+    return { ...safetyAligned, numericAtoms }
   })
   const normalizedFactsById = new Map(normalizedFacts.map(fact => [fact.factLocalId, fact]))
   const scopeAlignedTimelineCandidates = candidate.timelineCandidates.map(timeline => ({

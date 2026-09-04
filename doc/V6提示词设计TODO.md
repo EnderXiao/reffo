@@ -79,7 +79,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 
 - [ ] P01 输出严格绑定目标 chunk，不输出非目标 block。
 - [ ] P01R 改为“问题 block + 原文窗口 + 当前候选片段”的局部修复 Prompt。
-- [ ] 数字、span、scope、覆盖率等规则优先由确定性校验和修复器处理。
+- [x] 数字、span、scope、覆盖率和风险状态优先由确定性校验和修复器处理。（2026-09-04；风险事实自动排除，真实样本不再触发 P01R）
 - [ ] 评估是否取消 P01R：无法局部安全修复时直接标记 excluded/unmapped，不再重生整份候选。
 
 ### P02/P02R：JD 需求

@@ -181,6 +181,20 @@ describe('v5 canonical source and atomic evidence', () => {
     })
   })
 
+  test('deterministically excludes future or conflicting evidence instead of calling P01R', () => {
+    const { document, candidate } = createResumeFixture()
+    const unsafe = structuredClone(candidate)
+    unsafe.factCandidates[2].riskFlags = ['future_or_planned']
+    unsafe.factCandidates[2].proposedStatus = 'source_supported'
+
+    const result = validateResumeExtractionCandidate(document, unsafe)
+
+    expect(result.passed).toBe(true)
+    expect(result.value?.factCandidates[2].proposedStatus).toBe('excluded')
+    expect(result.issues.map(item => item.code)).toContain('UNSAFE_EVIDENCE_SERVER_EXCLUDED')
+    expect(result.issues.map(item => item.code)).not.toContain('UNSAFE_EVIDENCE_STATUS')
+  })
+
   test('continues after an exact high-importance ambiguity by preserving it as excluded evidence', () => {
     const { document, candidate } = createResumeFixture()
     const ambiguous = structuredClone(candidate)

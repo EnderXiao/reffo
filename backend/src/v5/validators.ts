@@ -35,6 +35,28 @@ const ANCILLARY_SECTION_CLAIM_TYPES: Record<string, EvidenceAtom['claimType']> =
   portfolio: 'portfolio_link',
 }
 
+function renderableBusinessEvidence(resume: ResumeEvidenceBundle) {
+  const timeline = new Map(resume.timeline.map(item => [item.scopeId, item]))
+  const seen = new Set<string>()
+  return resume.evidenceAtoms.filter(atom => {
+    if (
+      atom.status === 'excluded'
+      || atom.riskFlags.includes('sensitive_pii')
+      || !BUSINESS_TYPES.has(atom.claimType)
+    ) return false
+    const scope = timeline.get(atom.sourceScopeId)
+    if (
+      !scope
+      || !['experience', 'internship', 'project', 'research'].includes(scope.kind)
+      || ![scope.organization, scope.title, scope.start, scope.end].some(Boolean)
+    ) return false
+    const key = `${scope.scopeId}:${atom.verbatimText.trim().replace(/^[-*+]\s+/, '')}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 function stableIssueId(parts: string[]) {
   return `issue_${createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 16)}`
 }
@@ -411,9 +433,8 @@ export function buildDeterministicV5ResumePlan(input: {
     if (candidate && chosen.size < contentLimit) chosen.add(candidate.evidenceId)
   }
 
-  const eligibleBusiness = input.resume.evidenceAtoms.filter(atom => (
-    Boolean(contentAtom(atom.evidenceId)) && BUSINESS_TYPES.has(atom.claimType)
-  ))
+  const eligibleBusiness = renderableBusinessEvidence(input.resume)
+    .filter(atom => Boolean(contentAtom(atom.evidenceId)))
   for (const atom of eligibleBusiness) {
     const chosenBusinessCount = [...chosen].filter(id => BUSINESS_TYPES.has(evidence.get(id)?.claimType ?? '')).length
     if (chosenBusinessCount >= input.policy.targetBusinessBulletMin || chosen.size >= contentLimit) break
@@ -841,11 +862,7 @@ export function validateV5ResumePlan(input: {
     && pillar.evidenceIds.some(id => matchEvidenceByRequirement.get(requirementId)?.has(id))
   ))).length
   const primaryRatio = input.plan.primaryRequirementIds.length === 0 ? 1 : primaryCovered / input.plan.primaryRequirementIds.length
-  const eligibleBusinessEvidenceCount = input.resume.evidenceAtoms.filter(atom => (
-    atom.status !== 'excluded'
-    && !atom.riskFlags.includes('sensitive_pii')
-    && BUSINESS_TYPES.has(atom.claimType)
-  )).length
+  const eligibleBusinessEvidenceCount = renderableBusinessEvidence(input.resume).length
   const potentialPrimaryCovered = [...primaryIds].filter(requirementId => (
     (matchEvidenceByRequirement.get(requirementId)?.size ?? 0) > 0
   )).length
@@ -1825,11 +1842,7 @@ export function validateGeneratedResumeArtifact(input: {
   const primaryCoverage = primaryEvidence.size === 0
     ? (plan.primaryRequirementIds.length === 0 ? 1 : 0)
     : [...primaryEvidence].filter(id => used.has(id)).length / primaryEvidence.size
-  const eligibleBusinessEvidenceCount = resume.evidenceAtoms.filter(atom => (
-    atom.status !== 'excluded'
-    && !atom.riskFlags.includes('sensitive_pii')
-    && BUSINESS_TYPES.has(atom.claimType)
-  )).length
+  const eligibleBusinessEvidenceCount = renderableBusinessEvidence(resume).length
   const lowerBoundExceptionEligible = Boolean(plan.lowerBoundException) && (
     eligibleBusinessEvidenceCount < policy.targetBusinessBulletMin
     || (plan.primaryRequirementIds.length > 0 && primaryEvidence.size === 0)
