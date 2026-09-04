@@ -36,7 +36,7 @@
 | U9 | Harness 数据库健康检查与运行库隔离 | `backend/src/repositories/database.ts`、`backend/src/routes/mvp.ts`、`.gitignore` | 健康接口、全量 backend、类型检查、diff 检查 | user | `958f2b3` | committed |
 | U10 | 多进程访问隔离与 Harness 备份工具 | `backend/src/repositories/database.ts`、维护脚本、Git 索引 | 并发进程验证、维护脚本 check/backup、全量 backend、类型检查、diff 检查 | user | `44a057a` | committed |
 | U12 | Dashboard 汇总 Prompt 输入摘要 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
-| U13 | Harness 失败恢复建议 | `backend/src/harness/recovery-advice.ts`、`run-step.ts`、测试、V6 TODO | 恢复建议单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
+| U13 | Harness 失败恢复建议 | `backend/src/harness/recovery-advice.ts`、`run-step.ts`、测试、V6 TODO | 恢复建议单测、全量 backend、类型检查、diff 检查 | user | `8c695a6` | committed |
 | U11 | Prompt manifest 字段摘要与 Token 观测 | `backend/src/v5/prompt-compiler.ts`、Provider contract、Prompt 测试、V6 TODO | Prompt manifest 单测、全量 backend、类型检查、diff 检查 | user | `888783c` | committed |
 
 ## Unit Logs
@@ -218,9 +218,9 @@
 - Validation commands: `bun test ./src/repositories/harness-metrics.test.ts`（2 pass）；`bun test`（245 pass）；`bunx tsc --noEmit`；`git diff --check`
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
-- Resolution: pending
-- Commit message: pending
-- Commit: pending
+- Resolution: 失败事件统一携带可读动作和 retryable 标记；未匹配错误走 Harness 事件检查兜底。
+- Commit message: `feat: 增加Harness失败恢复建议`
+- Commit: `8c695a6`
 - Remaining follow-up: 增加预算耗尽、上下文超限、Provider 超时和安全回退的统一恢复建议。
 
 ### U13
@@ -240,13 +240,13 @@
 
 ## Remaining Items
 
-- Remaining functional units: U13
+- Remaining functional units: none
 - Cleanup-only units: none
-- Open risks: U13 尚未提交；恢复建议尚未接入 dashboard/API 错误响应；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: 恢复建议尚未接入 dashboard/API 错误响应；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U12 已完成；U13 进行中
+- Functional commits: U1-U13 已完成
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。
