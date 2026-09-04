@@ -13,6 +13,7 @@ import {
   mergeResumeExtractionCandidates,
   normalizeResumeExtractionChunkCandidate,
   ResumeExtractionChunkCapacityError,
+  resumeExtractionChunkIdempotencyKey,
   splitResumeDocument,
 } from '@/v5/chunked-resume-extraction'
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
@@ -1321,6 +1322,7 @@ export class V5ResumeOptimizationWorkflow {
               action: 'retry_resume_chunk',
               chunkIndex: chunk.chunkIndex ?? index,
               chunkDocumentId: chunk.documentId,
+              idempotencyKey: resumeExtractionChunkIdempotencyKey(chunk),
               retryIndex,
               maxRetries: DEFAULT_RESUME_EXTRACTION_CHUNK_RETRY_ATTEMPTS,
               reason: error instanceof Error ? error.message : String(error),
@@ -1344,7 +1346,9 @@ export class V5ResumeOptimizationWorkflow {
           }
         }
       }))
-      extracted.push(...batchResults)
+      const mergedByChunkKey = new Map(extracted.map(item => [resumeExtractionChunkIdempotencyKey(item.chunk), item]))
+      for (const item of batchResults) mergedByChunkKey.set(resumeExtractionChunkIdempotencyKey(item.chunk), item)
+      extracted.splice(0, extracted.length, ...mergedByChunkKey.values())
     }
     const ordered = extracted
       .sort((left, right) => (

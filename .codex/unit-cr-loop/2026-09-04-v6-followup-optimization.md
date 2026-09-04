@@ -30,7 +30,7 @@
 | U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、prompt compiler、P08R prompt、patch merger、测试 | `bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | `0775d2c` | committed |
 | U4 | 修正确定性选材，保留项目和关键教育信息 | `backend/src/v5/validators.ts`、测试 | `bun test ./src/v5/tests/policy-score-validator.test.ts`、`bun test ./src/v5/tests/workflow.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测、类型检查 | user | `1a24fe8` | committed |
-| U6 | P01 幂等重传和 Chunk 插件边界 | chunk extraction、plugins、测试 | chunk/并发/重传单测 | user | - | proposed |
+| U6 | P01 幂等重传和 Chunk 插件边界 | `chunked-resume-extraction.ts`、workflow、测试 | chunk/workflow 单测、类型检查 | user | - | regression_passed |
 | U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | 离线评估 + canary | user | - | proposed |
 
 ## Unit Logs
@@ -109,6 +109,21 @@
 - Commit message: pending
 - Commit: pending
 - Remaining follow-up: U6 实现 P01 幂等重传和 Chunk 插件边界。
+
+### U6
+
+- Objective: 为 P01 chunk 生成稳定幂等键，重传事件携带幂等键，合并前按幂等键去重，避免重复合并。
+- Files: `backend/src/v5/chunked-resume-extraction.ts`、`backend/src/v5/main/workflow.ts`、chunk/workflow 测试。
+- Code changes: 新增 `resumeExtractionChunkIdempotencyKey`；失败 chunk recovery payload 记录 key；批次结果按 key 去重后再按 canonical 顺序合并。
+- Regression added or updated: 新增 canonical chunk metadata 稳定 key 测试，覆盖 retry documentId 变化仍保持相同 key。
+- Regression executor: repo-native backend unit test
+- Validation commands: chunk/workflow 单测（28 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: U7 指标汇总、黄金集和发布门禁。
 
 ## Remaining Items
 

@@ -67,7 +67,7 @@ V6 设计约束：**优先复用现有 V5 Plugin Registry/Plugin Contract**。�
 - [x] `Promise.all` 返回结果先绑定 chunk 元数据，再进入排序/合并；禁止直接按完成顺序追加。（2026-09-04）
 - [x] 每个 chunk 记录请求、响应、校验状态和重传次数；失败只重传失败 chunk。（2026-09-04；Harness recovery 事件）
 - [x] 增加 chunk 级有限重传：网络/超时按策略最多重传 1 次；Schema/业务错误不重复调用。（2026-09-04）
-- [ ] 重传使用相同 chunk digest 和幂等键，避免重复计费和重复合并。
+- [x] 重传使用相同 chunk digest 和幂等键，避免重复计费和重复合并。（2026-09-04；`resumeExtractionChunkIdempotencyKey`，合并前按 key 去重）
 - [ ] chunk 重传达到上限后，保留其他已验证 chunk，按策略安全回退或明确阻断。
 - [x] 增加分 chunk 乱序响应和稳定合并测试。（2026-09-04）
 - [ ] 评估减少 chunk 上下文：完整经历只作为只读上下文按需发送，不复制到每个 shard 的输出上下文。

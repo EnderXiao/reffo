@@ -7,6 +7,7 @@ import {
   DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
   ResumeExtractionChunkCapacityError,
   splitResumeDocument,
+  resumeExtractionChunkIdempotencyKey,
 } from '@/v5/chunked-resume-extraction'
 
 function chunksFor(markdown: string, maxBlocks: number) {
@@ -15,6 +16,12 @@ function chunksFor(markdown: string, maxBlocks: number) {
 }
 
 describe('v5 resume extraction chunk boundaries', () => {
+  test('creates a stable idempotency key from canonical chunk metadata', () => {
+    const document = canonicalizeSourceDocument('## 工作经历\n\n完成项目', 'idempotency-fixture').canonicalDocument
+    const [chunk] = splitResumeDocument(document)
+    const same = { ...chunk, documentId: `${chunk.documentId}:retry` }
+    expect(resumeExtractionChunkIdempotencyKey(chunk)).toBe(resumeExtractionChunkIdempotencyKey(same))
+  })
   test('uses a conservative extraction concurrency default', () => {
     expect(DEFAULT_RESUME_EXTRACTION_CONCURRENCY).toBe(2)
     expect(DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS).toBe(20)

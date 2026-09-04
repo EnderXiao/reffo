@@ -1,4 +1,5 @@
 import type { CanonicalSourceDocument, ResumeExtractionCandidate } from '@/v5/types'
+import { createDigest } from '@/harness/run-context'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 
 export const DEFAULT_RESUME_EXTRACTION_CONCURRENCY = 2
@@ -31,6 +32,16 @@ export interface ResumeExtractionChunk extends CanonicalSourceDocument {
   extractionScopeContext?: ResumeExtractionScopeContext
   /** Server-owned business-scope membership for target blocks. */
   extractionScopeAssignments?: ResumeExtractionScopeAssignment[]
+}
+
+export function resumeExtractionChunkIdempotencyKey(chunk: ResumeExtractionChunk) {
+  return `p01:${createDigest({
+    documentSha256: chunk.sha256,
+    chunkIndex: chunk.chunkIndex ?? null,
+    sourceBlockIds: chunk.blocks.map(block => block.sourceBlockId),
+    sourceOrderStart: chunk.sourceOrderStart ?? null,
+    sourceOrderEnd: chunk.sourceOrderEnd ?? null,
+  })}`
 }
 
 export function resumeExtractionFactCandidateLimit(blockCount: number) {
