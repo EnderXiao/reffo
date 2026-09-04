@@ -35,7 +35,7 @@ import {
   V5PluginExecutionError,
   V5WorkflowPluginRegistry,
 } from '@/v5/plugins/registry'
-import { buildRepairContext } from '@/v5/plugins/context-builder'
+import { buildRepairContext, type V6ContextMode } from '@/v5/plugins/context-builder'
 import { defaultV6RepairPolicy, type V6RepairPolicy } from '@/v5/plugins/repair-policy'
 import {
   V5ResumeExtractionCacheError,
@@ -94,6 +94,7 @@ export interface V5WorkflowOptions {
   enableDefaultSubscribers?: boolean
   pluginOverrides?: Partial<Record<V5BuiltinPluginId, V5WorkflowPlugin<unknown, unknown>>>
   repairPolicy?: V6RepairPolicy
+  repairContextMode?: V6ContextMode
 }
 
 export function calculateResumeExtractionTimeoutMs(remainingMs: number) {
@@ -318,6 +319,7 @@ export class V5ResumeOptimizationWorkflow {
   private readonly eventBus: HarnessEventBus
   private readonly pluginOverrides: V5WorkflowOptions['pluginOverrides']
   private readonly repairPolicy: V6RepairPolicy
+  private readonly repairContextMode: V6ContextMode
 
   constructor(options: V5WorkflowOptions = {}) {
     this.provider = options.provider
@@ -326,6 +328,7 @@ export class V5ResumeOptimizationWorkflow {
     this.eventBus = options.eventBus ?? (options.enableDefaultSubscribers === false ? createHarnessEventBus() : createDefaultEventBus())
     this.pluginOverrides = options.pluginOverrides
     this.repairPolicy = options.repairPolicy ?? defaultV6RepairPolicy
+    this.repairContextMode = options.repairContextMode ?? 'full'
   }
 
   async extractResume(input: V5ResumeExtractionInput): Promise<V5ResumeExtractionResult> {
@@ -1332,6 +1335,7 @@ export class V5ResumeOptimizationWorkflow {
       currentOutput = result.value
       const validation = input.validate(result.value)
       if (validation.passed) return validation.value ?? result.value
+      currentOutput = validation.value ?? result.value
       validationIssues = validation.issues
     } catch (error) {
       if (!(error instanceof V5StructuredOutputError)) throw error
@@ -1365,6 +1369,7 @@ export class V5ResumeOptimizationWorkflow {
         originalEnvelope: input.envelope,
         currentOutput,
         validationIssues,
+        mode: this.repairContextMode,
       })),
       options: {
         provider: this.provider,
