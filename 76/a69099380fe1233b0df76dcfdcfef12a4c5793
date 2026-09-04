@@ -1,0 +1,31 @@
+backend/src/repositories/harness-run-repository.ts
+  s_e328faee98ba0c::t_06b7744ce84cf2 3-10,80-83
+  s_e328faee98ba0c::t_b2dc27b28197f9 130-131,139-140
+backend/src/repositories/harness-metrics.ts
+  s_e328faee98ba0c::t_358a0b464c40c3 1-6,8-150,152-154,158-184,186-222,226-242,244-291
+  s_e328faee98ba0c::t_5e953315193324 151
+  s_e328faee98ba0c::t_5ea782472b1acb 7,155-157,185,223-225,243
+backend/src/repositories/harness-metrics.test.ts
+  s_e328faee98ba0c::t_be2c6d8a8f5646 1-58
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_488f39701d56e4 135,139
+  s_e328faee98ba0c::t_13810346190289 34,128-134,136-138,140-142,145,151
+doc/V6后续优化TODO.md
+  s_e328faee98ba0c::t_655043592e9bfe 96-99,109,127-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "76a69099380fe1233b0df76dcfdcfef12a4c5793",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
