@@ -30,7 +30,7 @@
 | U3 | 将 P08/P08R 接入 Patch 修复与统一 issue 分类 | workflow、prompt compiler、P08R prompt、patch merger、测试 | `bun test ./src/v5`、`bunx tsc --noEmit`、`git diff --check` | user | `0775d2c` | committed |
 | U4 | 修正确定性选材，保留项目和关键教育信息 | `backend/src/v5/validators.ts`、测试 | `bun test ./src/v5/tests/policy-score-validator.test.ts`、`bun test ./src/v5/tests/workflow.test.ts`、`bunx tsc --noEmit`、`git diff --check` | user | - | regression_passed |
 | U5 | 统一 Provider 物理 attempt 预算和 fallback 计费 | providers、call policy、Harness | provider/预算单测、类型检查 | user | `1a24fe8` | committed |
-| U6 | P01 幂等重传和 Chunk 插件边界 | `chunked-resume-extraction.ts`、workflow、测试 | chunk/workflow 单测、类型检查 | user | - | regression_passed |
+| U6 | P01 幂等重传和 Chunk 插件边界 | `chunked-resume-extraction.ts`、workflow、测试 | chunk/workflow 单测、类型检查 | user | `80cb15d` | committed |
 | U7 | 指标汇总、黄金集和发布门禁 | Harness、脚本、文档 | 离线评估 + canary | user | - | proposed |
 
 ## Unit Logs
@@ -76,8 +76,8 @@
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
 - Resolution: pending
-- Commit message: pending
-- Commit: pending
+- Commit message: `fix: 增加P01分块幂等重传`
+- Commit: `80cb15d`
 - Remaining follow-up: 当前只在业务修复路径使用 P08R；P06/P07 解析失败仍走 P08 全量兼容路径。
 
 ### U4
@@ -127,7 +127,7 @@
 
 ## Remaining Items
 
-- Remaining functional units: U6-U7
+- Remaining functional units: U7
 - Cleanup-only units: none
 - Open risks: 当前生产默认仍为 `full`；U1 完成前不切换默认模式。
 
