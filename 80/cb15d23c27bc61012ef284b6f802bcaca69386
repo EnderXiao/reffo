@@ -1,0 +1,30 @@
+backend/src/v5/main/workflow.ts
+  s_e328faee98ba0c::t_1d15c5db1c7a60 16,1349-1351
+  s_e328faee98ba0c::t_e0230fc4fd36d7 1325
+backend/src/v5/tests/chunked-resume-extraction.test.ts
+  s_e328faee98ba0c::t_e0230fc4fd36d7 10,19-24
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_7d4393cd13fad4 33,113-126
+  s_e328faee98ba0c::t_8aa5c1f059d975 127
+doc/V6提示词设计TODO.md
+  s_e328faee98ba0c::t_4c33348f080e32 70
+backend/src/v5/chunked-resume-extraction.ts
+  s_e328faee98ba0c::t_1d15c5db1c7a60 2,37-44
+  s_e328faee98ba0c::t_69c3ace8228780 45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "80cb15d23c27bc61012ef284b6f802bcaca69386",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
