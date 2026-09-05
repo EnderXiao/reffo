@@ -184,9 +184,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/dashboard',
-    () => ({
+    async () => ({
       success: true,
-      data: getHarnessRunRepository().getDashboardMetrics(),
+      data: await getHarnessRunRepository().getDashboardMetrics(),
     }),
     {
       detail: {
@@ -203,9 +203,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/regression-dataset',
-    ({ query }) => ({
+    async ({ query }) => ({
       success: true,
-      data: getHarnessRunRepository().buildRegressionDataset(Number(query.limit ?? 20)),
+      data: await getHarnessRunRepository().buildRegressionDataset(Number(query.limit ?? 20)),
     }),
     {
       query: t.Object({
@@ -225,8 +225,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/runs/:run_id',
-    ({ params, set }) => {
-      const result = getHarnessRunRepository().getRun(params.run_id)
+    async ({ params, set }) => {
+      const result = await getHarnessRunRepository().getRun(params.run_id)
 
       if (!result) {
         set.status = 404
@@ -262,8 +262,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/runs/:run_id/replay',
-    ({ params, set }) => {
-      const result = getHarnessRunRepository().replayRun(params.run_id)
+    async ({ params, set }) => {
+      const result = await getHarnessRunRepository().replayRun(params.run_id)
 
       if (!result) {
         set.status = 404
@@ -299,8 +299,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .post(
     '/runs/:run_id/failure-samples',
-    ({ params, body, set }) => {
-      const result = getHarnessRunRepository().createFailureSample(params.run_id, body.reason)
+    async ({ params, body, set }) => {
+      const result = await getHarnessRunRepository().createFailureSample(params.run_id, body.reason)
 
       if (!result) {
         set.status = 404

@@ -157,6 +157,13 @@ export interface HarnessDatabaseHealth {
 
 /** Read-only health probe. Never rebuilds or deletes a potentially recoverable database. */
 export function getHarnessDatabaseHealth(): HarnessDatabaseHealth {
+  if (env.DATABASE_PROVIDER === 'supabase') {
+    return {
+      status: 'ok',
+      integrityCheck: 'supabase',
+    }
+  }
+
   try {
     const result = getHarnessDatabase().query('PRAGMA integrity_check').get() as { integrity_check?: unknown } | null
     const integrityCheck = typeof result?.integrity_check === 'string' ? result.integrity_check : 'unknown'

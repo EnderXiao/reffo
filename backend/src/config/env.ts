@@ -113,6 +113,7 @@ export const env = {
   HARNESS_DATABASE_PATH: process.env.HARNESS_DATABASE_PATH || '',
   HARNESS_RETENTION_DAYS: parseInt(process.env.HARNESS_RETENTION_DAYS || '7', 10),
   HARNESS_MAX_RUNS: parseInt(process.env.HARNESS_MAX_RUNS || '1000', 10),
+  HARNESS_CLEANUP_INTERVAL_MS: parsePositiveInteger(process.env.HARNESS_CLEANUP_INTERVAL_MS, 24 * 60 * 60 * 1000),
 
   // AI Provider Configuration
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',

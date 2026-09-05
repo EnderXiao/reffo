@@ -350,11 +350,27 @@
 - Commit: `ac9c06f`
 - Remaining follow-up: 用真实 `/match` 请求复测一次；黄金集、多样本 canary 和 Token 估算校准。
 
+### U21
+
+- Objective: nonprod/prod Harness 不再依赖共享 SQLite，事件持久化和查询统一走 Supabase service role。
+- Files: `supabase/migrations/202609050001_harness_events.sql`、`backend/src/repositories/harness-supabase.ts`、`backend/src/harness/subscribers/persistence-subscriber.ts`、`backend/src/repositories/harness-run-repository.ts`、`backend/src/repositories/database.ts`。
+- Code changes: 新增 `harness_events`、`harness_failure_samples` 表；按 `DATABASE_PROVIDER` 切换存储；Supabase 事件流重建 run/step/attempt/evaluation/artifact；Supabase 环境健康检查不再打开 SQLite，消除多实例锁竞争。
+- Validation: `bun test`（253 pass）；`bunx tsc --noEmit`。
+- Remaining: migration 需分别部署到 nonprod/prod Supabase 项目并做真实 API 验证。
+
+### U22
+
+- Objective: Supabase Harness 按保留天数和最大 run 数定时清理，避免事件表无限增长。
+- Files: `backend/src/harness/supabase-cleanup.ts`、`backend/src/repositories/harness-supabase.ts`、`backend/src/index.ts`、`backend/src/config/env.ts`、`backend/.env.example`。
+- Code changes: 服务启动立即清理，随后按 `HARNESS_CLEANUP_INTERVAL_MS` 周期执行；任务串行、防重入、`unref`；清理失败只记录日志；按 `HARNESS_RETENTION_DAYS` 删除过期事件/失败样本，按 `HARNESS_MAX_RUNS` 删除超出保留数量的旧 run。
+- Validation: `bun test`（253 pass）；`bunx tsc --noEmit`。
+- Remaining: 线上设置合理间隔并观察 Supabase 删除权限、清理耗时和失败日志。
+
 ## Remaining Items
 
 - Remaining functional units: none
 - Cleanup-only units: none
-- Open risks: 真实 `/match` 复测尚未执行；单样本真实 canary 仍为 `preproduction_candidate`；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库；黄金集、多样本 canary 和 Token 估算校准尚未执行。
+- Open risks: migration 尚未部署到 nonprod/prod；真实 `/match` 复测尚未执行；单样本真实 canary 仍为 `preproduction_candidate`；黄金集、多样本 canary 和 Token 估算校准尚未执行。
 
 ## Final Summary
 

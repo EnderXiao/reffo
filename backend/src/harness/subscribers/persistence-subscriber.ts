@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { initializeHarnessDatabase, resetHarnessDatabaseConnection } from '@/repositories/database'
 import type { HarnessEvent } from '@/harness/events'
 import { enqueueHarnessWrite } from '@/harness/subscribers/write-queue'
+import { env } from '@/config/env'
+import { supabaseHarnessRepository } from '@/repositories/harness-supabase'
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}
@@ -19,6 +21,19 @@ export class PersistenceSubscriber {
   private db: ReturnType<typeof initializeHarnessDatabase> | null = null
 
   handle = (event: HarnessEvent) => enqueueHarnessWrite(async () => {
+    if (env.DATABASE_PROVIDER === 'supabase') {
+      try {
+        await supabaseHarnessRepository.persistEvent(event)
+      } catch (error) {
+        console.error('[PersistenceSubscriber] Supabase Harness persist failed', {
+          eventType: event.type,
+          runId: event.runId,
+          stepRunId: event.stepRunId,
+          message: error instanceof Error ? error.message : String(error),
+        })
+      }
+      return
+    }
     try {
       this.persistAtomically(event)
     } catch (error) {

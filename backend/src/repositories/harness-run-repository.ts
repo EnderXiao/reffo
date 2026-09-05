@@ -1,4 +1,6 @@
 import { initializeHarnessDatabase } from '@/repositories/database'
+import { env } from '@/config/env'
+import { supabaseHarnessRepository } from '@/repositories/harness-supabase'
 import { randomUUID } from 'node:crypto'
 import {
   aggregateHarnessMetrics,
@@ -10,19 +12,26 @@ import {
 } from '@/repositories/harness-metrics'
 
 export class HarnessRunRepository {
-  private readonly db = initializeHarnessDatabase()
+  private readonly db = env.DATABASE_PROVIDER === 'sqlite' ? initializeHarnessDatabase() : null
 
-  getRun(runId: string) {
-    const run = this.db.query('SELECT * FROM process_runs WHERE id = ?').get(runId)
+  private getSqliteDatabase() {
+    if (!this.db) throw new Error('Harness SQLite 在当前环境不可用')
+    return this.db
+  }
+
+  async getRun(runId: string) {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.getRun(runId)
+    const db = this.getSqliteDatabase()
+    const run = db.query('SELECT * FROM process_runs WHERE id = ?').get(runId)
 
     if (!run) {
       return null
     }
 
-    const steps = this.db
+    const steps = db
       .query('SELECT * FROM step_runs WHERE run_id = ? ORDER BY started_at ASC')
       .all(runId)
-    const attempts = this.db
+    const attempts = db
       .query(
         `
           SELECT step_attempts.*
@@ -33,10 +42,10 @@ export class HarnessRunRepository {
         `
       )
       .all(runId)
-    const artifacts = this.db
+    const artifacts = db
       .query('SELECT * FROM artifacts WHERE run_id = ? ORDER BY created_at ASC')
       .all(runId)
-    const evaluations = this.db
+    const evaluations = db
       .query(
         `
           SELECT evaluations.*
@@ -47,7 +56,7 @@ export class HarnessRunRepository {
         `
       )
       .all(runId)
-    const events = this.db
+    const events = db
       .query('SELECT * FROM harness_events WHERE run_id = ? ORDER BY occurred_at ASC')
       .all(runId)
 
@@ -61,14 +70,16 @@ export class HarnessRunRepository {
     }
   }
 
-  replayRun(runId: string) {
-    const run = this.db.query('SELECT id, status FROM process_runs WHERE id = ?').get(runId)
+  async replayRun(runId: string) {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.replayRun(runId)
+    const db = this.getSqliteDatabase()
+    const run = db.query('SELECT id, status FROM process_runs WHERE id = ?').get(runId)
 
     if (!run) {
       return null
     }
 
-    const events = this.db
+    const events = db
       .query('SELECT * FROM harness_events WHERE run_id = ? ORDER BY occurred_at ASC')
       .all(runId)
       .map((event) => this.parseEvent(event as Record<string, unknown>))
@@ -76,18 +87,20 @@ export class HarnessRunRepository {
     return { run, events }
   }
 
-  getDashboardMetrics() {
-    const runs = this.db.query('SELECT id, status FROM process_runs').all() as HarnessMetricRun[]
-    const steps = this.db.query('SELECT id, run_id, step_name, started_at, finished_at FROM step_runs').all() as HarnessMetricStep[]
-    const attempts = this.db.query('SELECT id, step_run_id, provider, model, input_tokens, output_tokens, latency_ms, is_repair_attempt FROM step_attempts').all() as HarnessMetricAttempt[]
-    const events = this.db.query('SELECT run_id, step_run_id, attempt_id, type, payload_json FROM harness_events').all() as HarnessMetricEvent[]
-    const runStatusCounts = this.db
+  async getDashboardMetrics() {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.getDashboardMetrics()
+    const db = this.getSqliteDatabase()
+    const runs = db.query('SELECT id, status FROM process_runs').all() as HarnessMetricRun[]
+    const steps = db.query('SELECT id, run_id, step_name, started_at, finished_at FROM step_runs').all() as HarnessMetricStep[]
+    const attempts = db.query('SELECT id, step_run_id, provider, model, input_tokens, output_tokens, latency_ms, is_repair_attempt FROM step_attempts').all() as HarnessMetricAttempt[]
+    const events = db.query('SELECT run_id, step_run_id, attempt_id, type, payload_json FROM harness_events').all() as HarnessMetricEvent[]
+    const runStatusCounts = db
       .query('SELECT status, COUNT(*) AS count FROM process_runs GROUP BY status ORDER BY status ASC')
       .all()
-    const stepStatusCounts = this.db
+    const stepStatusCounts = db
       .query('SELECT step_name, status, COUNT(*) AS count FROM step_runs GROUP BY step_name, status ORDER BY step_name ASC')
       .all()
-    const attemptMetrics = this.db
+    const attemptMetrics = db
       .query(
         `
           SELECT
@@ -99,8 +112,8 @@ export class HarnessRunRepository {
         `
       )
       .get()
-    const failureSampleCount = this.db.query('SELECT COUNT(*) AS count FROM failure_samples').get()
-    const agentStateCounts = this.db
+    const failureSampleCount = db.query('SELECT COUNT(*) AS count FROM failure_samples').get()
+    const agentStateCounts = db
       .query(`
         SELECT workflow_version, agent_state, release_status, used_safe_fallback, COUNT(*) AS count
         FROM process_runs
@@ -109,7 +122,7 @@ export class HarnessRunRepository {
         ORDER BY workflow_version, agent_state
       `)
       .all()
-    const promptMetrics = this.db
+    const promptMetrics = db
       .query(`
         SELECT
           component_prompt_id,
@@ -141,8 +154,10 @@ export class HarnessRunRepository {
     }
   }
 
-  buildRegressionDataset(limit = 20) {
-    const runs = this.db
+  async buildRegressionDataset(limit = 20) {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.buildRegressionDataset(limit)
+    const db = this.getSqliteDatabase()
+    const runs = db
       .query(
         `
           SELECT *
@@ -154,10 +169,10 @@ export class HarnessRunRepository {
       )
       .all(limit) as Record<string, unknown>[]
 
-    return runs.map((run) => ({
+    return Promise.all(runs.map(async (run) => ({
       run,
-      replay: this.replayRun(String(run.id)),
-      evaluations: this.db
+      replay: await this.replayRun(String(run.id)),
+      evaluations: db
         .query(
           `
             SELECT evaluations.*
@@ -168,11 +183,13 @@ export class HarnessRunRepository {
           `
         )
         .all(String(run.id)),
-    }))
+    })))
   }
 
-  createFailureSample(runId: string, reason?: string) {
-    const run = this.db.query('SELECT id, status FROM process_runs WHERE id = ?').get(runId) as
+  async createFailureSample(runId: string, reason?: string) {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.createFailureSample(runId, reason)
+    const db = this.getSqliteDatabase()
+    const run = db.query('SELECT id, status FROM process_runs WHERE id = ?').get(runId) as
       | Record<string, unknown>
       | null
 
@@ -180,7 +197,7 @@ export class HarnessRunRepository {
       return null
     }
 
-    const eventCountRow = this.db.query('SELECT COUNT(*) AS count FROM harness_events WHERE run_id = ?').get(runId) as
+    const eventCountRow = db.query('SELECT COUNT(*) AS count FROM harness_events WHERE run_id = ?').get(runId) as
       | { count?: number }
       | null
     const sample = {
@@ -192,7 +209,7 @@ export class HarnessRunRepository {
       created_at: new Date().toISOString(),
     }
 
-    this.db
+    db
       .query(
         `
           INSERT INTO failure_samples (
@@ -210,8 +227,10 @@ export class HarnessRunRepository {
     return sample
   }
 
-  createFailureSampleIfAbsent(runId: string, reason?: string) {
-    const existing = this.db.query('SELECT * FROM failure_samples WHERE run_id = ? LIMIT 1').get(runId)
+  async createFailureSampleIfAbsent(runId: string, reason?: string) {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.createFailureSampleIfAbsent(runId, reason)
+    const db = this.getSqliteDatabase()
+    const existing = db.query('SELECT * FROM failure_samples WHERE run_id = ? LIMIT 1').get(runId)
 
     if (existing) {
       return existing
