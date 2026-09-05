@@ -1,0 +1,24 @@
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_2098016f9c7e68 46-47,338-352,355,357,361
+backend/src/harness/business-recovery.ts
+  s_e328faee98ba0c::t_0bd493a8f1af25 30-34
+backend/src/harness/business-recovery.test.ts
+  s_e328faee98ba0c::t_0bd493a8f1af25 7,10,34-68,114-154
+  s_e328faee98ba0c::t_44236d58a4679d 155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ac9c06f6c203a451eb0540660256410efee311a5",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
