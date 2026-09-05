@@ -124,6 +124,13 @@ export interface HarnessPromptInputSummaryMetrics {
   }>
 }
 
+export interface HarnessRecoveryAdviceMetrics {
+  failuresWithAdvice: number
+  retryableFailures: number
+  byAction: Record<string, number>
+  byErrorCode: Record<string, number>
+}
+
 export interface HarnessMetrics {
   runCount: number
   runStatusCounts: Record<string, number>
@@ -141,6 +148,7 @@ export interface HarnessMetrics {
   estimatedCostCny: number
   stageMetrics: HarnessStageMetrics[]
   promptInputSummary: HarnessPromptInputSummaryMetrics
+  recoveryAdvice: HarnessRecoveryAdviceMetrics
   safetyIncidents: number
   chunkIntegrityFailures: number
 }
@@ -229,6 +237,27 @@ export function aggregateHarnessMetrics(input: {
     ...promptInputSummary,
     byComponent: [...promptInputByComponent.values()].sort((left, right) => left.component.localeCompare(right.component)),
   }
+
+  const recoveryAdvice: HarnessRecoveryAdviceMetrics = {
+    failuresWithAdvice: 0,
+    retryableFailures: 0,
+    byAction: {},
+    byErrorCode: {},
+  }
+  input.events.forEach((event) => {
+    if (event.type !== 'step.failed') return
+    const payload = parsePayload(event)
+    const advice = payload.recoveryAdvice && typeof payload.recoveryAdvice === 'object' && !Array.isArray(payload.recoveryAdvice)
+      ? payload.recoveryAdvice as Record<string, unknown>
+      : null
+    if (!advice) return
+    recoveryAdvice.failuresWithAdvice += 1
+    if (advice.retryable === true) recoveryAdvice.retryableFailures += 1
+    const action = typeof advice.action === 'string' ? advice.action : 'unknown'
+    const errorCode = typeof payload.errorCode === 'string' ? payload.errorCode : 'unknown'
+    recoveryAdvice.byAction[action] = (recoveryAdvice.byAction[action] ?? 0) + 1
+    recoveryAdvice.byErrorCode[errorCode] = (recoveryAdvice.byErrorCode[errorCode] ?? 0) + 1
+  })
 
   input.attempts.forEach((attempt) => {
     const metadata = attempt.id ? eventByAttempt.get(attempt.id) : undefined
@@ -326,6 +355,7 @@ export function aggregateHarnessMetrics(input: {
     estimatedCostCny,
     stageMetrics: stages,
     promptInputSummary,
+    recoveryAdvice,
     safetyIncidents,
     chunkIntegrityFailures,
   }

@@ -32,6 +32,10 @@ describe('harness metrics aggregation', () => {
         { attempt_id: 'attempt-p09', type: 'provider.responded', payload_json: JSON.stringify({ physicalAttempts: 2 }) },
         { type: 'evaluation.completed', payload_json: JSON.stringify({ evaluatorName: 'markdown-resume-rules' }) },
         { type: 'evaluation.completed', payload_json: JSON.stringify({ evaluatorName: 'v5_resume_quality_judge' }) },
+        { type: 'step.failed', payload_json: JSON.stringify({
+          errorCode: 'STEP_TIMEOUT',
+          recoveryAdvice: { retryable: true, action: 'retry_once_with_remaining_budget' },
+        }) },
       ],
     })
 
@@ -63,6 +67,12 @@ describe('harness metrics aggregation', () => {
       expect.objectContaining({ component: 'P08', calls: 1, estimatedInputTokens: 700 }),
       expect.objectContaining({ component: 'P09', calls: 1, estimatedInputTokens: 1100 }),
     ])
+    expect(metrics.recoveryAdvice).toEqual({
+      failuresWithAdvice: 1,
+      retryableFailures: 1,
+      byAction: { retry_once_with_remaining_budget: 1 },
+      byErrorCode: { STEP_TIMEOUT: 1 },
+    })
   })
 
   test('发布门禁拒绝超预算和安全事故', () => {
