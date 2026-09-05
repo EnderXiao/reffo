@@ -35,11 +35,11 @@
 | U8 | Harness SQLite 单写队列与事务持久化 | `backend/src/harness/subscribers/persistence-subscriber.ts`、写队列、测试 | `bun test ./src/harness/subscribers/write-queue.test.ts`、全量 backend、类型检查、diff 检查 | user | `0c12924` | committed |
 | U9 | Harness 数据库健康检查与运行库隔离 | `backend/src/repositories/database.ts`、`backend/src/routes/mvp.ts`、`.gitignore` | 健康接口、全量 backend、类型检查、diff 检查 | user | `958f2b3` | committed |
 | U10 | 多进程访问隔离与 Harness 备份工具 | `backend/src/repositories/database.ts`、维护脚本、Git 索引 | 并发进程验证、维护脚本 check/backup、全量 backend、类型检查、diff 检查 | user | `44a057a` | committed |
-| U12 | Dashboard 汇总 Prompt 输入摘要 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
+| U11 | Prompt manifest 字段摘要与 Token 观测 | `backend/src/v5/prompt-compiler.ts`、Provider contract、Prompt 测试、V6 TODO | Prompt manifest 单测、全量 backend、类型检查、diff 检查 | user | `888783c` | committed |
+| U12 | Dashboard 汇总 Prompt 输入摘要 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | `5535760` | committed |
 | U13 | Harness 失败恢复建议 | `backend/src/harness/recovery-advice.ts`、`run-step.ts`、测试、V6 TODO | 恢复建议单测、全量 backend、类型检查、diff 检查 | user | `8c695a6` | committed |
 | U14 | API 错误响应携带恢复建议 | `backend/src/routes/mvp.ts`、V6 TODO | 路由鉴权测试、恢复建议测试、全量 backend、类型检查、diff 检查 | user | `4e2184b` | committed |
-| U15 | Dashboard 汇总恢复建议命中 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
-| U11 | Prompt manifest 字段摘要与 Token 观测 | `backend/src/v5/prompt-compiler.ts`、Provider contract、Prompt 测试、V6 TODO | Prompt manifest 单测、全量 backend、类型检查、diff 检查 | user | `888783c` | committed |
+| U15 | Dashboard 汇总恢复建议命中 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | `10b7ecd` | committed |
 
 ## Unit Logs
 
@@ -220,9 +220,9 @@
 - Validation commands: `bun test ./src/repositories/harness-metrics.test.ts`（2 pass）；`bun test`（245 pass）；`bunx tsc --noEmit`；`git diff --check`
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
-- Resolution: 失败事件统一携带可读动作和 retryable 标记；未匹配错误走 Harness 事件检查兜底。
-- Commit message: `feat: 增加Harness失败恢复建议`
-- Commit: `8c695a6`
+- Resolution: dashboard 可按组件比较结构化输入大小和估算 Token，不保存输入原文。
+- Commit message: `feat: 汇总Prompt输入指标`
+- Commit: `5535760`
 - Remaining follow-up: 增加预算耗尽、上下文超限、Provider 超时和安全回退的统一恢复建议。
 
 ### U13
@@ -235,9 +235,9 @@
 - Validation commands: `bun test ./src/harness/recovery-advice.test.ts ./src/harness/json-output.test.ts ./src/harness/runtime-state.test.ts`（6 pass）；`bun test`（247 pass）；`bunx tsc --noEmit`；`git diff --check`
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
-- Resolution: API 错误详情保留原有业务字段，并统一追加底层 `error_code` 和 `recovery_advice`。
-- Commit message: `feat: 暴露API失败恢复建议`
-- Commit: `4e2184b`
+- Resolution: 失败事件统一携带可读动作和 retryable 标记；未匹配错误走 Harness 事件检查兜底。
+- Commit message: `feat: 增加Harness失败恢复建议`
+- Commit: `8c695a6`
 - Remaining follow-up: 将恢复建议接入 dashboard/API 错误响应，并为真实 canary 汇总恢复动作命中率。
 
 ### U14
@@ -250,9 +250,9 @@
 - Validation commands: `bun test ./src/routes/mvp-auth.test.ts ./src/harness/recovery-advice.test.ts`（4 pass）；`bun test`（247 pass）；`bunx tsc --noEmit`；`git diff --check`
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
-- Resolution: pending
-- Commit message: pending
-- Commit: pending
+- Resolution: API 错误详情保留原有业务字段，并统一追加底层 `error_code` 和 `recovery_advice`。
+- Commit message: `feat: 暴露API失败恢复建议`
+- Commit: `4e2184b`
 - Remaining follow-up: 为真实 canary 汇总恢复动作命中率，并推进黄金集/故障注入回归。
 
 ### U15
@@ -265,20 +265,20 @@
 - Validation commands: `bun test ./src/repositories/harness-metrics.test.ts`（2 pass）；`bun test`（247 pass）；`bunx tsc --noEmit`；`git diff --check`
 - Validation artifacts: 无临时产物
 - CR findings: pending user review
-- Resolution: pending
-- Commit message: pending
-- Commit: pending
+- Resolution: dashboard 只统计 step 级失败，避免 attempt/step 双重计数。
+- Commit message: `feat: 汇总失败恢复建议指标`
+- Commit: `10b7ecd`
 - Remaining follow-up: 黄金集、故障注入、多样本真实 canary 和多实例部署验证。
 
 ## Remaining Items
 
-- Remaining functional units: U15
+- Remaining functional units: none
 - Cleanup-only units: none
-- Open risks: U15 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: 线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U14 已完成；U15 进行中
+- Functional commits: U1-U15 已完成
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。
