@@ -331,8 +331,8 @@
 - CR findings: 单样本仍触发 `succeeded_with_safe_fallback`，不能据此声明 production_reliable；P09 输入估算 14,000、实际 18,182，计量摘要存在偏差需后续校准。
 - Resolution: 最终主链路成功，结构污染已消失；保留 preproduction_candidate 状态，黄金集/多样本 canary 仍为发布前条件。
 - Commit message: `docs: 记录V6最终真实canary`
-- Commit: pending（仅文档收口，随 U19 文档提交）
-- Remaining follow-up: 提交本 tracker 收口；黄金集、多样本 canary、多实例部署验证和 Token 估算校准。
+- Commit: `25ee51c`
+- Remaining follow-up: 黄金集、多样本 canary、多实例部署验证和 Token 估算校准。
 
 ## Remaining Items
 
