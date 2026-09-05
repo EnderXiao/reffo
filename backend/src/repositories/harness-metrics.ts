@@ -98,6 +98,21 @@ function classifyEvaluation(payload: Record<string, unknown>) {
   return evaluator.includes('llm') || evaluator.includes('judge') ? 'semantic' : 'deterministic'
 }
 
+function promptManifest(payload: Record<string, unknown>) {
+  return payload.promptManifest && typeof payload.promptManifest === 'object' && !Array.isArray(payload.promptManifest)
+    ? payload.promptManifest as Record<string, unknown>
+    : null
+}
+
+function providerCallKey(event: HarnessMetricEvent, payload: Record<string, unknown>) {
+  const manifest = promptManifest(payload)
+  const promptDigest = typeof manifest?.compiledPromptSha256 === 'string'
+    ? manifest.compiledPromptSha256
+    : event.attempt_id ?? (typeof payload.inputDigest === 'string' ? payload.inputDigest : 'unknown')
+  const retryIndex = finiteNumber(payload.retryIndex)
+  return `${event.step_run_id ?? 'unknown'}:${promptDigest}:${retryIndex}`
+}
+
 export interface HarnessStageMetrics {
   stepName: string
   runs: number
@@ -167,13 +182,6 @@ export function aggregateHarnessMetrics(input: {
     runStatusCounts[status] = (runStatusCounts[status] ?? 0) + 1
   })
 
-  const eventByAttempt = new Map<string, Record<string, unknown>>()
-  input.events.forEach((event) => {
-    if (!event.attempt_id || (event.type !== 'provider.requested' && event.type !== 'provider.responded')) return
-    const payload = parsePayload(event)
-    eventByAttempt.set(event.attempt_id, { ...eventByAttempt.get(event.attempt_id), ...payload })
-  })
-
   const stageMap = new Map<string, HarnessStageMetrics>()
   const stepByIdMap = new Map<string, HarnessMetricStep>()
   const stageLatencies = new Map<string, number[]>()
@@ -198,9 +206,7 @@ export function aggregateHarnessMetrics(input: {
   input.events.forEach((event) => {
     if (event.type !== 'provider.requested') return
     const payload = parsePayload(event)
-    const manifest = payload.promptManifest && typeof payload.promptManifest === 'object' && !Array.isArray(payload.promptManifest)
-      ? payload.promptManifest as Record<string, unknown>
-      : null
+    const manifest = promptManifest(payload)
     const summary = manifest?.inputSummary && typeof manifest.inputSummary === 'object' && !Array.isArray(manifest.inputSummary)
       ? manifest.inputSummary as Record<string, unknown>
       : null
@@ -259,25 +265,68 @@ export function aggregateHarnessMetrics(input: {
     recoveryAdvice.byErrorCode[errorCode] = (recoveryAdvice.byErrorCode[errorCode] ?? 0) + 1
   })
 
-  input.attempts.forEach((attempt) => {
-    const metadata = attempt.id ? eventByAttempt.get(attempt.id) : undefined
-    const reason = typeof metadata?.callReason === 'string' ? metadata.callReason : undefined
-    const hasProvider = Boolean(attempt.provider || attempt.model || metadata)
-    if (!hasProvider) return
+  const attemptById = new Map(input.attempts.flatMap(attempt => attempt.id ? [[attempt.id, attempt] as const] : []))
+  const requestedCalls = new Map<string, Array<{
+    stepRunId?: string | null
+    attemptId?: string | null
+    payload: Record<string, unknown>
+  }>>()
+  const respondedCalls = new Map<string, Array<{
+    stepRunId?: string | null
+    attemptId?: string | null
+    payload: Record<string, unknown>
+  }>>()
+  const attemptsWithProviderEvents = new Set<string>()
+  input.events.forEach((event) => {
+    if (event.type !== 'provider.requested' && event.type !== 'provider.responded') return
+    const payload = parsePayload(event)
+    const key = providerCallKey(event, payload)
+    const calls = event.type === 'provider.requested' ? requestedCalls : respondedCalls
+    const entries = calls.get(key) ?? []
+    entries.push({ stepRunId: event.step_run_id, attemptId: event.attempt_id, payload })
+    calls.set(key, entries)
+    if (event.attempt_id) attemptsWithProviderEvents.add(event.attempt_id)
+  })
+  const providerCallKeys = new Set([...requestedCalls.keys(), ...respondedCalls.keys()])
+  const callRecords = [...providerCallKeys].flatMap((key) => {
+    const requested = requestedCalls.get(key) ?? []
+    const responded = respondedCalls.get(key) ?? []
+    return Array.from({ length: Math.max(requested.length, responded.length) }, (_, index) => {
+      const request = requested[index]
+      const response = responded[index]
+      const attemptId = response?.attemptId ?? request?.attemptId
+      const attempt = attemptId ? attemptById.get(attemptId) : undefined
+      return {
+        attempt,
+        stepRunId: response?.stepRunId ?? request?.stepRunId ?? attempt?.step_run_id,
+        metadata: { ...request?.payload, ...response?.payload },
+      }
+    })
+  })
+  input.attempts
+    .filter(attempt => Boolean(attempt.provider || attempt.model))
+    .filter(attempt => !attempt.id || !attemptsWithProviderEvents.has(attempt.id))
+    .forEach(attempt => callRecords.push({
+      attempt,
+      stepRunId: attempt.step_run_id,
+      metadata: {} as Record<string, unknown>,
+    }))
 
+  callRecords.forEach(({ attempt, stepRunId, metadata }) => {
+    const reason = typeof metadata?.callReason === 'string' ? metadata.callReason : undefined
     llmCalls += 1
-    const attemptInput = finiteNumber(attempt.input_tokens)
-    const attemptOutput = finiteNumber(attempt.output_tokens)
-    const latency = finiteNumber(attempt.latency_ms)
+    const attemptInput = finiteNumber(metadata.inputTokens) || finiteNumber(attempt?.input_tokens)
+    const attemptOutput = finiteNumber(metadata.outputTokens) || finiteNumber(attempt?.output_tokens)
+    const latency = finiteNumber(metadata.latencyMs) || finiteNumber(attempt?.latency_ms)
     inputTokens += attemptInput
     outputTokens += attemptOutput
     if (latency > 0) latencyValues.push(latency)
     physicalAttempts += Math.max(1, finiteNumber(metadata?.physicalAttempts) || 1)
     if (reason === 'semantic_gate') semanticGateCalls += 1
     if (reason === 'network_retry') networkRetryCalls += 1
-    if (isRepairAttempt(attempt, reason)) repairCalls += 1
+    if (isRepairAttempt(attempt ?? {}, reason)) repairCalls += 1
 
-    const stepName = stepByIdMap.get(attempt.step_run_id ?? '')?.step_name ?? 'unknown'
+    const stepName = stepByIdMap.get(stepRunId ?? '')?.step_name ?? 'unknown'
     const stage = stageMap.get(stepName) ?? {
       stepName,
       runs: 0,
@@ -290,7 +339,7 @@ export function aggregateHarnessMetrics(input: {
       p95LatencyMs: 0,
     }
     stage.llmCalls += 1
-    stage.repairCalls += isRepairAttempt(attempt, reason) ? 1 : 0
+    stage.repairCalls += isRepairAttempt(attempt ?? {}, reason) ? 1 : 0
     stage.inputTokens += attemptInput
     stage.outputTokens += attemptOutput
     stage.totalTokens += attemptInput + attemptOutput

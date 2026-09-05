@@ -40,7 +40,8 @@
 | U13 | Harness 失败恢复建议 | `backend/src/harness/recovery-advice.ts`、`run-step.ts`、测试、V6 TODO | 恢复建议单测、全量 backend、类型检查、diff 检查 | user | `8c695a6` | committed |
 | U14 | API 错误响应携带恢复建议 | `backend/src/routes/mvp.ts`、V6 TODO | 路由鉴权测试、恢复建议测试、全量 backend、类型检查、diff 检查 | user | `4e2184b` | committed |
 | U15 | Dashboard 汇总恢复建议命中 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | `10b7ecd` | committed |
-| U16 | P01 Chunk 故障注入与完整性门禁 | `backend/src/v5/chunked-resume-extraction.ts`、workflow、测试、V6 TODO | Chunk/workflow/budget 测试、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
+| U16 | P01 Chunk 故障注入与完整性门禁 | `backend/src/v5/chunked-resume-extraction.ts`、workflow、测试、V6 TODO | Chunk/workflow/budget 测试、全量 backend、类型检查、diff 检查 | user | `c2a92f3` | committed |
+| U17 | 修复并行 P01 调用指标漏计 | `backend/src/repositories/harness-metrics.ts`、指标测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
 
 ## Unit Logs
 
@@ -280,21 +281,36 @@
 - Regression executor: repo-native backend unit test
 - Validation commands: chunk/workflow/budget 测试（42 pass）；`bun test`（249 pass）；`bunx tsc --noEmit`；`git diff --check`
 - Validation artifacts: 无临时产物
-- CR findings: pending user review
-- Resolution: pending
-- Commit message: pending
+- CR findings: 真实 canary 验证通过；并行 P01 共用 step attempt 导致旧 Dashboard 按单行 attempt 漏计一次调用。
+- Resolution: Chunk 完整性门禁已通过离线故障注入和真实主流程验证；计量缺陷拆分到 U17。
+- Commit message: `test: 增加P01分块故障注入门禁`
+- Commit: `c2a92f3`
+- Remaining follow-up: U17 修复事件计量；黄金集、多样本真实 canary 和多实例部署验证。
+
+### U17
+
+- Objective: Dashboard 以不可变 `provider.requested/responded` 事件统计逻辑调用和 Token，避免并行 P01 共用 attempt ID 时后一次响应覆盖前一次指标。
+- Files: `backend/src/repositories/harness-metrics.ts`、`backend/src/repositories/harness-metrics.test.ts`。
+- Code changes: 按 step、Prompt digest 和 retry index 配对 provider 事件；同键重复调用按事件数分别计量；仅对没有 provider 事件的历史 attempt 回退读取 `step_attempts`。
+- Regression added or updated: 覆盖并行 P01 共用 attempt ID、同 Prompt 重复调用和新旧事件混合数据。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/repositories/harness-metrics.test.ts`（4 pass）；`bun test`（251 pass）；`bunx tsc --noEmit`；`git diff --check`；真实 canary DB 聚合复核为 7 次调用、84,719 Token，发布门禁通过。
+- Validation artifacts: 真实 canary Run `30df8037-de5f-4cdc-850f-06b005372b44`；临时 SQLite 和响应保留在 `/tmp`，不纳入版本库。
+- CR findings: 当前按 Map 单值聚合会合并同键重复调用；全局存在事件时会漏掉无事件的历史 attempt。
+- Resolution: provider 事件按同键事件序列逐次配对，不再按 Map 单值覆盖；无事件历史 attempt 按 ID 单独回退计量。
+- Commit message: `fix: 修复并行P01调用计量`
 - Commit: pending
-- Remaining follow-up: 黄金集、多样本真实 canary 和多实例部署验证。
+- Remaining follow-up: 修复 safe fallback 教育经历中的列表内嵌标题结构污染。
 
 ## Remaining Items
 
-- Remaining functional units: U16
+- Remaining functional units: U17
 - Cleanup-only units: none
-- Open risks: U16 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集和多样本 canary 尚未执行。
+- Open risks: U17 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集和多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U15 已完成；U16 进行中
+- Functional commits: U1-U16 已完成；U17 进行中
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。

@@ -87,4 +87,62 @@ describe('harness metrics aggregation', () => {
     expect(gate.passed).toBe(false)
     expect(gate.failures).toEqual(expect.arrayContaining(['logicalCalls', 'totalTokens', 'factSafety']))
   })
+
+  test('并行 P01 共用 step attempt 时按 provider 事件分别计费', () => {
+    const promptManifest = (digest: string) => ({
+      componentPromptId: 'P01',
+      compiledPromptSha256: digest,
+      inputSummary: { envelopeBytes: 100, estimatedInputTokens: 50, messageCharacterCounts: [100] },
+    })
+    const metrics = aggregateHarnessMetrics({
+      runs: [{ id: 'run-p01', status: 'succeeded' }],
+      steps: [{ id: 'step-p01', run_id: 'run-p01', step_name: 'v5_p01_resume_extract' }],
+      attempts: [{
+        id: 'shared-attempt', step_run_id: 'step-p01', provider: 'deepseek', model: 'deepseek-chat',
+        input_tokens: 200, output_tokens: 20, latency_ms: 20,
+      }],
+      events: [
+        { step_run_id: 'step-p01', attempt_id: 'shared-attempt', type: 'provider.requested', payload: { promptManifest: promptManifest('chunk-a') } },
+        { step_run_id: 'step-p01', attempt_id: 'shared-attempt', type: 'provider.requested', payload: { promptManifest: promptManifest('chunk-b') } },
+        { step_run_id: 'step-p01', attempt_id: 'shared-attempt', type: 'provider.responded', payload: { promptManifest: promptManifest('chunk-a'), inputTokens: 100, outputTokens: 10, latencyMs: 10, physicalAttempts: 1 } },
+        { step_run_id: 'step-p01', attempt_id: 'shared-attempt', type: 'provider.responded', payload: { promptManifest: promptManifest('chunk-b'), inputTokens: 200, outputTokens: 20, latencyMs: 20, physicalAttempts: 1 } },
+      ],
+    })
+
+    expect(metrics).toMatchObject({ llmCalls: 2, physicalAttempts: 2, inputTokens: 300, outputTokens: 30 })
+    expect(metrics.stageMetrics).toEqual([
+      expect.objectContaining({ stepName: 'v5_p01_resume_extract', llmCalls: 2, totalTokens: 330 }),
+    ])
+  })
+
+  test('相同 Prompt 重复调用不合并且混合历史 attempt 不漏计', () => {
+    const manifest = {
+      componentPromptId: 'P01',
+      compiledPromptSha256: 'same-prompt',
+      inputSummary: { envelopeBytes: 100, estimatedInputTokens: 50, messageCharacterCounts: [100] },
+    }
+    const metrics = aggregateHarnessMetrics({
+      runs: [{ id: 'run-mixed', status: 'succeeded' }],
+      steps: [
+        { id: 'step-current', run_id: 'run-mixed', step_name: 'v5_p01_resume_extract' },
+        { id: 'step-history', run_id: 'run-mixed', step_name: 'v5_p02_jd_extract' },
+      ],
+      attempts: [
+        { id: 'shared-attempt', step_run_id: 'step-current', provider: 'deepseek', input_tokens: 20, output_tokens: 2 },
+        { id: 'history-attempt', step_run_id: 'step-history', provider: 'deepseek', input_tokens: 300, output_tokens: 30 },
+      ],
+      events: [
+        { step_run_id: 'step-current', attempt_id: 'shared-attempt', type: 'provider.requested', payload: { promptManifest: manifest } },
+        { step_run_id: 'step-current', attempt_id: 'shared-attempt', type: 'provider.requested', payload: { promptManifest: manifest } },
+        { step_run_id: 'step-current', attempt_id: 'shared-attempt', type: 'provider.responded', payload: { promptManifest: manifest, inputTokens: 10, outputTokens: 1 } },
+        { step_run_id: 'step-current', attempt_id: 'shared-attempt', type: 'provider.responded', payload: { promptManifest: manifest, inputTokens: 20, outputTokens: 2 } },
+      ],
+    })
+
+    expect(metrics).toMatchObject({ llmCalls: 3, inputTokens: 330, outputTokens: 33, totalTokens: 363 })
+    expect(metrics.stageMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ stepName: 'v5_p01_resume_extract', llmCalls: 2, totalTokens: 33 }),
+      expect.objectContaining({ stepName: 'v5_p02_jd_extract', llmCalls: 1, totalTokens: 330 }),
+    ]))
+  })
 })
