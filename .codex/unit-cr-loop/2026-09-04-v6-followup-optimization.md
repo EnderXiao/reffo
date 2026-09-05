@@ -42,7 +42,8 @@
 | U15 | Dashboard 汇总恢复建议命中 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | `10b7ecd` | committed |
 | U16 | P01 Chunk 故障注入与完整性门禁 | `backend/src/v5/chunked-resume-extraction.ts`、workflow、测试、V6 TODO | Chunk/workflow/budget 测试、全量 backend、类型检查、diff 检查 | user | `c2a92f3` | committed |
 | U17 | 修复并行 P01 调用指标漏计 | `backend/src/repositories/harness-metrics.ts`、指标测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | `088072f` | committed |
-| U18 | 修复安全回退的列表内嵌标题 | `backend/src/v5/safe-renderer.ts`、`backend/src/v5/validators.ts`、测试 | validator 单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
+| U18 | 修复安全回退的列表内嵌标题 | `backend/src/v5/safe-renderer.ts`、`backend/src/v5/validators.ts`、测试 | validator 单测、全量 backend、类型检查、diff 检查 | user | `8c6b678` | committed |
+| U19 | 最终真实简历/JD canary | 指定简历、JD、独立 Harness DB、V6 TODO | 真实 API、输出结构、Harness 指标、发布门禁 | user | `docs pending` | committed |
 
 ## Unit Logs
 
@@ -315,18 +316,33 @@
 - CR findings: 真实 canary safe fallback 出现 `- ### 北京工业大学...`；现有 heading 检查只识别行首 `#`，错误结构被当作普通 claim 放行。
 - Resolution: 教育证据即使以 `###` 开头也只输出一次规范三级 scope 标题，正文列表去除展示标记；模型输出同类污染由确定性门禁阻断。
 - Commit message: `fix: 修复安全回退标题污染`
-- Commit: pending
-- Remaining follow-up: 黄金集、多样本真实 canary 和多实例部署验证。
+- Commit: `8c6b678`
+- Remaining follow-up: U19 最终真实简历/JD canary；黄金集、多样本 canary 和多实例部署验证。
+
+### U19
+
+- Objective: 使用指定真实简历和 JD 验证 U1-U18 最终主链路，确认成功状态、项目/教育输出、列表内嵌标题、调用预算、Token 和发布门禁。
+- Files: `doc/V6后续优化TODO.md`、本 tracker；真实输入输出和 SQLite 只存 `/tmp`。
+- Code changes: 使用指定 PDF 简历和字节前端 JD 完成真实 `/api/v1/mvp/process`；仅 `/tmp` 保存请求、响应、独立 Harness DB 和 dashboard 快照。
+- Regression added or updated: 不新增代码测试；执行真实 `/api/v1/mvp/process` canary 并审计输出和 Harness 事件。
+- Regression executor: 本地真实 backend API
+- Validation commands: `curl /api/v1/mvp/health`；真实 `curl /api/v1/mvp/process`（HTTP 200，49.12 秒）；`curl /api/v1/mvp/dashboard`；输出结构正则检查；V6 发布门禁检查。
+- Validation artifacts: Run `4b2c6131-7430-451b-a118-bb29d5aedc0c`；workflow succeeded；safe fallback；7 次逻辑/物理调用；84,766 Token；估算成本 ¥0.269150；P08R 1 次；项目和教育章节存在；无 `- ###`；发布门禁全通过。
+- CR findings: 单样本仍触发 `succeeded_with_safe_fallback`，不能据此声明 production_reliable；P09 输入估算 14,000、实际 18,182，计量摘要存在偏差需后续校准。
+- Resolution: 最终主链路成功，结构污染已消失；保留 preproduction_candidate 状态，黄金集/多样本 canary 仍为发布前条件。
+- Commit message: `docs: 记录V6最终真实canary`
+- Commit: pending（仅文档收口，随 U19 文档提交）
+- Remaining follow-up: 提交本 tracker 收口；黄金集、多样本 canary、多实例部署验证和 Token 估算校准。
 
 ## Remaining Items
 
-- Remaining functional units: U18
+- Remaining functional units: none
 - Cleanup-only units: none
-- Open risks: U18 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集和多样本 canary 尚未执行。
+- Open risks: 单样本真实 canary 仍为 `preproduction_candidate`；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库；黄金集、多样本 canary 和 Token 估算校准尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U17 已完成；U18 进行中
+- Functional commits: U1-U18 已完成；U19 仅文档收口
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。

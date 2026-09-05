@@ -2,6 +2,15 @@
 
 状态：`in_progress`
 
+## 2026-09-05 执行记录
+
+- U16 已完成：P01 chunk 乱序、重复重传、缺块和越界结果均由确定性门禁处理，提交 `c2a92f3`。
+- U17 已完成：Dashboard 改按 provider 事件逐次统计并行 P01 调用，提交 `088072f`。
+- U18 已完成：安全回退清理列表/标题展示标记，阻断 `- ###` 结构污染，提交 `8c6b678`。
+- 最终真实 canary：指定简历 `肖淦匀-58同城-前端开发.pdf` + 字节前端 JD，Run `4b2c6131-7430-451b-a118-bb29d5aedc0c`，49.12 秒，7 次逻辑/物理调用，84,766 Token，估算成本 ¥0.269150，P08R 1 次，workflow succeeded，发布门禁全通过。
+- 输出检查：项目经历、教育背景均保留；无列表内嵌标题；状态 `succeeded_with_safe_fallback` / `preproduction_candidate`。
+- 后续发布前置：黄金集、多样本 canary、多实例 Harness 部署验证；校准 Prompt estimated Token 与 Provider 实际 Token 偏差。
+
 目标：在不降低事实安全和可投递性的前提下，继续降低 V6 的 LLM 调用次数、输入上下文、异常退出率和端到端延迟。所有能力优先落在现有 Plugin Registry/Plugin Contract，可通过插件替换、禁用或新增，不复制主流程。
 
 ## 当前真实基线
