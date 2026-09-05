@@ -44,7 +44,7 @@
 | U17 | 修复并行 P01 调用指标漏计 | `backend/src/repositories/harness-metrics.ts`、指标测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | `088072f` | committed |
 | U18 | 修复安全回退的列表内嵌标题 | `backend/src/v5/safe-renderer.ts`、`backend/src/v5/validators.ts`、测试 | validator 单测、全量 backend、类型检查、diff 检查 | user | `8c6b678` | committed |
 | U19 | 最终真实简历/JD canary | 指定简历、JD、独立 Harness DB、V6 TODO | 真实 API、输出结构、Harness 指标、发布门禁 | user | `25ee51c` | committed |
-| U20 | 修复 /match 策略详情业务恢复 | `backend/src/harness/business-recovery.ts`、测试 | 业务恢复单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
+| U20 | 修复 /match 策略详情业务恢复 | `backend/src/harness/business-recovery.ts`、测试 | 业务恢复单测、全量 backend、类型检查、diff 检查 | user | `ac9c06f` | committed |
 
 ## Unit Logs
 
@@ -347,18 +347,18 @@
 - CR findings: 原 `/match` 失败 Run `2ec734d7-7105-4edd-9454-19307d01dfb2` 的两个策略详情错误未在恢复白名单中。
 - Resolution: 已补齐白名单并验证单次业务修复路径；未重新调用真实 API，避免重复成本。
 - Commit message: `fix: 修复match策略详情恢复`
-- Commit: pending
+- Commit: `ac9c06f`
 - Remaining follow-up: 用真实 `/match` 请求复测一次；黄金集、多样本 canary 和 Token 估算校准。
 
 ## Remaining Items
 
-- Remaining functional units: U20
+- Remaining functional units: none
 - Cleanup-only units: none
-- Open risks: U20 尚未提交；单样本真实 canary 仍为 `preproduction_candidate`；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库；黄金集、多样本 canary 和 Token 估算校准尚未执行。
+- Open risks: 真实 `/match` 复测尚未执行；单样本真实 canary 仍为 `preproduction_candidate`；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库；黄金集、多样本 canary 和 Token 估算校准尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U19 已完成；U20 进行中
+- Functional commits: U1-U20 已完成
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。
