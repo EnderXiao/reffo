@@ -1,0 +1,44 @@
+backend/src/index.ts
+  s_e328faee98ba0c::t_86332addd906b6 12,114
+  s_e328faee98ba0c::t_6933c2af47ee90 115
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_53c8cbb096922f 353-368,373
+backend/src/harness/harnessed-request.ts
+  s_e328faee98ba0c::t_271240feb97534 128
+backend/src/harness/subscribers/persistence-subscriber.ts
+  s_e328faee98ba0c::t_3bb9cad5ac765e 5-6,24-36
+backend/src/repositories/harness-run-repository.ts
+  s_e328faee98ba0c::t_271240feb97534 2-3,15,17-25,31,34,45,48,59,73-76,82,90-97,100,103,115-116,125,157-160,174-175,189-192,200,212,230-233
+  s_e328faee98ba0c::t_4cc0c4dec09640 172,186
+backend/src/config/env.ts
+  s_e328faee98ba0c::t_a251215e684324 116
+backend/src/routes/mvp.ts
+  s_e328faee98ba0c::t_271240feb97534 187,189,206,208,228-229,265-266,302-303
+backend/.env.example
+  s_e328faee98ba0c::t_f23160fb57cd7b 41
+backend/src/repositories/database.ts
+  s_e328faee98ba0c::t_86332addd906b6 160-166
+supabase/migrations/202609050001_harness_events.sql
+  s_e328faee98ba0c::t_3966e322481061 1-36
+backend/src/repositories/harness-supabase.ts
+  s_e328faee98ba0c::t_86332addd906b6 292-316
+  s_e328faee98ba0c::t_3966e322481061 1-291,317-320
+backend/src/harness/supabase-cleanup.ts
+  s_e328faee98ba0c::t_86332addd906b6 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0ed5d0ca85319231ccb98d37f00984c923a2923a",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
