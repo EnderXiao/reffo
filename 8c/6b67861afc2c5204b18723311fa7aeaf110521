@@ -1,0 +1,28 @@
+backend/src/v5/validators.ts
+  s_e328faee98ba0c::t_24d9419b760c7b 1352
+  s_e328faee98ba0c::t_849a9171f351bb 1781-1788
+.codex/unit-cr-loop/2026-09-04-v6-followup-optimization.md
+  s_e328faee98ba0c::t_66c08bed855b96 310,313,316-317
+  s_e328faee98ba0c::t_4ae654ee40ffb7 44-45,303,306-309,311-312,314-315,318-320,323,325,329
+backend/src/v5/safe-renderer.ts
+  s_e328faee98ba0c::t_849a9171f351bb 35-36,40,61-62,121-126
+backend/src/v5/tests/policy-score-validator.test.ts
+  s_e328faee98ba0c::t_849a9171f351bb 151-170,400,440-442
+  s_e328faee98ba0c::t_97af247b6c97f2 444-446
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8c6b67861afc2c5204b18723311fa7aeaf110521",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
