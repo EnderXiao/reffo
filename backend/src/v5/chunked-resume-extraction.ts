@@ -44,6 +44,35 @@ export function resumeExtractionChunkIdempotencyKey(chunk: ResumeExtractionChunk
   })}`
 }
 
+export class ResumeExtractionChunkIntegrityError extends Error {
+  readonly code = 'P01_CHUNK_INTEGRITY_FAILED' as const
+
+  constructor(readonly missingKeys: string[], readonly unexpectedKeys: string[]) {
+    super(`P01 chunk integrity failed: missing=${missingKeys.length}, unexpected=${unexpectedKeys.length}`)
+    this.name = 'ResumeExtractionChunkIntegrityError'
+  }
+}
+
+export function orderUniqueResumeExtractionChunkResults<T>(
+  results: Array<{ chunk: ResumeExtractionChunk; candidate: T }>,
+  expectedChunks?: ResumeExtractionChunk[]
+) {
+  const byKey = new Map(results.map(item => [resumeExtractionChunkIdempotencyKey(item.chunk), item]))
+  if (expectedChunks) {
+    const expectedKeys = new Set(expectedChunks.map(resumeExtractionChunkIdempotencyKey))
+    const missingKeys = [...expectedKeys].filter(key => !byKey.has(key)).sort()
+    const unexpectedKeys = [...byKey.keys()].filter(key => !expectedKeys.has(key)).sort()
+    if (missingKeys.length > 0 || unexpectedKeys.length > 0) {
+      throw new ResumeExtractionChunkIntegrityError(missingKeys, unexpectedKeys)
+    }
+  }
+  return [...byKey.values()].sort((left, right) => (
+    (left.chunk.chunkIndex ?? Number.MAX_SAFE_INTEGER) - (right.chunk.chunkIndex ?? Number.MAX_SAFE_INTEGER)
+    || (left.chunk.sourceOrderStart ?? Number.MAX_SAFE_INTEGER) - (right.chunk.sourceOrderStart ?? Number.MAX_SAFE_INTEGER)
+    || left.chunk.documentId.localeCompare(right.chunk.documentId)
+  ))
+}
+
 export function resumeExtractionFactCandidateLimit(blockCount: number) {
   if (!Number.isSafeInteger(blockCount) || blockCount < 0) {
     throw new RangeError('blockCount must be a non-negative safe integer')

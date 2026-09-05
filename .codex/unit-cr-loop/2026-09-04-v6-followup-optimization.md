@@ -40,6 +40,7 @@
 | U13 | Harness 失败恢复建议 | `backend/src/harness/recovery-advice.ts`、`run-step.ts`、测试、V6 TODO | 恢复建议单测、全量 backend、类型检查、diff 检查 | user | `8c695a6` | committed |
 | U14 | API 错误响应携带恢复建议 | `backend/src/routes/mvp.ts`、V6 TODO | 路由鉴权测试、恢复建议测试、全量 backend、类型检查、diff 检查 | user | `4e2184b` | committed |
 | U15 | Dashboard 汇总恢复建议命中 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | `10b7ecd` | committed |
+| U16 | P01 Chunk 故障注入与完整性门禁 | `backend/src/v5/chunked-resume-extraction.ts`、workflow、测试、V6 TODO | Chunk/workflow/budget 测试、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
 
 ## Unit Logs
 
@@ -270,15 +271,30 @@
 - Commit: `10b7ecd`
 - Remaining follow-up: 黄金集、故障注入、多样本真实 canary 和多实例部署验证。
 
+### U16
+
+- Objective: 验证 P01 随机乱序、重复重传和部分响应故障，确保进入候选结果合并前完成确定性去重、排序与缺块检查。
+- Files: `backend/src/v5/chunked-resume-extraction.ts`、`backend/src/v5/main/workflow.ts`、`backend/src/v5/tests/chunked-resume-extraction.test.ts`、`doc/V6后续优化TODO.md`。
+- Code changes: 新增 `orderUniqueResumeExtractionChunkResults` 和 `P01_CHUNK_INTEGRITY_FAILED`；按幂等键保留最新重传结果，按 canonical 元数据排序，并对预期 chunk 集合执行缺失/越界检查；workflow 合并前强制调用。
+- Regression added or updated: 20 组乱序响应、重复重传覆盖、部分 chunk 缺失阻断；既有共享预算与 journal/SQLite 恢复测试共同覆盖故障注入清单。
+- Regression executor: repo-native backend unit test
+- Validation commands: chunk/workflow/budget 测试（42 pass）；`bun test`（249 pass）；`bunx tsc --noEmit`；`git diff --check`
+- Validation artifacts: 无临时产物
+- CR findings: pending user review
+- Resolution: pending
+- Commit message: pending
+- Commit: pending
+- Remaining follow-up: 黄金集、多样本真实 canary 和多实例部署验证。
+
 ## Remaining Items
 
-- Remaining functional units: none
+- Remaining functional units: U16
 - Cleanup-only units: none
-- Open risks: 线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集、故障注入、多样本 canary 尚未执行。
+- Open risks: U16 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集和多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U15 已完成
+- Functional commits: U1-U15 已完成；U16 进行中
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。

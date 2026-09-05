@@ -11,6 +11,7 @@ import {
   DEFAULT_RESUME_EXTRACTION_CONCURRENCY,
   DEFAULT_RESUME_EXTRACTION_CHUNK_RETRY_ATTEMPTS,
   mergeResumeExtractionCandidates,
+  orderUniqueResumeExtractionChunkResults,
   normalizeResumeExtractionChunkCandidate,
   ResumeExtractionChunkCapacityError,
   resumeExtractionChunkIdempotencyKey,
@@ -1346,16 +1347,9 @@ export class V5ResumeOptimizationWorkflow {
           }
         }
       }))
-      const mergedByChunkKey = new Map(extracted.map(item => [resumeExtractionChunkIdempotencyKey(item.chunk), item]))
-      for (const item of batchResults) mergedByChunkKey.set(resumeExtractionChunkIdempotencyKey(item.chunk), item)
-      extracted.splice(0, extracted.length, ...mergedByChunkKey.values())
+      extracted.push(...batchResults)
     }
-    const ordered = extracted
-      .sort((left, right) => (
-        (left.chunk.chunkIndex ?? Number.MAX_SAFE_INTEGER) - (right.chunk.chunkIndex ?? Number.MAX_SAFE_INTEGER)
-        || (left.chunk.sourceOrderStart ?? Number.MAX_SAFE_INTEGER) - (right.chunk.sourceOrderStart ?? Number.MAX_SAFE_INTEGER)
-        || left.chunk.documentId.localeCompare(right.chunk.documentId)
-      ))
+    const ordered = orderUniqueResumeExtractionChunkResults(extracted, input.chunks)
       .map(item => item.candidate)
     const merged = ordered.length === 1 ? ordered[0] : mergeResumeExtractionCandidates(ordered)
     const mergedValidation = validateResumeExtractionCandidate(input.document, merged)

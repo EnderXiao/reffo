@@ -6,6 +6,8 @@ import {
   DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS,
   DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
   ResumeExtractionChunkCapacityError,
+  ResumeExtractionChunkIntegrityError,
+  orderUniqueResumeExtractionChunkResults,
   splitResumeDocument,
   resumeExtractionChunkIdempotencyKey,
 } from '@/v5/chunked-resume-extraction'
@@ -21,6 +23,37 @@ describe('v5 resume extraction chunk boundaries', () => {
     const [chunk] = splitResumeDocument(document)
     const same = { ...chunk, documentId: `${chunk.documentId}:retry` }
     expect(resumeExtractionChunkIdempotencyKey(chunk)).toBe(resumeExtractionChunkIdempotencyKey(same))
+  })
+
+  test('orders random responses canonically and deduplicates retransmission by idempotency key', () => {
+    const document = canonicalizeSourceDocument([
+      '## Projects',
+      ...Array.from({ length: 6 }, (_, index) => `### Project ${index + 1}\n- Result ${index + 1}`),
+    ].join('\n'), 'fault-injection-order').canonicalDocument
+    const chunks = splitResumeDocument(document, 2)
+    const base = chunks.map((chunk, index) => ({ chunk, candidate: `candidate-${index}` }))
+
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const shuffled = [...base].sort((left, right) => (
+        ((left.chunk.chunkIndex ?? 0) * 17 + seed * 13) % 23
+        - ((right.chunk.chunkIndex ?? 0) * 17 + seed * 13) % 23
+      ))
+      expect(orderUniqueResumeExtractionChunkResults(shuffled, chunks).map(item => item.candidate))
+        .toEqual(base.map(item => item.candidate))
+    }
+
+    const duplicate = { ...base[1], candidate: 'candidate-1-retry' }
+    expect(orderUniqueResumeExtractionChunkResults([...base, duplicate], chunks).map(item => item.candidate))
+      .toEqual(base.map((item, index) => index === 1 ? duplicate.candidate : item.candidate))
+  })
+
+  test('fails closed when a partial chunk response set reaches the merger', () => {
+    const document = canonicalizeSourceDocument('## A\nA\n## B\nB', 'fault-injection-missing').canonicalDocument
+    const chunks = splitResumeDocument(document, 2)
+    expect(() => orderUniqueResumeExtractionChunkResults(
+      chunks.slice(0, -1).map(chunk => ({ chunk, candidate: true })),
+      chunks
+    )).toThrow(ResumeExtractionChunkIntegrityError)
   })
   test('uses a conservative extraction concurrency default', () => {
     expect(DEFAULT_RESUME_EXTRACTION_CONCURRENCY).toBe(2)
