@@ -148,6 +148,26 @@ describe('v5 adaptive policy, scoring and gates', () => {
     expect(validation.issues.map(item => item.code)).not.toContain('TRANSFORMATION_CONTRACT_MISMATCH')
   })
 
+  test('rejects a Markdown heading marker nested inside a list item', () => {
+    const fixture = setupPlan()
+    const artifact = renderSourcePreservingArtifact({ resume: fixture.resume, plan: fixture.plan })
+    const claim = artifact.claims.find(item => item.outputPath.includes('bullets'))!
+    const pollutedText = `- ### ${claim.outputText.replace(/^[-*+]\s+/, '')}`
+    artifact.markdown = artifact.markdown.replace(claim.outputText, pollutedText)
+    claim.outputText = pollutedText
+    artifact.renderStats = measureArtifactMarkdown(artifact.markdown)
+
+    const validation = validateGeneratedResumeArtifact({
+      artifact,
+      resume: fixture.resume,
+      plan: fixture.plan,
+      policy: fixture.policy,
+    })
+
+    expect(validation.passed).toBe(false)
+    expect(validation.issues.map(item => item.code)).toContain('LIST_ITEM_HEADING_MARKER')
+  })
+
   test('preserves explicitly selected awards through policy, safe rendering and final gates', () => {
     const fixture = setupPlan()
     const resume = structuredClone(fixture.resume)
@@ -377,7 +397,7 @@ describe('v5 adaptive policy, scoring and gates', () => {
       ...structuredClone(fixture.skill),
       evidenceId: 'ev_education',
       sourceScopeId: 'education_1',
-      verbatimText: '北京大学｜计算机科学｜本科',
+      verbatimText: '### 北京大学｜计算机科学｜本科',
       normalizedClaim: '北京大学计算机科学本科',
       claimType: 'education' as const,
     }
@@ -417,7 +437,13 @@ describe('v5 adaptive policy, scoring and gates', () => {
       treatment: 'include',
     }))
     expect(artifact.markdown).toContain('## 教育背景')
+    expect(artifact.markdown).toContain('### 北京大学｜计算机科学｜2018 - 2022')
+    expect(artifact.markdown).toContain('- 北京大学｜计算机科学｜本科')
+    expect(artifact.markdown).not.toMatch(/^\s*[-*+]\s+#{1,6}\s+/m)
     expect(artifact.markdown).toContain('## 专业技能')
+    const artifactValidation = validateGeneratedResumeArtifact({ artifact, resume, plan, policy: strategy.policy })
+    expect(artifactValidation.passed).toBe(true)
+    expect(artifactValidation.issues.map(item => item.code)).not.toContain('TRANSFORMATION_METADATA_SERVER_ALIGNED')
   })
 
   test('reserves a project slot after satisfying the business lower bound', () => {

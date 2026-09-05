@@ -32,12 +32,12 @@ function strongestAllowedAttribution(atoms: EvidenceAtom[]) {
   return [...atoms].sort((left, right) => rank[left.attributionLevel] - rank[right.attributionLevel])[0]?.attributionLevel ?? 'unspecified'
 }
 
-function withoutMarkdownListMarker(value: string) {
-  return value.trim().replace(/^[-*+]\s+/, '').trim()
+function withoutMarkdownPresentationMarker(value: string) {
+  return value.trim().replace(/^(?:(?:[-*+]|#{1,6})\s+)+/, '').trim()
 }
 
 function markdownListItem(values: string[]) {
-  return `- ${values.map(withoutMarkdownListMarker).join('；')}`
+  return `- ${values.map(withoutMarkdownPresentationMarker).join('；')}`
 }
 
 export function renderSourcePreservingArtifact(input: {
@@ -58,8 +58,8 @@ export function renderSourcePreservingArtifact(input: {
     const normalizedLine = outputText.trim()
     if (renderedClaimLines.has(normalizedLine)) return
     renderedClaimLines.add(normalizedLine)
-    const normalizedOutput = withoutMarkdownListMarker(outputText)
-    const transformation = atoms.length === 1 && normalizedOutput === withoutMarkdownListMarker(atoms[0].verbatimText)
+    const normalizedOutput = withoutMarkdownPresentationMarker(outputText)
+    const transformation = atoms.length === 1 && normalizedOutput === withoutMarkdownPresentationMarker(atoms[0].verbatimText)
       ? 'verbatim'
       : atoms.length > 1
         ? 'same_scope_merge'
@@ -118,7 +118,12 @@ export function renderSourcePreservingArtifact(input: {
     for (const scope of scopes) {
       const scopePlan = scopePlans.get(scope.scopeId)
       if (!scopePlan) continue
-      const atoms = selectedAtomsInOrder.filter(atom => atom.sourceScopeId === scope.scopeId && !used.has(atom.evidenceId))
+      const atoms = selectedAtomsInOrder.filter(atom => (
+        atom.sourceScopeId === scope.scopeId
+        && atom.claimType !== 'identity'
+        && atom.claimType !== 'timeline'
+        && !used.has(atom.evidenceId)
+      ))
       if (scopePlan.treatment === 'omit') continue
       if (scopePlan.treatment === 'timeline_line' || atoms.length === 0 || remainingListItems <= 0) {
         const timelineAtoms = scope.evidenceIds

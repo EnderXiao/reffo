@@ -1349,7 +1349,7 @@ function normalizedNumbers(value: string) {
 }
 
 function normalizedVerbatimText(value: string, outputPath: string, atom: EvidenceAtom) {
-  let normalized = value.trim().replace(/^[-*+]\s+/, '').trim()
+  let normalized = value.trim().replace(/^(?:(?:[-*+]|#{1,6})\s+)+/, '').trim()
   if (/^identity\.name$/i.test(outputPath)) normalized = normalized.replace(/^#{1,6}\s+/, '').trim()
   if (atom.claimType === 'skill' && /^skills?(?:\.|\[|$)/i.test(outputPath)) {
     normalized = normalized.replace(/^(?:专业技能|技能|skills?)\s*[:：]\s*/i, '').trim()
@@ -1778,6 +1778,14 @@ export function validateGeneratedResumeArtifact(input: {
   }
 
   const structure = inspectMarkdownStructure(artifact.markdown)
+  for (const nestedHeading of artifact.markdown.matchAll(/^\s*(?:[-*+]|\d+[.)])\s+#{1,6}\s+(.+)$/gm)) {
+    issues.push(issue({
+      code: 'LIST_ITEM_HEADING_MARKER',
+      outputPath: 'markdown',
+      message: `列表项内嵌 Markdown 标题标记：“${nestedHeading[1].trim()}”`,
+      expectedConstraint: '标题标记只能位于独立标题行，列表正文不得以 # 标题标记开头',
+    }))
+  }
   const headings = artifact.markdown.matchAll(/^(#{1,6})\s+(.+)$/gm)
   for (const heading of headings) {
     const level = heading[1].length

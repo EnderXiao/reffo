@@ -41,7 +41,8 @@
 | U14 | API 错误响应携带恢复建议 | `backend/src/routes/mvp.ts`、V6 TODO | 路由鉴权测试、恢复建议测试、全量 backend、类型检查、diff 检查 | user | `4e2184b` | committed |
 | U15 | Dashboard 汇总恢复建议命中 | `backend/src/repositories/harness-metrics.ts`、Harness metrics 测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | `10b7ecd` | committed |
 | U16 | P01 Chunk 故障注入与完整性门禁 | `backend/src/v5/chunked-resume-extraction.ts`、workflow、测试、V6 TODO | Chunk/workflow/budget 测试、全量 backend、类型检查、diff 检查 | user | `c2a92f3` | committed |
-| U17 | 修复并行 P01 调用指标漏计 | `backend/src/repositories/harness-metrics.ts`、指标测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
+| U17 | 修复并行 P01 调用指标漏计 | `backend/src/repositories/harness-metrics.ts`、指标测试 | 指标单测、全量 backend、类型检查、diff 检查 | user | `088072f` | committed |
+| U18 | 修复安全回退的列表内嵌标题 | `backend/src/v5/safe-renderer.ts`、`backend/src/v5/validators.ts`、测试 | validator 单测、全量 backend、类型检查、diff 检查 | user | in_progress | in_progress |
 
 ## Unit Logs
 
@@ -299,18 +300,33 @@
 - CR findings: 当前按 Map 单值聚合会合并同键重复调用；全局存在事件时会漏掉无事件的历史 attempt。
 - Resolution: provider 事件按同键事件序列逐次配对，不再按 Map 单值覆盖；无事件历史 attempt 按 ID 单独回退计量。
 - Commit message: `fix: 修复并行P01调用计量`
-- Commit: pending
+- Commit: `088072f`
 - Remaining follow-up: 修复 safe fallback 教育经历中的列表内嵌标题结构污染。
+
+### U18
+
+- Objective: 安全回退输出不得把源 Markdown 标题标记写入列表项；生成结果和模型产物都必须阻断 `- ### ...` 结构污染。
+- Files: `backend/src/v5/safe-renderer.ts`、`backend/src/v5/validators.ts`、`backend/src/v5/tests/policy-score-validator.test.ts`。
+- Code changes: 安全 renderer 清理源列表/标题展示标记，并拒绝 identity/timeline 元数据进入 scope bullet；Artifact 门禁新增 `LIST_ITEM_HEADING_MARKER`，阻断列表项内嵌一级至六级标题标记。
+- Regression added or updated: 教育证据源文本含三级标题标记时，保留规范 scope 标题和事实文本，但不生成列表内嵌标题；validator 单独拒绝列表内嵌标题。
+- Regression executor: repo-native backend unit test
+- Validation commands: `bun test ./src/v5/tests/policy-score-validator.test.ts`（34 pass）；`bun test`（252 pass）；`bunx tsc --noEmit`；`git diff --check`。
+- Validation artifacts: 无临时产物
+- CR findings: 真实 canary safe fallback 出现 `- ### 北京工业大学...`；现有 heading 检查只识别行首 `#`，错误结构被当作普通 claim 放行。
+- Resolution: 教育证据即使以 `###` 开头也只输出一次规范三级 scope 标题，正文列表去除展示标记；模型输出同类污染由确定性门禁阻断。
+- Commit message: `fix: 修复安全回退标题污染`
+- Commit: pending
+- Remaining follow-up: 黄金集、多样本真实 canary 和多实例部署验证。
 
 ## Remaining Items
 
-- Remaining functional units: U17
+- Remaining functional units: U18
 - Cleanup-only units: none
-- Open risks: U17 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集和多样本 canary 尚未执行。
+- Open risks: U18 尚未提交；线上多实例若需要共享 Harness 查询，当前进程锁会拒绝共享路径，应改用独立路径或外部数据库。黄金集和多样本 canary 尚未执行。
 
 ## Final Summary
 
-- Functional commits: U1-U16 已完成；U17 进行中
+- Functional commits: U1-U17 已完成；U18 进行中
 - Cleanup commits: none
 - Final validation: `bun test`（243 pass）；`bun test ./src/v5`（162 pass）；`bunx tsc --noEmit`；`git diff --check`；真实主流程成功
 - Deferred items: 黄金集、故障注入和多样本真实 canary 属后续发布前任务。
