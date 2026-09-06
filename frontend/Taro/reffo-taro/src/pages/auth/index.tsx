@@ -8,6 +8,7 @@ import ReffoGlyph from '@/components/business/HomeCardDeck/ReffoGlyph.h5'
 import {type EmailOtpConfig, type OAuthProvider} from '@/services/auth'
 import {useAuthStore} from '@/store/authStore'
 import {feedback} from '@/utils/feedback'
+import {storage} from '@/utils/storage'
 import {routePaths, useRouteTransition} from '@/shared/routing'
 
 import './index.scss'
@@ -27,6 +28,7 @@ const AUTH_TEXTURE_SOURCE = {
   role: 'Account',
   tone: 'soft',
 } as const
+const REMEMBERED_EMAIL_STORAGE_KEY = 'reffo.auth.rememberedEmail'
 
 function showConfirmation(options: {
   title: string
@@ -101,6 +103,7 @@ export default function AuthPage() {
   const [transitionDirection, setTransitionDirection] = useState<TransitionDirection>('forward')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberEmail, setRememberEmail] = useState(true)
   const [confirmPassword, setConfirmPassword] = useState('')
   const [otp, setOtp] = useState('')
   const [otpPurpose, setOtpPurpose] = useState<'signup' | 'login' | 'reset'>('signup')
@@ -128,6 +131,19 @@ export default function AuthPage() {
   const restoreOAuthSession = useAuthStore(state => state.restoreOAuthSession)
   const signOut = useAuthStore(state => state.signOut)
   const phaseContent = getPhaseContent(phase, email)
+
+  useEffect(() => {
+    let active = true
+    void storage.getItem(REMEMBERED_EMAIL_STORAGE_KEY).then(value => {
+      if (!active || !value) return
+      setEmail(value)
+    }).catch(() => {
+      // 本地记忆失败不应阻断登录。
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const completeAuth = () => {
     feedback.success('登录成功', {duration: 1400})
@@ -223,6 +239,15 @@ export default function AuthPage() {
       }
 
       await signInWithPassword({email: normalizedEmail, password})
+      if (rememberEmail) {
+        void storage.setItem(REMEMBERED_EMAIL_STORAGE_KEY, normalizedEmail).catch(() => {
+          // 记忆邮箱失败不应影响已完成的登录。
+        })
+      } else {
+        void storage.removeItem(REMEMBERED_EMAIL_STORAGE_KEY).catch(() => {
+          // 清理失败不应影响已完成的登录。
+        })
+      }
       completeAuth()
     } catch (errorValue) {
       feedback.error(errorValue instanceof Error ? errorValue.message : '登录失败，请重试')
@@ -486,6 +511,15 @@ export default function AuthPage() {
           placeholder='name@example.com'
           onInput={event => updateEmail(String(event.detail.value || ''))}
         />
+      </View>
+      <View
+        className={classNames('reffo-auth__remember', {'reffo-auth__remember--checked': rememberEmail})}
+        role='checkbox'
+        aria-checked={rememberEmail}
+        onClick={() => setRememberEmail(value => !value)}
+      >
+        <View className='reffo-auth__remember-box'>{rememberEmail ? <Text>✓</Text> : null}</View>
+        <Text>记住邮箱（不保存密码）</Text>
       </View>
       <View className='reffo-auth__field'>
         <Text className='reffo-auth__label'>密码</Text>

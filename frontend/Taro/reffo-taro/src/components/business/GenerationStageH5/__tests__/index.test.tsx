@@ -24,7 +24,7 @@ describe('GenerationStageH5', () => {
 
     expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
     expect(screen.getByTestId('generation-card')).toBeTruthy()
-    expect(screen.getByText('正在为你的目标岗位量身定做最佳匹配简历……')).toBeTruthy()
+    expect(screen.getByText('正在为你的目标岗位量身定做相契简历……')).toBeTruthy()
     expect(screen.getAllByText('我的简历')).toHaveLength(2)
   })
 
