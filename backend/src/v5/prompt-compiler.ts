@@ -361,6 +361,13 @@ export function compileV5Prompt(input: {
       temperature,
       inputDocumentIds: input.inputDocumentIds ?? [],
       repairAttempt: input.repairAttempt ?? 0,
+      inputSummary: {
+        envelopeBytes: serializedEnvelope.length,
+        envelopeTopLevelFields: Object.keys(input.envelope ?? {}).sort(),
+        messageCount: messages.length,
+        messageCharacterCounts: messages.map(message => message.content.length),
+        estimatedInputTokens,
+      },
       promptFileSha256: promptFile.sha256,
       promptFilePath: promptFile.filePath,
     },

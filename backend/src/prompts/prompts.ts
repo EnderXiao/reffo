@@ -229,12 +229,15 @@ export function buildMatchingMessages(resume: ResumeStructure, jd: JDStructure):
 
 评分与判断规则：
 - match_score 使用固定权重：明示硬要求 35、相关经历与结果 30、技能/方法 20、可迁移能力与语境适配 10、证据清晰度 5。
+- 可以更主动地选择证据、压缩句子、前置成果、使用 JD 的语义等价术语，让简历更有针对性；“更激进”只表示表达取舍，不表示放宽事实标准。任何捏造、外推、升级事实均视为失败。
 - JD 未说明的门槛不得扣分；上下文假设对总分影响不得超过 5 分，也不能成为硬性不匹配。
 - hard_requirements_match 只逐项判断 JD 明示 must-have。true 表示有直接或语义等价证据；false 表示“当前材料未证明”，不等于候选人确定不具备。
 - 先判断源简历和 JD 的主要语言。语言不同不代表不匹配：按跨语言语义和上下文判断，不要求中英文词面重合；不得仅因语言不同把技能判为 missing。
 - required_skill_checks 必须尽量逐项覆盖 JD hard_requirements.required_skills，requirement 保留 JD 原文，status 只能是 matched、missing、unclear，evidence 写明简历证据或为何当前材料无法确认。OCR 不完整、语言转换或证据不足时使用 unclear。
 - matched 只放有证据的直接匹配或强等价技能；missing 只放 JD 明示关键要求且材料未证明的技能，不能把公司/地点假设放入 missing。required_skill_checks 不完整时仍继续输出完整匹配分析。
+- 积极识别三类差距：direct_missing=材料确无证据；implicit_evidence=具体经历可间接证明；wording_gap=事实具备但术语未对齐。不得把后两类写成“候选人不会”。
 - direct_missing 也只能表示“当前材料没有证据”，不能断言候选人现实中缺乏该能力。positioning_strategy、context_fit、weaknesses 和 suggestion 均必须遵守这一措辞边界。
+- strengths 输出 3-5 个最能提高胜率的证据点；weaknesses 输出 2-4 个最重要差距，并与 weakness_details 一一对应。
 - positioning_strategy 用 2-3 句给出本次申请的核心定位：应主打什么已有证据、如何回应目标任务、哪些边界不能越过。若源简历没有目标行业/公司/地域背景，必须明确“不将其写成已有经验”，不能要求主动连接成候选人事实。
 - strengths 输出 3-5 个最能提高胜率的证据点。
 
@@ -279,6 +282,8 @@ export function buildMatchingBusinessRepairMessages(input: {
 - 只修复 business_evaluation 中指出的问题，不要重写无关字段。
 - 若缺少 experience_match，基于源简历和 JD 补充经验匹配说明。
 - 若 weakness_details 缺失或字段不完整，按 G1-G4、priority、weakness、evidence_type、jd_requirement、evidence、impact、suggestion 的结构补齐；不要另行输出 weaknesses，服务端会自动派生。
+- 若 skill_match 没有覆盖 JD required_skills，需要重新检查 required_skills，把已有证据支持的技能写入 matched，把当前材料未证明的明示关键技能写入 missing。
+- 若 weakness_details 缺失、数量不一致或 evidence_type 不合法，补齐为 direct_missing、implicit_evidence 或 wording_gap，并保持与 weaknesses 一一对应。
 - 若 required_skill_checks 没有覆盖 JD required_skills，需要重新检查并尽量逐项补齐；requirement 保留 JD 原文，status 使用 matched、missing 或 unclear。该问题属于质量警告，修复失败也不能阻断后续流程。
 - required_skill_checks 是质量信号，不是流程门禁；即使缺失、部分不确定或格式不完整，也必须继续返回可用的匹配分析。
 - missing 只能表示“当前材料未证明”，不能断言候选人现实中不会或不具备。
@@ -307,17 +312,18 @@ export function buildResumeGenerationMessages(
 
 改写策略：
 1. 先在内部建立“输出句子 -> 源简历证据”映射；无法映射的候选人陈述不得输出。
-2. 开头生成 2-3 句职业摘要，顶部三分之一必须回答：候选人是谁、2-3 个最相关证据支柱、这些证据能回应目标岗位的什么核心问题；只能概括已有经历、技能和成果。
-3. 工作经历保持时间倒序；在每段经历内部把与目标岗位最相关、证据最强的行动和成果前置。项目可按相关性排序，但不得改变项目归属与时间。
-4. 可使用 JD 术语替换语义等价的源表述，也可把分散在同一经历中的相邻事实合并成更有力的句子；不得加入 missing 技能或把 implicit_evidence 写成已具备的明确资历。
-5. 优先使用“行动 + 对象/场景 + 已知结果”的紧凑表达。没有结果证据时只写行动和对象，不补数字、不制造因果。
-6. 公司人才偏好与工作地语境只影响证据选择、排序和语气。例如强调客户理解、跨地域协作或执行节奏时，候选人必须已有相应证据；上下文假设本身不得出现在简历中。
-7. 技能清单只保留源简历可证明的技能，并把与 JD 直接相关的放在前面；软技能尽量通过经历体现。
-8. 删除空泛自评、重复职责、与目标无关的细枝末节和模板话术，但不能删除形成职业连续性所需的真实经历。
-9. 每条工作经历 bullet 只能使用同一条 source experience 中的事实；每条项目 bullet 只能使用同一条 source project 中的事实。除非源简历明确说明归属，否则不得把项目行动搬进工作经历，也不得把不同公司/项目的事实拼成一条。
-10. positioning_strategy、optimization_suggestions、optimization_strategy_details、JD 职责和上下文假设都不是独立的候选人事实源；其中的改写示例只能在重新核对 structured_source_resume 后使用。源简历没有目标公司、行业、地域经历或求职意向时，职业摘要不得声称“致力于/专注于/深耕/服务于”该目标语境。
-11. “驱动决策、赋能、保障效率、管理期望、主导、全流程、决策支持”等结果、所有权或范围升级词，只有 structured_source_resume 明示同等语义时才可使用；否则只陈述已证实的动作、对象与指标。
-12. 作品集、代码仓库、SQL 测试、证书原件、语言证明等需要产品外提供的材料不得写入简历正文，也不得成为简历生成阻断项。
+2. 必须逐条落实 match_analysis.optimization_suggestions：将每条建议转换为简历中的具体排序、取舍或语义对齐动作，并在内部核对“建议 -> 修改位置 -> 源证据”映射；建议不能只停留在分析结果里，也不能原样写成简历文案。
+3. 开头生成 2-3 句职业摘要，顶部三分之一必须回答：候选人是谁、2-3 个最相关证据支柱、这些证据能回应目标岗位的什么核心问题；只能概括已有经历、技能和成果。
+4. 工作经历保持时间倒序；在每段经历内部把与目标岗位最相关、证据最强的行动和成果前置。项目可按相关性排序，但不得改变项目归属与时间。
+5. 可使用 JD 术语替换语义等价的源表述，也可把分散在同一经历中的相邻事实合并成更有力的句子；不得加入 missing 技能或把 implicit_evidence 写成已具备的明确资历。
+6. 优先使用“行动 + 对象/场景 + 已知结果”的紧凑表达。没有结果证据时只写行动和对象，不补数字、不制造因果。
+7. 公司人才偏好与工作地语境只影响证据选择、排序和语气。例如强调客户理解、跨地域协作或执行节奏时，候选人必须已有相应证据；上下文假设本身不得出现在简历中。
+8. 技能清单只保留源简历可证明的技能，并把与 JD 直接相关的放在前面；软技能尽量通过经历体现。
+9. 删除空泛自评、重复职责、与目标无关的细枝末节和模板话术，但不能删除形成职业连续性所需的真实经历。
+10. 每条工作经历 bullet 只能使用同一条 source experience 中的事实；每条项目 bullet 只能使用同一条 source project 中的事实。除非源简历明确说明归属，否则不得把项目行动搬进工作经历，也不得把不同公司/项目的事实拼成一条。
+11. positioning_strategy、optimization_suggestions、optimization_strategy_details、JD 职责和上下文假设都不是独立的候选人事实源；其中的改写示例只能在重新核对 structured_source_resume 后使用。源简历没有目标公司、行业、地域经历或求职意向时，职业摘要不得声称“致力于/专注于/深耕/服务于”该目标语境。
+12. “驱动决策、赋能、保障效率、管理期望、主导、全流程、决策支持”等结果、所有权或范围升级词，只有 structured_source_resume 明示同等语义时才可使用；否则只陈述已证实的动作、对象与指标。
+13. 作品集、代码仓库、SQL 测试、证书原件、语言证明等需要产品外提供的材料不得写入简历正文，也不得成为简历生成阻断项。
 
 事实审计红线：
 - 数字、金额、比例、规模、排名、时长和日期必须逐字符来自源简历，不得计算、外推、重新取整、换阈值或改写精度。

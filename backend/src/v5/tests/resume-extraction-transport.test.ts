@@ -100,6 +100,6 @@ describe('P01 compact source-bound transport', () => {
     expect(conflict.value?.factCandidates[2].proposedStatus).toBe('excluded')
     expect(conflict.issues.some(issue => issue.code === 'UNSAFE_EVIDENCE_STATUS')).toBe(false)
     candidate.factCandidates[2].riskFlags = ['future_or_planned']
-    expect(validateResumeExtractionCandidate(document, candidate).value?.factCandidates[2].proposedStatus).toBe('source_qualified')
+    expect(validateResumeExtractionCandidate(document, candidate).value?.factCandidates[2].proposedStatus).toBe('excluded')
   })
 })

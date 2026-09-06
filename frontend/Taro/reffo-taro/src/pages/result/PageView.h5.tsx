@@ -17,10 +17,6 @@ import {resolveResumeGrade} from '@/utils/score-grade'
 import {RequirementAnalysisPanel} from './components/RequirementAnalysis.h5'
 import type {ResultPageViewModel} from './usePageModel'
 import {buildInterviewStoryViewItems} from './model/interviewReferences'
-import {
-  buildGapViewItems,
-  buildOptimizationStrategyViewItems,
-} from './model/analysisPresentation'
 import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
@@ -272,11 +268,18 @@ function getVisibleStageStatus(
   return 'pending'
 }
 
-function getDownloadName(result: ProcessResult) {
-  const name = result.analysis.structured_resume.personal_info.name.trim()
-  const safeName = name.replace(/[\\/:*?"<>|]/g, '').trim()
+function sanitizeFileNameSegment(value: string, fallback: string) {
+  const sanitized = value.replace(/[\\/:*?"<>|]/g, '').trim()
+  return sanitized || fallback
+}
 
-  return `${safeName || 'reffo'}-最佳简历.md`
+function getDownloadName(result: ProcessResult, companyName: string, positionName: string) {
+  const name = result.analysis.structured_resume.personal_info.name.trim()
+  const safeCompany = sanitizeFileNameSegment(companyName, '目标公司')
+  const safePosition = sanitizeFileNameSegment(positionName, '目标岗位')
+  const safeName = sanitizeFileNameSegment(name, '用户')
+
+  return `${safeCompany}-${safePosition}-${safeName}-相契简历.md`
 }
 
 function renderInlineMarkdown(value: string) {
@@ -360,30 +363,14 @@ function EmptyText() {
   return <Text className='reffo-result__empty'>暂无内容</Text>
 }
 
-function SourceReference({value}: {value: string}) {
-  return (
-    <Text className='reffo-result__story-reference'>
-      {value || '暂无可引用原文'}
-    </Text>
-  )
-}
-
-const GAP_PRIORITY_LABELS = {
-  high: '高优先级',
-  medium: '中优先级',
-  low: '低优先级',
-} as const
-
-const GAP_EVIDENCE_TYPE_LABELS = {
-  direct_missing: '材料未证明',
-  implicit_evidence: '证据待显化',
-  wording_gap: '表达未对齐',
-} as const
-
 function AnalysisPanel({result}: {result: ProcessResult}) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const grade = resolveResumeGrade(result.analysis.quality_score)
-  const gaps = buildGapViewItems(result)
-  const strategies = buildOptimizationStrategyViewItems(result)
+  const weaknesses = normalizeItems(result.analysis.weaknesses, 3)
+  const strategies = normalizeItems(result.matching.optimization_suggestions, 5)
+  const visibleWeaknesses = isExpanded ? weaknesses : weaknesses.slice(0, 2)
+  const visibleStrategies = isExpanded ? strategies : strategies.slice(0, 3)
+  const hasHiddenItems = visibleWeaknesses.length < weaknesses.length || visibleStrategies.length < strategies.length
 
   return (
     <View className='reffo-result__panel'>
@@ -399,51 +386,12 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
           <Image className='reffo-result__alert-icon' src={alertIcon} mode='aspectFit' />
           <Text>差距分析</Text>
         </View>
-        {gaps.length > 0 ? (
-          <View className='reffo-result__gap-list'>
-            {gaps.map((item, index) => (
-              <View key={`${item.id}-${item.title}-${index}`} className='reffo-result__gap-item'>
-                <View className='reffo-result__analysis-item-meta'>
-                  <Text className='reffo-result__analysis-item-id'>{item.id}</Text>
-                  {item.priority && (
-                    <Text className='reffo-result__analysis-item-tag'>
-                      {GAP_PRIORITY_LABELS[item.priority]}
-                    </Text>
-                  )}
-                  {item.evidenceType && (
-                    <Text className='reffo-result__analysis-item-tag'>
-                      {GAP_EVIDENCE_TYPE_LABELS[item.evidenceType]}
-                    </Text>
-                  )}
-                </View>
-                <Text className='reffo-result__analysis-item-title'>{item.title}</Text>
-                {item.jdRequirement && (
-                  <View className='reffo-result__analysis-detail-row'>
-                    <Text className='reffo-result__analysis-detail-label'>岗位要求</Text>
-                    <Text className='reffo-result__analysis-detail-value'>{item.jdRequirement}</Text>
-                  </View>
-                )}
-                {item.evidence && (
-                  <View className='reffo-result__analysis-detail-row'>
-                    <Text className='reffo-result__analysis-detail-label'>判断依据</Text>
-                    <Text className='reffo-result__analysis-detail-value'>{item.evidence}</Text>
-                  </View>
-                )}
-                {item.impact && (
-                  <View className='reffo-result__analysis-detail-row'>
-                    <Text className='reffo-result__analysis-detail-label'>投递影响</Text>
-                    <Text className='reffo-result__analysis-detail-value'>{item.impact}</Text>
-                  </View>
-                )}
-                {item.suggestion && (
-                  <View className='reffo-result__analysis-detail-row'>
-                    <Text className='reffo-result__analysis-detail-label'>应对方向</Text>
-                    <Text className='reffo-result__analysis-detail-value'>{item.suggestion}</Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
+        {visibleWeaknesses.length > 0 ? (
+          visibleWeaknesses.map((item, index) => (
+            <Text key={`${item}-${index}`} className='reffo-result__paragraph'>
+              {item}
+            </Text>
+          ))
         ) : (
           <EmptyText />
         )}
@@ -454,60 +402,38 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
           <Image className='reffo-result__alert-icon' src={confirmIcon} mode='aspectFit' />
           <Text>优化策略</Text>
         </View>
-        {strategies.length > 0 ? (
-          <View className='reffo-result__strategy-list'>
-            {strategies.map((item, index) => (
-              <View key={`${item.id}-${item.strategyPoint}-${index}`} className='reffo-result__strategy-item'>
-                <View className='reffo-result__analysis-item-meta'>
-                  <Text className='reffo-result__analysis-item-id reffo-result__analysis-item-id--success'>
-                    {item.id}
-                  </Text>
-                  {item.relatedGapIds.length > 0 && (
-                    <Text className='reffo-result__analysis-item-tag'>
-                      对应 {item.relatedGapIds.join('、')}
-                    </Text>
-                  )}
-                </View>
-                <Text className='reffo-result__analysis-item-title'>{item.strategyPoint}</Text>
-                {item.rationale && (
-                  <View className='reffo-result__analysis-detail-row'>
-                    <Text className='reffo-result__analysis-detail-label'>策略说明</Text>
-                    <Text className='reffo-result__analysis-detail-value'>{item.rationale}</Text>
-                  </View>
-                )}
-                {item.structured && item.sourceQuote && item.optimizedContent && (
-                  <View className='reffo-result__strategy-comparison'>
-                    <View className='reffo-result__strategy-example reffo-result__strategy-example--before'>
-                      <Text className='reffo-result__strategy-example-label'>优化前 · 源简历原文</Text>
-                      <View className='reffo-result__strategy-reference-line'>
-                        <SourceReference value={item.sourceQuote} />
-                      </View>
-                    </View>
-                    <View className='reffo-result__strategy-arrow' aria-hidden='true'>
-                      <Text>↓</Text>
-                    </View>
-                    <View className='reffo-result__strategy-example reffo-result__strategy-example--after'>
-                      <Text className='reffo-result__strategy-example-label'>优化后 · 改写示例</Text>
-                      <Text className='reffo-result__strategy-example-content'>{item.optimizedContent}</Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
+        {visibleStrategies.length > 0 ? (
+          visibleStrategies.map((item, index) => (
+            <Text key={`${item}-${index}`} className='reffo-result__paragraph'>
+              {item}
+            </Text>
+          ))
         ) : (
           <EmptyText />
         )}
       </View>
+      {(hasHiddenItems || isExpanded) ? (
+        <View
+          className='reffo-result__analysis-toggle'
+          role='button'
+          onClick={() => setIsExpanded(previous => !previous)}
+        >
+          <Text>{isExpanded ? '收起分析' : '查看完整分析'}</Text>
+        </View>
+      ) : null}
     </View>
   )
 }
 
 function ResumePanel({
   result,
+  companyName,
+  positionName,
   onOptimizedResumeChange,
 }: {
   result: ProcessResult
+  companyName: string
+  positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
 }) {
   const [lines, setLines] = useState(() => parseMarkdown(result.optimized.optimized_resume))
@@ -567,7 +493,7 @@ function ResumePanel({
     const link = document.createElement('a')
 
     link.href = url
-    link.download = getDownloadName(result)
+    link.download = getDownloadName(result, companyName, positionName)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -704,9 +630,9 @@ function InterviewPanel({
             <Text className='reffo-result__story-title'>{item.title}</Text>
             <Text className='reffo-result__story-source'>
               来自源简历
-              <SourceReference value={item.resumeQuote} />
+              <Text className='reffo-result__story-reference'>{item.resumeQuote || '暂无可引用原文'}</Text>
               和岗位描述
-              <SourceReference value={item.jdQuote} />
+              <Text className='reffo-result__story-reference'>{item.jdQuote || '暂无可引用原文'}</Text>
               。
             </Text>
 
@@ -748,12 +674,16 @@ function ResultContent({
   result,
   resumeContent,
   jdContent,
+  companyName,
+  positionName,
   onOptimizedResumeChange,
 }: {
   stage: ResultStageKey
   result: ProcessResult
   resumeContent: string
   jdContent: string
+  companyName: string
+  positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
 }) {
   if (stage === 'analysis') return <AnalysisPanel result={result} />
@@ -761,6 +691,8 @@ function ResultContent({
     return (
       <ResumePanel
         result={result}
+        companyName={companyName}
+        positionName={positionName}
         onOptimizedResumeChange={onOptimizedResumeChange}
       />
     )
@@ -776,6 +708,8 @@ export default function PageView({
   result,
   resumeContent,
   jdContent,
+  companyName,
+  positionName,
   loading,
   progress,
   progressPercent,
@@ -788,6 +722,7 @@ export default function PageView({
   handleBackHome,
   handleEditHistory,
   handleOptimizedResumeChange,
+  isCompleting,
   hideLandingHeader = false,
 }: ResultPageViewProps) {
   const [stageIndex, setStageIndex] = useState(0)
@@ -1191,6 +1126,7 @@ export default function PageView({
     }, rootElement)
 
     if (didStartViewTransition) {
+      setIsReturningHome(true)
       return
     }
 
@@ -1249,11 +1185,13 @@ export default function PageView({
           <LandingFlowHeader
             className='reffo-create__landing-header--result'
             onBack={() => {
-              void handleComplete()
+              if (!isCompleting) {
+                void handleComplete()
+              }
             }}
             onSkip={handleBackHome}
             progressStep={3}
-            backLabel='完成'
+            backLabel={isCompleting ? '保存中…' : '完成'}
           />
         ) : null}
         <Text className='reffo-result__loading-text'>{loading ? '加载中...' : '未找到结果'}</Text>
@@ -1289,19 +1227,27 @@ export default function PageView({
           <LandingFlowHeader
             className='reffo-create__landing-header--result'
             onBack={() => {
-              void handleComplete()
+              if (!isCompleting) {
+                void handleComplete()
+              }
             }}
             onSkip={handleBackHome}
             progressStep={3}
-            backLabel='完成'
+            backLabel={isCompleting ? '保存中…' : '完成'}
           />
         )
       ) : enteredFromCard ? (
         <>
           <View className='reffo-result__chrome reffo-result__chrome--back'>
-            <View className='reffo-result__action reffo-result__action--back' onClick={handleReturnHome}>
+            <View
+              className={classNames('reffo-result__action reffo-result__action--back', {
+                'reffo-result__action--disabled': isReturningHome,
+              })}
+              aria-disabled={isReturningHome}
+              onClick={isReturningHome ? undefined : handleReturnHome}
+            >
               <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
-              <Text>返回</Text>
+              <Text>{isReturningHome ? '返回中…' : '返回'}</Text>
             </View>
           </View>
           {canEditHistory ? (
@@ -1323,8 +1269,10 @@ export default function PageView({
           <View
             className={classNames('reffo-result__action', {
               'reffo-result__action--edit': isComplete && canEditHistory,
+              'reffo-result__action--disabled': isCompleting,
             })}
-            onClick={isComplete && canEditHistory
+            aria-disabled={isCompleting}
+            onClick={isCompleting ? undefined : isComplete && canEditHistory
               ? () => {
                   void handleEditHistory()
                 }
@@ -1335,7 +1283,7 @@ export default function PageView({
             ) : canEditHistory ? (
               <Image src={editIcon} className='reffo-result__action-icon' mode='aspectFit' />
             ) : null}
-            <Text>{isComplete && canEditHistory ? '编辑简历' : isComplete ? '完成' : '退出生成'}</Text>
+            <Text>{isCompleting ? '保存中…' : isComplete && canEditHistory ? '编辑简历' : isComplete ? '完成' : '退出生成'}</Text>
           </View>
         </View>
       )}
@@ -1528,6 +1476,8 @@ export default function PageView({
                         result={result}
                         resumeContent={resumeContent}
                         jdContent={jdContent}
+                        companyName={companyName}
+                        positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
                       />
                     </View>
@@ -1544,6 +1494,8 @@ export default function PageView({
                         result={result}
                         resumeContent={resumeContent}
                         jdContent={jdContent}
+                        companyName={companyName}
+                        positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
                       />
                     </View>
@@ -1558,6 +1510,8 @@ export default function PageView({
                       result={result}
                       resumeContent={resumeContent}
                       jdContent={jdContent}
+                      companyName={companyName}
+                      positionName={positionName}
                       onOptimizedResumeChange={handleOptimizedResumeChange}
                     />
                   </View>

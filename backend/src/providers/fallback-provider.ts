@@ -80,12 +80,16 @@ export class FallbackLlmProvider implements LlmProvider {
   async complete(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     const models = [input.model ?? env.AI_MODEL, ...env.AI_FALLBACK_MODELS]
     const uniqueModels = [...new Set(models.filter(Boolean))]
+    const maxProviderModels = Math.max(1, input.maxProviderModels ?? uniqueModels.length)
+    const selectedModels = uniqueModels.slice(0, maxProviderModels)
     const maxProviderAttempts = Math.max(1, input.maxProviderAttempts ?? DEFAULT_MAX_PROVIDER_ATTEMPTS)
     let lastError: unknown
 
-    for (const model of uniqueModels) {
-      const modelIndex = uniqueModels.indexOf(model)
+    let physicalAttempts = 0
+    for (const model of selectedModels) {
+      const modelIndex = selectedModels.indexOf(model)
       for (let attemptNumber = 1; attemptNumber <= maxProviderAttempts; attemptNumber += 1) {
+        physicalAttempts += 1
         try {
           const result = await this.primary.complete({ ...input, model })
 
@@ -99,7 +103,7 @@ export class FallbackLlmProvider implements LlmProvider {
             })
           }
 
-          return result
+          return { ...result, physicalAttempts: result.physicalAttempts ?? physicalAttempts }
         } catch (error) {
           lastError = error
           if (isAbortError(error) || input.signal?.aborted || input.stepContext?.signal?.aborted) {

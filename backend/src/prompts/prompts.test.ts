@@ -126,6 +126,7 @@ describe('prompt suite', () => {
     expect(generationPrompt).toContain('JD 中出现不代表候选人拥有')
     expect(generationPrompt).toContain('不得把项目行动搬进工作经历')
     expect(generationPrompt).toContain('职业摘要不得声称')
+    expect(generationPrompt).toContain('必须逐条落实 match_analysis.optimization_suggestions')
     expect(generationPrompt).not.toContain('1000万')
     expect(generationPrompt).not.toContain('99.99%')
     expect(generationPrompt).not.toContain('500 万元营收')
@@ -149,6 +150,13 @@ describe('prompt suite', () => {
     expect(matchingPrompt).toContain('不得把它们算作简历输出质量缺陷')
     expect(generationPrompt).toContain('不得写入简历正文')
     expect(generationPrompt).toContain('不得把“约 2180 万”改成“超 2000 万”')
+  })
+
+  test('allows assertive wording without relaxing factual boundaries', () => {
+    const matchingPrompt = promptText(buildMatchingMessages(sourceResume, jd))
+
+    expect(matchingPrompt).toContain('更激进”只表示表达取舍，不表示放宽事实标准')
+    expect(matchingPrompt).toContain('任何捏造、外推、升级事实均视为失败')
   })
 
   test('limits JSON repair to structural changes', () => {

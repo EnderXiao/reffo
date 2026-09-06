@@ -9,6 +9,7 @@ import { resumeHistoryRoutes } from '@/routes/resume-history'
 import { systemRoutes } from '@/routes/system'
 import { authRoutes } from '@/routes/auth'
 import { profileRoutes } from '@/routes/profile'
+import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 
 /**
  * 启动应用
@@ -109,6 +110,8 @@ async function bootstrap() {
       hostname: env.HOST,
       port: env.PORT,
     })
+
+  startSupabaseHarnessCleanup()
 
   console.log('\n🚀 Reffo MVP 服务启动成功！')
   console.log('========================================')

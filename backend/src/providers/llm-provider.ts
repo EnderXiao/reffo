@@ -32,8 +32,23 @@ export interface ChatCompletionInput {
     temperature: number
     inputDocumentIds: string[]
     repairAttempt: number
+    inputSummary?: {
+      envelopeBytes: number
+      envelopeTopLevelFields: string[]
+      messageCount: number
+      messageCharacterCounts: number[]
+      estimatedInputTokens: number
+    }
+  }
+  callMetadata?: {
+    callReason: 'business_stage' | 'validation_repair' | 'network_retry' | 'semantic_gate'
+    contextMode: 'full' | 'scoped' | 'patch'
+    repairScope: string[]
+    retryIndex: number
+    budgetRemaining: number | null
   }
   maxProviderAttempts?: number
+  maxProviderModels?: number
   eventBus?: HarnessEventBus
   stepContext?: StepExecutionContext
 }
@@ -47,6 +62,7 @@ export interface ChatCompletionResult {
   finishReason?: string | null
   inputTokens?: number
   outputTokens?: number
+  physicalAttempts?: number
   /** Already included in outputTokens; never add a second time. */
   reasoningTokens?: number
   inputCacheHitTokens?: number

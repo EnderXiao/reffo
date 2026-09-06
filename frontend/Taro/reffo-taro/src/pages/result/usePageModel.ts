@@ -150,8 +150,11 @@ export interface ResultPageViewModel {
   result: ProcessResult | null
   resumeContent: string
   jdContent: string
+  companyName: string
+  positionName: string
   loading: boolean
   saved: boolean
+  isCompleting: boolean
   progress: LatestResultSessionProgress
   progressPercent: number
   generationError: string | null
@@ -202,6 +205,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     useState<LatestResultSessionContext | null>(() => initialSessionRef.current?.context ?? null)
   const [loading, setLoading] = useState(() => !initialSessionRef.current)
   const [saved, setSaved] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
   const [savedHistoryId, setSavedHistoryId] = useState<string | null>(
     resultId,
   )
@@ -542,23 +546,32 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   const handleSave = async () => saveCurrentResult(true)
 
   const handleComplete = async () => {
+    if (isCompleting) {
+      return
+    }
+
     if (progress.interview !== 'done') {
       feedback.message('正在生成中，请稍后')
       return
     }
 
-    const historyId = await saveCurrentResult(false)
+    setIsCompleting(true)
+    try {
+      const historyId = await saveCurrentResult(false)
 
-    if (!historyId) {
-      return
-    }
+      if (!historyId) {
+        return
+      }
 
-    continuationRef.current += 1
-    if (workspaceGenerationRunRef.current != null) {
-      resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
-      workspaceGenerationRunRef.current = null
+      continuationRef.current += 1
+      if (workspaceGenerationRunRef.current != null) {
+        resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
+        workspaceGenerationRunRef.current = null
+      }
+      void route.navigate(appendRouteParams(routePaths.complete, {historyId}))
+    } finally {
+      setIsCompleting(false)
     }
-    void route.navigate(appendRouteParams(routePaths.complete, {historyId}))
   }
 
   const handleShare = async () => {
@@ -633,8 +646,11 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     result,
     resumeContent: resultContext?.resumeContent || '',
     jdContent: resultContext?.jdContent || '',
+    companyName: resultContext?.company || '',
+    positionName: resultContext?.position || '',
     loading,
     saved,
+    isCompleting,
     progress,
     progressPercent: getProgressPercent(progress),
     generationError,

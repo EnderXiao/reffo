@@ -187,6 +187,41 @@ taro-page-core:has(.reffo-auth)::-webkit-scrollbar,
   gap: 7px;
 }
 
+.reffo-auth__remember {
+  min-height: 24px;
+  margin-top: -4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(17, 24, 32, 0.52);
+  font-size: 13px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.reffo-auth__remember-box {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(17, 24, 32, 0.22);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.reffo-auth__remember--checked {
+  color: rgba(17, 24, 32, 0.72);
+}
+
+.reffo-auth__remember--checked .reffo-auth__remember-box {
+  border-color: #126fe8;
+  background: #126fe8;
+}
+
 .reffo-auth__label,
 .reffo-auth__verify-label,
 .reffo-auth__account-label {

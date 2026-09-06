@@ -8,7 +8,6 @@ export class V5JudgeCitationError extends Error {
     this.name = 'V5JudgeCitationError'
   }
 }
-
 /** Verifies quotation existence only, not the truth of the judge's interpretation. */
 export function validateJudgeCitations(result: BlindABEvaluation, candidates: Array<{ candidateId: 'A' | 'B'; markdown: string }>) {
   const documents = new Map(candidates.map(candidate => [candidate.candidateId, candidate.markdown.normalize('NFC')]))
@@ -25,4 +24,3 @@ export function validateJudgeCitations(result: BlindABEvaluation, candidates: Ar
   }
   if (invalid.length) throw new V5JudgeCitationError(invalid)
 }
-

@@ -98,6 +98,29 @@ describe('v5 canonical source and atomic evidence', () => {
     expect(merged.factCandidates.at(-1)?.factLocalId).toStartWith('c02_')
   })
 
+  test('merges out-of-order chunk responses by canonical source block order', () => {
+    const { candidate } = createResumeFixture()
+    const subset = (sourceBlockIds: string[]) => {
+      const result = structuredClone(candidate)
+      result.factCandidates = result.factCandidates.filter(item => sourceBlockIds.includes(item.sourceBlockId))
+      result.coverageClaim = { mappedSourceBlockIds: sourceBlockIds, unmappedSourceBlockIds: [] }
+      result.identityCandidates = []
+      result.timelineCandidates = []
+      result.sectionCandidates = []
+      return result
+    }
+
+    const merged = mergeResumeExtractionCandidates([
+      subset(['B0003', 'B0004']),
+      subset(['B0001', 'B0002']),
+    ])
+
+    expect(merged.factCandidates.map(item => item.sourceBlockId))
+      .toEqual(['B0001', 'B0002', 'B0003', 'B0004'])
+    expect(merged.coverageClaim.mappedSourceBlockIds)
+      .toEqual(['B0001', 'B0002', 'B0003', 'B0004'])
+  })
+
   test('keeps a server-owned scope stable when normalizing and merging output shards', () => {
     const { document, candidate } = createResumeFixture()
     const serverScopeLocalId = 'srv_scope_test_B0002'
@@ -577,6 +600,20 @@ describe('v5 canonical source and atomic evidence', () => {
       proposedStatus: 'excluded',
       riskFlags: ['uncertain'],
     })
+  })
+
+  test('deterministically excludes future or conflicting evidence instead of calling P01R', () => {
+    const { document, candidate } = createResumeFixture()
+    const unsafe = structuredClone(candidate)
+    unsafe.factCandidates[2].riskFlags = ['future_or_planned']
+    unsafe.factCandidates[2].proposedStatus = 'source_supported'
+
+    const result = validateResumeExtractionCandidate(document, unsafe)
+
+    expect(result.passed).toBe(true)
+    expect(result.value?.factCandidates[2].proposedStatus).toBe('excluded')
+    expect(result.issues.map(item => item.code)).toContain('UNSAFE_EVIDENCE_SERVER_EXCLUDED')
+    expect(result.issues.map(item => item.code)).not.toContain('UNSAFE_EVIDENCE_STATUS')
   })
 
   test('continues after an exact high-importance ambiguity by preserving it as excluded evidence', () => {

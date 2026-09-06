@@ -1,5 +1,7 @@
 import { initializeHarnessDatabase } from '@/repositories/database'
 import { randomUUID } from 'node:crypto'
+import { env } from '@/config/env'
+import { supabaseHarnessRepository } from '@/repositories/harness-supabase'
 import type { V5DeliveryDiagnostics } from '@/v5/types'
 import { isV5DeliveryDiagnosticsSemanticallyValid } from '@/v5/delivery-gate'
 
@@ -281,6 +283,7 @@ export class HarnessRunRepository {
   }
 
   getDashboardMetrics() {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.getDashboardMetrics()
     const runStatusCounts = this.db
       .query('SELECT status, COUNT(*) AS count FROM process_runs GROUP BY status ORDER BY status ASC')
       .all()
@@ -485,6 +488,7 @@ export class HarnessRunRepository {
   }
 
   buildRegressionDataset(limit = 20) {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.buildRegressionDataset(limit)
     const runs = this.db
       .query(
         `
@@ -515,6 +519,7 @@ export class HarnessRunRepository {
   }
 
   createFailureSample(runId: string, reason?: string) {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.createFailureSample(runId, reason)
     const run = this.db.query('SELECT id, status FROM process_runs WHERE id = ?').get(runId) as
       | Record<string, unknown>
       | null
@@ -554,6 +559,7 @@ export class HarnessRunRepository {
   }
 
   createFailureSampleIfAbsent(runId: string, reason?: string) {
+    if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.createFailureSampleIfAbsent(runId, reason)
     const existing = this.db.query('SELECT * FROM failure_samples WHERE run_id = ? LIMIT 1').get(runId)
 
     if (existing) {

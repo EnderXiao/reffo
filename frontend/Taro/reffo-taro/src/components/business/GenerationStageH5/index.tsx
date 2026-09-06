@@ -40,7 +40,7 @@ export default function GenerationStageH5({
   }, [state.baseLocation, state.companyName, state.positionName, state.resumeTitle])
   const card = useMemo<HomeCardItem>(() => {
     const company = state.companyName.trim() || state.resumeTitle || 'Reffo'
-    const role = state.positionName.trim() || '最佳匹配简历'
+    const role = state.positionName.trim() || '相契简历'
 
     return {
       id: `generation-${company}-${role}`,
@@ -61,7 +61,7 @@ export default function GenerationStageH5({
   }, [state.baseLocation, state.companyName, state.monogram, state.positionName, state.resumeTitle])
 
   return (
-    <View className='reffo-create-generation' data-testid='create-analysis-stage'>
+    <View className='reffo-create-generation' data-testid='create-analysis-stage' aria-busy='true' aria-live='polite'>
       <View className='reffo-create-generation__backdrop' />
       {header}
       <View className='reffo-create-generation__content'>
@@ -90,8 +90,13 @@ export default function GenerationStageH5({
               </View>
             </View>
             <Text className='reffo-create-generation__detail'>
-              正在为你的目标岗位量身定做最佳匹配简历……
+              正在为你的目标岗位量身定做相契简历……
             </Text>
+            <View className='reffo-create-generation__steps' aria-hidden='true'>
+              <View className='reffo-create-generation__step reffo-create-generation__step--active'><View className='reffo-create-generation__step-dot' /><Text>分析源简历</Text></View>
+              <View className='reffo-create-generation__step'><View className='reffo-create-generation__step-dot' /><Text>匹配目标岗位</Text></View>
+              <View className='reffo-create-generation__step'><View className='reffo-create-generation__step-dot' /><Text>生成相契简历</Text></View>
+            </View>
           </View>
         </View>
         <View className='reffo-create-generation__cancel' onClick={onCancelGeneration} data-testid='analysis-cancel-action'>

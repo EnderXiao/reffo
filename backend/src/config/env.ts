@@ -125,6 +125,7 @@ export const env = {
   HARNESS_DATABASE_PATH: process.env.HARNESS_DATABASE_PATH || '',
   HARNESS_RETENTION_DAYS: parseInt(process.env.HARNESS_RETENTION_DAYS || '7', 10),
   HARNESS_MAX_RUNS: parseInt(process.env.HARNESS_MAX_RUNS || '1000', 10),
+  HARNESS_CLEANUP_INTERVAL_MS: parsePositiveInteger(process.env.HARNESS_CLEANUP_INTERVAL_MS, 24 * 60 * 60 * 1000),
 
   // AI Provider Configuration
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
@@ -132,6 +133,9 @@ export const env = {
   AI_MODEL: process.env.AI_MODEL || 'deepseek-chat',
   DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'default',
   DEEPSEEK_REASONING_EFFORT: process.env.DEEPSEEK_REASONING_EFFORT || 'high',
+  // DeepSeek thinking consumes the same completion budget as final output.
+  // Legacy agents may omit maxOutputTokens, so reserve an explicit budget.
+  DEEPSEEK_THINKING_MAX_TOKENS: parsePositiveInteger(process.env.DEEPSEEK_THINKING_MAX_TOKENS, 12000),
   AI_FALLBACK_MODELS: (process.env.AI_FALLBACK_MODELS || '')
     .split(',')
     .map((model) => model.trim())

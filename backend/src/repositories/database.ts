@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { Database } from 'bun:sqlite'
 import { env } from '@/config/env'
@@ -8,6 +8,78 @@ const HARNESS_DATABASE_PATH = env.HARNESS_DATABASE_PATH || join(process.cwd(), '
 
 let database: Database | null = null
 let harnessDatabase: Database | null = null
+let harnessDatabaseLockPath: string | null = null
+let harnessDatabaseLockFd: number | null = null
+
+class HarnessDatabaseOwnershipError extends Error {
+  readonly code = 'HARNESS_DATABASE_IN_USE' as const
+
+  constructor() {
+    super('Harness SQLite 已被其他进程占用，请通过服务 API 查询，或为独立任务设置独立 HARNESS_DATABASE_PATH')
+    this.name = 'HarnessDatabaseOwnershipError'
+  }
+}
+
+function isProcessAlive(pid: number) {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return !(error && typeof error === 'object' && 'code' in error && (error as { code?: unknown }).code === 'ESRCH')
+  }
+}
+
+function acquireHarnessDatabaseLock() {
+  if (harnessDatabaseLockFd !== null) return
+
+  const lockPath = `${HARNESS_DATABASE_PATH}.lock`
+  mkdirSync(dirname(lockPath), { recursive: true })
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const fd = openSync(lockPath, 'wx')
+      writeFileSync(fd, JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString() }))
+      harnessDatabaseLockPath = lockPath
+      harnessDatabaseLockFd = fd
+      process.once('exit', releaseHarnessDatabaseLock)
+      return
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error
+        ? (error as { code?: unknown }).code
+        : undefined
+      if (code !== 'EEXIST' || attempt > 0) throw error
+
+      let ownerPid = 0
+      try {
+        const owner = JSON.parse(readFileSync(lockPath, 'utf8')) as { pid?: unknown }
+        ownerPid = typeof owner.pid === 'number' ? owner.pid : Number(owner.pid)
+      } catch {
+        ownerPid = 0
+      }
+      if (ownerPid > 0 && isProcessAlive(ownerPid)) throw new HarnessDatabaseOwnershipError()
+      unlinkSync(lockPath)
+    }
+  }
+}
+
+function releaseHarnessDatabaseLock() {
+  if (harnessDatabaseLockFd !== null) {
+    try {
+      closeSync(harnessDatabaseLockFd)
+    } catch {
+      // Process is already exiting; lock cleanup remains best effort.
+    }
+    harnessDatabaseLockFd = null
+  }
+  if (harnessDatabaseLockPath && existsSync(harnessDatabaseLockPath)) {
+    try {
+      unlinkSync(harnessDatabaseLockPath)
+    } catch {
+      // Process is already exiting; stale lock recovery handles this on next open.
+    }
+  }
+  harnessDatabaseLockPath = null
+}
 
 function configureDatabase(db: Database) {
   db.exec(`
@@ -55,6 +127,7 @@ export function getHarnessDatabase() {
     return harnessDatabase
   }
 
+  acquireHarnessDatabaseLock()
   mkdirSync(dirname(HARNESS_DATABASE_PATH), { recursive: true })
   harnessDatabase = new Database(HARNESS_DATABASE_PATH, { create: true })
   configureDatabase(harnessDatabase)
@@ -73,6 +146,39 @@ export function resetHarnessDatabaseConnection() {
     console.error('[HarnessDatabase] close failed', error)
   } finally {
     harnessDatabase = null
+  }
+}
+
+export interface HarnessDatabaseHealth {
+  status: 'ok' | 'degraded'
+  integrityCheck: string
+  errorCode?: string
+}
+
+/** Read-only health probe. Never rebuilds or deletes a potentially recoverable database. */
+export function getHarnessDatabaseHealth(): HarnessDatabaseHealth {
+  if (env.DATABASE_PROVIDER === 'supabase') {
+    return {
+      status: 'ok',
+      integrityCheck: 'supabase',
+    }
+  }
+
+  try {
+    const result = getHarnessDatabase().query('PRAGMA integrity_check').get() as { integrity_check?: unknown } | null
+    const integrityCheck = typeof result?.integrity_check === 'string' ? result.integrity_check : 'unknown'
+    return {
+      status: integrityCheck === 'ok' ? 'ok' : 'degraded',
+      integrityCheck,
+    }
+  } catch (error) {
+    return {
+      status: 'degraded',
+      integrityCheck: 'unavailable',
+      errorCode: error instanceof Error && 'code' in error
+        ? String((error as { code?: unknown }).code)
+        : 'HARNESS_DATABASE_UNAVAILABLE',
+    }
   }
 }
 

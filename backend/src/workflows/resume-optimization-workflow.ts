@@ -1,10 +1,25 @@
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
+import { env } from '@/config/env'
+import { createDigest } from '@/harness/run-context'
 import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
 import type { MvpProcessResponse } from '@/types'
 import { toLegacyMvpProcessResponse } from '@/v5/main/compatibility'
 import { V5ResumeOptimizationWorkflow } from '@/v5/main/workflow'
+import { createTrustedResumeExtractionCache } from '@/v5/resume-extraction-cache'
+import { V5_WORKFLOW_VERSION } from '@/v5/types'
+
+const sharedResumeExtractionCache = createTrustedResumeExtractionCache({
+  implementationFingerprint: V5_WORKFLOW_VERSION,
+  providerConfigFingerprint: createDigest({
+    provider: 'deepseek',
+    baseUrl: env.OPENAI_BASE_URL,
+    model: env.AI_MODEL,
+    structuredOutputMode: env.V5_STRUCTURED_OUTPUT_MODE,
+  }),
+  maxEntries: 16,
+})
 
 export interface ResumeOptimizationWorkflowInput {
   resume_markdown: string
@@ -46,6 +61,7 @@ export class ResumeOptimizationWorkflow {
     const workflow = new V5ResumeOptimizationWorkflow({
       eventBus: this.eventBus,
       enableDefaultSubscribers: false,
+      resumeExtractionCache: sharedResumeExtractionCache,
     })
     let analysisFailure: { error: unknown } | undefined
     try {

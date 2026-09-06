@@ -3,6 +3,7 @@ import type OpenAI from 'openai'
 import { z } from 'zod'
 import { deepSeekThinkingParameters, evaluationDeepSeekPolicy, parseDeepSeekThinking } from '@/config/deepseek-thinking'
 import { createRunContext, createStepExecutionContext } from '@/harness/run-context'
+import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
 import { DeepSeekProvider } from '@/providers/deepseek-provider'
 
 type FakeCompletionOptions = {
@@ -37,6 +38,38 @@ function createAbortError() {
 }
 
 describe('DeepSeekProvider abort signals', () => {
+  test('records V6 call reason, context and retry metadata in Harness events', async () => {
+    const eventBus = new FakeHarnessEventBus()
+    const runContext = createRunContext()
+    const provider = new DeepSeekProvider(createClient(async () => createResponse()))
+
+    await provider.complete({
+      messages: [{ role: 'user', content: 'hello' }],
+      eventBus,
+      stepContext: createStepExecutionContext(runContext, 'test-step'),
+      callMetadata: {
+        callReason: 'validation_repair',
+        contextMode: 'patch',
+        repairScope: ['requirements.0.quote'],
+        retryIndex: 1,
+        budgetRemaining: 3,
+      },
+    })
+
+    expect(eventBus.events.find(event => event.type === 'provider.requested')?.payload).toMatchObject({
+      callReason: 'validation_repair',
+      contextMode: 'patch',
+      repairScope: ['requirements.0.quote'],
+      retryIndex: 1,
+      budgetRemaining: 3,
+    })
+    expect(eventBus.events.find(event => event.type === 'provider.responded')?.payload).toMatchObject({
+      callReason: 'validation_repair',
+      contextMode: 'patch',
+      retryIndex: 1,
+    })
+  })
+
   test('passes a caller signal to the OpenAI SDK request', async () => {
     const controller = new AbortController()
     let receivedSignal: AbortSignal | null | undefined
@@ -116,6 +149,40 @@ describe('explicit DeepSeek V4 thinking', () => {
     expect(result).toMatchObject({ model: 'deepseek-v4-flash-0731', requestedModel: 'deepseek-v4-flash',
       inputTokens: 30, outputTokens: 90, reasoningTokens: 70, inputCacheHitTokens: 10, inputCacheMissTokens: 20 })
     expect(result).not.toHaveProperty('reasoning_content')
+  })
+
+  test('reserves a default completion budget when thinking request omits maxOutputTokens', async () => {
+    let sent: Record<string, unknown> = {}
+    const provider = new DeepSeekProvider(createClient(async body => {
+      sent = body as Record<string, unknown>
+      return createResponse()
+    }), parseDeepSeekThinking('enabled', 'low'))
+
+    await provider.complete({ model: 'deepseek-v4-flash', messages: [] })
+
+    expect(sent.max_tokens).toBe(12000)
+  })
+
+  test('retries reasoning-only empty response at low effort', async () => {
+    const sent: Array<Record<string, unknown>> = []
+    const provider = new DeepSeekProvider(createClient(async body => {
+      sent.push(body as Record<string, unknown>)
+      if (sent.length === 1) {
+        return {
+          id: 'reasoning-only', model: 'deepseek-v4-flash',
+          choices: [{ message: { content: '', reasoning_content: 'omitted' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 2, completion_tokens: 20, completion_tokens_details: { reasoning_tokens: 20 } },
+        }
+      }
+      return createResponse()
+    }), parseDeepSeekThinking('enabled', 'high'))
+
+    const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [] })
+
+    expect(sent).toHaveLength(2)
+    expect(sent[0]).toMatchObject({ reasoning_effort: 'high', max_tokens: 12000 })
+    expect(sent[1]).toMatchObject({ reasoning_effort: 'low', max_tokens: 12000 })
+    expect(result).toMatchObject({ content: '{"ok":true}', physicalAttempts: 2 })
   })
 
   test('allows disabled mode without sending reasoning effort', () => {

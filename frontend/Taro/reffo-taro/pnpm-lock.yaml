@@ -16849,7 +16849,7 @@ snapshots:
       '@babel/register': 7.28.6(@babel/core@7.29.0)
       babel-core: 7.0.0-bridge.0(@babel/core@7.29.0)
       colors: 1.4.0
-      flow-parser: 0.121.0
+      flow-parser: 0.206.0
       graceful-fs: 4.2.11
       micromatch: 3.1.10
       neo-async: 2.6.2

@@ -1195,13 +1195,17 @@ export function mergeResumeExtractionCandidates(candidates: ResumeExtractionCand
   const namespaced = candidates.map(namespaceCandidate)
   const unique = <T>(values: T[]) => [...new Set(values)]
   const mapped = unique(namespaced.flatMap(item => item.coverageClaim.mappedSourceBlockIds))
-  const unmapped = unique(namespaced.flatMap(item => item.coverageClaim.unmappedSourceBlockIds)).filter(id => !mapped.includes(id))
+    .sort((left, right) => sourceBlockOrder(left) - sourceBlockOrder(right))
+  const unmapped = unique(namespaced.flatMap(item => item.coverageClaim.unmappedSourceBlockIds))
+    .filter(id => !mapped.includes(id))
+    .sort((left, right) => sourceBlockOrder(left) - sourceBlockOrder(right))
   return {
     schemaVersion: V5_SCHEMA_VERSION,
     identityCandidates: namespaced.flatMap(item => item.identityCandidates),
     timelineCandidates: namespaced.flatMap(item => item.timelineCandidates),
     sectionCandidates: namespaced.flatMap(item => item.sectionCandidates),
-    factCandidates: namespaced.flatMap(item => item.factCandidates),
+    factCandidates: namespaced.flatMap(item => item.factCandidates)
+      .sort((left, right) => sourceBlockOrder(left.sourceBlockId) - sourceBlockOrder(right.sourceBlockId)),
     unmappedFragments: namespaced.flatMap(item => item.unmappedFragments).filter(item => unmapped.includes(item.sourceBlockId)),
     conflicts: namespaced.flatMap(item => item.conflicts),
     coverageClaim: { mappedSourceBlockIds: mapped, unmappedSourceBlockIds: unmapped },

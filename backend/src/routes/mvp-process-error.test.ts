@@ -34,7 +34,13 @@ describe('MVP process error boundary', () => {
         message: '本次结果未达到可投递质量标准，已停止交付不完整简历',
         details: {
           agent_state: 'blocked_quality_validation',
+          error_code: 'V5_PRODUCT_QUALITY_BLOCKED',
           issue_codes: ['OUTPUT_CONTENT_UNDERSIZED'],
+          recovery_advice: {
+            action: 'inspect_harness_events',
+            message: '错误未匹配已知恢复策略；先查看 Harness 事件和阶段输入摘要，再决定是否重试。',
+            retryable: false,
+          },
           retryable: false,
         },
       },

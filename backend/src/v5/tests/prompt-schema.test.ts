@@ -34,6 +34,13 @@ describe('v5 prompt compiler and strict schemas', () => {
       expect(compiled.manifest.compiledPromptSha256).toBe(compiled.promptSha256)
       expect(compiled.manifest.promptFileSha256).toBe(loadV5Prompt(component).sha256)
       expect(compiled.manifest.promptFilePath).toBe(`prompts/${component}.md`)
+      expect(compiled.manifest.inputSummary).toMatchObject({
+        envelopeBytes: expect.any(Number),
+        envelopeTopLevelFields: ['payload'],
+        messageCount: 2,
+        estimatedInputTokens: compiled.estimatedInputTokens,
+      })
+      expect(compiled.manifest.inputSummary.messageCharacterCounts).toHaveLength(2)
       expect(compiled.maxOutputTokens).toBeGreaterThan(0)
       expect(schemaForV5Component(component)).toBeDefined()
     }

@@ -57,6 +57,8 @@ export class DeepSeekProvider implements LlmProvider {
     const model = input.model ?? env.AI_MODEL
     const settings = this.thinkingSettings ?? parseDeepSeekThinking(env.DEEPSEEK_THINKING_MODE, env.DEEPSEEK_REASONING_EFFORT)
     const thinking = deepSeekThinkingParameters(model, env.OPENAI_BASE_URL, settings)
+    const maxOutputTokens = input.maxOutputTokens
+      ?? (settings.mode === 'enabled' ? env.DEEPSEEK_THINKING_MAX_TOKENS : undefined)
     const startedAt = Date.now()
     const startedAtIso = new Date(startedAt).toISOString()
     const inputDigest = createDigest(input.messages.map((message) => message.content).join('\n'))
@@ -78,11 +80,16 @@ export class DeepSeekProvider implements LlmProvider {
             inputDigest,
             temperature: settings.mode === 'enabled' ? undefined : input.temperature,
             ...thinking,
-            maxOutputTokens: input.maxOutputTokens,
+            maxOutputTokens,
             strictSchema: input.structuredOutput?.name,
             strictSchemaTransport: input.structuredOutput
               ? nativeStructuredOutput ? 'native_json_schema' : 'json_object_plus_server_zod'
               : null,
+            callReason: input.callMetadata?.callReason,
+            contextMode: input.callMetadata?.contextMode,
+            repairScope: input.callMetadata?.repairScope,
+            retryIndex: input.callMetadata?.retryIndex ?? 0,
+            budgetRemaining: input.callMetadata?.budgetRemaining ?? null,
             promptManifest: input.promptManifest,
           },
         })
@@ -103,20 +110,34 @@ export class DeepSeekProvider implements LlmProvider {
       response_format: responseFormat,
       ...(settings.mode === 'enabled' ? {} : { temperature: input.temperature }),
       ...thinking,
-      max_tokens: input.maxOutputTokens,
+      max_tokens: maxOutputTokens,
     }
+    let responseThinking = thinking
+    let physicalAttempts = 0
     const response = await (async () => {
       try {
-        return await this.client.chat.completions.create(
+        const createCompletion = (body: DeepSeekChatBody) => this.client.chat.completions.create(
           // DeepSeek's documented `max` effort is not in this SDK's OpenAI enum.
           // Keep that compatibility boundary local; the body is typed above.
-          requestBody as unknown as OpenAI.ChatCompletionCreateParamsNonStreaming,
+          body as unknown as OpenAI.ChatCompletionCreateParamsNonStreaming,
           {
             signal: requestSignal.signal,
             // Physical retries must stay observable to the outer workflow budget.
             maxRetries: 0,
           }
         )
+
+        physicalAttempts += 1
+        let result = await createCompletion(requestBody)
+        const firstContent = result.choices[0]?.message?.content
+        // DeepSeek may stop after reasoning with an empty final message. Retry
+        // once at low effort, keeping thinking enabled, before surfacing empty output.
+        if (!firstContent && result.choices[0]?.finish_reason !== 'length' && settings.mode === 'enabled') {
+          responseThinking = { thinking: { type: 'enabled' as const }, reasoning_effort: 'low' }
+          physicalAttempts += 1
+          result = await createCompletion({ ...requestBody, ...responseThinking })
+        }
+        return result
       } finally {
         requestSignal.dispose()
       }
@@ -140,6 +161,7 @@ export class DeepSeekProvider implements LlmProvider {
       finishReason: response.choices[0]?.finish_reason,
       inputTokens: response.usage?.prompt_tokens,
       outputTokens: response.usage?.completion_tokens,
+      physicalAttempts,
       reasoningTokens: response.usage?.completion_tokens_details?.reasoning_tokens,
       inputCacheHitTokens: (response.usage as (OpenAI.CompletionUsage & { prompt_cache_hit_tokens?: number }) | undefined)?.prompt_cache_hit_tokens,
       inputCacheMissTokens: (response.usage as (OpenAI.CompletionUsage & { prompt_cache_miss_tokens?: number }) | undefined)?.prompt_cache_miss_tokens,
@@ -161,9 +183,13 @@ export class DeepSeekProvider implements LlmProvider {
             finishReason: result.finishReason,
             inputTokens: result.inputTokens,
             outputTokens: result.outputTokens,
+            physicalAttempts: result.physicalAttempts,
+            callReason: input.callMetadata?.callReason,
+            contextMode: input.callMetadata?.contextMode,
+            retryIndex: input.callMetadata?.retryIndex ?? 0,
             reasoningTokens: result.reasoningTokens,
             requestedModel: model,
-            ...thinking,
+            ...responseThinking,
             outputDigest: createDigest(result.content),
             promptManifest: input.promptManifest
               ? {

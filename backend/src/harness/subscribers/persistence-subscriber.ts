@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { initializeHarnessDatabase, resetHarnessDatabaseConnection } from '@/repositories/database'
 import type { HarnessEvent } from '@/harness/events'
+import { enqueueHarnessWrite } from '@/harness/subscribers/write-queue'
+import { env } from '@/config/env'
+import { supabaseHarnessRepository } from '@/repositories/harness-supabase'
 import type { V5DeliveryDiagnostics } from '@/v5/types'
 import { isV5DeliveryDiagnosticsSemanticallyValid } from '@/v5/delivery-gate'
 import { sanitizeP01ValidationObservation } from '@/v5/p01-validation-diagnostics'
@@ -346,9 +349,26 @@ export class PersistenceSubscriber {
   ) {}
 
   handle = (event: HarnessEvent) => {
+    if (env.DATABASE_PROVIDER === 'supabase') {
+      return enqueueHarnessWrite(async () => {
+        try {
+          await supabaseHarnessRepository.persistEvent(event)
+        } catch (error) {
+          console.error('[PersistenceSubscriber] Supabase Harness persist failed', {
+            eventType: event.type,
+            runId: event.runId,
+            stepRunId: event.stepRunId,
+            message: error instanceof Error ? error.message : String(error),
+          })
+        }
+      })
+    }
     try {
-      this.persistEvent(event)
-      this.persistState(event)
+      const db = this.getDb()
+      db.transaction(() => {
+        this.persistEvent(event)
+        this.persistState(event)
+      })()
     } catch (error) {
       console.error('[PersistenceSubscriber] persist failed', {
         eventType: event.type,

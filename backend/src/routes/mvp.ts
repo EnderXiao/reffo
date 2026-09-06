@@ -21,9 +21,11 @@ import {
 import { assertBusinessEvaluation, publishEvaluationCompleted } from '@/harness/evaluators/evaluation-events'
 import { evaluateMarkdownResume } from '@/harness/evaluators/markdown-resume-evaluator'
 import { runHarnessedRequest, runHarnessedStep } from '@/harness/harnessed-request'
+import { recoveryAdviceForErrorCode } from '@/harness/recovery-advice'
 import { buildQualityGateAttempt, classifyAttemptResult, decideNextAction } from '@/harness/runtime-state'
 import { runStep } from '@/harness/run-step'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
+import { getHarnessDatabaseHealth } from '@/repositories/database'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
@@ -36,16 +38,25 @@ function getHarnessRunRepository() {
 }
 
 function buildErrorPayload(code: string, fallbackMessage: string, error: unknown): ApiResponse<never>['error'] {
+  const errorCode = error && typeof error === 'object' && 'code' in error && typeof (error as { code?: unknown }).code === 'string'
+    ? (error as { code: string }).code
+    : undefined
+  const details = error instanceof V5WorkflowBlockedError
+    ? {
+        agent_state: error.state,
+        issue_codes: [...new Set(error.issues.map(item => item.code))],
+        retryable: error.state === 'provider_failure',
+      }
+    : getBusinessEvaluationErrorDetails(error)
+  const recoveryAdvice = recoveryAdviceForErrorCode(errorCode)
   return {
     code,
     message: fallbackMessage,
-    details: error instanceof V5WorkflowBlockedError
-      ? {
-          agent_state: error.state,
-          issue_codes: [...new Set(error.issues.map(item => item.code))],
-          retryable: error.retryable,
-        }
-      : getBusinessEvaluationErrorDetails(error),
+    details: {
+      ...(details && typeof details === 'object' && !Array.isArray(details) ? details : {}),
+      ...(errorCode ? { error_code: errorCode } : {}),
+      recovery_advice: recoveryAdvice,
+    },
   }
 }
 
@@ -141,7 +152,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           jd_text,
           enable_llm_judge,
           output_language,
-          onAnalysisSucceeded: async () => { await consumeResumeQuota(userContext) },
+          onAnalysisSucceeded: () => consumeResumeQuota(userContext),
         })
 
         const response: ApiResponse<MvpProcessResponse> = {
@@ -191,7 +202,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       }),
       detail: {
         summary: 'MVP 完整流程',
-        description: '固定执行 v5.0.0。V5 保持原子证据、自适应策略和既有输出结构；本地代码执行发布校验，仅纯结构错误最多触发一次 P08。安全回退稿和质量待审稿仅供内部诊断，不会作为成功结果交付。',
+        description: '固定执行 V5 R2 工作流。复用 V6 插件框架、原子证据、确定性计划、composition/writing 编译、交付门禁和旧响应兼容；安全回退稿与质量待审稿不作为成功结果交付。',
         tags: ['MVP'],
       },
     }
@@ -203,9 +214,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/dashboard',
-    () => ({
+    async () => ({
       success: true,
-      data: getHarnessRunRepository().getDashboardMetrics(),
+      data: await getHarnessRunRepository().getDashboardMetrics(),
     }),
     {
       detail: {
@@ -222,9 +233,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/regression-dataset',
-    ({ query }) => ({
+    async ({ query }) => ({
       success: true,
-      data: getHarnessRunRepository().buildRegressionDataset(Number(query.limit ?? 20)),
+      data: await getHarnessRunRepository().buildRegressionDataset(Number(query.limit ?? 20)),
     }),
     {
       query: t.Object({
@@ -244,8 +255,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/runs/:run_id',
-    ({ params, set }) => {
-      const result = getHarnessRunRepository().getRun(params.run_id)
+    async ({ params, set }) => {
+      const result = await getHarnessRunRepository().getRun(params.run_id)
 
       if (!result) {
         set.status = 404
@@ -281,8 +292,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/runs/:run_id/replay',
-    ({ params, set }) => {
-      const result = getHarnessRunRepository().replayRun(params.run_id)
+    async ({ params, set }) => {
+      const result = await getHarnessRunRepository().replayRun(params.run_id)
 
       if (!result) {
         set.status = 404
@@ -318,8 +329,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .post(
     '/runs/:run_id/failure-samples',
-    ({ params, body, set }) => {
-      const result = getHarnessRunRepository().createFailureSample(params.run_id, body.reason)
+    async ({ params, body, set }) => {
+      const result = await getHarnessRunRepository().createFailureSample(params.run_id, body.reason)
 
       if (!result) {
         set.status = 404
@@ -865,6 +876,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         status: 'ok',
         timestamp: new Date().toISOString(),
         service: 'reffo-mvp',
+        dependencies: {
+          harnessDatabase: getHarnessDatabaseHealth(),
+        },
       }
     },
     {

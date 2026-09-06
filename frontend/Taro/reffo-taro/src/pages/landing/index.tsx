@@ -898,7 +898,6 @@ export default function LandingPage() {
     clearQueueDetailExitTimer()
     clearQueueFolderExitTimer()
     clearJobFolderTimer()
-    setSelectedJobIndex(0)
     setJobDragOffset(0)
     setIsJobFolderRestored(false)
     setIsQueueSelectionDetail(true)

@@ -20,6 +20,7 @@ import {useAuthStore} from '@/store/authStore'
 import './index.h5.scss'
 
 type HeroMode = 'brand' | 'strategy' | 'create'
+type PendingNavigation = 'source' | 'login' | 'profile' | 'create' | null
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const RESULT_RETURN_HOME_DOM_KEY = 'reffoReturnHomePending'
 const CARD_OPEN_RECT_STORAGE_KEY = 'reffo.homeCardOpenRect'
@@ -175,12 +176,14 @@ function HomeHeroH5({
   isCreateMode,
   isStrategyVisible,
   immediateStrategy,
+  onStrategyClick,
   logoSource,
 }: {
   currentCard: IndexPageViewModel['currentCard']
   isCreateMode: boolean
   isStrategyVisible: boolean
   immediateStrategy?: boolean
+  onStrategyClick?: () => void
   logoSource: string
 }) {
   const [renderMode, setRenderMode] = useState<HeroMode>(() => resolveHeroMode(isCreateMode, isStrategyVisible))
@@ -278,14 +281,24 @@ function HomeHeroH5({
           </View>
         ) : (
           <View className='reffo-home__hero-strategy'>
-            <View className='reffo-home__hero-label-row'>
+            <View
+              className='reffo-home__hero-label-row'
+              onClick={onStrategyClick}
+              role={onStrategyClick ? 'button' : undefined}
+              aria-label={onStrategyClick ? '查看完整优化策略' : undefined}
+            >
               <Text className='reffo-home__hero-label'>{HOME_PAGE_CONTENT.hero.strategyLabel}</Text>
               <View className='reffo-home__hero-label-spark' aria-hidden='true'>
                 <Text className='reffo-home__hero-label-spark-main'>✦</Text>
                 <Text className='reffo-home__hero-label-spark-small'>✦</Text>
               </View>
             </View>
-            <View className='reffo-home__hero-strategy-body'>
+            <View
+              className='reffo-home__hero-strategy-body'
+              onClick={onStrategyClick}
+              role={onStrategyClick ? 'button' : undefined}
+              aria-label={onStrategyClick ? '查看完整优化策略' : undefined}
+            >
               {strategyParagraphs.map((paragraph, index) => (
                 <Text
                   key={`${index}-${paragraph}`}
@@ -316,6 +329,7 @@ export default function PageView({
   sourceResumeTitle,
   isStrategyVisible,
   isCreateMode,
+  deletingCardId,
   initialCardIndex,
   enteringCardId,
   handleEnterCreateMode,
@@ -323,6 +337,8 @@ export default function PageView({
   handleCancelCreate,
   handleViewHistory,
   handleCardPress,
+  handleCardEdit,
+  handleCardDelete,
   handleCardChange,
   handleDeckFirstInteraction,
   logoSource,
@@ -340,6 +356,7 @@ export default function PageView({
     () => readLandingToHomeSnapshot(),
   )
   const [landingLogoStyle, setLandingLogoStyle] = useState<CSSProperties | null>(null)
+  const [pendingNavigation, setPendingNavigation] = useState<PendingNavigation>(null)
   const returnFadeTimerRef = useRef<number | null>(null)
   const landingEntryTimerRef = useRef<number | null>(null)
   const isReturnHomeTransition = isReturningFromResult
@@ -347,6 +364,17 @@ export default function PageView({
   const isHomeEntryTransition = isReturnHomeTransition || isLandingEntryTransition
   const returningCardId = returnHomePayload?.cardId ?? null
   const isViewTransitionReturn = returnHomePayload?.transition === 'view-transition'
+
+  const runNavigation = (target: Exclude<PendingNavigation, null>, action: () => Promise<void> | void) => {
+    if (pendingNavigation) {
+      return
+    }
+
+    setPendingNavigation(target)
+    Promise.resolve(action()).catch(() => {
+      setPendingNavigation(null)
+    })
+  }
 
   useEffect(() => {
     if (session && !profile) {
@@ -362,6 +390,9 @@ export default function PageView({
   )
 
   useDidShow(() => {
+    // 首页页面实例可能在导航栈中复用；返回时清理上一次导航的即时反馈，避免按钮永久停留在“打开中”。
+    setPendingNavigation(null)
+
     if (typeof window === 'undefined') {
       return
     }
@@ -483,15 +514,16 @@ export default function PageView({
             className={classNames('reffo-home__source-button', {
               'reffo-home__source-button--active': hasSourceResume,
             })}
-            onClick={handleViewHistory}
+            onClick={() => runNavigation('source', handleViewHistory)}
+            aria-busy={pendingNavigation === 'source'}
           >
             {!hasSourceResume ? <Text className='reffo-home__source-plus'>+</Text> : null}
-            <Text className='reffo-home__source-text'>{sourceLabel}</Text>
+            <Text className='reffo-home__source-text'>{pendingNavigation === 'source' ? '打开中…' : sourceLabel}</Text>
           </View>
           {session ? (
             <View
               className='reffo-home__account-button reffo-home__account-button--avatar'
-              onClick={() => void route.navigate(routePaths.profile)}
+              onClick={() => runNavigation('profile', () => route.navigate(routePaths.profile))}
               aria-label='打开用户资料'
             >
               <Image
@@ -503,10 +535,11 @@ export default function PageView({
           ) : (
             <View
               className='reffo-home__account-button reffo-home__account-button--guest'
-              onClick={() => void route.navigate(routePaths.auth)}
+              onClick={() => runNavigation('login', () => route.navigate(routePaths.auth))}
               aria-label='登录'
+              aria-busy={pendingNavigation === 'login'}
             >
-              <Text>登录</Text>
+              <Text>{pendingNavigation === 'login' ? '打开中…' : '登录'}</Text>
             </View>
           )}
         </View>
@@ -516,6 +549,9 @@ export default function PageView({
           isCreateMode={isCreateMode}
           isStrategyVisible={isStrategyVisible}
           immediateStrategy={isReturnHomeTransition}
+          onStrategyClick={currentCard && hasHistories
+            ? () => handleCardPress(currentCard)
+            : undefined}
           logoSource={logoSource}
         />
 
@@ -533,18 +569,45 @@ export default function PageView({
           enteringCardId={enteringCardId}
           returningCardId={isReturnHomeTransition ? returningCardId : null}
           isCreateMode={isCreateMode}
+          deletingCardId={deletingCardId}
           onCreateCardPress={handleConfirmCreate}
           onCardPress={hasHistories ? handleCardPress : undefined}
           onCardChange={handleCardChange}
           onFirstInteraction={handleDeckFirstInteraction}
         />
 
+        {!isCreateMode && currentCard ? (
+          <View className='reffo-home__card-actions' aria-label='当前简历操作'>
+            <View
+              className='reffo-home__card-action'
+              role='button'
+              aria-label='编辑当前简历'
+              aria-disabled={Boolean(deletingCardId)}
+              onClick={() => handleCardEdit(currentCard)}
+            >
+              <Text>编辑</Text>
+            </View>
+            <View
+              className='reffo-home__card-action reffo-home__card-action--danger'
+              role='button'
+              aria-label='删除当前简历'
+              aria-disabled={Boolean(deletingCardId)}
+              onClick={() => handleCardDelete(currentCard)}
+            >
+              <Text>删除</Text>
+            </View>
+          </View>
+        ) : null}
+
         <View className='reffo-home__footer'>
           {!isCreateMode ? (
             <View
               key='primary-action'
               className='reffo-home__primary-action'
-              onClick={handleEnterCreateMode}
+              onClick={() => {
+                if (pendingNavigation) return
+                handleEnterCreateMode()
+              }}
             >
               <Text className='reffo-home__primary-plus'>+</Text>
               <Text className='reffo-home__primary-text'>创建 Reffo 简历</Text>
