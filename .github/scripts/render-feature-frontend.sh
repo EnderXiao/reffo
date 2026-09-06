@@ -15,7 +15,7 @@ service_prefix="${RENDER_FEATURE_FRONTEND_SERVICE_PREFIX:-reffo-feature-web}"
 branch="${RENDER_FEATURE_BRANCH}"
 action="${RENDER_FEATURE_ACTION}"
 root_dir="${RENDER_FEATURE_FRONTEND_ROOT_DIR:-frontend/Taro/reffo-taro}"
-build_command="${RENDER_FEATURE_FRONTEND_BUILD_COMMAND:-pnpm run build:h5:nonprod}"
+build_command="${RENDER_FEATURE_FRONTEND_BUILD_COMMAND:-corepack pnpm@10.33.2 install --frozen-lockfile && corepack pnpm@10.33.2 run build:h5:nonprod}"
 publish_path="${RENDER_FEATURE_FRONTEND_PUBLISH_PATH:-dist}"
 
 slug="$(printf '%s' "${branch#feature/}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
@@ -71,7 +71,7 @@ case "${action}" in
     fi
     env_vars="$(jq --arg apiBaseUrl "${backend_url}" \
       '[.[] | select(.key != "PORT" and .key != "HOST" and .key != "API_BASE_URL")]
-       + [{key:"REFFO_ENV",value:"nonprod"},{key:"API_BASE_URL",value:$apiBaseUrl},{key:"NODE_VERSION",value:"22.14.0"}]' <<<"${env_vars}")"
+       + [{key:"REFFO_ENV",value:"nonprod"},{key:"API_BASE_URL",value:$apiBaseUrl},{key:"NODE_VERSION",value:"22.14.0"},{key:"SKIP_INSTALL_DEPS",value:"true"}]' <<<"${env_vars}")"
 
     if [[ -z "${service_id}" ]]; then
       payload="$(jq -cn \
@@ -130,7 +130,7 @@ case "${action}" in
 
     deploy_payload="$(jq -cn --arg commitId "${commit_sha}" '{commitId:$commitId,clearCache:"do_not_clear"}')"
     deploy="$(api POST "/services/${service_id}/deploys" "${deploy_payload}")"
-    deploy_id="$(jq -r '.id // empty' <<<"${deploy}")"
+    deploy_id="$(jq -r '.id // .deploy.id // empty' <<<"${deploy}")"
 
     if [[ -n "${deploy_id}" ]]; then
       for attempt in {1..20}; do
