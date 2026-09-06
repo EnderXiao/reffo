@@ -116,6 +116,13 @@ case "${action}" in
             ;;
           build_failed|deactivated|canceled|cancelled)
             echo "Render frontend deploy ${deploy_id} failed with status ${deploy_status}" >&2
+            for logs_path in "/services/${service_id}/deploys/${deploy_id}/logs" "/logs"; do
+              logs_response="$(curl -sS --max-time 10 -w '\nHTTP %{http_code}' \
+                "${api_base}${logs_path}" \
+                -H "Authorization: Bearer ${RENDER_API_KEY}" || true)"
+              echo "Render logs probe ${logs_path}:" >&2
+              sed -n '1,20p' <<<"${logs_response}" >&2
+            done
             exit 1
             ;;
         esac
