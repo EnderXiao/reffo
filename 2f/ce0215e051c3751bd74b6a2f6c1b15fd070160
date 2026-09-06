@@ -1,0 +1,314 @@
+.codex/unit-cr-loop/2026-09-06-merge-v5r2.md
+  s_b30eb70d4e6e6a::t_7334be46e5775a 28-32,59,61-62
+  s_b30eb70d4e6e6a::t_884fed885106c5 6-7
+  s_b30eb70d4e6e6a::t_16985b67ab56e6 1-5,8-27,33-37,44-48,50-58,60
+  s_b30eb70d4e6e6a::t_c722b37d123e3e 38-43,49
+backend/.env.example
+  s_b30eb70d4e6e6a::t_5f50922a58aceb 85-88,91
+backend/README.md
+  s_b30eb70d4e6e6a::t_9ff5ac2878bf81 76,82-83,87,91-96
+backend/docs/v5-live-evaluation-runbook.md
+  s_b30eb70d4e6e6a::t_bc425824a46dd0 36,47,58-59,63-139,143-146,160-166,168
+backend/docs/v5-prompt-optimization-final-plan.md
+  s_b30eb70d4e6e6a::t_848e0ccac8e485 1-420
+backend/docs/v5-r2-execution-status.md
+  s_b30eb70d4e6e6a::t_9f0685be4ba966 1-182
+backend/docs/v5-recruiter-quality-standard.md
+  s_b30eb70d4e6e6a::t_a634cd231e243a 1-95
+backend/docs/v5-requirement-analysis-r3-plan.md
+  s_b30eb70d4e6e6a::t_56601216e4273d 1-168
+backend/scripts/assess-v5-release.ts
+  s_b30eb70d4e6e6a::t_6b197e1afe7327 1-31
+backend/scripts/compare-v5-writing-previews.ts
+  s_b30eb70d4e6e6a::t_49faa7c5abbac0 1-49
+backend/scripts/freeze-v5-targeting-baseline.ts
+  s_b30eb70d4e6e6a::t_d4b165785bfc9d 1-29
+backend/scripts/freeze-v5-writer-baseline.ts
+  s_b30eb70d4e6e6a::t_a92447c71a00b8 1-71
+backend/scripts/inspect-v5-targeted-writer-run.ts
+  s_b30eb70d4e6e6a::t_10864b4325a593 1-150
+backend/scripts/preview-v5-job-targeting.ts
+  s_b30eb70d4e6e6a::t_9aa785c24a3d4e 1-45
+backend/scripts/preview-v5-recorded-quality.ts
+  s_b30eb70d4e6e6a::t_3b5704db712c73 1-79
+backend/scripts/preview-v5-supported-writing.ts
+  s_b30eb70d4e6e6a::t_6f9a43bddb8079 1-40
+backend/scripts/replay-v5-recorded-run.ts
+  s_b30eb70d4e6e6a::t_401d2da0d752fd 1-56
+backend/scripts/replay-v5-recorded-writer.ts
+  s_b30eb70d4e6e6a::t_97f9b666092161 1-126
+backend/scripts/run-v5-nonprod-nine-case-blind-eval.ts
+  s_b30eb70d4e6e6a::t_deea2040679bd6 4,16-26,29,32-33,45,48,53,56-57,63-68,75-78,80,108,117-119,123,147-154,167,174-184,188-190,195-366,374-375,383-386,426-438,442-445,447-459,461-462,465-518,521-530,569-579,627-628,637-638,648-654,667,675-676,681,684-686,715-716,730-731,758-833,835,857-878,880-897,900,905-933,941,944,947,952-953,961-999,1002,1005-1028,1031,1035-1045,1047,1055-1058,1064-1076,1078,1080-1082,1086-1088,1092-1094,1109-1119,1121-1122,1126-1127,1131-1136,1154,1192,1194-1197,1203-1209,1211,1236,1241,1245,1248-1250,1272,1291-1293,1295,1297-1360,1364-1368,1387-1394,1417-1474,1502,1504-1505,1507,1512,1515,1521,1524,1532-1540,1542-1550,1552-1571,1575-1579,1583-1611,1613,1615-1617,1619-1622,1629-1634,1642-1647,1658-1698,1727-1729,1733,1756-1760,1772-1777,1796,1818,1828-1863,1874,1877,1882-1908,1916-1918,1920-1932,1934-1936,1938-1947,1951-1956
+backend/src/agents/jd-parser.ts
+  s_b30eb70d4e6e6a::t_34d350418ef5bc 9,51-52
+backend/src/agents/matching-agent.ts
+  s_b30eb70d4e6e6a::t_81e3976e8c194a 66,70-71,124,128-129
+backend/src/config/deepseek-thinking.ts
+  s_b30eb70d4e6e6a::t_9da38f9074a7b1 1-29
+backend/src/config/env.ts
+  s_b30eb70d4e6e6a::t_5152377fdf8f76 134-135
+backend/src/harness/events.ts
+  s_b30eb70d4e6e6a::t_4552f3872e141c 28
+backend/src/harness/prompt-variant.ts
+  s_b30eb70d4e6e6a::t_d0c3737d27fd36 10-11
+backend/src/harness/subscribers/persistence-subscriber.test.ts
+  s_b30eb70d4e6e6a::t_abf2d06df95499 1-636
+backend/src/job-analysis/requirements.ts
+  s_b30eb70d4e6e6a::t_6fa1fa35fdf4ab 1-71
+backend/src/prompts/prompts.ts
+  s_b30eb70d4e6e6a::t_d849630d4d3a68 3,126,130,177
+backend/src/providers/deepseek-provider.test.ts
+  s_b30eb70d4e6e6a::t_daf02cfc1e7646 3-4,124-186
+backend/src/providers/fallback-provider.ts
+  s_b30eb70d4e6e6a::t_86b0c43eeab5ff 9,48
+backend/src/repositories/database.ts
+  s_b30eb70d4e6e6a::t_ec100e5d320a2b 241-243,266-271,387-391,402
+backend/src/types/index.ts
+  s_b30eb70d4e6e6a::t_8e08b7a7fe57c0 8,67,142
+backend/src/v5/README.md
+  s_b30eb70d4e6e6a::t_e2f473d5d4ef8c 3-8,28-31,36-46,49-51,55-57,61-64,66-68,75-86,93,97,103,109-117,140
+backend/src/v5/ab-evaluator.ts
+  s_b30eb70d4e6e6a::t_cca039c77ecb94 2-9,11-12,18,31-182,185-189,195-206,208-209,231-249,278-281
+backend/src/v5/acceptance/criteria.ts
+  s_b30eb70d4e6e6a::t_523c508ccf8839 1-17
+backend/src/v5/acceptance/evaluate.ts
+  s_b30eb70d4e6e6a::t_297a3aba0d6e39 1-164
+backend/src/v5/acceptance/targeted-evaluate.ts
+  s_b30eb70d4e6e6a::t_5f4d197e9f1789 1-101
+backend/src/v5/adaptive-policy.ts
+  s_b30eb70d4e6e6a::t_0b9171b6c3e222 9-13,39-40,47-48,55-56,61-65,67-92,99-100,121-125,235-246,275-278,285,297,311
+backend/src/v5/chunked-resume-extraction.ts
+  s_b15ffcb2ac7470::t_872995999d45a4 1,5-9,11-17,22,24-27,32,34-37,47-60,63-64,66-68,72-115,117-126,129-138,140-144,147-200,202-237,251-252,345-347,362-399,401-402,407-420,424-426,428-460,464-469,472-477,480-481,483-489,492-497,499-537,539-595,601,603-609,614-836,859-863,872-874,906,911-923,926,928-934,936-939,946-947,949-951,962-967,974,979,993-998,1017-1020,1046-1050,1057-1095,1195,1197-1199,1201,1204-1210,1227-1438
+backend/src/v5/composition/blueprint.ts
+  s_b30eb70d4e6e6a::t_644cb4ea1957f4 1-207
+backend/src/v5/composition/compiler.ts
+  s_b30eb70d4e6e6a::t_cd1b9f9a89b05d 1-334
+backend/src/v5/composition/contract.ts
+  s_b30eb70d4e6e6a::t_1737334760e2d9 1-74
+backend/src/v5/composition/dsl.ts
+  s_b30eb70d4e6e6a::t_a4015b820d5703 1-205
+backend/src/v5/composition/evidence-assembly.ts
+  s_b30eb70d4e6e6a::t_9072a4eeb8bb3d 1-224
+backend/src/v5/composition/source-continuation.ts
+  s_b30eb70d4e6e6a::t_b65936770a3e31 1-103
+backend/src/v5/composition/source-display.ts
+  s_b30eb70d4e6e6a::t_a98f44c3188e9d 1-34
+backend/src/v5/composition/validator.ts
+  s_b30eb70d4e6e6a::t_b2b29f0bc728f1 1-560
+backend/src/v5/delivery-gate.ts
+  s_b30eb70d4e6e6a::t_d0920cb49addb5 1-815
+backend/src/v5/errors.ts
+  s_b30eb70d4e6e6a::t_eed5196fa1fc0d 1-32
+backend/src/v5/evaluation-judge-source.ts
+  s_b30eb70d4e6e6a::t_de6fb7fb2f65af 1-504
+backend/src/v5/evaluation-runner-support.ts
+  s_b30eb70d4e6e6a::t_3ea6b4ba9ea767 6-13,21,24-54,56-57,59-148,153,155,162,174,176,181,183,187-190,193-210,224-225,238-241,267-270,305-548,604-605,626-632,669-674,676,689-690,697,699-706,715,717,724-728,731-733,743-784,787-788,793-795,797,805,812,817,943,948-957,976-1060,1209-1214,1236-1264,1272,1279,1281-1301,1326-1354,1383-1386
+backend/src/v5/evidence-routing.ts
+  s_b30eb70d4e6e6a::t_e78674fa393320 1-523
+backend/src/v5/main/README.md
+  s_b30eb70d4e6e6a::t_658419b14e22a6 3,7-8
+backend/src/v5/main/compatibility.ts
+  s_b30eb70d4e6e6a::t_de247a4a53c0e7 9-33,159,198,213-222
+backend/src/v5/main/workflow.ts
+  s_b30eb70d4e6e6a::t_bf1a5a2aa5134c 9-10,12-27,30,33-35,37-38,40,51-56,59-65,80-84,86-88,107-108,118,123-128,134-135,143-146,158-178,244-294,324-327,331,333-341,343-346,348,350-352,369-375,396,401-402,406-412,416-434,437-438,445-447,455-459,538-544,554,556-557,577-581,608,639-659,661-704,706-708,711-714,723,733-747,751-752,757-758,767-770,803-811,835,864-869,883-886,892-893,895-902,904-918,929-936,941,946-1008,1010-1029,1031-1055,1057-1123,1125-1149,1151-1346,1348-1351,1353-1365,1367-1376,1379-1439,1445-1498,1508,1511-1512,1515,1526-1534,1546,1552-1564,1575-1581,1591,1593-1594,1636-1637,1641-1653,1656-1660,1670-1671,1675-1711,1713-1826,1829-1923,1925-1964,1966-1974,1976-1981,1990,2001-2003,2019-2028,2031,2033,2036,2039-2045,2047-2050,2052,2055,2058,2062,2076-2089,2098-2102,2107,2127,2132,2161,2167-2168,2170-2175,2177,2181-2184,2187,2190,2192,2194-2195,2197
+backend/src/v5/p01-validation-diagnostics.ts
+  s_b30eb70d4e6e6a::t_31f7b16dc97fed 1-419
+backend/src/v5/planning-quality.ts
+  s_b30eb70d4e6e6a::t_6874a8aaea9afd 1-74
+backend/src/v5/prompts.ts
+  s_b30eb70d4e6e6a::t_18eeeb12cd523c 7
+backend/src/v5/prompts/P01.md
+  s_b30eb70d4e6e6a::t_00d556b191b154 1,3,5,7-21
+backend/src/v5/prompts/P01R.md
+  s_b30eb70d4e6e6a::t_4899e73b624127 1,3,5-14
+backend/src/v5/prompts/P02.md
+  s_b30eb70d4e6e6a::t_e37724edb0ef06 1-15
+backend/src/v5/prompts/P02R.md
+  s_b30eb70d4e6e6a::t_350ba312a0a02c 3-4,7-10
+backend/src/v5/prompts/P03.md
+  s_b30eb70d4e6e6a::t_48f6ae113545d2 1-17,22,25-28
+backend/src/v5/prompts/P03R.md
+  s_b30eb70d4e6e6a::t_64012057248c16 1-9,12-13
+backend/src/v5/prompts/P05.md
+  s_b30eb70d4e6e6a::t_90068790d2698c 1,13-14
+backend/src/v5/prompts/P05R.md
+  s_b30eb70d4e6e6a::t_2cfb082491b9dd 11
+backend/src/v5/prompts/P06.md
+  s_b30eb70d4e6e6a::t_98f00064d0c993 1,6,14-16
+backend/src/v5/prompts/P06C.md
+  s_b30eb70d4e6e6a::t_d6807c3c94a6cf 1-33
+backend/src/v5/prompts/P06D.md
+  s_b30eb70d4e6e6a::t_042131d7d632c0 1-16
+backend/src/v5/prompts/P08.md
+  s_b30eb70d4e6e6a::t_dcd54299f236bf 1,3-20
+backend/src/v5/prompts/P11.md
+  s_b30eb70d4e6e6a::t_9abd189df813c3 3-5
+backend/src/v5/prompts/P12.md
+  s_b30eb70d4e6e6a::t_3b6889d4f6dea0 1,3-25
+backend/src/v5/prompts/manifest.json
+  s_b30eb70d4e6e6a::t_5e6b2eb59c8cc9 5-7,9-11,13-14
+backend/src/v5/resume-extraction-cache.ts
+  s_b30eb70d4e6e6a::t_22eaf8c2c9717f 8,28-31,41-42,48-49,58-67,72-106,117-121,130-142,186-355,359,368,379,411,418,439-573,577,586-587,592,595-599,612-637,639-643,646,652-656,659-660,663-665,677-733,737-738,742-744,760-765,770-772
+backend/src/v5/resume-extraction-transport.ts
+  s_b30eb70d4e6e6a::t_109a825e363ebd 1-61
+backend/src/v5/safe-renderer.ts
+  s_b30eb70d4e6e6a::t_c746c5caafac03 3-15,21,48-49,53,63-65,72-77,80-84,91-93,104-110,139-157,160-168,178,180-181,183-185,189,215,219-220,222
+backend/src/v5/schemas.ts
+  s_b30eb70d4e6e6a::t_b77fc9c8d42d2c 414,424,582,624-625,629-645,648-649,663-669,671-758,760,773
+backend/src/v5/stage-runner.ts
+  s_b30eb70d4e6e6a::t_a8b1b9d390b2cb 5-10,13-14,29-36,61,69,77,82-101,113-127,129-143,165-194,223-226,229-230,239,253-256,263
+backend/src/v5/targeting/contracts.ts
+  s_b30eb70d4e6e6a::t_7ed988c8762bc4 1-54
+backend/src/v5/targeting/fit.ts
+  s_b30eb70d4e6e6a::t_5498a4223b4661 1-187
+backend/src/v5/targeting/presentation.ts
+  s_b30eb70d4e6e6a::t_20e9cd4b494ab0 1-31
+backend/src/v5/targeting/profile.ts
+  s_b30eb70d4e6e6a::t_ee068d3c7e673c 1-137
+backend/src/v5/tests/README.md
+  s_b30eb70d4e6e6a::t_26fcedb995565b 5-12
+backend/src/v5/tests/ab-compatibility.test.ts
+  s_b30eb70d4e6e6a::t_6d9a44897aafec 5-10,13,16-55,91-106,115-195,213-429
+backend/src/v5/tests/acceptance.test.ts
+  s_b30eb70d4e6e6a::t_9a16d4a4b889e1 1-145
+backend/src/v5/tests/canonical-evidence.test.ts
+  s_b30eb70d4e6e6a::t_c152b4c696f303 4-5,8-10,14,16,19-75,86,88-94,168-518,777,781,790-1072,1074-1457
+backend/src/v5/tests/chunked-resume-extraction.test.ts
+  s_b30eb70d4e6e6a::t_a74dde25d34f3f 4,9-20,22-23,25,27,35-40,43-51,53-58,61-82,84,87,89-118,134-135,141,156,158-165,189,193,198,200,209-228,237-332,386,402-403,407,424-593
+backend/src/v5/tests/composition-dsl.test.ts
+  s_b30eb70d4e6e6a::t_61caa5df30ef15 1-377
+backend/src/v5/tests/composition.test.ts
+  s_b30eb70d4e6e6a::t_7fb976996a9874 1-545
+backend/src/v5/tests/delivery-gate.test.ts
+  s_b30eb70d4e6e6a::t_ca3cf5a4ef7e58 1-427
+backend/src/v5/tests/evaluation-judge-source.test.ts
+  s_b30eb70d4e6e6a::t_c22697669f27b7 1-343
+backend/src/v5/tests/evaluation-runner-support.test.ts
+  s_b30eb70d4e6e6a::t_2f073e23871770 2,4,6-17,19-20,24,27-31,38-41,44,46-47,52,76-80,84-97,102-159,161-164,179-511,557-581,593-625,629-659,663-828,859-865,876-973,1027-1049,1084-1217,1248,1283,1317,1356,1393,1422
+backend/src/v5/tests/evaluation-schema.test.ts
+  s_b30eb70d4e6e6a::t_95132ab848fc95 2-7,82-106,132-139,187-257,282-292
+backend/src/v5/tests/evidence-assembly.test.ts
+  s_b30eb70d4e6e6a::t_4799e783f78960 1-317
+backend/src/v5/tests/evidence-routing.test.ts
+  s_b30eb70d4e6e6a::t_8486d2d76643ac 1-367
+backend/src/v5/tests/fixtures.ts
+  s_b30eb70d4e6e6a::t_bcf35d309f62b2 4,155-176,188,190-205,209-247
+backend/src/v5/tests/judge-citations.test.ts
+  s_b30eb70d4e6e6a::t_ad02a85a2bb9ab 1-22
+backend/src/v5/tests/p01-validation-diagnostics.test.ts
+  s_b30eb70d4e6e6a::t_e8f06316630e18 1-246
+backend/src/v5/tests/policy-score-validator.test.ts
+  s_b30eb70d4e6e6a::t_8b2b9dd3f07526 10,51-127,213-310,368-376,508-513,537-542,567-607,609-657,674,676-679,681-710,714,716-719,721-747,749-755,757-763,765-768,770-773,841,873,881-885,890-962,992,997-1001,1031-1095,1167-1203,1227,1242-1245,1252-1505
+backend/src/v5/tests/prompt-schema.test.ts
+  s_b30eb70d4e6e6a::t_6fe5dce0052045 2-20,56-269,274-280,283,285-344,349,359,369,383,389-393,402,411-413,427,430-431,442,475,486-493,516,526
+backend/src/v5/tests/quality-regressions.test.ts
+  s_b30eb70d4e6e6a::t_9061defee44463 1-180
+backend/src/v5/tests/requirement-analysis.test.ts
+  s_b30eb70d4e6e6a::t_ecc893843acb42 1-102
+backend/src/v5/tests/resume-extraction-cache.test.ts
+  s_b30eb70d4e6e6a::t_0cf0b4e41cf8a0 3-4,7-9,11,38-71,96-112,158,173-191,222-307,325-493
+backend/src/v5/tests/stage-runner.test.ts
+  s_b30eb70d4e6e6a::t_5065eafa85227b 3-4,7-33,77-226
+backend/src/v5/tests/supported-writing.test.ts
+  s_b30eb70d4e6e6a::t_39c748c5f8c618 1-192
+backend/src/v5/tests/targeting-fixtures.ts
+  s_b30eb70d4e6e6a::t_fd879bf0a98691 1-33
+backend/src/v5/tests/targeting.test.ts
+  s_b30eb70d4e6e6a::t_c7037a76171a09 1-283
+backend/src/v5/tests/workflow.test.ts
+  s_b30eb70d4e6e6a::t_5874822a5b7fe3 2-3,6-20,22,25-27,34-35,37,43-44,47-48,54-62,69-70,72-73,75-89,99-255,295,297-306,312-315,322-359,362,365,379-392,394-399,403-408,426-429,432-450,453,460-465,468-476,541,562,577-796,804-863,886-940,991-1015,1021-1026,1036-1058,1063-1290,1314,1325-1333,1339-1372,1375,1380,1383-1388,1391-1439,1441-1443,1445-1452,1454-1481,1484-1502,1511-1513,1516-1517,1519-1560,1565-1570,1572,1574-1575,1577-1578,1581,1583-1591,1595,1597-1772
+backend/src/v5/tests/writing-editorial.test.ts
+  s_b30eb70d4e6e6a::t_f6d88ca6e4de8e 1-111
+backend/src/v5/tests/writing-source-excerpts.test.ts
+  s_b30eb70d4e6e6a::t_290f411988aa8b 1-89
+backend/src/v5/types.ts
+  s_b30eb70d4e6e6a::t_c6c524a768a138 2-4,383,393,620,622,635-689,691,703,706-721
+backend/src/v5/validators.ts
+  s_b30eb70d4e6e6a::t_1fa381d8a37d1c 16-27,32,50-92,422-439,454-455,460-467,476,478,480-483,485-542,544-550,552-653,655-656,659-660,664,666-669,675-676,679-698,700-714,718,735-736,744-753,765,769-775,825-832,842-853,860,941-944,965-977,1016-1027,1124,1170,1213-1302,1312-1317,1392-1393,1396-1403,1408,1414,1418-1423,1426-1460,1505-1514,1527-1530,1577,1617,1638-1641,1672-1676,1761,1769-1831,1873-1875,1879,1993-1998,2008,2022,2024-2036,2046,2051-2053,2065-2069,2075-2076,2080-2122,2136-2138,2142-2152,2162-2172,2230-2247,2345-2454,2517-2523,2579-2605,2610-2615,2627,2629,2632-2644,2648,2655,2659,2661-2662
+backend/src/v5/writing/compiler.ts
+  s_b30eb70d4e6e6a::t_dbbd32a2e86cb7 1-111
+backend/src/v5/writing/editorial.ts
+  s_b30eb70d4e6e6a::t_10a2ec57c5e095 1-139
+backend/src/v5/writing/facts.ts
+  s_b30eb70d4e6e6a::t_985a360db02f27 1-127
+backend/src/v5/writing/plan.ts
+  s_b30eb70d4e6e6a::t_e0f41bd1e32884 1-215
+backend/src/v5/writing/source-excerpts.ts
+  s_b30eb70d4e6e6a::t_74670dca8f7711 1-57
+docs/v5-llm-调用流程升级清单.md
+  s_b30eb70d4e6e6a::t_17c71d440a337d 3-4
+docs/v5-工作流默认化与插件化-TODO.md
+  s_b30eb70d4e6e6a::t_564d6a03af0ed1 3-4
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  s_b30eb70d4e6e6a::t_eab071fdf214f3 17,91,368,371-372
+frontend/Taro/reffo-taro/src/pages/result/__tests__/requirementAnalysis.test.tsx
+  s_b30eb70d4e6e6a::t_98a4f560b1b70f 1-47
+frontend/Taro/reffo-taro/src/pages/result/components/RequirementAnalysis.h5.tsx
+  s_b30eb70d4e6e6a::t_9f5c8922321ec3 1-65
+frontend/Taro/reffo-taro/src/pages/result/components/requirement-analysis.h5.scss
+  s_b30eb70d4e6e6a::t_6767ad824a0b8e 1-35
+frontend/Taro/reffo-taro/src/services/__tests__/requirement-analysis.test.ts
+  s_b30eb70d4e6e6a::t_87a243e6d2907e 1-31
+frontend/Taro/reffo-taro/src/services/resume.ts
+  s_b30eb70d4e6e6a::t_8797204ea89f52 2,77,301,328
+frontend/Taro/reffo-taro/src/types/index.ts
+  s_b30eb70d4e6e6a::t_d40f2f706eab70 190
+frontend/Taro/reffo-taro/src/types/requirement-analysis.ts
+  s_b30eb70d4e6e6a::t_62824121fb9514 1-22
+frontend/Taro/reffo-taro/src/utils/__tests__/client-error.test.ts
+  s_b30eb70d4e6e6a::t_9a2cc2afc35720 1-12
+frontend/Taro/reffo-taro/src/utils/__tests__/fixtures/requirement-analysis.ts
+  s_b30eb70d4e6e6a::t_9447bcaa78d78c 1-12
+frontend/Taro/reffo-taro/src/utils/client-error.ts
+  s_b30eb70d4e6e6a::t_522ad17897eda3 60
+frontend/Taro/reffo-taro/src/utils/requirement-analysis.ts
+  s_b30eb70d4e6e6a::t_1f777e58ea586e 1-40
+frontend/Web/src/App.tsx
+  s_b30eb70d4e6e6a::t_301b8411965a0e 92,94-95
+backend/src/harness/subscribers/persistence-subscriber.ts
+  s_b30eb70d4e6e6a::t_b8bf078c8e50c1 7-9,23-343,347-351,353-364,367-371,373-378,380-382,387,393-402,427,431,433,469-470,477-479,490-494,498,618,645,652,655,692,694
+backend/src/providers/deepseek-provider.ts
+  s_b15ffcb2ac7470::t_49c8160f91c0b4 4,9-11,49,58-59,79-80,105-112,116-118,132-134,140-142,149-151,174-177
+backend/src/providers/llm-provider.ts
+  s_b30eb70d4e6e6a::t_a9a69062be0607 66-70
+backend/src/repositories/harness-run-repository.ts
+  s_b30eb70d4e6e6a::t_e253b03dc4c745 2,5-212,215,217-218,221-222,228,231,242,245,256,270-271,277,285,287,290,293,305-306,315,332-417,419-468,477-486,490,492,504,506-507,518,521,523,531,543,561,563
+backend/src/routes/mvp-process-error.test.ts
+  s_b30eb70d4e6e6a::t_22d88dabeea65e 1-79
+backend/src/routes/mvp.ts
+  s_b30eb70d4e6e6a::t_785a3ac4bcd001 32,63-88,169-177,179-181,195,205
+backend/src/v5/evidence.ts
+  s_b30eb70d4e6e6a::t_50832e3e6ee7e6 13-20,27-53,213-511,514-515,518-528,530-531,634,693-782,787,820,823-826,829-851,853-862,885,1082-1112,1314-1315,1317
+backend/src/v5/judge-citations.ts
+  s_b30eb70d4e6e6a::t_059a9c2035143d 1-26
+backend/src/v5/prompt-compiler.ts
+  s_b30eb70d4e6e6a::t_469abe1bfe97a9 6-9,24-28,36,50-51,72-73,83-104,109,134-138,140-145,149-155,160-199,226-227,229-231,235,238,248-251,268,274-275,278,281,284,307-317,329-330,332-334,344,364-370
+backend/src/v5/tests/resume-extraction-transport.test.ts
+  s_b30eb70d4e6e6a::t_de1310823ad996 1-105
+backend/src/workflows/resume-optimization-workflow.ts
+  s_b30eb70d4e6e6a::t_87a0948d0aad77 2,70-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2fce0215e051c3751bd74b6a2f6c1b15fd070160",
+  "prompts": {},
+  "sessions": {
+    "s_b15ffcb2ac7470": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075b4-c6a6-7f11-828b-d943a5e93927",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    },
+    "s_b30eb70d4e6e6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075a7-3f5b-7a71-ac24-c92b47deed43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
