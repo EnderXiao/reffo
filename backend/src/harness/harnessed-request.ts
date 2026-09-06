@@ -125,7 +125,7 @@ export async function runHarnessedRequest<TResult>(
     )
 
     try {
-      new HarnessRunRepository().createFailureSampleIfAbsent(
+      await new HarnessRunRepository().createFailureSampleIfAbsent(
         runContext.runId,
         buildBusinessFailureSampleReason(
           error instanceof StepRunError ? error.cause : error,

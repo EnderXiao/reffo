@@ -1,4 +1,5 @@
 import {apiClient} from './api';
+import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis';
 import type {
   ResumeAnalysis,
   MatchingResult,
@@ -7,6 +8,7 @@ import type {
   InterviewSuggestions,
   JobDescriptionStructure,
   MatchWeaknessDetail,
+  MatchOptimizationStrategyDetail,
 } from '@/types';
 
 /**
@@ -72,6 +74,7 @@ export interface GenerateInterviewSuggestionsRequest {
 }
 
 interface MatchingApiResult {
+  requirement_analysis?: unknown;
   match_score?: number;
   hard_requirements_match?: unknown;
   skill_match?: unknown;
@@ -82,6 +85,7 @@ interface MatchingApiResult {
   weakness_details?: unknown;
   positioning_strategy?: unknown;
   optimization_suggestions?: unknown;
+  optimization_strategy_details?: unknown;
   context_fit?: unknown;
   jd_structure?: JobDescriptionStructure;
 }
@@ -128,10 +132,55 @@ function normalizeWeaknessDetails(value: unknown): MatchWeaknessDetail[] {
     }
 
     return [{
+      id: typeof detail.id === 'string' ? detail.id : undefined,
+      priority: detail.priority === 'high' || detail.priority === 'medium' || detail.priority === 'low'
+        ? detail.priority
+        : undefined,
       weakness: typeof detail.weakness === 'string' ? detail.weakness : '',
       evidence_type: evidenceType,
+      jd_requirement: typeof detail.jd_requirement === 'string' ? detail.jd_requirement : '',
       evidence: typeof detail.evidence === 'string' ? detail.evidence : '',
+      impact: typeof detail.impact === 'string' ? detail.impact : '',
       suggestion: typeof detail.suggestion === 'string' ? detail.suggestion : '',
+    }];
+  });
+}
+
+function normalizeOptimizationStrategyDetails(value: unknown): MatchOptimizationStrategyDetail[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') {
+      return [];
+    }
+
+    const detail = item as Record<string, unknown>;
+    const rawExample = detail.optimization_example;
+    const example = rawExample && typeof rawExample === 'object'
+      ? rawExample as Record<string, unknown>
+      : {};
+    const strategyPoint = typeof detail.strategy_point === 'string'
+      ? detail.strategy_point.trim()
+      : '';
+
+    if (!strategyPoint) {
+      return [];
+    }
+
+    return [{
+      id: typeof detail.id === 'string' ? detail.id : '',
+      related_gap_ids: toStringArray(detail.related_gap_ids),
+      strategy_point: strategyPoint,
+      rationale: typeof detail.rationale === 'string' ? detail.rationale : '',
+      optimization_example: {
+        source_path: typeof example.source_path === 'string' ? example.source_path : '',
+        source_quote: typeof example.source_quote === 'string' ? example.source_quote : '',
+        optimized_content: typeof example.optimized_content === 'string'
+          ? example.optimized_content
+          : '',
+      },
     }];
   });
 }
@@ -190,6 +239,10 @@ function normalizeMatching(matching: MatchingApiResult | MatchingResult): Matchi
     ? experienceMatch as Partial<MatchingResult['experience_match']>
     : undefined;
   const rawMatching = matching as MatchingApiResult;
+  const weaknessDetails = normalizeWeaknessDetails(rawMatching.weakness_details);
+  const optimizationStrategyDetails = normalizeOptimizationStrategyDetails(
+    rawMatching.optimization_strategy_details,
+  );
   const contextFit = rawMatching.context_fit && typeof rawMatching.context_fit === 'object'
     ? rawMatching.context_fit as Record<string, unknown>
     : undefined;
@@ -220,13 +273,15 @@ function normalizeMatching(matching: MatchingApiResult | MatchingResult): Matchi
         ? structuredExperienceMatch.match_percentage ?? 0
         : 0,
     },
-    optimization_suggestions: toStringArray(
-      matching?.optimization_suggestions ??
-        (matching as unknown as {weaknesses?: unknown}).weaknesses,
-    ),
+    optimization_suggestions: optimizationStrategyDetails.length > 0
+      ? optimizationStrategyDetails.map(detail => detail.strategy_point)
+      : toStringArray(matching?.optimization_suggestions),
+    optimization_strategy_details: optimizationStrategyDetails,
     strengths: toStringArray(rawMatching.strengths),
-    weaknesses: toStringArray(rawMatching.weaknesses),
-    weakness_details: normalizeWeaknessDetails(rawMatching.weakness_details),
+    weaknesses: weaknessDetails.length > 0
+      ? weaknessDetails.map(detail => detail.weakness).filter(Boolean)
+      : toStringArray(rawMatching.weaknesses),
+    weakness_details: weaknessDetails,
     soft_skills_match: typeof rawMatching.soft_skills_match === 'string'
       ? rawMatching.soft_skills_match
       : '',
@@ -243,6 +298,7 @@ function normalizeMatching(matching: MatchingApiResult | MatchingResult): Matchi
       hypotheses_used: toStringArray(contextFit.hypotheses_used),
     } : undefined,
     jd_structure: rawMatching.jd_structure,
+    requirement_analysis: normalizeRequirementAnalysis(rawMatching.requirement_analysis),
   };
 }
 
@@ -266,8 +322,10 @@ function toMatchingApiPayload(matching: MatchingResult): MatchingApiResult {
     weakness_details: matching.weakness_details ?? [],
     positioning_strategy: matching.positioning_strategy ?? '',
     optimization_suggestions: matching.optimization_suggestions,
+    optimization_strategy_details: matching.optimization_strategy_details ?? [],
     context_fit: matching.context_fit,
     jd_structure: matching.jd_structure,
+    ...(matching.requirement_analysis ? {requirement_analysis: matching.requirement_analysis} : {}),
   };
 }
 
@@ -509,7 +567,9 @@ export class ResumeApi {
    *   - `hard_requirements_match`: 硬性要求匹配情况
    *   - `skill_match`: 技能匹配情况
    *   - `experience_match`: 经验匹配情况
-   *   - `optimization_suggestions`: 优化建议
+   *   - `weakness_details`: 结构化岗位差距
+   *   - `optimization_strategy_details`: 含原文与改写示例的结构化优化策略
+   *   - `optimization_suggestions`: 兼容旧客户端的策略摘要
    * - `step3_optimized_resume`: 优化后的简历（Markdown 格式）
    *
    * **错误处理:**

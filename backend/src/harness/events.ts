@@ -9,6 +9,7 @@ export type HarnessEventType =
   | 'workflow.succeeded'
   | 'workflow.failed'
   | 'workflow.partial'
+  | 'workflow.state.changed'
   | 'step.started'
   | 'step.succeeded'
   | 'step.failed'
@@ -24,6 +25,7 @@ export type HarnessEventType =
   | 'provider.responded'
   | 'output.parsed'
   | 'output.validated'
+  | 'extraction.validation.observed'
   | 'evaluation.completed'
 
 export interface HarnessEvent<TPayload = Record<string, unknown>> {

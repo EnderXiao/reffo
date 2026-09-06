@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { Database } from 'bun:sqlite'
 import { env } from '@/config/env'
@@ -8,6 +8,78 @@ const HARNESS_DATABASE_PATH = env.HARNESS_DATABASE_PATH || join(process.cwd(), '
 
 let database: Database | null = null
 let harnessDatabase: Database | null = null
+let harnessDatabaseLockPath: string | null = null
+let harnessDatabaseLockFd: number | null = null
+
+class HarnessDatabaseOwnershipError extends Error {
+  readonly code = 'HARNESS_DATABASE_IN_USE' as const
+
+  constructor() {
+    super('Harness SQLite 已被其他进程占用，请通过服务 API 查询，或为独立任务设置独立 HARNESS_DATABASE_PATH')
+    this.name = 'HarnessDatabaseOwnershipError'
+  }
+}
+
+function isProcessAlive(pid: number) {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return !(error && typeof error === 'object' && 'code' in error && (error as { code?: unknown }).code === 'ESRCH')
+  }
+}
+
+function acquireHarnessDatabaseLock() {
+  if (harnessDatabaseLockFd !== null) return
+
+  const lockPath = `${HARNESS_DATABASE_PATH}.lock`
+  mkdirSync(dirname(lockPath), { recursive: true })
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const fd = openSync(lockPath, 'wx')
+      writeFileSync(fd, JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString() }))
+      harnessDatabaseLockPath = lockPath
+      harnessDatabaseLockFd = fd
+      process.once('exit', releaseHarnessDatabaseLock)
+      return
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error
+        ? (error as { code?: unknown }).code
+        : undefined
+      if (code !== 'EEXIST' || attempt > 0) throw error
+
+      let ownerPid = 0
+      try {
+        const owner = JSON.parse(readFileSync(lockPath, 'utf8')) as { pid?: unknown }
+        ownerPid = typeof owner.pid === 'number' ? owner.pid : Number(owner.pid)
+      } catch {
+        ownerPid = 0
+      }
+      if (ownerPid > 0 && isProcessAlive(ownerPid)) throw new HarnessDatabaseOwnershipError()
+      unlinkSync(lockPath)
+    }
+  }
+}
+
+function releaseHarnessDatabaseLock() {
+  if (harnessDatabaseLockFd !== null) {
+    try {
+      closeSync(harnessDatabaseLockFd)
+    } catch {
+      // Process is already exiting; lock cleanup remains best effort.
+    }
+    harnessDatabaseLockFd = null
+  }
+  if (harnessDatabaseLockPath && existsSync(harnessDatabaseLockPath)) {
+    try {
+      unlinkSync(harnessDatabaseLockPath)
+    } catch {
+      // Process is already exiting; stale lock recovery handles this on next open.
+    }
+  }
+  harnessDatabaseLockPath = null
+}
 
 function configureDatabase(db: Database) {
   db.exec(`
@@ -15,6 +87,13 @@ function configureDatabase(db: Database) {
     PRAGMA busy_timeout = 5000;
     PRAGMA foreign_keys = ON;
   `)
+}
+
+function ensureColumn(db: Database, table: string, column: string, definition: string) {
+  const columns = db.query(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+  if (!columns.some(item => item.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+  }
 }
 
 export function getDatabase() {
@@ -48,6 +127,7 @@ export function getHarnessDatabase() {
     return harnessDatabase
   }
 
+  acquireHarnessDatabaseLock()
   mkdirSync(dirname(HARNESS_DATABASE_PATH), { recursive: true })
   harnessDatabase = new Database(HARNESS_DATABASE_PATH, { create: true })
   configureDatabase(harnessDatabase)
@@ -66,6 +146,39 @@ export function resetHarnessDatabaseConnection() {
     console.error('[HarnessDatabase] close failed', error)
   } finally {
     harnessDatabase = null
+  }
+}
+
+export interface HarnessDatabaseHealth {
+  status: 'ok' | 'degraded'
+  integrityCheck: string
+  errorCode?: string
+}
+
+/** Read-only health probe. Never rebuilds or deletes a potentially recoverable database. */
+export function getHarnessDatabaseHealth(): HarnessDatabaseHealth {
+  if (env.DATABASE_PROVIDER === 'supabase') {
+    return {
+      status: 'ok',
+      integrityCheck: 'supabase',
+    }
+  }
+
+  try {
+    const result = getHarnessDatabase().query('PRAGMA integrity_check').get() as { integrity_check?: unknown } | null
+    const integrityCheck = typeof result?.integrity_check === 'string' ? result.integrity_check : 'unknown'
+    return {
+      status: integrityCheck === 'ok' ? 'ok' : 'degraded',
+      integrityCheck,
+    }
+  } catch (error) {
+    return {
+      status: 'degraded',
+      integrityCheck: 'unavailable',
+      errorCode: error instanceof Error && 'code' in error
+        ? String((error as { code?: unknown }).code)
+        : 'HARNESS_DATABASE_UNAVAILABLE',
+    }
   }
 }
 
@@ -125,8 +238,9 @@ function enforceHarnessRetention(db: Database) {
   deleteHarnessRuns(db, Array.from(runIds))
 }
 
-export function initializeHarnessDatabase() {
-  const db = getHarnessDatabase()
+export function initializeHarnessDatabase(databaseOverride?: Database) {
+  const db = databaseOverride ?? getHarnessDatabase()
+  if (databaseOverride) configureDatabase(db)
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_versions (
@@ -149,7 +263,12 @@ export function initializeHarnessDatabase() {
       started_at TEXT NOT NULL,
       finished_at TEXT,
       error_code TEXT,
-      error_message TEXT
+      error_message TEXT,
+      delivery_decision TEXT,
+      safety_status TEXT,
+      product_quality_status TEXT,
+      diagnostics_version TEXT,
+      diagnostics_json TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_process_runs_started_at
@@ -261,6 +380,28 @@ export function initializeHarnessDatabase() {
     CREATE INDEX IF NOT EXISTS idx_failure_samples_run_id
     ON failure_samples(run_id);
   `)
+
+  ensureColumn(db, 'process_runs', 'agent_state', 'TEXT')
+  ensureColumn(db, 'process_runs', 'release_status', 'TEXT')
+  ensureColumn(db, 'process_runs', 'used_safe_fallback', 'INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'process_runs', 'delivery_decision', 'TEXT')
+  ensureColumn(db, 'process_runs', 'safety_status', 'TEXT')
+  ensureColumn(db, 'process_runs', 'product_quality_status', 'TEXT')
+  ensureColumn(db, 'process_runs', 'diagnostics_version', 'TEXT')
+  ensureColumn(db, 'process_runs', 'diagnostics_json', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'max_output_tokens', 'INTEGER')
+  ensureColumn(db, 'step_attempts', 'compiled_prompt_sha256', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'schema_version', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'validator_version', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'adaptive_policy_version', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'score_formula_version', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'component_prompt_id', 'TEXT')
+  ensureColumn(db, 'step_attempts', 'component_prompt_version', 'TEXT')
+  db.query(`
+    INSERT INTO schema_versions (name, version, updated_at)
+    VALUES ('harness', 3, datetime('now'))
+    ON CONFLICT(name) DO UPDATE SET version = excluded.version, updated_at = excluded.updated_at
+  `).run()
 
   enforceHarnessRetention(db)
 

@@ -69,6 +69,7 @@ const booleanLikeSchema = z.preprocess((value) => {
 }, z.boolean())
 
 const weaknessEvidenceTypeSchema = z.enum(['direct_missing', 'implicit_evidence', 'wording_gap'])
+const matchGapPrioritySchema = z.enum(['high', 'medium', 'low'])
 
 const requiredSkillCheckSchema = z.preprocess((value) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -97,10 +98,32 @@ const requiredSkillChecksSchema = z.preprocess((value) => (
 ), z.array(requiredSkillCheckSchema).default([]))
 
 const weaknessDetailSchema = z.object({
+  id: z.string().default(''),
+  priority: matchGapPrioritySchema.default('medium'),
   weakness: z.string(),
   evidence_type: weaknessEvidenceTypeSchema,
+  jd_requirement: z.string().default(''),
   evidence: z.string().default(''),
+  impact: z.string().default(''),
   suggestion: z.string().default(''),
+}).passthrough()
+
+const optimizationExampleSchema = z.object({
+  source_path: z.string().default(''),
+  source_quote: z.string().default(''),
+  optimized_content: z.string().default(''),
+}).passthrough()
+
+const optimizationStrategyDetailSchema = z.object({
+  id: z.string().default(''),
+  related_gap_ids: z.array(z.string()).default([]),
+  strategy_point: z.string().default(''),
+  rationale: z.string().default(''),
+  optimization_example: optimizationExampleSchema.default({
+    source_path: '',
+    source_quote: '',
+    optimized_content: '',
+  }),
 }).passthrough()
 
 const weaknessStringArraySchema = z.preprocess((value) => {
@@ -129,7 +152,34 @@ const contextFitSchema = z.object({
   hypotheses_used: z.array(z.string()).default([]),
 }).passthrough()
 
-export const matchAnalysisOutputSchema = z.object({
+function deriveLegacyMatchFields(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return value
+  }
+
+  const normalized = { ...(value as Record<string, unknown>) }
+  const weaknessDetails = normalized.weakness_details
+  if (Array.isArray(weaknessDetails) && weaknessDetails.length > 0) {
+    normalized.weaknesses = weaknessDetails
+      .map((detail) => detail && typeof detail === 'object' && 'weakness' in detail
+        ? String(detail.weakness ?? '').trim()
+        : '')
+      .filter(Boolean)
+  }
+
+  const strategyDetails = normalized.optimization_strategy_details
+  if (Array.isArray(strategyDetails) && strategyDetails.length > 0) {
+    normalized.optimization_suggestions = strategyDetails
+      .map((detail) => detail && typeof detail === 'object' && 'strategy_point' in detail
+        ? String(detail.strategy_point ?? '').trim()
+        : '')
+      .filter(Boolean)
+  }
+
+  return normalized
+}
+
+const matchAnalysisOutputObjectSchema = z.object({
   match_score: z.coerce.number().min(0).max(100),
   hard_requirements_match: z.record(booleanLikeSchema).default({}),
   skill_match: z.object({
@@ -144,6 +194,7 @@ export const matchAnalysisOutputSchema = z.object({
   weakness_details: z.array(weaknessDetailSchema).default([]),
   positioning_strategy: z.string().default(''),
   optimization_suggestions: z.array(z.string()).default([]),
+  optimization_strategy_details: z.array(optimizationStrategyDetailSchema).default([]),
   context_fit: contextFitSchema.default({
     company_alignment: '',
     location_alignment: '',
@@ -152,7 +203,12 @@ export const matchAnalysisOutputSchema = z.object({
   jd_structure: jdStructureSchema.optional(),
 }).passthrough()
 
-export const matchAnalysisSchema = z.object({
+export const matchAnalysisOutputSchema = z.preprocess(
+  deriveLegacyMatchFields,
+  matchAnalysisOutputObjectSchema
+)
+
+const matchAnalysisObjectSchema = z.object({
   match_score: z.coerce.number().min(0).max(100),
   hard_requirements_match: z.record(booleanLikeSchema),
   skill_match: z.object({
@@ -167,9 +223,15 @@ export const matchAnalysisSchema = z.object({
   weakness_details: z.array(weaknessDetailSchema).optional(),
   positioning_strategy: z.string().optional(),
   optimization_suggestions: z.array(z.string()).optional(),
+  optimization_strategy_details: z.array(optimizationStrategyDetailSchema).optional(),
   context_fit: contextFitSchema.optional(),
   jd_structure: jdStructureSchema,
 }).passthrough()
+
+export const matchAnalysisSchema = z.preprocess(
+  deriveLegacyMatchFields,
+  matchAnalysisObjectSchema
+)
 
 export type MatchAnalysisOutputFromSchema = z.infer<typeof matchAnalysisOutputSchema>
 export type MatchAnalysisFromSchema = z.infer<typeof matchAnalysisSchema>

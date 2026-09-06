@@ -1,0 +1,49 @@
+name: Render Feature Environments
+
+on:
+  push:
+    branches:
+      - feature
+      - 'feature/**'
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-feature-${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_OWNER_ID: ${{ secrets.RENDER_OWNER_ID }}
+      RENDER_FEATURE_ENV_VARS_JSON: ${{ secrets.RENDER_FEATURE_ENV_VARS_JSON }}
+      RENDER_FEATURE_BRANCH: ${{ github.ref_name }}
+      RENDER_FEATURE_ACTION: deploy
+      RENDER_COMMIT_SHA: ${{ github.sha }}
+      RENDER_REPO_URL: https://github.com/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create or deploy Render feature service
+        run: bash .github/scripts/render-feature-service.sh
+
+  cleanup:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      (github.event.pull_request.head.ref == 'feature' || startsWith(github.event.pull_request.head.ref, 'feature/'))
+    runs-on: ubuntu-latest
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_OWNER_ID: ${{ secrets.RENDER_OWNER_ID }}
+      RENDER_FEATURE_BRANCH: ${{ github.event.pull_request.head.ref }}
+      RENDER_FEATURE_ACTION: delete
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete merged Render feature service
+        run: bash .github/scripts/render-feature-service.sh

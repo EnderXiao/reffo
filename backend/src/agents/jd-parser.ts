@@ -6,6 +6,7 @@ import type { LlmProvider } from '@/providers/llm-provider'
 import { isJDStructure, jdStructureSchema } from '@/schemas/match-analysis'
 import type { AgentExecutionOptions } from '@/agents/types'
 import type { JDStructure } from '@/types'
+import { normalizeRequirementAnalysis } from '@/job-analysis/requirements'
 
 export class JDParserAgent {
   private readonly provider: LlmProvider
@@ -47,7 +48,8 @@ export class JDParserAgent {
         },
       })
 
-      return jdStructureSchema.parse(parsedOutput) as JDStructure
+      const jd = jdStructureSchema.parse(parsedOutput)
+      return { ...jd, requirement_analysis: normalizeRequirementAnalysis(jd.requirement_analysis, jdText) } as JDStructure
     } catch (error) {
       console.error('JD parse failed:', error)
       throw new Error(`JD 解析失败: ${error instanceof Error ? error.message : '未知错误'}`)
