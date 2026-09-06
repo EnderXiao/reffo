@@ -84,7 +84,7 @@ case "${action}" in
         --arg buildCommand "${build_command}" \
         --arg publishPath "${publish_path}" \
         --argjson envVars "${env_vars}" \
-        '{type:$type,name:$name,ownerId:$ownerId,repo:$repo,branch:$branch,autoDeploy:"no",rootDir:$rootDir,buildCommand:$buildCommand,publishPath:$publishPath,envVars:$envVars}')"
+        '{type:$type,name:$name,ownerId:$ownerId,repo:$repo,branch:$branch,autoDeploy:"no",rootDir:$rootDir,envVars:$envVars,serviceDetails:{buildCommand:$buildCommand,publishPath:$publishPath,pullRequestPreviewsEnabled:"no",headers:[],previews:{}}}')"
       created="$(api POST '/services' "${payload}")"
       service_id="$(jq -r '.service.id // .id // empty' <<<"${created}")"
       if [[ -z "${service_id}" ]]; then
@@ -97,7 +97,7 @@ case "${action}" in
         --arg rootDir "${root_dir}" \
         --arg buildCommand "${build_command}" \
         --arg publishPath "${publish_path}" \
-        '{branch:$branch,autoDeploy:"no",rootDir:$rootDir,buildCommand:$buildCommand,publishPath:$publishPath}')"
+        '{branch:$branch,autoDeploy:"no",rootDir:$rootDir,serviceDetails:{buildCommand:$buildCommand,publishPath:$publishPath,pullRequestPreviewsEnabled:"no",headers:[],previews:{}}}')"
       api PATCH "/services/${service_id}" "${update_payload}" >/dev/null
       api PUT "/services/${service_id}/env-vars" "${env_vars}" >/dev/null
     fi
