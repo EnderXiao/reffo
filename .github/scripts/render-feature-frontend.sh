@@ -105,6 +105,29 @@ case "${action}" in
     deploy_payload="$(jq -cn --arg commitId "${commit_sha}" '{commitId:$commitId,clearCache:"do_not_clear"}')"
     deploy="$(api POST "/services/${service_id}/deploys" "${deploy_payload}")"
     deploy_id="$(jq -r '.id // empty' <<<"${deploy}")"
+
+    if [[ -n "${deploy_id}" ]]; then
+      for attempt in {1..20}; do
+        deploy_status_response="$(api GET "/services/${service_id}/deploys/${deploy_id}")"
+        deploy_status="$(jq -r '.status // .deploy.status // empty' <<<"${deploy_status_response}")"
+        case "${deploy_status}" in
+          live)
+            break
+            ;;
+          build_failed|deactivated|canceled|cancelled)
+            echo "Render frontend deploy ${deploy_id} failed with status ${deploy_status}" >&2
+            exit 1
+            ;;
+        esac
+        if [[ "${attempt}" -lt 20 ]]; then
+          sleep 15
+        fi
+      done
+      if [[ "${deploy_status}" != "live" ]]; then
+        echo "Render frontend deploy ${deploy_id} did not become live (status=${deploy_status:-unknown})" >&2
+        exit 1
+      fi
+    fi
     echo "Render feature frontend ${service_name} deployed (service=${service_id}${deploy_id:+, deploy=${deploy_id}}; api=${backend_url})"
     ;;
   delete)
