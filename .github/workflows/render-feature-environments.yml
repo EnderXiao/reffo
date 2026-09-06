@@ -31,6 +31,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Create or deploy Render feature service
         run: bash .github/scripts/render-feature-service.sh
+      - name: Create or deploy Render feature frontend
+        run: bash .github/scripts/render-feature-frontend.sh
 
   cleanup:
     if: >-
@@ -47,3 +49,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Delete merged Render feature service
         run: bash .github/scripts/render-feature-service.sh
+      - name: Delete merged Render feature frontend
+        run: bash .github/scripts/render-feature-frontend.sh

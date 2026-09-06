@@ -4,6 +4,7 @@
 
 - `main`、`nonprod`、`prod` 保持现有 Render Service，不被 feature 分支覆盖。
 - 每个 `feature` / `feature/*` 分支创建独立 Render Web Service。
+- 每个 `feature` / `feature/*` 分支同时创建独立 Render Static Site，前端通过 `API_BASE_URL` 指向同分支后端。
 - feature 分支 push 后自动部署对应 commit。
 - PR 合并后自动删除对应 Render Service。
 - feature 分支禁止普通成员直接 push；只有仓库 owner 可绕过保护直接 push，其他成员必须走 PR。
@@ -15,6 +16,7 @@
 - `RENDER_API_KEY`：Render API key。
 - `RENDER_OWNER_ID`：Render workspace ID，不是 GitHub owner ID。
 - `RENDER_FEATURE_ENV_VARS_JSON`：feature 环境变量 JSON 数组。至少包含后端启动所需变量，例如 `APP_ENV=nonprod`、Supabase nonprod 配置、AI/OCR 配置、`PORT=3000`、`HOST=0.0.0.0`。
+- `RENDER_FEATURE_FRONTEND_ENV_VARS_JSON`：可选的 feature 前端构建变量 JSON 数组；脚本会强制注入 `REFFO_ENV=nonprod` 和同分支后端 `API_BASE_URL`。
 
 `RENDER_FEATURE_ENV_VARS_JSON` 示例结构：
 
@@ -37,9 +39,11 @@
 `.github/workflows/render-feature-environments.yml`：
 
 - push 到 `feature` 或 `feature/**`：按分支名和短 hash 查找 Service，不存在则创建，存在则更新分支并部署当前 commit。
+- 同一次 push 同时部署后端 Web Service 和前端 Static Site；前端 Static Site 不复用 `reffo-web-nonprod`。
 - PR 合并后：删除对应 Service。
 - Service 名称格式：`reffo-feature-<branch-slug>-<branch-hash>`。
 - 每个 Service 使用 `backend/Containerfile`，健康检查 `/api/v1/mvp/health`。
+- 前端 Static Site 使用 `frontend/Taro/reffo-taro`，执行 `build:h5:nonprod`，发布目录为 `dist`。
 - Render `autoDeploy` 关闭，由 GitHub Actions 显式部署 commit，避免重复部署。
 
 ## 设置 feature 分支保护
