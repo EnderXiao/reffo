@@ -132,8 +132,9 @@ function enforceHarnessRetention(db: Database) {
   deleteHarnessRuns(db, Array.from(runIds))
 }
 
-export function initializeHarnessDatabase() {
-  const db = getHarnessDatabase()
+export function initializeHarnessDatabase(databaseOverride?: Database) {
+  const db = databaseOverride ?? getHarnessDatabase()
+  if (databaseOverride) configureDatabase(db)
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_versions (
@@ -156,7 +157,12 @@ export function initializeHarnessDatabase() {
       started_at TEXT NOT NULL,
       finished_at TEXT,
       error_code TEXT,
-      error_message TEXT
+      error_message TEXT,
+      delivery_decision TEXT,
+      safety_status TEXT,
+      product_quality_status TEXT,
+      diagnostics_version TEXT,
+      diagnostics_json TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_process_runs_started_at
@@ -272,6 +278,11 @@ export function initializeHarnessDatabase() {
   ensureColumn(db, 'process_runs', 'agent_state', 'TEXT')
   ensureColumn(db, 'process_runs', 'release_status', 'TEXT')
   ensureColumn(db, 'process_runs', 'used_safe_fallback', 'INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'process_runs', 'delivery_decision', 'TEXT')
+  ensureColumn(db, 'process_runs', 'safety_status', 'TEXT')
+  ensureColumn(db, 'process_runs', 'product_quality_status', 'TEXT')
+  ensureColumn(db, 'process_runs', 'diagnostics_version', 'TEXT')
+  ensureColumn(db, 'process_runs', 'diagnostics_json', 'TEXT')
   ensureColumn(db, 'step_attempts', 'max_output_tokens', 'INTEGER')
   ensureColumn(db, 'step_attempts', 'compiled_prompt_sha256', 'TEXT')
   ensureColumn(db, 'step_attempts', 'schema_version', 'TEXT')
@@ -282,7 +293,7 @@ export function initializeHarnessDatabase() {
   ensureColumn(db, 'step_attempts', 'component_prompt_version', 'TEXT')
   db.query(`
     INSERT INTO schema_versions (name, version, updated_at)
-    VALUES ('harness', 2, datetime('now'))
+    VALUES ('harness', 3, datetime('now'))
     ON CONFLICT(name) DO UPDATE SET version = excluded.version, updated_at = excluded.updated_at
   `).run()
 

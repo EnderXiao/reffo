@@ -5,6 +5,7 @@
 import type { RecoverySummary } from '@/harness/runtime-state'
 import type { HarnessResponseMeta } from '@/harness/harnessed-request'
 import type { ResumeAgentState, V5ReleaseStatus } from '@/v5/types'
+import type { RequirementAnalysis } from '@/job-analysis/requirements'
 
 /**
  * 简历结构化数据
@@ -63,6 +64,7 @@ export interface ResumeAnalysis {
 export type ContextConfidence = 'high' | 'medium' | 'low' | 'unknown'
 
 export interface JDStructure {
+  requirement_analysis?: RequirementAnalysis
   basic_info: {
     title: string
     company?: string
@@ -129,6 +131,7 @@ export interface MatchOptimizationStrategyDetail {
 }
 
 export interface MatchAnalysis {
+  requirement_analysis?: RequirementAnalysis
   match_score: number
   hard_requirements_match: Record<string, boolean>
   skill_match: {

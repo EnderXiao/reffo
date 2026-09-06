@@ -6,7 +6,7 @@ import { APIUserAbortError } from 'openai'
 
 const DEFAULT_MAX_PROVIDER_ATTEMPTS = 2
 
-function getErrorStatus(error: unknown) {
+export function getErrorStatus(error: unknown) {
   if (typeof error !== 'object' || error === null) {
     return undefined
   }
@@ -45,7 +45,7 @@ function isAbortError(error: unknown) {
     || (error as Error & { code?: unknown }).code === 'ABORT_ERR'
 }
 
-function isProviderTransientError(error: unknown) {
+export function isProviderTransientError(error: unknown) {
   if (isAbortError(error)) {
     return false
   }

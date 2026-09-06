@@ -2,14 +2,15 @@
   "formatVersion": "1.0.0",
   "defaultVersion": "5.0.0",
   "components": {
-    "P01": "5.0.0-p01-resume-evidence-r9", "P01R": "5.0.0-p01r-resume-evidence-repair-r9",
-    "P02": "5.0.0-p02-job-requirements-r4", "P02R": "5.0.0-p02r-job-requirements-repair-r4",
-    "P03": "5.0.0-p03-match-positioning-r5", "P03R": "5.0.0-p03r-match-repair-r5",
+    "P01": "5.0.0-p01-resume-evidence-r14", "P01R": "5.0.0-p01r-resume-evidence-repair-r14",
+    "P02": "5.1.0-p02-job-success-profile-r3", "P02R": "5.1.0-p02r-job-success-profile-repair-r3",
+    "P03": "5.1.0-p03-job-fit-map-r4", "P03R": "5.1.0-p03r-job-fit-map-repair-r4",
     "P04": "5.0.0-p04-strategy-resolution-r2", "P05": "5.0.0-p05-resume-plan-r6",
-    "P05R": "5.0.0-p05r-resume-plan-repair-r6", "P06": "5.0.0-p06-draft-artifact-r11",
-    "P07": "5.0.0-p07-final-review-artifact-r10", "P08": "5.0.0-p08-gate-repair-r11",
+    "P05R": "5.0.0-p05r-resume-plan-repair-r6", "P06": "5.0.0-p06-draft-artifact-r13",
+    "P06C": "5.1.0-p06c-supported-writer-r8", "P06D": "5.0.0-p06d-controlled-dsl-r6",
+    "P07": "5.0.0-p07-final-review-artifact-r10", "P08": "5.0.0-p08-code-gate-repair-r16",
     "P09": "5.0.0-p09-blocking-fact-judge-r5", "P10": "5.0.0-p10-interview-preparation-r2",
-    "P10R": "5.0.0-p10r-interview-repair-r2", "P11": "5.0.0-p11-quality-judge-r2",
-    "P12": "5.0.0-p12-double-order-ab-r2"
+    "P10R": "5.0.0-p10r-interview-repair-r2", "P11": "5.0.0-p11-quality-judge-r3",
+    "P12": "5.1.0-p12-material-conditional-ab-r2"
   }
 }

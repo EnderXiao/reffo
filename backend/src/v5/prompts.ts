@@ -4,7 +4,7 @@ import { createDigest } from '@/harness/run-context'
 
 export type V5PromptComponent =
   | 'P01' | 'P01R' | 'P02' | 'P02R' | 'P03' | 'P03R'
-  | 'P04' | 'P05' | 'P05R' | 'P06' | 'P07' | 'P08'
+  | 'P04' | 'P05' | 'P05R' | 'P06' | 'P06C' | 'P06D' | 'P07' | 'P08'
   | 'P09' | 'P10' | 'P10R' | 'P11' | 'P12'
 
 const PROMPT_DIR = join(import.meta.dir, 'prompts')

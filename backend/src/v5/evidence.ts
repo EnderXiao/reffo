@@ -10,11 +10,45 @@ import type {
   ValidationResult,
 } from '@/v5/types'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
-import { resumeExtractionFactCandidateLimit } from '@/v5/chunked-resume-extraction'
+import {
+  readResumeExtractionScopePlan,
+  resumeExtractionFactCandidateLimit,
+  resumeExtractionFactCandidateLimitForBlock,
+  resumeExtractionFactCandidateStorageLimit,
+  resumeExtractionRawFactCandidateLimit,
+  type ResumeExtractionChunk,
+} from '@/v5/chunked-resume-extraction'
 
 function stableId(prefix: string, parts: Array<string | number>) {
   const digest = createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 20)
   return `${prefix}_${digest}`
+}
+
+function compareCodePoints(left: string, right: string) {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+export interface ResumeExtractionValidationOptions {
+  /**
+   * Server-owned number of deterministic P01 shards represented by this
+   * candidate. Never derive this value from model-returned IDs.
+   */
+  trustedShardCount?: number
+}
+
+function trustedShardCountForValidation(
+  document: CanonicalSourceDocument,
+  options?: ResumeExtractionValidationOptions
+) {
+  const trustedShardCount = options?.trustedShardCount ?? 1
+  if (
+    !Number.isSafeInteger(trustedShardCount)
+    || trustedShardCount < 1
+    || trustedShardCount > Math.max(1, document.blocks.length)
+  ) {
+    throw new RangeError('trustedShardCount must be a positive safe integer bounded by source blocks')
+  }
+  return trustedShardCount
 }
 
 function createIssue(input: Omit<ValidationIssue, 'issueId' | 'severity' | 'outputPath' | 'claimId' | 'evidenceIds' | 'requirementIds' | 'replacementText'> & {
@@ -176,12 +210,325 @@ function validateNumericAtoms(input: {
   return issues
 }
 
+type ResumeFactCandidate = ResumeExtractionCandidate['factCandidates'][number]
+
+function isPersistedServerPartitionFact(
+  document: CanonicalSourceDocument,
+  fact: ResumeFactCandidate
+) {
+  const expected = stableId('fact_partition', [
+    document.sha256,
+    fact.sourceBlockId,
+    fact.blockRelativeSpan.start,
+    fact.blockRelativeSpan.end,
+  ])
+  if (fact.factLocalId === expected) return true
+  if (!fact.factLocalId.endsWith(expected)) return false
+  return /^c\d+_$/.test(fact.factLocalId.slice(0, -expected.length))
+}
+
+interface IndexedExactFact {
+  index: number
+  fact: ResumeFactCandidate
+  start: number
+  end: number
+  signature: string
+}
+
+interface FactPartitionGroup {
+  facts: IndexedExactFact[]
+  start: number
+  end: number
+}
+
+function exactFactForBlock(
+  block: CanonicalSourceDocument['blocks'][number],
+  fact: ResumeFactCandidate,
+  index: number
+): IndexedExactFact | null {
+  const { start, end } = fact.blockRelativeSpan
+  if (
+    start < 0
+    || end <= start
+    || end > block.text.length
+    || block.text.slice(start, end) !== fact.verbatimText
+  ) return null
+  return {
+    index,
+    fact,
+    start,
+    end,
+    signature: [
+      String(start).padStart(8, '0'),
+      String(end).padStart(8, '0'),
+      fact.proposedStatus,
+      fact.claimType,
+      fact.verbatimText,
+      fact.normalizedClaim,
+      fact.factLocalId,
+    ].join('\u0000'),
+  }
+}
+
+function factsOverlap(facts: IndexedExactFact[]) {
+  const ordered = [...facts].sort((left, right) => (
+    left.start - right.start || left.end - right.end || compareCodePoints(left.signature, right.signature)
+  ))
+  let furthestEnd = -1
+  for (const fact of ordered) {
+    if (fact.start < furthestEnd) return true
+    furthestEnd = Math.max(furthestEnd, fact.end)
+  }
+  return false
+}
+
+function partitionGroups(facts: IndexedExactFact[]) {
+  const ordered = [...facts].sort((left, right) => (
+    left.start - right.start
+    || left.end - right.end
+    || compareCodePoints(left.signature, right.signature)
+  ))
+  const groups: FactPartitionGroup[] = []
+  for (const fact of ordered) {
+    const current = groups.at(-1)
+    if (!current || fact.start >= current.end) {
+      groups.push({ facts: [fact], start: fact.start, end: fact.end })
+      continue
+    }
+    current.facts.push(fact)
+    current.end = Math.max(current.end, fact.end)
+  }
+  return groups
+}
+
+function weakestAttribution(facts: IndexedExactFact[]) {
+  const rank: Record<ResumeFactCandidate['attributionLevel'], number> = {
+    unspecified: 0,
+    supported: 1,
+    contributed: 2,
+    drove: 3,
+    owned: 4,
+  }
+  return facts
+    .map(item => item.fact.attributionLevel)
+    .sort((left, right) => rank[left] - rank[right])[0]
+}
+
+function conservativeStatus(facts: IndexedExactFact[]) {
+  if (facts.some(item => item.fact.proposedStatus === 'excluded')) return 'excluded' as const
+  if (facts.some(item => item.fact.proposedStatus === 'source_qualified')) return 'source_qualified' as const
+  return 'source_supported' as const
+}
+
+function coalesceFactPartition(input: {
+  document: CanonicalSourceDocument
+  block: CanonicalSourceDocument['blocks'][number]
+  group: FactPartitionGroup
+  serverScopeLocalId?: string
+}): ResumeFactCandidate {
+  if (input.group.facts.length === 1) return input.group.facts[0].fact
+  const facts = input.group.facts
+  const verbatimText = input.block.text.slice(input.group.start, input.group.end)
+  const modelScopes = [...new Set(facts.map(item => item.fact.sourceScopeLocalId))]
+  const hasScopeConflict = !input.serverScopeLocalId && modelScopes.length !== 1
+  const sourceScopeLocalId = input.serverScopeLocalId
+    ?? (modelScopes.length === 1 ? modelScopes[0] : 'excluded_unresolved')
+  const claimTypes = [...new Set(facts.map(item => item.fact.claimType))]
+  const fullSpanClaimTypes = [...new Set(facts
+    .filter(item => item.start === input.group.start && item.end === input.group.end)
+    .map(item => item.fact.claimType))]
+  const actionVerbs = [...new Set(facts.map(item => item.fact.sourceActionVerb))]
+  const sourceActionVerb = actionVerbs.length === 1
+    && actionVerbs[0]
+    && verbatimText.includes(actionVerbs[0])
+    ? actionVerbs[0]
+    : null
+  const riskFlags = [...new Set([
+    ...facts.flatMap(item => item.fact.riskFlags),
+    ...(hasScopeConflict ? ['uncertain' as const] : []),
+  ])].sort()
+  const qualifiers = [...new Set(facts
+    .flatMap(item => item.fact.qualifiers)
+    .filter(qualifier => qualifier.length > 0 && verbatimText.includes(qualifier)))]
+    .sort((left, right) => verbatimText.indexOf(left) - verbatimText.indexOf(right) || compareCodePoints(left, right))
+  const proposedStatus = hasScopeConflict ? 'excluded' as const : conservativeStatus(facts)
+
+  return {
+    factLocalId: stableId('fact_partition', [
+      input.document.sha256,
+      input.block.sourceBlockId,
+      input.group.start,
+      input.group.end,
+    ]),
+    sourceBlockId: input.block.sourceBlockId,
+    blockRelativeSpan: { start: input.group.start, end: input.group.end },
+    verbatimText,
+    // A server-created aggregate never reuses a model-authored paraphrase.
+    // The exact source slice is conservative and cannot add a new assertion.
+    normalizedClaim: verbatimText,
+    // A source-exact candidate that already spans the complete union is the
+    // most informative safe label. Nested duplicates must not erase its
+    // business type and make otherwise-usable resume content disappear.
+    claimType: fullSpanClaimTypes.length === 1
+      ? fullSpanClaimTypes[0]
+      : claimTypes.length === 1 ? claimTypes[0] : 'other',
+    sourceScopeLocalId,
+    proposedStatus,
+    attributionLevel: weakestAttribution(facts),
+    sourceActionVerb,
+    qualifiers,
+    numericAtoms: normalizeSourceNumericAtoms(
+      verbatimText,
+      sourceScopeLocalId,
+      facts.flatMap(item => item.fact.numericAtoms)
+    ),
+    riskFlags,
+  }
+}
+
+function normalizeResumeFactPartitions(
+  document: CanonicalSourceDocument,
+  candidate: ResumeExtractionCandidate,
+  scopeBySourceBlockId: ReadonlyMap<string, string>
+) {
+  // A duplicate model ID makes reference ownership ambiguous. Never allow a
+  // later alias-map write to hide it behind otherwise-safe span coalescing.
+  if (duplicateValues(candidate.factCandidates.map(fact => fact.factLocalId)).length > 0) {
+    return { candidate, normalizedBlockCount: 0, coalescedFactCount: 0 }
+  }
+  const blocks = new Map(document.blocks.map((block, index) => [block.sourceBlockId, { block, index }]))
+  const factsByBlock = new Map<string, Array<{ fact: ResumeFactCandidate; index: number }>>()
+  candidate.factCandidates.forEach((fact, index) => {
+    const blockFacts = factsByBlock.get(fact.sourceBlockId)
+    if (blockFacts) blockFacts.push({ fact, index })
+    else factsByBlock.set(fact.sourceBlockId, [{ fact, index }])
+  })
+
+  const normalizedBlockIds = new Set<string>()
+  const aliases = new Map<string, string>()
+  const normalizedFacts: ResumeFactCandidate[] = []
+  for (const [sourceBlockId, indexedFacts] of factsByBlock) {
+    const source = blocks.get(sourceBlockId)
+    if (!source) {
+      normalizedFacts.push(...indexedFacts.map(item => item.fact))
+      continue
+    }
+    const exactFacts = indexedFacts.map(item => exactFactForBlock(source.block, item.fact, item.index))
+    // Never hide a bad quote/span behind structural normalization. Those facts
+    // still go through the ordinary repair path.
+    if (exactFacts.some(item => item === null)) {
+      normalizedFacts.push(...indexedFacts.map(item => item.fact))
+      continue
+    }
+    const located = exactFacts.filter((item): item is IndexedExactFact => item !== null)
+    if (!factsOverlap(located)) {
+      normalizedFacts.push(...located.map(item => item.fact))
+      continue
+    }
+    // Only overlapping source intervals are coalesced. Bridging a non-empty
+    // semantic gap could silently promote text that the model never selected,
+    // including an unrelated number, into a source-supported fact.
+    const groups = partitionGroups(located)
+    for (const group of groups) {
+      const coalesced = coalesceFactPartition({
+        document,
+        block: source.block,
+        group,
+        serverScopeLocalId: scopeBySourceBlockId.get(sourceBlockId),
+      })
+      normalizedFacts.push(coalesced)
+      for (const item of group.facts) aliases.set(item.fact.factLocalId, coalesced.factLocalId)
+    }
+    normalizedBlockIds.add(sourceBlockId)
+  }
+
+  if (normalizedBlockIds.size === 0) {
+    return { candidate, normalizedBlockCount: 0, coalescedFactCount: 0 }
+  }
+
+  const canonicalFacts = [...normalizedFacts].sort((left, right) => {
+    const leftBlock = blocks.get(left.sourceBlockId)?.index ?? Number.MAX_SAFE_INTEGER
+    const rightBlock = blocks.get(right.sourceBlockId)?.index ?? Number.MAX_SAFE_INTEGER
+    return leftBlock - rightBlock
+      || left.blockRelativeSpan.start - right.blockRelativeSpan.start
+      || left.blockRelativeSpan.end - right.blockRelativeSpan.end
+      || compareCodePoints(left.factLocalId, right.factLocalId)
+  })
+  // A deterministic aggregate ID can still collide with a unique model ID on
+  // an untouched singleton. Abort the whole partition rewrite before aliases
+  // are applied; the original overlap then remains an unambiguous repair error.
+  if (duplicateValues(canonicalFacts.map(fact => fact.factLocalId)).length > 0) {
+    return { candidate, normalizedBlockCount: 0, coalescedFactCount: 0 }
+  }
+  const factOrderById = new Map(canonicalFacts.map((fact, index) => [fact.factLocalId, index]))
+  const remapFactIds = (ids: string[]) => [...new Set(ids.map(id => aliases.get(id) ?? id))]
+    .sort((left, right) => {
+      const leftOrder = factOrderById.get(left)
+      const rightOrder = factOrderById.get(right)
+      if (leftOrder !== undefined && rightOrder !== undefined) return leftOrder - rightOrder
+      if (leftOrder !== undefined) return -1
+      if (rightOrder !== undefined) return 1
+      return compareCodePoints(left, right)
+    })
+
+  return {
+    normalizedBlockCount: normalizedBlockIds.size,
+    coalescedFactCount: candidate.factCandidates.length - canonicalFacts.length,
+    candidate: {
+      ...candidate,
+      identityCandidates: candidate.identityCandidates
+        .map(item => ({ ...item, factLocalIds: remapFactIds(item.factLocalIds) })),
+      timelineCandidates: candidate.timelineCandidates.map(item => ({
+        ...item,
+        factLocalIds: remapFactIds(item.factLocalIds),
+      })),
+      sectionCandidates: candidate.sectionCandidates.map(item => ({
+        ...item,
+        factLocalIds: remapFactIds(item.factLocalIds),
+      })),
+      factCandidates: canonicalFacts,
+      conflicts: candidate.conflicts
+        .map(item => ({ ...item, factLocalIds: remapFactIds(item.factLocalIds) })),
+      qualityAssessment: {
+        ...candidate.qualityAssessment,
+        strengths: candidate.qualityAssessment.strengths.map(item => ({
+          ...item,
+          factLocalIds: remapFactIds(item.factLocalIds),
+        })),
+        weaknesses: candidate.qualityAssessment.weaknesses.map(item => ({
+          ...item,
+          factLocalIds: remapFactIds(item.factLocalIds),
+        })),
+      },
+      coverageClaim: {
+        mappedSourceBlockIds: [...new Set(canonicalFacts.map(fact => fact.sourceBlockId))],
+        unmappedSourceBlockIds: [...new Set(candidate.unmappedFragments.map(fragment => fragment.sourceBlockId))]
+          .filter(id => !canonicalFacts.some(fact => fact.sourceBlockId === id)),
+      },
+    },
+  }
+}
+
 export function validateResumeExtractionCandidate(
   document: CanonicalSourceDocument,
-  candidate: ResumeExtractionCandidate
+  candidate: ResumeExtractionCandidate,
+  options?: ResumeExtractionValidationOptions
 ): ValidationResult<ResumeExtractionCandidate> {
   const issues: ValidationIssue[] = []
+  const trustedShardCount = trustedShardCountForValidation(document, options)
+  const rawFactLimit = resumeExtractionRawFactCandidateLimit(document.blocks, trustedShardCount)
+  if (candidate.factCandidates.length > rawFactLimit) {
+    issues.push(createIssue({
+      code: 'FACT_CANDIDATE_ABSOLUTE_LIMIT_EXCEEDED',
+      outputPath: 'factCandidates',
+      message: `事实候选 ${candidate.factCandidates.length} 条，超过预归一化绝对上限 ${rawFactLimit}。`,
+      expectedConstraint: '异常模型或缓存载荷必须在任何分组、排序和引用改写前有界失败',
+    }))
+    return { passed: false, issues, value: candidate }
+  }
   const blocks = new Map(document.blocks.map(block => [block.sourceBlockId, block]))
+  const scopePlan = readResumeExtractionScopePlan(document as ResumeExtractionChunk)
+  const plannedScopes = new Map(scopePlan.scopes.map(scope => [scope.serverScopeLocalId, scope]))
   const existingMappedBlockIds = new Set(candidate.factCandidates.map(fact => fact.sourceBlockId))
   const promotedUnresolvedFragments = candidate.unmappedFragments.filter(fragment => {
     const block = blocks.get(fragment.sourceBlockId)
@@ -268,15 +615,6 @@ export function validateResumeExtractionCandidate(
       expectedConstraint: '模型漏抽取不得制造可用事实，也不得阻断其他内容；服务端仅能保留逐字原文并强制 excluded',
     }))
   }
-  const factCandidateLimit = resumeExtractionFactCandidateLimit(document.blocks.length)
-  if (candidate.factCandidates.length > factCandidateLimit) {
-    issues.push(createIssue({
-      code: 'FACT_CANDIDATE_DENSITY_EXCEEDED',
-      outputPath: 'factCandidates',
-      message: `事实候选 ${candidate.factCandidates.length} 条，超过当前 ${document.blocks.length} 个 source blocks 的安全上限 ${factCandidateLimit}。`,
-      expectedConstraint: '默认每个 source block 提取一个完整事实，仅为同一行明确包含的独立身份/联系方式保留少量额外候选；禁止重叠子串重复提取',
-    }))
-  }
   const normalizedFacts = candidate.factCandidates.map((fact, index) => {
     const block = blocks.get(fact.sourceBlockId)
     if (!block) return fact
@@ -293,13 +631,34 @@ export function validateResumeExtractionCandidate(
         locatedStart = first
       }
     }
-    const quoteAligned = locatedText
+    let quoteAligned = locatedText
       ? {
           ...fact,
           blockRelativeSpan: { start: locatedStart, end: locatedStart + locatedText.length },
           verbatimText: locatedText,
         }
       : fact
+    // A model's own risk classification cannot coexist with unconditional use.
+    // This only lowers trust; it never fabricates a fact or upgrades evidence.
+    const mustExclude = fact.riskFlags.includes('prompt_injection_like_text')
+      || fact.riskFlags.includes('conflicting')
+      || hasExecutableInputRisk(block.inputRiskFlags)
+    if (mustExclude || (fact.riskFlags.includes('future_or_planned') && fact.proposedStatus === 'source_supported')) {
+      quoteAligned = {
+        ...quoteAligned,
+        proposedStatus: mustExclude ? 'excluded' : 'source_qualified',
+        riskFlags: hasExecutableInputRisk(block.inputRiskFlags)
+          ? [...new Set([...fact.riskFlags, 'prompt_injection_like_text' as const])]
+          : fact.riskFlags,
+      }
+      if (quoteAligned.proposedStatus !== fact.proposedStatus || quoteAligned.riskFlags.length !== fact.riskFlags.length) {
+        issues.push(createIssue({
+          code: 'RISK_STATUS_SERVER_DOWNGRADED', severity: 'warning', outputPath: `factCandidates[${index}]`,
+          message: '风险证据已由代码降级使用或排除，未提升可信度。',
+          expectedConstraint: '冲突和注入必须排除；未来规划不得作为已完成事实',
+        }))
+      }
+    }
     if (
       quoteAligned.verbatimText !== fact.verbatimText
       || quoteAligned.blockRelativeSpan.start !== fact.blockRelativeSpan.start
@@ -329,12 +688,101 @@ export function validateResumeExtractionCandidate(
     }
     return { ...quoteAligned, numericAtoms }
   })
-  const normalizedFactsById = new Map(normalizedFacts.map(fact => [fact.factLocalId, fact]))
+  const partitionNormalization = normalizeResumeFactPartitions(
+    document,
+    { ...candidate, factCandidates: normalizedFacts },
+    scopePlan.scopeBySourceBlockId
+  )
+  candidate = partitionNormalization.candidate
+  if (partitionNormalization.normalizedBlockCount > 0) {
+    issues.push(createIssue({
+      code: 'FACT_CANDIDATE_PARTITION_SERVER_COALESCED',
+      severity: 'warning',
+      outputPath: 'factCandidates',
+      message: `${partitionNormalization.normalizedBlockCount} 个 source blocks 包含服务端规范化的重叠事实分区。`,
+      expectedConstraint: '只允许合并相互重叠的逐字 span；引用须重映射且事实状态不得升级',
+    }))
+  } else {
+    const persistedPartitionBlockCount = new Set(candidate.factCandidates
+      .filter(fact => isPersistedServerPartitionFact(document, fact))
+      .map(fact => fact.sourceBlockId)).size
+    if (persistedPartitionBlockCount > 0) {
+      issues.push(createIssue({
+        code: 'FACT_CANDIDATE_PARTITION_SERVER_COALESCED',
+        severity: 'warning',
+        outputPath: 'factCandidates',
+        message: `${persistedPartitionBlockCount} 个 source blocks 包含服务端规范化的重叠事实分区。`,
+        expectedConstraint: '只允许合并相互重叠的逐字 span；引用须重映射且事实状态不得升级',
+      }))
+    }
+  }
+  const partitionedFacts = candidate.factCandidates
+  const factCandidateLimit = resumeExtractionFactCandidateLimit(document.blocks)
+  const storageFactLimit = resumeExtractionFactCandidateStorageLimit(
+    document.blocks,
+    trustedShardCount
+  )
+  if (partitionedFacts.length > factCandidateLimit) {
+    issues.push(createIssue({
+      code: 'FACT_CANDIDATE_DENSITY_EXCEEDED',
+      severity: 'warning',
+      outputPath: 'factCandidates',
+      message: `事实候选 ${partitionedFacts.length} 条，超过当前 ${document.blocks.length} 个 source blocks 的安全上限 ${factCandidateLimit}。`,
+      expectedConstraint: '事实密度仅作为成本与粒度遥测；transport/storage 使用独立硬上限',
+    }))
+  }
+  if (partitionedFacts.length > storageFactLimit) {
+    issues.push(createIssue({
+      code: 'FACT_CANDIDATE_TRANSPORT_LIMIT_EXCEEDED',
+      outputPath: 'factCandidates',
+      message: `事实候选 ${partitionedFacts.length} 条，超过 transport/storage 硬上限 ${storageFactLimit}。`,
+      expectedConstraint: '归一化后的事实总数不得超过代码定义的有界传输与存储上限',
+    }))
+  }
+  const normalizedFactsById = new Map(partitionedFacts.map(fact => [fact.factLocalId, fact]))
+  const factsByBlock = new Map<string, typeof partitionedFacts>()
+  for (const fact of partitionedFacts) {
+    const blockFacts = factsByBlock.get(fact.sourceBlockId)
+    if (blockFacts) blockFacts.push(fact)
+    else factsByBlock.set(fact.sourceBlockId, [fact])
+  }
+  for (const [sourceBlockId, blockFacts] of factsByBlock) {
+    const block = blocks.get(sourceBlockId)
+    if (!block) continue
+    const blockLimit = resumeExtractionFactCandidateLimitForBlock(block)
+    if (blockFacts.length > blockLimit) {
+      issues.push(createIssue({
+        code: 'FACT_CANDIDATE_BLOCK_DENSITY_EXCEEDED',
+        severity: 'warning',
+        outputPath: 'factCandidates',
+        message: `${sourceBlockId} 输出 ${blockFacts.length} 条事实，超过该 block 的代码上限 ${blockLimit}。`,
+        expectedConstraint: '密度仅作为成本与粒度遥测；逐字、有效且互不重叠的事实不得因此触发模型返修',
+      }))
+    }
+    const orderedFacts = [...blockFacts].sort((left, right) => (
+      left.blockRelativeSpan.start - right.blockRelativeSpan.start
+      || left.blockRelativeSpan.end - right.blockRelativeSpan.end
+      || compareCodePoints(left.factLocalId, right.factLocalId)
+    ))
+    let furthest = orderedFacts[0]
+    for (let index = 1; index < orderedFacts.length; index += 1) {
+      const current = orderedFacts[index]
+      if (current.blockRelativeSpan.start < furthest.blockRelativeSpan.end) {
+        issues.push(createIssue({
+          code: 'FACT_CANDIDATE_SOURCE_OVERLAP',
+          outputPath: 'factCandidates',
+          message: `${sourceBlockId} 中 ${furthest.factLocalId} 与 ${current.factLocalId} 的原文 span 重叠。`,
+          expectedConstraint: '同一 source block 的事实 quote 必须按 UTF-16 半开区间互不重叠；数字和短语应留在所属完整事实内',
+        }))
+      }
+      if (current.blockRelativeSpan.end > furthest.blockRelativeSpan.end) furthest = current
+    }
+  }
   const scopeAlignedTimelineCandidates = candidate.timelineCandidates.map(timeline => ({
     ...timeline,
     factLocalIds: [...new Set([
       ...timeline.factLocalIds.filter(id => normalizedFactsById.get(id)?.sourceScopeLocalId === timeline.scopeLocalId),
-      ...normalizedFacts
+      ...partitionedFacts
         .filter(fact => fact.sourceScopeLocalId === timeline.scopeLocalId)
         .map(fact => fact.factLocalId),
     ])],
@@ -367,16 +815,49 @@ export function validateResumeExtractionCandidate(
     }
     return normalized
   })
-  const businessScopeKinds = new Map(normalizedTimeline
+  const businessTimelines = normalizedTimeline
     .filter(item => ['experience', 'internship', 'project', 'research'].includes(item.kind))
-    .map(item => [item.scopeLocalId, item.kind]))
   const broadSectionHeading = /^(?:个人信息|基本信息|个人简介|工作经历|实习经历|项目经历|研究经历|教育背景|专业技能|技能|证书|语言|获奖|作品集|experience|projects?|research|education|skills?)$/i
-  for (const [scopeLocalId] of businessScopeKinds) {
-    const sectionHints = new Set(normalizedFacts
-      .filter(fact => fact.sourceScopeLocalId === scopeLocalId)
+  for (const timeline of businessTimelines) {
+    const scopeLocalId = timeline.scopeLocalId
+    const scopeFacts = partitionedFacts.filter(fact => fact.sourceScopeLocalId === scopeLocalId)
+    const sectionHints = new Set(scopeFacts
       .map(fact => blocks.get(fact.sourceBlockId)?.sectionHint?.trim())
       .filter((value): value is string => Boolean(value && !broadSectionHeading.test(value))))
+
+    const plannedScope = plannedScopes.get(scopeLocalId)
+    const hasTrustedPlannedMembership = Boolean(
+      plannedScope?.hasCompleteScopeContext
+      && plannedScope.hasTrustedAnchorContext
+      && plannedScope.timelineAnchorBlockIds.length > 0
+      && scopeFacts.length > 0
+      && scopeFacts.every(fact => (
+        scopePlan.scopeBySourceBlockId.get(fact.sourceBlockId) === scopeLocalId
+        && plannedScope.memberBlockIds.includes(fact.sourceBlockId)
+      ))
+    )
+    const claimsServerOwnedScope = scopeLocalId.startsWith('srv_scope_')
+    if (claimsServerOwnedScope && !hasTrustedPlannedMembership) {
+      issues.push(createIssue({
+        code: 'SOURCE_SCOPE_SECTION_MISMATCH',
+        outputPath: 'factCandidates.sourceScopeLocalId',
+        message: `业务 scope ${scopeLocalId} 的事实归属与服务端 deterministic scope plan 不一致。`,
+        expectedConstraint: '服务端 scope ID 只能覆盖 scope plan 明确归入该经历、项目或研究的 source blocks',
+      }))
+      continue
+    }
+
     if (sectionHints.size > 1) {
+      if (hasTrustedPlannedMembership) {
+        issues.push(createIssue({
+          code: 'SOURCE_SCOPE_CHILD_SECTION_INHERITED',
+          severity: 'warning',
+          outputPath: 'factCandidates.sourceScopeLocalId',
+          message: `业务 scope ${scopeLocalId} 的子标题已按服务端 scope plan 继承同一时间线锚点。`,
+          expectedConstraint: '只有 deterministic scope plan 明确归属同一 scope 的父岗位与子节才能跨 source section',
+        }))
+        continue
+      }
       issues.push(createIssue({
         code: 'SOURCE_SCOPE_SECTION_MISMATCH',
         outputPath: 'factCandidates.sourceScopeLocalId',
@@ -399,7 +880,7 @@ export function validateResumeExtractionCandidate(
   })
   candidate = {
     ...candidate,
-    factCandidates: normalizedFacts,
+    factCandidates: partitionedFacts,
     timelineCandidates: normalizedTimeline,
     identityCandidates: normalizedIdentity,
   }
@@ -594,6 +1075,37 @@ export function validateResumeExtractionCandidate(
         }))
       }
     }
+  }
+
+  const extractionScopeContext = (document as ResumeExtractionChunk).extractionScopeContext
+  const targetBlockIds = new Set(document.blocks.map(block => block.sourceBlockId))
+  const contextBlockIds = new Set(extractionScopeContext?.blocks.map(block => block.sourceBlockId) ?? [])
+  const continuationScopeIds = new Set(scopePlan.scopes
+    .filter(scope => (
+      extractionScopeContext?.serverScopeLocalId === scope.serverScopeLocalId
+      && scope.hasCompleteScopeContext
+      && scope.hasTrustedAnchorContext
+      && scope.timelineAnchorBlockIds.length > 0
+      && scope.timelineAnchorBlockIds.every(id => contextBlockIds.has(id))
+      && scope.timelineAnchorBlockIds.every(id => !targetBlockIds.has(id))
+    ))
+    .map(scope => scope.serverScopeLocalId))
+  const orphanBusinessFacts = candidate.factCandidates.filter(fact => (
+    fact.proposedStatus !== 'excluded'
+    && ['responsibility', 'action', 'deliverable', 'result'].includes(fact.claimType)
+    && !scopeKinds.has(fact.sourceScopeLocalId)
+    && !(
+      continuationScopeIds.has(fact.sourceScopeLocalId)
+      && scopePlan.scopeBySourceBlockId.get(fact.sourceBlockId) === fact.sourceScopeLocalId
+    )
+  ))
+  if (orphanBusinessFacts.length > 0) {
+    issues.push(createIssue({
+      code: 'BUSINESS_FACT_WITHOUT_TIMELINE',
+      outputPath: 'factCandidates.sourceScopeLocalId',
+      message: `${orphanBusinessFacts.length} 条可用业务事实没有对应 timeline，继续执行会静默丢失真实经历。`,
+      expectedConstraint: '每条可用 responsibility/action/deliverable/result 必须归属一个已提取 timeline；只有 scope plan 可证明完整成员和锚点上下文的非 anchor shard 可暂时省略 timeline',
+    }))
   }
 
   const alreadyCoveredBlocks = new Set([
@@ -797,9 +1309,10 @@ function serviceQualityAssessment(document: CanonicalSourceDocument, candidate: 
 
 export function buildResumeEvidenceBundle(
   document: CanonicalSourceDocument,
-  candidate: ResumeExtractionCandidate
+  candidate: ResumeExtractionCandidate,
+  options?: ResumeExtractionValidationOptions
 ): ResumeEvidenceBundle {
-  const validation = validateResumeExtractionCandidate(document, candidate)
+  const validation = validateResumeExtractionCandidate(document, candidate, options)
   if (!validation.passed) {
     throw new V5EvidenceValidationError('V01_RESUME_EXTRACTION_FAILED', validation.issues)
   }

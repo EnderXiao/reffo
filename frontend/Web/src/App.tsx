@@ -89,14 +89,10 @@ function App() {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
+      const data = await response.json().catch(() => null)
 
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.error?.message || '处理失败')
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error?.message || `HTTP ${response.status}: ${response.statusText}`)
       }
 
       const processResult = data.data

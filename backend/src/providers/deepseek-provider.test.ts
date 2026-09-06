@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type OpenAI from 'openai'
+import { z } from 'zod'
+import { deepSeekThinkingParameters, evaluationDeepSeekPolicy, parseDeepSeekThinking } from '@/config/deepseek-thinking'
 import { createRunContext, createStepExecutionContext } from '@/harness/run-context'
 import { DeepSeekProvider } from '@/providers/deepseek-provider'
 
@@ -84,5 +86,68 @@ describe('DeepSeekProvider abort signals', () => {
     expect(receivedSignal).not.toBe(stepController.signal)
     expect(receivedSignal?.aborted).toBe(true)
     expect(receivedSignal?.reason).toBe('step cancelled')
+  })
+})
+
+describe('explicit DeepSeek V4 thinking', () => {
+  test('leaves legacy requests unchanged without an explicit mode', async () => {
+    let sent: Record<string, unknown> = {}
+    const provider = new DeepSeekProvider(createClient(async body => {
+      sent = body as Record<string, unknown>
+      return createResponse()
+    }), parseDeepSeekThinking())
+    await provider.complete({ model: 'deepseek-chat', messages: [], temperature: 0, maxOutputTokens: 100 })
+    expect(sent.temperature).toBe(0)
+    expect(sent).not.toHaveProperty('thinking')
+    expect(sent).not.toHaveProperty('reasoning_effort')
+  })
+
+  test('sends enabled/high, omits ineffective temperature and retains the total cap', async () => {
+    let sent: Record<string, unknown> = {}
+    const provider = new DeepSeekProvider(createClient(async body => {
+      sent = body as Record<string, unknown>
+      return { ...createResponse(), model: 'deepseek-v4-flash-0731',
+        usage: { prompt_tokens: 30, completion_tokens: 90, prompt_cache_hit_tokens: 10, prompt_cache_miss_tokens: 20,
+          completion_tokens_details: { reasoning_tokens: 70 } } }
+    }), parseDeepSeekThinking('enabled'))
+    const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [], temperature: 0, maxOutputTokens: 100 })
+    expect(sent).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'high', max_tokens: 100 })
+    expect(sent).not.toHaveProperty('temperature')
+    expect(result).toMatchObject({ model: 'deepseek-v4-flash-0731', requestedModel: 'deepseek-v4-flash',
+      inputTokens: 30, outputTokens: 90, reasoningTokens: 70, inputCacheHitTokens: 10, inputCacheMissTokens: 20 })
+    expect(result).not.toHaveProperty('reasoning_content')
+  })
+
+  test('allows disabled mode without sending reasoning effort', () => {
+    expect(deepSeekThinkingParameters('deepseek-v4-flash', 'https://api.deepseek.com', parseDeepSeekThinking('disabled')))
+      .toEqual({ thinking: { type: 'disabled' } })
+  })
+
+  test('does not leak DeepSeek settings to other endpoints or silently switch models', () => {
+    expect(() => deepSeekThinkingParameters('deepseek-v4-flash', 'https://example.com', parseDeepSeekThinking('enabled'))).toThrow()
+    expect(() => evaluationDeepSeekPolicy('deepseek-v4-pro', 'enabled')).toThrow()
+    expect(() => evaluationDeepSeekPolicy('deepseek-v4-flash')).toThrow()
+    expect(() => evaluationDeepSeekPolicy('deepseek-chat', 'enabled')).toThrow()
+    expect(() => parseDeepSeekThinking('true')).toThrow()
+    expect(() => parseDeepSeekThinking('enabled', 'medium')).toThrow()
+  })
+
+  test('fingerprints distinguish explicit mode and effort', () => {
+    const high = evaluationDeepSeekPolicy('deepseek-v4-flash', 'enabled', 'high')
+    expect(high).not.toEqual(evaluationDeepSeekPolicy('deepseek-v4-flash', 'enabled', 'low'))
+    expect(high).not.toEqual(evaluationDeepSeekPolicy('deepseek-v4-flash', 'disabled'))
+    expect(evaluationDeepSeekPolicy('deepseek-chat')).toBeNull()
+  })
+
+  test('retains actual usage for a reasoning-only structured truncation', async () => {
+    const provider = new DeepSeekProvider(createClient(async () => ({
+      id: 'truncated', model: 'deepseek-v4-flash',
+      choices: [{ message: { content: '', reasoning_content: 'private reasoning is not stored' }, finish_reason: 'length' }],
+      usage: { prompt_tokens: 20, completion_tokens: 100, completion_tokens_details: { reasoning_tokens: 100 } },
+    })), parseDeepSeekThinking('enabled'))
+    const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [], maxOutputTokens: 100,
+      structuredOutput: { name: 'test', schema: z.object({ ok: z.boolean() }), strict: true } })
+    expect(result).toMatchObject({ content: '', finishReason: 'length', outputTokens: 100, reasoningTokens: 100 })
+    expect(JSON.stringify(result)).not.toContain('private reasoning')
   })
 })

@@ -3,6 +3,10 @@ import { env } from '@/config/env'
 import { createDigest } from '@/harness/run-context'
 import type { ChatMessage } from '@/providers/llm-provider'
 import { zodResponseFormat } from 'openai/helpers/zod'
+import { p06CompositionOutputSchema } from '@/v5/composition/contract'
+import { p06DslOutputSchema } from '@/v5/composition/dsl'
+import { isJobTargetedEnvelope, jobFitMapSchema, targetedJobExtractionSchema } from '@/v5/targeting/contracts'
+import { resumeDocumentFromEnvelope, resumeExtractionTransportSchema } from '@/v5/resume-extraction-transport'
 import {
   blindABEvaluationSchema,
   blockingFactJudgeResultSchema,
@@ -17,7 +21,11 @@ import {
   v5MatchAnalysisSchema,
   v5ResumePlanSchema,
 } from '@/v5/schemas'
-import { resumeExtractionFactCandidateLimit } from '@/v5/chunked-resume-extraction'
+import {
+  DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
+  estimateResumeExtractionOutputTokens,
+  resumeExtractionRawFactCandidateLimit,
+} from '@/v5/chunked-resume-extraction'
 import { buildV5SystemPrompt, buildV5UserPrompt, loadV5Prompt, type V5PromptComponent, V5_PROMPT_VERSIONS } from '@/v5/prompts'
 import {
   V5_ADAPTIVE_POLICY_VERSION,
@@ -25,6 +33,7 @@ import {
   V5_SCORE_FORMULA_VERSION,
   V5_VALIDATOR_VERSION,
   V5_WORKFLOW_VERSION,
+  type SourceBlock,
 } from '@/v5/types'
 
 const TEMPERATURES: Record<V5PromptComponent, number> = {
@@ -38,6 +47,8 @@ const TEMPERATURES: Record<V5PromptComponent, number> = {
   P05: 0.05,
   P05R: 0,
   P06: 0.15,
+  P06C: 0.1,
+  P06D: 0,
   P07: 0.05,
   P08: 0,
   P09: 0,
@@ -58,6 +69,8 @@ const OUTPUT_TOKEN_BASE: Record<V5PromptComponent, number> = {
   P05: 7000,
   P05R: 7000,
   P06: 8000,
+  P06C: 3600,
+  P06D: 2200,
   P07: 8000,
   P08: 8000,
   P09: 8000,
@@ -67,10 +80,33 @@ const OUTPUT_TOKEN_BASE: Record<V5PromptComponent, number> = {
   P12: 5000,
 }
 
+export const V5_PROMPT_MAX_OUTPUT_TOKENS: Readonly<Record<V5PromptComponent, number>> = Object.freeze({
+  P01: DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
+  P01R: DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
+  P02: 7200,
+  P02R: 7200,
+  P03: 6000,
+  P03R: 6000,
+  P04: 2160,
+  P05: 8400,
+  P05R: 8400,
+  P06: 9600,
+  P06C: 4800,
+  P06D: 3000,
+  P07: 9600,
+  P08: 9600,
+  P09: 9600,
+  P10: 5400,
+  P10R: 5400,
+  P11: 4200,
+  P12: 6000,
+})
+
 export interface CompiledV5Prompt {
   component: V5PromptComponent
   messages: ChatMessage[]
   schema: ZodTypeAny
+  providerSchema: ZodTypeAny
   schemaName: string
   temperature: number
   maxOutputTokens: number
@@ -95,26 +131,70 @@ export interface CompiledV5Prompt {
   }
 }
 
-function canonicalResumeBlockCount(value: unknown, depth = 0): number | null {
-  if (depth > 8 || typeof value !== 'object' || value === null) return null
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = canonicalResumeBlockCount(item, depth + 1)
-      if (found !== null) return found
-    }
-    return null
-  }
+function canonicalResumeBlocks(
+  value: unknown,
+  depth = 0
+): Array<{ text: string }> | null {
+  if (depth > 8 || typeof value !== 'object' || value === null || Array.isArray(value)) return null
   const record = value as Record<string, unknown>
+  // Repair output and issue details are model-controlled and must never size
+  // the contract. Only the original source and known server envelope wrappers do.
+  for (const key of ['originalEnvelope', 'payload'] as const) {
+    const found = canonicalResumeBlocks(record[key], depth + 1)
+    if (found !== null) return found
+  }
   const document = record.canonicalSourceDocument
   if (typeof document === 'object' && document !== null) {
     const blocks = (document as Record<string, unknown>).blocks
-    if (Array.isArray(blocks)) return blocks.length
-  }
-  for (const nested of Object.values(record)) {
-    const found = canonicalResumeBlockCount(nested, depth + 1)
-    if (found !== null) return found
+    if (Array.isArray(blocks) && blocks.every(block => (
+      typeof block === 'object'
+      && block !== null
+      && typeof (block as Record<string, unknown>).text === 'string'
+    ))) {
+      return blocks.map(block => ({ text: String((block as Record<string, unknown>).text) }))
+    }
   }
   return null
+}
+
+/** Prompt-only reduction: keep the local Zod contract and every referenced definition intact. */
+export function compactV5PromptJsonSchema(
+  schema: Record<string, unknown>,
+  schemaName: string
+): Record<string, unknown> {
+  const { definitions, $schema: dialect, ...root } = schema
+  if (typeof definitions !== 'object' || definitions === null || Array.isArray(definitions)) return schema
+  const definitionMap = definitions as Record<string, unknown>
+  if (JSON.stringify(definitionMap[schemaName]) !== JSON.stringify(root)) return schema
+  const remainingDefinitions = { ...definitionMap }
+  delete remainingDefinitions[schemaName]
+  const compacted = {
+    ...root,
+    ...(Object.keys(remainingDefinitions).length > 0 ? { definitions: remainingDefinitions } : {}),
+    ...(dialect === undefined ? {} : { $schema: dialect }),
+  }
+  const pointer = `#/definitions/${schemaName.replaceAll('~', '~0').replaceAll('/', '~1')}`
+  const referencesRoot = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(referencesRoot)
+    if (typeof value !== 'object' || value === null) return false
+    const record = value as Record<string, unknown>
+    if (typeof record.$ref === 'string') {
+      let reference = record.$ref
+      try { reference = decodeURIComponent(reference) } catch { /* Retain literal non-URI references. */ }
+      if (reference === pointer || reference.startsWith(`${pointer}/`)) return true
+    }
+    return Object.values(record).some(referencesRoot)
+  }
+  return referencesRoot(compacted) ? schema : compacted
+}
+
+export function resumeExtractionOutputTokenCapForBlocks(
+  blocks: readonly Pick<SourceBlock, 'text'>[]
+) {
+  return Math.min(
+    DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
+    Math.max(Math.ceil(OUTPUT_TOKEN_BASE.P01 * 1.2), estimateResumeExtractionOutputTokens(blocks))
+  )
 }
 
 function artifactClaimCount(value: unknown, depth = 0): number | null {
@@ -143,17 +223,19 @@ export function schemaForV5Component(component: V5PromptComponent, envelope?: un
   switch (component) {
     case 'P01':
     case 'P01R': {
-      const blockCount = canonicalResumeBlockCount(envelope)
-      return blockCount === null
+      const blocks = canonicalResumeBlocks(envelope)
+      return blocks === null
         ? resumeExtractionCandidateSchema
-        : resumeExtractionCandidateSchemaWithFactLimit(resumeExtractionFactCandidateLimit(blockCount))
+        : resumeExtractionCandidateSchemaWithFactLimit(
+            resumeExtractionRawFactCandidateLimit(blocks)
+          )
     }
     case 'P02':
     case 'P02R':
-      return jobExtractionCandidateSchema
+      return isJobTargetedEnvelope(envelope) ? targetedJobExtractionSchema : jobExtractionCandidateSchema
     case 'P03':
     case 'P03R':
-      return v5MatchAnalysisSchema
+      return isJobTargetedEnvelope(envelope) ? jobFitMapSchema : v5MatchAnalysisSchema
     case 'P04':
       return strategyResolutionSchema
     case 'P05':
@@ -163,6 +245,10 @@ export function schemaForV5Component(component: V5PromptComponent, envelope?: un
     case 'P07':
     case 'P08':
       return generatedResumeArtifactSchema
+    case 'P06C':
+      return p06CompositionOutputSchema
+    case 'P06D':
+      return p06DslOutputSchema
     case 'P09': {
       const claimCount = artifactClaimCount(envelope)
       return claimCount === null
@@ -179,19 +265,23 @@ export function schemaForV5Component(component: V5PromptComponent, envelope?: un
   }
 }
 
-function estimateTokens(value: string) {
+export function estimateV5TextTokens(value: string) {
   const cjk = (value.match(/[\u3400-\u9FFF]/gu) ?? []).length
   const remaining = Math.max(0, value.length - cjk)
   return Math.ceil(cjk / 1.6 + remaining / 4)
 }
 
-function calculateMaxOutputTokens(component: V5PromptComponent, envelopeLength: number) {
+export function estimateV5PromptInputTokens(messages: readonly ChatMessage[]) {
+  return estimateV5TextTokens(messages.map(message => message.content).join('\n'))
+}
+
+function calculateMaxOutputTokens(component: V5PromptComponent, envelope: unknown, envelopeLength: number) {
   const structuralHeadroom = Math.ceil(OUTPUT_TOKEN_BASE[component] * 1.2)
   if (component === 'P01' || component === 'P01R') {
-    return Math.min(16000, Math.max(structuralHeadroom, Math.ceil(envelopeLength * 2)))
+    return resumeExtractionOutputTokenCapForBlocks(canonicalResumeBlocks(envelope) ?? [])
   }
   const inputScaled = Math.ceil(envelopeLength / 8)
-  return Math.min(32000, Math.max(structuralHeadroom, inputScaled))
+  return Math.min(V5_PROMPT_MAX_OUTPUT_TOKENS[component], Math.max(structuralHeadroom, inputScaled))
 }
 
 export class V5PromptBudgetError extends Error {
@@ -214,8 +304,17 @@ export function compileV5Prompt(input: {
 }): CompiledV5Prompt {
   const serializedEnvelope = JSON.stringify(input.envelope)
   const schema = schemaForV5Component(input.component, input.envelope)
-  const schemaName = `reffo_${input.component.toLowerCase()}_${V5_SCHEMA_VERSION.replaceAll('.', '_')}`
-  const outputContract = zodResponseFormat(schema, schemaName).json_schema.schema
+  const extractionDocument = input.component === 'P01' || input.component === 'P01R'
+    ? resumeDocumentFromEnvelope(input.envelope) : null
+  const providerSchema = extractionDocument ? resumeExtractionTransportSchema(extractionDocument) : schema
+  const schemaName = input.component === 'P06C'
+    ? 'reffo_p06c_composition_v1'
+    : input.component === 'P06D'
+      ? 'reffo_p06d_dsl_v1'
+    : `reffo_${input.component.toLowerCase()}_${V5_SCHEMA_VERSION.replaceAll('.', '_')}`
+  const generatedOutputContract = zodResponseFormat(providerSchema, schemaName).json_schema.schema
+  if (!generatedOutputContract) throw new Error(`${input.component} JSON Schema 生成失败。`)
+  const outputContract = compactV5PromptJsonSchema(generatedOutputContract, schemaName)
   const messages: ChatMessage[] = [
     { role: 'system', content: buildV5SystemPrompt(input.component) },
     {
@@ -227,10 +326,12 @@ export function compileV5Prompt(input: {
   const promptVersion = V5_PROMPT_VERSIONS[input.component]
   const promptFile = loadV5Prompt(input.component)
   const temperature = TEMPERATURES[input.component]
-  const estimatedInputTokens = estimateTokens(messages.map(message => message.content).join('\n'))
-  const desiredOutputTokens = calculateMaxOutputTokens(input.component, serializedEnvelope.length)
+  const estimatedInputTokens = estimateV5PromptInputTokens(messages)
+  const desiredOutputTokens = calculateMaxOutputTokens(input.component, input.envelope, serializedEnvelope.length)
   const availableOutputTokens = env.V5_CONTEXT_WINDOW_TOKENS - estimatedInputTokens - 2048
-  const minimumOutputTokens = Math.min(OUTPUT_TOKEN_BASE[input.component], desiredOutputTokens)
+  const minimumOutputTokens = input.component === 'P01' || input.component === 'P01R'
+    ? desiredOutputTokens
+    : Math.min(OUTPUT_TOKEN_BASE[input.component], desiredOutputTokens)
   if (availableOutputTokens < minimumOutputTokens) {
     throw new V5PromptBudgetError(input.component, estimatedInputTokens, env.V5_CONTEXT_WINDOW_TOKENS)
   }
@@ -240,6 +341,7 @@ export function compileV5Prompt(input: {
     component: input.component,
     messages,
     schema,
+    providerSchema,
     schemaName,
     temperature,
     maxOutputTokens,

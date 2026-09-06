@@ -1,5 +1,6 @@
 import type { EvaluationResult } from '@/harness/evaluators/markdown-resume-evaluator'
 import type { ChatMessage } from '@/providers/llm-provider'
+import { REQUIREMENT_ANALYSIS_INSTRUCTIONS } from '@/job-analysis/requirements'
 import {
   PROMPT_VARIANT,
   PROMPT_VERSION,
@@ -122,11 +123,11 @@ export function buildJdParsingMessages(jdText: string): ChatMessage[] {
   return [
     {
       role: 'system',
-      content: `你是跨行业招聘需求与组织语境分析专家。你需要把 JD 的明示要求与公司/工作地上下文假设严格分层，形成可供匹配、简历生成和面试建议共同使用的结构化岗位画像。\n\n${FACT_SAFETY_CONTRACT}\n\n${CONTEXT_REASONING_CONTRACT}`,
+      content: `你是跨行业招聘需求与组织语境分析专家。你需要把 JD 的明示要求与公司/工作地上下文假设严格分层，形成可供匹配、简历生成和面试建议共同使用的结构化岗位画像。\n\n${FACT_SAFETY_CONTRACT}\n\n${CONTEXT_REASONING_CONTRACT}\n\n${REQUIREMENT_ANALYSIS_INSTRUCTIONS}`,
     },
     {
       role: 'user',
-      content: `请解析以下目标岗位描述。先在内部区分“JD 明示”“语义等价归纳”“上下文假设”“未知”，再只返回一个可解析的 JSON 对象。\n\n${textData('job_description', jdText)}
+      content: `请解析以下目标岗位描述。先在内部区分“JD 明示”“语义等价归纳”“上下文假设”“未知”，再只返回一个可解析的 JSON 对象。在下列旧结构旁增加 system 指定的 requirement_analysis；不重复生成另一份长报告。\n\n${textData('job_description', jdText)}
 
 输出结构必须为：
 {
@@ -173,7 +174,7 @@ export function buildMatchingMessages(resume: ResumeStructure, jd: JDStructure):
   return [
     {
       role: 'system',
-      content: `你是跨行业岗位匹配与候选人定位专家。你的风格可以积极、有判断力，但所有结论必须有证据链。你要主动识别可迁移能力和被低估的相关经历，同时严格阻止事实升级与岗位要求幻觉。\n\n${FACT_SAFETY_CONTRACT}\n\n${CONTEXT_REASONING_CONTRACT}`,
+      content: `你是跨行业岗位匹配与候选人定位专家。你的风格可以积极、有判断力，但所有结论必须有证据链。你要主动识别可迁移能力和被低估的相关经历，同时严格阻止事实升级与岗位要求幻觉。岗位匹配度不是简历表达质量；低匹配也可以有好的表达。区分客观差距、材料未证明、表达未对齐，不为了满分降低岗位要求，不把未提到当作不会。requirement_analysis 是 JD 解析，不是候选人事实，不能改写该解析。\n\n${FACT_SAFETY_CONTRACT}\n\n${CONTEXT_REASONING_CONTRACT}`,
     },
     {
       role: 'user',

@@ -396,6 +396,7 @@ export const generationPolicySchema = z.object({
   sectionOrder: z.array(nonEmptyString).min(1),
   summaryPolicy: z.enum(['omit_if_unsupported', 'one_sentence', 'one_to_two_sentences', 'one_to_three_sentences']),
   targetBusinessBulletMin: z.number().int().nonnegative(),
+  targetBusinessBulletTarget: z.number().int().nonnegative(),
   targetBusinessBulletMax: z.number().int().nonnegative(),
   hardTotalListItemMax: z.number().int().positive(),
   hardProjectMax: z.number().int().nonnegative(),
@@ -405,6 +406,7 @@ export const generationPolicySchema = z.object({
   outputLength: z.object({
     unit: z.enum(['cjk_characters', 'words']),
     softMin: z.number().int().nonnegative().nullable(),
+    hardMin: z.number().int().nonnegative().nullable(),
     softMax: z.number().int().positive(),
     hardMax: z.number().int().positive(),
   }).strict(),
@@ -562,7 +564,7 @@ export const resumeQualityJudgeResultSchema = z.object({
       'deliverability',
     ]),
     score: z.number().nonnegative(),
-    maxScore: z.number().positive(),
+    maxScore: z.literal(10),
     evidence: stringArray,
     issues: stringArray,
   }).strict()).length(6),
@@ -604,27 +606,32 @@ const abDimensionsSchema = z.object({
   deliverability: z.number().min(0).max(10),
 }).strict()
 
-const blindABCandidateEvaluationSchema = z.object({
+const abFindingListSchema = z.array(z.string().max(120)).max(5)
+const blindABCandidateEvaluationStructureSchema = z.object({
   candidateId: z.enum(['A', 'B']),
   absoluteGate: z.enum(['pass', 'fail']),
   dimensions: abDimensionsSchema,
-  unsupportedClaims: stringArray,
-  attributionErrors: stringArray,
-  emptyScopes: stringArray,
-  missingHighValueEvidence: stringArray,
-  internalAuditLeaks: stringArray,
-  strengths: stringArray,
-  weaknesses: stringArray,
-}).strict().superRefine((evaluation, context) => {
+  unsupportedClaims: abFindingListSchema,
+  attributionErrors: abFindingListSchema,
+  emptyScopes: abFindingListSchema,
+  missingHighValueEvidence: abFindingListSchema,
+  internalAuditLeaks: abFindingListSchema,
+  strengths: abFindingListSchema,
+  weaknesses: abFindingListSchema,
+}).strict()
+
+const BLIND_AB_HARD_GATE_FIELDS = [
+  'unsupportedClaims',
+  'attributionErrors',
+  'emptyScopes',
+  'internalAuditLeaks',
+] as const
+
+const blindABCandidateEvaluationSchema = blindABCandidateEvaluationStructureSchema.superRefine((evaluation, context) => {
   if (evaluation.absoluteGate !== 'pass') return
 
-  const hardGateCollections = [
-    ['unsupportedClaims', evaluation.unsupportedClaims],
-    ['attributionErrors', evaluation.attributionErrors],
-    ['emptyScopes', evaluation.emptyScopes],
-    ['internalAuditLeaks', evaluation.internalAuditLeaks],
-  ] as const
-  for (const [field, issues] of hardGateCollections) {
+  for (const field of BLIND_AB_HARD_GATE_FIELDS) {
+    const issues = evaluation[field]
     if (issues.length === 0) continue
     context.addIssue({
       code: z.ZodIssueCode.custom,
@@ -638,15 +645,104 @@ function blindABTotal(evaluation: z.infer<typeof blindABCandidateEvaluationSchem
   return Object.values(evaluation.dimensions).reduce((sum, score) => sum + score, 0)
 }
 
-export const blindABEvaluationSchema = z.object({
+const blindABPairwiseSchema = z.object({
+  winner: z.enum(['A', 'B', 'tie']),
+  confidence: confidenceSchema,
+  reason: nonEmptyString.max(240),
+}).strict()
+
+const blindABEvaluationStructureSchema = z.object({
   schemaVersion: z.literal(V5_SCHEMA_VERSION),
+  evaluations: z.array(blindABCandidateEvaluationStructureSchema).length(2),
+  pairwise: blindABPairwiseSchema,
+}).strict()
+
+function expectedBlindABWinner(
+  candidateA: z.infer<typeof blindABCandidateEvaluationStructureSchema>,
+  candidateB: z.infer<typeof blindABCandidateEvaluationStructureSchema>
+) {
+  if (candidateA.absoluteGate !== candidateB.absoluteGate) {
+    return candidateA.absoluteGate === 'pass' ? 'A' as const : 'B' as const
+  }
+  const totalA = blindABTotal(candidateA)
+  const totalB = blindABTotal(candidateB)
+  return totalA === totalB ? 'tie' as const : totalA > totalB ? 'A' as const : 'B' as const
+}
+
+/**
+ * P12 semantic fields are deterministically derived by the server. JSON Schema
+ * cannot express these cross-field rules, so providers may return structurally
+ * valid JSON with a stale gate or winner. Only normalize after the complete
+ * strict structure is known to be valid; malformed ids, dimensions, or unknown
+ * fields therefore remain untouched and continue to fail closed in the schema.
+ */
+export interface BlindABSemanticNormalizationAudit {
+  applied: boolean
+  changes: string[]
+}
+
+export interface BlindABSemanticNormalizationResult {
+  value: unknown
+  audit: BlindABSemanticNormalizationAudit
+}
+
+export function normalizeBlindABEvaluationSemanticsWithAudit(
+  value: unknown
+): BlindABSemanticNormalizationResult {
+  const parsed = blindABEvaluationStructureSchema.safeParse(value)
+  if (!parsed.success) return { value, audit: { applied: false, changes: [] } }
+  const originalIds = new Set(parsed.data.evaluations.map(evaluation => evaluation.candidateId))
+  if (originalIds.size !== 2 || !originalIds.has('A') || !originalIds.has('B')) {
+    return { value, audit: { applied: false, changes: [] } }
+  }
+
+  const changes: string[] = []
+  const evaluations = parsed.data.evaluations.map(evaluation => {
+    const hasHardGateIssue = BLIND_AB_HARD_GATE_FIELDS.some(field => evaluation[field].length > 0)
+    if (evaluation.absoluteGate !== 'pass' || !hasHardGateIssue) return evaluation
+    changes.push(`evaluations.${evaluation.candidateId}.absoluteGate:pass->fail`)
+    return { ...evaluation, absoluteGate: 'fail' as const }
+  })
+  const evaluationsById = new Map(evaluations.map(evaluation => [evaluation.candidateId, evaluation]))
+  const candidateA = evaluationsById.get('A')!
+  const candidateB = evaluationsById.get('B')!
+  const expectedWinner = expectedBlindABWinner(candidateA, candidateB)
+  const gateChanged = evaluations.some((evaluation, index) => (
+    evaluation.absoluteGate !== parsed.data.evaluations[index]?.absoluteGate
+  ))
+  const winnerChanged = expectedWinner !== parsed.data.pairwise.winner
+  const semanticsChanged = gateChanged || winnerChanged
+  if (!semanticsChanged) return { value, audit: { applied: false, changes: [] } }
+  if (winnerChanged) changes.push(`pairwise.winner:${parsed.data.pairwise.winner}->${expectedWinner}`)
+  changes.push('pairwise.confidence:set-low', 'pairwise.reason:set-deterministic')
+  const deterministicReason = candidateA.absoluteGate !== candidateB.absoluteGate
+    ? `服务端按绝对门禁优先规则确定胜者为 ${expectedWinner}。`
+    : expectedWinner === 'tie'
+      ? '两个候选的绝对门禁与维度总分相同，服务端判定为平局。'
+      : `服务端按维度总分确定胜者为 ${expectedWinner}。`
+
+  return {
+    value: {
+      ...parsed.data,
+      evaluations,
+      pairwise: {
+        ...parsed.data.pairwise,
+        winner: expectedWinner,
+        confidence: 'low' as const,
+        reason: deterministicReason,
+      },
+    },
+    audit: { applied: true, changes },
+  }
+}
+
+export function normalizeBlindABEvaluationSemantics(value: unknown): unknown {
+  return normalizeBlindABEvaluationSemanticsWithAudit(value).value
+}
+
+export const blindABEvaluationSchema = blindABEvaluationStructureSchema.extend({
   evaluations: z.array(blindABCandidateEvaluationSchema).length(2),
-  pairwise: z.object({
-    winner: z.enum(['A', 'B', 'tie']),
-    confidence: confidenceSchema,
-    reason: nonEmptyString,
-  }).strict(),
-}).strict().superRefine((result, context) => {
+}).superRefine((result, context) => {
   const evaluationsById = new Map(result.evaluations.map(evaluation => [evaluation.candidateId, evaluation]))
   if (evaluationsById.size !== 2 || !evaluationsById.has('A') || !evaluationsById.has('B')) {
     context.addIssue({
@@ -659,14 +755,7 @@ export const blindABEvaluationSchema = z.object({
 
   const candidateA = evaluationsById.get('A')!
   const candidateB = evaluationsById.get('B')!
-  let expectedWinner: 'A' | 'B' | 'tie'
-  if (candidateA.absoluteGate !== candidateB.absoluteGate) {
-    expectedWinner = candidateA.absoluteGate === 'pass' ? 'A' : 'B'
-  } else {
-    const totalA = blindABTotal(candidateA)
-    const totalB = blindABTotal(candidateB)
-    expectedWinner = totalA === totalB ? 'tie' : totalA > totalB ? 'A' : 'B'
-  }
+  const expectedWinner = expectedBlindABWinner(candidateA, candidateB)
 
   if (result.pairwise.winner !== expectedWinner) {
     context.addIssue({
