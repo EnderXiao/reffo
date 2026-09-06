@@ -130,7 +130,7 @@ nano .env
 **使用 DeepSeek：**
 
 ```env
-OPENAI_API_KEY=sk-your-deepseek-api-key-here
+OPENAI_API_KEY=<DeepSeek API Key>
 OPENAI_BASE_URL=https://api.deepseek.com
 AI_MODEL=deepseek-chat
 
@@ -142,7 +142,7 @@ CORS_ORIGIN=http://localhost:5173
 **使用 OpenAI：**
 
 ```env
-OPENAI_API_KEY=sk-your-openai-api-key-here
+OPENAI_API_KEY=<OpenAI API Key>
 OPENAI_BASE_URL=https://api.openai.com/v1
 AI_MODEL=gpt-4
 

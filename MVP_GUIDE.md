@@ -165,7 +165,7 @@ bun run test
 ### 后端配置 ([backend/.env](backend/.env))
 
 ```env
-OPENAI_API_KEY=sk-ced9acb2de62432e8e6711940a0b3b74
+OPENAI_API_KEY=<从环境变量或 Render Secret 配置>
 OPENAI_BASE_URL=https://api.deepseek.com
 AI_MODEL=deepseek-chat
 PORT=3000
