@@ -23,12 +23,14 @@
   {"key":"APP_ENV","value":"nonprod"},
   {"key":"DATABASE_PROVIDER","value":"supabase"},
   {"key":"SUPABASE_PROJECT_ENV","value":"nonprod"},
-  {"key":"PORT","value":"3000"},
-  {"key":"HOST","value":"0.0.0.0"}
+  {"key":"SUPABASE_URL","value":"..."},
+  {"key":"SUPABASE_SECRET_KEY","value":"..."}
 ]
 ```
 
 不要把真实 key 写进仓库文件；JSON 整体放 GitHub Secret。
+
+不要配置 `PORT` 或 `HOST`：Render Web Service 会注入 `PORT`，应用默认监听 `0.0.0.0`。自动化脚本也会过滤这两个变量，避免本地端口覆盖 Render 端口。
 
 ## 自动化行为
 
