@@ -69,8 +69,17 @@ case "${action}" in
       echo 'RENDER_FEATURE_ENV_VARS_JSON must be a JSON array' >&2
       exit 1
     fi
-    # Render injects PORT for Web Services. Never override it with a local port.
-    env_vars="$(jq '[.[] | select(.key != "PORT" and .key != "HOST")]' <<<"${env_vars}")"
+    # Render injects PORT for Web Services. Feature environments must never
+    # inherit a Pro model or model fallback from the shared secret.
+    env_vars="$(jq '
+      [.[] | select(
+        .key != "PORT"
+        and .key != "HOST"
+        and .key != "AI_MODEL"
+        and .key != "AI_FALLBACK_MODELS"
+      )]
+      + [{key:"AI_MODEL",value:"deepseek-v4-flash"},{key:"AI_FALLBACK_MODELS",value:""}]
+    ' <<<"${env_vars}")"
 
     if [[ -z "${service_id}" ]]; then
       payload="$(jq -cn \

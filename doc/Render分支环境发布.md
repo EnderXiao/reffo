@@ -15,7 +15,7 @@
 
 - `RENDER_API_KEY`：Render API key。
 - `RENDER_OWNER_ID`：Render workspace ID，不是 GitHub owner ID。
-- `RENDER_FEATURE_ENV_VARS_JSON`：feature 环境变量 JSON 数组。至少包含后端启动所需变量，例如 `APP_ENV=nonprod`、Supabase nonprod 配置、AI/OCR 配置、`PORT=3000`、`HOST=0.0.0.0`。
+- `RENDER_FEATURE_ENV_VARS_JSON`：feature 环境变量 JSON 数组。至少包含后端启动所需变量，例如 `APP_ENV=nonprod`、Supabase nonprod 配置、AI/OCR 配置。部署脚本会忽略 `PORT`、`HOST`，并强制设置 `AI_MODEL=deepseek-v4-flash`、`AI_FALLBACK_MODELS=`，防止 feature 环境调用 Pro 或其他 fallback 模型。
 - `RENDER_FEATURE_FRONTEND_ENV_VARS_JSON`：可选的 feature 前端构建变量 JSON 数组；脚本会强制注入 `REFFO_ENV=nonprod` 和同分支后端 `API_BASE_URL`。
 
 `RENDER_FEATURE_ENV_VARS_JSON` 示例结构：
