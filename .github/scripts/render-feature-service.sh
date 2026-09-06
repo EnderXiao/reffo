@@ -59,7 +59,7 @@ api() {
 
 encoded_name="$(jq -rn --arg value "${service_name}" '$value|@uri')"
 services="$(api GET "/services?ownerId=${RENDER_OWNER_ID}&name=${encoded_name}&limit=20")"
-service_id="$(jq -r '.[0].id // empty' <<<"${services}")"
+service_id="$(jq -r 'if type == "array" then .[0].id // empty else .data[0].id // empty end' <<<"${services}")"
 
 case "${action}" in
   deploy)
