@@ -1,0 +1,62 @@
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 9,85,93-94,103,113,248-283,324,332-333
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 271-276,278-280,282,367,371-373,389-390,405-406,415-423,430-431,435-436,496,672-673,680-681,689-690,706-707,720,1124,1183-1185,1189,1225-1227,1231,1237-1243,1245,1267,1269-1270,1281,1474-1475,1492-1493,1508-1509
+frontend/Taro/reffo-taro/src/pages/index/PageView.h5.tsx
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 23,179,186,284-289,296-301,332,340-341,359,368-378,393-395,517-518,521,526,538,540,542,552-554,572,579-601,607-610
+doc/todo-list.md
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 20,31
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/shared.ts
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 37
+frontend/Taro/reffo-taro/src/components/business/GenerationStageH5/__tests__/index.test.tsx
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 27
+backend/src/prompts/prompts.test.ts
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 129,155-159
+  s_b30eb70d4e6e6a::t_0ab40b89df0f62 160-161
+frontend/Taro/reffo-taro/src/pages/index/__tests__/usePageModel.test.tsx
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 7,25-31,39,68-73,81,92,102,440-513
+frontend/Taro/reffo-taro/src/pages/index/index.h5.scss
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 626-627,633-643,645-647,934-954,2002-2044
+  s_b30eb70d4e6e6a::t_48215d7fd0f654 2045
+backend/src/prompts/v42-prompts.ts
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 27-31
+frontend/Taro/reffo-taro/src/pages/auth/index.scss
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 190-224
+doc/提测Bug修复TODO.md
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 1-48
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.h5.tsx
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 119,378
+frontend/Taro/reffo-taro/src/pages/create/index.h5.scss
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 1450-1483,2081-2084
+  s_b30eb70d4e6e6a::t_2728c14f796e92 2085
+frontend/Taro/reffo-taro/src/components/business/GenerationStageH5/index.tsx
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 43,64,93,95-99
+frontend/Taro/reffo-taro/src/pages/result/index.h5.scss
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 249-254,510-512,1010-1029,1069
+frontend/Taro/reffo-taro/src/pages/index/__tests__/index.test.tsx
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 2,53,57-60,245-257
+  s_b30eb70d4e6e6a::t_1891bc3524ee50 258
+frontend/Taro/reffo-taro/src/pages/landing/index.scss
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 318
+frontend/Taro/reffo-taro/src/pages/result/usePageModel.ts
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 153-154,157,208,549-552,558-560,562-564,566-573,649-650,653
+frontend/Taro/reffo-taro/src/pages/auth/index.tsx
+  s_b30eb70d4e6e6a::t_fcd3ebf91761ed 11,31,106,135-147,242-250,515-522
+  s_b30eb70d4e6e6a::t_563c1cee70f574 523
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9e9a441c7293b2c539de5fdde75278099b994fe0",
+  "prompts": {},
+  "sessions": {
+    "s_b30eb70d4e6e6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075a7-3f5b-7a71-ac24-c92b47deed43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
