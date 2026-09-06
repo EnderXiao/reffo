@@ -116,7 +116,7 @@ case "${action}" in
             ;;
           build_failed|deactivated|canceled|cancelled)
             echo "Render frontend deploy ${deploy_id} failed with status ${deploy_status}" >&2
-            for logs_path in "/services/${service_id}/deploys/${deploy_id}/logs" "/logs?ownerId=${RENDER_OWNER_ID}&resource=service&serviceId=${service_id}&limit=100"; do
+            for logs_path in "/services/${service_id}/deploys/${deploy_id}/logs" "/logs?ownerId=${RENDER_OWNER_ID}&limit=100"; do
               logs_response="$(curl -sS --max-time 10 -w '\nHTTP %{http_code}' \
                 "${api_base}${logs_path}" \
                 -H "Authorization: Bearer ${RENDER_API_KEY}" || true)"
