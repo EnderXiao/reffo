@@ -6,7 +6,6 @@ import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import {toHistoryCardItems} from './homeCardData'
-import {feedback} from '@/utils/feedback'
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const NEW_CARD_ID_QUERY_KEY = 'newCardId'
@@ -82,7 +81,6 @@ export interface IndexPageViewModel {
   sourceResumeTitle: string | null
   isStrategyVisible: boolean
   isCreateMode: boolean
-  deletingCardId: string | null
   initialCardIndex: number
   enteringCardId: string | null
   handleEnterCreateMode: () => void
@@ -90,8 +88,6 @@ export interface IndexPageViewModel {
   handleCancelCreate: () => void
   handleViewHistory: () => void
   handleCardPress: (card: HomeCardItem) => void
-  handleCardEdit: (card: HomeCardItem) => void
-  handleCardDelete: (card: HomeCardItem) => void
   handleCardChange: (_: HomeCardItem, index: number) => void
   handleDeckFirstInteraction: () => void
   logoSource: string
@@ -100,7 +96,7 @@ export interface IndexPageViewModel {
 export function usePageModel(logoSource: string): IndexPageViewModel {
   const pageRoute = usePageRoute()
   const route = useRouteTransition()
-  const {histories, loading, loadHistories, deleteHistory} = useHistoryStore()
+  const {histories, loading, loadHistories} = useHistoryStore()
   const {
     latestSourceResume,
     loading: sourceResumeLoading,
@@ -110,7 +106,6 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   const [activeCardIndex, setActiveCardIndex] = useState(0)
   const [isStrategyVisible, setIsStrategyVisible] = useState(initialReturningHomeState.isReturning)
   const [isCreateMode, setIsCreateMode] = useState(false)
-  const [deletingCardId, setDeletingCardId] = useState<string | null>(null)
   const [enteringCardId, setEnteringCardId] = useState<string | null>(
     pageRoute.readString(NEW_CARD_ID_QUERY_KEY),
   )
@@ -245,42 +240,6 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     }))
   }, [histories, resolvedCreateMode])
 
-  const handleCardEdit = useCallback((card: HomeCardItem) => {
-    if (deletingCardId) {
-      return
-    }
-
-    void route.navigate(appendRouteParams(routePaths.create, {
-      mode: 'editHistory',
-      historyId: card.id,
-    }))
-  }, [deletingCardId, route])
-
-  const handleCardDelete = useCallback((card: HomeCardItem) => {
-    if (deletingCardId) {
-      return
-    }
-
-    feedback.modal({
-      title: '删除这份简历？',
-      content: `${card.company} · ${card.role}\n删除后将无法从历史记录恢复。`,
-      confirmText: '删除',
-      cancelText: '保留',
-      tone: 'danger',
-      onConfirm: () => {
-        setDeletingCardId(card.id)
-        setTimeout(() => {
-          void deleteHistory(card.id)
-            .then(() => feedback.success('简历已删除', {duration: 1200}))
-            .catch(error => {
-              feedback.error(error instanceof Error ? error.message : '删除简历失败，请重试')
-            })
-            .finally(() => setDeletingCardId(null))
-        }, 280)
-      },
-    })
-  }, [deleteHistory, deletingCardId])
-
   const handleCardChange = useCallback((_: HomeCardItem, index: number) => {
     setActiveCardIndex(previousIndex =>
       previousIndex === index ? previousIndex : index,
@@ -321,7 +280,6 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     sourceResumeTitle: latestSourceResume?.title ?? null,
     isStrategyVisible,
     isCreateMode: resolvedCreateMode,
-    deletingCardId,
     initialCardIndex: initialDeckIndex,
     enteringCardId,
     handleEnterCreateMode,
@@ -329,8 +287,6 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     handleCancelCreate,
     handleViewHistory,
     handleCardPress,
-    handleCardEdit,
-    handleCardDelete,
     handleCardChange,
     handleDeckFirstInteraction,
     logoSource,
