@@ -71,7 +71,7 @@ case "${action}" in
     fi
     env_vars="$(jq --arg apiBaseUrl "${backend_url}" \
       '[.[] | select(.key != "PORT" and .key != "HOST" and .key != "API_BASE_URL")]
-       + [{key:"REFFO_ENV",value:"nonprod"},{key:"API_BASE_URL",value:$apiBaseUrl}]' <<<"${env_vars}")"
+       + [{key:"REFFO_ENV",value:"nonprod"},{key:"API_BASE_URL",value:$apiBaseUrl},{key:"NODE_VERSION",value:"22.14.0"}]' <<<"${env_vars}")"
 
     if [[ -z "${service_id}" ]]; then
       payload="$(jq -cn \
