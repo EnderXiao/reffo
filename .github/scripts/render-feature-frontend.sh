@@ -15,7 +15,7 @@ service_prefix="${RENDER_FEATURE_FRONTEND_SERVICE_PREFIX:-reffo-feature-web}"
 branch="${RENDER_FEATURE_BRANCH}"
 action="${RENDER_FEATURE_ACTION}"
 root_dir="${RENDER_FEATURE_FRONTEND_ROOT_DIR:-frontend/Taro/reffo-taro}"
-build_command="${RENDER_FEATURE_FRONTEND_BUILD_COMMAND:-corepack pnpm@10.33.2 install --frozen-lockfile && corepack pnpm@10.33.2 build:h5:nonprod}"
+build_command="${RENDER_FEATURE_FRONTEND_BUILD_COMMAND:-npm install --global pnpm@10.33.2 && pnpm install --frozen-lockfile && pnpm run build:h5:nonprod}"
 publish_path="${RENDER_FEATURE_FRONTEND_PUBLISH_PATH:-dist}"
 
 slug="$(printf '%s' "${branch#feature/}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
