@@ -1,0 +1,19 @@
+.github/scripts/render-feature-frontend.sh
+  s_b30eb70d4e6e6a::t_0dad4e76233c54 108-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1cde6a41e754a98d30b3b02747f789acc90e254c",
+  "prompts": {},
+  "sessions": {
+    "s_b30eb70d4e6e6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075a7-3f5b-7a71-ac24-c92b47deed43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}

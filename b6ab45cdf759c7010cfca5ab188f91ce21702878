@@ -1,0 +1,21 @@
+.github/scripts/render-feature-frontend.sh
+  s_b30eb70d4e6e6a::t_6f0ac2a510e3ea 18
+frontend/Taro/reffo-taro/package.json
+  s_b30eb70d4e6e6a::t_6f0ac2a510e3ea 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b6ab45cdf759c7010cfca5ab188f91ce21702878",
+  "prompts": {},
+  "sessions": {
+    "s_b30eb70d4e6e6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075a7-3f5b-7a71-ac24-c92b47deed43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}

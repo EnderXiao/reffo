@@ -1,0 +1,111 @@
+frontend/Taro/reffo-taro/src/pages/index/__tests__/index.test.tsx
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 221,226-228,231,236-238
+doc/服务端Harness校验规则说明.md
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 153,231,243,270,272
+frontend/Taro/reffo-taro/src/pages/profile/content.tsx
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-157
+frontend/Taro/reffo-taro/src/pages/profile/utils/__tests__/complianceMarkdown.test.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-59
+frontend/Taro/reffo-taro/src/config/version.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-8
+frontend/Taro/reffo-taro/src/pages/result/model/interviewReferences.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 90,96,108-110,123
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  s_b30eb70d4e6e6a::t_321d1f0271ee4a 360-361,375-380,392-396,606,608
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 618-629
+backend/src/schemas/interview-suggestions.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 60,69,82
+backend/src/types/index.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 106-113,145,167
+frontend/Taro/reffo-taro/src/services/profile.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 11-17,22-24
+  s_b30eb70d4e6e6a::t_3d3235a7196eeb 25
+supabase/migrations/202608260001_resume_daily_quotas.sql
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-66
+frontend/Taro/reffo-taro/src/pages/profile/content.config.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-3
+frontend/Taro/reffo-taro/config/index.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 2,8-35,40,153-154
+backend/src/routes/profile.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 6,57-72
+frontend/Taro/reffo-taro/src/utils/__tests__/history-helper.test.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 48
+frontend/Taro/reffo-taro/src/shared/routing/routePaths.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 11
+backend/src/workflows/resume-optimization-workflow.ts
+  s_b30eb70d4e6e6a::t_3aed5c37a39a58 30,73
+doc/Profile与内测配额版本发布TODO.md
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-100
+frontend/Taro/reffo-taro/src/app.config.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 13
+frontend/Taro/reffo-taro/src/types/index.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 220-224,246
+backend/src/services/resume-quota.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-91
+frontend/Taro/reffo-taro/src/pages/profile/utils/complianceMarkdown.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-111
+backend/src/harness/evaluators/business-evaluators.test.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 56-64,126-148,227-239
+backend/src/schemas/match-analysis.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 74-99,188,217
+.gitignore
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 12-13
+backend/src/schemas/interview-suggestions.test.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 21
+backend/.env.example
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 37-41
+frontend/Taro/reffo-taro/scripts/generate-compliance-content.mjs
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-12
+frontend/Taro/reffo-taro/src/pages/profile/content.scss
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-45
+frontend/Taro/reffo-taro/src/pages/profile/index.scss
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 4-14,21-24,27-29,31-50
+frontend/Taro/reffo-taro/src/services/resume.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 211,219-232,256,311-313,339,341
+frontend/Taro/reffo-taro/src/pages/profile/index.tsx
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1,3,5-8,12,15-35,39,43-48,51,56-79,81-109,112-120,123-124,133-152,154-157
+backend/src/prompts/prompts.test.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 118-119,134-142
+  s_b30eb70d4e6e6a::t_1ba2855322e58e 143-144
+doc/版本Tag发布流程.md
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-14
+backend/src/prompts/prompts.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 186-192,233-238,284-286,334-335,392,399,428,432
+.github/workflows/release-tag.yml
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 1-88
+frontend/Taro/reffo-taro/package.json
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 13-17
+backend/src/harness/evaluators/business-evaluators.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 313-318,320,322-323,371-378,384
+backend/src/repositories/resume-history-repository.sqlite.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 2,13,17,45-50,182-188,193,212,214,233,236,267,273,276,284,288-289,324,327,333,336
+backend/src/schemas/match-analysis.test.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 29-33,72-98
+backend/src/routes/mvp.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 34,115,117-118,129,139-142,350,352-353,387,396-399
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 2,7,97,110,126,129,152
+frontend/Taro/reffo-taro/src/pages/index/PageView.h5.tsx
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 442-443
+backend/src/config/env.ts
+  s_b30eb70d4e6e6a::t_6abfe8e4152627 92-98,119-123,216-219
+  s_b30eb70d4e6e6a::t_5cf25c8a4df97e 220-221
+frontend/Taro/reffo-taro/src/content/compliance.generated.ts
+  s_b30eb70d4e6e6a::t_9667ff00b7fd14 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "721497a0e0bc50369c154753f2ca57ea8c04aa38",
+  "prompts": {},
+  "sessions": {
+    "s_b30eb70d4e6e6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075a7-3f5b-7a71-ac24-c92b47deed43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
