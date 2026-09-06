@@ -1305,9 +1305,16 @@ describe('v5 production adaptive workflow', () => {
       '数据产品经理\n负责指标体系建设与跨团队推进\n要求熟练使用SQL',
     ]
 
+    let analysisSucceeded = 0
     for (const jobDescription of jobDescriptions) {
       try {
-        await workflow.run({ resumeMarkdown: FIXTURE_RESUME, jobDescription })
+        await workflow.run({
+          resumeMarkdown: FIXTURE_RESUME, jobDescription,
+          onAnalysisSucceeded: () => {
+            expect(provider.p02Calls).toBe(analysisSucceeded)
+            analysisSucceeded += 1
+          },
+        })
         throw new Error('expected cache probe to stop after extraction')
       } catch (error) {
         expect(error).toBeInstanceOf(V5WorkflowBlockedError)
@@ -1317,7 +1324,32 @@ describe('v5 production adaptive workflow', () => {
 
     expect(provider.p01Calls).toBe(1)
     expect(provider.p02Calls).toBe(2)
+    expect(analysisSucceeded).toBe(2)
     expect(resumeExtractionCache.stats()).toMatchObject({ hits: 1, misses: 1, entries: 1 })
+  })
+
+  test('stops before JD extraction when the analysis callback rejects', async () => {
+    const provider = new ResumeExtractionCacheProbeProvider()
+    const workflow = new V5ResumeOptimizationWorkflow({ provider, judgeProvider: provider, enableDefaultSubscribers: false })
+    let charged = 0
+    await expect(workflow.run({
+      resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD,
+      onAnalysisSucceeded: async () => { charged += 1; throw new Error('quota exhausted') },
+    })).rejects.toBeInstanceOf(V5WorkflowBlockedError)
+    expect(charged).toBe(1)
+    expect(provider.p01Calls).toBe(1)
+    expect(provider.p02Calls).toBe(0)
+  })
+
+  test('does not consume quota when resume extraction fails', async () => {
+    const provider = new TruncatedResumeExtractionProvider()
+    const workflow = new V5ResumeOptimizationWorkflow({ provider, judgeProvider: provider, enableDefaultSubscribers: false })
+    let charged = 0
+    await expect(workflow.run({
+      resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD,
+      onAnalysisSucceeded: () => { charged += 1 },
+    })).rejects.toBeInstanceOf(V5WorkflowBlockedError)
+    expect(charged).toBe(0)
   })
 
   test('runs the formal chain and only returns a gate-passed artifact', async () => {

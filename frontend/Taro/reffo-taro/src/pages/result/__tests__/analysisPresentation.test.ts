@@ -1,4 +1,5 @@
 import type {ProcessResult} from '@/types'
+import {buildInterviewStoryViewItems} from '../model/interviewReferences'
 import {
   buildGapViewItems,
   buildOptimizationStrategyViewItems,
@@ -61,6 +62,26 @@ function buildResult(): ProcessResult {
 }
 
 describe('analysis presentation', () => {
+  test('preserves generated storytelling points alongside source references', () => {
+    const result = buildResult()
+    result.interview.story_recommendations = [{
+      title: '用户调研', background: '负责用户调研', result: '推进方案落地',
+      storytelling_approach: ['  先说明调研背景  ', '说明本人负责的工作', ''],
+    }]
+    const [story] = buildInterviewStoryViewItems(result, '负责用户调研和方案落地', '岗位要求用户调研')
+    expect(story.storytellingApproach).toEqual(['先说明调研背景', '说明本人负责的工作'])
+    expect(story.resumeQuote).toBe('负责用户调研和方案落地')
+    expect(story.jdQuote).toBe('岗位要求用户调研')
+  })
+
+  test('keeps source references when historical interview data has no storytelling points', () => {
+    const result = buildResult()
+    const [story] = buildInterviewStoryViewItems(result, '负责用户调研和方案落地', '岗位要求用户调研')
+    expect(story.storytellingApproach).toEqual([])
+    expect(story.resumeQuote).toBeTruthy()
+    expect(story.jdQuote).toBeTruthy()
+  })
+
   test('uses JD-specific structured gaps instead of generic resume weaknesses', () => {
     const gaps = buildGapViewItems(buildResult())
 

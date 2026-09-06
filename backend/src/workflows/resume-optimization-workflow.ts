@@ -63,16 +63,29 @@ export class ResumeOptimizationWorkflow {
       enableDefaultSubscribers: false,
       resumeExtractionCache: sharedResumeExtractionCache,
     })
-    const result = await workflow.run({
-      resumeMarkdown: input.resume_markdown,
-      jobDescription: input.jd_text,
-      outputLanguage: input.output_language,
-      // Compatibility flag only. Release is controlled by deterministic code
-      // checks in v5 and no longer invokes an external judge.
-      enableQualityJudge: false,
-      workflowTimeoutMs: input.workflowTimeoutMs,
-    })
-    await input.onAnalysisSucceeded?.()
-    return toLegacyMvpProcessResponse(result)
+    let analysisFailure: { error: unknown } | undefined
+    try {
+      const result = await workflow.run({
+        resumeMarkdown: input.resume_markdown,
+        jobDescription: input.jd_text,
+        outputLanguage: input.output_language,
+        // Compatibility flag only. Release is controlled by deterministic code
+        // checks in v5 and no longer invokes an external judge.
+        enableQualityJudge: false,
+        workflowTimeoutMs: input.workflowTimeoutMs,
+        onAnalysisSucceeded: async () => {
+          try {
+            await input.onAnalysisSucceeded?.()
+          } catch (error) {
+            analysisFailure = { error }
+            throw error
+          }
+        },
+      })
+      return toLegacyMvpProcessResponse(result)
+    } catch (error) {
+      // Keep application errors (for example quota exhaustion) intact after V5 diagnostics.
+      throw analysisFailure ? analysisFailure.error : error
+    }
   }
 }

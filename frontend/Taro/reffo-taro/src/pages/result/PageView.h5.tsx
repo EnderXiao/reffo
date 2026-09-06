@@ -642,18 +642,23 @@ function InterviewPanel({
               <Text className='reffo-result__story-bullet'>• {item.result}</Text>
             </View>
 
-            {item.storytellingApproach.length > 0 && (
-              <>
-                <Text className='reffo-result__story-label'>讲述思路：</Text>
-                <View className='reffo-result__story-bullets'>
-                  {item.storytellingApproach.map((point, pointIndex) => (
-                    <Text key={`${item.title}-approach-${pointIndex}`} className='reffo-result__story-bullet'>
-                      • {point}
-                    </Text>
-                  ))}
-                </View>
-              </>
-            )}
+            <Text className='reffo-result__story-label'>讲述思路：</Text>
+            <View className='reffo-result__story-bullets'>
+              {item.storytellingApproach.length > 0 ? item.storytellingApproach.map((point, pointIndex) => (
+                <Text key={`${item.title}-approach-${pointIndex}`} className='reffo-result__story-bullet'>
+                  • {point}
+                </Text>
+              )) : (
+                <>
+                  <Text className='reffo-result__story-bullet'>
+                    • 从岗位描述中 <SourceReference value={item.jdQuote} /> 对齐讲述重点，优先说明这段经历如何回应岗位要求。
+                  </Text>
+                  <Text className='reffo-result__story-bullet'>
+                    • 从源简历中 <SourceReference value={item.resumeQuote} /> 回到可核验事实，避免把岗位要求包装成自己已经做过的经历。
+                  </Text>
+                </>
+              )}
+            </View>
           </View>
         ))}
       </View>

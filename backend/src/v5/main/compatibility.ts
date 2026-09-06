@@ -168,6 +168,17 @@ function toMatchAnalysis(result: V5WorkflowResult): MatchAnalysis {
       missing: missing
         .filter(item => requirement.get(item.requirementId)?.category === 'skill')
         .map(item => requirement.get(item.requirementId)?.normalizedRequirement ?? item.requirementId),
+      required_skill_checks: result.jobRequirementBundle.requirementAtoms
+        .filter(atom => atom.category === 'skill')
+        .map(atom => {
+          const match = result.matchAnalysis.requirementMatches.find(item => item.requirementId === atom.requirementId)
+          return {
+            requirement: atom.verbatimText,
+            status: match?.status === 'direct_match' ? 'matched' as const
+              : match?.status === 'currently_unproven' ? 'missing' as const : 'unclear' as const,
+            evidence: match?.rationale ?? '当前材料未完成该要求的核验。',
+          }
+        }),
     },
     experience_match: result.matchAnalysis.positioning.statement,
     soft_skills_match: '仅基于当前材料和目标岗位显式要求评估。',
@@ -204,6 +215,8 @@ function toInterviewSuggestions(result: V5WorkflowResult): InterviewSuggestions 
       title: item.title,
       background: item.background,
       result: item.knownResult ?? `待核实：${item.preparationGap ?? '结果证据不足'}`,
+      // Historical P10 records have no dedicated approach; the UI keeps its source-reference fallback.
+      storytelling_approach: [],
     })),
     follow_up_questions: preparation.followUpQuestions.map(item => item.question),
   }

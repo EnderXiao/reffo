@@ -118,6 +118,7 @@ export interface V5WorkflowInput {
   /** @deprecated Release gating is deterministic; this flag is ignored. */
   enableQualityJudge?: boolean
   workflowTimeoutMs?: number
+  onAnalysisSucceeded?: () => void | Promise<void>
 }
 
 interface RepairableStageResolution {
@@ -662,6 +663,7 @@ export class V5ResumeOptimizationWorkflow {
         input,
       })
       await setState('resume_extracted')
+      await input.onAnalysisSucceeded?.()
 
       await setState('job_extracting')
       const jobCandidate = await this.executePlugin({
