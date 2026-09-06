@@ -1,0 +1,98 @@
+backend/src/prompts/v42-prompts.ts
+  s_b15ffcb2ac7470::t_a8d86ac677f37b 27-31
+frontend/Taro/reffo-taro/src/pages/index/__tests__/usePageModel.test.tsx
+  s_b15ffcb2ac7470::t_cf98f079244126 7,25-31,39,68-73,81,92,102
+  s_b15ffcb2ac7470::t_404d7f6ebedb63 440-513
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.h5.tsx
+  s_b15ffcb2ac7470::t_00aebc719c4423 119,378
+frontend/Taro/reffo-taro/src/pages/result/usePageModel.ts
+  s_b15ffcb2ac7470::t_74a4ab71e592e1 153-154,157,208,549-552,558-560,562-564,566-573,649-650,653
+frontend/Taro/reffo-taro/src/components/business/GenerationStageH5/__tests__/index.test.tsx
+  s_b15ffcb2ac7470::t_c770fe6e14938e 27
+backend/src/prompts/prompts.test.ts
+  s_b15ffcb2ac7470::t_70bcadb000e61e 126,152-156
+  s_b15ffcb2ac7470::t_4ff7a9a3f1b0fc 157-158
+doc/todo-list.md
+  s_b15ffcb2ac7470::t_6d9e02507fb9d5 20,31
+frontend/Taro/reffo-taro/src/pages/index/PageView.h5.tsx
+  s_b15ffcb2ac7470::t_0823f03e24e69c 393-395
+  s_b15ffcb2ac7470::t_02e11092527ba9 23,526
+  s_b15ffcb2ac7470::t_e8b6d119f00256 332,340-341,572,579-600
+  s_b15ffcb2ac7470::t_3885da1576e0f9 179,186,284-289,296-301,552-554
+  s_b15ffcb2ac7470::t_c50d39ce7c2a58 359,368-378,517-518,521,538,540,542,607-610
+  s_b30eb70d4e6e6a::t_1d72e1362ef3ef 601
+frontend/Taro/reffo-taro/src/pages/auth/index.tsx
+  s_b15ffcb2ac7470::t_964eb2e888d10b 243-245,247-249
+  s_b15ffcb2ac7470::t_1b08c98fad4145 11,31,106,135-147,242,246,250,515-522
+  s_b15ffcb2ac7470::t_7091822a619a07 523
+doc/提测Bug修复TODO.md
+  s_b15ffcb2ac7470::t_103b7bf90f95d7 13-15,17,38-41
+  s_b15ffcb2ac7470::t_411da763d562d8 25,28
+  s_b15ffcb2ac7470::t_a75c627d17f03b 12,48
+  s_b15ffcb2ac7470::t_719895b4a1199f 16,18,23,27,30,43-47
+  s_b15ffcb2ac7470::t_ea6d4f9c458a15 1-11,19-21,24,26,29,31-37
+  s_b15ffcb2ac7470::t_53b07e02681a57 22,42
+frontend/Taro/reffo-taro/src/pages/result/index.h5.scss
+  s_b15ffcb2ac7470::t_85f5157a920b42 862-881
+  s_b15ffcb2ac7470::t_4e75330a6d1267 249-254
+  s_b15ffcb2ac7470::t_4b7a755efb7cd5 921
+  s_b15ffcb2ac7470::t_a3612da8f2fe66 510-512
+frontend/Taro/reffo-taro/src/pages/landing/index.scss
+  s_b15ffcb2ac7470::t_9a7f2a3324400d 318
+frontend/Taro/reffo-taro/src/pages/index/__tests__/index.test.tsx
+  s_b15ffcb2ac7470::t_cdd8c4871f5c65 53,57-60,245-251,255,257
+  s_b15ffcb2ac7470::t_b1d3b9910f27fb 2,252-254,256
+  s_b15ffcb2ac7470::t_ad5ea6164014c1 258
+frontend/Taro/reffo-taro/src/components/business/GenerationStageH5/index.tsx
+  s_b15ffcb2ac7470::t_8878c6daad3f83 43,93
+  s_b15ffcb2ac7470::t_9ab7ec8e573fb0 64,95-99
+frontend/Taro/reffo-taro/src/pages/index/index.h5.scss
+  s_b15ffcb2ac7470::t_7b6a805c6d8748 633-643
+  s_b15ffcb2ac7470::t_aa3488c7e2052c 934-954,2002-2044
+  s_b15ffcb2ac7470::t_81fb9820187be9 626-627,645-647
+  s_b30eb70d4e6e6a::t_de1993e7e87325 2045
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/shared.ts
+  s_b15ffcb2ac7470::t_00aebc719c4423 37
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  s_b15ffcb2ac7470::t_5b4442ebe3b6e8 366,370-372,386-387,402-403,412-420
+  s_b15ffcb2ac7470::t_ce78b519bd2cb2 703-704,717
+  s_b15ffcb2ac7470::t_146775dfa7885b 669-670,677-678,686-687
+  s_b15ffcb2ac7470::t_7d7f0867138800 89
+  s_b15ffcb2ac7470::t_f0fd4d6da808e0 1121,1234-1240,1242
+  s_b15ffcb2ac7470::t_7739a8eb26d416 270-275,277-279,281,427-428,432-433,493
+  s_b15ffcb2ac7470::t_3e90344d11ee17 1471-1472,1489-1490,1505-1506
+  s_b15ffcb2ac7470::t_dcaa8d7c002db2 1180-1182,1186,1222-1224,1228,1264,1266-1267,1278
+frontend/Taro/reffo-taro/src/pages/create/index.h5.scss
+  s_b15ffcb2ac7470::t_e5e6ddd00257da 2081-2085
+  s_b15ffcb2ac7470::t_f846aee74e0285 1450-1483
+frontend/Taro/reffo-taro/src/pages/auth/index.scss
+  s_b15ffcb2ac7470::t_8a6f6eac7e9008 190-224
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  s_b15ffcb2ac7470::t_b52e4c3e5f4031 9,85,93-94,103,113,248-283,324,332-333
+backend/src/prompts/prompts.ts
+  s_b15ffcb2ac7470::t_0aca2904a92666 279-290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7df0dc0899832181a75d31a9d9d01f7e939cb1ab",
+  "prompts": {},
+  "sessions": {
+    "s_b15ffcb2ac7470": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075b4-c6a6-7f11-828b-d943a5e93927",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    },
+    "s_b30eb70d4e6e6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075a7-3f5b-7a71-ac24-c92b47deed43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
