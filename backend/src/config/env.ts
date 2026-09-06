@@ -133,6 +133,9 @@ export const env = {
   AI_MODEL: process.env.AI_MODEL || 'deepseek-chat',
   DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'default',
   DEEPSEEK_REASONING_EFFORT: process.env.DEEPSEEK_REASONING_EFFORT || 'high',
+  // DeepSeek thinking consumes the same completion budget as final output.
+  // Legacy agents may omit maxOutputTokens, so reserve an explicit budget.
+  DEEPSEEK_THINKING_MAX_TOKENS: parsePositiveInteger(process.env.DEEPSEEK_THINKING_MAX_TOKENS, 12000),
   AI_FALLBACK_MODELS: (process.env.AI_FALLBACK_MODELS || '')
     .split(',')
     .map((model) => model.trim())

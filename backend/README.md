@@ -79,7 +79,7 @@ bun run migrate:sqlite-to-supabase:prod
 
 ### V5 插件清单
 
-非生产单案例验证可显式使用 `AI_MODEL=deepseek-v4-flash DEEPSEEK_THINKING_MODE=enabled DEEPSEEK_REASONING_EFFORT=high`。思考模式通过请求体显式指定，禁用无效 temperature；`completion_tokens` 已包含思考 Token，预算不能再次相加。只记录思考 Token 数，不保存或回传推理正文。模型、模式和强度进入运行及抽取缓存指纹，不提升旧缓存。各阶段 `max_tokens` 是思考与最终输出共用的现有限额，未增加额度；截断仍失败即停，不自动修复/重跑。默认环境与生产模型不因此变更。
+非生产单案例验证可显式使用 `AI_MODEL=deepseek-v4-flash DEEPSEEK_THINKING_MODE=enabled DEEPSEEK_REASONING_EFFORT=low`。思考模式通过请求体显式指定，禁用无效 temperature；`completion_tokens` 已包含思考 Token，预算不能再次相加。只记录思考 Token 数，不保存或回传推理正文。模型、模式和强度进入运行及抽取缓存指纹，不提升旧缓存。调用方未传 `maxOutputTokens` 时，Provider 使用 `DEEPSEEK_THINKING_MAX_TOKENS`（默认 12000）为思考与最终输出预留共享预算；V5 阶段显式上限仍以阶段配置为准。截断仍失败即停，不自动修复/重跑。默认环境与生产模型不因此变更。
 
 主流程通过 `V5WorkflowPluginRegistry` 调度以下插件：
 

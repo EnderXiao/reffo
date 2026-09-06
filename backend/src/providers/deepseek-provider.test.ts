@@ -151,6 +151,40 @@ describe('explicit DeepSeek V4 thinking', () => {
     expect(result).not.toHaveProperty('reasoning_content')
   })
 
+  test('reserves a default completion budget when thinking request omits maxOutputTokens', async () => {
+    let sent: Record<string, unknown> = {}
+    const provider = new DeepSeekProvider(createClient(async body => {
+      sent = body as Record<string, unknown>
+      return createResponse()
+    }), parseDeepSeekThinking('enabled', 'low'))
+
+    await provider.complete({ model: 'deepseek-v4-flash', messages: [] })
+
+    expect(sent.max_tokens).toBe(12000)
+  })
+
+  test('retries reasoning-only empty response at low effort', async () => {
+    const sent: Array<Record<string, unknown>> = []
+    const provider = new DeepSeekProvider(createClient(async body => {
+      sent.push(body as Record<string, unknown>)
+      if (sent.length === 1) {
+        return {
+          id: 'reasoning-only', model: 'deepseek-v4-flash',
+          choices: [{ message: { content: '', reasoning_content: 'omitted' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 2, completion_tokens: 20, completion_tokens_details: { reasoning_tokens: 20 } },
+        }
+      }
+      return createResponse()
+    }), parseDeepSeekThinking('enabled', 'high'))
+
+    const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [] })
+
+    expect(sent).toHaveLength(2)
+    expect(sent[0]).toMatchObject({ reasoning_effort: 'high', max_tokens: 12000 })
+    expect(sent[1]).toMatchObject({ reasoning_effort: 'low', max_tokens: 12000 })
+    expect(result).toMatchObject({ content: '{"ok":true}', physicalAttempts: 2 })
+  })
+
   test('allows disabled mode without sending reasoning effort', () => {
     expect(deepSeekThinkingParameters('deepseek-v4-flash', 'https://api.deepseek.com', parseDeepSeekThinking('disabled')))
       .toEqual({ thinking: { type: 'disabled' } })
