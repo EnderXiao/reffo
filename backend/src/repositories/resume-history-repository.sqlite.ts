@@ -1,4 +1,5 @@
 import type { RequestUserContext } from '@/auth/request-context'
+import {env} from '@/config/env'
 import { getDatabase, resetDatabaseConnection } from '@/repositories/database'
 import type { ResumeHistoryRepositoryContract } from '@/repositories/interfaces'
 import type { ResumeHistoryRecord, SaveResumeHistoryInput, UpdateResumeHistoryInput } from '@/types'
@@ -9,9 +10,11 @@ const HISTORY_ID_MAX_SEQUENCE = 99999
 
 function ensureDatabase() {
   const database = getDatabase()
+  const defaultUserId = env.DEV_USER_ID.replaceAll("'", "''")
   database.exec(`
     CREATE TABLE IF NOT EXISTS resume_histories (
       id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL DEFAULT '${defaultUserId}',
       position TEXT NOT NULL,
       company TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -38,6 +41,12 @@ function ensureDatabase() {
     CREATE INDEX IF NOT EXISTS idx_resume_histories_updated_at
     ON resume_histories(updated_at DESC);
   `)
+
+  const columns = database.query('PRAGMA table_info(resume_histories)').all() as Array<{name: string}>
+  if (!columns.some(column => column.name === 'user_id')) {
+    database.exec(`ALTER TABLE resume_histories ADD COLUMN user_id TEXT NOT NULL DEFAULT '${defaultUserId}'`)
+  }
+  database.exec('CREATE INDEX IF NOT EXISTS idx_resume_histories_user_id ON resume_histories(user_id)')
 
   return database
 }
@@ -170,11 +179,18 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
       const now = new Date().toISOString()
-      const id = input.id?.trim() || createHistoryId(this.getExistingIds(input.created_at), input.created_at)
+      const requestedId = input.id?.trim()
+      const owner = requestedId
+        ? db.query('SELECT user_id FROM resume_histories WHERE id = ?').get(requestedId) as {user_id: string} | null
+        : null
+      const id = requestedId && (!owner || owner.user_id === context.userId)
+        ? requestedId
+        : createHistoryId(this.getExistingIds(input.created_at), input.created_at)
 
       db.query(`
         INSERT INTO resume_histories (
           id,
+          user_id,
           position,
           company,
           name,
@@ -193,8 +209,9 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
           progress_json,
           card_color,
           card_pattern
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
+          user_id = excluded.user_id,
           position = excluded.position,
           company = excluded.company,
           name = excluded.name,
@@ -213,8 +230,10 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
           progress_json = excluded.progress_json,
           card_color = excluded.card_color,
           card_pattern = excluded.card_pattern
+        WHERE resume_histories.user_id = excluded.user_id
       `).run(
         id,
+        context.userId,
         input.position,
         input.company,
         input.name,
@@ -245,15 +264,16 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
     })
   }
 
-  list(_context: RequestUserContext, limit = 100): ResumeHistoryRecord[] {
+  list(context: RequestUserContext, limit = 100): ResumeHistoryRecord[] {
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
       const rows = db.query(`
         SELECT *
         FROM resume_histories
+        WHERE user_id = ?
         ORDER BY datetime(created_at) DESC, datetime(updated_at) DESC
         LIMIT ?
-      `).all(limit) as Array<Record<string, unknown>>
+      `).all(context.userId, limit) as Array<Record<string, unknown>>
 
       return rows
         .map(row => mapRowToRecord(row))
@@ -261,12 +281,12 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
     })
   }
 
-  findById(_context: RequestUserContext, id: string): ResumeHistoryRecord | null {
+  findById(context: RequestUserContext, id: string): ResumeHistoryRecord | null {
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
       const row = db
-        .query('SELECT * FROM resume_histories WHERE id = ? LIMIT 1')
-        .get(id) as Record<string, unknown> | null
+        .query('SELECT * FROM resume_histories WHERE user_id = ? AND id = ? LIMIT 1')
+        .get(context.userId, id) as Record<string, unknown> | null
 
       return mapRowToRecord(row)
     })
@@ -301,19 +321,19 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
     })
   }
 
-  delete(_context: RequestUserContext, id: string): boolean {
+  delete(context: RequestUserContext, id: string): boolean {
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
-      const result = db.query('DELETE FROM resume_histories WHERE id = ?').run(id)
+      const result = db.query('DELETE FROM resume_histories WHERE user_id = ? AND id = ?').run(context.userId, id)
 
       return result.changes > 0
     })
   }
 
-  clear(_context: RequestUserContext): number {
+  clear(context: RequestUserContext): number {
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
-      const result = db.query('DELETE FROM resume_histories').run()
+      const result = db.query('DELETE FROM resume_histories WHERE user_id = ?').run(context.userId)
 
       return result.changes
     })
