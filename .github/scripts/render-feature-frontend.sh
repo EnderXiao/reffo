@@ -92,6 +92,32 @@ case "${action}" in
         exit 1
       fi
     else
+      existing="$(api GET "/services/${service_id}")"
+      existing_build_command="$(jq -r '.serviceDetails.buildCommand // .service.serviceDetails.buildCommand // empty' <<<"${existing}")"
+      if [[ "${existing_build_command}" != "${build_command}" ]]; then
+        api DELETE "/services/${service_id}" >/dev/null
+        service_id=''
+        payload="$(jq -cn \
+          --arg type 'static_site' \
+          --arg name "${service_name}" \
+          --arg ownerId "${RENDER_OWNER_ID}" \
+          --arg repo "${repo_url}" \
+          --arg branch "${branch}" \
+          --arg rootDir "${root_dir}" \
+          --arg buildCommand "${build_command}" \
+          --arg publishPath "${publish_path}" \
+          --argjson envVars "${env_vars}" \
+          '{type:$type,name:$name,ownerId:$ownerId,repo:$repo,branch:$branch,autoDeploy:"no",rootDir:$rootDir,envVars:$envVars,serviceDetails:{buildCommand:$buildCommand,publishPath:$publishPath,pullRequestPreviewsEnabled:"no",headers:[],previews:{}}}')"
+        created="$(api POST '/services' "${payload}")"
+        service_id="$(jq -r '.service.id // .id // empty' <<<"${created}")"
+        if [[ -z "${service_id}" ]]; then
+          echo 'Render API response did not contain recreated frontend service id' >&2
+          exit 1
+        fi
+      fi
+    fi
+
+    if [[ -n "${service_id}" && -n "${existing_build_command:-}" ]]; then
       update_payload="$(jq -cn \
         --arg branch "${branch}" \
         --arg rootDir "${root_dir}" \
@@ -116,13 +142,6 @@ case "${action}" in
             ;;
           build_failed|deactivated|canceled|cancelled)
             echo "Render frontend deploy ${deploy_id} failed with status ${deploy_status}" >&2
-            for logs_path in "/services/${service_id}/deploys/${deploy_id}/logs" "/logs?ownerId=${RENDER_OWNER_ID}&limit=100"; do
-              logs_response="$(curl -sS --max-time 10 -w '\nHTTP %{http_code}' \
-                "${api_base}${logs_path}" \
-                -H "Authorization: Bearer ${RENDER_API_KEY}" || true)"
-              echo "Render logs probe ${logs_path}:" >&2
-              sed -n '1,20p' <<<"${logs_response}" >&2
-            done
             exit 1
             ;;
         esac
