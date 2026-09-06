@@ -1,0 +1,24 @@
+.github/scripts/render-feature-frontend.sh
+  s_b30eb70d4e6e6a::t_e3ab0a9e942672 1-22,24-122
+  s_b30eb70d4e6e6a::t_53cc6267b10d65 23
+doc/Render分支环境发布.md
+  s_b30eb70d4e6e6a::t_0427131595e4e7 7,19,42,46
+.github/workflows/render-feature-environments.yml
+  s_b30eb70d4e6e6a::t_0427131595e4e7 34-35,52-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a67f574fb56589418342595fd9ef44988ffa5535",
+  "prompts": {},
+  "sessions": {
+    "s_b30eb70d4e6e6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075a7-3f5b-7a71-ac24-c92b47deed43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
