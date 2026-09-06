@@ -8,6 +8,7 @@ export const routePaths = {
   complete: '/pages/complete/index',
   auth: '/pages/auth/index',
   profile: '/pages/profile/index',
+  profileContent: '/pages/profile/content',
 } as const
 
 export type RoutePath = (typeof routePaths)[keyof typeof routePaths]

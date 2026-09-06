@@ -210,6 +210,7 @@ function normalizeMatching(matching: MatchingApiResult | MatchingResult): Matchi
     matched?: unknown;
     missing?: unknown;
     match_percentage?: number;
+    required_skill_checks?: unknown;
   };
   const matchedSkills = toStringArray(
     rawSkillMatch?.matched_skills ?? rawSkillMatch?.matched,
@@ -217,6 +218,20 @@ function normalizeMatching(matching: MatchingApiResult | MatchingResult): Matchi
   const missingSkills = toStringArray(
     rawSkillMatch?.missing_skills ?? rawSkillMatch?.missing,
   );
+  const requiredSkillChecks = Array.isArray(rawSkillMatch?.required_skill_checks)
+    ? rawSkillMatch.required_skill_checks.flatMap(item => {
+      if (!item || typeof item !== 'object') return []
+      const check = item as Record<string, unknown>
+      const status = check.status
+      if (status !== 'matched' && status !== 'missing' && status !== 'unclear') return []
+      const normalizedStatus: 'matched' | 'missing' | 'unclear' = status
+      return [{
+        requirement: typeof check.requirement === 'string' ? check.requirement : '',
+        status: normalizedStatus,
+        evidence: typeof check.evidence === 'string' ? check.evidence : '',
+      }]
+    })
+    : [];
   const experienceMatch = matching?.experience_match;
   const experienceMatchText =
     typeof experienceMatch === 'string' ? experienceMatch : '';
@@ -240,6 +255,7 @@ function normalizeMatching(matching: MatchingApiResult | MatchingResult): Matchi
       matched_skills: matchedSkills,
       missing_skills: missingSkills,
       match_percentage: rawSkillMatch?.match_percentage ?? matching?.match_score ?? 0,
+      ...(requiredSkillChecks.length > 0 ? {required_skill_checks: requiredSkillChecks} : {}),
     },
     experience_match: {
       years_required: structuredExperienceMatch
@@ -295,6 +311,9 @@ function toMatchingApiPayload(matching: MatchingResult): MatchingApiResult {
     skill_match: {
       matched: matching.skill_match.matched_skills,
       missing: matching.skill_match.missing_skills,
+      ...(matching.skill_match.required_skill_checks?.length
+        ? {required_skill_checks: matching.skill_match.required_skill_checks}
+        : {}),
     },
     experience_match: matching.experience_match.relevant_experience.join('；'),
     soft_skills_match: matching.soft_skills_match ?? '',
@@ -321,8 +340,9 @@ function normalizeInterviewSuggestions(value: Partial<InterviewSuggestions> | nu
           title: typeof item.title === 'string' ? item.title : '',
           background: typeof item.background === 'string' ? item.background : '',
           result: typeof item.result === 'string' ? item.result : '',
+          storytelling_approach: toStringArray(item.storytelling_approach).slice(0, 3),
         }))
-        .filter(item => item.title || item.background || item.result)
+        .filter(item => item.title || item.background || item.result || item.storytelling_approach.length > 0)
         .slice(0, 2)
       : [],
   };

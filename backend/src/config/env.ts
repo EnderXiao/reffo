@@ -89,6 +89,13 @@ function parsePositiveInteger(value: string | undefined, fallback: number) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
+function parseUserIdList(value: string | undefined) {
+  return (value || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
 /**
  * 环境变量配置
  */
@@ -108,6 +115,11 @@ export const env = {
   AUTH_OTP_LENGTH: parsePositiveInteger(process.env.AUTH_OTP_LENGTH, 6),
   AUTH_OTP_RESEND_SECONDS: parsePositiveInteger(process.env.AUTH_OTP_RESEND_SECONDS, 60),
   AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY: process.env.AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY || '',
+
+  // 内测简历生成配额。无限额用户使用逗号分隔的用户 ID 配置。
+  RESUME_DAILY_LIMIT: parsePositiveInteger(process.env.RESUME_DAILY_LIMIT, 3),
+  RESUME_QUOTA_TIME_ZONE: process.env.RESUME_QUOTA_TIME_ZONE || 'Asia/Shanghai',
+  RESUME_QUOTA_UNLIMITED_USER_IDS: parseUserIdList(process.env.RESUME_QUOTA_UNLIMITED_USER_IDS),
 
   // Harness runtime database
   HARNESS_DATABASE_PATH: process.env.HARNESS_DATABASE_PATH || '',
@@ -200,6 +212,12 @@ export function validateEnv() {
 
   if (!Number.isFinite(env.HARNESS_MAX_RUNS) || env.HARNESS_MAX_RUNS < 0) {
     throw new Error('HARNESS_MAX_RUNS must be a non-negative number')
+  }
+
+  try {
+    new Intl.DateTimeFormat('en-CA', {timeZone: env.RESUME_QUOTA_TIME_ZONE}).format(new Date())
+  } catch {
+    throw new Error('RESUME_QUOTA_TIME_ZONE must be a valid IANA time zone')
   }
 
   if (env.APP_ENV !== 'local') {

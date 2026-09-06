@@ -53,7 +53,15 @@ const matchAnalysis: MatchAnalysis = {
 
 const suggestions: InterviewSuggestions = {
   questions: ['问题1', '问题2', '问题3'],
-  story_recommendations: [{ title: '订单系统', background: '高并发场景', result: '性能提升' }],
+  story_recommendations: [{
+    title: '订单系统',
+    background: '高并发场景',
+    result: '性能提升',
+    storytelling_approach: [
+      '先说明问题，再说明优化动作和结果。',
+      '重点交代个人职责边界，避免把团队成果归为个人成果。',
+    ],
+  }],
   follow_up_questions: ['团队挑战是什么？'],
 }
 
@@ -113,6 +121,29 @@ describe('business evaluators', () => {
     }
 
     expect(evaluateMatchAnalysisBusiness(compoundSkillMatch).passed).toBe(true)
+  })
+
+  test('does not block when required skill checks are incomplete', () => {
+    const evaluation = evaluateMatchAnalysisBusiness({
+      ...matchAnalysis,
+      skill_match: {
+        matched: [],
+        missing: [],
+        required_skill_checks: [{
+          requirement: 'Java',
+          status: 'matched',
+          evidence: '简历明确写明 Java',
+        }],
+      },
+      jd_structure: {
+        ...jd,
+        hard_requirements: {required_skills: ['Java', 'Redis', 'English']},
+      },
+    })
+
+    expect(evaluation.passed).toBe(true)
+    expect(evaluation.issues.some(issue => issue.code === 'JD_REQUIRED_SKILLS_NOT_CHECKED')).toBe(true)
+    expect(evaluation.issues.find(issue => issue.code === 'JD_REQUIRED_SKILLS_NOT_CHECKED')?.severity).toBe('warning')
   })
 
   test('fails incomplete source resume and match analysis', () => {
@@ -192,5 +223,18 @@ describe('business evaluators', () => {
 
   test('fails interview suggestions without stories', () => {
     expect(evaluateInterviewSuggestionsBusiness({ ...suggestions, story_recommendations: [] }).passed).toBe(false)
+  })
+
+  test('fails interview stories without storytelling approach', () => {
+    const evaluation = evaluateInterviewSuggestionsBusiness({
+      ...suggestions,
+      story_recommendations: [{
+        ...suggestions.story_recommendations[0],
+        storytelling_approach: [],
+      }],
+    })
+
+    expect(evaluation.passed).toBe(false)
+    expect(evaluation.issues.some((issue) => issue.code === 'INCOMPLETE_STORY_RECOMMENDATION')).toBe(true)
   })
 })

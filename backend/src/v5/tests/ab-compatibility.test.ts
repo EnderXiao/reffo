@@ -105,6 +105,24 @@ class ControlledAbProvider extends AbProvider {
 }
 
 describe('v5 compatibility and offline A/B', () => {
+  test('projects skill checks without upgrading transferable or absent evidence to a direct match', () => {
+    for (const status of ['direct_match', 'currently_unproven', 'transferable_match'] as const) {
+      const result = createV5ResultFixture()
+      const skill = result.jobRequirementBundle.requirementAtoms.find(atom => atom.category === 'skill')!
+      const match = result.matchAnalysis.requirementMatches.find(item => item.requirementId === skill.requirementId)!
+      match.status = status
+      const checks = toLegacyMvpProcessResponse(result).step2_matching.skill_match.required_skill_checks!
+      expect(checks.find(check => check.requirement === skill.verbatimText)).toEqual({
+        requirement: skill.verbatimText,
+        status: status === 'direct_match' ? 'matched' : status === 'currently_unproven' ? 'missing' : 'unclear',
+        evidence: match.rationale,
+      })
+      result.matchAnalysis.requirementMatches = result.matchAnalysis.requirementMatches.filter(item => item !== match)
+      expect(toLegacyMvpProcessResponse(result).step2_matching.skill_match.required_skill_checks)
+        .toContainEqual({ requirement: skill.verbatimText, status: 'unclear', evidence: '当前材料未完成该要求的核验。' })
+    }
+  })
+
   test('preserves the legacy MVP response contract', () => {
     const response = toLegacyMvpProcessResponse(createV5ResultFixture())
     expect(response.agent_version).toBe('5.0.0')
@@ -134,7 +152,7 @@ describe('v5 compatibility and offline A/B', () => {
     expect(historicalGenerated.step4_interview_suggestions).toMatchObject({
       questions: expect.arrayContaining(['如何规划产品？']),
       story_recommendations: expect.arrayContaining([
-        expect.objectContaining({ title: '产品交付' }),
+        expect.objectContaining({ title: '产品交付', storytelling_approach: [] }),
       ]),
     })
 

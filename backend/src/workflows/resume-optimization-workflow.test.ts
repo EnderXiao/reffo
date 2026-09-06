@@ -1,7 +1,9 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, spyOn, test } from 'bun:test'
 import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
 import type { MvpProcessResponse } from '@/types'
-import { V5WorkflowBlockedError } from '@/v5/main/workflow'
+import { V5ResumeOptimizationWorkflow, V5WorkflowBlockedError } from '@/v5/main/workflow'
+import { createV5ResultFixture } from '@/v5/tests/fixtures'
+import { ResumeQuotaError } from '@/services/resume-quota'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
 
 const v5Response: MvpProcessResponse = {
@@ -43,6 +45,41 @@ const v5Response: MvpProcessResponse = {
 }
 
 describe('ResumeOptimizationWorkflow v5-only entry', () => {
+  test('forwards the analysis callback and output language to the real V5 adapter', async () => {
+    let charged = 0
+    const run = spyOn(V5ResumeOptimizationWorkflow.prototype, 'run').mockImplementation(async input => {
+      expect(input.outputLanguage).toBe('en-US')
+      expect(input.enableQualityJudge).toBe(false)
+      await input.onAnalysisSucceeded?.()
+      return createV5ResultFixture()
+    })
+    try {
+      const workflow = new ResumeOptimizationWorkflow(new FakeHarnessEventBus(), { enableDefaultSubscribers: false })
+      await workflow.run({ resume_markdown: 'source', jd_text: 'job', output_language: 'en-US', onAnalysisSucceeded: () => { charged += 1 } })
+      expect(charged).toBe(1)
+    } finally {
+      run.mockRestore()
+    }
+  })
+
+  test('preserves a quota error even when V5 normalizes callback failures', async () => {
+    const quotaError = new ResumeQuotaError(3, 3)
+    const run = spyOn(V5ResumeOptimizationWorkflow.prototype, 'run').mockImplementation(async input => {
+      try {
+        await input.onAnalysisSucceeded?.()
+      } catch {
+        throw new V5WorkflowBlockedError({ code: 'V5_INTERNAL_WORKFLOW_FAILURE', state: 'workflow_failure', message: 'normalized failure' })
+      }
+      return createV5ResultFixture()
+    })
+    try {
+      const workflow = new ResumeOptimizationWorkflow(new FakeHarnessEventBus(), { enableDefaultSubscribers: false })
+      await expect(workflow.run({ resume_markdown: 'source', jd_text: 'job', onAnalysisSucceeded: async () => { throw quotaError } })).rejects.toBe(quotaError)
+    } finally {
+      run.mockRestore()
+    }
+  })
+
   test('always delegates the complete process to v5', async () => {
     let receivedInput: unknown
     const workflow = new ResumeOptimizationWorkflow(

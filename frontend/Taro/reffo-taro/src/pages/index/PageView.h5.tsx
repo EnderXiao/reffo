@@ -432,14 +432,6 @@ export default function PageView({
     }
   }, [])
 
-  if (isLoading || loadingError) {
-    return (
-      <View className='reffo-home reffo-home--status'>
-        <Text>{loadingError ? `加载失败: ${loadingError}` : '加载中...'}</Text>
-      </View>
-    )
-  }
-
   return (
     <View
       className={classNames('reffo-home', {
@@ -447,6 +439,8 @@ export default function PageView({
         'reffo-home--returning-from-result': isReturnHomeTransition,
         'reffo-home--landing-entry': isLandingEntryTransition,
       })}
+      aria-busy={isLoading}
+      data-loading-error={loadingError || undefined}
     >
       {isLandingEntryTransition && landingLogoStyle ? (
         <View className='reffo-home__landing-logo-layer'>

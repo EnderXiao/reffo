@@ -115,6 +115,8 @@ describe('prompt suite', () => {
     expect(matchingPrompt).toContain('不要另行输出 optimization_suggestions')
     expect(matchingPrompt).toContain('逐字复制该字段的完整原文')
     expect(interviewPrompt).toContain('公司人才偏好和工作地影响')
+    expect(interviewPrompt).toContain('storytelling_approach')
+    expect(interviewPrompt).toContain('禁止复用通用模板句')
   })
 
   test('removes fabricated metric examples from the resume generation prompt', () => {
@@ -127,6 +129,17 @@ describe('prompt suite', () => {
     expect(generationPrompt).not.toContain('1000万')
     expect(generationPrompt).not.toContain('99.99%')
     expect(generationPrompt).not.toContain('500 万元营收')
+  })
+
+  test('translates generated resume to JD language without changing evidence', () => {
+    const generationPrompt = promptText(buildResumeGenerationMessages(sourceResume, {
+      ...jd,
+      basic_info: {...jd.basic_info, title: 'Product Manager'},
+      responsibilities: ['Own product discovery and delivery'],
+    }, matching))
+
+    expect(generationPrompt).toContain('语言不一致时，将职业摘要、经历、项目、教育和技能说明翻译为 JD 的主要语言')
+    expect(generationPrompt).toContain('翻译只改变表达语言，不得新增或删减候选人证据')
   })
 
   test('keeps external application gaps outside resume quality', () => {

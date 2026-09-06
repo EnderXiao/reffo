@@ -105,6 +105,14 @@ export interface JDStructure {
 export type WeaknessEvidenceType = 'direct_missing' | 'implicit_evidence' | 'wording_gap'
 export type MatchGapPriority = 'high' | 'medium' | 'low'
 
+export type RequiredSkillCheckStatus = 'matched' | 'missing' | 'unclear'
+
+export interface RequiredSkillCheck {
+  requirement: string
+  status: RequiredSkillCheckStatus
+  evidence: string
+}
+
 export interface MatchWeaknessDetail {
   id?: string
   priority?: MatchGapPriority
@@ -137,6 +145,7 @@ export interface MatchAnalysis {
   skill_match: {
     matched: string[]
     missing: string[]
+    required_skill_checks?: RequiredSkillCheck[]
   }
   experience_match: string
   soft_skills_match: string
@@ -158,6 +167,7 @@ export interface InterviewStoryRecommendation {
   title: string
   background: string
   result: string
+  storytelling_approach: string[]
 }
 
 export interface InterviewSuggestions {

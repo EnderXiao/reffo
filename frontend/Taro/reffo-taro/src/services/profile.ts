@@ -8,9 +8,20 @@ export interface UserProfile {
   updatedAt: string | null
 }
 
+export interface ResumeQuota {
+  unlimited: boolean
+  limit: number | null
+  used: number
+  remaining: number | null
+}
+
 export class ProfileApi {
   async getProfile() {
     return apiClient.get<UserProfile>('/profile/')
+  }
+
+  async getQuota() {
+    return apiClient.get<ResumeQuota>('/profile/quota')
   }
 }
 

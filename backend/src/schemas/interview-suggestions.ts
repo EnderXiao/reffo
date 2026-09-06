@@ -57,6 +57,7 @@ function normalizeStory(value: unknown) {
       title: normalizeText(value),
       background: '',
       result: '',
+      storytelling_approach: [],
     }
   }
 
@@ -65,6 +66,7 @@ function normalizeStory(value: unknown) {
     title: value.title ?? value.story ?? value.experience ?? value.project ?? value.name ?? '',
     background: value.background ?? value.context ?? value.situation ?? value.description ?? value.action ?? '',
     result: value.result ?? value.outcome ?? value.impact ?? value.key_points ?? value.emphasis ?? '',
+    storytelling_approach: value.storytelling_approach ?? value.storytellingApproach ?? value.talking_points ?? value.narrative_strategy ?? [],
   }
 }
 
@@ -77,6 +79,7 @@ export const interviewStoryRecommendationSchema = z.preprocess(
     title: textSchema,
     background: textSchema,
     result: textSchema,
+    storytelling_approach: textListSchema.default([]),
   })
 )
 

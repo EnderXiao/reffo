@@ -310,13 +310,17 @@ export function evaluateMatchAnalysisBusiness(
   }
 
   if (requiredSkills.length > 0) {
-    const checkedSkills = [...matchAnalysis.skill_match.matched, ...matchAnalysis.skill_match.missing]
-    if (!includesAny(checkedSkills, requiredSkills)) {
+    const requiredSkillChecks = matchAnalysis.skill_match.required_skill_checks ?? []
+    const checkedSkills = requiredSkillChecks.length > 0
+      ? requiredSkillChecks.map((check) => check.requirement)
+      : [...matchAnalysis.skill_match.matched, ...matchAnalysis.skill_match.missing]
+    const uncheckedSkills = requiredSkills.filter((skill) => !includesAny(checkedSkills, [skill]))
+    if (uncheckedSkills.length > 0) {
       issues.push({
-        severity: 'error',
+        severity: 'warning',
         code: 'JD_REQUIRED_SKILLS_NOT_CHECKED',
-        message: '匹配分析没有覆盖 JD 中的必备技能。',
-        path: 'skill_match',
+        message: `匹配分析未逐项覆盖 JD 必备技能（${uncheckedSkills.length} 项），将影响评分和后续建议，不阻断流程。`,
+        path: requiredSkillChecks.length > 0 ? 'skill_match.required_skill_checks' : 'skill_match',
       })
     }
   }
@@ -364,13 +368,20 @@ export function evaluateInterviewSuggestionsBusiness(suggestions: InterviewSugge
   }
 
   const storyWithMissingFields = suggestions.story_recommendations.find(
-    (story) => !hasText(story.title) || !hasText(story.background) || !hasText(story.result)
+    (story) => (
+      !hasText(story.title)
+      || !hasText(story.background)
+      || !hasText(story.result)
+      || !hasItems(story.storytelling_approach)
+      || story.storytelling_approach.filter(hasText).length < 2
+      || story.storytelling_approach.filter(hasText).length > 3
+    )
   )
   if (storyWithMissingFields) {
     issues.push({
       severity: 'error',
       code: 'INCOMPLETE_STORY_RECOMMENDATION',
-      message: '面试故事建议缺少标题、背景或结果。',
+      message: '面试故事建议的标题、背景、结果或讲述思路不完整。',
       path: 'story_recommendations',
     })
   }
