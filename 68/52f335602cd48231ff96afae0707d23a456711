@@ -1,0 +1,22 @@
+doc/Render分支环境发布.md
+  s_e328faee98ba0c::t_019e102081b0ba 26-27,33
+  s_e328faee98ba0c::t_3e2a77c6da545f 34
+.github/scripts/render-feature-service.sh
+  s_e328faee98ba0c::t_019e102081b0ba 72-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6852f335602cd48231ff96afae0707d23a456711",
+  "prompts": {},
+  "sessions": {
+    "s_e328faee98ba0c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06584-df96-7b31-8e92-e447ce1a15b7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
