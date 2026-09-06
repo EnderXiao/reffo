@@ -63,6 +63,8 @@ bash .github/scripts/configure-feature-branch-ruleset.sh
 
 脚本可重复执行：同名 ruleset 已存在时更新，不重复创建。
 
+当前仓库为 GitHub 私有仓库，账号计划返回 `Upgrade to GitHub Pro or make this repository public to enable this feature` 时，GitHub 不开放 Rulesets 和经典 Branch Protection API。此时需要升级 GitHub Pro、迁移到支持规则的组织计划，或将仓库改为公开后再执行上述脚本；仅靠 GitHub Actions 无法伪造服务端分支保护。
+
 ## 注意
 
 - 同一 feature 分支每次 push 会更新同一个 Service；不同 feature 分支互不覆盖。
