@@ -29,7 +29,7 @@ import { getHarnessDatabaseHealth } from '@/repositories/database'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
-import { V5WorkflowBlockedError } from '@/v5/main/workflow'
+import { V5WorkflowBlockedError } from '@/v5/errors'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 import {consumeResumeQuota, ensureResumeQuotaAvailable, ResumeQuotaError} from '@/services/resume-quota'
 
@@ -57,6 +57,32 @@ function buildErrorPayload(code: string, fallbackMessage: string, error: unknown
       ...(errorCode ? { error_code: errorCode } : {}),
       recovery_advice: recoveryAdvice,
     },
+  }
+}
+
+export function buildMvpProcessErrorResponse(error: unknown) {
+  const status = error instanceof V5WorkflowBlockedError ? error.httpStatus : 500
+  const message = error instanceof V5WorkflowBlockedError
+    ? error.state === 'provider_failure'
+      ? error.retryable
+        ? '模型服务暂时不可用'
+        : '模型请求未完成'
+      : error.state === 'workflow_failure'
+        ? '服务处理异常'
+        : error.state === 'blocked_quality_validation'
+          ? '本次结果未达到可投递质量标准，已停止交付不完整简历'
+          : '生成结果未通过本地事实或结构安全校验'
+    : '处理失败'
+  return {
+    status,
+    response: {
+      success: false,
+      error: buildErrorPayload(
+        error instanceof V5WorkflowBlockedError ? error.code : 'PROCESS_FAILED',
+        message,
+        error
+      ),
+    } satisfies ApiResponse<never>,
   }
 }
 
@@ -140,23 +166,19 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           set.status = error.status
           return {success: false, error: {code: error.code, message: error.message, details: {limit: error.limit, used: error.used}}} satisfies ApiResponse<never>
         }
-        console.error('流程处理失败:', error)
-        set.status = error instanceof V5WorkflowBlockedError
-          ? error.state === 'provider_failure' ? 503 : 422
-          : 500
-
-        const response: ApiResponse<never> = {
-          success: false,
-          error: buildErrorPayload(
-            error instanceof V5WorkflowBlockedError ? error.code : 'PROCESS_FAILED',
-            error instanceof V5WorkflowBlockedError
-              ? error.state === 'provider_failure' ? '模型服务暂时不可用' : '生成结果未通过事实或结构安全门禁'
-              : '处理失败',
-            error
-          ),
+        if (error instanceof V5WorkflowBlockedError) {
+          console.error('流程处理失败:', {
+            code: error.code,
+            state: error.state,
+            runId: error.runId,
+            issueCodes: [...new Set(error.issues.map(item => item.code))],
+          })
+        } else {
+          console.error('流程处理失败:', error)
         }
-
-        return response
+        const failure = buildMvpProcessErrorResponse(error)
+        set.status = failure.status
+        return failure.response
       }
     },
     {
@@ -170,7 +192,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           minLength: 10,
         }),
         enable_llm_judge: t.Optional(t.Boolean({
-          description: '是否启用 V5 非阻断 P11 质量 Judge',
+          description: '兼容保留字段；V5 放行由本地代码控制，不会触发额外的 LLM Judge。',
         })),
         output_language: t.Optional(t.String({
           description: 'v5 输出语言偏好，例如 zh-CN 或 en-US。',
@@ -180,7 +202,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       }),
       detail: {
         summary: 'MVP 完整流程',
-        description: '固定执行 v6.0.0。V6 复用插件框架，采用原子证据、确定性计划、一次生成、严格事实门禁和有界修复，同时保持旧响应结构兼容。',
+        description: '固定执行 V5 R2 工作流。复用 V6 插件框架、原子证据、确定性计划、composition/writing 编译、交付门禁和旧响应兼容；安全回退稿与质量待审稿不作为成功结果交付。',
         tags: ['MVP'],
       },
     }

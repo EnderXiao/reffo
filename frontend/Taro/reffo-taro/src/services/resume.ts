@@ -1,4 +1,5 @@
 import {apiClient} from './api';
+import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis';
 import type {
   ResumeAnalysis,
   MatchingResult,
@@ -73,6 +74,7 @@ export interface GenerateInterviewSuggestionsRequest {
 }
 
 interface MatchingApiResult {
+  requirement_analysis?: unknown;
   match_score?: number;
   hard_requirements_match?: unknown;
   skill_match?: unknown;
@@ -296,6 +298,7 @@ function normalizeMatching(matching: MatchingApiResult | MatchingResult): Matchi
       hypotheses_used: toStringArray(contextFit.hypotheses_used),
     } : undefined,
     jd_structure: rawMatching.jd_structure,
+    requirement_analysis: normalizeRequirementAnalysis(rawMatching.requirement_analysis),
   };
 }
 
@@ -322,6 +325,7 @@ function toMatchingApiPayload(matching: MatchingResult): MatchingApiResult {
     optimization_strategy_details: matching.optimization_strategy_details ?? [],
     context_fit: matching.context_fit,
     jd_structure: matching.jd_structure,
+    ...(matching.requirement_analysis ? {requirement_analysis: matching.requirement_analysis} : {}),
   };
 }
 

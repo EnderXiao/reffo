@@ -63,6 +63,11 @@ export interface ChatCompletionResult {
   inputTokens?: number
   outputTokens?: number
   physicalAttempts?: number
+  /** Already included in outputTokens; never add a second time. */
+  reasoningTokens?: number
+  inputCacheHitTokens?: number
+  inputCacheMissTokens?: number
+  requestedModel?: string
 }
 
 export interface LlmProvider {

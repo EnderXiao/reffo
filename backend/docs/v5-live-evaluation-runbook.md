@@ -33,7 +33,7 @@
 
 - quote/span 无法定位时把整个 source block 晋升为该模型事实的证据；
 - 把漏抽取 block 自动创建为 `source_supported` EvidenceAtom，从而制造虚假的高覆盖率；
-- 仅凭继承标题启发式改变项目/工作的业务 scope；
+- 仅凭某个标题词语或样本白名单启发式改变项目/工作的业务 scope；允许的继承必须由版本化代码同时证明父时间线锚点、连续层级关系和不存在新日期、实体或结构边界；
 - 根据 Judge 的自然语言措辞或“看起来像误报”把事实 error 降为 warning；
 - 在缺少合法核心证据时用身份、隐私或 JD-only 内容满足覆盖率。
 
@@ -44,7 +44,7 @@
 3. 每次运行必须同时设置：最大模型调用数、最大输入 Token、最大输出 Token、单案例墙钟时间和全局墙钟时间。
 4. 任一预算达到上限时立即停止，不继续当前案例的后续阶段，不自动进入下一案例。
 5. 单案例失败一次即停止批次并生成失败摘要；禁止在同一进程内无限重试。
-6. 修改 Prompt、Schema、Validator、证据归属或工作流后，已有检查点全部视为失效；最终九例必须在全新目录、同一实现指纹下运行。
+6. 修改 Prompt、Schema、Validator、证据归属或工作流后，已有运行目录检查点全部视为失效；最终九例必须在全新目录、同一实现指纹下运行。P01 持久缓存是独立边界，只能在 extraction 专属实现/配置指纹和完整性校验均一致时复用。
 7. 检查点必须校验输入 SHA-256、工作流版本、Validator 版本、Prompt 版本集合、运行器协议版本和评测配置摘要。
 8. 调试期间不得以完整九例入口反复运行；使用明确的案例筛选参数。
 9. 真实 API 只用于已通过离线回归的验证，不用于无上限探索式调参。
@@ -55,14 +55,94 @@
 14. 所有并行模型任务必须共享父级取消信号，并在首个失败时取消同组在途请求。
 15. 没有 Harness 物理请求计数、预算预留、超时和取消信号的外部模型调用不得进入批处理。
 16. 预算运行必须直接调用目标 Provider，显式设置 SDK `maxRetries=0`；备用模型、SDK 隐式重试和整案自动重跑均禁用。
-17. P01 分块必须保留完整经历/项目范围，并根据输入与结构化输出容量设置上限；分块计划、并发数和版本必须进入实现或缓存指纹。
-18. 同源简历跨 JD 复用 P01 时，只允许进程内 factory 创建的可信缓存；命中后仍须重跑严格 Schema、完整文档 Validator 和 EvidenceBundle 完整性校验，任何篡改直接阻断而非静默重算。
+17. P01 必须先由代码生成并预检完整经历/项目 scope，再按输入与结构化输出容量拆传输 shard；容量限制不得改变语义 scope。每个 shard 只携带最小可信时间线锚点，分块计划、并发数和版本必须进入实现或缓存指纹。
+18. 同源简历跨 JD 复用 P01 时，只允许 factory 创建并由版本化本地检查点 hydrate 的可信缓存；命中后仍须重跑严格 Schema、完整文档 Validator 和 EvidenceBundle 完整性校验，任何篡改直接阻断而非静默重算。
 19. 真实运行必须显式提供 `--live` 和全新输出目录；无参数和 `--dry-run` 均不得初始化 Provider、创建输出或发出外部请求。
 20. 真实运行在写任何状态前必须原子获取目录独占锁；崩溃遗留锁不得自动抢占，必须人工确认原进程停止后处理。
 21. 首错时先触发共享取消，再等待所有已预留请求完成成功或失败结算，最后才写失败状态与部分报告。
-22. 进程内 P01 缓存不得被当作可恢复的持久检查点；恢复若会重复提取已完成案例的同源简历，必须阻断而不是重新外呼。
+22. 跨进程只允许复用指纹一致、重新通过完整校验的版本化 P01 检查点；缺少受信检查点且恢复会重复提取已完成案例的同源简历时，必须阻断而不是重新外呼。
+23. dry-run 除调用次数外必须逐案计算输出 Token envelope；任一单案或共享提取缓存后的批次 envelope 超过硬预算时，必须在初始化 Provider 前阻断 live。
+24. runner v10 必须在拿到工作流结果后、执行可交付门禁前写入 `generation_diagnostics` 检查点；工作流失败但错误携带诊断时也必须写入同一安全 sidecar。恢复时 sidecar 的 envelope、内容摘要、三项指纹、版本化安全结构以及与 v5 结果/摘要的一致性必须全部通过，缺失或不一致均禁止继续外呼。
+25. P01 的逐字 span 重叠与局部密度由代码处理，不交给 Agent Judge：只合并 overlap-connected 的连续原文区间，绝不跨越含语义内容的 gap；1–3 条/block 是 advisory，超出只记 warning。三层阈值必须分离：advisory 密度、允许代码消重的 raw normalization 上限、归一化后的 transport/storage 上限；每个服务端 shard 的 headroom 在合并后按 shard 数相加。可信 shard 数必须由编排器或缓存描述符显式传入，禁止从模型返回的 `factLocalId`/`cNN_` 前缀推断。重复 fact ID、无法定位的 quote/span 和 raw/storage 硬上限仍 fail closed。P01R 只接收规范化候选中尚未解决的 error，不接收已由代码消除的问题或 warning。
+
+## 详细简历单案例预算
+
+详细简历使用独立的单案例预算档位。runner v10 复用 Prompt 编译器的逐片源内容额度：P01/P01R 均为 `min(15,500, max(14,400, sourceOutputEstimate))`，修复草稿长度不影响额度。代码先完成全部 P01，再按源顺序调度 P01R；每片至多一次，总上限为 `ceil(N × 50%)`。若失败队列已经超过上限，在任何修复外呼前停止。初始额度为 `ceil(N × 20%)`，一次成功修复解锁一次后续额度，失败修复直接停止。默认 generation-only 下游最坏为 6 次 / 31,560 Token，full 加双顺序 P12 后为 8 次 / 43,560 Token。
+
+分片协议 `deterministic-scope-plan-v8` 保留 24 blocks、1,000 字符和 15,500 Token 的 shard 容量。raw、storage 和 advisory 密度保持分离，完整文档 headroom 只按服务端 shard 数累加。预算预检将所有未缓存 primary 额度相加，再选择额度最大的可修复 shard 预留 P01R；不会用平均值低估。冻结 case3 为 14 个分片，冷缓存 generation-only 为 `202,194 + 101,394 + 31,560 = 335,148` 输出 Token、27 次调用。原硬限额保持 28 次、450,000 输入 Token、350,000 输出 Token、15 分钟。冷缓存 full 虽为 347,148 输出 Token，但需预留 29 次调用，因此不能直接实跑；先 generation-only，再独立 judge-only。命中完整 P01 缓存只保留下游额度；部分缓存只扣除已通过当前校验的索引。
+
+冻结九案仍含 4 份唯一源简历（2 / 3 / 14 / 3 shards）。共享缓存后的 full 物理调用上界为 106 次；即使全批满足 110 次，case3 冷缓存仍超单案上限，不能因此放行。批次 1,000,000 输出 Token、110 次和逐案 350,000 输出 Token、28 次上限均保留。
+
+默认 case2 有 3 个 P01 分片，P01R 上界为 2 次；full/generation-only/extract-only 调用上界分别为 13/11/5。未知分片内容时按每次 15,500 上限保守预留，full 为 121,060、仅提取为 77,500 输出 Token；实际 dry-run 再按原始分片细化。原 canary 输出限额 150,000/100,000 不变。
+
+P01 持久缓存使用独立的 `extractionImplementationDigest`，覆盖抽取、分片、Prompt、Schema、Validator、结构化解析、Provider、抽取诊断及 P01 工作流片段。下游独立变化不使提取失效。完整缓存为 v2，新增 `trusted-resume-extraction-partial-cache-v1`：每个通过单片校验的候选可立即以 0600 权限保存；按 descriptor 串行和独占锁合并原有进度后原子写入。磁盘错误保留内存结果并在失败清理重试；失效草稿不缓存。hydrate 必须验证指纹、摘要、唯一有序索引及当前单片门禁。全部索引齐全仍需完成有序合并与完整文档校验，不能伪装成完整缓存。完整命中优先，部分文件保留但不参与该次读取。旧 v1 完整缓存不扫描或提升，命中当前文件损坏则阻断。runner v10 运行目录不能续用 v9 或更早目录。
+
+## 生成诊断 sidecar 与报告
+
+部分缓存恢复使用新的输出目录与新的有界运行，不等于对已失败目录执行 `--resume`。已失败 run 或有生成调用却没有完整结果的 run 仍禁止原地恢复。若所有分片通过但全量合并失败，保留分片用于零 Provider 的确定性复现；不自动清缓存重提取。先修复合并原因并补回归，再由新的 extraction 指纹决定缓存有效性。
+
+runner v10 为每个已经形成终态诊断的案例写入 `cases/<case-prefix>-generation-diagnostics.json`，checkpoint kind 为 `generation_diagnostics`。payload 只允许版本化 `V5DeliveryDiagnostics` 字段：执行终态、事实安全/产品质量计数、生成来源和数值指标；写入前会重新投影安全结构，不保存异常消息、校验消息、源简历、JD、候选正文、证据 ID 或其他原文。即使候选随后被可交付门禁阻断，或工作流以携带 `deliveryDiagnostics` 的错误退出，这份 sidecar 仍可用于定位质量短板，不会把失败产物送入 P12。
+
+另写 `cases/<case-prefix>-p01-validation-diagnostics.json`，分别记录 primary/repair 的 shard index、attempt、schema/domain/repair_gate、结果、固定错误码/路径大类/计数。模型可控消息、完整 path、证据 ID、正文不会进入该 sidecar。Harness 持久化也会再次投影白名单。诊断采集不触发模型调用；P01R 自身的 JSON/Schema 失败正确归入输入提取失败。两个诊断 sidecar 独立尝试，任一个写盘失败都不能掩盖原始工作流错误。
+
+工作流返回结果后，runner 必须先原子写入 `generation_diagnostics`，再尝试持久化 P01 缓存，避免缓存快照或磁盘异常吞掉已经形成的终态诊断。失败路径按“诊断 sidecar → fail-fast 共享取消 → Provider drain/预算结算 → P01 缓存尽力持久化 → failed status/部分报告”执行；每个清理阶段独立保护，P01 缓存异常不得跳过取消、结算、drain 或失败状态写入。已有 workflow/provider 主错误时，全部清理错误只记录脱敏阶段与错误码，绝不替换主错误；没有主错误时，资源清理失败仍会让本次运行失败。除拥有自身结算边界的 Provider drain 外，本地清理和异步清理遥测都有 5 秒单阶段上限，不能无限挂起或形成未处理 rejection。
+
+`generation-only` 和完整/盲评报告都直接携带同一份诊断，并展示计划证据覆盖、稳定核心覆盖、JD 主要求覆盖的分子/分母，业务 bullet 实际数/目标数及允许范围，以及输出长度实际值与 soft/hard 边界。分母为 0 时显示 `0/0（N/A）`，不能伪装成 100%。`GenerationCaseSummary`、`CaseSummary`、诊断 sidecar 和 `v5_result` 中的诊断必须内容一致；恢复运行不会自动补造缺失 sidecar，也不会接受重新计算摘要后伪装成原检查点的内容。
+
+runner v10 固定 `dsl_v1`，P06D 最多一次，artifact 模型修复为 0，interview 为 `deferred`；P06/P08/P10/P10R 不计入也不得出现在默认运行。P12 只在 full 或 judge-only 中最多调用两次。v9 及更早运行目录只能作为历史证据，不能 `--resume`，也不能作为 v10 的 `judge-only --source-run`。
+
+## 独立续跑 P12
+
+当 `generation-only` 已完成，或 `full` 已写入完整 `v5_result` 后才在 P12 前失败，可以用 `judge-only` 从冻结生成目录补跑双顺序盲评。续跑必须使用全新的输出目录；运行器只读取 source-run，不会把旧 `v5_result` 伪装成当前实现生成的检查点。
+
+```bash
+bun run scripts/run-v5-nonprod-nine-case-blind-eval.ts \
+  --stage judge-only \
+  --source-run <generation/full 输出目录> \
+  --dry-run \
+  --output <新的评审输出目录> \
+  --cases <与 source-run 完全一致的案例>
+
+bun --env-file=.env.nonprod run scripts/run-v5-nonprod-nine-case-blind-eval.ts \
+  --stage judge-only \
+  --source-run <generation/full 输出目录> \
+  --live \
+  --output <新的评审输出目录> \
+  --cases <与 source-run 完全一致的案例> \
+  --fail-fast
+```
+
+Provider 初始化前，运行器会校验 source manifest 与 `v5_result` 的 envelope、payload SHA-256、案例/历史输入摘要、原实现与配置指纹的相互绑定、当前 Schema、当前确定性成品门禁以及 Markdown 副本。只有 `state=succeeded`、`deliveryDecision=deliver`、三项质量门禁全部为 `pass`、未使用安全回退且产物来源为 `model`、`model_repair` 或当前默认的 `server_compiler` 才能进入 P12；`internal_only`、`review_required` 和历史回退产物均在外呼前拒绝。source-run 必须来自相同 runner 协议的 `generation-only` 或 `full`，案例选择必须完全一致，且 source/output 不得相同或互相嵌套。v8 source-run 不兼容 v9，必须使用全新的 v9 生成目录。若来源已有完整盲评、已成功或返回 Token 的 P12，或有未结算的 P12 预留，续跑会在外呼前阻断；只有已结算且 Provider 未返回 Token 的取消请求可在用户明确授权后补跑。没有返回用量不等于能够证明第三方绝对未计费。
+
+新的 judge-only 目录会保存自己的 run manifest、预算与 usage journal、从已验证来源确定性构造的 `blind_eval_input`、P12 双序结果和案例摘要。manifest 记录 source manifest 及各案例 `v5_result` 的原始内容摘要和原始指纹；评审检查点使用本次 judge-only 实现与配置指纹，因此不会伪造生成结果的来源。P12 按顺序执行两个匿名次序，第一序失败时不会发送第二序；发送给 P12 的上下文会去除重复抽取账本，只保留事实核验所需的证据、时间线、岗位需求和候选正文。单案例 judge-only 的硬上限为 2 次物理调用、150,000 输入 Token、20,000 输出 Token 和 5 分钟。
+
+## 私有响应记录与离线回放
+
+非生产运行器在输出目录的 `private-calls/` 保存请求正文与响应，目录权限 0700、文件权限 0600，仅用于已授权案例的本地复现。这里包含真实简历与 JD，不能作为脱敏日志共享、提交或上传；API Key 不写入记录。它与只包含安全计数的诊断 sidecar 不同，测试结束后应由数据持有人按本地保留策略清理。顶层错误日志只输出安全序列化字段，不能直接打印带 `unsafeOutput` 的异常对象。
+
+```bash
+cd backend
+bun run scripts/replay-v5-recorded-run.ts \
+  <单案例真实运行目录> <位于该目录之外的离线结果.json>
+```
+
+此工具只读取已有响应，不初始化外部 Provider、不写可信提取缓存。它用于重现确定性代码问题；回放成功不代表新实现已经真实调用成功，也不能将回放结果提升为 live 检查点。
+
+P12 r5 限制评语输出：Prompt 要求每类至多 5 条、单条至多 80 字、胜负解释至多 160 字；Schema 硬上限分别为 5 条、120 字和 240 字。不提升单次 6,000 输出 Token 限额，不在解析失败后循环修复。源简历自述不等同于新增事实，仍必须保留其中的参与程度、未上线和不确定性边界。
+
+双顺序评测的 `orderConsistent` 同时检查归一化胜者、绝对门禁和总分波动；默认允许的最大分差为 8 分。因此 `order_inconsistent` 不一定表示胜者反转，也可能仅为分数稳定性未通过。离线质量判断需结合原文逐项复核，不能直接采用模型的每条指控。
+
+### 质量判断的代码边界
+
+`PLAN_HIGH_VALUE_TYPE_OMITTED` 检查已选经历的完整可用事实，不要求为了全简历中的单一模型标签而突破项目上限或强塞未选项目。交付物可同时包含可量化结果，服务端使用有限的源文信号识别这种复合事实；这只影响质量选择，不改变 `claimType`、来源状态、匹配结论或事实校验。活动数量（例如访谈人数）不能单独视为业务影响。
+
+指标名称与数值被源换行拆开时，不得分别充当独立成果；仅有经过同源、同 scope、连续块号与词法证明的完整拼接才可作为一个源单元。摘要蓝图只提供一个源单元，避免把跨经历正文全部复制成一条摘要。重复履历抑制只适用于没有实质正文的元数据概览，不能删除仍有未选业务事实的真实经历。
 
 ## 推荐运行阶段
+
+质量修复可先运行 `scripts/preview-v5-recorded-quality.ts <已完成生成目录> <历史抽取缓存文件> <全新预览目录>`。该工具按当前 scope 规则重建历史候选、重映射旧匹配，仅用于离线观察选材和编译，不调用 Provider、不写可信缓存，也不代表新 P01/P03/P06D 的真实输出。不得将预览文件当作真实生成或盲评来源。最终仍需新的 generation-only，再以其冻结产物执行 judge-only。
+
+scope-plan-v9 / P01 r14 下，Case3 当前 dry-run 仍为 14 shards、27 次物理调用上界，输出 envelope 为 335,956 Token；硬预算未调大。旧 scope-plan-v8 的缓存指纹不同，不能提升为新缓存。这里的 envelope 是最坏情况预留，不是实际消耗；实际调用必须从 usage journal 报告。
 
 1. **离线阶段**：固定失败夹具，运行类型检查和所有 v5 测试，不调用外部模型。
 2. **Canary 阶段**：只运行案例 2，使用低预算与失败即停，验证完整生成和双顺序盲评。
@@ -77,9 +157,15 @@
 - 将案例 2 的已知失败转为脱敏离线回归测试。
 - Canary 在预算内一次完成后，才能开始新的九例批次。
 
-## 2026-09-01 case 2 canary 结果
+## 2026-09-05 case3 r2 观测与 v10 离线修复
 
-实现指纹 `3863e99d973646c49d94379420fb6f3a86bb52354584180b801682159c3a043b` 在全部离线门禁通过后执行了一次 case 2 canary。运行按失败即停结束，没有启动九例批次，也没有自动重试。
+历史 r2（v9）在 `P01_REPAIR_BUDGET_EXHAUSTED` 停止：P01 8 次、P01R 3 次，合计 11 次调用，106,451 输入 / 51,036 输出 Token。所有响应 `finishReason=stop`，未进入 P02/P03/P06D。失败 primary 对应服务端索引 0/2/4/6。历史文件没有逐片校验原因，不能据此宣称已确认某条业务 Validator 误报，也不能把问题归咎于用户简历。
+
+v10 完成的代码修复包括：primary barrier 与稳定修复队列、可验证分片检查点、分层安全诊断、重复 Schema 定义精简、P01/P01R 同源输出额度、预算预检与调用配额统一。离线 fake-provider 回归覆盖 4 个可修复分片和跨实例只补缺失分片。case3 generation-only dry-run 为 14 shards、27 次调用上界、335,148 输出 Token 预留，Provider 未初始化、外部调用为 0；这是容量预检通过，不是实际生成或产品质量验收通过。r1/r2 已用完本轮两个真实 run，后续真实验证须在复盘与新的运行预算决策后进行，不自动启动第三次。
+
+## 2026-09-01 case 2 canary 结果（旧协议历史记录）
+
+实现指纹 `3863e99d973646c49d94379420fb6f3a86bb52354584180b801682159c3a043b` 在当时的离线门禁通过后执行了一次 case 2 canary。以下数值只保留为旧协议观测，不代表 runner v9 当前 envelope，且该目录不得恢复、续跑或作为 v9 judge source。运行按失败即停结束，没有启动九例批次，也没有自动重试。
 
 - 物理调用：4/28，全部请求均收到 Provider 响应并完成结算；无 pending reservation。
 - 输入 Token：42,702/350,000；输出 Token：33,183/100,000；墙钟约 125 秒/600 秒。

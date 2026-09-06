@@ -1,5 +1,5 @@
-import { env } from '@/config/env'
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
+import { env } from '@/config/env'
 import { createDigest } from '@/harness/run-context'
 import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
@@ -67,7 +67,9 @@ export class ResumeOptimizationWorkflow {
       resumeMarkdown: input.resume_markdown,
       jobDescription: input.jd_text,
       outputLanguage: input.output_language,
-      enableQualityJudge: input.enable_llm_judge ?? env.V5_QUALITY_JUDGE_ENABLED,
+      // Compatibility flag only. Release is controlled by deterministic code
+      // checks in v5 and no longer invokes an external judge.
+      enableQualityJudge: false,
       workflowTimeoutMs: input.workflowTimeoutMs,
     })
     await input.onAnalysisSucceeded?.()

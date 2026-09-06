@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { blindABEvaluationSchema, resumeQualityJudgeResultSchema } from '@/v5/schemas'
+import {
+  blindABEvaluationSchema,
+  normalizeBlindABEvaluationSemantics,
+  normalizeBlindABEvaluationSemanticsWithAudit,
+  resumeQualityJudgeResultSchema,
+} from '@/v5/schemas'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 
 const dimensionsA = {
@@ -74,6 +79,31 @@ describe('v5 evaluation semantic schemas', () => {
     expect(blindABEvaluationSchema.safeParse(blindABResult()).success).toBe(true)
   })
 
+  test('bounds every P12 finding list without silently truncating judge output', () => {
+    const fields = ['unsupportedClaims', 'attributionErrors', 'emptyScopes',
+      'missingHighValueEvidence', 'internalAuditLeaks', 'strengths', 'weaknesses'] as const
+    for (const field of fields) {
+      const resultWith = (findings: string[]) => blindABResult({
+        evaluations: [
+          abEvaluation('A', { absoluteGate: 'fail', [field]: findings }),
+          abEvaluation('B', { absoluteGate: 'fail' }),
+        ],
+      })
+      expect(blindABEvaluationSchema.safeParse(resultWith(Array(5).fill('证'.repeat(120)))).success).toBe(true)
+      for (const findings of [Array(6).fill('问题'), ['证'.repeat(121)]]) {
+        const raw = resultWith(findings)
+        expect(blindABEvaluationSchema.safeParse(raw).success).toBe(false)
+        const normalized = normalizeBlindABEvaluationSemanticsWithAudit(raw)
+        expect(normalized.value).toBe(raw)
+        expect(normalized.audit.applied).toBe(false)
+      }
+    }
+    for (const length of [240, 241]) {
+      const raw = blindABResult({ pairwise: { winner: 'A', confidence: 'high', reason: '证'.repeat(length) } })
+      expect(blindABEvaluationSchema.safeParse(raw).success).toBe(length === 240)
+    }
+  })
+
   test('requires exactly one A and one B candidate', () => {
     const parsed = blindABEvaluationSchema.safeParse(blindABResult({
       evaluations: [abEvaluation('A'), abEvaluation('A')],
@@ -99,6 +129,14 @@ describe('v5 evaluation semantic schemas', () => {
       if (!parsed.success) {
         expect(parsed.error.issues.some(issue => issue.path.join('.').endsWith(field))).toBe(true)
       }
+      const normalized = normalizeBlindABEvaluationSemanticsWithAudit(blindABResult({
+        evaluations: [abEvaluation('A', { [field]: value }), abEvaluation('B')],
+      }))
+      expect(normalized.audit).toMatchObject({
+        applied: true,
+        changes: expect.arrayContaining(['evaluations.A.absoluteGate:pass->fail']),
+      })
+      expect(blindABEvaluationSchema.safeParse(normalized.value).success).toBe(true)
     }
   })
 
@@ -146,6 +184,77 @@ describe('v5 evaluation semantic schemas', () => {
     })).success).toBe(false)
   })
 
+  test('normalizes only server-derived P12 gates and winner', () => {
+    const raw = blindABResult({
+      evaluations: [
+        abEvaluation('A', { unsupportedClaims: ['新增事实'] }),
+        abEvaluation('B'),
+      ],
+      pairwise: { winner: 'A', confidence: 'high', reason: '保留模型原始解释' },
+    })
+    const normalized = normalizeBlindABEvaluationSemantics(raw)
+
+    expect(blindABEvaluationSchema.safeParse(normalized).success).toBe(true)
+    expect(normalized).toMatchObject({
+      evaluations: [
+        { candidateId: 'A', absoluteGate: 'fail', unsupportedClaims: ['新增事实'] },
+        { candidateId: 'B', absoluteGate: 'pass' },
+      ],
+      pairwise: {
+        winner: 'B',
+        confidence: 'low',
+        reason: '服务端按绝对门禁优先规则确定胜者为 B。',
+      },
+    })
+  })
+
+  test('reports normalization explicitly, preserves compliant key order, and is idempotent', () => {
+    const compliant = {
+      pairwise: { reason: 'A 的服务端维度总分更高', confidence: 'high', winner: 'A' },
+      evaluations: [abEvaluation('A'), abEvaluation('B')],
+      schemaVersion: V5_SCHEMA_VERSION,
+    }
+    const compliantResult = normalizeBlindABEvaluationSemanticsWithAudit(compliant)
+    expect(compliantResult.value).toBe(compliant)
+    expect(compliantResult.audit).toEqual({ applied: false, changes: [] })
+
+    const raw = blindABResult({
+      evaluations: [abEvaluation('A', { emptyScopes: ['空范围'] }), abEvaluation('B')],
+      pairwise: { winner: 'A', confidence: 'high', reason: '模型解释' },
+    })
+    const original = structuredClone(raw)
+    const first = normalizeBlindABEvaluationSemanticsWithAudit(raw)
+    const second = normalizeBlindABEvaluationSemanticsWithAudit(first.value)
+    expect(raw).toEqual(original)
+    expect(first.audit.applied).toBe(true)
+    expect(first.audit.changes).toEqual(expect.arrayContaining([
+      'evaluations.A.absoluteGate:pass->fail',
+      'pairwise.winner:A->B',
+      'pairwise.confidence:set-low',
+      'pairwise.reason:set-deterministic',
+    ]))
+    expect(second.value).toBe(first.value)
+    expect(second.audit).toEqual({ applied: false, changes: [] })
+  })
+
+  test('does not normalize malformed P12 ids, dimensions, or unknown fields', () => {
+    for (const raw of [
+      blindABResult({
+        evaluations: [abEvaluation('A'), abEvaluation('A')],
+      }),
+      blindABResult({
+        evaluations: [
+          abEvaluation('A', { dimensions: { ...dimensionsA, factualFidelity: 26 } }),
+          abEvaluation('B'),
+        ],
+      }),
+      { ...blindABResult(), unexpected: true },
+    ]) {
+      expect(normalizeBlindABEvaluationSemantics(raw)).toBe(raw)
+      expect(blindABEvaluationSchema.safeParse(normalizeBlindABEvaluationSemantics(raw)).success).toBe(false)
+    }
+  })
+
   test('requires all six P11 dimensions exactly once and score within maxScore', () => {
     expect(resumeQualityJudgeResultSchema.safeParse(qualityResult()).success).toBe(true)
 
@@ -163,6 +272,17 @@ describe('v5 evaluation semantic schemas', () => {
     expect(resumeQualityJudgeResultSchema.safeParse(qualityResult({
       dimensions: [
         qualityDimension('job_specificity', 11, 10),
+        qualityDimension('evidence_selection'),
+        qualityDimension('career_coherence'),
+        qualityDimension('result_expression'),
+        qualityDimension('conciseness_readability'),
+        qualityDimension('deliverability'),
+      ],
+    })).success).toBe(false)
+
+    expect(resumeQualityJudgeResultSchema.safeParse(qualityResult({
+      dimensions: [
+        qualityDimension('job_specificity', 4, 5),
         qualityDimension('evidence_selection'),
         qualityDimension('career_coherence'),
         qualityDimension('result_expression'),

@@ -131,6 +131,8 @@ export const env = {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || 'https://api.deepseek.com',
   AI_MODEL: process.env.AI_MODEL || 'deepseek-chat',
+  DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'default',
+  DEEPSEEK_REASONING_EFFORT: process.env.DEEPSEEK_REASONING_EFFORT || 'high',
   AI_FALLBACK_MODELS: (process.env.AI_FALLBACK_MODELS || '')
     .split(',')
     .map((model) => model.trim())

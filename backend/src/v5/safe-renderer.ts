@@ -1,11 +1,24 @@
 import type { EvidenceAtom, GeneratedResumeArtifact, ResumeEvidenceBundle, V5ResumePlan } from '@/v5/types'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
-import { measureArtifactMarkdown, plannedContentEvidenceIds } from '@/v5/validators'
+import { deriveEvidenceAssemblies } from '@/v5/composition/evidence-assembly'
+import {
+  hasRenderableTimelineLine,
+  measureArtifactMarkdown,
+  plannedContentEvidenceIds,
+} from '@/v5/validators'
+
+const BUSINESS_CLAIM_TYPES = new Set<EvidenceAtom['claimType']>([
+  'responsibility',
+  'action',
+  'deliverable',
+  'result',
+])
 
 function sectionTitle(key: string, language: string) {
   const english = !/zh|cjk|mixed/i.test(language)
   const labels: Record<string, [string, string]> = {
     experience: ['Work Experience', '工作经历'],
+    summary: ['Professional Summary', '职业摘要'],
     project: ['Projects', '项目经历'],
     research: ['Research', '研究经历'],
     education: ['Education', '教育背景'],
@@ -32,12 +45,12 @@ function strongestAllowedAttribution(atoms: EvidenceAtom[]) {
   return [...atoms].sort((left, right) => rank[left.attributionLevel] - rank[right.attributionLevel])[0]?.attributionLevel ?? 'unspecified'
 }
 
-function withoutMarkdownPresentationMarker(value: string) {
-  return value.trim().replace(/^(?:(?:[-*+]|#{1,6})\s+)+/, '').trim()
+function withoutMarkdownListMarker(value: string) {
+  return value.trim().replace(/^[-*+]\s+/, '').replace(/^#{1,6}\s+/, '').trim()
 }
 
 function markdownListItem(values: string[]) {
-  return `- ${values.map(withoutMarkdownPresentationMarker).join('；')}`
+  return `- ${values.map(withoutMarkdownListMarker).join('；')}`
 }
 
 export function renderSourcePreservingArtifact(input: {
@@ -47,26 +60,37 @@ export function renderSourcePreservingArtifact(input: {
   const { resume, plan } = input
   const evidence = new Map(resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
   const scopePlans = new Map(plan.scopePlans.map(item => [item.scopeId, item]))
+  const companionAssemblyByAnchor = new Map(deriveEvidenceAssemblies(resume, plan)
+    .filter(assembly => assembly.kind === 'companion_semicolon')
+    .map(assembly => [assembly.anchorEvidenceId, assembly]))
   const claims: GeneratedResumeArtifact['claims'] = []
   const lines: string[] = []
   const used = new Set<string>()
   const renderedClaimLines = new Set<string>()
   let claimIndex = 0
 
-  const appendClaim = (outputPath: string, outputText: string, atoms: EvidenceAtom[]) => {
+  const appendClaim = (
+    outputPath: string,
+    outputText: string,
+    atoms: EvidenceAtom[],
+    options: { reserveEvidence?: boolean } = {}
+  ) => {
     if (!outputText.trim() || atoms.length === 0) return
     const normalizedLine = outputText.trim()
-    if (renderedClaimLines.has(normalizedLine)) return
-    renderedClaimLines.add(normalizedLine)
-    const normalizedOutput = withoutMarkdownPresentationMarker(outputText)
-    const transformation = atoms.length === 1 && normalizedOutput === withoutMarkdownPresentationMarker(atoms[0].verbatimText)
+    const renderedClaimKey = `${outputPath}\u0000${normalizedLine}`
+    if (renderedClaimLines.has(renderedClaimKey)) return
+    renderedClaimLines.add(renderedClaimKey)
+    const normalizedOutput = withoutMarkdownListMarker(outputText)
+    const transformation = atoms.length === 1 && normalizedOutput === withoutMarkdownListMarker(atoms[0].verbatimText)
       ? 'verbatim'
       : atoms.length > 1
         ? 'same_scope_merge'
         : 'safe_paraphrase'
     claimIndex += 1
     lines.push(outputText)
-    for (const atom of atoms) used.add(atom.evidenceId)
+    if (options.reserveEvidence !== false) {
+      for (const atom of atoms) used.add(atom.evidenceId)
+    }
     claims.push({
       claimId: `safe_claim_${String(claimIndex).padStart(4, '0')}`,
       outputPath,
@@ -77,8 +101,13 @@ export function renderSourcePreservingArtifact(input: {
     })
   }
 
-  if (resume.identity.name.value) lines.push(`# ${resume.identity.name.value}`)
-  else lines.push('# Resume')
+  if (resume.identity.name.value) {
+    const atoms = resume.identity.name.evidenceIds
+      .map(id => evidence.get(id))
+      .filter((atom): atom is EvidenceAtom => Boolean(atom && atom.status !== 'excluded'))
+    if (atoms.length > 0) appendClaim('identity.name', `# ${resume.identity.name.value}`, atoms)
+    else lines.push(`# ${resume.identity.name.value}`)
+  } else lines.push('# Resume')
   lines.push('')
   const identityFields = [
     ['email', resume.identity.email],
@@ -107,7 +136,35 @@ export function renderSourcePreservingArtifact(input: {
     .filter((atom): atom is EvidenceAtom => Boolean(
       atom && atom.status !== 'excluded' && !atom.riskFlags.includes('sensitive_pii')
     ))
+  if (plan.generationPolicy.summaryPolicy !== 'omit_if_unsupported') {
+    const summaryAtom = selectedAtomsInOrder.find(atom => (
+      ['result', 'deliverable', 'action', 'responsibility'].includes(atom.claimType)
+    ))
+    if (summaryAtom) {
+      lines.push(`## ${sectionTitle('summary', resume.sourceDocument.primaryLanguage)}`)
+      lines.push('')
+      const summaryPrefix = /zh|cjk|mixed/i.test(resume.sourceDocument.primaryLanguage)
+        ? '职业概述：'
+        : 'Professional summary: '
+      appendClaim(
+        'summary[0]',
+        `${summaryPrefix}${withoutMarkdownListMarker(summaryAtom.verbatimText)}`,
+        [summaryAtom],
+        { reserveEvidence: false }
+      )
+      lines.push('')
+    }
+  }
   let remainingListItems = plan.generationPolicy.hardTotalListItemMax
+
+  const expandCompanionAssemblies = (atoms: EvidenceAtom[]) => atoms.flatMap(atom => {
+    const assembly = companionAssemblyByAnchor.get(atom.evidenceId)
+    if (!assembly) return [atom]
+    const members = assembly.memberEvidenceIds
+      .map(id => evidence.get(id))
+      .filter((member): member is EvidenceAtom => Boolean(member))
+    return members.length === assembly.memberEvidenceIds.length ? members : [atom]
+  })
 
   const appendScopeSection = (key: string, kinds: string[]) => {
     const scopes = resume.timeline.filter(item => kinds.includes(item.kind))
@@ -118,14 +175,18 @@ export function renderSourcePreservingArtifact(input: {
     for (const scope of scopes) {
       const scopePlan = scopePlans.get(scope.scopeId)
       if (!scopePlan) continue
+      const selectedForScope = new Set(scopePlan.selectedEvidenceIds)
       const atoms = selectedAtomsInOrder.filter(atom => (
-        atom.sourceScopeId === scope.scopeId
-        && atom.claimType !== 'identity'
-        && atom.claimType !== 'timeline'
+        selectedForScope.has(atom.evidenceId)
+        && atom.sourceScopeId === scope.scopeId
         && !used.has(atom.evidenceId)
+        && (key === 'education'
+          ? ['education', 'award', 'result'].includes(atom.claimType)
+          : BUSINESS_CLAIM_TYPES.has(atom.claimType))
       ))
       if (scopePlan.treatment === 'omit') continue
       if (scopePlan.treatment === 'timeline_line' || atoms.length === 0 || remainingListItems <= 0) {
+        if (scopePlan.treatment === 'timeline_line' && !hasRenderableTimelineLine(scope, evidence)) continue
         const timelineAtoms = scope.evidenceIds
           .filter(id => !used.has(id))
           .map(id => evidence.get(id))
@@ -151,13 +212,14 @@ export function renderSourcePreservingArtifact(input: {
       for (const [index, atom] of atoms.entries()) atomGroups[index % groupCount].push(atom)
       sectionLines.push({ kind: 'heading', text: `### ${heading}` })
       for (const [index, atomGroup] of atomGroups.entries()) {
+        const renderedAtoms = expandCompanionAssemblies(atomGroup)
         sectionLines.push({
           kind: 'claim',
           path: `${key}.${scope.scopeId}.bullets[${index}]`,
-          text: markdownListItem(atomGroup.map(atom => atom.verbatimText)),
-          atoms: atomGroup,
+          text: markdownListItem(renderedAtoms.map(atom => atom.verbatimText)),
+          atoms: renderedAtoms,
         })
-        for (const atom of atomGroup) used.add(atom.evidenceId)
+        for (const atom of renderedAtoms) used.add(atom.evidenceId)
         remainingListItems -= 1
       }
     }

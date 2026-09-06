@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { evaluationDeepSeekPolicy } from '@/config/deepseek-thinking'
 import type { DoubleOrderAbResult } from '@/v5/ab-evaluator'
 import { canonicalizeSourceDocument } from '@/v5/canonical-source'
 import {
@@ -13,9 +14,23 @@ import {
 } from '@/v5/chunked-resume-extraction'
 import { EvaluationBudgetController, type EvaluationBudgetJournalEntry } from '@/v5/evaluation-budget'
 import {
+  buildP01ValidationTrace,
+  bucketP01ValidationIssues,
+  sanitizeP01ValidationObservation,
+  type P01ValidationObservationV1,
+  type P01ValidationIssueBucket,
+} from '@/v5/p01-validation-diagnostics'
+import {
+  loadValidatedJudgeSourceRun,
+  type JudgeSourceProvenance,
+} from '@/v5/evaluation-judge-source'
+import {
   BudgetedEvaluationProvider,
+  EvaluationRunnerSafetyError,
   EXPECTED_NONPROD_HISTORY_SHA256,
   V5_EVALUATION_RUNNER_PROTOCOL_VERSION,
+  V5_EVALUATION_CHECKPOINT_VERSION,
+  V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION,
   V5_GENERATION_NON_EXTRACTION_CALL_UPPER_BOUND,
   V5_JUDGE_CALL_UPPER_BOUND,
   V5_NON_EXTRACTION_CALL_UPPER_BOUND,
@@ -27,27 +42,42 @@ import {
   atomicWriteText,
   budgetProfileForCases,
   createAppendOnlyJsonlSink,
+  createExtractionImplementationDigest,
   createImplementationDigest,
   digestJson,
+  isV5CodeGateDeliverable,
   parseEvaluationRunnerArgs,
   readCheckpoint,
   readJsonlStrict,
   restoreEvaluationBudget,
+  sanitizeV5DeliveryDiagnostics,
   sha256,
   v5CasePhysicalCallUpperBound,
+  v5CaseOutputTokenEnvelope,
+  v5EvaluationComponentQuotas,
   writeCheckpoint,
   type EvaluationCheckpointFingerprints,
   type EvaluationRunStage,
   type EvaluationUsageEntry,
 } from '@/v5/evaluation-runner-support'
-import type { GeneratedResumeArtifact, V5WorkflowResult } from '@/v5/types'
+import type {
+  CanonicalSourceDocument,
+  GeneratedResumeArtifact,
+  V5DeliveryDiagnostics,
+  V5WorkflowResult,
+} from '@/v5/types'
 import { V5_SCHEMA_VERSION, V5_WORKFLOW_VERSION } from '@/v5/types'
 import { measureArtifactMarkdown } from '@/v5/validators'
 import {
   V5_RESUME_EXTRACTION_CACHE_VERSION,
   createTrustedResumeExtractionCache,
   type ResumeExtractionCacheStats,
+  type TrustedResumeExtractionCache,
+  type TrustedResumeExtractionCacheOptions,
+  type TrustedResumeExtractionCacheSnapshot,
+  type TrustedResumeExtractionPartialSnapshot,
 } from '@/v5/resume-extraction-cache'
+import { resumeExtractionOutputTokenCapForBlocks } from '@/v5/prompt-compiler'
 
 interface HistoryRecord {
   company: string
@@ -75,6 +105,7 @@ interface CaseSummary {
   candidateChars: number
   baselineBullets: number
   candidateBullets: number
+  deliveryDiagnostics: V5DeliveryDiagnostics
 }
 
 interface GenerationCaseSummary {
@@ -83,9 +114,13 @@ interface GenerationCaseSummary {
   runId: string
   state: string
   usedSafeFallback: boolean
+  usedAnyFallback: boolean
+  deliveryDecision: V5WorkflowResult['deliveryDecision']
+  qualityGates: V5WorkflowResult['qualityGates']
   matchScore: number
   candidateChars: number
   candidateBullets: number
+  deliveryDiagnostics: V5DeliveryDiagnostics
 }
 
 interface BlindEvaluationInput {
@@ -109,7 +144,14 @@ interface CaseStatus {
     name: string
     message: string
     code?: string
-    issues?: Array<{ code: string; outputPath: string | null }>
+    issues?: P01ValidationIssueBucket[]
+    validationIssues?: P01ValidationIssueBucket[]
+    outputAudit?: {
+      rawOutputDigest: string
+      validatedOutputDigest: string
+      normalizationApplied: boolean
+      normalizationChangeCount: number
+    }
   }
   budget: ReturnType<EvaluationBudgetController['snapshot']>
 }
@@ -122,21 +164,206 @@ interface RunManifest {
   selectedCases: number[]
   stage: EvaluationRunStage
   sourceRun: string | null
+  judgeSource: JudgeSourceProvenance | null
   budgetProfile: ReturnType<typeof budgetProfileForCases>
   provider: {
     endpoint: string
     model: string
     maxProviderAttempts: 1
     fallbackEnabled: false
+    generationPolicy?: ReturnType<typeof evaluationDeepSeekPolicy>
+  }
+  executionPolicy: {
+    releaseGateMode: 'deterministic_product_delivery_v2'
+    agentFactJudgeEnabled: false
+    agentQualityJudgeEnabled: false
+    artifactGenerationMode: 'dsl_v1' | 'writer_v1'
+    jobTargetingPolicy?: 'job-targeted-v1'
+    artifactRepairMax: 0
+    interviewMode: 'deferred'
+    componentQuotaPolicy: typeof V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION
   }
   extractionCache: {
     protocolVersion: typeof V5_RESUME_EXTRACTION_CACHE_VERSION
-    persistence: 'single_process_only'
+    implementationDigest: string
+    configDigest: string
+    persistence: 'validated_local_checkpoint_v1'
   }
 }
 
 const backendRoot = resolve(import.meta.dir, '..')
-const args = parseEvaluationRunnerArgs(process.argv.slice(2), { backendRoot })
+
+export function providerComponentQuotasForRun(input: {
+  resume: boolean
+  resumeChunks: number
+  stage: EvaluationRunStage
+  validatedShardIndexes: readonly number[]
+  artifactGenerationMode?: 'dsl_v1' | 'writer_v1'
+}) {
+  // Historical usage is cumulative. Only new runs can shrink extraction
+  // quotas to the missing shards without invalidating an existing journal.
+  return v5EvaluationComponentQuotas(input.resumeChunks, input.stage, {
+    ...(input.resume ? {} : { validatedShardIndexes: input.validatedShardIndexes }),
+    artifactGenerationMode: input.artifactGenerationMode,
+  })
+}
+
+export async function persistGenerationDiagnosticsBeforeResumeCache<T>(input: {
+  persistGenerationDiagnostics: () => Promise<T>
+  persistResumeExtraction: () => Promise<void>
+}) {
+  const diagnostics = await input.persistGenerationDiagnostics()
+  await input.persistResumeExtraction()
+  return diagnostics
+}
+
+export type EvaluationFailureCleanupStage =
+  | 'generation_diagnostics'
+  | 'fail_fast'
+  | 'provider_drain'
+  | 'resume_extraction_cache'
+  | 'failed_status'
+
+export type EvaluationFailureCleanupErrors = Partial<Record<EvaluationFailureCleanupStage, unknown>>
+
+export const DEFAULT_EVALUATION_CLEANUP_TIMEOUT_MS = 5_000
+
+export class EvaluationCleanupTimeoutError extends Error {
+  readonly code = 'EVALUATION_CLEANUP_TIMEOUT' as const
+
+  constructor(readonly stage: string, readonly timeoutMs: number) {
+    super(`Evaluation cleanup stage ${stage} exceeded ${timeoutMs}ms`)
+    this.name = 'EvaluationCleanupTimeoutError'
+  }
+}
+
+async function runBoundedCleanup<T>(
+  stage: string,
+  action: () => T | Promise<T>,
+  timeoutMs: number
+) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      Promise.resolve().then(action),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new EvaluationCleanupTimeoutError(stage, timeoutMs)),
+          timeoutMs
+        )
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+export interface EvaluationFailureCleanupInput {
+  persistFailureDiagnostics: () => Promise<void>
+  triggerFailFast: () => Promise<void>
+  drainProvider: () => Promise<void>
+  persistResumeExtraction: () => Promise<void>
+  writeFailedStatus: () => Promise<void>
+  onStageError?: (
+    stage: EvaluationFailureCleanupStage,
+    error: unknown
+  ) => void | Promise<void>
+  cleanupTimeoutMs?: number
+}
+
+/**
+ * Failure cleanup is intentionally best-effort per stage. In particular, a
+ * non-critical P01 cache snapshot/write failure must never skip cancellation,
+ * physical-call settlement, or the final failed status.
+ */
+export async function finalizeFailedEvaluationCase(input: EvaluationFailureCleanupInput) {
+  const errors: EvaluationFailureCleanupErrors = {}
+  const cleanupTimeoutMs = input.cleanupTimeoutMs ?? DEFAULT_EVALUATION_CLEANUP_TIMEOUT_MS
+  const attempt = async (
+    stage: EvaluationFailureCleanupStage,
+    action: () => Promise<void>
+  ) => {
+    try {
+      // Provider drain owns its request-settlement deadline. Local persistence,
+      // cancellation bookkeeping and telemetry get an additional short bound
+      // so one stuck cleanup cannot prevent the remaining stages or rethrow.
+      if (stage === 'provider_drain') await action()
+      else await runBoundedCleanup(stage, action, cleanupTimeoutMs)
+    } catch (error) {
+      errors[stage] = error
+      try {
+        await runBoundedCleanup(
+          `${stage}_telemetry`,
+          () => input.onStageError?.(stage, error),
+          cleanupTimeoutMs
+        )
+      } catch {
+        // Cleanup telemetry is secondary and must never interrupt the remaining
+        // cleanup stages or replace the primary workflow failure.
+      }
+    }
+  }
+
+  await attempt('generation_diagnostics', input.persistFailureDiagnostics)
+  await attempt('fail_fast', input.triggerFailFast)
+  await attempt('provider_drain', input.drainProvider)
+  await attempt('resume_extraction_cache', input.persistResumeExtraction)
+  await attempt('failed_status', input.writeFailedStatus)
+  return errors
+}
+
+export async function finalizeFailedEvaluationCaseAndRethrow(
+  input: EvaluationFailureCleanupInput & { primaryError: unknown }
+): Promise<never> {
+  const { primaryError, ...cleanupInput } = input
+  try {
+    await finalizeFailedEvaluationCase(cleanupInput)
+  } finally {
+    // The first workflow/provider error is the only terminal cause. Every
+    // cleanup failure has already been emitted as privacy-safe secondary
+    // telemetry and is never allowed to mask it.
+    throw primaryError
+  }
+}
+
+export type EvaluationResourceCleanupStage =
+  | 'resume_extraction_cache_clear'
+  | 'budget_dispose'
+  | 'run_lock_release'
+
+export async function finalizeEvaluationResources(input: {
+  hadPrimaryFailure: boolean
+  stages: Array<{ stage: EvaluationResourceCleanupStage; action: () => void | Promise<void> }>
+  onStageError?: (
+    stage: EvaluationResourceCleanupStage,
+    error: unknown
+  ) => void | Promise<void>
+  cleanupTimeoutMs?: number
+}) {
+  let firstCleanupError: unknown
+  let hasCleanupError = false
+  const cleanupTimeoutMs = input.cleanupTimeoutMs ?? DEFAULT_EVALUATION_CLEANUP_TIMEOUT_MS
+  for (const item of input.stages) {
+    try {
+      await runBoundedCleanup(item.stage, item.action, cleanupTimeoutMs)
+    } catch (error) {
+      if (!hasCleanupError) {
+        firstCleanupError = error
+        hasCleanupError = true
+      }
+      try {
+        await runBoundedCleanup(
+          `${item.stage}_telemetry`,
+          () => input.onStageError?.(item.stage, error),
+          cleanupTimeoutMs
+        )
+      } catch {
+        // Cleanup telemetry is always secondary.
+      }
+    }
+  }
+  if (!input.hadPrimaryFailure && hasCleanupError) throw firstCleanupError
+}
 
 function usage() {
   return `Reffo v5 nonprod 安全评测运行器
@@ -144,7 +371,8 @@ function usage() {
 用法：
   bun run scripts/run-v5-nonprod-nine-case-blind-eval.ts --stage extract-only --dry-run --cases 2
   bun --env-file=.env.nonprod run scripts/run-v5-nonprod-nine-case-blind-eval.ts --stage generation-only --live --output <新目录> --cases 2 --fail-fast
-  bun --env-file=.env.nonprod run scripts/run-v5-nonprod-nine-case-blind-eval.ts --stage judge-only --source-run <生成目录> --live --output <新目录> --cases 2 --fail-fast
+  bun run scripts/run-v5-nonprod-nine-case-blind-eval.ts --stage judge-only --source-run <生成目录> --dry-run --cases 2
+  bun --env-file=.env.nonprod run scripts/run-v5-nonprod-nine-case-blind-eval.ts --stage judge-only --source-run <生成目录> --live --output <新评审目录> --cases 2 --fail-fast
   bun --env-file=.env.nonprod run scripts/run-v5-nonprod-nine-case-blind-eval.ts --live --output <新目录> --cases 1-9 --fail-fast
   bun --env-file=.env.nonprod run scripts/run-v5-nonprod-nine-case-blind-eval.ts --live --resume --output <原目录> --cases <原选择>
 
@@ -152,8 +380,10 @@ function usage() {
   --history <path>  指定固定的 9 条 nonprod 数据文件
   --output <path>   指定全新输出目录；非 --resume 时目录必须为空
   --cases <list>    例如 2、1,3,5 或 1-9；默认仅案例 2 canary
-  --stage <stage>   extract-only、generation-only、judge-only 或 full；默认 full
-  --source-run      judge-only 使用的冻结 generation-only/full 输出目录
+  --stage <stage>   generation-only、judge-only 或 full 可实跑；extract-only 当前仅允许 dry-run
+  --artifact-mode <mode>  dsl_v1（默认）或 writer_v1（非生产受控写作）
+  --job-targeted          启用 r2 岗位画像与胜任映射（须同时选择 writer_v1）
+  --source-run      judge-only 使用的冻结 generation-only/full 输出目录；必须与新输出目录隔离
   --dry-run         只做输入、预算、指纹与调用上界预检；这是默认模式
   --live            显式启用真实调用，且必须同时提供 --output
   --resume          只复用指纹一致且完整的版本化检查点；不重试未知状态的调用
@@ -193,30 +423,111 @@ function casePrefix(caseNumber: number, target: string) {
   return `${caseId(caseNumber)}-${safeFilename(target)}`
 }
 
-function serializedError(error: unknown) {
+function frozenCaseInputDigest(historyDigest: string, caseNumber: number, history: HistoryRecord) {
+  return digestJson({
+    historyDigest,
+    caseNumber,
+    company: history.company,
+    position: history.position,
+    resume: history.resume_content,
+    jd: history.jd_content,
+    baseline: history.optimized_content,
+  })
+}
+
+export function serializedError(error: unknown): NonNullable<CaseStatus['error']> {
   if (error instanceof Error) {
     const code = 'code' in error && typeof error.code === 'string' ? error.code : undefined
     const issues = 'issues' in error && Array.isArray(error.issues)
-      ? error.issues.flatMap(item => {
-          if (!isRecord(item) || typeof item.code !== 'string') return []
-          return [{
-            code: item.code,
-            outputPath: typeof item.outputPath === 'string' ? item.outputPath : null,
-            claimId: typeof item.claimId === 'string' ? item.claimId : null,
-            evidenceIds: Array.isArray(item.evidenceIds)
-              ? item.evidenceIds.filter(id => typeof id === 'string').slice(0, 10)
-              : [],
-          }]
-        }).slice(0, 30)
+      ? bucketP01ValidationIssues(error.issues, 'domain')
       : []
+    const validationIssues = 'validationIssues' in error && Array.isArray(error.validationIssues)
+      ? bucketP01ValidationIssues(error.validationIssues, 'schema')
+      : []
+    const outputAudit = 'outputAudit' in error && isRecord(error.outputAudit)
+      && typeof error.outputAudit.rawOutputDigest === 'string'
+      && typeof error.outputAudit.validatedOutputDigest === 'string'
+      && typeof error.outputAudit.normalizationApplied === 'boolean'
+      && Array.isArray(error.outputAudit.normalizationChanges)
+      ? {
+          rawOutputDigest: error.outputAudit.rawOutputDigest.slice(0, 128),
+          validatedOutputDigest: error.outputAudit.validatedOutputDigest.slice(0, 128),
+          normalizationApplied: error.outputAudit.normalizationApplied,
+          normalizationChangeCount: error.outputAudit.normalizationChanges
+            .filter(change => typeof change === 'string').length,
+        }
+      : undefined
     return {
-      name: error.name || 'Error',
-      message: error.message.slice(0, 500),
+      name: /^[A-Za-z][A-Za-z0-9_]*$/.test(error.name) ? error.name : 'Error',
+      message: code ? `V5 evaluation failed (${code})` : 'V5 evaluation failed',
       ...(code ? { code } : {}),
       ...(issues.length > 0 ? { issues } : {}),
+      ...(validationIssues.length > 0 ? { validationIssues } : {}),
+      ...(outputAudit ? { outputAudit } : {}),
     }
   }
-  return { name: 'Error', message: String(error).slice(0, 500) }
+  return { name: 'Error', message: 'V5 evaluation failed' }
+}
+
+function deliveryDiagnosticsFromError(error: unknown) {
+  if (!isRecord(error) || error.deliveryDiagnostics === undefined) return null
+  return sanitizeV5DeliveryDiagnostics(error.deliveryDiagnostics)
+}
+
+function strictCheckpointDiagnostics(value: unknown, caseNumber: number) {
+  const sanitized = sanitizeV5DeliveryDiagnostics(value)
+  if (digestJson(sanitized) !== digestJson(value)) {
+    throw new EvaluationRunnerSafetyError(
+      'GENERATION_DIAGNOSTICS_UNSAFE_PAYLOAD',
+      `案例 ${caseNumber} 的生成诊断检查点包含版本化安全结构之外的字段`
+    )
+  }
+  return sanitized
+}
+
+function assertMatchingDiagnostics(input: {
+  expected: unknown
+  actual: unknown
+  caseNumber: number
+  label: string
+}) {
+  const expected = sanitizeV5DeliveryDiagnostics(input.expected)
+  const actual = sanitizeV5DeliveryDiagnostics(input.actual)
+  if (digestJson(expected) !== digestJson(actual)) {
+    throw new EvaluationRunnerSafetyError(
+      'GENERATION_DIAGNOSTICS_MISMATCH',
+      `案例 ${input.caseNumber} 的生成诊断与${input.label}不一致`
+    )
+  }
+  return actual
+}
+
+function diagnosticRatio(value: { numerator: number; denominator: number }) {
+  const ratio = `${value.numerator}/${value.denominator}`
+  return value.denominator === 0 ? `${ratio}（N/A）` : ratio
+}
+
+function diagnosticReportCells(diagnostics: V5DeliveryDiagnostics) {
+  const metrics = diagnostics.metrics
+  if (!metrics) {
+    return {
+      plannedCoverage: 'N/A',
+      stableCoreCoverage: 'N/A',
+      primaryRequirementCoverage: 'N/A',
+      businessBullets: 'N/A',
+      outputLength: 'N/A',
+    }
+  }
+  const unit = metrics.outputLengthUnit === 'cjk_characters' ? '字符' : '词'
+  const softFloor = metrics.outputLengthSoftMin === null ? '—' : metrics.outputLengthSoftMin
+  const hardFloor = metrics.outputLengthHardMin === null ? '—' : metrics.outputLengthHardMin
+  return {
+    plannedCoverage: diagnosticRatio(metrics.plannedEvidenceCoverage),
+    stableCoreCoverage: diagnosticRatio(metrics.stableCoreCoverage),
+    primaryRequirementCoverage: diagnosticRatio(metrics.primaryRequirementCoverage),
+    businessBullets: `${metrics.renderedBusinessBulletCount}/${metrics.targetBusinessBulletTarget}（${metrics.targetBusinessBulletMin}–${metrics.targetBusinessBulletMax}）`,
+    outputLength: `${metrics.outputLengthValue} ${unit}（soft ${softFloor}–${metrics.outputLengthSoftMax}；hard ${hardFloor}–${metrics.outputLengthHardMax}）`,
+  }
 }
 
 function baselineArtifact(markdown: string): GeneratedResumeArtifact {
@@ -253,6 +564,17 @@ function winner(result: DoubleOrderAbResult): CaseSummary['winner'] {
   if (result.normalizedForwardWinner === 'left') return 'baseline'
   if (result.normalizedForwardWinner === 'right') return 'v5'
   return 'tie'
+}
+
+function assertV5EvaluationCandidateDeliverable(
+  result: V5WorkflowResult,
+  caseNumber: number
+) {
+  if (isV5CodeGateDeliverable(result)) return
+  throw Object.assign(
+    new Error(`案例 ${caseNumber} 的 v5 未通过当前本地产品交付门禁；候选不能恢复或进入盲评`),
+    { code: 'V5_DELIVERY_GATE_FAIL_FAST' }
+  )
 }
 
 function normalizedNgrams(value: string, size = 4) {
@@ -302,6 +624,8 @@ function report(input: {
   usage: EvaluationUsageEntry[]
   historyDigest: string
   selectedCases: number[]
+  stage: EvaluationRunStage
+  judgeSource: JudgeSourceProvenance | null
   budget: ReturnType<EvaluationBudgetController['snapshot']>
   extractionCache: Readonly<ResumeExtractionCacheStats>
 }) {
@@ -310,7 +634,8 @@ function report(input: {
     : 0
   const rows = input.summaries.map(item => {
     const prefix = casePrefix(item.caseNumber, item.target)
-    return `| ${item.caseNumber} | ${item.target} | ${item.baselineGate} / ${item.candidateGate} | ${item.baselineScore} → ${item.candidateScore} | ${item.winner} | ${item.baselineChars} → ${item.candidateChars} | ${item.baselineBullets} → ${item.candidateBullets} | [v5 简历](cases/${prefix}-v5.md) | [盲评检查点](cases/${prefix}-ab.json) |`
+    const diagnostics = diagnosticReportCells(item.deliveryDiagnostics)
+    return `| ${item.caseNumber} | ${item.target} | ${item.baselineGate} / ${item.candidateGate} | ${item.baselineScore} → ${item.candidateScore} | ${item.winner} | ${item.baselineChars} → ${item.candidateChars} | ${item.baselineBullets} → ${item.candidateBullets} | ${diagnostics.plannedCoverage} | ${diagnostics.stableCoreCoverage} | ${diagnostics.primaryRequirementCoverage} | ${diagnostics.businessBullets} | ${diagnostics.outputLength} | [v5 简历](cases/${prefix}-v5.md) | [生成诊断](cases/${prefix}-generation-diagnostics.json) | [盲评检查点](cases/${prefix}-ab.json) |`
   }).join('\n')
   const differentiation = sameSourceDifferentiation(input.results)
   const successfulUsage = input.usage.filter(item => item.outcome === 'success')
@@ -320,7 +645,13 @@ function report(input: {
   const differentiationText = differentiation.pairCount > 0
     ? `中位数 ${differentiation.medianSimilarity}，范围 ${differentiation.minSimilarity}–${differentiation.maxSimilarity}`
     : '当前选择不足以计算（需要案例 3–8 中至少两例）'
-  return `# Reffo v5 nonprod 简历生成与双顺序盲评
+  const title = input.stage === 'judge-only'
+    ? 'Reffo v5 nonprod 冻结产物双顺序盲评'
+    : 'Reffo v5 nonprod 简历生成与双顺序盲评'
+  const lineageNote = input.stage === 'judge-only' && input.judgeSource
+    ? `- 本次仅执行 P12；baseline 与 v5 产物按内容摘要从 source-run ${input.judgeSource.sourceRunId} 复验后载入，没有重跑 P01–P06D 生成链路。`
+    : '- baseline 使用历史 nonprod 已保存的优化简历；v5 使用本次冻结实现和配置处理原始简历与 JD。'
+  return `# ${title}
 
 运行时间：${new Date().toISOString()}
 
@@ -333,7 +664,7 @@ function report(input: {
 - v5 胜 / 旧版胜 / 平局 / 顺序不一致：${input.summaries.filter(item => item.winner === 'v5').length} / ${input.summaries.filter(item => item.winner === 'baseline').length} / ${input.summaries.filter(item => item.winner === 'tie').length} / ${input.summaries.filter(item => item.winner === 'order_inconsistent').length}
 - 旧版平均分：${average(input.summaries.map(item => item.baselineScore)).toFixed(1)}
 - v5 平均分：${average(input.summaries.map(item => item.candidateScore)).toFixed(1)}
-- v5 安全回退：${input.summaries.filter(item => item.usedSafeFallback).length}（安全回退会使运行立即终止，不进入有效结果集）
+- 进入盲评的 v5 安全回退：${input.summaries.filter(item => item.usedSafeFallback).length}（当前代码门禁必须为 0；安全回退只供内部诊断）
 - 同源岗位 v5 正文四元组相似度：${differentiationText}
 - 物理模型尝试：${input.budget.run.usage.physicalAttempts} 次；已结算输入 ${input.budget.run.usage.settledInputTokens} tokens；已结算输出 ${input.budget.run.usage.settledOutputTokens} tokens
 - Provider 成功响应：${successfulUsage.length}；响应所报输入 ${totalInput} tokens；输出 ${totalOutput} tokens；累计 Provider 延迟 ${totalLatency} ms
@@ -341,18 +672,18 @@ function report(input: {
 
 ## 逐案结果
 
-| # | 目标岗位 | 绝对门禁（旧/v5） | 双顺序均分 | 胜者 | 字符数 | bullets | 简历 | 盲评 |
-|---:|---|---|---:|---|---:|---:|---|---|
+| # | 目标岗位 | 离线评测（旧/v5） | 双顺序均分 | 胜者 | 字符数 | bullets | 计划覆盖 n/d | 稳定核心 n/d | JD 主要求 n/d | 业务 bullet/target | 输出长度/边界 | 简历 | 生成诊断 | 盲评 |
+|---:|---|---|---:|---|---:|---:|---:|---:|---:|---:|---|---|---|---|
 ${rows}
 
 ## 说明
 
-- baseline 使用历史 nonprod 已保存的优化简历；v5 使用同一冻结实现和配置处理原始简历与 JD。
+${lineageNote}
 - 只使用直接 DeepSeek provider；禁用 fallback、SDK 自动重试和整案自动重跑。
 - 每次真实物理请求前先预留调用、输入、输出与墙钟预算；失败请求同样计数并触发共享取消。
-- 每案先通过 v5 确定性门禁和 P09 阻断式事实 Judge，再进行 P12 A/B 与 B/A 双顺序匿名评测。
-- v5 安全回退或 v5 绝对门禁非 pass 都会立即终止批次，不能计为有效候选结果。
-- P01 缓存只在当前进程内复用；恢复时若需要跨进程重复提取已完成案例的同源简历，运行器会直接阻断。
+- 每案先通过 v5 本地代码硬门禁，再进行 P12 A/B 与 B/A 双顺序匿名评测；生产生成链路不调用 P09/P11 Agent Judge。
+- P12 只记录离线质量结果，不反向阻断已经通过代码门禁的候选；安全回退、review_required 和其他非可交付产物在 P12 前失败即停。
+- 已验证的 P01 结果会以 0600 权限写入本地 .artifacts 缓存，并按简历、实现、Prompt、Schema 与 Provider 指纹跨运行复验后复用；指纹或完整性不匹配时拒绝读取。
 `
 }
 
@@ -381,7 +712,8 @@ function generationReport(input: {
 }) {
   const rows = input.summaries.map(item => {
     const prefix = casePrefix(item.caseNumber, item.target)
-    return `| ${item.caseNumber} | ${item.target} | ${item.state} | ${item.matchScore} | ${item.candidateChars} | ${item.candidateBullets} | [v5 简历](cases/${prefix}-v5.md) | [冻结盲评输入](cases/${prefix}-blind-input.json) |`
+    const diagnostics = diagnosticReportCells(item.deliveryDiagnostics)
+    return `| ${item.caseNumber} | ${item.target} | ${item.state} | ${item.matchScore} | ${item.candidateChars} | ${item.candidateBullets} | ${diagnostics.plannedCoverage} | ${diagnostics.stableCoreCoverage} | ${diagnostics.primaryRequirementCoverage} | ${diagnostics.businessBullets} | ${diagnostics.outputLength} | [v5 简历](cases/${prefix}-v5.md) | [生成诊断](cases/${prefix}-generation-diagnostics.json) | [冻结盲评输入](cases/${prefix}-blind-input.json) |`
   }).join('\n')
   return `# Reffo v5 nonprod 分阶段生成报告
 
@@ -395,8 +727,8 @@ function generationReport(input: {
 - 已结算输入 / 输出：${input.budget.run.usage.settledInputTokens} / ${input.budget.run.usage.settledOutputTokens} tokens
 - P01 缓存命中 / 未命中：${input.extractionCache.hits} / ${input.extractionCache.misses}
 
-| # | 目标岗位 | 状态 | 匹配分 | 字符数 | 业务 bullets | 简历 | 盲评输入 |
-|---:|---|---|---:|---:|---:|---|---|
+| # | 目标岗位 | 状态 | 匹配分 | 字符数 | 业务 bullets | 计划覆盖 n/d | 稳定核心 n/d | JD 主要求 n/d | 业务 bullet/target | 输出长度/边界 | 简历 | 生成诊断 | 盲评输入 |
+|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|---|
 ${rows}
 
 本阶段没有执行 P12；盲评必须在独立 judge-only 运行中读取冻结输入。
@@ -423,7 +755,84 @@ async function readStatusStrict(path: string): Promise<CaseStatus | null> {
   return value as unknown as CaseStatus
 }
 
+interface ResumeExtractionCachePreflight {
+  status: 'hit' | 'partial' | 'miss'
+  checkpointPath: string
+}
+
+async function preflightResumeExtractionCache(input: {
+  root: string
+  document: CanonicalSourceDocument
+  cache: TrustedResumeExtractionCache
+  fingerprints: EvaluationCheckpointFingerprints
+  caseId: string
+}): Promise<ResumeExtractionCachePreflight> {
+  const checkpointPath = resolve(input.root, `${input.cache.keyFor(input.document)}.json`)
+  const current = await readCheckpoint<TrustedResumeExtractionCacheSnapshot>({
+    path: checkpointPath,
+    kind: 'resume_extraction',
+    caseId: input.caseId,
+    fingerprints: input.fingerprints,
+  })
+  if (current) {
+    input.cache.hydrate(input.document, current.payload)
+    return { status: 'hit', checkpointPath }
+  }
+  const partialPath = resolve(input.root, `${input.cache.keyFor(input.document)}.partial.json`)
+  const partial = await readCheckpoint<TrustedResumeExtractionPartialSnapshot>({
+    path: partialPath,
+    kind: 'resume_extraction_partial',
+    caseId: input.caseId,
+    fingerprints: input.fingerprints,
+  })
+  if (partial) {
+    input.cache.hydratePartial(input.document, partial.payload)
+    return { status: 'partial', checkpointPath: partialPath }
+  }
+  // Runner v9 never scans or promotes v1 cache files. Those snapshots were
+  // produced under older extraction semantics and a malformed legacy file
+  // must not block a fresh, content-addressed v2 lookup.
+  return { status: 'miss', checkpointPath }
+}
+
+/** Local checkpoints are mutable progress, serialized per descriptor by the caller. */
+export async function persistPartialExtractionCheckpoint(input: {
+  root: string
+  snapshot: TrustedResumeExtractionPartialSnapshot
+  document: CanonicalSourceDocument
+  cacheOptions: TrustedResumeExtractionCacheOptions
+  fingerprints: EvaluationCheckpointFingerprints
+}) {
+  const key = input.snapshot.cacheKey
+  if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid partial cache key')
+  const lock = await acquireEvaluationRunLock({
+    outputRoot: resolve(input.root, 'partial-locks', key), resume: true,
+  })
+  try {
+    const path = resolve(input.root, `${key}.partial.json`)
+    const caseId = `resume-${input.document.sha256}`
+    const current = await readCheckpoint<TrustedResumeExtractionPartialSnapshot>({
+      path, kind: 'resume_extraction_partial', caseId, fingerprints: input.fingerprints,
+    })
+    const verifier = createTrustedResumeExtractionCache({ ...input.cacheOptions, onValidatedShard: undefined })
+    if (current) verifier.hydratePartial(input.document, current.payload)
+    verifier.hydratePartial(input.document, input.snapshot)
+    const payload = verifier.partialSnapshot(input.document)
+    if (!payload) throw new Error('Validated partial snapshot missing')
+    await atomicWriteJson(path, {
+      checkpointVersion: V5_EVALUATION_CHECKPOINT_VERSION,
+      kind: 'resume_extraction_partial', caseId,
+      createdAt: new Date().toISOString(),
+      fingerprints: input.fingerprints,
+      payloadSha256: digestJson(payload), payload,
+    })
+  } finally {
+    await lock.release()
+  }
+}
+
 async function main() {
+  const args = parseEvaluationRunnerArgs(process.argv.slice(2), { backendRoot })
   if (args.help) {
     console.log(usage())
     return
@@ -445,22 +854,83 @@ async function main() {
   }
   await assertOutputDirectoryPolicy(args.outputRoot, args.resume)
 
-  const requiredPhysicalCalls = Math.max(...selected.map(({ history }) => (
-    v5CasePhysicalCallUpperBound(
-      splitResumeDocument(canonicalizeSourceDocument(history.resume_content).canonicalDocument).length,
-      args.stage
+  const judgeSourceRun = args.stage === 'judge-only'
+    ? await loadValidatedJudgeSourceRun({
+        sourceRun: args.sourceRun!,
+        outputRoot: args.outputRoot,
+        historyDigest,
+        selectedCases: args.selectedCases,
+        cases: selected.map(({ number, history }) => {
+          const target = `${history.company} / ${history.position}`
+          return {
+            caseNumber: number,
+            caseId: caseId(number),
+            prefix: casePrefix(number, target),
+            inputDigest: frozenCaseInputDigest(historyDigest, number, history),
+            resumeDigest: canonicalizeSourceDocument(history.resume_content).canonicalDocument.sha256,
+          }
+        }),
+      })
+    : null
+
+  const caseBudgetRequirements = selected.map(({ history }) => {
+    const chunks = splitResumeDocument(
+      canonicalizeSourceDocument(history.resume_content).canonicalDocument
     )
-  )))
-  const budgetProfile = budgetProfileForCases(args.selectedCases, args.stage, requiredPhysicalCalls)
+    const resumeChunks = chunks.length
+    return {
+      resumeChunks,
+      requiredPhysicalCalls: v5CasePhysicalCallUpperBound(resumeChunks, args.stage),
+      outputTokenEnvelope: v5CaseOutputTokenEnvelope(resumeChunks, args.stage, {
+        shardOutputTokenCaps: chunks.map(chunk => resumeExtractionOutputTokenCapForBlocks(chunk.blocks)),
+        artifactGenerationMode: args.artifactGenerationMode,
+      }),
+    }
+  })
+  const requiredPhysicalCalls = Math.max(...caseBudgetRequirements.map(item => item.requiredPhysicalCalls))
+  const requiredOutputTokens = Math.max(...caseBudgetRequirements.map(item => item.outputTokenEnvelope.totalTokens))
+  const requiredResumeChunks = Math.max(...caseBudgetRequirements.map(item => item.resumeChunks))
+  const budgetProfile = budgetProfileForCases(args.selectedCases, args.stage, {
+    requiredPhysicalCalls,
+    resumeChunks: requiredResumeChunks,
+    estimatedOutputTokens: requiredOutputTokens,
+  })
   const implementationDigest = await createImplementationDigest(backendRoot)
   const model = process.env.AI_MODEL?.trim() || 'deepseek-chat'
-  if (model !== 'deepseek-chat') {
-    throw new Error(`评测模型必须精确为 deepseek-chat，当前为 ${model}`)
-  }
+  const generationPolicy = evaluationDeepSeekPolicy(model, process.env.DEEPSEEK_THINKING_MODE, process.env.DEEPSEEK_REASONING_EFFORT)
   const contextWindowTokens = Number.parseInt(process.env.V5_CONTEXT_WINDOW_TOKENS || '64000', 10)
   if (!Number.isSafeInteger(contextWindowTokens) || contextWindowTokens <= 0) {
     throw new Error('V5_CONTEXT_WINDOW_TOKENS 必须是正安全整数')
   }
+  const extractionImplementationDigest = await createExtractionImplementationDigest(backendRoot)
+  const extractionRuntimeConfig = {
+    runtime: { bunVersion: Bun.version },
+    providerEndpoint,
+    model,
+    ...(generationPolicy ? { generationPolicy } : {}),
+    maxProviderAttempts: 1,
+    fallbackEnabled: false,
+    structuredOutputMode,
+    contextWindowTokens,
+    chunkPlanVersion: RESUME_EXTRACTION_CHUNK_PLAN_VERSION,
+    chunkConfig: {
+      maxBlocks: DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS,
+      maxCharacters: DEFAULT_RESUME_EXTRACTION_MAX_CHARACTERS,
+      maxEstimatedOutputTokens: DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
+      concurrency: DEFAULT_RESUME_EXTRACTION_CONCURRENCY,
+    },
+  }
+  const extractionConfigDigest = digestJson(extractionRuntimeConfig)
+  const executionPolicy = {
+    releaseGateMode: 'deterministic_product_delivery_v2',
+    agentFactJudgeEnabled: false,
+    agentQualityJudgeEnabled: false,
+    artifactGenerationMode: args.artifactGenerationMode,
+    ...(args.jobTargetingPolicy ? { jobTargetingPolicy: args.jobTargetingPolicy } : {}),
+    artifactRepairMax: 0,
+    interviewMode: 'deferred',
+    componentQuotaPolicy: V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION,
+  } as const
   const configDigest = digestJson({
     runnerProtocolVersion: V5_EVALUATION_RUNNER_PROTOCOL_VERSION,
     workflowVersion: V5_WORKFLOW_VERSION,
@@ -468,15 +938,19 @@ async function main() {
     selectedCases: args.selectedCases,
     stage: args.stage,
     sourceRun: args.sourceRun,
+    judgeSource: judgeSourceRun?.provenance ?? null,
     providerEndpoint,
     model,
+    ...(generationPolicy ? { generationPolicy } : {}),
     maxProviderAttempts: 1,
     fallbackEnabled: false,
-    qualityJudgeEnabled: false,
+    ...executionPolicy,
     doubleOrderBlindEvaluation: true,
     structuredOutputMode,
     contextWindowTokens,
     budgetProfile,
+    extractionImplementationDigest,
+    extractionConfigDigest,
     extractionCache: {
       protocolVersion: V5_RESUME_EXTRACTION_CACHE_VERSION,
       chunkPlanVersion: RESUME_EXTRACTION_CHUNK_PLAN_VERSION,
@@ -484,23 +958,93 @@ async function main() {
       maxCharacters: DEFAULT_RESUME_EXTRACTION_MAX_CHARACTERS,
       maxEstimatedOutputTokens: DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
       concurrency: DEFAULT_RESUME_EXTRACTION_CONCURRENCY,
-      persistence: 'single_process_only',
+      persistence: 'validated_local_checkpoint_v1',
     },
   })
-  const preflightCases = selected.map(({ number, history }) => {
+  // P01 identity deliberately excludes JD, downstream planning/rendering,
+  // selected cases and run budgets. Its exact source/prompt dependency digest
+  // and provider/chunk configuration remain separate and both must match.
+  const resumeExtractionCacheOptions: TrustedResumeExtractionCacheOptions = {
+    implementationFingerprint: extractionImplementationDigest,
+    providerConfigFingerprint: extractionConfigDigest,
+    chunkMaxBlocks: DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS,
+    chunkMaxCharacters: DEFAULT_RESUME_EXTRACTION_MAX_CHARACTERS,
+    chunkMaxEstimatedOutputTokens: DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
+    chunkConcurrency: DEFAULT_RESUME_EXTRACTION_CONCURRENCY,
+  }
+  const persistentExtractionCacheRoot = resolve(backendRoot, '..', '.artifacts', 'v5-resume-extraction-cache')
+  const partialWrites = new Map<string, Promise<void>>()
+  const persistPartial = (
+    snapshot: TrustedResumeExtractionPartialSnapshot,
+    document: CanonicalSourceDocument
+  ) => {
+    const previous = partialWrites.get(snapshot.cacheKey) ?? Promise.resolve()
+    const next = previous.catch(() => undefined).then(() => persistPartialExtractionCheckpoint({
+      root: persistentExtractionCacheRoot, snapshot, document,
+      cacheOptions: resumeExtractionCacheOptions,
+      fingerprints: {
+        inputDigest: document.sha256,
+        implementationDigest: extractionImplementationDigest,
+        configDigest: extractionConfigDigest,
+      },
+    }))
+    partialWrites.set(snapshot.cacheKey, next)
+    return next
+  }
+  const resumeExtractionCache = createTrustedResumeExtractionCache({
+    ...resumeExtractionCacheOptions,
+    onValidatedShard: async (snapshot, document) => {
+      try { await persistPartial(snapshot, document) } catch {
+        console.warn(JSON.stringify({ event: 'p01_partial_checkpoint_write_failed' }))
+      }
+    },
+  })
+  const preflightCases = await Promise.all(selected.map(async ({ number, history }) => {
     const resume = canonicalizeSourceDocument(history.resume_content)
     const job = canonicalizeSourceDocument(history.jd_content)
-    const resumeChunks = splitResumeDocument(resume.canonicalDocument).length
+    const chunks = splitResumeDocument(resume.canonicalDocument)
+    const resumeChunks = chunks.length
+    const sourceShape = {
+      shardOutputTokenCaps: chunks.map(chunk => resumeExtractionOutputTokenCapForBlocks(chunk.blocks)),
+      artifactGenerationMode: args.artifactGenerationMode,
+    }
+    const outputTokenEnvelopeWithoutCache = v5CaseOutputTokenEnvelope(resumeChunks, args.stage, sourceShape)
+    const extractionFingerprints: EvaluationCheckpointFingerprints = {
+      inputDigest: resume.canonicalDocument.sha256,
+      implementationDigest: extractionImplementationDigest,
+      configDigest: extractionConfigDigest,
+    }
+    const extractionCache = await preflightResumeExtractionCache({
+      root: persistentExtractionCacheRoot,
+      document: resume.canonicalDocument,
+      cache: resumeExtractionCache,
+      fingerprints: extractionFingerprints,
+      caseId: `resume-${resume.canonicalDocument.sha256}`,
+    })
+    const extractionProgress = resumeExtractionCache.progress(resume.canonicalDocument)
+    const budgetShape = { ...sourceShape, validatedShardIndexes: extractionProgress.validatedShardIndices }
+    const physicalCallUpperBoundWithoutCache = v5CasePhysicalCallUpperBound(resumeChunks, args.stage)
+    const physicalCallUpperBound = v5CasePhysicalCallUpperBound(resumeChunks, args.stage, budgetShape)
+    const outputTokenEnvelope = v5CaseOutputTokenEnvelope(resumeChunks, args.stage, budgetShape)
     return {
       caseNumber: number,
-      resumeDigest: resume.rawSha256,
+      resumeDigest: resume.canonicalDocument.sha256,
       resumeBlocks: resume.canonicalDocument.blocks.length,
       resumeChunks,
       jobBlocks: job.canonicalDocument.blocks.length,
-      physicalCallUpperBoundWithoutCache: v5CasePhysicalCallUpperBound(resumeChunks, args.stage),
-      withinCaseCallBudget: v5CasePhysicalCallUpperBound(resumeChunks, args.stage) <= budgetProfile.caseLimits.maxPhysicalCalls,
+      cacheStatus: extractionCache.status,
+      cacheCheckpointPath: extractionCache.checkpointPath,
+      validatedShardCount: extractionProgress.validatedShardIndices.length,
+      extractionCallUpperBound: v5CasePhysicalCallUpperBound(resumeChunks, 'extract-only', budgetShape),
+      physicalCallUpperBoundWithoutCache,
+      physicalCallUpperBound,
+      withinCaseCallBudget: physicalCallUpperBound <= budgetProfile.caseLimits.maxPhysicalCalls,
+      outputTokenEnvelopeWithoutCache,
+      outputTokenEnvelope,
+      componentQuotas: v5EvaluationComponentQuotas(resumeChunks, args.stage, budgetShape),
+      withinCaseOutputBudget: outputTokenEnvelope.totalTokens <= budgetProfile.caseLimits.maxOutputTokens,
     }
-  })
+  }))
   const noCacheCallUpperBound = preflightCases.reduce(
     (sum, item) => sum + item.physicalCallUpperBoundWithoutCache,
     0
@@ -508,19 +1052,45 @@ async function main() {
   const uniqueResumeUpperBound = args.stage === 'judge-only'
     ? selected.length * V5_JUDGE_CALL_UPPER_BOUND
     : [...new Map(preflightCases.map(item => [item.resumeDigest, item])).values()]
-      .reduce((sum, item) => sum + item.resumeChunks * 2, 0)
+      .reduce(
+        (sum, item) => sum + item.extractionCallUpperBound,
+        0
+      )
       + selected.length * (args.stage === 'extract-only'
         ? 0
         : args.stage === 'generation-only'
           ? V5_GENERATION_NON_EXTRACTION_CALL_UPPER_BOUND
           : V5_NON_EXTRACTION_CALL_UPPER_BOUND)
+  const noCacheOutputTokenEnvelope = preflightCases.reduce(
+    (sum, item) => sum + item.outputTokenEnvelopeWithoutCache.totalTokens,
+    0
+  )
+  const uniqueResumeOutputTokenEnvelope = args.stage === 'judge-only'
+    ? noCacheOutputTokenEnvelope
+    : [...new Map(preflightCases.map(item => [item.resumeDigest, item])).values()]
+      .reduce(
+        (sum, item) => sum + item.outputTokenEnvelope.primaryExtractionTokens
+          + item.outputTokenEnvelope.repairExtractionTokens,
+        0
+      )
+      + preflightCases.reduce((sum, item) => sum + item.outputTokenEnvelope.nonExtractionTokens, 0)
   const overCaseCallBudget = preflightCases.filter(item => !item.withinCaseCallBudget)
+  const overCaseOutputBudget = preflightCases.filter(item => !item.withinCaseOutputBudget)
   const blockingReasons = [
+    ...(args.stage === 'extract-only'
+      ? [`${args.stage} 尚未实现独立检查点路由，禁止 live；避免误跑完整链路并消耗 API`]
+      : []),
     ...(overCaseCallBudget.length > 0
       ? [`案例 ${overCaseCallBudget.map(item => item.caseNumber).join(', ')} 的调用上界超过单案 ${budgetProfile.caseLimits.maxPhysicalCalls} 次`]
       : []),
+    ...(overCaseOutputBudget.length > 0
+      ? [`案例 ${overCaseOutputBudget.map(item => item.caseNumber).join(', ')} 的预计输出 envelope 超过单案 ${budgetProfile.caseLimits.maxOutputTokens} Token`]
+      : []),
     ...(uniqueResumeUpperBound > budgetProfile.runLimits.maxPhysicalCalls
       ? [`启用受信共享提取缓存后批次调用上界 ${uniqueResumeUpperBound} 仍超过全局 ${budgetProfile.runLimits.maxPhysicalCalls} 次`]
+      : []),
+    ...(uniqueResumeOutputTokenEnvelope > budgetProfile.runLimits.maxOutputTokens
+      ? [`启用受信共享提取缓存后批次预计输出 envelope ${uniqueResumeOutputTokenEnvelope} 仍超过全局 ${budgetProfile.runLimits.maxOutputTokens} Token`]
       : []),
   ]
   const preflight = {
@@ -536,15 +1106,34 @@ async function main() {
     selectedCases: args.selectedCases,
     stage: args.stage,
     sourceRun: args.sourceRun,
+    judgeSource: judgeSourceRun
+      ? {
+          sourceRunId: judgeSourceRun.provenance.sourceRunId,
+          sourceStage: judgeSourceRun.provenance.sourceStage,
+          contentDigest: judgeSourceRun.provenance.contentDigest,
+          cases: judgeSourceRun.provenance.cases.map(item => ({
+            caseNumber: item.caseNumber,
+            sourceV5PayloadSha256: item.sourceV5PayloadSha256,
+          })),
+        }
+      : null,
     failFast: args.failFast,
-    provider: { endpoint: providerEndpoint, model, fallbackEnabled: false, maxProviderAttempts: 1 },
+    provider: { endpoint: providerEndpoint, model, ...(generationPolicy ? { generationPolicy } : {}), fallbackEnabled: false, maxProviderAttempts: 1 },
+    executionPolicy,
     budgetProfile,
     implementationDigest,
     configDigest,
+    extractionImplementationDigest,
+    extractionConfigDigest,
     cases: preflightCases,
     physicalCallUpperBoundWithoutCache: noCacheCallUpperBound,
     physicalCallUpperBoundWithTrustedResumeExtractionCache: uniqueResumeUpperBound,
-    extractionCacheReady: true,
+    physicalCallUpperBoundAfterCachePreflight: uniqueResumeUpperBound,
+    outputTokenEnvelopeWithoutCache: noCacheOutputTokenEnvelope,
+    outputTokenEnvelopeWithTrustedResumeExtractionCache: uniqueResumeOutputTokenEnvelope,
+    outputTokenEnvelopeAfterCachePreflight: uniqueResumeOutputTokenEnvelope,
+    extractionCacheReady: args.stage === 'judge-only'
+      || preflightCases.every(item => item.cacheStatus !== 'miss'),
     liveRunAllowed: blockingReasons.length === 0,
     blockingReasons,
   }
@@ -562,6 +1151,7 @@ async function main() {
   if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY 未配置')
 
   const runLock = await acquireEvaluationRunLock({ outputRoot: args.outputRoot, resume: args.resume })
+  let runFailed = false
   try {
   await mkdir(resolve(args.outputRoot, 'cases'), { recursive: true, mode: 0o700 })
   // Defense in depth: this runner supplies an event bus with no persistence
@@ -599,16 +1189,26 @@ async function main() {
       || manifest.selectedCases.join(',') !== args.selectedCases.join(',')
       || manifest.stage !== args.stage
       || manifest.sourceRun !== args.sourceRun
+      || digestJson(manifest.judgeSource ?? null) !== digestJson(judgeSourceRun?.provenance ?? null)
       || manifest.extractionCache?.protocolVersion !== V5_RESUME_EXTRACTION_CACHE_VERSION
-      || manifest.extractionCache?.persistence !== 'single_process_only'
+      || manifest.extractionCache?.implementationDigest !== extractionImplementationDigest
+      || manifest.extractionCache?.configDigest !== extractionConfigDigest
+      || manifest.extractionCache?.persistence !== 'validated_local_checkpoint_v1'
+      || digestJson(manifest.executionPolicy) !== digestJson(executionPolicy)
     ) {
       throw new Error('run manifest 与当前运行选择不一致')
     }
     const restored = await restoreEvaluationBudget({ journalPath, journalSink: budgetJournalSink })
     if (!restored) throw new Error('恢复目录缺少 budget journal')
-    if (restored.snapshot().runId !== manifest.runId) {
+    const budgetInitialization = restored.journal().find(entry => entry.type === 'budget_initialized')
+    if (
+      restored.snapshot().runId !== manifest.runId
+      || !budgetInitialization
+      || digestJson(budgetInitialization.config.runLimits) !== digestJson(manifest.budgetProfile.runLimits)
+      || digestJson(budgetInitialization.config.caseLimits) !== digestJson(manifest.budgetProfile.caseLimits)
+    ) {
       restored.dispose()
-      throw new Error('budget journal runId 与 manifest 不一致')
+      throw new Error('budget journal 的 runId 或预算上限与 manifest 不一致')
     }
     const restoredUsage = await readJsonlStrict<EvaluationUsageEntry>(usagePath)
     const reservationIds = restored.journal()
@@ -633,16 +1233,21 @@ async function main() {
       selectedCases: [...args.selectedCases],
       stage: args.stage,
       sourceRun: args.sourceRun,
+      judgeSource: judgeSourceRun?.provenance ?? null,
       budgetProfile,
       provider: {
         endpoint: providerEndpoint,
         model,
+        ...(generationPolicy ? { generationPolicy } : {}),
         maxProviderAttempts: 1,
         fallbackEnabled: false,
       },
+      executionPolicy,
       extractionCache: {
         protocolVersion: V5_RESUME_EXTRACTION_CACHE_VERSION,
-        persistence: 'single_process_only',
+        implementationDigest: extractionImplementationDigest,
+        configDigest: extractionConfigDigest,
+        persistence: 'validated_local_checkpoint_v1',
       },
     }
     await writeCheckpoint({
@@ -659,19 +1264,12 @@ async function main() {
     }, { journalSink: budgetJournalSink })
   }
 
-  const resumeExtractionCache = createTrustedResumeExtractionCache({
-    implementationFingerprint: implementationDigest,
-    providerConfigFingerprint: configDigest,
-    chunkMaxBlocks: DEFAULT_RESUME_EXTRACTION_MAX_BLOCKS,
-    chunkMaxCharacters: DEFAULT_RESUME_EXTRACTION_MAX_CHARACTERS,
-    chunkMaxEstimatedOutputTokens: DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
-    chunkConcurrency: DEFAULT_RESUME_EXTRACTION_CONCURRENCY,
-  })
   const summaries: CaseSummary[] = []
   const generationSummaries: GenerationCaseSummary[] = []
   const completedResults = new Map<number, V5WorkflowResult>()
   const completedResumeDigests = new Set<string>()
 
+  let executionFailed = false
   try {
     // Provider-bearing modules are intentionally loaded only after dry-run has
     // returned and all input/output/environment safety checks have passed.
@@ -690,21 +1288,84 @@ async function main() {
     for (const { number: caseNumber, history } of selected) {
       const id = caseId(caseNumber)
       const target = `${history.company} / ${history.position}`
-      const resumeDigest = sha256(history.resume_content)
+      const canonicalResumeDocument = canonicalizeSourceDocument(history.resume_content).canonicalDocument
+      const resumeChunks = splitResumeDocument(canonicalResumeDocument).length
+      const resumeDigest = canonicalResumeDocument.sha256
       const prefix = casePrefix(caseNumber, target)
-      const inputDigest = digestJson({
-        historyDigest,
-        caseNumber,
-        company: history.company,
-        position: history.position,
-        resume: history.resume_content,
-        jd: history.jd_content,
-        baseline: history.optimized_content,
-      })
+      const inputDigest = frozenCaseInputDigest(historyDigest, caseNumber, history)
       const fingerprints: EvaluationCheckpointFingerprints = { inputDigest, implementationDigest, configDigest }
+      const judgeSourceCase = judgeSourceRun?.cases.find(item => item.caseNumber === caseNumber) ?? null
+      if (args.stage === 'judge-only' && !judgeSourceCase) {
+        throw new Error(`案例 ${caseNumber} 缺少已验证的 judge-only 来源结果`)
+      }
+      const extractionFingerprints: EvaluationCheckpointFingerprints = {
+        inputDigest: resumeDigest,
+        implementationDigest: extractionImplementationDigest,
+        configDigest: extractionConfigDigest,
+      }
+      const extractionCacheCaseId = `resume-${resumeDigest}`
+      const extractionCachePath = resolve(
+        persistentExtractionCacheRoot,
+        `${resumeExtractionCache.keyFor(canonicalResumeDocument)}.json`
+      )
+      const extractionCheckpoint = await readCheckpoint<TrustedResumeExtractionCacheSnapshot>({
+        path: extractionCachePath,
+        kind: 'resume_extraction',
+        caseId: extractionCacheCaseId,
+        fingerprints: extractionFingerprints,
+      })
+      if (extractionCheckpoint) {
+        resumeExtractionCache.hydrate(canonicalResumeDocument, extractionCheckpoint.payload)
+      }
+      let extractionPersisted = Boolean(extractionCheckpoint)
+      const persistResumeExtraction = async () => {
+        if (extractionPersisted) return
+        const snapshot = resumeExtractionCache.snapshot(canonicalResumeDocument)
+        if (!snapshot) {
+          const partial = resumeExtractionCache.partialSnapshot(canonicalResumeDocument)
+          if (partial) await persistPartial(partial, canonicalResumeDocument)
+          return
+        }
+        try {
+          await writeCheckpoint({
+            path: extractionCachePath,
+            kind: 'resume_extraction',
+            caseId: extractionCacheCaseId,
+            fingerprints: extractionFingerprints,
+            payload: snapshot,
+          })
+          extractionPersisted = true
+        } catch (error) {
+          const code = typeof error === 'object' && error !== null && 'code' in error
+            ? String(error.code)
+            : 'UNKNOWN'
+          if (code === 'CHECKPOINT_ALREADY_EXISTS') {
+            const concurrentCheckpoint = await readCheckpoint<TrustedResumeExtractionCacheSnapshot>({
+              path: extractionCachePath,
+              kind: 'resume_extraction',
+              caseId: extractionCacheCaseId,
+              fingerprints: extractionFingerprints,
+            })
+            if (!concurrentCheckpoint) throw new Error('并发写入的 P01 缓存检查点不存在')
+            resumeExtractionCache.hydrate(canonicalResumeDocument, concurrentCheckpoint.payload)
+            extractionPersisted = true
+            return
+          }
+          console.warn(JSON.stringify({
+            event: 'resume_extraction_cache_persist_failed',
+            resumeDigest,
+            code,
+          }))
+        }
+      }
       const statusPath = resolve(args.outputRoot, 'cases', `${prefix}-status.json`)
       const partialReportPath = resolve(args.outputRoot, 'cases', `${prefix}-partial.md`)
       const v5Path = resolve(args.outputRoot, 'cases', `${prefix}-v5-result.json`)
+      const generationDiagnosticsPath = resolve(
+        args.outputRoot,
+        'cases',
+        `${prefix}-generation-diagnostics.json`
+      )
       const blindInputPath = resolve(args.outputRoot, 'cases', `${prefix}-blind-input.json`)
       const generationSummaryPath = resolve(args.outputRoot, 'cases', `${prefix}-generation-summary.json`)
       const abPath = resolve(args.outputRoot, 'cases', `${prefix}-ab.json`)
@@ -722,6 +1383,14 @@ async function main() {
       )
       const v5Checkpoint = args.resume
         ? await readCheckpoint<V5WorkflowResult>({ path: v5Path, kind: 'v5_result', caseId: id, fingerprints })
+        : null
+      let generationDiagnosticsCheckpoint = args.resume
+        ? await readCheckpoint<V5DeliveryDiagnostics>({
+            path: generationDiagnosticsPath,
+            kind: 'generation_diagnostics',
+            caseId: id,
+            fingerprints,
+          })
         : null
       const abCheckpoint = args.resume
         ? await readCheckpoint<DoubleOrderAbResult>({ path: abPath, kind: 'blind_ab', caseId: id, fingerprints })
@@ -745,6 +1414,64 @@ async function main() {
       const summaryCheckpoint = args.resume
         ? await readCheckpoint<CaseSummary>({ path: summaryPath, kind: 'case_summary', caseId: id, fingerprints })
         : null
+      const sourceV5Result = judgeSourceCase?.v5Result
+
+      let persistedGenerationDiagnostics = generationDiagnosticsCheckpoint
+        ? strictCheckpointDiagnostics(generationDiagnosticsCheckpoint.payload, caseNumber)
+        : null
+      const restoredV5Result = v5Checkpoint?.payload ?? sourceV5Result
+      if (args.resume && restoredV5Result && !persistedGenerationDiagnostics) {
+        throw new EvaluationRunnerSafetyError(
+          'GENERATION_DIAGNOSTICS_MISSING',
+          `案例 ${caseNumber} 的恢复结果缺少生成诊断检查点`
+        )
+      }
+      if (restoredV5Result && persistedGenerationDiagnostics) {
+        assertMatchingDiagnostics({
+          expected: restoredV5Result.deliveryDiagnostics,
+          actual: persistedGenerationDiagnostics,
+          caseNumber,
+          label: 'v5 结果',
+        })
+      }
+      if (generationSummaryCheckpoint && persistedGenerationDiagnostics) {
+        assertMatchingDiagnostics({
+          expected: generationSummaryCheckpoint.payload.deliveryDiagnostics,
+          actual: persistedGenerationDiagnostics,
+          caseNumber,
+          label: 'generation summary',
+        })
+      }
+      if (summaryCheckpoint && persistedGenerationDiagnostics) {
+        assertMatchingDiagnostics({
+          expected: summaryCheckpoint.payload.deliveryDiagnostics,
+          actual: persistedGenerationDiagnostics,
+          caseNumber,
+          label: 'case summary',
+        })
+      }
+
+      const persistGenerationDiagnostics = async (value: unknown) => {
+        const sanitized = sanitizeV5DeliveryDiagnostics(value)
+        if (persistedGenerationDiagnostics) {
+          assertMatchingDiagnostics({
+            expected: persistedGenerationDiagnostics,
+            actual: sanitized,
+            caseNumber,
+            label: '已冻结生成诊断',
+          })
+          return persistedGenerationDiagnostics
+        }
+        generationDiagnosticsCheckpoint = await writeCheckpoint({
+          path: generationDiagnosticsPath,
+          kind: 'generation_diagnostics',
+          caseId: id,
+          fingerprints,
+          payload: sanitized,
+        })
+        persistedGenerationDiagnostics = generationDiagnosticsCheckpoint.payload
+        return persistedGenerationDiagnostics
+      }
 
       const writeStatus = async (
         stage: CaseStatus['stage'],
@@ -772,25 +1499,29 @@ async function main() {
       }
       if (summaryCheckpoint) {
         const completedCase = budget.snapshot().cases.find(item => item.caseId === id)?.completed === true
+        const restoredV5Result = v5Checkpoint?.payload ?? sourceV5Result
         if (
-          !v5Checkpoint
+          !restoredV5Result
+          || !persistedGenerationDiagnostics
           || !abCheckpoint
+          || (args.stage === 'judge-only' && !blindInputCheckpoint)
           || !completedCase
-          || summaryCheckpoint.payload.candidateGate !== 'pass'
         ) {
           throw new Error(`案例 ${caseNumber} 的完成检查点集合不完整`)
         }
+        assertV5EvaluationCandidateDeliverable(restoredV5Result, caseNumber)
         if (existingStatus?.stage !== 'completed') await writeStatus('completed')
         summaries.push(summaryCheckpoint.payload)
-        completedResults.set(caseNumber, v5Checkpoint.payload)
+        completedResults.set(caseNumber, restoredV5Result)
         completedResumeDigests.add(resumeDigest)
         continue
       }
       if (args.stage === 'generation-only' && generationSummaryCheckpoint) {
         const completedCase = budget.snapshot().cases.find(item => item.caseId === id)?.completed === true
-        if (!v5Checkpoint || !blindInputCheckpoint || !completedCase || generationSummaryCheckpoint.payload.usedSafeFallback) {
+        if (!v5Checkpoint || !persistedGenerationDiagnostics || !blindInputCheckpoint || !completedCase) {
           throw new Error(`案例 ${caseNumber} 的 generation-only 检查点集合不完整`)
         }
+        assertV5EvaluationCandidateDeliverable(v5Checkpoint.payload, caseNumber)
         if (existingStatus?.stage !== 'completed') await writeStatus('completed')
         generationSummaries.push(generationSummaryCheckpoint.payload)
         completedResults.set(caseNumber, v5Checkpoint.payload)
@@ -798,39 +1529,121 @@ async function main() {
         continue
       }
 
-      assertResumeExtractionReplaySafe({
-        resume: args.resume,
-        hasV5Checkpoint: Boolean(v5Checkpoint),
-        resumeDigest,
-        completedResumeDigests,
-      })
+      if (args.stage !== 'judge-only') {
+        assertResumeExtractionReplaySafe({
+          resume: args.resume,
+          hasV5Checkpoint: Boolean(v5Checkpoint),
+          hasTrustedExtractionCheckpoint: extractionPersisted,
+          resumeDigest,
+          completedResumeDigests,
+        })
+      }
 
-      await writeStatus(v5Checkpoint ? 'generated' : 'running')
-      console.log(JSON.stringify({ event: 'case_started', caseNumber, target, resumed: Boolean(v5Checkpoint) }))
+      await writeStatus(v5Checkpoint || sourceV5Result ? 'generated' : 'running')
+      console.log(JSON.stringify({
+        event: 'case_started',
+        caseNumber,
+        target,
+        resumed: Boolean(v5Checkpoint),
+        judgeSourceLoaded: Boolean(sourceV5Result),
+      }))
+      let localCallOrdinal = 0
       const provider = new BudgetedEvaluationProvider({
-        directProvider: deepSeekProvider,
+        directProvider: {
+          complete: async request => {
+            const ordinal = ++localCallOrdinal
+            const response = await deepSeekProvider.complete(request)
+            // Nonprod-only, owner-readable diagnostics. Never emit source or
+            // raw model output to shared harness events or console logs.
+            try {
+              await atomicWriteJson(resolve(args.outputRoot, 'private-calls', `${id}-${String(ordinal).padStart(3, '0')}.json`), {
+                promptVersion: request.promptVersion,
+                messages: request.messages,
+                response: { content: response.content, finishReason: response.finishReason },
+                providerMetadata: { requestedModel: model, returnedModel: response.model, generationPolicy,
+                  inputTokens: response.inputTokens, outputTokens: response.outputTokens, reasoningTokens: response.reasoningTokens },
+              })
+            } catch {
+              console.warn(JSON.stringify({ event: 'private_call_diagnostic_write_failed', ordinal }))
+            }
+            return response
+          },
+        },
         budget,
         caseId: id,
         model,
+        componentQuotas: providerComponentQuotasForRun({
+          resume: args.resume, resumeChunks, stage: args.stage,
+          validatedShardIndexes: resumeExtractionCache.progress(canonicalResumeDocument).validatedShardIndices,
+          artifactGenerationMode: args.artifactGenerationMode,
+        }),
         usageSink,
       })
 
+      const extractionObservations: P01ValidationObservationV1[] = []
+      const persistP01ValidationDiagnostics = async () => {
+        const observedPrimaries = new Set(extractionObservations
+          .filter(item => item.component === 'P01').map(item => item.shardIndex))
+        const trace = buildP01ValidationTrace({
+          captureStatus: extractionObservations.length === 0
+            ? 'not_observed'
+            : observedPrimaries.size === resumeChunks ? 'complete' : 'partial',
+          source: extractionObservations.length === 0 && extractionPersisted
+            ? 'trusted_cache' : 'live',
+          shardCount: resumeChunks,
+          observations: extractionObservations,
+        })
+        if (!trace) throw new Error('Invalid P01 validation diagnostics projection')
+        await writeCheckpoint({
+          path: resolve(args.outputRoot, 'cases', `${prefix}-p01-validation-diagnostics.json`),
+          kind: 'p01_validation_diagnostics',
+          caseId: id,
+          fingerprints,
+          payload: trace,
+        })
+      }
+      let p01DiagnosticsPersisted = false
+      const persistP01DiagnosticsOnce = async () => {
+        if (p01DiagnosticsPersisted) return
+        await persistP01ValidationDiagnostics()
+        p01DiagnosticsPersisted = true
+      }
+
       try {
-        let v5Result = v5Checkpoint?.payload
+        let v5Result = v5Checkpoint?.payload ?? sourceV5Result
         if (!v5Result) {
+          if (args.stage === 'judge-only') {
+            throw new Error(`案例 ${caseNumber} 的 judge-only 来源结果在执行前丢失`)
+          }
           const eventBus = createHarnessEventBus()
+          eventBus.subscribe('extraction.validation.observed', event => {
+            const observation = sanitizeP01ValidationObservation(event.payload)
+            if (observation) extractionObservations.push(observation)
+          })
           const workflow = new V5ResumeOptimizationWorkflow({
             provider,
             judgeProvider: provider,
             resumeExtractionCache,
             eventBus,
             enableDefaultSubscribers: false,
+            artifactGenerationMode: args.artifactGenerationMode,
+            jobTargetingPolicy: args.jobTargetingPolicy,
+            onTargetingAnalysis: analysis => writeCheckpoint({
+              path: resolve(args.outputRoot, 'cases', `${prefix}-job-targeting.json`),
+              kind: 'job_targeting_analysis', caseId: id, fingerprints, payload: analysis,
+            }).then(() => undefined),
           })
           v5Result = await workflow.run({
             resumeMarkdown: history.resume_content,
             jobDescription: history.jd_content,
             enableQualityJudge: false,
             workflowTimeoutMs: budgetProfile.caseLimits.maxWallTimeMs,
+          })
+          const completedV5Result = v5Result
+          await persistP01DiagnosticsOnce()
+          await persistGenerationDiagnosticsBeforeResumeCache({
+            persistGenerationDiagnostics: () => persistGenerationDiagnostics(completedV5Result.deliveryDiagnostics),
+            persistResumeExtraction,
           })
           await writeCheckpoint({
             path: v5Path,
@@ -842,10 +1655,47 @@ async function main() {
           await atomicWriteText(resolve(args.outputRoot, 'cases', `${prefix}-v5.md`), v5Result.artifact.markdown)
           await writeStatus('generated')
         }
-        if (v5Result.usedSafeFallback || v5Result.state === 'succeeded_with_safe_fallback') {
-          throw Object.assign(new Error('v5 使用了安全回退；该候选不能进入有效盲评，批次已停止'), {
-            code: 'V5_SAFE_FALLBACK_FAIL_FAST',
-          })
+        const deliveryDiagnostics = await persistGenerationDiagnostics(v5Result.deliveryDiagnostics)
+        assertV5EvaluationCandidateDeliverable(v5Result, caseNumber)
+
+        let evaluationInput = blindInputCheckpoint?.payload
+        if (args.stage === 'judge-only') {
+          const expectedBlindInput: BlindEvaluationInput = {
+            schemaVersion: V5_SCHEMA_VERSION,
+            caseNumber,
+            target,
+            resumeEvidenceBundle: v5Result.resumeEvidenceBundle,
+            jobRequirementBundle: v5Result.jobRequirementBundle,
+            baselineArtifact: baselineArtifact(history.optimized_content),
+            candidateArtifact: v5Result.artifact,
+          }
+          if (evaluationInput && digestJson(evaluationInput) !== digestJson(expectedBlindInput)) {
+            throw new Error(`案例 ${caseNumber} 的 judge-only 盲评输入与已验证 source-run 不一致`)
+          }
+          if (!evaluationInput) {
+            await writeCheckpoint({
+              path: blindInputPath,
+              kind: 'blind_eval_input',
+              caseId: id,
+              fingerprints,
+              payload: expectedBlindInput,
+            })
+            evaluationInput = expectedBlindInput
+          }
+          if (args.resume) {
+            const copiedMarkdown = await readFile(
+              resolve(args.outputRoot, 'cases', `${prefix}-v5.md`),
+              'utf8'
+            )
+            if (copiedMarkdown !== v5Result.artifact.markdown) {
+              throw new Error(`案例 ${caseNumber} 的 judge-only Markdown 副本与 source-run 不一致`)
+            }
+          } else {
+            await atomicWriteText(
+              resolve(args.outputRoot, 'cases', `${prefix}-v5.md`),
+              v5Result.artifact.markdown
+            )
+          }
         }
 
         if (args.stage === 'generation-only') {
@@ -874,9 +1724,13 @@ async function main() {
             runId: v5Result.runId,
             state: v5Result.state,
             usedSafeFallback: v5Result.usedSafeFallback,
+            usedAnyFallback: v5Result.usedAnyFallback,
+            deliveryDecision: v5Result.deliveryDecision,
+            qualityGates: v5Result.qualityGates,
             matchScore: v5Result.matchScore.score,
             candidateChars: candidateStats.cjkCharacterCount,
             candidateBullets: candidateStats.businessBulletCount,
+            deliveryDiagnostics,
           }
           await provider.drain()
           await budget.completeCase(id)
@@ -899,10 +1753,11 @@ async function main() {
         if (!abResult) {
           abResult = await runDoubleOrderBlindAb({
             runId: `${v5Result.runId}-ab`,
-            resumeEvidenceBundle: v5Result.resumeEvidenceBundle,
-            jobRequirementBundle: v5Result.jobRequirementBundle,
-            candidateLeft: baselineArtifact(history.optimized_content),
-            candidateRight: v5Result.artifact,
+            resumeEvidenceBundle: evaluationInput?.resumeEvidenceBundle ?? v5Result.resumeEvidenceBundle,
+            jobRequirementBundle: evaluationInput?.jobRequirementBundle ?? v5Result.jobRequirementBundle,
+            originalJobDescription: history.jd_content,
+            candidateLeft: evaluationInput?.baselineArtifact ?? baselineArtifact(history.optimized_content),
+            candidateRight: evaluationInput?.candidateArtifact ?? v5Result.artifact,
           }, { provider })
           await writeCheckpoint({
             path: abPath,
@@ -914,8 +1769,12 @@ async function main() {
           await writeStatus('evaluated')
         }
 
-        const baselineStats = measureArtifactMarkdown(history.optimized_content)
-        const candidateStats = measureArtifactMarkdown(v5Result.artifact.markdown)
+        const baselineStats = measureArtifactMarkdown(
+          evaluationInput?.baselineArtifact.markdown ?? history.optimized_content
+        )
+        const candidateStats = measureArtifactMarkdown(
+          evaluationInput?.candidateArtifact.markdown ?? v5Result.artifact.markdown
+        )
         const summary: CaseSummary = {
           caseNumber,
           target,
@@ -934,13 +1793,8 @@ async function main() {
           candidateChars: candidateStats.cjkCharacterCount,
           baselineBullets: baselineStats.businessBulletCount,
           candidateBullets: candidateStats.businessBulletCount,
+          deliveryDiagnostics,
         }
-        if (summary.candidateGate !== 'pass') {
-          throw Object.assign(new Error(`v5 双顺序绝对门禁结果为 ${summary.candidateGate}；批次已停止`), {
-            code: 'V5_ABSOLUTE_GATE_FAIL_FAST',
-          })
-        }
-
         await provider.drain()
         await budget.completeCase(id)
         await writeCheckpoint({
@@ -961,6 +1815,7 @@ async function main() {
             historyDigest,
             implementationDigest,
             configDigest,
+            judgeSource: manifest.judgeSource,
             selectedCases: args.selectedCases,
             budget: budget.snapshot(),
             extractionCache: resumeExtractionCache.stats(),
@@ -970,16 +1825,42 @@ async function main() {
         })
         console.log(JSON.stringify({ event: 'case_completed', caseNumber, state: summary.state, winner: summary.winner }))
       } catch (error) {
-        if (!budget.aborted) {
-          try {
-            await budget.failFast(error, id)
-          } catch {
-            // failFast intentionally throws after atomically journaling terminal state.
-          }
-        }
-        await provider.drain()
-        await writeStatus('failed', error)
-        throw error
+        await finalizeFailedEvaluationCaseAndRethrow({
+          primaryError: error,
+          persistFailureDiagnostics: async () => {
+            const failureDiagnostics = deliveryDiagnosticsFromError(error)
+            // Each sidecar gets its own attempt; a disk error must not erase
+            // the other diagnostic or replace the primary workflow failure.
+            const diagnostics = await Promise.allSettled([
+              persistP01DiagnosticsOnce(),
+              failureDiagnostics ? persistGenerationDiagnostics(failureDiagnostics) : Promise.resolve(),
+            ])
+            const failed = diagnostics.find(item => item.status === 'rejected')
+            if (failed?.status === 'rejected') throw failed.reason
+          },
+          triggerFailFast: async () => {
+            if (budget.aborted) return
+            try {
+              await budget.failFast(error, id)
+            } catch {
+              // failFast intentionally throws after atomically journaling terminal state.
+            }
+          },
+          drainProvider: () => provider.drain(),
+          persistResumeExtraction,
+          writeFailedStatus: () => writeStatus('failed', error),
+          onStageError: (stage, cleanupError) => {
+            const code = typeof cleanupError === 'object' && cleanupError !== null && 'code' in cleanupError
+              ? String(cleanupError.code)
+              : 'UNKNOWN'
+            console.warn(JSON.stringify({
+              event: 'case_failure_cleanup_error',
+              caseNumber,
+              stage,
+              code,
+            }))
+          },
+        })
       }
     }
 
@@ -990,23 +1871,41 @@ async function main() {
       historyDigest,
       implementationDigest,
       configDigest,
+      judgeSource: manifest.judgeSource,
       source: args.historyPath,
       selectedCases: args.selectedCases,
-      cases: summaries.length,
+      cases: args.stage === 'generation-only' ? generationSummaries.length : summaries.length,
       budget: budget.snapshot(),
       extractionCache: resumeExtractionCache.stats(),
       usageRows,
     }
-    await atomicWriteJson(resolve(args.outputRoot, 'results.json'), { metadata, summaries })
-    await atomicWriteText(resolve(args.outputRoot, 'REPORT.md'), report({
-      summaries,
-      results: completedResults,
-      usage: usageRows,
-      historyDigest,
-      selectedCases: args.selectedCases,
-      budget: budget.snapshot(),
-      extractionCache: resumeExtractionCache.stats(),
-    }))
+    const completedSummaries = args.stage === 'generation-only' ? generationSummaries : summaries
+    await atomicWriteJson(resolve(args.outputRoot, 'results.json'), {
+      metadata,
+      summaries: completedSummaries,
+    })
+    await atomicWriteText(
+      resolve(args.outputRoot, 'REPORT.md'),
+      args.stage === 'generation-only'
+        ? generationReport({
+            summaries: generationSummaries,
+            historyDigest,
+            selectedCases: args.selectedCases,
+            budget: budget.snapshot(),
+            extractionCache: resumeExtractionCache.stats(),
+          })
+        : report({
+            summaries,
+            results: completedResults,
+            usage: usageRows,
+            historyDigest,
+            selectedCases: args.selectedCases,
+            stage: args.stage,
+            judgeSource: manifest.judgeSource,
+            budget: budget.snapshot(),
+            extractionCache: resumeExtractionCache.stats(),
+          })
+    )
     console.log(JSON.stringify({
       event: 'run_completed',
       outputRoot: args.outputRoot,
@@ -1014,13 +1913,44 @@ async function main() {
       inputTokens: budget.snapshot().run.usage.settledInputTokens,
       outputTokens: budget.snapshot().run.usage.settledOutputTokens,
     }))
+  } catch (error) {
+    executionFailed = true
+    throw error
   } finally {
-    resumeExtractionCache.clear()
-    budget.dispose()
+    await finalizeEvaluationResources({
+      hadPrimaryFailure: executionFailed,
+      stages: [
+        { stage: 'resume_extraction_cache_clear', action: () => resumeExtractionCache.clear() },
+        { stage: 'budget_dispose', action: () => budget.dispose() },
+      ],
+      onStageError: (stage, error) => {
+        const code = typeof error === 'object' && error !== null && 'code' in error
+          ? String(error.code)
+          : 'UNKNOWN'
+        console.warn(JSON.stringify({ event: 'run_resource_cleanup_error', stage, code }))
+      },
+    })
   }
+  } catch (error) {
+    runFailed = true
+    throw error
   } finally {
-    await runLock.release()
+    await finalizeEvaluationResources({
+      hadPrimaryFailure: runFailed,
+      stages: [{ stage: 'run_lock_release', action: () => runLock.release() }],
+      onStageError: (stage, error) => {
+        const code = typeof error === 'object' && error !== null && 'code' in error
+          ? String(error.code)
+          : 'UNKNOWN'
+        console.warn(JSON.stringify({ event: 'run_resource_cleanup_error', stage, code }))
+      },
+    })
   }
 }
 
-await main()
+if (import.meta.main) {
+  try { await main() } catch (error) {
+    console.error(JSON.stringify({ event: 'run_failed', error: serializedError(error) }))
+    process.exitCode = 1
+  }
+}

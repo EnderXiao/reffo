@@ -187,6 +187,7 @@ export interface MatchOptimizationStrategyDetail {
 }
 
 export interface MatchingResult {
+  requirement_analysis?: import('./requirement-analysis').RequirementAnalysis;
   match_score: number;
   hard_requirements_match: HardRequirement[];
   skill_match: SkillMatch;

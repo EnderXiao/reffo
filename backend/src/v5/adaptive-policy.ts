@@ -6,6 +6,11 @@ import type {
   V5MatchAnalysis,
 } from '@/v5/types'
 import { V5_ADAPTIVE_POLICY_VERSION } from '@/v5/types'
+import {
+  buildEvidencePlanningCatalog,
+  isBusinessPlanningAnchor,
+  type EvidencePlanningCatalog,
+} from '@/v5/evidence-routing'
 
 export const ADAPTIVE_V1_CONFIG = Object.freeze({
   version: V5_ADAPTIVE_POLICY_VERSION,
@@ -31,40 +36,68 @@ export const ADAPTIVE_V1_CONFIG = Object.freeze({
       hardProjectMax: 1,
       stableCoreCoverageMin: 0.9,
       primaryRequirementCoverageMin: 0.5,
-      cjk: { softMin: null, softMax: 900, hardMax: 1200 },
-      latin: { softMin: null, softMax: 420, hardMax: 520 },
+      cjk: { softMin: null, hardMin: null, softMax: 900, hardMax: 1200 },
+      latin: { softMin: null, hardMin: null, softMax: 420, hardMax: 520 },
     },
     balanced_targeted: {
       hardTotalListItemMax: 14,
       hardProjectMax: 2,
       stableCoreCoverageMin: 0.85,
       primaryRequirementCoverageMin: 0.65,
-      cjk: { softMin: 800, softMax: 1600, hardMax: 1900 },
-      latin: { softMin: 380, softMax: 760, hardMax: 900 },
+      cjk: { softMin: 800, hardMin: 420, softMax: 1600, hardMax: 1900 },
+      latin: { softMin: 380, hardMin: 200, softMax: 760, hardMax: 900 },
     },
     selective_rich: {
       hardTotalListItemMax: 18,
       hardProjectMax: 3,
       stableCoreCoverageMin: 0.75,
       primaryRequirementCoverageMin: 0.7,
-      cjk: { softMin: 1100, softMax: 2300, hardMax: 2700 },
-      latin: { softMin: 560, softMax: 1050, hardMax: 1250 },
+      cjk: { softMin: 1100, hardMin: 650, softMax: 2300, hardMax: 2700 },
+      latin: { softMin: 560, hardMin: 320, softMax: 1050, hardMax: 1250 },
     },
   },
 })
 
-const BUSINESS_CLAIM_TYPES = new Set(['responsibility', 'action', 'deliverable', 'result'])
+function eligibleBusinessEvidence(bundle: ResumeEvidenceBundle, catalog: EvidencePlanningCatalog) {
+  return bundle.evidenceAtoms.filter(atom => (
+    isBusinessPlanningAnchor(catalog, atom.evidenceId)
+  ))
+}
 
-function eligibleBusinessEvidence(bundle: ResumeEvidenceBundle) {
-  return bundle.evidenceAtoms.filter(atom => atom.status !== 'excluded' && BUSINESS_CLAIM_TYPES.has(atom.claimType))
+function renderableBusinessCapacity(
+  bundle: ResumeEvidenceBundle,
+  hardProjectMax: number,
+  catalog: EvidencePlanningCatalog
+) {
+  const timeline = new Map(bundle.timeline.map(item => [item.scopeId, item]))
+  const countsByScope = new Map<string, number>()
+  for (const atom of eligibleBusinessEvidence(bundle, catalog)) {
+    const scope = timeline.get(atom.sourceScopeId)
+    if (
+      !scope
+      || !['experience', 'internship', 'project', 'research'].includes(scope.kind)
+      || !(scope.organization || scope.title || scope.start || scope.end)
+    ) continue
+    countsByScope.set(scope.scopeId, (countsByScope.get(scope.scopeId) ?? 0) + 1)
+  }
+  let workCapacity = 0
+  const projectCapacities: number[] = []
+  for (const [scopeId, count] of countsByScope) {
+    const kind = timeline.get(scopeId)?.kind
+    if (kind === 'experience' || kind === 'internship') workCapacity += count
+    if (kind === 'project' || kind === 'research') projectCapacities.push(count)
+  }
+  projectCapacities.sort((left, right) => right - left)
+  return workCapacity
+    + projectCapacities.slice(0, hardProjectMax).reduce((sum, count) => sum + count, 0)
 }
 
 function uniqueScopesByKind(bundle: ResumeEvidenceBundle, kinds: string[]) {
   return new Set(bundle.timeline.filter(item => kinds.includes(item.kind)).map(item => item.scopeId)).size
 }
 
-function buildMetrics(bundle: ResumeEvidenceBundle) {
-  const business = eligibleBusinessEvidence(bundle)
+function buildMetrics(bundle: ResumeEvidenceBundle, catalog: EvidencePlanningCatalog) {
+  const business = eligibleBusinessEvidence(bundle, catalog)
   const portfolioEvidenceCount = bundle.evidenceAtoms.filter(
     atom => atom.status !== 'excluded' && atom.claimType === 'portfolio_link'
   ).length
@@ -85,8 +118,11 @@ function classifyRichness(count: number): ResumeStrategyProfile['evidenceRichnes
   return 'rich'
 }
 
-function classifyEvidenceShape(bundle: ResumeEvidenceBundle): ResumeStrategyProfile['evidenceShape'] {
-  const business = eligibleBusinessEvidence(bundle)
+function classifyEvidenceShape(
+  bundle: ResumeEvidenceBundle,
+  catalog: EvidencePlanningCatalog
+): ResumeStrategyProfile['evidenceShape'] {
+  const business = eligibleBusinessEvidence(bundle, catalog)
   const total = business.length
   if (total === 0) return 'mixed'
   const scopeKind = new Map(bundle.timeline.map(item => [item.scopeId, item.kind]))
@@ -196,9 +232,18 @@ export function buildAdaptiveStrategy(input: {
   match: V5MatchAnalysis
   requestedOutputLanguage?: string
 }): { profile: ResumeStrategyProfile; policy: GenerationPolicy; requiresResolution: boolean } {
-  const metrics = buildMetrics(input.resume)
-  const evidenceRichness = classifyRichness(metrics.eligibleBusinessEvidenceCount)
-  const evidenceShape = classifyEvidenceShape(input.resume)
+  const evidenceCatalog = buildEvidencePlanningCatalog(input.resume)
+  const metrics = buildMetrics(input.resume, evidenceCatalog)
+  const maximumRenderableBusinessCount = renderableBusinessCapacity(
+    input.resume,
+    ADAPTIVE_V1_CONFIG.modes.selective_rich.hardProjectMax,
+    evidenceCatalog
+  )
+  const evidenceRichness = classifyRichness(Math.min(
+    metrics.eligibleBusinessEvidenceCount,
+    maximumRenderableBusinessCount
+  ))
+  const evidenceShape = classifyEvidenceShape(input.resume, evidenceCatalog)
   const careerStage = classifyCareerStage(input.resume)
   const target = classifyTargetDistance(input.job, input.match)
   const outputLanguage = input.requestedOutputLanguage?.trim() || input.resume.sourceDocument.primaryLanguage
@@ -227,13 +272,17 @@ export function buildAdaptiveStrategy(input: {
       : 'balanced_targeted'
   const modeConfig = ADAPTIVE_V1_CONFIG.modes[mode]
   const languageBudget = outputIsCjk(outputLanguage) ? modeConfig.cjk : modeConfig.latin
-  const businessCount = metrics.eligibleBusinessEvidenceCount
+  const businessCount = Math.min(
+    metrics.eligibleBusinessEvidenceCount,
+    renderableBusinessCapacity(input.resume, modeConfig.hardProjectMax, evidenceCatalog)
+  )
   const targetBusinessBulletMin = mode === 'preserve_sparse' ? Math.min(businessCount, 2)
     : mode === 'balanced_targeted' ? Math.min(businessCount, 5)
       : Math.min(businessCount, 7)
   const targetBusinessBulletMax = mode === 'preserve_sparse' ? Math.min(businessCount, 5)
     : mode === 'balanced_targeted' ? Math.min(businessCount, 9)
       : Math.min(businessCount, 12)
+  const targetBusinessBulletTarget = targetBusinessBulletMax
   let summaryPolicy: GenerationPolicy['summaryPolicy'] = evidenceRichness === 'sparse'
     ? businessCount < 2 ? 'omit_if_unsupported' : 'one_sentence'
     : evidenceRichness === 'rich' ? 'one_to_three_sentences' : 'one_to_two_sentences'
@@ -245,6 +294,7 @@ export function buildAdaptiveStrategy(input: {
     sectionOrder: sectionOrder(evidenceShape, careerStage, input.resume),
     summaryPolicy,
     targetBusinessBulletMin,
+    targetBusinessBulletTarget,
     targetBusinessBulletMax,
     hardTotalListItemMax: modeConfig.hardTotalListItemMax,
     hardProjectMax: modeConfig.hardProjectMax,
@@ -258,6 +308,7 @@ export function buildAdaptiveStrategy(input: {
     outputLength: {
       unit: outputIsCjk(outputLanguage) ? 'cjk_characters' : 'words',
       softMin: languageBudget.softMin,
+      hardMin: languageBudget.hardMin,
       softMax: languageBudget.softMax,
       hardMax: languageBudget.hardMax,
     },

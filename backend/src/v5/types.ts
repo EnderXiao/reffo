@@ -1,7 +1,7 @@
 export const V5_SCHEMA_VERSION = '5.0.0' as const
-export const V5_WORKFLOW_VERSION = '6.0.0-low-cost-plugin' as const
-export const V5_VALIDATOR_VERSION = '5.0.0-validator-v5' as const
-export const V5_ADAPTIVE_POLICY_VERSION = 'adaptive-v1' as const
+export const V5_WORKFLOW_VERSION = '5.0.0-deterministic-release-r3' as const
+export const V5_VALIDATOR_VERSION = '5.0.0-validator-v9' as const
+export const V5_ADAPTIVE_POLICY_VERSION = 'adaptive-v2' as const
 export const V5_SCORE_FORMULA_VERSION = 'match-score-v1' as const
 
 export type V5SchemaVersion = typeof V5_SCHEMA_VERSION
@@ -380,6 +380,7 @@ export interface GenerationPolicy {
   sectionOrder: string[]
   summaryPolicy: 'omit_if_unsupported' | 'one_sentence' | 'one_to_two_sentences' | 'one_to_three_sentences'
   targetBusinessBulletMin: number
+  targetBusinessBulletTarget: number
   targetBusinessBulletMax: number
   hardTotalListItemMax: number
   hardProjectMax: number
@@ -389,6 +390,7 @@ export interface GenerationPolicy {
   outputLength: {
     unit: 'cjk_characters' | 'words'
     softMin: number | null
+    hardMin: number | null
     softMax: number
     hardMax: number
   }
@@ -615,7 +617,9 @@ export type ResumeAgentState =
   | 'blocked_input_validation'
   | 'blocked_fact_validation'
   | 'blocked_structure_validation'
+  | 'blocked_quality_validation'
   | 'provider_failure'
+  | 'workflow_failure'
 
 export type V5ReleaseStatus = 'prompt_only_unverified' | 'preproduction_candidate' | 'production_reliable'
 
@@ -628,7 +632,63 @@ export interface V5ResumeExtractionResult {
   resumeEvidenceBundle: ResumeEvidenceBundle
 }
 
+export interface V5DeliveryDiagnostics {
+  version: 'v5-delivery-diagnostics-v2'
+  taxonomyVersion: 'v5-delivery-taxonomy-v1'
+  outcome: {
+    execution: 'completed' | 'failed'
+    phaseReached: ResumeAgentState
+    disposition: 'deliverable' | 'review_required' | 'internal_only' | 'blocked_retryable' | 'blocked_terminal'
+    decisionReasonCodes: string[]
+  }
+  tracks: {
+    factSafety: {
+      status: 'pass' | 'fail' | 'not_run'
+      finalIssueCounts: Record<string, number>
+      rejectedCandidateIssueCounts: Record<string, number>
+      unclassifiedIssueCount: number
+    }
+    productQuality: {
+      status: 'pass' | 'review_required' | 'fail' | 'not_run'
+      issueCounts: Record<string, number>
+    }
+  }
+  provenance: {
+    planOrigin: 'model_primary' | 'model_repair' | 'deterministic_quality' | 'none'
+    artifactOrigin: 'model' | 'model_repair' | 'server_compiler' | 'server_renderer' | 'emergency' | 'none'
+    usedSafeFallback: boolean
+    usedAnyFallback: boolean
+    interview: 'generated' | 'deferred' | 'skipped_by_gate' | 'failed_optional' | 'not_reached'
+  }
+  metrics: null | {
+    sourceBlockCount: number
+    mappedSourceBlockCount: number
+    unmappedSourceBlockCount: number
+    highImportanceUnmappedCount: number
+    eligibleBusinessEvidenceCount: number
+    eligibleBusinessScopeCount: number
+    plannedContentEvidenceCount: number
+    usedPlannedEvidenceCount: number
+    plannedEvidenceCoverage: { numerator: number; denominator: number }
+    stableCoreCoverage: { numerator: number; denominator: number }
+    primaryRequirementCoverage: { numerator: number; denominator: number }
+    renderedBusinessBulletCount: number
+    renderedTotalListItemCount: number
+    renderedProjectCount: number
+    targetBusinessBulletMin: number
+    targetBusinessBulletTarget: number
+    targetBusinessBulletMax: number
+    outputLengthUnit: 'cjk_characters' | 'words'
+    outputLengthValue: number
+    outputLengthSoftMin: number | null
+    outputLengthHardMin: number | null
+    outputLengthSoftMax: number
+    outputLengthHardMax: number
+  }
+}
+
 export interface V5WorkflowResult {
+  requirementAnalysis?: import('@/job-analysis/requirements').RequirementAnalysis
   state: ResumeAgentState
   releaseStatus: V5ReleaseStatus
   runId: string
@@ -640,8 +700,25 @@ export interface V5WorkflowResult {
   generationPolicy: GenerationPolicy
   resumePlan: V5ResumePlan
   artifact: GeneratedResumeArtifact
+  /** Present only on historical V5 results whose interview provenance is `generated`. */
   interviewPreparation?: InterviewPreparation
   usedSafeFallback: boolean
+  usedAnyFallback: boolean
+  executionStatus: 'completed' | 'failed'
+  qualityGates: {
+    factSafety: 'pass' | 'fail' | 'not_run'
+    contentCompleteness: 'pass' | 'fail' | 'not_run'
+    deliverability: 'pass' | 'fail' | 'review_required' | 'not_run'
+  }
+  deliveryDecision: 'deliver' | 'block' | 'internal_only'
+  deliveryDiagnostics: V5DeliveryDiagnostics
+  generationProvenance: {
+    planOrigin: 'model_primary' | 'model_repair' | 'deterministic_quality'
+    artifactOrigin: 'model' | 'model_repair' | 'server_compiler' | 'server_renderer' | 'emergency'
+    planRepairCount: number
+    artifactRepairCount: number
+    rejectedPlanIssueCodes: string[]
+  }
   validationIssues: ValidationIssue[]
 }
 

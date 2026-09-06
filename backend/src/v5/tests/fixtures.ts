@@ -1,6 +1,7 @@
 import { canonicalizeSourceDocument } from '@/v5/canonical-source'
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { buildJobRequirementBundle, buildResumeEvidenceBundle } from '@/v5/evidence'
+import { assessV5DeliveryGate, buildV5DeliveryDiagnostics } from '@/v5/delivery-gate'
 import { calculateV5MatchScore } from '@/v5/match-score'
 import { renderSourcePreservingArtifact } from '@/v5/safe-renderer'
 import type { JobExtractionCandidate, ResumeExtractionCandidate } from '@/v5/types'
@@ -151,6 +152,28 @@ export function createV5ResultFixture(): V5WorkflowResult {
     omittedHighValueEvidence: [],
     lowerBoundException: null,
   }
+  const artifact = renderSourcePreservingArtifact({ resume: fixture.resume, plan })
+  const deliveryGate = assessV5DeliveryGate({
+    validationPassed: true,
+    usedSafeFallback: false,
+    hasAdvisoryQualityIssues: false,
+  })
+  const deliveryDiagnostics = buildV5DeliveryDiagnostics({
+    assessment: deliveryGate,
+    resume: fixture.resume,
+    match: fixture.match,
+    plan,
+    policy: strategy.policy,
+    artifact,
+    state: 'succeeded',
+    planOrigin: 'model_primary',
+    artifactOrigin: 'model',
+    usedSafeFallback: false,
+    usedAnyFallback: false,
+    interview: 'deferred',
+    finalValidationIssues: [],
+    rejectedCandidateIssues: [],
+  })
   return {
     state: 'succeeded',
     releaseStatus: 'preproduction_candidate',
@@ -162,8 +185,63 @@ export function createV5ResultFixture(): V5WorkflowResult {
     strategyProfile: strategy.profile,
     generationPolicy: strategy.policy,
     resumePlan: plan,
-    artifact: renderSourcePreservingArtifact({ resume: fixture.resume, plan }),
+    artifact,
     usedSafeFallback: false,
+    usedAnyFallback: false,
+    executionStatus: 'completed',
+    qualityGates: {
+      factSafety: 'pass',
+      contentCompleteness: 'pass',
+      deliverability: 'pass',
+    },
+    deliveryDecision: 'deliver',
+    deliveryDiagnostics,
+    generationProvenance: {
+      planOrigin: 'model_primary',
+      artifactOrigin: 'model',
+      planRepairCount: 0,
+      artifactRepairCount: 0,
+      rejectedPlanIssueCodes: [],
+    },
     validationIssues: [],
   }
+}
+
+export function createHistoricalV5ResultWithInterviewPreparation(): V5WorkflowResult {
+  const result = createV5ResultFixture()
+  const evidence = result.resumeEvidenceBundle.evidenceAtoms.find(atom => (
+    ['responsibility', 'action', 'deliverable', 'result'].includes(atom.claimType)
+  ))!
+  const requirementIds = result.jobRequirementBundle.requirementAtoms.map(atom => atom.requirementId)
+  result.interviewPreparation = {
+    schemaVersion: V5_SCHEMA_VERSION,
+    questions: [
+      ['如何规划产品？', 'core_task'],
+      ['请深挖该交付经历。', 'project_deep_dive'],
+      ['如何诚实说明差距？', 'gap_or_transfer'],
+      ['若优先级变化会如何处理？', 'context_scenario'],
+    ].map(([question, category]) => ({
+      question,
+      category: category as 'core_task' | 'project_deep_dive' | 'gap_or_transfer' | 'context_scenario',
+      relatedRequirementIds: requirementIds,
+      relatedEvidenceIds: [evidence.evidenceId],
+      preparationFocus: '基于真实证据准备',
+      assumptionContextIds: [],
+    })),
+    storyRecommendations: [{
+      title: '产品交付',
+      scopeId: evidence.sourceScopeId,
+      evidenceIds: [evidence.evidenceId],
+      background: '准备真实背景',
+      knownResult: null,
+      preparationGap: '补充可核验反馈',
+    }],
+    followUpQuestions: [
+      { question: '成功标准是什么？', purpose: '确认成功标准', relatedRequirementIds: requirementIds, assumptionContextIds: [] },
+      { question: '当前优先挑战是什么？', purpose: '确认挑战', relatedRequirementIds: requirementIds, assumptionContextIds: [] },
+      { question: '如何协作？', purpose: '确认协作方式', relatedRequirementIds: requirementIds, assumptionContextIds: [] },
+    ],
+  }
+  result.deliveryDiagnostics.provenance.interview = 'generated'
+  return result
 }

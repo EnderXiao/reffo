@@ -7,5 +7,6 @@ export function resolvePromptVariant(_value?: string): PromptVariant {
 }
 
 export function getPromptVersion(name: string, variant: PromptVariant) {
-  return `${name}.${variant}.${PROMPT_VERSION}`
+  const revision = /^(?:jd-parser|matching)(?:\.|$)/u.test(name) ? '.requirements-r1' : ''
+  return `${name}.${variant}.${PROMPT_VERSION}${revision}`
 }

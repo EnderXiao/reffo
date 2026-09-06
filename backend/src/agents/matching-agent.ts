@@ -63,10 +63,12 @@ export class MatchingAgent {
       })
 
       const normalizedOutput = matchAnalysisOutputSchema.parse(parsedOutput)
+      const { requirement_analysis, ...jdStructure } = jd
 
       return {
         ...normalizedOutput,
-        jd_structure: jd,
+        jd_structure: jdStructure,
+        requirement_analysis,
       }
     } catch (error) {
       console.error('Matching analysis failed:', error)
@@ -119,10 +121,12 @@ export class MatchingAgent {
       })
 
       const normalizedOutput = matchAnalysisOutputSchema.parse(parsedOutput)
+      const { requirement_analysis, ...jdStructure } = jd
 
       return {
         ...normalizedOutput,
-        jd_structure: jd,
+        jd_structure: jdStructure,
+        requirement_analysis,
       }
     } catch (error) {
       console.error('Matching business repair failed:', error)

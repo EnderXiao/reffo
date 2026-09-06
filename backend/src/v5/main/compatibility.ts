@@ -6,7 +6,31 @@ import type {
   ResumeAnalysis,
   ResumeStructure,
 } from '@/types'
-import type { EvidenceAtom, V5WorkflowResult } from '@/v5/types'
+import { isV5ProductDeliverable } from '@/v5/delivery-gate'
+import { V5WorkflowBlockedError } from '@/v5/errors'
+import type { EvidenceAtom, ValidationIssue, V5WorkflowResult } from '@/v5/types'
+
+function deliveryIssueCodes(result: V5WorkflowResult) {
+  const issues = Array.isArray(result.validationIssues) ? result.validationIssues : []
+  return [...new Set(issues
+    .filter(item => item?.severity !== 'info' && typeof item?.code === 'string')
+    .map(item => item.code))]
+}
+
+function sanitizedDeliveryIssues(result: V5WorkflowResult): ValidationIssue[] {
+  return deliveryIssueCodes(result).map((code, index) => ({
+    issueId: `delivery_gate_${index + 1}`,
+    severity: 'error',
+    code,
+    outputPath: null,
+    claimId: null,
+    evidenceIds: [],
+    requirementIds: [],
+    message: '产物未通过交付质量门禁。',
+    expectedConstraint: '仅交付所有确定性产品质量门禁均通过的结果。',
+    replacementText: null,
+  }))
+}
 
 function scopeEvidence(result: V5WorkflowResult, scopeId: string) {
   return result.resumeEvidenceBundle.evidenceAtoms.filter(atom => (
@@ -132,6 +156,7 @@ function toMatchAnalysis(result: V5WorkflowResult): MatchAnalysis {
   const jd = toJdStructure(result)
   return {
     match_score: result.matchScore.score,
+    ...(result.requirementAnalysis ? { requirement_analysis: result.requirementAnalysis } : {}),
     hard_requirements_match: Object.fromEntries(result.matchAnalysis.requirementMatches.map(item => [
       requirement.get(item.requirementId)?.normalizedRequirement ?? item.requirementId,
       item.status === 'direct_match' || item.status === 'transferable_match',
@@ -170,6 +195,7 @@ function toMatchAnalysis(result: V5WorkflowResult): MatchAnalysis {
 }
 
 function toInterviewSuggestions(result: V5WorkflowResult): InterviewSuggestions | undefined {
+  if (result.deliveryDiagnostics.provenance.interview !== 'generated') return undefined
   const preparation = result.interviewPreparation
   if (!preparation) return undefined
   return {
@@ -184,6 +210,16 @@ function toInterviewSuggestions(result: V5WorkflowResult): InterviewSuggestions 
 }
 
 export function toLegacyMvpProcessResponse(result: V5WorkflowResult): MvpProcessResponse {
+  if (!isV5ProductDeliverable(result)) {
+    const blocked = new V5WorkflowBlockedError({
+      code: 'V5_PRODUCT_QUALITY_BLOCKED',
+      state: 'blocked_quality_validation',
+      message: '本次结果未达到可投递质量标准，已停止交付。',
+      issues: sanitizedDeliveryIssues(result),
+    })
+    blocked.runId = result.runId
+    throw blocked
+  }
   return {
     run_id: result.runId,
     workflow_status: 'succeeded',
