@@ -315,7 +315,7 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
 
 .reffo-landing-onboarding__skip--experience {
   left: 31px;
-  bottom: max(34px, calc(env(safe-area-inset-bottom) + 34px));
+  bottom: max(28px, calc(env(safe-area-inset-bottom) + 28px));
   justify-content: flex-start;
 }
 

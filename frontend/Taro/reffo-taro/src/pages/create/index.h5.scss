@@ -1447,6 +1447,40 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   white-space: nowrap;
 }
 
+.reffo-create-generation__steps {
+  width: 100%;
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.reffo-create-generation__step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b7b3b3;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.reffo-create-generation__step-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ddd9d9;
+}
+
+.reffo-create-generation__step--active {
+  color: #ff6230;
+}
+
+.reffo-create-generation__step--active .reffo-create-generation__step-dot {
+  background: #ff6230;
+  box-shadow: 0 0 0 4PX rgba(255, 98, 48, 0.12);
+  animation: reffo-generation-step-pulse 1100ms ease-in-out infinite;
+}
+
 .reffo-create-generation__cancel {
   position: absolute;
   right: 32px;
@@ -2042,6 +2076,11 @@ html.reffo-delete-vt-return::view-transition-new(reffo-delete-jd-card) {
     opacity: 1;
     transform: translate3d(0, 0, 0);
   }
+}
+
+@keyframes reffo-generation-step-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.86); }
+  50% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes reffo-create-delete-copy-out {

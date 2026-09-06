@@ -623,13 +623,28 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
 }
 
 .reffo-home__hero-label-row {
+  position: relative;
+  width: 100%;
   display: flex;
   align-items: flex-start;
   margin-bottom: 7px;
 }
 
+.reffo-home__hero-label-row[role='button'],
+.reffo-home__hero-strategy-body[role='button'] {
+  cursor: pointer;
+  transition: opacity 160ms ease;
+}
+
+.reffo-home__hero-label-row[role='button']:active,
+.reffo-home__hero-strategy-body[role='button']:active {
+  opacity: 0.68;
+}
+
 .reffo-home__hero-label-spark {
-  position: relative;
+  position: absolute;
+  top: -5px;
+  right: 0;
   display: inline-block;
   width: 18px;
   height: 16px;
@@ -914,6 +929,27 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
 
 .reffo-home-card--new-entry {
   animation: reffo-card-new-entry 920ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-home-card--deleting {
+  animation: reffo-home-card-delete-out 280ms cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+@keyframes reffo-home-card-delete-out {
+  0% {
+    opacity: var(--card-opacity);
+    transform: translate3d(var(--card-left), var(--card-top), 0)
+      rotate(var(--card-rotate))
+      scale(calc(var(--card-responsive-scale) * var(--card-depth-scale)));
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--card-left) + 42px), calc(var(--card-top) - 18px), 0)
+      rotate(calc(var(--card-rotate) + 9deg))
+      scale(calc(var(--card-responsive-scale) * var(--card-depth-scale) * 0.82));
+  }
 }
 
 .reffo-home-card--return-target {
@@ -1961,6 +1997,50 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   margin-top: clamp(7px, 1.2dvh, 12px);
   position: relative;
   z-index: 180;
+}
+
+.reffo-home__card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 2px;
+  position: relative;
+  z-index: 180;
+}
+
+.reffo-home__card-action {
+  min-width: 62px;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid rgba(40, 111, 231, 0.18);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.74);
+  color: #286fe7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  transition: opacity 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.reffo-home__card-action:active {
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.reffo-home__card-action--danger {
+  border-color: rgba(218, 59, 74, 0.18);
+  color: #d33a4a;
+}
+
+.reffo-home__card-action[aria-disabled='true'] {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .reffo-home__primary-action {

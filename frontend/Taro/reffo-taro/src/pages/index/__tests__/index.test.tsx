@@ -1,5 +1,5 @@
 import React from 'react'
-import {fireEvent, render, screen, waitFor} from '@testing-library/react'
+import {act, fireEvent, render, screen, waitFor} from '@testing-library/react'
 import Taro from '@tarojs/taro'
 import Index from '../index'
 import {useHistoryStore} from '@/store/historyStore'
@@ -50,9 +50,14 @@ describe('首页组件', () => {
   }
   let mockHistories: ResumeHistory[] = []
   let mockLatestSourceResume: any = null
+  let didShowCallbacks: Array<() => void> = []
 
   beforeEach(() => {
     jest.clearAllMocks()
+    didShowCallbacks = []
+    ;(Taro.useDidShow as jest.Mock).mockImplementation((callback: () => void) => {
+      didShowCallbacks.push(callback)
+    })
     mockHistories = []
     mockLatestSourceResume = null
     mockLoading.isLoading = false
@@ -236,5 +241,19 @@ describe('首页组件', () => {
     expect(screen.getByText('新的申请')).toBeTruthy()
     expect(screen.queryByText(/加载失败/)).toBeNull()
     expect(document.querySelector('.reffo-home')?.getAttribute('data-loading-error')).toBe('加载失败')
+  })
+
+  test('返回首页时应清理上一次导航的即时反馈', () => {
+    render(<Index />)
+
+    fireEvent.click(screen.getByText('登录'))
+    expect(screen.getByText('打开中…')).toBeTruthy()
+
+    act(() => {
+      didShowCallbacks.forEach(callback => callback())
+    })
+
+    expect(screen.getByLabelText('登录')).toBeTruthy()
+    expect(screen.queryByText('打开中…')).toBeNull()
   })
 })

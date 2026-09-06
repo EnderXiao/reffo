@@ -246,6 +246,12 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   cursor: pointer;
 }
 
+.reffo-result__action--disabled {
+  opacity: 0.62;
+  cursor: wait;
+  pointer-events: none;
+}
+
 .reffo-result__action-icon {
   width: 13px;
   height: 13px;
@@ -501,7 +507,9 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
 }
 
 .reffo-result__title-spark {
-  position: relative;
+  position: absolute;
+  top: -4px;
+  right: 0;
   display: inline-block;
   flex: 0 0 18px;
   width: 18px;
@@ -851,6 +859,26 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   font-weight: 500;
 }
 
+.reffo-result__analysis-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin-top: 12px;
+  border-radius: 18px;
+  color: #0b9d58;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 20px;
+  background: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+  transition: opacity 160ms ease;
+}
+
+.reffo-result__analysis-toggle:active {
+  opacity: 0.68;
+}
+
 .reffo-result__section-title {
   display: flex;
   align-items: center;
@@ -890,7 +918,7 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   position: relative;
   width: 100%;
   min-height: 567px;
-  padding: 58px 57px 42px;
+  padding: 58px clamp(24px, 10vw, 57px) 42px;
   border-radius: 1px;
   background: #ffffff;
   box-shadow: 0 2PX 8PX rgba(0, 0, 0, 0.16);
