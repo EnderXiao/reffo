@@ -1,0 +1,20 @@
+.github/workflows/render-feature-environments.yml
+  s_b30eb70d4e6e6a::t_e5c1e67f7aa4ec 14,37-38
+  s_b30eb70d4e6e6a::t_3a792e65bea1a5 8,40-42,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2b7f9d00de5ed0f252fd6da35e20bdf1b45e7fc0",
+  "prompts": {},
+  "sessions": {
+    "s_b30eb70d4e6e6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075a7-3f5b-7a71-ac24-c92b47deed43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
