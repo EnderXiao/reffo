@@ -27,6 +27,7 @@ export interface ResumeOptimizationWorkflowInput {
   workflowTimeoutMs?: number
   enable_llm_judge?: boolean
   output_language?: string
+  onAnalysisSucceeded?: () => void | Promise<void>
 }
 
 export interface ResumeOptimizationWorkflowOptions {
@@ -69,6 +70,7 @@ export class ResumeOptimizationWorkflow {
       enableQualityJudge: input.enable_llm_judge ?? env.V5_QUALITY_JUDGE_ENABLED,
       workflowTimeoutMs: input.workflowTimeoutMs,
     })
+    await input.onAnalysisSucceeded?.()
     return toLegacyMvpProcessResponse(result)
   }
 }

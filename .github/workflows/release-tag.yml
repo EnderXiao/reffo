@@ -1,0 +1,88 @@
+name: Tag Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag points to main
+        run: |
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Resolve release metadata
+        id: metadata
+        shell: bash
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] || {
+            echo "非法版本 tag: $GITHUB_REF_NAME"
+            exit 1
+          }
+          version="${GITHUB_REF_NAME#v}"
+          subject="$(git for-each-ref --format='%(contents:subject)' "refs/tags/${GITHUB_REF_NAME}")"
+          body="$(git for-each-ref --format='%(contents:body)' "refs/tags/${GITHUB_REF_NAME}")"
+          notes="$subject"
+          [ -z "$body" ] || notes="${subject}"$'\n\n'"${body}"
+          [ -n "$notes" ] || notes="版本 ${version}"
+          {
+            echo "version=${version}"
+            echo 'notes<<EOF'
+            echo "$notes"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/Taro/reffo-taro/pnpm-lock.yaml
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.2 --activate
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend dependencies
+        working-directory: frontend/Taro/reffo-taro
+        run: pnpm install --frozen-lockfile
+
+      - name: Test backend
+        working-directory: backend
+        run: |
+          bun install --frozen-lockfile
+          bun test ./src
+
+      - name: Build H5
+        working-directory: frontend/Taro/reffo-taro
+        env:
+          REFFO_VERSION: ${{ steps.metadata.outputs.version }}
+          REFFO_RELEASE_NOTES: ${{ steps.metadata.outputs.notes }}
+        run: pnpm build:h5:prod
+
+      - name: Trigger Render deploy
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL 未配置，跳过 Render 发布"
+            exit 0
+          fi
+          curl --fail --retry 3 -X POST "$RENDER_DEPLOY_HOOK_URL"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}

@@ -9,6 +9,8 @@ dist/
 *.sqlite.lock
 *.sqlite-shm
 *.sqlite-wal
+backend/data/*.sqlite
+backend/data/*.sqlite-*
 .DS_Store
 *.swp
 *.swo

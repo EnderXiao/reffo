@@ -87,11 +87,13 @@ export function buildInterviewStoryViewItems(
       title: strengths[0] || '高匹配项目经历',
       background: strengths[1] || result.analysis.capability_summary || '围绕目标岗位要求，选择最能证明能力迁移的项目经历展开。',
       result: result.optimized.changes_summary[0] || '用量化结果和职责边界说明你的贡献，避免只描述过程。',
+      storytelling_approach: [],
     },
     {
       title: '补齐短板的备选故事',
       background: '选择一段能回应岗位关键短板的经历，说明你如何快速学习、协作推进或补齐经验。',
       result: '强调可验证的交付结果、复盘沉淀或能力迁移，避免只描述主观态度。',
+      storytelling_approach: [],
     },
   ]
   const viewStories = [
@@ -103,6 +105,9 @@ export function buildInterviewStoryViewItems(
     const title = story.title || fallbackStories[index].title
     const background = story.background || fallbackStories[index].background
     const storyResult = story.result || fallbackStories[index].result
+    const storytellingApproach = Array.isArray(story.storytelling_approach)
+      ? story.storytelling_approach.filter(point => typeof point === 'string' && point.trim()).map(point => point.trim())
+      : []
     const query = `${title} ${background} ${storyResult}`
     const resumeQuote = findBestOriginalQuote(resumeContent || result.optimized.optimized_resume, query, title)
     const jdQuote = findBestOriginalQuote(
@@ -115,6 +120,7 @@ export function buildInterviewStoryViewItems(
       title,
       background,
       result: storyResult,
+      storytellingApproach,
       resumeQuote,
       jdQuote,
     }

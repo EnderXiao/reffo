@@ -3,6 +3,7 @@ import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { env } from '@/config/env'
 import { createSupabaseRestClient } from '@/repositories/supabase/client'
 import type { ApiResponse } from '@/types'
+import {getResumeQuota, ResumeQuotaError} from '@/services/resume-quota'
 
 interface ProfileRow {
   id: string
@@ -53,6 +54,22 @@ function authError(error: RequestAuthError, set: {status?: unknown}) {
 }
 
 export const profileRoutes = new Elysia({prefix: '/api/v1/profile'})
+  .get('/quota', async ({headers, set}) => {
+    try {
+      const context = await resolveRequestUser(headers)
+      return {success: true, data: await getResumeQuota(context)} satisfies ApiResponse<unknown>
+    } catch (error) {
+      if (error instanceof RequestAuthError) return authError(error, set)
+      if (error instanceof ResumeQuotaError) {
+        set.status = error.status
+        return {success: false, error: {code: error.code, message: error.message, details: {limit: error.limit, used: error.used}}} satisfies ApiResponse<never>
+      }
+      set.status = 500
+      return {success: false, error: {code: 'PROFILE_QUOTA_FAILED', message: '获取每日次数失败，请稍后重试'}} satisfies ApiResponse<never>
+    }
+  }, {
+    detail: {summary: '获取简历生成配额', description: '返回当前用户当日简历生成次数和剩余次数。', tags: ['Auth']},
+  })
   .get('/', async ({headers, set}) => {
     try {
       const context = await resolveRequestUser(headers)

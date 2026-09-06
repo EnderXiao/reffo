@@ -10,10 +10,11 @@
     "framework": "React"
   },
   "scripts": {
-    "build:h5": "taro build --type h5 --no-check",
-    "build:h5:local": "REFFO_ENV=local taro build --type h5 --no-check",
-    "build:h5:nonprod": "REFFO_ENV=nonprod taro build --type h5 --no-check",
-    "build:h5:prod": "REFFO_ENV=prod taro build --type h5 --no-check",
+    "generate:compliance": "node scripts/generate-compliance-content.mjs",
+    "build:h5": "pnpm generate:compliance && taro build --type h5 --no-check",
+    "build:h5:local": "pnpm generate:compliance && REFFO_ENV=local taro build --type h5 --no-check",
+    "build:h5:nonprod": "pnpm generate:compliance && REFFO_ENV=nonprod taro build --type h5 --no-check",
+    "build:h5:prod": "pnpm generate:compliance && REFFO_ENV=prod taro build --type h5 --no-check",
     "serve:h5": "npx --yes http-server dist -p 4173 -c-1",
     "dev:h5": "npm run build:h5 -- --watch",
     "dev:h5:local": "REFFO_ENV=local npm run build:h5 -- --watch",

@@ -10,6 +10,7 @@ export default {
     'pages/complete/index',
     'pages/auth/index',
     'pages/profile/index',
+    'pages/profile/content',
   ],
   window: {
     backgroundTextStyle: 'light',

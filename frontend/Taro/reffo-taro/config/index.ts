@@ -1,13 +1,43 @@
 import path from 'path';
+import {execFileSync} from 'node:child_process';
 import {defineConfig, type UserConfigExport} from '@tarojs/cli';
 import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin';
 import devConfig from './dev';
 import prodConfig from './prod';
 
+function resolveReleaseMetadata() {
+  const configuredVersion = process.env.REFFO_VERSION?.trim()
+  const configuredNotes = process.env.REFFO_RELEASE_NOTES?.trim()
+  if (configuredVersion) return {version: configuredVersion, notes: configuredNotes}
+
+  try {
+    const repositoryRoot = path.resolve(__dirname, '../../../..')
+    const tags = execFileSync('git', ['tag', '--points-at', 'HEAD', '--sort=-version:refname'], {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+    }).split('\n').map(tag => tag.trim()).filter(tag => /^v\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$/.test(tag))
+    const tag = tags[0]
+    if (!tag) return {version: undefined, notes: configuredNotes}
+    const subject = execFileSync('git', ['for-each-ref', '--format=%(contents:subject)', `refs/tags/${tag}`], {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+    }).trim()
+    const body = execFileSync('git', ['for-each-ref', '--format=%(contents:body)', `refs/tags/${tag}`], {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+    }).trim()
+    const notes = [subject, body].filter(Boolean).join('\n\n')
+    return {version: tag.slice(1), notes: configuredNotes || notes}
+  } catch {
+    return {version: undefined, notes: configuredNotes}
+  }
+}
+
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
 export default defineConfig<'webpack5'>(async (merge, { mode }) => {
   const currentMode = mode || process.env.NODE_ENV || 'development';
   const isDevelopment = currentMode === 'development';
+  const releaseMetadata = resolveReleaseMetadata();
 
   const baseConfig: UserConfigExport<'webpack5'> = {
     projectName: 'reffo-taro',
@@ -120,6 +150,8 @@ export default defineConfig<'webpack5'>(async (merge, { mode }) => {
               NODE_ENV: isDevelopment ? 'development' : 'production',
               REFFO_ENV: process.env.REFFO_ENV,
               API_BASE_URL: process.env.API_BASE_URL,
+              REFFO_VERSION: releaseMetadata.version,
+              REFFO_RELEASE_NOTES: releaseMetadata.notes,
             }),
           }],
         );

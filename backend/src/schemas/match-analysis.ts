@@ -71,6 +71,32 @@ const booleanLikeSchema = z.preprocess((value) => {
 const weaknessEvidenceTypeSchema = z.enum(['direct_missing', 'implicit_evidence', 'wording_gap'])
 const matchGapPrioritySchema = z.enum(['high', 'medium', 'low'])
 
+const requiredSkillCheckSchema = z.preprocess((value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {requirement: '', status: 'unclear', evidence: ''}
+  }
+
+  const item = value as Record<string, unknown>
+  const status = item.status === 'matched' || item.status === 'missing' || item.status === 'unclear'
+    ? item.status
+    : 'unclear'
+
+  return {
+    ...item,
+    requirement: typeof item.requirement === 'string' ? item.requirement : '',
+    status,
+    evidence: typeof item.evidence === 'string' ? item.evidence : '',
+  }
+}, z.object({
+  requirement: z.string().default(''),
+  status: z.enum(['matched', 'missing', 'unclear']).default('unclear'),
+  evidence: z.string().default(''),
+}).passthrough())
+
+const requiredSkillChecksSchema = z.preprocess((value) => (
+  Array.isArray(value) ? value : []
+), z.array(requiredSkillCheckSchema).default([]))
+
 const weaknessDetailSchema = z.object({
   id: z.string().default(''),
   priority: matchGapPrioritySchema.default('medium'),
@@ -159,6 +185,7 @@ const matchAnalysisOutputObjectSchema = z.object({
   skill_match: z.object({
     matched: z.array(z.string()).default([]),
     missing: z.array(z.string()).default([]),
+    required_skill_checks: requiredSkillChecksSchema,
   }).passthrough(),
   experience_match: z.string(),
   soft_skills_match: z.string().default(''),
@@ -187,6 +214,7 @@ const matchAnalysisObjectSchema = z.object({
   skill_match: z.object({
     matched: z.array(z.string()),
     missing: z.array(z.string()),
+    required_skill_checks: requiredSkillChecksSchema,
   }).passthrough(),
   experience_match: z.string(),
   soft_skills_match: z.string(),
