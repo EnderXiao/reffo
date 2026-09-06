@@ -116,7 +116,6 @@ export default function HomeCardDeck({
   enteringCardId,
   returningCardId,
   isCreateMode = false,
-  deletingCardId = null,
   onCreateCardPress,
   onCardPress,
   onCardChange,
@@ -375,7 +374,6 @@ export default function HomeCardDeck({
                   'reffo-home-card--recycling': isRecycling,
                   'reffo-home-card--new-entry': card.id === enteringCardId,
                   'reffo-home-card--return-target': card.id === returningCardId,
-                  'reffo-home-card--deleting': card.id === deletingCardId,
                   'reffo-home-card--pressable': isPressable,
                 })}
                 onClick={isPressable ? () => playCardOpenTransition(card) : undefined}
