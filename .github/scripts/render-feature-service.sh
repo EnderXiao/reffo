@@ -25,6 +25,8 @@ slug="${slug:-root}"
 slug="${slug:0:36}"
 branch_hash="$(printf '%s' "${branch}" | sha256sum | cut -c1-8)"
 service_name="${service_prefix}-${slug}-${branch_hash}"
+frontend_service_name="${RENDER_FEATURE_FRONTEND_SERVICE_PREFIX:-reffo-feature-web}-${slug}-${branch_hash}"
+frontend_origin="https://${frontend_service_name}.onrender.com"
 
 api() {
   local method="$1"
@@ -71,14 +73,19 @@ case "${action}" in
     fi
     # Render injects PORT for Web Services. Feature environments must never
     # inherit a Pro model or model fallback from the shared secret.
-    env_vars="$(jq '
+    env_vars="$(jq --arg frontendOrigin "${frontend_origin}" '
       [.[] | select(
         .key != "PORT"
         and .key != "HOST"
         and .key != "AI_MODEL"
         and .key != "AI_FALLBACK_MODELS"
+        and .key != "CORS_ORIGIN"
       )]
-      + [{key:"AI_MODEL",value:"deepseek-v4-flash"},{key:"AI_FALLBACK_MODELS",value:""}]
+      + [
+        {key:"AI_MODEL",value:"deepseek-v4-flash"},
+        {key:"AI_FALLBACK_MODELS",value:""},
+        {key:"CORS_ORIGIN",value:$frontendOrigin}
+      ]
     ' <<<"${env_vars}")"
 
     if [[ -z "${service_id}" ]]; then
