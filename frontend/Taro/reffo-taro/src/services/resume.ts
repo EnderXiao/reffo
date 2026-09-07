@@ -441,6 +441,9 @@ export class ResumeApi {
         resume_markdown: resumeMarkdown,
         ...(options.landing ? {landing: true} : {}),
       },
+      // Backend analysis allows up to 120s for model calls and business
+      // recovery. Keep H5 from aborting the request at ApiClient's 30s default.
+      {timeout: 120000},
     );
 
     const analysis = 'analysis' in response ? response.analysis : response;
