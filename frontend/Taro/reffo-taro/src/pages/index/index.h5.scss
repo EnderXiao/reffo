@@ -623,8 +623,6 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
 }
 
 .reffo-home__hero-label-row {
-  position: relative;
-  width: 100%;
   display: flex;
   align-items: flex-start;
   margin-bottom: 7px;
@@ -642,9 +640,7 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
 }
 
 .reffo-home__hero-label-spark {
-  position: absolute;
-  top: -5px;
-  right: 0;
+  position: relative;
   display: inline-block;
   width: 18px;
   height: 16px;
@@ -1997,50 +1993,6 @@ html[data-reffo-card-return-transition] .reffo-home__return-card-stage--view-tra
   margin-top: clamp(7px, 1.2dvh, 12px);
   position: relative;
   z-index: 180;
-}
-
-.reffo-home__card-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  margin-top: 2px;
-  position: relative;
-  z-index: 180;
-}
-
-.reffo-home__card-action {
-  min-width: 62px;
-  height: 30px;
-  padding: 0 14px;
-  border: 1px solid rgba(40, 111, 231, 0.18);
-  border-radius: 15px;
-  background: rgba(255, 255, 255, 0.74);
-  color: #286fe7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 600;
-  transition: opacity 180ms ease, transform 180ms ease, background 180ms ease;
-}
-
-.reffo-home__card-action:active {
-  transform: scale(0.96);
-  background: rgba(255, 255, 255, 0.96);
-}
-
-.reffo-home__card-action--danger {
-  border-color: rgba(218, 59, 74, 0.18);
-  color: #d33a4a;
-}
-
-.reffo-home__card-action[aria-disabled='true'] {
-  opacity: 0.45;
-  pointer-events: none;
 }
 
 .reffo-home__primary-action {

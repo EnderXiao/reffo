@@ -362,6 +362,14 @@ function EmptyText() {
   return <Text className='reffo-result__empty'>暂无内容</Text>
 }
 
+function SourceReference({value}: {value: string}) {
+  return (
+    <Text className='reffo-result__story-reference'>
+      {value || '暂无可引用原文'}
+    </Text>
+  )
+}
+
 function AnalysisPanel({result}: {result: ProcessResult}) {
   const [isExpanded, setIsExpanded] = useState(false)
   const grade = resolveResumeGrade(result.analysis.quality_score)

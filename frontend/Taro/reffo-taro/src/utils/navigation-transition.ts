@@ -362,6 +362,9 @@ export async function runWithNavigationTransition(
       actionStarted = true
       actionPromise = Promise.resolve().then(action)
       await actionPromise
+      // Taro.navigateTo 先完成路由调用，再异步提交新页面 DOM。等待提交后再让浏览器
+      // 捕获新快照，避免 View Transition 结束后又触发一次 Taro page opacity 动画。
+      await waitForNextPaint()
     })
 
     if (!transition) {

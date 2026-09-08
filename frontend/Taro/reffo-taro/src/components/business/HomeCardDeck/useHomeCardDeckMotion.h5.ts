@@ -18,6 +18,8 @@ import {
 } from './motion.h5'
 import {VISIBLE_CARDS, type HomeCardItem} from './shared'
 
+const H5_CARD_DRAG_ACTIVATION_DISTANCE = 8
+
 interface UseHomeCardDeckMotionOptions {
   cards: HomeCardItem[]
   initialIndex?: number
@@ -480,9 +482,14 @@ export default function useHomeCardDeckMotion({
 
   const handleDeckPointerMove = (event: any) => {
     const nativeEvent = event.nativeEvent || event
+    const clientX = nativeEvent.clientX ?? 0
+    const clientY = nativeEvent.clientY ?? 0
+    const start = dragStartRef.current
 
-    event.preventDefault?.()
-    updateDeckDrag(nativeEvent.clientX ?? 0, nativeEvent.clientY ?? 0)
+    if (Math.hypot(clientX - start.x, clientY - start.y) > H5_CARD_DRAG_ACTIVATION_DISTANCE) {
+      event.preventDefault?.()
+    }
+    updateDeckDrag(clientX, clientY)
   }
 
   const handleDeckPointerEnd = (event: any) => {
@@ -516,105 +523,6 @@ export default function useHomeCardDeckMotion({
 
     playDeckFlipAnimation()
   }, [dragState.phase, orderedCardEntries])
-
-  useEffect(() => {
-    const stackElement = stackRef.current
-
-    if (!stackElement) {
-      return undefined
-    }
-
-    const handleTouchStart = (event: TouchEvent) => {
-      const touch = event.touches[0]
-
-      if (!touch) {
-        return
-      }
-
-      beginDeckDrag(touch.clientX, touch.clientY)
-    }
-    const handleTouchMove = (event: TouchEvent) => {
-      const touch = event.touches[0]
-
-      if (!touch || dragStateRef.current.phase !== 'dragging') {
-        return
-      }
-
-      event.preventDefault()
-      updateDeckDrag(touch.clientX, touch.clientY)
-    }
-    const handleTouchEnd = () => {
-      finishDeckDrag(false)
-    }
-    const handleTouchCancel = () => {
-      finishDeckDrag(true)
-    }
-    const handleMouseDown = (event: MouseEvent) => {
-      if (event.button !== 0) {
-        return
-      }
-
-      beginDeckDrag(event.clientX, event.clientY)
-    }
-    const handleMouseMove = (event: MouseEvent) => {
-      if (dragStateRef.current.phase !== 'dragging') {
-        return
-      }
-
-      event.preventDefault()
-      updateDeckDrag(event.clientX, event.clientY)
-    }
-    const handleMouseUp = () => {
-      finishDeckDrag(false)
-    }
-    const handlePointerDown = (event: PointerEvent) => {
-      if (event.pointerType === 'mouse' && event.button !== 0) {
-        return
-      }
-
-      beginDeckDrag(event.clientX, event.clientY, event.pointerId)
-    }
-    const handlePointerMove = (event: PointerEvent) => {
-      if (dragStateRef.current.phase !== 'dragging') {
-        return
-      }
-
-      event.preventDefault()
-      updateDeckDrag(event.clientX, event.clientY)
-    }
-    const handlePointerUp = () => {
-      finishDeckDrag(false)
-    }
-    const handlePointerCancel = () => {
-      finishDeckDrag(true)
-    }
-
-    stackElement.addEventListener('pointerdown', handlePointerDown)
-    stackElement.addEventListener('touchstart', handleTouchStart, {passive: false})
-    stackElement.addEventListener('touchmove', handleTouchMove, {passive: false})
-    stackElement.addEventListener('touchend', handleTouchEnd)
-    stackElement.addEventListener('touchcancel', handleTouchCancel)
-    stackElement.addEventListener('mousedown', handleMouseDown)
-    window.addEventListener('pointermove', handlePointerMove, {passive: false})
-    window.addEventListener('pointerup', handlePointerUp)
-    window.addEventListener('pointercancel', handlePointerCancel)
-    window.addEventListener('mousemove', handleMouseMove, {passive: false})
-    window.addEventListener('mouseup', handleMouseUp)
-
-    return () => {
-      stackElement.removeEventListener('pointerdown', handlePointerDown)
-      stackElement.removeEventListener('touchstart', handleTouchStart)
-      stackElement.removeEventListener('touchmove', handleTouchMove)
-      stackElement.removeEventListener('touchend', handleTouchEnd)
-      stackElement.removeEventListener('touchcancel', handleTouchCancel)
-      stackElement.removeEventListener('mousedown', handleMouseDown)
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handlePointerUp)
-      window.removeEventListener('pointercancel', handlePointerCancel)
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [activeCard, isDeckInteractive])
 
   useEffect(() => {
     const railElement = railRef.current
