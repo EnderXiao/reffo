@@ -6,6 +6,7 @@ import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import {toHistoryCardItems} from './homeCardData'
+import {suppressNextNavigationTransition} from '@/utils/navigation-transition'
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const NEW_CARD_ID_QUERY_KEY = 'newCardId'
@@ -87,7 +88,7 @@ export interface IndexPageViewModel {
   handleConfirmCreate: () => void
   handleCancelCreate: () => void
   handleViewHistory: () => void
-  handleCardPress: (card: HomeCardItem) => void
+  handleCardPress: (card: HomeCardItem) => Promise<void>
   handleCardChange: (_: HomeCardItem, index: number) => void
   handleDeckFirstInteraction: () => void
   logoSource: string
@@ -226,19 +227,20 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
 
   const handleCardPress = useCallback((card: HomeCardItem) => {
     if (resolvedCreateMode) {
-      return
+      return Promise.resolve()
     }
 
     const targetHistory = histories.find(history => history.id === card.id)
     if (!targetHistory) {
-      return
+      return Promise.resolve()
     }
 
-    void route.navigate(appendRouteParams(routePaths.result, {
+    suppressNextNavigationTransition()
+    return route.navigate(appendRouteParams(routePaths.result, {
       id: targetHistory.id,
       fromCard: 1,
     }))
-  }, [histories, resolvedCreateMode])
+  }, [histories, resolvedCreateMode, route])
 
   const handleCardChange = useCallback((_: HomeCardItem, index: number) => {
     setActiveCardIndex(previousIndex =>

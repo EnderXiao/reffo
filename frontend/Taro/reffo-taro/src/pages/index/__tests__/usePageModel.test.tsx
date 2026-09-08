@@ -28,6 +28,7 @@ const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
 >
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
+let latestCardPressResult: Promise<void> | null = null
 
 function HookProbe() {
   const model = usePageModel('logo.png')
@@ -52,7 +53,14 @@ function HookProbe() {
       <button onClick={model.handleViewHistory} type='button'>
         source-resume
       </button>
-      <button onClick={() => model.currentCard && model.handleCardPress(model.currentCard)} type='button'>
+      <button
+        onClick={() => {
+          if (model.currentCard) {
+            latestCardPressResult = model.handleCardPress(model.currentCard)
+          }
+        }}
+        type='button'
+      >
         open-card
       </button>
     </>
@@ -67,6 +75,7 @@ describe('usePageModel', () => {
     jest.useFakeTimers()
     window.history.replaceState(null, '', '/')
     window.sessionStorage.removeItem(RESULT_RETURN_HOME_STORAGE_KEY)
+    latestCardPressResult = null
     mockUseRouter.mockReturnValue({params: {}})
     mockUseHistoryStore.mockReturnValue({
       histories: [],
@@ -317,6 +326,7 @@ describe('usePageModel', () => {
     expect(Taro.navigateTo).toHaveBeenCalledWith({
       url: '/pages/result/index?id=JD2026070700001&fromCard=1',
     })
+    expect(latestCardPressResult).toBeInstanceOf(Promise)
   })
 
   test('从结果页返回首页时直接展示原卡片策略文案', () => {
