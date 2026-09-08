@@ -4,7 +4,6 @@ import Taro from '@tarojs/taro'
 import {useHistoryStore} from '@/store/historyStore'
 import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
-import {feedback} from '@/utils/feedback'
 import type {ResumeHistory} from '@/types'
 import {usePageModel} from '../model/usePageModel'
 
@@ -22,22 +21,14 @@ jest.mock('@/store/resumeWorkspaceStore', () => ({
   },
 }))
 jest.mock('@/store/sourceResumeStore')
-jest.mock('@/utils/feedback', () => ({
-  feedback: {
-    modal: jest.fn(),
-    success: jest.fn(),
-    error: jest.fn(),
-  },
-}))
-
 const mockUseHistoryStore = useHistoryStore as jest.MockedFunction<typeof useHistoryStore>
 const mockResetWorkspace = resumeWorkspaceActions.reset as jest.Mock
 const mockUseRouter = (Taro as any).useRouter as jest.Mock
 const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
 >
-const mockFeedback = feedback as jest.Mocked<typeof feedback>
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
+let latestCardPressResult: Promise<void> | null = null
 
 function HookProbe() {
   const model = usePageModel('logo.png')
@@ -62,14 +53,15 @@ function HookProbe() {
       <button onClick={model.handleViewHistory} type='button'>
         source-resume
       </button>
-      <button onClick={() => model.currentCard && model.handleCardPress(model.currentCard)} type='button'>
+      <button
+        onClick={() => {
+          if (model.currentCard) {
+            latestCardPressResult = model.handleCardPress(model.currentCard)
+          }
+        }}
+        type='button'
+      >
         open-card
-      </button>
-      <button onClick={() => model.currentCard && model.handleCardEdit(model.currentCard)} type='button'>
-        edit-card
-      </button>
-      <button onClick={() => model.currentCard && model.handleCardDelete(model.currentCard)} type='button'>
-        delete-card
       </button>
     </>
   )
@@ -78,18 +70,17 @@ function HookProbe() {
 describe('usePageModel', () => {
   const mockLoadHistories = jest.fn()
   const mockLoadLatestSourceResume = jest.fn()
-  const mockDeleteHistory = jest.fn()
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
     window.history.replaceState(null, '', '/')
     window.sessionStorage.removeItem(RESULT_RETURN_HOME_STORAGE_KEY)
+    latestCardPressResult = null
     mockUseRouter.mockReturnValue({params: {}})
     mockUseHistoryStore.mockReturnValue({
       histories: [],
       loading: {isLoading: false, error: null},
       loadHistories: mockLoadHistories,
-      deleteHistory: mockDeleteHistory,
     } as ReturnType<typeof useHistoryStore>)
     mockUseSourceResumeStore.mockReturnValue({
       latestSourceResume: null,
@@ -99,7 +90,6 @@ describe('usePageModel', () => {
       clearLatestSourceResume: jest.fn(),
       reset: jest.fn(),
     } as ReturnType<typeof useSourceResumeStore>)
-    mockFeedback.modal.mockImplementation(() => undefined)
   })
 
   afterEach(() => {
@@ -336,6 +326,7 @@ describe('usePageModel', () => {
     expect(Taro.navigateTo).toHaveBeenCalledWith({
       url: '/pages/result/index?id=JD2026070700001&fromCard=1',
     })
+    expect(latestCardPressResult).toBeInstanceOf(Promise)
   })
 
   test('从结果页返回首页时直接展示原卡片策略文案', () => {
@@ -438,77 +429,4 @@ describe('usePageModel', () => {
     expect(Taro.navigateTo).not.toHaveBeenCalled()
   })
 
-  test('历史卡片编辑入口进入编辑模式', () => {
-    const history: ResumeHistory = {
-      id: 'JD2026070700001',
-      position: '前端工程师',
-      company: 'ABC 公司',
-      name: '张三',
-      createdAt: '2026-07-07T12:00:00.000Z',
-      qualityScore: 88,
-      matchScore: 92,
-      tags: ['React'],
-      resumeContent: '# 张三',
-      jdContent: '岗位职责：...',
-      optimizedContent: '# 张三（优化版）',
-    }
-
-    mockUseHistoryStore.mockReturnValue({
-      histories: [history],
-      loading: {isLoading: false, error: null},
-      loadHistories: mockLoadHistories,
-      deleteHistory: mockDeleteHistory,
-    } as ReturnType<typeof useHistoryStore>)
-
-    render(<HookProbe />)
-    fireEvent.click(screen.getByRole('button', {name: 'edit-card'}))
-
-    expect(Taro.navigateTo).toHaveBeenCalledWith({
-      url: '/pages/create/index?mode=editHistory&historyId=JD2026070700001',
-    })
-  })
-
-  test('历史卡片删除先确认，再延迟删除并反馈', async () => {
-    const history: ResumeHistory = {
-      id: 'JD2026070700001',
-      position: '前端工程师',
-      company: 'ABC 公司',
-      name: '张三',
-      createdAt: '2026-07-07T12:00:00.000Z',
-      qualityScore: 88,
-      matchScore: 92,
-      tags: ['React'],
-      resumeContent: '# 张三',
-      jdContent: '岗位职责：...',
-      optimizedContent: '# 张三（优化版）',
-    }
-
-    mockUseHistoryStore.mockReturnValue({
-      histories: [history],
-      loading: {isLoading: false, error: null},
-      loadHistories: mockLoadHistories,
-      deleteHistory: mockDeleteHistory.mockResolvedValue(undefined),
-    } as ReturnType<typeof useHistoryStore>)
-
-    render(<HookProbe />)
-    fireEvent.click(screen.getByRole('button', {name: 'delete-card'}))
-
-    expect(mockFeedback.modal).toHaveBeenCalledWith(expect.objectContaining({
-      title: '删除这份简历？',
-      confirmText: '删除',
-      cancelText: '保留',
-    }))
-
-    const modalOptions = mockFeedback.modal.mock.calls[0][0]
-    act(() => {
-      modalOptions.onConfirm?.()
-      jest.advanceTimersByTime(280)
-    })
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(mockDeleteHistory).toHaveBeenCalledWith('JD2026070700001')
-    expect(mockFeedback.success).toHaveBeenCalledWith('简历已删除', {duration: 1200})
-  })
 })
