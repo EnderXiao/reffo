@@ -443,6 +443,7 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
     await writeFile(resolve(root, 'src/v5/prompts/P01.md'), 'p01-v1\n')
     await writeFile(resolve(root, 'src/v5/prompts/P01R.md'), 'p01r-v1\n')
     await writeFile(resolve(root, 'src/v5/prompts/core.md'), 'core-v1\n')
+    await writeFile(resolve(root, 'src/v5/prompts/core-extraction.md'), 'core-extraction-v1\n')
     await writeFile(resolve(root, 'src/v5/prompts/output.md'), 'output-v1\n')
     await writeFile(resolve(root, 'src/v5/prompts/manifest.json'), JSON.stringify({
       components: {
@@ -457,6 +458,11 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
     ].join('\n'))
 
     const baseline = await createExtractionImplementationDigest(root)
+    await writeFile(resolve(root, 'src/v5/prompts/core-extraction.md'), 'core-extraction-v2\n')
+    expect(await createExtractionImplementationDigest(root)).not.toBe(baseline)
+    await writeFile(resolve(root, 'src/v5/prompts/core-extraction.md'), 'core-extraction-v1\n')
+    await writeFile(resolve(root, 'src/v5/prompts/core.md'), 'downstream-core-v2\n')
+    expect(await createExtractionImplementationDigest(root)).toBe(baseline)
     await mkdir(resolve(root, 'src/v5'), { recursive: true })
     await writeFile(resolve(root, 'src/v5/adaptive-policy.ts'), 'planner-v2\n')
     await writeFile(resolve(root, 'src/v5/safe-renderer.ts'), 'renderer-v2\n')
@@ -488,6 +494,14 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
       },
     }))
     expect(await createExtractionImplementationDigest(root)).toBe(baseline)
+
+    for (const relativePath of ['src/v5/composition/source-continuation.ts', 'src/v5/composition/source-continuation-proof.ts']) {
+      expect(V5_EXTRACTION_IMPLEMENTATION_SOURCE_FILES as readonly string[]).toContain(relativePath)
+      await writeFile(resolve(root, relativePath), 'source-boundary-proof-v2\n')
+      expect(await createExtractionImplementationDigest(root)).not.toBe(baseline)
+      await writeFile(resolve(root, relativePath), `${relativePath}:v1\n`)
+      expect(await createExtractionImplementationDigest(root)).toBe(baseline)
+    }
 
     await writeFile(resolve(root, 'src/v5/chunked-resume-extraction.ts'), 'chunk-plan-v2\n')
     expect(await createExtractionImplementationDigest(root)).not.toBe(baseline)

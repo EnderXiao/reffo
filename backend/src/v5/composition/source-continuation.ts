@@ -1,4 +1,5 @@
 import type { EvidenceAtom } from '@/v5/types'
+import { hasProvenSourceLayoutSeparator } from '@/v5/composition/source-continuation-proof'
 
 const BUSINESS_CLAIM_TYPES = new Set<EvidenceAtom['claimType']>([
   'responsibility',
@@ -50,21 +51,48 @@ export function isLexicallyProvenSourceContinuation(left: string, right: string)
 }
 
 export function businessSourceContinuationGroups(atoms: EvidenceAtom[]) {
-  const ordered = [...atoms].sort((a, b) => a.sourceSpan.start - b.sourceSpan.start || a.evidenceId.localeCompare(b.evidenceId))
+  const ordered = [...atoms].sort((a, b) => a.sourceDocumentHash.localeCompare(b.sourceDocumentHash)
+    || a.sourceScopeId.localeCompare(b.sourceScopeId)
+    || a.sourceSpan.start - b.sourceSpan.start || a.evidenceId.localeCompare(b.evidenceId))
+  const counts = new Map<string, number>()
+  const keys = (atom: EvidenceAtom) => [`id:${atom.evidenceId}`,
+    `block:${atom.sourceDocumentHash}:${atom.sourceScopeId}:${atom.sourceBlockId}`]
+  for (const atom of atoms) for (const key of keys(atom)) counts.set(key, (counts.get(key) ?? 0) + 1)
   const groups: EvidenceAtom[][] = []
   let run: EvidenceAtom[] = []
-  const flush = () => { if (run.length >= 2 && run.length <= 3) groups.push(run); run = [] }
+  const flush = () => {
+    if (run.length >= 2 && run.length <= 3 && run.every(atom => atom.riskFlags.length === 0
+      && atom.status !== 'excluded' && BUSINESS_CLAIM_TYPES.has(atom.claimType)
+      && keys(atom).every(key => counts.get(key) === 1))) groups.push(run)
+    run = []
+  }
   for (const atom of ordered) {
     const previous = run.at(-1)
-    if (atom.riskFlags.length > 0 || atom.status === 'excluded' || !BUSINESS_CLAIM_TYPES.has(atom.claimType)) {
-      flush()
-      continue
-    }
-    if (previous && !areCanonicalAdjacentSourceAtoms([previous, atom])) flush()
+    if (previous && !isCanonicalSourceLineNeighbor(previous, atom)) flush()
     run.push(atom)
   }
   flush()
   return groups
+}
+
+export function hasCanonicalSourceLineSeparator(previous: EvidenceAtom, current: EvidenceAtom) {
+  return current.sourceSpan.start === previous.sourceSpan.end + 1
+    || hasProvenSourceLayoutSeparator(previous, current)
+}
+
+function isCanonicalSourceLineNeighbor(previous: EvidenceAtom, current: EvidenceAtom) {
+  const previousOrdinal = sourceBlockOrdinal(previous.sourceBlockId)
+  const currentOrdinal = sourceBlockOrdinal(current.sourceBlockId)
+  const validCoordinates = (atom: EvidenceAtom) => Number.isSafeInteger(atom.sourceSpan.start)
+    && Number.isSafeInteger(atom.sourceSpan.end) && atom.sourceSpan.start >= 0
+    && atom.sourceSpan.end > atom.sourceSpan.start
+  return Boolean(previous.sourceDocumentHash.trim() && previous.sourceScopeId.trim())
+    && validCoordinates(previous) && validCoordinates(current)
+    && previous.sourceDocumentHash === current.sourceDocumentHash
+    && previous.sourceScopeId === current.sourceScopeId
+    && previousOrdinal !== null && currentOrdinal !== null && currentOrdinal === previousOrdinal + 1
+    && hasCanonicalSourceLineSeparator(previous, current)
+    && isLexicallyProvenSourceContinuation(previous.verbatimText, current.verbatimText)
 }
 
 /**
@@ -75,6 +103,7 @@ export function businessSourceContinuationGroups(atoms: EvidenceAtom[]) {
  */
 export function areCanonicalAdjacentSourceAtoms(atoms: EvidenceAtom[]) {
   if (atoms.length < 2) return false
+  if (new Set(atoms.map(atom => atom.evidenceId)).size !== atoms.length) return false
   const sourceScopeId = atoms[0]?.sourceScopeId
   const sourceDocumentHash = atoms[0]?.sourceDocumentHash
   if (!sourceScopeId || !sourceDocumentHash) return false
@@ -89,15 +118,7 @@ export function areCanonicalAdjacentSourceAtoms(atoms: EvidenceAtom[]) {
   for (let index = 1; index < atoms.length; index += 1) {
     const previous = atoms[index - 1]
     const current = atoms[index]
-    const previousOrdinal = sourceBlockOrdinal(previous.sourceBlockId)
-    const currentOrdinal = sourceBlockOrdinal(current.sourceBlockId)
-    if (
-      previousOrdinal === null
-      || currentOrdinal === null
-      || currentOrdinal !== previousOrdinal + 1
-      || current.sourceSpan.start !== previous.sourceSpan.end + 1
-      || !isLexicallyProvenSourceContinuation(previous.verbatimText, current.verbatimText)
-    ) return false
+    if (!isCanonicalSourceLineNeighbor(previous, current)) return false
   }
   return true
 }

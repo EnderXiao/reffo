@@ -1,5 +1,7 @@
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
 import { env } from '@/config/env'
+import { v5ReleaseWorkflowOptions } from '@/config/v5-release'
+import { getV5ReleaseDescriptor } from '@/v5/release'
 import { createDigest } from '@/harness/run-context'
 import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
@@ -58,7 +60,9 @@ export class ResumeOptimizationWorkflow {
   async run(input: ResumeOptimizationWorkflowInput): Promise<MvpProcessResponse> {
     if (this.v5Runner) return this.v5Runner(input)
 
+    getV5ReleaseDescriptor()
     const workflow = new V5ResumeOptimizationWorkflow({
+      ...v5ReleaseWorkflowOptions(env.V5_RELEASE_PROFILE),
       eventBus: this.eventBus,
       enableDefaultSubscribers: false,
       resumeExtractionCache: sharedResumeExtractionCache,

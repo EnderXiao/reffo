@@ -106,6 +106,14 @@ function createTestHarness() {
   return { db, subscriber, repository }
 }
 
+async function sqliteDashboardMetrics(repository: HarnessRunRepository) {
+  const metrics = await repository.getDashboardMetrics()
+  if (!('diagnosticsV2Counts' in metrics)) {
+    throw new Error('SQLite harness diagnostics are missing from dashboard metrics')
+  }
+  return metrics
+}
+
 function startRun(subscriber: PersistenceSubscriber, runId: string) {
   subscriber.handle(createHarnessEvent({
     type: 'workflow.started',
@@ -328,7 +336,7 @@ describe('Phase 1 harness diagnostics persistence', () => {
     }
   })
 
-  test('keeps historical failed_optional interview diagnostics readable', () => {
+  test('keeps historical failed_optional interview diagnostics readable', async () => {
     const { db, subscriber, repository } = createTestHarness()
     try {
       const runId = 'run-historical-failed-optional'
@@ -352,7 +360,7 @@ describe('Phase 1 harness diagnostics persistence', () => {
         WHERE id = ?
       `).get(runId) as { diagnostics_json: string }
       expect(JSON.parse(row.diagnostics_json).provenance.interview).toBe('failed_optional')
-      expect(repository.getDashboardMetrics().diagnosticsV2Counts).toEqual({
+      expect((await sqliteDashboardMetrics(repository)).diagnosticsV2Counts).toEqual({
         validCount: 1,
         missingCount: 0,
         invalidCount: 0,
@@ -396,7 +404,7 @@ describe('Phase 1 harness diagnostics persistence', () => {
     }
   })
 
-  test('aggregates delivery tracks and average tokens per deliverable run', () => {
+  test('aggregates delivery tracks and average tokens per deliverable run', async () => {
     const { db, subscriber, repository } = createTestHarness()
     try {
       startRun(subscriber, 'run-deliverable')
@@ -453,7 +461,7 @@ describe('Phase 1 harness diagnostics persistence', () => {
         },
       }))
 
-      const metrics = repository.getDashboardMetrics() as Record<string, unknown>
+      const metrics = await sqliteDashboardMetrics(repository)
       expect(metrics.deliveryDecisionCounts).toEqual([
         { delivery_decision: 'block', count: 1 },
         { delivery_decision: 'deliver', count: 1 },
@@ -485,7 +493,7 @@ describe('Phase 1 harness diagnostics persistence', () => {
     }
   })
 
-  test('aggregates only strict v2 diagnostics and treats 0/0 coverage as N/A', () => {
+  test('aggregates only strict v2 diagnostics and treats 0/0 coverage as N/A', async () => {
     const { db, subscriber, repository } = createTestHarness()
     try {
       startRun(subscriber, 'run-valid-metrics')
@@ -571,7 +579,7 @@ describe('Phase 1 harness diagnostics persistence', () => {
         WHERE id = 'run-invalid-coverage'
       `).run(JSON.stringify(invalidCoverage))
 
-      const metrics = repository.getDashboardMetrics()
+      const metrics = await sqliteDashboardMetrics(repository)
       expect(metrics.diagnosticsV2Counts).toEqual({
         validCount: 3,
         missingCount: 1,

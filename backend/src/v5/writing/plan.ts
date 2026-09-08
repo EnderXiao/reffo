@@ -1,14 +1,23 @@
 import type { GenerationPolicy, JobRequirementBundle, ResumeEvidenceBundle, V5MatchAnalysis, V5ResumePlan } from '@/v5/types'
 import { buildCompositionBlueprint } from '@/v5/composition/blueprint'
 import type { CompositionBlueprint } from '@/v5/composition/contract'
+import type { P06CompositionOutput } from '@/v5/composition/contract'
 import { deriveEvidenceAssemblies } from '@/v5/composition/evidence-assembly'
 import { buildTargetEvidenceScores } from '@/v5/planning-quality'
 import { buildWritingFact, SUPPORTED_WRITING_POLICY, type WritingFact } from '@/v5/writing/facts'
 import type { JobFitMap, JobSuccessProfile } from '@/v5/targeting/contracts'
 import type { JobTarget } from '@/v5/targeting/profile'
-import { targetingEvidenceScores, targetingSelectionBasis } from '@/v5/targeting/fit'
+import { targetingEvidenceScores } from '@/v5/targeting/fit'
 import { deriveWritingSourceExcerpts } from '@/v5/writing/source-excerpts'
 import { buildSlotEditorialGuides, editorialTerms, overviewDetailOverlaps, WRITING_EDITORIAL_VERSION, type SlotEditorialGuide } from '@/v5/writing/editorial'
+import { buildWritingIntents, WRITING_INTENT_VERSION, type WritingIntent } from '@/v5/writing/intents'
+import { deriveWritingContexts, WRITING_CONTEXT_VERSION } from '@/v5/writing/context'
+import { isPracticeSkillEvidence, PRACTICE_SKILL_POLICY } from '@/v5/writing/skills'
+import { educationDetailPriority } from '@/v5/writing/education'
+import { buildWritingThemes, WRITING_THEME_VERSION, type WritingTheme } from '@/v5/writing/themes'
+import { applyDocumentEditorialPlan, type DocumentEditorialBrief, type STRUCTURAL_WRITING_POLICY } from '@/v5/writing/structure'
+import { deriveEducationIdentity, type EducationIdentity } from '@/v5/writing/identity'
+import { buildTaskEvidenceLinks, buildTaskRelevanceLinks, writingLinkRelation, TASK_SUPPORT_POLICY } from '@/v5/writing/task-support'
 
 export interface WritingPlan {
   version: typeof SUPPORTED_WRITING_POLICY
@@ -21,6 +30,18 @@ export interface WritingPlan {
   outputLength: GenerationPolicy['outputLength']
   targeting?: { profile: JobSuccessProfile; targets: JobTarget[]; fit: JobFitMap }
   editorial?: { version: typeof WRITING_EDITORIAL_VERSION; slots: Record<string, SlotEditorialGuide> }
+  editorialIntents?: WritingIntent[]
+  editorialIntentVersion?: typeof WRITING_INTENT_VERSION
+  summaryPriorityEvidenceIds?: string[]
+  skillPolicy?: typeof PRACTICE_SKILL_POLICY
+  summaryThemes?: WritingTheme[]
+  skillThemes?: Record<string, WritingTheme>
+  documentEditorial?: DocumentEditorialBrief
+  fixedBlocks?: P06CompositionOutput['blocks']
+  educationIdentity?: EducationIdentity[]
+  taskSupportPolicy?: typeof TASK_SUPPORT_POLICY
+  /** Server-created entry adapter only; permits distinct paragraphs to cite a long source. */
+  entryParagraphGroups?: Record<string, string>
 }
 
 const segmenter = new Intl.Segmenter('zh', { granularity: 'word' })
@@ -41,6 +62,7 @@ export function buildWritingPlan(input: {
   match: V5MatchAnalysis
   job: JobRequirementBundle
   targeting?: WritingPlan['targeting']
+  editorialPolicy?: typeof STRUCTURAL_WRITING_POLICY
 }): WritingPlan {
   const blueprint = buildCompositionBlueprint(input)
   const atoms = new Map(input.resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
@@ -76,14 +98,12 @@ export function buildWritingPlan(input: {
   }
   if (input.targeting) {
     semanticLinks.clear()
-    const targets = new Map(input.targeting.targets.map(target => [target.id, target]))
-    for (const link of input.targeting.fit.links) {
-      for (const id of link.evidenceIds) {
-        const atom = atoms.get(id)
-        if (atom && targetingSelectionBasis(link, atom)) semanticLinks.set(id, new Set([...(semanticLinks.get(id) ?? []), ...(targets.get(link.targetId)?.taskIds ?? [])]))
-      }
+    for (const [id, tasks] of buildTaskRelevanceLinks({ ...input.targeting, resume: input.resume })) {
+      semanticLinks.set(id, tasks)
     }
   }
+  const supportedTaskLinks = input.targeting
+    ? buildTaskEvidenceLinks({ ...input.targeting, resume: input.resume }) : semanticLinks
   const rank = (id: string) => (scores.get(id) ?? 0) + (primary.has(id) ? 12 : 0)
   const primaryDetailIds = new Set<string>()
   for (const slot of blueprint.slots.filter(slot => slot.kind === 'business_bullet' && slot.sectionKey === 'project')) {
@@ -98,7 +118,12 @@ export function buildWritingPlan(input: {
     const slots = blueprint.slots.filter(slot => slot.scopeId === scope.scopeId && slot.kind !== 'summary')
     if (slots.length === 0) continue
     const allowed = [...new Set(slots.flatMap(slot => slot.allowedEvidenceIds))]
-      .filter(id => factById.has(id)).sort((a, b) => Number(overlaps.has(a)) - Number(overlaps.has(b)) || rank(b) - rank(a) || a.localeCompare(b))
+      .filter(id => factById.has(id)).sort((a, b) => {
+        const timeline = input.resume.timeline.find(item => item.scopeId === scope.scopeId)
+        const educationRank = input.targeting && timeline?.kind === 'education'
+          ? educationDetailPriority(atoms.get(b)!, timeline) - educationDetailPriority(atoms.get(a)!, timeline) : 0
+        return educationRank || Number(overlaps.has(a)) - Number(overlaps.has(b)) || rank(b) - rank(a) || a.localeCompare(b)
+      })
     const assigned = new Set<string>()
     // Respect fixed continuation/education slots before distributing flexible facts.
     for (const slot of slots) {
@@ -111,7 +136,7 @@ export function buildWritingPlan(input: {
     const groups = new Map(slots.map(slot => [slot.slotId, [...coreEvidenceIdsBySlot[slot.slotId]]]))
     for (const id of allowed.filter(value => !assigned.has(value))) {
       const legal = slots.filter(slot => slot.allowedEvidenceIds.includes(id))
-        .filter(slot => !input.targeting || groups.get(slot.slotId)!.some(member =>
+        .filter(slot => !input.targeting || slot.sectionKey === 'education' || groups.get(slot.slotId)!.some(member =>
           overlap(semanticLinks.get(id) ?? new Set(), semanticLinks.get(member) ?? new Set()) > 0
           || overlap(editorialTerms(factById.get(id)!.text), editorialTerms(factById.get(member)!.text)) >= 2))
       const bounded = legal.filter(slot => groups.get(slot.slotId)!.length < 3)
@@ -136,18 +161,71 @@ export function buildWritingPlan(input: {
   }
   const summary = blueprint.slots.find(slot => slot.kind === 'summary')
   const bodyIds = new Set(blueprint.slots.filter(slot => slot.kind !== 'summary').flatMap(slot => slot.allowedEvidenceIds))
+  const summaryThemes = input.targeting ? buildWritingThemes({ facts: facts.filter(fact => bodyIds.has(fact.evidenceId)),
+    blueprint, taskLinks: supportedTaskLinks, relevanceTaskLinks: semanticLinks, targets: input.targeting.targets, mode: 'summary', limit: 2 }) : undefined
+  const summaryPriorityEvidenceIds = summaryThemes?.map(theme => theme.anchorEvidenceId) ?? []
   if (summary) {
     // Summary may synthesize separate experiences, never merge their ownership or results.
     summary.scopeId = null
-    summary.allowedEvidenceIds = facts.filter(fact => (!input.targeting || bodyIds.has(fact.evidenceId)) && ['action', 'responsibility', 'deliverable', 'result'].includes(fact.claimType))
+    const ranked = facts.filter(fact => (!input.targeting || bodyIds.has(fact.evidenceId)) && ['action', 'responsibility', 'deliverable', 'result'].includes(fact.claimType))
       .sort((a, b) => Number(overlaps.has(a.evidenceId)) - Number(overlaps.has(b.evidenceId)) || rank(b.evidenceId) - rank(a.evidenceId) || a.evidenceId.localeCompare(b.evidenceId))
-      .slice(0, 6).map(fact => fact.evidenceId)
+      .map(fact => fact.evidenceId)
+    summary.allowedEvidenceIds = [...new Set([...summaryPriorityEvidenceIds, ...ranked])].slice(0, 6)
+    if (summaryThemes?.length) summary.allowedEvidenceIds = summaryPriorityEvidenceIds
     coreEvidenceIdsBySlot[summary.slotId] = []
   }
   blueprint.requiredBodyEvidenceIds = [...new Set(Object.values(coreEvidenceIdsBySlot).flat())]
   const usedIds = new Set(blueprint.slots.flatMap(slot => slot.allowedEvidenceIds))
   const selectedFacts = input.targeting ? facts.filter(fact => usedIds.has(fact.evidenceId)) : facts
-  return {
+  let skillPolicy: typeof PRACTICE_SKILL_POLICY | undefined
+  const skillThemes: Record<string, WritingTheme> = {}
+  if (input.targeting && blueprint.sectionOrder.includes('skills')) {
+    const pool = selectedFacts.filter(fact => {
+      const atom = atoms.get(fact.evidenceId)
+      return atom && isPracticeSkillEvidence(atom, input.plan)
+    }).map(fact => fact.evidenceId)
+    const practiceCount = pool.filter(id => atoms.get(id)?.claimType !== 'skill').length
+    const skillSlots = blueprint.slots.filter(slot => slot.kind === 'skill')
+    if (practiceCount) {
+      skillPolicy = PRACTICE_SKILL_POLICY
+      const themes = buildWritingThemes({ facts: selectedFacts.filter(fact => pool.includes(fact.evidenceId)),
+        blueprint, taskLinks: supportedTaskLinks, relevanceTaskLinks: semanticLinks, targets: input.targeting.targets, mode: 'skill', limit: Math.min(3, Math.max(1, skillSlots.length || 3)) })
+      const removedSlots = new Set(skillSlots.slice(themes.length).map(slot => slot.slotId))
+      blueprint.slots = blueprint.slots.filter(slot => !removedSlots.has(slot.slotId))
+      for (const id of removedSlots) delete coreEvidenceIdsBySlot[id]
+      skillSlots.splice(themes.length)
+      if (!skillSlots.length) {
+        const available = Math.max(0, input.policy.hardTotalListItemMax - blueprint.slots.filter(slot => slot.kind !== 'summary').length)
+        for (let index = 0; index < Math.min(3, themes.length, available); index++) {
+          const slot: CompositionBlueprint['slots'][number] = { slotId: `skills:${index}`, kind: 'skill', sectionKey: 'skills',
+            scopeId: null, outputPath: `skills[${index}]`, order: blueprint.slots.length, required: true, allowedEvidenceIds: [] }
+          blueprint.slots.push(slot)
+          skillSlots.push(slot)
+        }
+      }
+      for (const [index, slot] of skillSlots.entries()) {
+        const theme = themes[index]
+        slot.scopeId = null
+        slot.allowedEvidenceIds = [theme.anchorEvidenceId, ...theme.supportingEvidenceIds]
+        coreEvidenceIdsBySlot[slot.slotId] = [theme.anchorEvidenceId]
+        skillThemes[slot.slotId] = theme
+      }
+      blueprint.requiredBodyEvidenceIds = [...new Set(blueprint.slots.filter(slot => slot.kind !== 'skill')
+        .flatMap(slot => coreEvidenceIdsBySlot[slot.slotId] ?? []))]
+    }
+  }
+  if (input.targeting) {
+    for (const context of deriveWritingContexts(input.resume, input.plan)) {
+      const owner = blueprint.slots.find(slot => slot.kind === 'business_bullet' && slot.allowedEvidenceIds.includes(context.anchorEvidenceId))
+      const atom = atoms.get(context.evidenceId)
+      const fact = atom && buildWritingFact(atom)
+      if (!owner || !fact) continue
+      selectedFacts.push({ ...fact, requiredNumbers: [], contextForEvidenceId: context.anchorEvidenceId, contextRole: context.role })
+      owner.allowedEvidenceIds.push(context.evidenceId)
+      expandedEvidenceIds[context.evidenceId] = [context.evidenceId]
+    }
+  }
+  const result: WritingPlan = {
     version: SUPPORTED_WRITING_POLICY,
     blueprint,
     facts: selectedFacts,
@@ -160,12 +238,22 @@ export function buildWritingPlan(input: {
       ? '材料简略：展开已知职责的职业含义，不凑数字和条数。'
       : '按岗位问题组织代表性贡献，保留差异，不全量搬运。',
     outputLength: input.policy.outputLength,
-    ...(input.targeting ? { targeting: input.targeting } : {}),
+    ...(input.editorialPolicy ? { educationIdentity: deriveEducationIdentity(input.resume.evidenceAtoms) } : {}),
+    ...(skillPolicy ? { skillPolicy } : {}),
+    ...(input.targeting ? { summaryThemes, skillThemes } : {}),
+    ...(input.targeting ? { targeting: input.targeting, taskSupportPolicy: TASK_SUPPORT_POLICY } : {}),
+    ...(input.targeting ? { summaryPriorityEvidenceIds } : {}),
+    ...(input.targeting ? { editorialIntentVersion: WRITING_INTENT_VERSION, editorialIntents: buildWritingIntents({
+      resume: input.resume, targets: input.targeting.targets, fit: input.targeting.fit,
+      selectedEvidenceIds: new Set(selectedFacts.map(fact => fact.evidenceId)),
+    }) } : {}),
     ...(input.targeting ? { editorial: { version: WRITING_EDITORIAL_VERSION, slots: buildSlotEditorialGuides({
-      blueprint, facts: selectedFacts, coreBySlot: coreEvidenceIdsBySlot, taskLinks: semanticLinks,
-      targets: input.targeting.targets, overlaps, unit: input.policy.outputLength.unit,
+      blueprint, facts: selectedFacts, coreBySlot: coreEvidenceIdsBySlot, taskLinks: supportedTaskLinks,
+      targets: input.targeting.targets, overlaps, outputLength: input.policy.outputLength,
+      methodSkills: skillPolicy === PRACTICE_SKILL_POLICY,
     }) } } : {}),
   }
+  return input.editorialPolicy ? applyDocumentEditorialPlan(result, input.job) : result
 }
 
 export function writingPayload(plan: WritingPlan) {
@@ -175,21 +263,32 @@ export function writingPayload(plan: WritingPlan) {
   const relatedTaskIds = new Set(plan.targeting?.targets.filter(target => targetIds.has(target.id)).flatMap(target => target.taskIds) ?? [])
   return {
     writingPolicy: plan.version,
+    ...(plan.skillPolicy ? { skillPolicy: plan.skillPolicy } : {}),
+    ...(plan.summaryThemes ? { themeVersion: WRITING_THEME_VERSION } : {}),
+    ...(plan.targeting ? { factPlacement: 'slot-local-v1' as const } : {}),
+    ...(plan.documentEditorial ? { documentEditorial: plan.documentEditorial } : {}),
+    ...(plan.educationIdentity?.length ? { candidateIdentity: { education: plan.educationIdentity } } : {}),
+    ...(plan.fixedBlocks?.length ? { sourceRenderedSkills: plan.fixedBlocks } : {}),
     positioning: plan.positioning,
     guidance: plan.guidance,
     outputLength: plan.outputLength,
     blueprint: {
       contractVersion: plan.blueprint.contractVersion,
-      slots: plan.blueprint.slots.map(slot => ({
+      slots: plan.blueprint.slots.filter(slot=>!plan.fixedBlocks?.some(block=>block.slotId === slot.slotId)).map(slot => ({
         slotId: slot.slotId, kind: slot.kind, required: slot.required,
         allowedEvidenceIds: slot.allowedEvidenceIds,
         coreEvidenceIds: plan.coreEvidenceIdsBySlot[slot.slotId],
+        ...(plan.targeting ? { facts: plan.facts.filter(fact => slot.allowedEvidenceIds.includes(fact.evidenceId)) } : {}),
+        ...(slot.kind === 'summary' && plan.summaryPriorityEvidenceIds?.length ? { preferredEvidenceIds: plan.summaryPriorityEvidenceIds } : {}),
+        ...(slot.kind === 'summary' && plan.summaryThemes?.length ? { editorial: { role: 'positioning', themes: plan.summaryThemes } } : {}),
+        ...(plan.skillThemes?.[slot.slotId] ? { editorial: { role: 'method', theme: plan.skillThemes[slot.slotId] } } : {}),
         ...(plan.editorial?.slots[slot.slotId] ? { editorial: compactEditorialGuide(plan.editorial.slots[slot.slotId]) } : {}),
       })),
     },
-    facts: plan.facts,
-    ...(plan.editorial ? { editorialVersion: plan.editorial.version } : {}),
+    ...(!plan.targeting ? { facts: plan.facts } : {}),
+    ...(plan.editorial ? { editorialVersion: plan.editorial.version, contextVersion: WRITING_CONTEXT_VERSION } : {}),
     ...(plan.targeting ? { jobTargeting: {
+      ...(plan.taskSupportPolicy === TASK_SUPPORT_POLICY ? { taskSupportPolicy: TASK_SUPPORT_POLICY } : {}),
       tasks: plan.targeting.profile.tasks.filter(task => task.priority === 'core' || plan.targeting!.targets.some(target => targetIds.has(target.id) && target.taskIds.includes(task.id)))
         .map(({ id, text, priority, provenance }) => ({ id, text, priority, basis: provenance.basis })),
       successConditions: plan.targeting.profile.successConditions.filter(condition => targetIds.has(condition.id) || condition.taskIds.some(id => relatedTaskIds.has(id)))
@@ -199,16 +298,22 @@ export function writingPayload(plan: WritingPlan) {
       // Analysis prose is not a fact source. Keep intent references, never a ready-made summary.
       narrativeIntents: plan.targeting.fit.narratives.filter(item => item.evidenceIds.every(id => selected.has(id)))
         .map(({ targetIds, evidenceIds }) => ({ targetIds, evidenceIds })),
-      links: relevantLinks.map(({ targetId, status, evidenceIds }) => ({ targetId, status, evidenceIds: evidenceIds.filter(id => selected.has(id)) })),
+      links: relevantLinks.map(link => ({ targetId: link.targetId, status: link.status,
+        ...(plan.taskSupportPolicy === TASK_SUPPORT_POLICY ? {
+          relation: writingLinkRelation(link, plan.targeting!.targets.find(target => target.id === link.targetId)),
+        } : {}),
+        evidenceIds: link.evidenceIds.filter(id => selected.has(id)) })),
+      ...(plan.editorialIntents ? { intentVersion: plan.editorialIntentVersion ?? 'writing-intent-v1', editorialIntents: plan.editorialIntents } : {}),
     } } : {}),
   }
 }
 
 function compactEditorialGuide(guide: SlotEditorialGuide) {
   return {
-    ...(guide.role !== 'contribution' ? {role: guide.role} : {}),
+    role: guide.role,
     ...(guide.targetTaskIds.length ? {targetTaskIds: guide.targetTaskIds} : {}),
     ...(guide.emphasis.length ? {emphasis: guide.emphasis} : {}),
+    ...(guide.priorityEvidenceIds?.length ? { priorityEvidenceIds: guide.priorityEvidenceIds } : {}),
     lengthHint: {target: guide.lengthHint.target, max: guide.lengthHint.max},
     ...(guide.avoidRepeatingSlotIds.length ? {avoidRepeatingSlotIds: guide.avoidRepeatingSlotIds} : {}),
   }

@@ -3,7 +3,7 @@ import type { EvidenceAtom, ValidationIssue } from '@/v5/types'
 import { hasEditorialSourceText, sourceBusinessDisplayText } from '@/v5/composition/source-display'
 import { areCanonicalAdjacentSourceAtoms } from '@/v5/composition/source-continuation'
 
-export const WRITING_FACT_VIEW_VERSION = 'writing-fact-view-v2' as const
+export const WRITING_FACT_VIEW_VERSION = 'writing-fact-view-v3' as const
 export const SUPPORTED_WRITING_POLICY = 'supported-writing-v1' as const
 
 export interface WritingFact {
@@ -17,12 +17,15 @@ export interface WritingFact {
   requiredNumbers?: string[]
   sourceExcerpts?: Array<{ evidenceId: string; sourceSpan: { start: number; end: number } }>
   boundaries: string[]
+  contextForEvidenceId?: string
+  contextRole?: 'problem' | 'constraint' | 'stage'
 }
 
 /** A narrow presentation projection, never a replacement for immutable source evidence. */
 export function writingDisplayText(value: string) {
   return sourceBusinessDisplayText(value)
     .replace(/经本人确认(?=已获批准|已批准|获批)/gu, '')
+    .replace(/(^|[，,；;。]\s*)(?:结果\/边界\s*)?个人(?:简历|材料)(?:记录|自述)\s*[:：]?\s*/gu, '$1')
     .trim()
 }
 
@@ -37,11 +40,15 @@ export function writingNumbers(text: string) {
     .map(match => match[0].replace(/\s/g, '').toLowerCase())]
 }
 
+export const TEAM_CONTRIBUTION_PATTERN = /团队|参与|协助|支持|配合|协同|跨(?:部门|团队|职能)(?:交付|协作|协同|合作|推进)|team|contribut|assist|support/iu
+
+const PLATFORM_NOT_PERSONAL = /(?:整个平台|平台整体)(?:的)?规模[^。；;]{0,20}(?:并非|不是|不代表)本人(?:模块)?独立承载/u
+
 const BOUNDARIES = [
   { label: '未上线或概念阶段', source: /未(?:真实)?(?:开发)?上线|尚未(?:正式)?上线|未发布|概念(?:项目|方案)|not (?:yet )?(?:launched|released)/iu, output: /未(?:真实)?(?:开发)?上线|尚未(?:正式)?上线|未发布|概念|方案设计|规划|not (?:yet )?(?:launched|released)|concept|prototype/iu },
   { label: '未验证', source: /未.{0,8}(?:验证|验收)|未经.{0,6}验证|not (?:yet )?validated/iu, output: /未.{0,8}(?:验证|验收)|未经.{0,6}验证|not (?:yet )?validated/iu },
   { label: '仅获批', source: /(?:晋升|升职|调任).{0,35}(?:获批|批准)/u, output: /获批|批准|approved/iu },
-  { label: '团队或参与贡献', source: /团队(?:共同|整体|成果|实现|完成)|仅参与|协助|assisted|team (?:achieved|delivered)/iu, output: /团队|参与|协助|支持|配合|协同|team|contribut|assist|support/iu },
+  { label: '团队或参与贡献', source: /团队(?:共同|整体|成果|实现|完成)|仅参与|协助|assisted|team (?:achieved|delivered)/iu, output: TEAM_CONTRIBUTION_PATTERN },
   { label: '尚无实际数据', source: /(?:没有|尚无|无)(?:真实用户|实际用户|商业收益|长期运行数据)/u, output: /(?:没有|尚无|无)(?:真实用户|实际用户|商业收益|长期运行数据)|未验证|概念|实验|本地压测/u },
 ] as const
 
@@ -62,7 +69,10 @@ export function buildWritingFact(atom: EvidenceAtom): WritingFact | null {
     protectedNumbers: writingNumbers(text),
     focusText,
     requiredNumbers: ['result', 'deliverable'].includes(atom.claimType) ? writingNumbers(focusText) : [],
-    boundaries: BOUNDARIES.filter(rule => rule.source.test(text)).map(rule => rule.label),
+    boundaries: [...new Set([
+      ...BOUNDARIES.filter(rule => rule.source.test(text)).map(rule => rule.label),
+      ...(atom.riskFlags.includes('team_attribution') ? ['团队或参与贡献'] : []),
+    ])],
   }
 }
 
@@ -75,7 +85,14 @@ export function writingIssue(code: string, path: string, ids: string[], message:
 }
 
 /** Deterministic checks catch known changes; they are NOT a semantic entailment oracle. */
-export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], path: string): ValidationIssue[] {
+export function isAbilityAbstraction(text: string, path: string) {
+  return /^(?:summary|skills)\[/u.test(path)
+    && /^(?:具备|具有|能够|可运用|可通过|擅长|熟悉|可推动|可完成)/u.test(text)
+    && writingNumbers(text).length === 0
+    && !/独立|全权|主导|唯一|首创|实现|达成|增长|上线|完成了|交付了|提升了|sole|led\b/iu.test(text)
+}
+
+export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], path: string, allowTeamAbstraction = false): ValidationIssue[] {
   const ids = atoms.map(atom => atom.evidenceId)
   const sources = atoms.map(atom => writingDisplayText(atom.verbatimText))
   const issues: ValidationIssue[] = []
@@ -86,9 +103,14 @@ export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], pat
     report('WRITER_NUMBER_CHANGED', '正文出现引用来源中不存在的数字、单位或限定表达。')
   }
   for (const rule of BOUNDARIES) {
+    if (rule.label === '团队或参与贡献' && allowTeamAbstraction && isAbilityAbstraction(text, path)) continue
     // An approval qualifies a promotion claim, not unrelated duties in the same source atom.
     if (rule.label === '仅获批' && !/晋升|升职|调任|履任|promot|appointed/iu.test(text)) continue
-    if (sources.some(source => rule.source.test(source)) && !rule.output.test(text)) {
+    const sourceRequiresBoundary = sources.some(source => rule.source.test(source))
+      || (rule.label === '团队或参与贡献' && atoms.some(atom => atom.riskFlags.includes('team_attribution')))
+    const explicitPlatformBoundary = rule.label === '团队或参与贡献'
+      && sources.some(source => PLATFORM_NOT_PERSONAL.test(source)) && PLATFORM_NOT_PERSONAL.test(text)
+    if (sourceRequiresBoundary && !rule.output.test(text) && !explicitPlatformBoundary) {
       report('WRITER_BOUNDARY_LOST', `正文未保留来源中的${rule.label}边界。`)
     }
   }
@@ -108,8 +130,18 @@ export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], pat
     && !sources.some(source => /(?:独立(?:完成|负责|推进|设计|交付|主导)|全权负责|single.handedly|solely responsible)/iu.test(source))) {
     report('WRITER_OWNERSHIP_UPGRADE', '输出把一般参与或职责升级为独立完成或全权负责。')
   }
-  const teams = (value: string) => [...value.matchAll(/(?:协同|协调|联合|对接|联动|和|与)\s*((?:(?:研发|开发|设计|市场|运营|测试|销售|业务)(?:团队|部门)?[、，,与和及\s]*){1,8})/gu)]
-    .flatMap(match => match[1].match(/研发|开发|设计|市场|运营|测试|销售|业务/gu) ?? [])
+  if (sources.some(source => PLATFORM_NOT_PERSONAL.test(source))
+    && /(?:本人|个人|本模块)(?:独立)?(?:支撑|承载)/u.test(text.replace(PLATFORM_NOT_PERSONAL, ''))) {
+    report('WRITER_OWNERSHIP_UPGRADE', '平台规模不能转化为本人或个人模块的承载业绩。')
+  }
+  const teams = (value: string) => [
+    ...value.matchAll(/(?:协同|协调|联合|对接|联动|和|与)\s*((?:(?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?:团队|部门)?[、，,与和及\s]*){1,8})/gu),
+    ...value.matchAll(/(?:^|[、，,；;。\s])((?:(?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?:团队|部门)?[、,与和及\s]*){1,8})(?:协同|协作|沟通|联动|对接)/gu),
+    // Explicit organizations, or an actor followed by a concrete action. A metric
+    // such as 销售增长 / 工艺改善 alone does not establish a collaborator.
+    ...value.matchAll(/(?:^|[，,；;。\s])(?:推动|促成|支持|协助|配合)\s*((?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?:团队|部门))/gu),
+    ...value.matchAll(/(?:^|[，,；;。\s])(?:推动|促成|支持|协助|配合)\s*(研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发)(?=(?:重新)?(?:议价|报价|谈判|排期|评审|修复|交付|上线|制定|调整|完成|执行|开展|处理))/gu),
+  ].flatMap(match => match[1].match(/研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺/gu) ?? [])
     // Only normalize names inside a collaboration phrase; never rewrite product development.
     .map(team => team === '开发' ? '研发' : team)
   const supportedTeams = new Set(sources.flatMap(teams))

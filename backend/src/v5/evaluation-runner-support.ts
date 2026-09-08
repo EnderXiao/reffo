@@ -33,7 +33,10 @@ export const V5_EXTRACTION_IMPLEMENTATION_SOURCE_FILES = [
   'src/providers/llm-provider.ts',
   'src/v5/canonical-source.ts',
   'src/v5/chunked-resume-extraction.ts',
+  'src/v5/composition/source-continuation.ts',
+  'src/v5/composition/source-continuation-proof.ts',
   'src/v5/evidence.ts',
+  'src/v5/temporal-risk.ts',
   'src/v5/p01-validation-diagnostics.ts',
   'src/v5/prompt-compiler.ts',
   'src/v5/targeting/contracts.ts',
@@ -50,7 +53,7 @@ export const V5_EXTRACTION_IMPLEMENTATION_SOURCE_FRAGMENTS = [{
   end: '  private async runArtifactStage(',
 }] as const
 export const V5_EXTRACTION_PROMPT_COMPONENTS = ['P01', 'P01R'] as const
-export const V5_EXTRACTION_SHARED_PROMPT_FILES = ['core.md', 'output.md'] as const
+export const V5_EXTRACTION_SHARED_PROMPT_FILES = ['core-extraction.md', 'output.md'] as const
 export const V5_EXTRACTION_RUNTIME_DEPENDENCIES = ['openai', 'zod'] as const
 export const EXPECTED_NONPROD_HISTORY_SHA256 = '070466694c2761a9af674ff31cb6bef00b38c995836885e44d0b5e7078e4646a'
 export const V5_NON_EXTRACTION_CALL_UPPER_BOUND = 8
@@ -223,6 +226,7 @@ export interface EvaluationRunnerCliOptions {
   sourceRun: string | null
   artifactGenerationMode: 'dsl_v1' | 'writer_v1'
   jobTargetingPolicy?: 'job-targeted-v1'
+  entryWritingPolicy?: 'entry-writing-v1'
 }
 
 export interface EvaluationCheckpointFingerprints {
@@ -603,6 +607,7 @@ export function parseEvaluationRunnerArgs(
   let sourceRun: string | null = null
   let artifactGenerationMode: 'dsl_v1' | 'writer_v1' = 'dsl_v1'
   let jobTargetingPolicy: 'job-targeted-v1' | undefined
+  let entryWritingPolicy: 'entry-writing-v1' | undefined
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
@@ -630,6 +635,8 @@ export function parseEvaluationRunnerArgs(
       index += 1
     } else if (arg === '--job-targeted') {
       jobTargetingPolicy = 'job-targeted-v1'
+    } else if (arg === '--entry-writer') {
+      entryWritingPolicy = 'entry-writing-v1'
     } else if (arg === '--source-run') {
       sourceRun = resolve(process.cwd(), requireFlagValue(argv, index, arg))
       index += 1
@@ -674,6 +681,7 @@ export function parseEvaluationRunnerArgs(
   }
 
   if (jobTargetingPolicy && artifactGenerationMode !== 'writer_v1') throw new EvaluationRunnerSafetyError('JOB_TARGETING_REQUIRES_WRITER', '--job-targeted 必须同时使用 --artifact-mode writer_v1')
+  if (entryWritingPolicy && (!jobTargetingPolicy || artifactGenerationMode !== 'writer_v1')) throw new EvaluationRunnerSafetyError('ENTRY_WRITER_REQUIRES_TARGETING', '--entry-writer 必须同时使用 --artifact-mode writer_v1 --job-targeted')
   return {
     historyPath,
     outputRoot,
@@ -688,6 +696,7 @@ export function parseEvaluationRunnerArgs(
     sourceRun,
     artifactGenerationMode,
     ...(jobTargetingPolicy ? { jobTargetingPolicy } : {}),
+    ...(entryWritingPolicy ? { entryWritingPolicy } : {}),
   }
 }
 

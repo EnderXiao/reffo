@@ -6,10 +6,10 @@ import type {
   ResumeEvidenceBundle,
   V5MatchAnalysis,
 } from '@/v5/types'
-import { hasEditorialSourceText, isBusinessMetadata, sourceBusinessDisplayText } from '@/v5/composition/source-display'
-import { businessSourceContinuationGroups } from '@/v5/composition/source-continuation'
+import { hasEditorialSourceText, hasIncompleteMetricValue, isBusinessMetadata, sourceBusinessDisplayText } from '@/v5/composition/source-display'
+import { businessSourceContinuationGroups, hasCanonicalSourceLineSeparator } from '@/v5/composition/source-continuation'
 
-export const V5_EVIDENCE_ROUTING_VERSION = 'evidence-routing-v2' as const
+export const V5_EVIDENCE_ROUTING_VERSION = 'evidence-routing-v3' as const
 
 export type EvidenceStandaloneClass = 'anchor' | 'supplement' | 'fragment' | 'metadata_only'
 export type EvidencePlanningQuality = 'strong' | 'usable' | 'weak' | 'blocked'
@@ -32,6 +32,7 @@ export type EvidenceRoutingReason =
   | 'safe_ancillary_item'
   | 'non_renderable_metadata'
   | 'editorial_source_text'
+  | 'negated_business_action'
 
 export interface EvidencePlanningAssessment {
   evidenceId: string
@@ -85,10 +86,11 @@ const BUSINESS_SCOPE_KINDS = new Set(['experience', 'internship', 'project', 're
 const UNSAFE_RISK_FLAGS = new Set(['sensitive_pii', 'prompt_injection_like_text', 'future_or_planned'])
 const QUALIFIED_RISK_FLAGS = new Set(['uncertain', 'conflicting'])
 
-const BUSINESS_ACTION_PATTERN = /(?:主导|负责|推动|推进|参与|协同|协调|组织|搭建|建立|设计|开发|建设|交付|完成|落地|上线|发布|迭代|优化|改进|分析|调研|访谈|验证|制定|规划|管理|维护|运营|实现|解决|支持|执行|产出|形成|取得|提升|降低|增长|减少|节省|覆盖|触达|转化|留存|恢复|替代|达成|管理|led|owned|drove|built|designed|developed|delivered|launched|implemented|improved|increased|reduced|analyzed|researched|managed|supported|shipped|created|achieved|completed|collaborated|coordinated)/i
+const BUSINESS_ACTION_PATTERN = /(?:主导|负责|推动|推进|参与|协同|协调|组织|搭建|建立|设计|开发|建设|交付|完成|落地|上线|发布|迭代|优化|改进|分析|调研|访谈|验证|制定|规划|管理|维护|运营|实现|解决|支持|执行|产出|形成|取得|提升|降低|增长|减少|节省|覆盖|触达|转化|留存|恢复|替代|达成|\b(?:led|owned|drove|built|designed|developed|delivered|launched|implemented|improved|increased|reduced|analyzed|researched|managed|supported|shipped|created|achieved|completed|collaborated|coordinated)\b)/i
+const SKILL_STATEMENT_PATTERN = /^(?:专业技能|技能|工具(?:链)?|软件)\s*[:：]|^(?:熟悉|熟练|精通|擅长|掌握|了解)|^(?:skills?|tools?|proficient(?:\s+in)?|skilled(?:\s+in)?|familiar(?:\s+with)?|knowledge\s+of|experience\s+with)\b/iu
 const RESULT_CONTEXT_PATTERN = /(?:率|量|额|数|时长|周期|成本|收入|营收|销量|用户|客户|门店|员工|任务|功能|版本|需求|项目|案例|问卷|访谈|覆盖|触达|完成|交付|上线|发布|提升|降低|增长|减少|节省|转化|留存|日活|月活|吞吐|延迟|可用性|准确率|满意度|revenue|users?|customers?|stores?|features?|versions?|conversion|retention|latency|availability|accuracy|throughput)/i
 const METRIC_LABEL_PATTERN = /(?:完成率|转化率|留存率|及时率|准确率|满意度|覆盖率|成功率|使用率|增长率|替代率|成本|收入|营收|销量|时长|周期|日活|月活|吞吐|延迟|可用性|指标|metric|rate|revenue|latency|availability|accuracy)$/i
-const CONTEXT_ONLY_PATTERN = /^(?:背景|问题|目标|项目背景|项目目标|业务背景|挑战|难点|context|background|objective)\s*[:：]?/i
+const CONTEXT_ONLY_PATTERN = /^(?:背景|问题|目标|项目背景|项目目标|业务背景|挑战|难点|context|background|objective)(?:\s*[:：]|\s+|$)/i
 const CONTINUATION_START_PATTERN = /^(?:的|并|且|以及|同时|其中|包括|此外|从而|进而|及|与|和|、|，|,|；|;)/
 const CHINESE_QUANTITY_UNIT_PATTERN = /^(?:家|份|人|个|项|次|万|亿|千|百|天|周|月|年|小时|分钟|元|万元|亿元|台|套|款|场|篇|条|座|所|组|类|%|％)/
 const DANGLING_QUANTITY_PATTERN = /(?:\d+(?:[.,]\d+)?\s*\+?)$/
@@ -122,13 +124,15 @@ const claimTypeRank: Partial<Record<EvidenceAtom['claimType'], number>> = {
 }
 
 function stableAtomOrder(left: EvidenceAtom, right: EvidenceAtom) {
-  return left.sourceSpan.start - right.sourceSpan.start
+  return left.sourceDocumentHash.localeCompare(right.sourceDocumentHash)
+    || left.sourceSpan.start - right.sourceSpan.start
     || left.sourceSpan.end - right.sourceSpan.end
     || left.sourceBlockId.localeCompare(right.sourceBlockId)
     || left.evidenceId.localeCompare(right.evidenceId)
 }
 
 function sameScopeAdjacent(left: EvidenceAtom, right: EvidenceAtom) {
+  if (left.sourceDocumentHash !== right.sourceDocumentHash) return false
   if (left.sourceScopeId !== right.sourceScopeId) return false
   if (left.sourceBlockId === right.sourceBlockId) return false
   const leftBlockOrdinal = /^B(\d+)$/.exec(left.sourceBlockId)?.[1]
@@ -139,11 +143,65 @@ function sameScopeAdjacent(left: EvidenceAtom, right: EvidenceAtom) {
     || Number(rightBlockOrdinal) !== Number(leftBlockOrdinal) + 1
   ) return false
   const gap = right.sourceSpan.start - left.sourceSpan.end
-  return gap >= 0 && gap <= 4
+  return (gap >= 0 && gap <= 4) || hasCanonicalSourceLineSeparator(left, right)
 }
 
 function normalizedSourceText(atom: EvidenceAtom) {
   return sourceBusinessDisplayText(atom.verbatimText)
+}
+
+function predicateIsNegated(text: string, index: number) {
+  const clausePrefix = text.slice(0, index).split(/[。；;！？!?，,]/u).at(-1) ?? ''
+  // A closed stage-qualified setting (e.g. 尚未上线的原型上) does not
+  // negate work performed there. Keep outer or subsequent negation intact.
+  const prefix = clausePrefix.trim().replace(
+    /^(?:尚未|未)(?:上线|发布|部署|投产|商业化)的[\p{Script=Han}\p{N}]{1,12}?(?:上|中|内)/u,
+    '',
+  )
+  return /^(?:我|本人|此前|曾经|过去)?\s*(?:从未|未曾|并未|没有|未能|无需|不曾|尚未|未(?!来|成年|知)|不(?!同|断|仅|只))/u.test(prefix.trim())
+    || /(?:从未|未曾|并未|没有|未能|无需|不曾|尚未|未|不)(?:曾经|实际|直接|亲自|独立|正式|单独|持续|成功|真正|\s)*$/u.test(prefix)
+    || /\b(?:not|never|without|unable\s+to)(?:\s+(?:personally|directly|independently|ever|actually|successfully))*\s*$/iu.test(prefix)
+    || /^(?:(?:I|we|previously|have|had|did|was|were|has)\s+)*(?:not(?!\s+only)|never|unable\s+to)\b/iu.test(prefix.trim())
+}
+
+function hasPredicateObject(text: string, verbStart: number, verb: string) {
+  const after = text.slice(verbStart + verb.length).trimStart().split(/[。；;！？!?]/u)[0]
+  // A bare verb, tool list or capability label is not a contribution. This is
+  // a grammatical shape check, not a new list of occupation-specific verbs.
+  return !/^(?:[，,、/|：:]|以及|及|与|和|能力|经验|技能|意识|者|\b(?:and|or)\b)/iu.test(after)
+    && /[\p{L}\p{N}]{2,}/u.test(after)
+}
+
+function sourceVerbPositions(text: string, verb: string) {
+  const positions: number[] = []
+  let offset = 0
+  while (offset < text.length) {
+    const index = text.indexOf(verb, offset)
+    if (index < 0) break
+    offset = index + verb.length
+    // P01 must cite a whole English word, not `led` inside `Skilled`.
+    if (/[A-Za-z]/u.test(verb) && (/[A-Za-z-]/u.test(text[index - 1] ?? '')
+      || /[A-Za-z-]/u.test(text[index + verb.length] ?? ''))) continue
+    positions.push(index)
+  }
+  return positions
+}
+
+function sourceAnchoredAction(atom: EvidenceAtom, text: string) {
+  const verb = atom.sourceActionVerb?.trim()
+  if (!BUSINESS_CLAIM_TYPES.has(atom.claimType) || !verb || !/^[\p{L}][\p{L}\s-]{1,39}$/u.test(verb)
+    || /^[A-Z]{2,}$/u.test(verb) || !atom.verbatimText.includes(verb)
+    || SKILL_STATEMENT_PATTERN.test(text) || CONTEXT_ONLY_PATTERN.test(text)) return false
+  return sourceVerbPositions(text, verb).some(index => !predicateIsNegated(text, index) && hasPredicateObject(text, index, verb))
+}
+
+function fallbackBusinessAction(text: string) {
+  if (SKILL_STATEMENT_PATTERN.test(text)) return false
+  return [...text.matchAll(new RegExp(BUSINESS_ACTION_PATTERN.source, 'giu'))]
+    .some(match => text.replace(/[\s。.!！?？]+$/gu, '') !== match[0]
+      && sourceVerbPositions(text, match[0]).includes(match.index ?? 0)
+      && !/^(?:者|能力|经验|技能|意识)/u.test(text.slice((match.index ?? 0) + match[0].length))
+      && !predicateIsNegated(text, match.index ?? 0))
 }
 
 function isOrphanMetricFragment(text: string) {
@@ -154,7 +212,8 @@ function isOrphanMetricFragment(text: string) {
   return stripped.length === 0
 }
 
-function isMetricLabelOnly(text: string) {
+function isMetricLabelOnly(text: string, hasSourceAnchoredAction = false) {
+  if (hasSourceAnchoredAction) return false
   if (text.length > 36 || !METRIC_LABEL_PATTERN.test(text)) return false
   const compactMetricPair = /^[A-Za-z\u4e00-\u9fff]{1,12}(?:替代|升级|改造)?[、,，/][A-Za-z\u4e00-\u9fff]{1,12}(?:率|指标)$/i
   return compactMetricPair.test(text)
@@ -220,6 +279,7 @@ export function buildEvidencePlanningCatalog(bundle: ResumeEvidenceBundle): Evid
     for (let index = 1; index < atoms.length; index += 1) {
       const previous = atoms[index - 1]
       const current = atoms[index]
+      if (!BUSINESS_CLAIM_TYPES.has(previous.claimType) || !BUSINESS_CLAIM_TYPES.has(current.claimType)) continue
       if (!sameScopeAdjacent(previous, current)) continue
       const previousText = normalizedSourceText(previous)
       const currentText = normalizedSourceText(current)
@@ -286,6 +346,8 @@ export function buildEvidencePlanningCatalog(bundle: ResumeEvidenceBundle): Evid
       || (atom.riskFlags.some(flag => QUALIFIED_RISK_FLAGS.has(flag))
         && /(?:可能|疑似|不确定|尚不明确|无法确认|待确认|需确认)/u.test(text))
     const business = BUSINESS_CLAIM_TYPES.has(atom.claimType)
+    const annotatedAction = sourceAnchoredAction(atom, text)
+    const hasBusinessAction = annotatedAction || fallbackBusinessAction(text)
     const metricCount = boundedMetricCount(text)
     let standaloneClass: EvidenceStandaloneClass = 'metadata_only'
     let quality: EvidencePlanningQuality = 'blocked'
@@ -295,7 +357,9 @@ export function buildEvidencePlanningCatalog(bundle: ResumeEvidenceBundle): Evid
       atomReasons.add('source_excluded')
     } else if (hasUnsafeRisk) {
       atomReasons.add('unsafe_source_text')
-    } else if (business && isBusinessMetadata(atom, bundle)) {
+    } else if (business && hasIncompleteMetricValue(text)) {
+      atomReasons.add('dangling_fragment')
+    } else if (business && isBusinessMetadata(atom, bundle, annotatedAction)) {
       atomReasons.add('non_renderable_metadata')
     } else if (business && hasEditorialSourceText(text)) {
       atomReasons.add('editorial_source_text')
@@ -305,7 +369,7 @@ export function buildEvidencePlanningCatalog(bundle: ResumeEvidenceBundle): Evid
       if (isOrphanMetricFragment(text)) atomReasons.add('orphan_metric_fragment')
       if (DANGLING_PUNCTUATION_PATTERN.test(text)) atomReasons.add('dangling_fragment')
       if (/^的/u.test(text)) atomReasons.add('dangling_fragment')
-      if (isMetricLabelOnly(text)) atomReasons.add('metric_label_only')
+      if (isMetricLabelOnly(text, annotatedAction)) atomReasons.add('metric_label_only')
       const isFragment = continuationTails.has(atom.evidenceId) || atomReasons.has('adjacent_quantity_split')
         || atomReasons.has('adjacent_metric_split')
         || atomReasons.has('adjacent_continuation_split')
@@ -316,8 +380,10 @@ export function buildEvidencePlanningCatalog(bundle: ResumeEvidenceBundle): Evid
         allowedUses = ['same_scope_support']
       } else if (atomReasons.has('metric_label_only')) {
         standaloneClass = 'metadata_only'
-      } else if (CONTEXT_ONLY_PATTERN.test(text) || !BUSINESS_ACTION_PATTERN.test(text)) {
+      } else if (CONTEXT_ONLY_PATTERN.test(text) || !hasBusinessAction) {
         atomReasons.add(CONTEXT_ONLY_PATTERN.test(text) ? 'context_only' : 'no_independent_business_action')
+        const verb = atom.sourceActionVerb?.trim()
+        if (verb && sourceVerbPositions(text, verb).some(index => predicateIsNegated(text, index))) atomReasons.add('negated_business_action')
         standaloneClass = 'supplement'
         quality = 'weak'
         allowedUses = ['same_scope_support']

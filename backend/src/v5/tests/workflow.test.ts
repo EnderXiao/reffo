@@ -56,6 +56,7 @@ interface TestEnvelopePayload {
   resumeContext?: { facts: Array<{ evidenceId: string; claimType: string; text: string }> }
   jobTargeting?: { tasks: Array<{ id: string }> }
   writingPolicy?: string
+  skillPolicy?: string
   facts?: Array<{ evidenceId: string; text: string }>
   extractionSequence?: { index: number; total: number }
   repairMode?: 'schema_only' | 'artifact_structural'
@@ -69,7 +70,7 @@ interface TestEnvelopePayload {
   previousArtifact?: unknown
   validationIssues?: unknown[]
   evidenceAtoms?: EvidenceAtom[]
-  blueprint?: CompositionBlueprint
+  blueprint?: Omit<CompositionBlueprint, 'slots'> & { slots: Array<CompositionBlueprint['slots'][number] & { facts?: Array<{ evidenceId: string; text: string }> }> }
   requirementAtoms?: Array<{ requirementId: string }>
   canonicalJobDocument?: CanonicalSourceDocument
   canonicalSourceDocument?: CanonicalSourceDocument
@@ -185,13 +186,14 @@ function createArtifactFromEnvelope(payload: TestEnvelopePayload) {
 }
 
 function createCompositionFromEnvelope(payload: TestEnvelopePayload): P06CompositionOutput {
-  if (payload.writingPolicy && payload.blueprint && payload.facts) {
-    const facts = new Map(payload.facts.map(fact => [fact.evidenceId, fact.text]))
+  if (payload.writingPolicy && payload.blueprint) {
+    const facts = new Map((payload.facts ?? payload.blueprint.slots.flatMap(slot => slot.facts ?? [])).map(fact => [fact.evidenceId, fact.text]))
     return {
       contractVersion: P06_COMPOSITION_CONTRACT_VERSION,
       blocks: payload.blueprint.slots.map(slot => ({
         slotId: slot.slotId, evidenceIds: slot.allowedEvidenceIds.slice(0, 1),
         text: slot.kind === 'summary' ? '参与团队产品迭代，具有功能交付实践。'
+          : slot.kind === 'skill' && payload.skillPolicy ? '产品迭代协作：参与团队功能交付。'
           : facts.get(slot.allowedEvidenceIds[0])!.replace('参与团队产品迭代，交付3个功能。', '参与团队产品迭代并交付3个功能。'),
       })),
     }
@@ -1046,7 +1048,10 @@ describe('v5 production adaptive workflow', () => {
 
   test('coalesces exact-source P01 overlap in code and spends no P01R call', async () => {
     const provider = new PartitionNormalizationProbeProvider()
-    const workflow = new V5ResumeOptimizationWorkflow({ provider, enableDefaultSubscribers: false })
+    const eventBus = createHarnessEventBus()
+    const events: HarnessEvent[] = []
+    eventBus.subscribe('*', event => { events.push(event) })
+    const workflow = new V5ResumeOptimizationWorkflow({ provider, eventBus, enableDefaultSubscribers: false })
 
     const result = await workflow.extractResume({
       resumeMarkdown: '负责用户研究并形成需求清单；推动版本上线并完成验收交付',
@@ -1054,6 +1059,10 @@ describe('v5 production adaptive workflow', () => {
 
     expect(result.state).toBe('resume_extracted')
     expect(result.resumeExtractionCandidate.factCandidates).toHaveLength(1)
+    expect(events.filter(e => e.type === 'extraction.validation.observed').map(e => e.payload))
+      .toContainEqual(expect.objectContaining({ component: 'P01', outcome: 'passed', retention: expect.objectContaining({
+        targetBlocks: 1, rawFactBlocks: 1, rawMissingBlocks: 0, finalAccountedBlocks: 1, serverAddedFactBlocks: 0,
+      }) }))
     expect(result.resumeEvidenceBundle.extractionCoverage.warnings)
       .toContain('FACT_CANDIDATE_PARTITION_SERVER_COALESCED')
     expect(provider.p01Calls).toBe(1)
@@ -1062,11 +1071,18 @@ describe('v5 production adaptive workflow', () => {
 
   test('sends P01R the server-normalized candidate and unresolved errors only', async () => {
     const provider = new NormalizedRepairEnvelopeProbeProvider()
-    const workflow = new V5ResumeOptimizationWorkflow({ provider, enableDefaultSubscribers: false })
+    const eventBus = createHarnessEventBus()
+    const events: HarnessEvent[] = []
+    eventBus.subscribe('*', event => { events.push(event) })
+    const workflow = new V5ResumeOptimizationWorkflow({ provider, eventBus, enableDefaultSubscribers: false })
 
     const result = await workflow.extractResume({ resumeMarkdown: '交付3个功能' })
     const currentOutput = provider.repairPayload?.currentOutput as unknown as ResumeExtractionCandidate
     const validationIssues = provider.repairPayload?.validationIssues as Array<{ code: string; severity: string }>
+    expect(events.filter(e => e.type === 'extraction.validation.observed').map(e => e.payload))
+      .toContainEqual(expect.objectContaining({ component: 'P01R', outcome: 'passed', retention: expect.objectContaining({
+        targetBlocks: 1, rawMissingBlocks: 0, finalAccountedBlocks: 1,
+      }) }))
 
     expect(result.state).toBe('resume_extracted')
     expect(currentOutput.factCandidates[0].numericAtoms[0].raw).toBe('3个')
@@ -1420,7 +1436,10 @@ describe('v5 production adaptive workflow', () => {
     expect(provider.promptVersions.filter(version => version.includes('-p08-'))).toHaveLength(0)
   })
 
-  test.each(['transferable', 'weak_signal'] as const)('targeted workflow with %s uses one profile, one fit map and one Writer with the same public result keys', async status => {
+  test.each([
+    ['transferable', undefined], ['weak_signal', undefined],
+    ['transferable', 'document-editorial-v1'], ['weak_signal', 'document-editorial-v1'],
+  ] as const)('targeted workflow with %s (%s) uses one profile, one fit map and one Writer with the same public result keys', async (status, editorialPolicy) => {
     const seen: TestEnvelopePayload[] = [], versions: string[] = []
     const delegate = new RoutingProvider()
     const analyses: JobFitMap[] = []
@@ -1444,10 +1463,13 @@ describe('v5 production adaptive workflow', () => {
       return delegate.complete(input)
     } }
     const workflow = new V5ResumeOptimizationWorkflow({ provider, enableDefaultSubscribers: false,
-      artifactGenerationMode: 'writer_v1', jobTargetingPolicy: 'job-targeted-v1', onTargetingAnalysis: async analysis => { analyses.push(analysis.fit) } })
+      artifactGenerationMode: 'writer_v1', jobTargetingPolicy: 'job-targeted-v1', writingEditorialPolicy: editorialPolicy,
+      onTargetingAnalysis: async analysis => { analyses.push(analysis.fit) } })
     const result = await workflow.run({ resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD })
     expect(result.state).toBe('succeeded')
     expect(versions).toHaveLength(4)
+    expect(versions.find(version => version.includes('-p06c-'))).toBe(editorialPolicy
+      ? '5.1.0-p06c-supported-writer-r19' : '5.1.0-p06c-supported-writer-r16')
     expect(versions.some(version => /-p0[589]-|-p12-|-p06d-/.test(version))).toBe(false)
     expect(analyses).toHaveLength(1)
     if (status === 'weak_signal') {

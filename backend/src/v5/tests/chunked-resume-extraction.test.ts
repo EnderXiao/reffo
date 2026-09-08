@@ -25,6 +25,8 @@ import {
   validateResumeExtractionChunkPlan,
 } from '@/v5/chunked-resume-extraction'
 import { createResumeFixture } from '@/v5/tests/fixtures'
+import { validateResumeExtractionCandidate, buildResumeEvidenceBundle } from '@/v5/evidence'
+import { buildEvidencePlanningCatalog } from '@/v5/evidence-routing'
 
 function chunksFor(markdown: string, maxBlocks: number) {
   const document = canonicalizeSourceDocument(markdown, 'chunk-test').canonicalDocument
@@ -32,6 +34,39 @@ function chunksFor(markdown: string, maxBlocks: number) {
 }
 
 describe('v5 resume extraction chunk boundaries', () => {
+  test('keeps unassigned overview metrics without borrowing a later server-owned job scope', () => {
+    const { document, candidate } = createResumeFixture()
+    const chunk = splitResumeDocument(document)[0]
+    const scope = chunk.extractionScopeAssignments![0].serverScopeLocalId
+    candidate.factCandidates[0] = { ...candidate.factCandidates[0], claimType: 'result', sourceScopeLocalId: scope }
+    candidate.timelineCandidates[0].scopeLocalId = scope
+    candidate.timelineCandidates[0].factLocalIds.unshift('f1')
+    const original = structuredClone(candidate)
+    const normalized = normalizeResumeExtractionChunkCandidate(chunk, candidate)
+    expect(normalized.factCandidates[0]).toEqual({ ...candidate.factCandidates[0], claimType: 'other', sourceScopeLocalId: 'unscoped_source' })
+    expect(normalized.timelineCandidates[0].factLocalIds).not.toContain('f1')
+    expect(normalized.coverageClaim.mappedSourceBlockIds).toContain('B0001')
+    expect(candidate).toEqual(original)
+    expect(normalizeResumeExtractionChunkCandidate(chunk, normalized)).toEqual(normalized)
+    expect(validateResumeExtractionCandidate(chunk, normalized).passed).toBe(true)
+    const bundle = buildResumeEvidenceBundle(chunk, normalized)
+    const overview = bundle.evidenceAtoms.find(a => a.sourceBlockId === 'B0001')!
+    expect(buildEvidencePlanningCatalog(bundle).businessAnchorEvidenceIds).not.toContain(overview.evidenceId)
+  })
+
+  test('an explicit empty scope plan cannot be replaced by model-invented business timelines', () => {
+    const { document, candidate } = createResumeFixture()
+    const chunk = { ...document, extractionScopeAssignments: [] }
+    const normalized = normalizeResumeExtractionChunkCandidate(chunk, candidate)
+    expect(normalized.timelineCandidates).toHaveLength(0)
+    expect(normalized.factCandidates[2].sourceScopeLocalId).toBe('unscoped_source')
+    expect(normalized.factCandidates[2].claimType).toBe('other')
+    expect(normalized.factCandidates[2].verbatimText).toBe(candidate.factCandidates[2].verbatimText)
+    expect(normalized.factCandidates[2].riskFlags).toEqual(candidate.factCandidates[2].riskFlags)
+    expect(normalized.factCandidates[2].proposedStatus).toBe(candidate.factCandidates[2].proposedStatus)
+    expect(normalizeResumeExtractionChunkCandidate(document, candidate)).toBe(candidate)
+  })
+
   test('preserves duplicate fact IDs untouched for canonical fail-closed validation', () => {
     const { document, candidate } = createResumeFixture()
     const chunk = splitResumeDocument(document)[0]
@@ -88,7 +123,7 @@ describe('v5 resume extraction chunk boundaries', () => {
     expect(DEFAULT_RESUME_EXTRACTION_MAX_CHARACTERS).toBe(1_000)
     expect(DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS).toBe(15_500)
     expect(RESUME_EXTRACTION_OUTPUT_TOKENS_PER_FACT).toBe(400)
-    expect(RESUME_EXTRACTION_CHUNK_PLAN_VERSION).toBe('deterministic-scope-plan-v9')
+    expect(RESUME_EXTRACTION_CHUNK_PLAN_VERSION).toBe('deterministic-scope-plan-v10')
   })
 
   test('scales the initial repair window and hard ceiling with the trusted shard plan', () => {

@@ -1,3 +1,5 @@
+import type { CanonicalSourceDocument, ResumeExtractionCandidate } from '@/v5/types'
+
 export const P01_VALIDATION_OBSERVATION_VERSION = 'v5-p01-validation-observation-v1' as const
 export const P01_VALIDATION_TRACE_VERSION = 'v5-p01-validation-trace-v1' as const
 
@@ -35,6 +37,58 @@ export interface P01ValidationObservationV1 {
   layer: P01ValidationLayer
   outcome: P01ValidationOutcome
   issueBuckets: P01ValidationIssueBucket[]
+  /** Optional for old cache records and schema failures; never a quality score. */
+  retention?: P01RetentionCounts
+}
+
+const RETENTION_COUNT_KEYS = [
+  'targetBlocks', 'rawFactBlocks', 'rawUnmappedBlocks', 'rawMissingBlocks',
+  'finalAccountedBlocks', 'serverAddedFactBlocks', 'finalUnmappedBlocks',
+  'finalExcludedFacts', 'finalQualifiedFacts', 'retainedBusinessClassFacts',
+  'rawConflictCount', 'rawInvalidConflictReferences',
+] as const
+export type P01RetentionCounts = Record<typeof RETENTION_COUNT_KEYS[number], number>
+
+/** Measures loss before code normalization; business class is not routing eligibility. */
+export function measureP01Retention(document: CanonicalSourceDocument, raw: ResumeExtractionCandidate,
+  final: ResumeExtractionCandidate): P01RetentionCounts {
+  const targets = new Set(document.blocks.map(b => b.sourceBlockId))
+  const blockSet = (ids: string[]) => new Set(ids.filter(id => targets.has(id)))
+  const rawFacts = blockSet(raw.factCandidates.map(f => f.sourceBlockId))
+  const rawUnmapped = blockSet(raw.unmappedFragments.map(f => f.sourceBlockId))
+  const finalFacts = blockSet(final.factCandidates.map(f => f.sourceBlockId))
+  const finalUnmapped = blockSet(final.unmappedFragments.map(f => f.sourceBlockId))
+  const rawIds = new Set(raw.factCandidates.map(f => f.factLocalId))
+  const businessTypes = new Set(['responsibility', 'action', 'deliverable', 'result'])
+  return {
+    targetBlocks: targets.size,
+    rawFactBlocks: rawFacts.size,
+    rawUnmappedBlocks: rawUnmapped.size,
+    rawMissingBlocks: targets.size - new Set([...rawFacts, ...rawUnmapped]).size,
+    finalAccountedBlocks: new Set([...finalFacts, ...finalUnmapped]).size,
+    serverAddedFactBlocks: [...finalFacts].filter(id => !rawFacts.has(id)).length,
+    finalUnmappedBlocks: finalUnmapped.size,
+    finalExcludedFacts: final.factCandidates.filter(f => targets.has(f.sourceBlockId) && f.proposedStatus === 'excluded').length,
+    finalQualifiedFacts: final.factCandidates.filter(f => targets.has(f.sourceBlockId) && f.proposedStatus === 'source_qualified').length,
+    retainedBusinessClassFacts: final.factCandidates.filter(f => targets.has(f.sourceBlockId)
+      && f.proposedStatus !== 'excluded' && businessTypes.has(f.claimType)).length,
+    rawConflictCount: raw.conflicts.length,
+    rawInvalidConflictReferences: raw.conflicts.flatMap(c => c.factLocalIds).filter(id => !rawIds.has(id)).length,
+  }
+}
+
+function sanitizeRetentionCounts(value: unknown): P01RetentionCounts | null {
+  const record = asRecord(value)
+  if (!record) return null
+  const result = {} as P01RetentionCounts
+  for (const key of RETENTION_COUNT_KEYS) {
+    const count = asInteger(record[key], 0, MAX_BUCKET_COUNT)
+    if (count === null) return null
+    result[key] = count
+  }
+  if (['rawFactBlocks', 'rawUnmappedBlocks', 'rawMissingBlocks', 'finalAccountedBlocks', 'serverAddedFactBlocks', 'finalUnmappedBlocks']
+    .some(key => result[key as keyof P01RetentionCounts] > result.targetBlocks)) return null
+  return result
 }
 
 export interface P01ValidationTraceV1 {
@@ -73,6 +127,8 @@ const SCHEMA_UNCLASSIFIED_ISSUE_CODE = 'SCHEMA_UNCLASSIFIED'
 const BUCKET_OVERFLOW_ISSUE_CODE = 'DIAGNOSTICS_BUCKET_OVERFLOW'
 
 const P01_DOMAIN_ISSUE_CODES = new Set([
+  'TEMPORAL_RISK_LOCALIZED',
+  'TEMPORAL_RISK_SCOPE_UNRESOLVED',
   'BLOCK_SILENTLY_DROPPED',
   'BUSINESS_FACT_WITHOUT_TIMELINE',
   'CONFLICT_QUALIFIER_MISSING',
@@ -341,6 +397,7 @@ export function sanitizeP01ValidationObservation(value: unknown): P01ValidationO
   ) return null
   const issueBuckets = sanitizeIssueBuckets(observation.issueBuckets, layer)
   if (!issueBuckets) return null
+  const retention = layer === 'domain' ? sanitizeRetentionCounts(observation.retention) : null
   return {
     version: P01_VALIDATION_OBSERVATION_VERSION,
     shardIndex,
@@ -350,6 +407,7 @@ export function sanitizeP01ValidationObservation(value: unknown): P01ValidationO
     layer,
     outcome,
     issueBuckets,
+    ...(retention ? { retention } : {}),
   }
 }
 

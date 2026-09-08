@@ -78,6 +78,12 @@ export const canonicalSourceDocumentSchema = z.object({
   primaryLanguage: nonEmptyString,
   canonicalLength: z.number().int().nonnegative(),
   blocks: z.array(sourceBlockSchema),
+  sourceLineContinuations: z.array(z.object({
+    previousBlockId: nonEmptyString,
+    currentBlockId: nonEmptyString,
+    separator: z.string().min(2).max(256).regex(/^[ \u00a0\u3000]*\n(?:[ \u00a0\u3000]*\n)*[ \u00a0\u3000]*$/u),
+    binding: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict()).optional(),
 }).strict()
 
 export const evidenceAtomSchema = z.object({
@@ -95,6 +101,11 @@ export const evidenceAtomSchema = z.object({
   qualifiers: stringArray,
   numericAtoms: z.array(numericAtomSchema),
   riskFlags: z.array(riskFlagSchema),
+  sourceContinuation: z.object({
+    previousEvidenceId: nonEmptyString,
+    separator: z.string().min(2).max(256).regex(/^[ \u00a0\u3000]*\n(?:[ \u00a0\u3000]*\n)*[ \u00a0\u3000]*$/u),
+    binding: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict().optional(),
 }).strict()
 
 const resumeSectionTypeSchema = z.enum([
@@ -181,6 +192,8 @@ export const resumeExtractionCandidateSchema = z.object({
     qualifiers: stringArray,
     numericAtoms: z.array(numericAtomSchema),
     riskFlags: z.array(riskFlagSchema),
+    temporalRiskQuote: z.string().min(1).max(1000).nullable().optional()
+      .describe('仅有 future_or_planned 时提供对应的完整原文句子（含句末标点）；不能以已批准/已完成或日期本身证明未来计划，无此风险省略'),
   }).strict()),
   unmappedFragments: z.array(unmappedFragmentSchema),
   conflicts: z.array(z.object({

@@ -1,8 +1,12 @@
 # Reffo v5.0.0 Production Adaptive Agent
 
+## 经历级 Writer 发布入口（2026-09-08）
+
+非生产 runner 使用 `--artifact-mode writer_v1 --job-targeted --entry-writer`。正式接口新增服务端 `V5_RELEASE_PROFILE=entry-r5`，同时启用 JD 定向分析及经历 Writer；默认 `legacy-dsl` 可用于切换回旧编排。产品负责人已授权推进发布，不将这项授权写成黄金集全面通过。部署核对及当前状态见 [生产发布记录](../../docs/v5-entry-r5-production-rollout.md)。
+
 ## r2 岗位定向升级（非生产显式选项）
 
-2026-09-06：新增 `--artifact-mode writer_v1 --job-targeted`，在同一次 P02 中形成岗位成功画像、P03 中建立胜任映射，代码按核心任务选材，再单次 Writer 成文；不增加六维 Agent 或 P08/P09 循环，不改变公共响应和简历栏目。`APP_ENV=prod` 禁止启用此实验路径，默认路径未切换。
+2026-09-06：新增 `--artifact-mode writer_v1 --job-targeted`，在同一次 P02 中形成岗位成功画像、P03 中建立胜任映射，代码按核心任务选材，再单次 Writer 成文；不增加六维 Agent 或 P08/P09 循环，不改变公共响应和简历栏目。2026-09-08 的生产开关仅授权完整 entry-r5 组合，未配置开关或缺少经历 Writer 的实验组合仍禁止用于生产。
 
 P02/P03 新契约、`targeting/`、`writing/` 和 `acceptance/` 的当前进度、真实调用预算及未完成验收项见 [r2 执行记录](../../docs/v5-r2-execution-status.md)。P12 已升级为原始 JD 辅助审计及程序摘录校验；下文历史版本和默认 DSL 描述不代表新 Writer 已通过质量验收。离线发布记录可用 `bun run scripts/assess-v5-release.ts --help` 聚合，不启动 API，也不自动发布。
 
@@ -57,6 +61,8 @@ Prompt 由 `prompts/manifest.json` 和 P01-P12 Markdown 文件维护。`prompts.
 P09、P10/P10R、P11 Prompt 与 Schema 仅为离线、历史兼容或未来可信上下文按需能力保留，不进入生产生成链路；当前阶段不新增 V5 公共按需 P10 接口。P12 只用于离线匿名 A/B；`runDoubleOrderBlindAb` 会依次执行 A/B 和 B/A 并把标签归一化，第一序失败时不会继续发送第二序。P12 只接收事实核验所需的紧凑证据、时间线、岗位需求和候选正文，不重复发送抽取过程账本；候选和证据使用同一套身份脱敏规则，有合法时间线证据的 scope 即使日期不完整也会保留。跨字段门禁和胜者由代码单向归一化，原始/归一化摘要及安全变更清单随 A/B 结果持久化。P12 的评分只作为评估记录，不反向阻断已经通过本地代码门禁的候选。
 
 ## 事实与证据边界
+
+2026-09-07：P01/P01R 升级为 r17，保持下述 9 字段 block 传输协议，未恢复历史 7 字段试验。抽取使用独立 `core-extraction.md`，输入是 canonical source、输出是待校验候选；下游 `core.md` 仍要求通过校验的 EvidenceAtom。区分自述/上下文不足与实际冲突，保留碎片供关联，不补因果或归属。`DEEPSEEK_P01_THINKING_MODE=disabled` 为显式非思考抽取选项，默认 inherit，不自动影响其他阶段或部署。新提示词尚待真实模型验证；先前 r14 非思考首片通过不能替代 r17 验收。
 
 P01/P01R r14 使用源 block 标注传输协议：模型每个 block 最多返回一份分类、归属与风险标注，不再重复输出原文、规范化文本、偏移和数字索引。`resume-extraction-transport.ts` 仅从服务端 canonical source 恢复四个派生字段，再进入原有内部 Schema 与事实校验；未知或重复 block、模型夹带派生字段仍拒绝。它不是 quote 校验失败后扩大引用范围的兜底，也不为模型漏掉的 block 创建事实。风险与状态矛盾时只允许代码降级。无日期项目仅在可信 scope、完整原文标题锚点及业务证据满足结构条件时补结构容器，不补公司、日期或成果。
 
@@ -127,7 +133,7 @@ nonprod runner 会把通过完整源文档校验的 P01 候选以 0600 权限持
 3. limited test：按测试用户或流量白名单验证；P12 继续用于双顺序盲评。
 4. 只有零阻断事实事故、无空工作/项目结构、关键覆盖率不回归、成本延迟在预算内，才提升发布标签。
 
-当前版本只在测试分支验证，暂不合入 `main`。若 provider 不支持原生严格 JSON Schema，不能绕过服务端 Zod 和门禁，应先在 nonprod 更换或校准 provider。
+上述黄金集门槛作为统计可靠性验证继续保留；2026-09-08 产品负责人已另行授权推进 entry-r5 的生产发布。该授权不等同于 `production_reliable` 指标已验证，实际部署状态以发布记录为准。若 provider 不支持原生严格 JSON Schema，仍须经过服务端 Zod 和事实检查。
 
 ## 验证
 

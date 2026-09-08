@@ -1,4 +1,8 @@
 import { createHash } from 'node:crypto'
+import { formatTimelineHeading as timelineHeading } from '@/v5/composition/timeline-display'
+import { educationCompanion, educationDetailPriority } from '@/v5/writing/education'
+import { isExactWorkScopeBrief, workScopeBrief } from '@/v5/writing/work-coverage'
+import { entryLayoutItemLimit } from '@/v5/writing/entry-layout'
 import type {
   BlockingFactJudgeResult,
   EvidenceAtom,
@@ -23,8 +27,10 @@ import { areCanonicalAdjacentSourceAtoms } from '@/v5/composition/source-continu
 import { deriveEvidenceAssemblies } from '@/v5/composition/evidence-assembly'
 import { sourceBusinessDisplayText } from '@/v5/composition/source-display'
 import { buildTargetEvidenceScores, duplicateTimelineOnlyScopes, hasHighValueEvidenceRole } from '@/v5/planning-quality'
-import { inspectSupportedWriting } from '@/v5/writing/facts'
+import { inspectSupportedWriting, isAbilityAbstraction, TEAM_CONTRIBUTION_PATTERN } from '@/v5/writing/facts'
 import { deriveWritingSourceExcerpts, sourceAtomsForWritingInspection } from '@/v5/writing/source-excerpts'
+import { deriveWritingContexts } from '@/v5/writing/context'
+import { isPracticeSkillEvidence, PRACTICE_SKILL_POLICY } from '@/v5/writing/skills'
 
 const BUSINESS_TYPES = new Set(['responsibility', 'action', 'deliverable', 'result'])
 const ANCILLARY_CLAIM_TYPES = new Set(['education', 'certification', 'language', 'award', 'publication', 'patent', 'portfolio_link'])
@@ -453,6 +459,7 @@ export function buildDeterministicV5ResumePlan(input: {
   profile: ResumeStrategyProfile
   targetingScores?: ReadonlyMap<string, number>
   targetingTaskEvidence?: ReadonlyMap<string, readonly string[]>
+  preserveWorkCoverage?: boolean
 }): V5ResumePlan {
   const evidence = new Map(input.resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
   const requirements = new Map(input.job.requirementAtoms.map(atom => [atom.requirementId, atom]))
@@ -558,11 +565,16 @@ export function buildDeterministicV5ResumePlan(input: {
     Math.max(0, input.policy.hardTotalListItemMax - input.policy.targetBusinessBulletMin),
     Math.min(2, educationScopes.length) + Math.min(3, eligibleSkills.length)
   )
-  const businessTarget = Math.min(
+  const duplicateWorkScopes = duplicateTimelineOnlyScopes(input.resume, new Set(eligibleBusiness.map(atom => atom.sourceScopeId)))
+  const scopeBriefCount = input.preserveWorkCoverage ? input.resume.timeline.filter(scope =>
+    !duplicateWorkScopes.has(scope.scopeId) && hasRenderableTimelineLine(scope, evidence)
+    && !eligibleBusiness.some(atom => atom.sourceScopeId === scope.scopeId)
+    && workScopeBrief(input.resume, scope.scopeId)).length : 0
+  const businessTarget = Math.max(0, Math.min(
     eligibleBusiness.length,
-    input.policy.targetBusinessBulletTarget,
-    Math.max(input.policy.targetBusinessBulletMin, input.policy.hardTotalListItemMax - reservedItems)
-  )
+    input.policy.targetBusinessBulletTarget - Math.min(scopeBriefCount, Math.max(0, input.policy.targetBusinessBulletTarget - 1)),
+    Math.max(input.policy.targetBusinessBulletMin, input.policy.hardTotalListItemMax - reservedItems - scopeBriefCount)
+  ))
   const anchorIds: string[] = []
   const anchorSet = new Set<string>()
   const selectedScopeCounts = new Map<string, number>()
@@ -572,6 +584,17 @@ export function buildDeterministicV5ResumePlan(input: {
     anchorSet.add(atom.evidenceId)
     anchorIds.push(atom.evidenceId)
     selectedScopeCounts.set(atom.sourceScopeId, (selectedScopeCounts.get(atom.sourceScopeId) ?? 0) + 1)
+  }
+  const reservedWorkAnchors = new Set<string>()
+  if (input.preserveWorkCoverage) {
+    const work = input.resume.timeline.filter(item => ['experience', 'internship'].includes(item.kind)
+      && !duplicateWorkScopes.has(item.scopeId))
+      .sort((a, b) => (b.start ?? '').replace(/\s/gu, '').localeCompare((a.start ?? '').replace(/\s/gu, '')))
+    for (const scope of work) {
+      const anchor = eligibleBusiness.find(atom => atom.sourceScopeId === scope.scopeId)
+      addAnchor(anchor)
+      if (anchor && anchorSet.has(anchor.evidenceId)) reservedWorkAnchors.add(anchor.evidenceId)
+    }
   }
   if (input.targetingTaskEvidence?.size) {
     // Cover supported core tasks before generic legacy qualifications consume the budget.
@@ -607,6 +630,8 @@ export function buildDeterministicV5ResumePlan(input: {
     addAnchor(candidate)
   }
   const protectedClaimTypes = new Set<EvidenceAtom['claimType']>()
+  const targetedTaskGroups = input.targetingScores && input.targetingTaskEvidence
+    ? [...input.targetingTaskEvidence.values()] : []
   const ensureClaimType = (claimType: EvidenceAtom['claimType']) => {
     if (anchorIds.some(id => evidence.get(id)?.claimType === claimType)) {
       protectedClaimTypes.add(claimType)
@@ -618,8 +643,14 @@ export function buildDeterministicV5ResumePlan(input: {
       < Math.min(...anchorIds.map(id => targetEvidenceScores.get(id) ?? 0))) return
     const replaceIndex = [...anchorIds]
       .map((id, index) => ({ id, index, atom: evidence.get(id)! }))
+      .filter(item => !reservedWorkAnchors.has(item.id))
       .filter(item => !(matchesByEvidence.get(item.id) ?? []).some(match => primarySet.has(match.requirementId)))
       .filter(item => !protectedClaimTypes.has(item.atom.claimType))
+      // Type diversity must not erase a covered task's last proof. A same-task
+      // replacement or another selected proof can preserve that coverage.
+      .filter(item => targetedTaskGroups.every(ids => !ids.includes(item.id)
+        || ids.includes(candidate.evidenceId)
+        || ids.some(id => id !== item.id && anchorSet.has(id))))
       .sort((left, right) => compareAtoms(right.atom, left.atom) || right.id.localeCompare(left.id))[0]?.index
     if (replaceIndex === undefined) return
     const removed = evidence.get(anchorIds[replaceIndex])!
@@ -676,16 +707,21 @@ export function buildDeterministicV5ResumePlan(input: {
         rewriteAngle: '优先呈现岗位相关结果与交付物，同时保持原始 scope、数字、限定词、阶段和归因边界',
       }
     })
-  let remainingListItems = Math.max(0, input.policy.hardTotalListItemMax - businessTarget)
+  // Work-scope briefs are fixed output too. Do not spend their reservation
+  // again on optional languages/awards and then squeeze the main experience.
+  let remainingListItems = Math.max(0, input.policy.hardTotalListItemMax - businessTarget - scopeBriefCount)
   const educationEvidenceIds: string[] = []
   for (const item of educationScopes.slice(0, Math.min(2, remainingListItems))) {
-    const selected = input.resume.evidenceAtoms
+    const candidates = input.resume.evidenceAtoms
       .filter(atom => atom.sourceScopeId === item.scopeId && safeAtom(atom.evidenceId))
       .filter(atom => evidenceCatalog.assessments.get(atom.evidenceId)?.allowedUses.includes('ancillary_item'))
       .filter(atom => ['education', 'award'].includes(atom.claimType))
-      .sort(compareAtoms)[0]
+      .sort((a, b) => (input.targetingScores ? educationDetailPriority(b, item) - educationDetailPriority(a, item) : 0) || compareAtoms(a, b))
+    const selected = candidates[0]
+    const companion = selected && input.targetingScores ? educationCompanion(selected, candidates) : undefined
+    const selectedIds = selected ? [selected.evidenceId, ...(companion ? [companion.evidenceId] : [])] : []
     if (selected) {
-      educationEvidenceIds.push(selected.evidenceId)
+      educationEvidenceIds.push(...selectedIds)
       remainingListItems -= 1
     }
     const hasVerifiedTimeline = hasRenderableTimelineLine(item, evidence)
@@ -693,7 +729,7 @@ export function buildDeterministicV5ResumePlan(input: {
       scopeId: item.scopeId,
       scopeType: item.kind,
       treatment: selected ? 'include' : hasVerifiedTimeline ? 'timeline_line' : 'omit',
-      selectedEvidenceIds: selected ? [selected.evidenceId] : [],
+      selectedEvidenceIds: selectedIds,
       bulletBudget: selected ? 1 : 0,
       rewriteAngle: '保留学校、专业或学位、日期和可核验教育事实',
     })
@@ -1377,14 +1413,6 @@ function sectionKey(title: string) {
   return null
 }
 
-function timelineHeading(item: ResumeEvidenceBundle['timeline'][number]) {
-  return [
-    item.organization,
-    item.title,
-    [item.start, item.end].filter(Boolean).join(' - '),
-  ].filter(Boolean).join('｜')
-}
-
 function timelineHeadingFormattingSignature(value: string) {
   return value.replace(/[\s｜|/·—–-]+/g, '')
 }
@@ -1549,6 +1577,8 @@ function normalizeArtifactMetadata(input: {
   artifact: GeneratedResumeArtifact
   resume: ResumeEvidenceBundle
   plan: V5ResumePlan
+  skillPolicy?: typeof PRACTICE_SKILL_POLICY
+  entryParagraphPaths?: ReadonlySet<string>
 }) {
   const evidence = new Map(input.resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
   const lines = input.artifact.markdown.split(/\r?\n/)
@@ -1688,12 +1718,14 @@ function normalizeArtifactMetadata(input: {
   const seenBusinessEvidence = new Set<string>()
   for (const claim of structuralAlignedClaims) {
     if (/^identity(?:\.|\[|$)/i.test(claim.outputPath) || isTimelineOutputPath(claim.outputPath) || /summary/i.test(claim.outputPath)) continue
+    if (input.skillPolicy === PRACTICE_SKILL_POLICY && /^skills(?:\.|\[)/u.test(claim.outputPath)) continue
     const atoms = claim.evidenceIds.map(id => evidence.get(id)).filter((atom): atom is EvidenceAtom => Boolean(atom))
     const businessEvidenceIds = atoms.filter(atom => BUSINESS_TYPES.has(atom.claimType)).map(atom => atom.evidenceId)
     const isPureBusinessClaim = atoms.length === claim.evidenceIds.length && businessEvidenceIds.length === atoms.length
     const matchingLineIndexes = lines.flatMap((line, index) => line.trim() === claim.outputText.trim() ? [index] : [])
     if (
       isPureBusinessClaim
+      && !input.entryParagraphPaths?.has(claim.outputPath)
       && businessEvidenceIds.every(id => seenBusinessEvidence.has(id))
       && matchingLineIndexes.length === 1
     ) {
@@ -1873,11 +1905,16 @@ export function validateGeneratedResumeArtifact(input: {
   gateMode?: V5ValidationGateMode
   /** Internal versioned Writer path only; never selected by an HTTP request. */
   textPolicy?: 'source_preserving' | 'supported_writing_v1'
+  skillPolicy?: typeof PRACTICE_SKILL_POLICY
+  /** Paths created by the entry compiler, never model-supplied or HTTP fields. */
+  entryParagraphPaths?: ReadonlySet<string>
 }): ValidationResult<GeneratedResumeArtifact> {
   const issues: ValidationIssue[] = []
   const { resume, plan, policy } = input
   const evidenceCatalog = buildEvidencePlanningCatalog(resume)
-  const artifact = normalizeArtifactMetadata({ artifact: input.artifact, resume, plan })
+  const skillPolicy = input.textPolicy === 'supported_writing_v1' ? input.skillPolicy : undefined
+  const artifact = normalizeArtifactMetadata({ artifact: input.artifact, resume, plan, skillPolicy,
+    entryParagraphPaths: input.textPolicy === 'supported_writing_v1' ? input.entryParagraphPaths : undefined })
   const originalStructure = inspectMarkdownStructure(input.artifact.markdown)
   const normalizedStructure = inspectMarkdownStructure(artifact.markdown)
   if (normalizedStructure.emptyScopes.length < originalStructure.emptyScopes.length) {
@@ -1994,6 +2031,7 @@ export function validateGeneratedResumeArtifact(input: {
     .filter(assembly => assembly.kind.startsWith('companion_'))
     .map(assembly => [JSON.stringify(assembly.memberEvidenceIds), assembly]))
   const writingExcerpts = input.textPolicy === 'supported_writing_v1' ? deriveWritingSourceExcerpts(resume, plan) : []
+  const writingContexts = input.textPolicy === 'supported_writing_v1' ? deriveWritingContexts(resume, plan) : []
   const timelineByScope = new Map(resume.timeline.map(item => [item.scopeId, item]))
   const scopePlanById = new Map(plan.scopePlans.map(item => [item.scopeId, item]))
   const plannedBody = plannedContentEvidenceIds(resume, plan)
@@ -2030,6 +2068,13 @@ export function validateGeneratedResumeArtifact(input: {
     for (const excerpt of writingExcerpts) {
       if (claim.evidenceIds.includes(excerpt.anchorEvidenceId) && claim.evidenceIds.includes(excerpt.evidenceId)) {
         companionEvidenceIds.add(excerpt.evidenceId)
+      }
+    }
+    if (/^(?:experience|project|research|other)(?:\.|\[)/u.test(claim.outputPath)) {
+      for (const context of writingContexts) {
+        if (claim.evidenceIds.includes(context.anchorEvidenceId) && claim.evidenceIds.includes(context.evidenceId)) {
+          companionEvidenceIds.add(context.evidenceId)
+        }
       }
     }
     const markdownContexts = claimMarkdownContexts(artifact.markdown, claim.outputText)
@@ -2120,6 +2165,12 @@ export function validateGeneratedResumeArtifact(input: {
     const markdownContext = scopeMatchedContexts.length === 1
       ? scopeMatchedContexts[0]
       : markdownContexts[0] ?? null
+    const isSkillAbstraction = skillPolicy === PRACTICE_SKILL_POLICY && markdownContext?.section === 'skills'
+      && /^skills(?:\.|\[)/u.test(claim.outputPath)
+    if (skillPolicy === PRACTICE_SKILL_POLICY && /^skills(?:\.|\[)/u.test(claim.outputPath) && !isSkillAbstraction) {
+      issues.push(issue({ code: 'SKILL_SECTION_MISMATCH', outputPath: claim.outputPath, claimId: claim.claimId,
+        evidenceIds: claim.evidenceIds, message: '技能概括必须位于技能板块，不能伪装为工作贡献。', expectedConstraint: '技能路径与实际章节一致' }))
+    }
     if (markdownContext?.section && BUSINESS_SECTION_KEYS.has(markdownContext.section)) {
       if (isTimelineOutputPath(claim.outputPath)) {
         if (atoms.some(atom => atom.claimType !== 'timeline')) {
@@ -2144,6 +2195,18 @@ export function validateGeneratedResumeArtifact(input: {
           : !headingScopes || atoms.some(atom => !headingScopes.has(atom.sourceScopeId))
         const nonBusinessAtoms = atoms.filter(atom => (
           !companionEvidenceIds.has(atom.evidenceId)
+          && !(input.textPolicy === 'supported_writing_v1' && input.entryParagraphPaths?.has(claim.outputPath)
+            && isExactWorkScopeBrief(resume, atom.sourceScopeId, claim.evidenceIds, claim.outputText))
+          // Entry context is optional background in the same verified scope,
+          // not an independently scored achievement. Require actual business
+          // evidence elsewhere in that entry and never admit risky metadata.
+          && !(input.textPolicy === 'supported_writing_v1' && input.entryParagraphPaths?.has(claim.outputPath)
+            && atom.claimType === 'other' && atom.status === 'source_supported' && atom.riskFlags.length === 0
+            && plan.scopePlans.some(scope => scope.scopeId === atom.sourceScopeId && scope.selectedEvidenceIds.includes(atom.evidenceId))
+            && artifact.claims.some(other => input.entryParagraphPaths?.has(other.outputPath)
+              && other.outputPath.replace(/\.bullets\[\d+\]$/u, '') === claim.outputPath.replace(/\.bullets\[\d+\]$/u, '')
+              && other.evidenceIds.some(id => evidence.get(id)?.sourceScopeId === atom.sourceScopeId
+                && isBusinessPlanningAnchor(evidenceCatalog, id))))
           && (
             !BUSINESS_TYPES.has(atom.claimType)
             || !isBusinessPlanningAnchor(evidenceCatalog, atom.evidenceId)
@@ -2172,9 +2235,9 @@ export function validateGeneratedResumeArtifact(input: {
         if (!invalidScope && nonBusinessAtoms.length === 0) verifiedBusinessClaimIds.add(claim.claimId)
       }
     }
-    if (markdownContext?.section === 'skills' && atoms.some(atom => (
-      atom.claimType !== 'skill' || !plan.featuredSkillEvidenceIds.includes(atom.evidenceId)
-    ))) {
+    if (markdownContext?.section === 'skills' && atoms.some(atom => isSkillAbstraction
+      ? !isPracticeSkillEvidence(atom, plan)
+      : atom.claimType !== 'skill' || !plan.featuredSkillEvidenceIds.includes(atom.evidenceId))) {
       issues.push(issue({
         code: 'SKILL_SECTION_EVIDENCE_MISMATCH',
         outputPath: claim.outputPath,
@@ -2199,7 +2262,7 @@ export function validateGeneratedResumeArtifact(input: {
     }
     const scopes = new Set(atoms.map(atom => atom.sourceScopeId))
     const isSummaryClaim = /^summary(?:\.|\[|$)/i.test(claim.outputPath)
-    const invalidCrossScope = scopes.size > 1 && (!isSummaryClaim || claim.transformation === 'same_scope_merge')
+    const invalidCrossScope = scopes.size > 1 && ((!isSummaryClaim && !isSkillAbstraction) || claim.transformation === 'same_scope_merge')
     if (invalidCrossScope || (claim.transformation === 'same_scope_merge' && atoms.length < 2)) {
       issues.push(issue({
         code: 'SCOPE_MIGRATION',
@@ -2243,7 +2306,8 @@ export function validateGeneratedResumeArtifact(input: {
       }))
     }
     if (input.textPolicy === 'supported_writing_v1' && !isIdentityClaim && !isTimelineOutputPath(claim.outputPath)) {
-      issues.push(...inspectSupportedWriting(claim.outputText, sourceAtomsForWritingInspection(atoms, writingExcerpts), claim.outputPath))
+      issues.push(...inspectSupportedWriting(claim.outputText, sourceAtomsForWritingInspection(atoms, writingExcerpts), claim.outputPath,
+        Boolean(input.entryParagraphPaths)))
     }
     const weakestRank = Math.min(...atoms.map(atom => attributionRank(atom.attributionLevel)))
     if (attributionRank(claim.attributionLevel) > weakestRank || hasUnsafeStrongVerb(claim.outputText, atoms)) {
@@ -2277,7 +2341,8 @@ export function validateGeneratedResumeArtifact(input: {
         expectedConstraint: '规划、研究、未上线等限定必须保留',
       }))
     }
-    if (atoms.some(atom => atom.riskFlags.includes('team_attribution')) && !/(?:团队|参与|协助|支持|配合|协同)/.test(claim.outputText)) {
+    if (atoms.some(atom => atom.riskFlags.includes('team_attribution')) && !TEAM_CONTRIBUTION_PATTERN.test(claim.outputText)
+      && !(input.textPolicy === 'supported_writing_v1' && input.entryParagraphPaths && isAbilityAbstraction(claim.outputText, claim.outputPath))) {
       issues.push(issue({
         code: 'ATTRIBUTION_UPGRADE',
         outputPath: claim.outputPath,
@@ -2300,7 +2365,7 @@ export function validateGeneratedResumeArtifact(input: {
         expectedConstraint: '只能并列压缩事实，不得把并列或相关改写为因果',
       }))
     }
-    if (!/summary/i.test(claim.outputPath)) {
+    if (!/summary/i.test(claim.outputPath) && !isSkillAbstraction) {
       for (const evidenceId of claim.evidenceIds) {
         if (!BUSINESS_TYPES.has(evidence.get(evidenceId)?.claimType ?? '')) continue
         bodyEvidenceUse.set(evidenceId, [...(bodyEvidenceUse.get(evidenceId) ?? []), claim.claimId])
@@ -2355,6 +2420,7 @@ export function validateGeneratedResumeArtifact(input: {
     !/^identity(?:\.|\[|$)/i.test(claim.outputPath)
     && !isTimelineOutputPath(claim.outputPath)
     && !/^summary(?:\.|\[|$)/i.test(claim.outputPath)
+    && !(skillPolicy === PRACTICE_SKILL_POLICY && /^skills(?:\.|\[)/u.test(claim.outputPath))
   ))
   for (const scopePlan of plan.scopePlans) {
     const timeline = resume.timeline.find(item => item.scopeId === scopePlan.scopeId)
@@ -2454,6 +2520,12 @@ export function validateGeneratedResumeArtifact(input: {
   }
   for (const [evidenceId, claimIds] of bodyEvidenceUse) {
     if (claimIds.length > 1) {
+      const claims = artifact.claims.filter(claim => claimIds.includes(claim.claimId))
+      const scope = evidence.get(evidenceId)?.sourceScopeId
+      const entryReuse = input.textPolicy === 'supported_writing_v1' && scope
+        && claims.every(claim => input.entryParagraphPaths?.has(claim.outputPath)
+          && claim.evidenceIds.every(id => evidence.get(id)?.sourceScopeId === scope))
+      if (entryReuse) continue
       issues.push(issue({
         code: 'DUPLICATE_EVIDENCE_USE',
         evidenceIds: [evidenceId],
@@ -2568,12 +2640,19 @@ export function validateGeneratedResumeArtifact(input: {
     }))
   }
   const lengthValue = policy.outputLength.unit === 'cjk_characters' ? stats.cjkCharacterCount : stats.wordCount
-  if (stats.totalListItemCount > policy.hardTotalListItemMax || stats.projectCount > policy.hardProjectMax || lengthValue > policy.outputLength.hardMax) {
+  const listItemLimit = input.textPolicy === 'supported_writing_v1' && input.entryParagraphPaths?.size
+    ? entryLayoutItemLimit(policy) : policy.hardTotalListItemMax
+  if (stats.totalListItemCount > policy.hardTotalListItemMax && stats.totalListItemCount <= listItemLimit) {
+    issues.push(issue({ code: 'ENTRY_LAYOUT_TARGET_EXCEEDED', severity: 'warning', outputPath: 'markdown',
+      message: '保留已验证经历的独立语义段落，列表数超过选材目标；不拼接长段、不增加字数预算。',
+      expectedConstraint: `列表<=${listItemLimit}，长度<=${policy.outputLength.hardMax}` }))
+  }
+  if (stats.totalListItemCount > listItemLimit || stats.projectCount > policy.hardProjectMax || lengthValue > policy.outputLength.hardMax) {
     issues.push(issue({
       code: 'BUDGET_EXCEEDED',
       outputPath: 'markdown',
       message: `服务端统计 ${stats.totalListItemCount} 条列表、${stats.projectCount} 个项目、长度 ${lengthValue}，超过硬预算。`,
-      expectedConstraint: `列表<=${policy.hardTotalListItemMax}，项目<=${policy.hardProjectMax}，长度<=${policy.outputLength.hardMax}`,
+      expectedConstraint: `列表<=${listItemLimit}，项目<=${policy.hardProjectMax}，长度<=${policy.outputLength.hardMax}`,
     }))
   }
   if (policy.outputLength.hardMin !== null) {
@@ -2637,6 +2716,8 @@ export function validateGeneratedResumeArtifact(input: {
   if (verifiedBusinessBulletCount < minimumBusinessBulletFloor) {
     issues.push(issue({
       code: 'MINIMUM_BUSINESS_CONTENT_MISSING',
+      ...(input.textPolicy === 'supported_writing_v1' && input.entryParagraphPaths
+        ? { severity: 'warning' as const } : {}),
       outputPath: 'markdown',
       message: `成品只有 ${verifiedBusinessBulletCount} 条经证据类型与 scope 验证的业务正文，低于代码底线 ${minimumBusinessBulletFloor} 条。`,
       expectedConstraint: '有可用业务证据时，成品至少达到策略 minimum；质量 target 仅用于告警',

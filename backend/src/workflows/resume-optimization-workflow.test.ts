@@ -5,6 +5,8 @@ import { V5ResumeOptimizationWorkflow, V5WorkflowBlockedError } from '@/v5/main/
 import { createV5ResultFixture } from '@/v5/tests/fixtures'
 import { ResumeQuotaError } from '@/services/resume-quota'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
+import { env } from '@/config/env'
+import { getV5ReleaseDescriptor } from '@/v5/release'
 
 const v5Response: MvpProcessResponse = {
   run_id: 'v5-run',
@@ -45,6 +47,28 @@ const v5Response: MvpProcessResponse = {
 }
 
 describe('ResumeOptimizationWorkflow v5-only entry', () => {
+  test.each(['entry-r5','legacy-dsl'] as const)('formal adapter uses %s in production and exposes the effective version', async profile => {
+    const previous = {APP_ENV:env.APP_ENV,V5_RELEASE_PROFILE:env.V5_RELEASE_PROFILE}
+    env.APP_ENV = 'prod'
+    env.V5_RELEASE_PROFILE = profile
+    const run = spyOn(V5ResumeOptimizationWorkflow.prototype, 'run').mockImplementation(async function(this: V5ResumeOptimizationWorkflow, input) {
+      expect(Reflect.get(this,'artifactGenerationMode')).toBe(profile === 'entry-r5' ? 'writer_v1' : 'dsl_v1')
+      expect(Reflect.get(this,'entryWritingPolicy')).toBe(profile === 'entry-r5' ? 'entry-writing-v1' : undefined)
+      expect(Reflect.get(this,'jobTargetingPolicy')).toBe(profile === 'entry-r5' ? 'job-targeted-v1' : undefined)
+      expect(input.enableQualityJudge).toBe(false)
+      return createV5ResultFixture()
+    })
+    try {
+      const workflow = new ResumeOptimizationWorkflow(new FakeHarnessEventBus(),{enableDefaultSubscribers:false})
+      const result = await workflow.run({resume_markdown:'source',jd_text:'job'})
+      expect(result.step3_optimized_resume).toBeTruthy()
+      expect(getV5ReleaseDescriptor()).toMatchObject({profile,writerPromptVersion:profile === 'entry-r5' ? '5.2.0-p06c-entry-writer-r5' : null})
+    } finally {
+      run.mockRestore()
+      Object.assign(env,previous)
+    }
+  })
+
   test('forwards the analysis callback and output language to the real V5 adapter', async () => {
     let charged = 0
     const run = spyOn(V5ResumeOptimizationWorkflow.prototype, 'run').mockImplementation(async input => {

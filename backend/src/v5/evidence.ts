@@ -10,6 +10,8 @@ import type {
   ValidationResult,
 } from '@/v5/types'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
+import { bindSourceLineContinuations } from '@/v5/composition/source-continuation-proof'
+import { localizeTemporalRisk } from '@/v5/temporal-risk'
 import {
   readResumeExtractionScopePlan,
   resumeExtractionFactCandidateLimit,
@@ -615,6 +617,15 @@ export function validateResumeExtractionCandidate(
       expectedConstraint: '模型漏抽取不得制造可用事实，也不得阻断其他内容；服务端仅能保留逐字原文并强制 excluded',
     }))
   }
+  const temporal = localizeTemporalRisk(document, candidate, resumeExtractionFactCandidateStorageLimit(document.blocks, trustedShardCount))
+  candidate = temporal.candidate
+  for (const observation of temporal.observations) issues.push(createIssue({
+    code: observation.code, severity: 'warning', outputPath: `factCandidates[${observation.factIndex}].temporalRiskQuote`,
+    message: observation.code === 'TEMPORAL_RISK_LOCALIZED'
+      ? '时间风险已限定到可逐字定位的完整句，独立当前职责保留限定，风险句仍隔离。'
+      : '时间风险缺少可安全隔离的原文依据，保留原有风险处理，不自动清除标签。',
+    expectedConstraint: '定位不是真实性认证；不得跨句补义、恢复风险句或增加模型修复调用',
+  }))
   const normalizedFacts = candidate.factCandidates.map((fact, index) => {
     const block = blocks.get(fact.sourceBlockId)
     if (!block) return fact
@@ -1356,6 +1367,7 @@ export function buildResumeEvidenceBundle(
     }
   })
   const evidenceIds = (localIds: string[]) => localIds.map(id => localToEvidence.get(id)).filter((id): id is string => Boolean(id))
+  bindSourceLineContinuations(document, evidenceAtoms)
   const identityField = (field: ResumeExtractionCandidate['identityCandidates'][number]['field']) => {
     const items = candidate.identityCandidates.filter(item => item.field === field)
     return {

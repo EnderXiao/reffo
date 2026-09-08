@@ -28,30 +28,49 @@ function loadManifest() {
 
 export const V5_PROMPT_VERSIONS = loadManifest() as Record<V5PromptComponent, string>
 
-export function loadV5Prompt(component: V5PromptComponent) {
-  const version = V5_PROMPT_VERSIONS[component]
-  if (!version || !/^5\.\d+\.\d+-p\d/.test(version)) throw new V5PromptRegistryError(`Prompt ${component} 版本非法。`)
-  const filePath = join(PROMPT_DIR, `${component}.md`)
+export function loadV5Prompt(component: V5PromptComponent, structuralWriting = false, targetedMatching = false, entryWriting = false) {
+  if (entryWriting && component !== 'P06C') throw new V5PromptRegistryError('经历写作变体仅适用于 P06C。')
+  if (structuralWriting && component !== 'P06C') throw new V5PromptRegistryError('结构化编辑变体仅适用于 P06C。')
+  if (targetedMatching && !['P03', 'P03R'].includes(component)) throw new V5PromptRegistryError('岗位匹配变体仅适用于 P03/P03R。')
+  const variant = entryWriting ? 'P06C_ENTRY' : structuralWriting ? 'P06C_STRUCTURAL' : targetedMatching ? `${component}_TARGETED` : null
+  const version: string = variant
+    ? JSON.parse(readFileSync(manifestPath, 'utf8')).variants?.[variant] : V5_PROMPT_VERSIONS[component]
+  if (typeof version !== 'string' || !/^5\.\d+\.\d+-p\d/.test(version)) throw new V5PromptRegistryError(`Prompt ${component} 版本非法。`)
+  const filename = entryWriting ? 'P06C-entry.md' : structuralWriting ? 'P06C-structural.md' : targetedMatching ? `${component}-targeted.md` : `${component}.md`
+  const filePath = join(PROMPT_DIR, filename)
   if (!existsSync(filePath)) throw new V5PromptRegistryError(`Prompt 文件缺失：${component}.md`)
   const content = readFileSync(filePath, 'utf8').trim()
   if (!content) throw new V5PromptRegistryError(`Prompt 文件为空：${component}.md`)
-  return { component, version, content, sha256: createDigest(content), filePath: `prompts/${component}.md` }
+  return { component, version, content, sha256: createDigest(content), filePath: `prompts/${filename}` }
 }
 
-function corePrompt() {
-  const filePath = join(PROMPT_DIR, 'core.md')
-  if (!existsSync(filePath)) throw new V5PromptRegistryError('Prompt core.md 缺失。')
-  return readFileSync(filePath, 'utf8').trim()
+function corePrompt(component: V5PromptComponent, supportedWriting = false) {
+  const filename = component === 'P01' || component === 'P01R' ? 'core-extraction.md'
+    : component === 'P06C' && supportedWriting ? 'core-writing.md' : 'core.md'
+  const filePath = join(PROMPT_DIR, filename)
+  if (!existsSync(filePath)) throw new V5PromptRegistryError(`Prompt ${filename} 缺失。`)
+  const content = readFileSync(filePath, 'utf8').trim()
+  if (!content) throw new V5PromptRegistryError(`Prompt ${filename} 为空。`)
+  return content
 }
 
-function outputPrompt() {
-  const filePath = join(PROMPT_DIR, 'output.md')
+function outputPrompt(entryWriting = false) {
+  const filePath = join(PROMPT_DIR, entryWriting ? 'output-entry.md' : 'output.md')
   if (!existsSync(filePath)) throw new V5PromptRegistryError('Prompt output.md 缺失。')
   return readFileSync(filePath, 'utf8').trim()
 }
 
-export function buildV5SystemPrompt(component: V5PromptComponent) {
-  return `${corePrompt()}\n\n${loadV5Prompt(component).content}\n\n${outputPrompt()}`
+export function buildV5SystemPrompt(component: V5PromptComponent, supportedWriting = false, structuralWriting = false, targetedMatching = false, entryWriting = false) {
+  if (entryWriting && !supportedWriting) throw new V5PromptRegistryError('经历写作需要受控 Writer。')
+  if (structuralWriting && !supportedWriting) throw new V5PromptRegistryError('结构化编辑变体需要受控 Writer。')
+  let content = loadV5Prompt(component, structuralWriting, targetedMatching, entryWriting).content
+  if (component === 'P06C' && supportedWriting && !structuralWriting && !entryWriting) {
+    const marker = '兼容编排规则（仅当输入没有 writingPolicy 时）：'
+    if (!content.includes(marker)) throw new V5PromptRegistryError('P06C 兼容规则分界缺失。')
+    content = content.slice(0, content.indexOf(marker))
+      .replace('当输入 writingPolicy=supported-writing-v1 时，使用以下写作规则；缺少该字段时使用下方兼容编排规则。', '本次任务使用受控写作规则。').trim()
+  }
+  return `${corePrompt(component, supportedWriting)}\n\n${content}\n\n${outputPrompt(entryWriting)}`
 }
 
 export function buildV5UserPrompt(component: V5PromptComponent, serializedEnvelope: string) {

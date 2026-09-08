@@ -1,3 +1,6 @@
+import { parseDeepSeekExtractionThinking } from './deepseek-thinking'
+import { assertV5ReleaseConfiguration, parseV5ReleaseProfile } from './v5-release'
+
 const NONPROD_CORS_ORIGIN = 'https://reffo-web-nonprod.onrender.com'
 
 const DEFAULT_CORS_ORIGINS = [
@@ -132,6 +135,7 @@ export const env = {
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || 'https://api.deepseek.com',
   AI_MODEL: process.env.AI_MODEL || 'deepseek-chat',
   DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'default',
+  DEEPSEEK_P01_THINKING_MODE: parseDeepSeekExtractionThinking(process.env.DEEPSEEK_P01_THINKING_MODE),
   DEEPSEEK_REASONING_EFFORT: process.env.DEEPSEEK_REASONING_EFFORT || 'high',
   // DeepSeek thinking consumes the same completion budget as final output.
   // Legacy agents may omit maxOutputTokens, so reserve an explicit budget.
@@ -141,6 +145,7 @@ export const env = {
     .map((model) => model.trim())
     .filter(Boolean),
   V5_QUALITY_JUDGE_ENABLED: parseBoolean(process.env.V5_QUALITY_JUDGE_ENABLED, false),
+  V5_RELEASE_PROFILE: parseV5ReleaseProfile(process.env.V5_RELEASE_PROFILE),
   V5_CONTEXT_WINDOW_TOKENS: parsePositiveInteger(process.env.V5_CONTEXT_WINDOW_TOKENS, 64000),
   V5_STRUCTURED_OUTPUT_MODE: parseV5StructuredOutputMode(process.env.V5_STRUCTURED_OUTPUT_MODE),
   JINA_API_KEY: process.env.JINA_API_KEY || '',
@@ -202,6 +207,7 @@ export function getOcrEnvStatus() {
  * 验证必需的环境变量
  */
 export function validateEnv() {
+  assertV5ReleaseConfiguration(env)
   if (!env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY is required in environment variables')
   }

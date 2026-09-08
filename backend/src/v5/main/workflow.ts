@@ -7,6 +7,7 @@ import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscri
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
 import type { LlmProvider } from '@/providers/llm-provider'
 import { env } from '@/config/env'
+import { assertV5ProductionWorkflow } from '@/config/v5-release'
 import { buildRequirementAnalysis } from '@/v5/targeting/presentation'
 import { canonicalizeSourceDocument } from '@/v5/canonical-source'
 import { buildCompositionBlueprint } from '@/v5/composition/blueprint'
@@ -35,11 +36,13 @@ import {
   resumeExtractionMaxRepairBudget,
   ResumeExtractionChunkCapacityError,
   ResumeExtractionChunkPlanError,
-  settleResumeExtractionBatch,
   splitResumeDocument,
   validateResumeExtractionChunkPlan,
 } from '@/v5/chunked-resume-extraction'
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
+import { boundedMap } from '@/v5/bounded-map'
+import { buildEntryWritingPlan, compileEntryWriting, entryWritingPayload, ENTRY_WRITING_POLICY } from '@/v5/writing/entries'
+import { EntryJsonStream, EntryPreviewJournal, type EntryStreamEvent } from '@/v5/writing/entry-stream'
 import {
   buildJobRequirementBundle,
   buildResumeEvidenceBundle,
@@ -59,6 +62,8 @@ import { V5PromptBudgetError } from '@/v5/prompt-compiler'
 import {
   P01_VALIDATION_OBSERVATION_VERSION,
   bucketP01ValidationIssues,
+  measureP01Retention,
+  type P01RetentionCounts,
   type P01ValidationLayer,
   type P01ValidationObservationV1,
   type P01ValidationOutcome,
@@ -143,6 +148,10 @@ export interface V5WorkflowOptions {
   pluginOverrides?: Partial<Record<V5BuiltinPluginId, V5WorkflowPlugin<unknown, unknown>>>
   /** Writer is opt-in until real-data/human acceptance; never selected from raw HTTP input. */
   artifactGenerationMode?: V5ArtifactGenerationMode
+  /** Non-default bounded editorial experiment; no route or production toggle. */
+  writingEditorialPolicy?: 'document-editorial-v1'
+  entryWritingPolicy?: typeof ENTRY_WRITING_POLICY
+  onEntryStreamEvent?: (event: EntryStreamEvent) => void
   jobTargetingPolicy?: typeof JOB_TARGETING_POLICY
   onTargetingAnalysis?: (analysis: { profile: TargetedJobExtraction['jobSuccessProfile']; targets: ReturnType<typeof buildJobTargets>; fit: JobFitMap }) => Promise<void>
 }
@@ -444,6 +453,9 @@ export class V5ResumeOptimizationWorkflow {
   private readonly eventBus: HarnessEventBus
   private readonly pluginOverrides: V5WorkflowOptions['pluginOverrides']
   private readonly artifactGenerationMode: V5ArtifactGenerationMode
+  private readonly writingEditorialPolicy?: 'document-editorial-v1'
+  private readonly entryWritingPolicy?: typeof ENTRY_WRITING_POLICY
+  private readonly onEntryStreamEvent?: V5WorkflowOptions['onEntryStreamEvent']
   private readonly jobTargetingPolicy?: typeof JOB_TARGETING_POLICY
   private readonly onTargetingAnalysis?: V5WorkflowOptions['onTargetingAnalysis']
 
@@ -454,10 +466,16 @@ export class V5ResumeOptimizationWorkflow {
     this.eventBus = options.eventBus ?? (options.enableDefaultSubscribers === false ? createHarnessEventBus() : createDefaultEventBus())
     this.pluginOverrides = options.pluginOverrides
     this.artifactGenerationMode = options.artifactGenerationMode ?? 'dsl_v1'
+    this.writingEditorialPolicy = options.writingEditorialPolicy
+    this.entryWritingPolicy = options.entryWritingPolicy
+    this.onEntryStreamEvent = options.onEntryStreamEvent
     this.jobTargetingPolicy = options.jobTargetingPolicy
     this.onTargetingAnalysis = options.onTargetingAnalysis
     if (this.jobTargetingPolicy && this.artifactGenerationMode !== 'writer_v1') throw new Error('JOB_TARGETING_REQUIRES_WRITER')
-    if (this.jobTargetingPolicy && env.APP_ENV === 'prod') throw new Error('JOB_TARGETING_NOT_PRODUCTION_ACCEPTED')
+    if (this.writingEditorialPolicy && (!this.jobTargetingPolicy || this.artifactGenerationMode !== 'writer_v1')) throw new Error('DOCUMENT_EDITORIAL_REQUIRES_TARGETED_WRITER')
+    if (this.entryWritingPolicy && (!this.jobTargetingPolicy || this.artifactGenerationMode !== 'writer_v1')) throw new Error('ENTRY_WRITER_REQUIRES_TARGETED_WRITER')
+    assertV5ProductionWorkflow(env, { artifactGenerationMode: this.artifactGenerationMode,
+      jobTargetingPolicy: this.jobTargetingPolicy, entryWritingPolicy: this.entryWritingPolicy })
   }
 
   async extractResume(input: V5ResumeExtractionInput): Promise<V5ResumeExtractionResult> {
@@ -570,6 +588,7 @@ export class V5ResumeOptimizationWorkflow {
     const remaining = () => Math.max(1, deadline - Date.now())
     const pluginRegistry = new V5WorkflowPluginRegistry()
     const pluginManifest: V5WorkflowPluginManifest = { plugins: [] }
+    let entryWritingRecord: V5WorkflowResult['entryWriting']
     const pluginContext: V5WorkflowPluginContext = {
       runContext,
       eventBus: this.eventBus,
@@ -893,6 +912,7 @@ export class V5ResumeOptimizationWorkflow {
                   profile: strategyProfile,
                   targetingScores,
                   targetingTaskEvidence: targeting ? coreTaskEvidence(targeting.fit, targeting.targets, resumeEvidenceBundle) : undefined,
+                  preserveWorkCoverage: Boolean(this.entryWritingPolicy),
                 })
                 const validation = validateV5ResumePlan({
                   resume: resumeEvidenceBundle,
@@ -950,25 +970,43 @@ export class V5ResumeOptimizationWorkflow {
                 resume: resumeEvidenceBundle, job: jobRequirementBundle, match: matchAnalysis,
                 plan: resumePlan, policy: generationPolicy,
                 targeting,
+                editorialPolicy: this.entryWritingPolicy ? 'document-editorial-v1' : this.writingEditorialPolicy,
               })
+              const entryPlan = this.entryWritingPolicy ? buildEntryWritingPlan({
+                base: writingPlan, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy,
+              }) : undefined
+              const journal = entryPlan ? new EntryPreviewJournal(runContext.runId, this.onEntryStreamEvent) : undefined
+              const stream = entryPlan && journal ? new EntryJsonStream(entry => {
+                const brief = entryPlan.entries.find(item => item.entryId === entry.entryId)
+                if (!brief) return
+                try {
+                  compileEntryWriting({ output: { contractVersion: ENTRY_WRITING_POLICY, entries: [entry] }, entryPlan,
+                    resume: resumeEvidenceBundle, policy: generationPolicy, previewEntryId: entry.entryId })
+                  journal.preview(entry.entryId, brief.order, entry.paragraphs.map(p => p.text))
+                } catch { /* Invalid previews stay private; final compilation diagnoses them. */ }
+              }) : undefined
               await setState('drafting')
               const writerStep = await runStep({
                 runContext, eventBus: this.eventBus, stepName: 'v5_p06c_supported_writer',
                 timeoutMs: Math.min(180000, remaining()),
                 execute: async stepContext => {
-                  const output = await runV5StructuredStage<P06CompositionOutput>({
-                    component: 'P06C', envelope: this.envelope(runContext.runId, writingPayload(writingPlan)),
-                    options: {
-                      provider: this.provider, eventBus: this.eventBus, stepContext,
-                      inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
-                    },
-                  })
                   try {
-                    return compileWritingArtifact({
+                    const output = await runV5StructuredStage<unknown>({
+                      component: 'P06C', envelope: this.envelope(runContext.runId, entryPlan ? entryWritingPayload(entryPlan) : writingPayload(writingPlan)),
+                      options: {
+                        provider: this.provider, eventBus: this.eventBus, stepContext,
+                        inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                        ...(stream ? { onContentDelta: (text: string) => stream.push(text), maxProviderAttempts: 1, maxProviderModels: 1 } : {}),
+                      },
+                    })
+                    if (entryPlan) return compileEntryWriting({ output: output.value, entryPlan,
+                      resume: resumeEvidenceBundle, policy: generationPolicy })
+                    return { ...compileWritingArtifact({
                       composition: output.value, writingPlan, resume: resumeEvidenceBundle,
                       plan: resumePlan, policy: generationPolicy,
-                    })
+                    }), renderingPlan: resumePlan, entryParagraphPaths: undefined }
                   } catch (error) {
+                    journal?.finish(false)
                     if (!(error instanceof SupportedWritingError)) throw error
                     throw new V5WorkflowBlockedError({
                       code: 'V5_SUPPORTED_WRITING_BLOCKED', state: error.issues.filter(issue => issue.severity === 'error')
@@ -983,18 +1021,26 @@ export class V5ResumeOptimizationWorkflow {
               await setState('validating')
               const artifact = writerStep.result.artifact
               const validation = validateGeneratedResumeArtifact({
-                artifact, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy,
+                artifact, resume: resumeEvidenceBundle, plan: writerStep.result.renderingPlan, policy: generationPolicy,
                 gateMode: 'relaxed_release', textPolicy: 'supported_writing_v1',
+                skillPolicy: writingPlan.skillPolicy,
+                entryParagraphPaths: writerStep.result.entryParagraphPaths,
               })
               validation.issues.push(...writerStep.result.writingIssues)
-              if (!validation.passed) throw new V5WorkflowBlockedError({
-                code: 'V5_SUPPORTED_WRITING_BLOCKED', state: hasV5BlockingStructureIssue(validation.issues)
-                  ? 'blocked_structure_validation' : 'blocked_fact_validation',
-                message: '写作成品未通过本地结构与事实边界检查。', issues: validation.issues,
-              })
+              if (!validation.passed) {
+                journal?.finish(false)
+                throw new V5WorkflowBlockedError({
+                  code: 'V5_SUPPORTED_WRITING_BLOCKED', state: hasV5BlockingStructureIssue(validation.issues)
+                    ? 'blocked_structure_validation' : 'blocked_fact_validation',
+                  message: '写作成品未通过本地结构与事实边界检查。', issues: validation.issues,
+                })
+              }
+              journal?.finish(true)
+              if (entryPlan) entryWritingRecord = { version: ENTRY_WRITING_POLICY,
+                renderingPlan: writerStep.result.renderingPlan, paragraphPaths: [...(writerStep.result.entryParagraphPaths ?? [])] }
               const artifactGenerationDiagnostics = {
                 mode: 'writer_v1' as const, contractVersion: SUPPORTED_WRITING_POLICY,
-                compilerVersion: WRITING_COMPILER_VERSION,
+                compilerVersion: entryPlan ? ENTRY_WRITING_POLICY : WRITING_COMPILER_VERSION,
               }
               pluginContext.shared.artifactGeneration = artifactGenerationDiagnostics
               return {
@@ -1550,6 +1596,7 @@ export class V5ResumeOptimizationWorkflow {
               generationPolicy,
               resumePlan,
               artifact,
+              ...(entryWritingRecord ? { entryWriting: entryWritingRecord } : {}),
               usedSafeFallback,
               usedAnyFallback,
               executionStatus: 'completed',
@@ -1686,6 +1733,7 @@ export class V5ResumeOptimizationWorkflow {
       layer: P01ValidationLayer
       outcome: P01ValidationOutcome
       issues: unknown[]
+      retention?: P01RetentionCounts
     }) => {
       const payload: P01ValidationObservationV1 = {
         version: P01_VALIDATION_OBSERVATION_VERSION,
@@ -1696,6 +1744,7 @@ export class V5ResumeOptimizationWorkflow {
         layer: observation.layer,
         outcome: observation.outcome,
         issueBuckets: bucketP01ValidationIssues(observation.issues, observation.layer),
+        ...(observation.retention ? { retention: observation.retention } : {}),
       }
       await this.eventBus.publish(createHarnessEvent({
         type: 'extraction.validation.observed',
@@ -1761,6 +1810,7 @@ export class V5ResumeOptimizationWorkflow {
           { trustedShardCount: 1 }
         )
         const normalizedOutput = validation.value ?? result.value
+        const retention = measureP01Retention(chunk, result.value, normalizedOutput)
         if (validation.passed) {
           await input.storeValidatedShard?.(chunkIndex, normalizedOutput)
           await publishValidationObservation({
@@ -1770,6 +1820,7 @@ export class V5ResumeOptimizationWorkflow {
             layer: 'domain',
             outcome: 'passed',
             issues: validation.issues,
+            retention,
           })
           return {
             chunkIndex,
@@ -1787,6 +1838,7 @@ export class V5ResumeOptimizationWorkflow {
           layer: 'domain',
           outcome: 'failed',
           issues: validation.issues,
+          retention,
         })
         return {
           chunkIndex,
@@ -1825,15 +1877,9 @@ export class V5ResumeOptimizationWorkflow {
     // Phase 1 is a bounded streaming map. Every primary shard reaches the
     // barrier before any repair starts; provider response speed therefore
     // cannot decide which shard receives the shared repair budget.
-    const primaryResults: Array<{ chunkIndex: number; candidate: PrimaryShardResult }> = []
-    for (let index = 0; index < input.chunks.length; index += input.extractionConcurrency) {
-      const batch = input.chunks.slice(index, index + input.extractionConcurrency)
-      const completed = await settleResumeExtractionBatch(batch.map(async (chunk, batchIndex) => ({
-        chunkIndex: index + batchIndex,
-        candidate: await runPrimary(chunk, index + batchIndex),
-      })))
-      primaryResults.push(...completed)
-    }
+    const primaryResults = await boundedMap(input.chunks, input.extractionConcurrency, async (chunk, chunkIndex) => ({
+      chunkIndex, candidate: await runPrimary(chunk, chunkIndex),
+    }))
 
     const orderedPrimaryResults = orderResumeExtractionCandidates(
       primaryResults,
@@ -1931,6 +1977,7 @@ export class V5ResumeOptimizationWorkflow {
         normalizeResumeExtractionChunkCandidate(chunk, repairResult.value),
         { trustedShardCount: 1 }
       )
+      const retention = measureP01Retention(chunk, repairResult.value, repairedValidation.value ?? repairResult.value)
       if (!repairedValidation.passed) {
         await publishValidationObservation({
           shardIndex: primary.chunkIndex,
@@ -1939,6 +1986,7 @@ export class V5ResumeOptimizationWorkflow {
           layer: 'domain',
           outcome: 'failed',
           issues: repairedValidation.issues,
+          retention,
         })
         throw new V5WorkflowBlockedError({
           code: 'P01_VALIDATION_FAILED',
@@ -1958,6 +2006,7 @@ export class V5ResumeOptimizationWorkflow {
         layer: 'domain',
         outcome: 'passed',
         issues: repairedValidation.issues,
+        retention,
       })
       resolvedCandidates.set(
         primary.chunkIndex,

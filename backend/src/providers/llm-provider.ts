@@ -49,6 +49,8 @@ export interface ChatCompletionInput {
   }
   maxProviderAttempts?: number
   maxProviderModels?: number
+  /** Internal content-only stream. Never forwards reasoning or raw provider frames. */
+  onContentDelta?: (text: string) => void
   eventBus?: HarnessEventBus
   stepContext?: StepExecutionContext
 }
