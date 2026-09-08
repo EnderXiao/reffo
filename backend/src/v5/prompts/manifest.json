@@ -1,0 +1,22 @@
+{
+  "formatVersion": "1.0.0",
+  "defaultVersion": "5.0.0",
+  "variants": {
+    "P06C_ENTRY": "5.2.0-p06c-entry-writer-r5",
+    "P06C_STRUCTURAL": "5.1.0-p06c-supported-writer-r19",
+    "P03_TARGETED": "5.1.0-p03-job-fit-map-r6",
+    "P03R_TARGETED": "5.1.0-p03r-job-fit-map-repair-r5"
+  },
+  "components": {
+    "P01": "5.0.0-p01-resume-evidence-r19", "P01R": "5.0.0-p01r-resume-evidence-repair-r19",
+    "P02": "5.1.0-p02-job-success-profile-r5", "P02R": "5.1.0-p02r-job-success-profile-repair-r3",
+    "P03": "5.1.0-p03-job-fit-map-r5", "P03R": "5.1.0-p03r-job-fit-map-repair-r4",
+    "P04": "5.0.0-p04-strategy-resolution-r2", "P05": "5.0.0-p05-resume-plan-r6",
+    "P05R": "5.0.0-p05r-resume-plan-repair-r6", "P06": "5.0.0-p06-draft-artifact-r13",
+"P06C": "5.1.0-p06c-supported-writer-r16", "P06D": "5.0.0-p06d-controlled-dsl-r6",
+    "P07": "5.0.0-p07-final-review-artifact-r10", "P08": "5.0.0-p08-code-gate-repair-r16",
+    "P09": "5.0.0-p09-blocking-fact-judge-r5", "P10": "5.0.0-p10-interview-preparation-r2",
+    "P10R": "5.0.0-p10r-interview-repair-r2", "P11": "5.0.0-p11-quality-judge-r3",
+    "P12": "5.1.0-p12-material-conditional-ab-r2"
+  }
+}

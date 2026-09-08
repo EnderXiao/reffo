@@ -77,8 +77,8 @@ function promptText(messages: ReturnType<typeof buildResumeAnalysisMessages>) {
 
 describe('prompt suite', () => {
   test('uses the current prompt version for every legacy selector', () => {
-    expect(PROMPT_VERSION).toBe('4.2.1')
-    expect(PROMPT_VARIANT).toBe('scope-aware-v4.2')
+    expect(PROMPT_VERSION).toBe('4.4.6')
+    expect(PROMPT_VARIANT).toBe('one-job-v4.4')
     expect(resolvePromptVariant()).toBe(PROMPT_VARIANT)
     expect(resolvePromptVariant('v1')).toBe(PROMPT_VARIANT)
     expect(resolvePromptVariant('v2')).toBe(PROMPT_VARIANT)
@@ -109,8 +109,11 @@ describe('prompt suite', () => {
     expect(jdPrompt).toContain('inferred_talent_preferences')
     expect(jdPrompt).toContain('inferred_role_implications')
     expect(matchingPrompt).toContain('positioning_strategy')
-    expect(matchingPrompt).toContain('optimization_suggestions')
-    expect(matchingPrompt).toContain('不得进入 optimization_suggestions')
+    expect(matchingPrompt).toContain('optimization_strategy_details')
+    expect(matchingPrompt).toContain('source_quote')
+    expect(matchingPrompt).toContain('optimized_content')
+    expect(matchingPrompt).toContain('不要另行输出 optimization_suggestions')
+    expect(matchingPrompt).toContain('逐字复制该字段的完整原文')
     expect(interviewPrompt).toContain('公司人才偏好和工作地影响')
     expect(interviewPrompt).toContain('storytelling_approach')
     expect(interviewPrompt).toContain('禁止复用通用模板句')

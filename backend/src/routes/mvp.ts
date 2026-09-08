@@ -7,6 +7,7 @@ import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
 import { ResumeRevisionAgent } from '@/agents/resume-revision'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { createHarnessEvent } from '@/harness/events'
+import { getV5ReleaseDescriptor } from '@/v5/release'
 import {
   assertBusinessEvaluationPassed,
   evaluateWithBusinessRecovery,
@@ -21,12 +22,15 @@ import {
 import { assertBusinessEvaluation, publishEvaluationCompleted } from '@/harness/evaluators/evaluation-events'
 import { evaluateMarkdownResume } from '@/harness/evaluators/markdown-resume-evaluator'
 import { runHarnessedRequest, runHarnessedStep } from '@/harness/harnessed-request'
+import { recoveryAdviceForErrorCode } from '@/harness/recovery-advice'
 import { buildQualityGateAttempt, classifyAttemptResult, decideNextAction } from '@/harness/runtime-state'
 import { runStep } from '@/harness/run-step'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
+import { getHarnessDatabaseHealth } from '@/repositories/database'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
+import { V5WorkflowBlockedError } from '@/v5/errors'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 import {consumeResumeQuota, ensureResumeQuotaAvailable, ResumeQuotaError} from '@/services/resume-quota'
 
@@ -35,10 +39,51 @@ function getHarnessRunRepository() {
 }
 
 function buildErrorPayload(code: string, fallbackMessage: string, error: unknown): ApiResponse<never>['error'] {
+  const errorCode = error && typeof error === 'object' && 'code' in error && typeof (error as { code?: unknown }).code === 'string'
+    ? (error as { code: string }).code
+    : undefined
+  const details = error instanceof V5WorkflowBlockedError
+    ? {
+        agent_state: error.state,
+        issue_codes: [...new Set(error.issues.map(item => item.code))],
+        retryable: error.state === 'provider_failure',
+      }
+    : getBusinessEvaluationErrorDetails(error)
+  const recoveryAdvice = recoveryAdviceForErrorCode(errorCode)
   return {
     code,
     message: fallbackMessage,
-    details: getBusinessEvaluationErrorDetails(error),
+    details: {
+      ...(details && typeof details === 'object' && !Array.isArray(details) ? details : {}),
+      ...(errorCode ? { error_code: errorCode } : {}),
+      recovery_advice: recoveryAdvice,
+    },
+  }
+}
+
+export function buildMvpProcessErrorResponse(error: unknown) {
+  const status = error instanceof V5WorkflowBlockedError ? error.httpStatus : 500
+  const message = error instanceof V5WorkflowBlockedError
+    ? error.state === 'provider_failure'
+      ? error.retryable
+        ? '模型服务暂时不可用'
+        : '模型请求未完成'
+      : error.state === 'workflow_failure'
+        ? '服务处理异常'
+        : error.state === 'blocked_quality_validation'
+          ? '本次结果未达到可投递质量标准，已停止交付不完整简历'
+          : '生成结果未通过本地事实或结构安全校验'
+    : '处理失败'
+  return {
+    status,
+    response: {
+      success: false,
+      error: buildErrorPayload(
+        error instanceof V5WorkflowBlockedError ? error.code : 'PROCESS_FAILED',
+        message,
+        error
+      ),
+    } satisfies ApiResponse<never>,
   }
 }
 
@@ -98,7 +143,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       try {
         const userContext = await resolveRequestUser(headers)
         await ensureResumeQuotaAvailable(userContext)
-        const { prompt_variant, enable_llm_judge } = body
+        const { enable_llm_judge, output_language } = body
         const resume_markdown = normalizeMarkdownText(body.resume_markdown)
         const jd_text = normalizeMarkdownText(body.jd_text)
 
@@ -106,9 +151,11 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const result = await workflow.run({
           resume_markdown,
           jd_text,
-          prompt_variant,
           enable_llm_judge,
-          onAnalysisSucceeded: () => consumeResumeQuota(userContext),
+          output_language,
+          onAnalysisSucceeded: async () => {
+            await consumeResumeQuota(userContext)
+          },
         })
 
         const response: ApiResponse<MvpProcessResponse> = {
@@ -122,15 +169,19 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           set.status = error.status
           return {success: false, error: {code: error.code, message: error.message, details: {limit: error.limit, used: error.used}}} satisfies ApiResponse<never>
         }
-        console.error('流程处理失败:', error)
-        set.status = 500
-
-        const response: ApiResponse<never> = {
-          success: false,
-          error: buildErrorPayload('PROCESS_FAILED', '处理失败', error),
+        if (error instanceof V5WorkflowBlockedError) {
+          console.error('流程处理失败:', {
+            code: error.code,
+            state: error.state,
+            runId: error.runId,
+            issueCodes: [...new Set(error.issues.map(item => item.code))],
+          })
+        } else {
+          console.error('流程处理失败:', error)
         }
-
-        return response
+        const failure = buildMvpProcessErrorResponse(error)
+        set.status = failure.status
+        return failure.response
       }
     },
     {
@@ -143,21 +194,18 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           description: '岗位描述（JD）文本',
           minLength: 10,
         }),
-        prompt_variant: t.Optional(t.Union([
-          t.Literal('v1'),
-          t.Literal('v2'),
-          t.Literal('final-v3'),
-          t.Literal('scope-aware-v4.2'),
-        ], {
-          description: '兼容旧客户端的提示词版本字段；服务端统一使用 scope-aware-v4.2（v4.2.1）',
-        })),
         enable_llm_judge: t.Optional(t.Boolean({
-          description: '是否异步触发 LLM Judge，不默认阻塞主链路',
+          description: '兼容保留字段；V5 放行由本地代码控制，不会触发额外的 LLM Judge。',
+        })),
+        output_language: t.Optional(t.String({
+          description: 'v5 输出语言偏好，例如 zh-CN 或 en-US。',
+          minLength: 2,
+          maxLength: 32,
         })),
       }),
       detail: {
         summary: 'MVP 完整流程',
-        description: '串联 Agent 完成简历优化：1) 分析简历 2) 匹配分析 3) 生成优化简历 4) 生成面试建议',
+        description: '固定执行 V5 R2 工作流。复用 V6 插件框架、原子证据、确定性计划、composition/writing 编译、交付门禁和旧响应兼容；安全回退稿与质量待审稿不作为成功结果交付。',
         tags: ['MVP'],
       },
     }
@@ -169,9 +217,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/dashboard',
-    () => ({
+    async () => ({
       success: true,
-      data: getHarnessRunRepository().getDashboardMetrics(),
+      data: await getHarnessRunRepository().getDashboardMetrics(),
     }),
     {
       detail: {
@@ -188,9 +236,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/regression-dataset',
-    ({ query }) => ({
+    async ({ query }) => ({
       success: true,
-      data: getHarnessRunRepository().buildRegressionDataset(Number(query.limit ?? 20)),
+      data: await getHarnessRunRepository().buildRegressionDataset(Number(query.limit ?? 20)),
     }),
     {
       query: t.Object({
@@ -210,8 +258,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/runs/:run_id',
-    ({ params, set }) => {
-      const result = getHarnessRunRepository().getRun(params.run_id)
+    async ({ params, set }) => {
+      const result = await getHarnessRunRepository().getRun(params.run_id)
 
       if (!result) {
         set.status = 404
@@ -247,8 +295,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/runs/:run_id/replay',
-    ({ params, set }) => {
-      const result = getHarnessRunRepository().replayRun(params.run_id)
+    async ({ params, set }) => {
+      const result = await getHarnessRunRepository().replayRun(params.run_id)
 
       if (!result) {
         set.status = 404
@@ -284,8 +332,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .post(
     '/runs/:run_id/failure-samples',
-    ({ params, body, set }) => {
-      const result = getHarnessRunRepository().createFailureSample(params.run_id, body.reason)
+    async ({ params, body, set }) => {
+      const result = await getHarnessRunRepository().createFailureSample(params.run_id, body.reason)
 
       if (!result) {
         set.status = 404
@@ -331,7 +379,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const resumeMarkdown = normalizeMarkdownText(body.resume_markdown)
         const analyzer = new ResumeAnalyzerAgent()
         const { result, meta } = await runHarnessedStep({
-          workflowVersion: 'single:v4.2:analyze_resume',
+          workflowVersion: 'single:v4.4:analyze_resume',
           stepName: 'analyze_resume',
           inputDigestSource: { resume_markdown: resumeMarkdown },
           stepTimeoutMs: 120000,
@@ -416,7 +464,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const parser = new JDParserAgent()
         const matcher = new MatchingAgent()
         const { result, meta } = await runHarnessedRequest({
-          workflowVersion: 'single:v4.2:match_resume_to_jd',
+          workflowVersion: 'single:v4.4:match_resume_to_jd',
           inputDigestSource: {
             structured_resume: body.structured_resume,
             jd_text: jdText,
@@ -450,7 +498,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
                   stepContext,
                   outputName: 'MatchAnalysis',
                   currentOutput: matchAnalysis,
-                  evaluate: evaluateMatchAnalysisBusiness,
+                  evaluate: (output) => evaluateMatchAnalysisBusiness(output, body.structured_resume),
                   repair: ({ currentOutput, evaluation }) =>
                     matcher.repairBusinessOutput(body.structured_resume, jdStep.result, currentOutput, evaluation, {
                       eventBus,
@@ -522,7 +570,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const generator = new ResumeGeneratorAgent()
         const reviser = new ResumeRevisionAgent()
         const { result: optimizedResume, meta } = await runHarnessedRequest({
-          workflowVersion: 'single:v4.2:generate_resume',
+          workflowVersion: 'single:v4.4:generate_resume',
           inputDigestSource: {
             structured_resume: body.structured_resume,
             matching: body.matching,
@@ -551,7 +599,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
               runContext,
               eventBus,
               stepName: 'generate_resume',
-              timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
+              timeoutMs: Math.min(240000, getRemainingWorkflowTimeout()),
               execute: (stepContext) =>
                 generator.generate(
                   body.structured_resume,
@@ -732,7 +780,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       try {
         const advisor = new InterviewAdvisorAgent()
         const { result, meta } = await runHarnessedStep({
-          workflowVersion: 'single:v4.2:generate_interview_advice',
+          workflowVersion: 'single:v4.4:generate_interview_advice',
           stepName: 'generate_interview_advice',
           inputDigestSource: {
             analysis: body.analysis,
@@ -831,6 +879,10 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         status: 'ok',
         timestamp: new Date().toISOString(),
         service: 'reffo-mvp',
+        generation: getV5ReleaseDescriptor(),
+        dependencies: {
+          harnessDatabase: getHarnessDatabaseHealth(),
+        },
       }
     },
     {

@@ -2,6 +2,7 @@ import { Elysia } from 'elysia'
 import { swagger } from '@elysiajs/swagger'
 import { cors } from '@elysiajs/cors'
 import { env, validateEnv } from '@/config/env'
+import { getV5ReleaseDescriptor } from '@/v5/release'
 import { mvpRoutes } from '@/routes/mvp'
 import { parseRoutes } from '@/routes/parse'
 import { sourceResumeRoutes } from '@/routes/source-resume'
@@ -9,6 +10,7 @@ import { resumeHistoryRoutes } from '@/routes/resume-history'
 import { systemRoutes } from '@/routes/system'
 import { authRoutes } from '@/routes/auth'
 import { profileRoutes } from '@/routes/profile'
+import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 
 /**
  * 启动应用
@@ -17,6 +19,7 @@ async function bootstrap() {
   // 验证环境变量
   try {
     validateEnv()
+    getV5ReleaseDescriptor()
   } catch (error) {
     console.error('❌ 环境变量验证失败:', error instanceof Error ? error.message : error)
     process.exit(1)
@@ -109,6 +112,8 @@ async function bootstrap() {
       hostname: env.HOST,
       port: env.PORT,
     })
+
+  startSupabaseHarnessCleanup()
 
   console.log('\n🚀 Reffo MVP 服务启动成功！')
   console.log('========================================')

@@ -5,6 +5,7 @@ import type { LlmProvider } from '@/providers/llm-provider'
 import type { AgentExecutionOptions } from '@/agents/types'
 import type { EvaluationResult } from '@/harness/evaluators/markdown-resume-evaluator'
 import type { ResumeStructure, JDStructure, MatchAnalysis } from '@/types'
+import { postProcessV44Resume } from '@/agents/resume-generator-v44-support'
 
 /**
  * Resume Revision Agent
@@ -42,7 +43,7 @@ export class ResumeRevisionAgent {
         stepContext: options.stepContext,
       })
 
-      return response.content.trim()
+      return postProcessV44Resume(response.content, sourceResume)
     } catch (error) {
       console.error('Resume revision failed:', error)
       throw new Error(`简历修订失败: ${error instanceof Error ? error.message : '未知错误'}`)

@@ -57,6 +57,7 @@ const CLIENT_ERROR_MESSAGES: Record<string, string> = {
   SOURCE_RESUME_DELETE_FAILED: '源简历删除失败，请稍后重试',
   SOURCE_RESUME_NOT_FOUND: '源简历不存在或已删除',
   PROCESS_FAILED: '简历分析失败，请稍后重试',
+  V5_PRODUCT_QUALITY_BLOCKED: '本次结果未达到可投递质量标准，系统已停止交付不完整简历',
   ANALYSIS_FAILED: '简历分析失败，请稍后重试',
   MATCH_FAILED: '岗位匹配分析失败，请稍后重试',
   GENERATE_FAILED: '简历生成失败，请稍后重试',

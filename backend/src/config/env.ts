@@ -1,3 +1,6 @@
+import { parseDeepSeekExtractionThinking } from './deepseek-thinking'
+import { assertV5ReleaseConfiguration, parseV5ReleaseProfile } from './v5-release'
+
 const NONPROD_CORS_ORIGIN = 'https://reffo-web-nonprod.onrender.com'
 
 const DEFAULT_CORS_ORIGINS = [
@@ -35,6 +38,7 @@ function parseCorsOrigin(value: string | undefined, appEnv: AppEnv) {
 type AppEnv = 'local' | 'nonprod' | 'prod'
 type SupabaseProjectEnv = 'nonprod' | 'prod' | ''
 type DatabaseProvider = 'sqlite' | 'supabase'
+export type V5StructuredOutputMode = 'auto' | 'native' | 'json_object'
 
 function parseAppEnv(value: string | undefined): AppEnv {
   const normalizedValue = value?.trim().toLowerCase()
@@ -64,6 +68,12 @@ function parseSupabaseProjectEnv(value: string | undefined): SupabaseProjectEnv 
   }
 
   return ''
+}
+
+function parseV5StructuredOutputMode(value: string | undefined): V5StructuredOutputMode {
+  const normalizedValue = value?.trim().toLowerCase()
+  if (normalizedValue === 'native' || normalizedValue === 'json_object') return normalizedValue
+  return 'auto'
 }
 
 function parseBoolean(value: string | undefined, fallback: boolean) {
@@ -118,15 +128,28 @@ export const env = {
   HARNESS_DATABASE_PATH: process.env.HARNESS_DATABASE_PATH || '',
   HARNESS_RETENTION_DAYS: parseInt(process.env.HARNESS_RETENTION_DAYS || '7', 10),
   HARNESS_MAX_RUNS: parseInt(process.env.HARNESS_MAX_RUNS || '1000', 10),
+  HARNESS_CLEANUP_INTERVAL_MS: parsePositiveInteger(process.env.HARNESS_CLEANUP_INTERVAL_MS, 24 * 60 * 60 * 1000),
 
   // AI Provider Configuration
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || 'https://api.deepseek.com',
   AI_MODEL: process.env.AI_MODEL || 'deepseek-chat',
+  DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'default',
+  DEEPSEEK_P01_THINKING_MODE: parseDeepSeekExtractionThinking(process.env.DEEPSEEK_P01_THINKING_MODE),
+  DEEPSEEK_REASONING_EFFORT: process.env.DEEPSEEK_REASONING_EFFORT || 'high',
+  // DeepSeek thinking consumes the same completion budget as final output.
+  // Legacy agents may omit maxOutputTokens, so reserve an explicit budget.
+  DEEPSEEK_THINKING_MAX_TOKENS: parsePositiveInteger(process.env.DEEPSEEK_THINKING_MAX_TOKENS, 12000),
   AI_FALLBACK_MODELS: (process.env.AI_FALLBACK_MODELS || '')
     .split(',')
     .map((model) => model.trim())
     .filter(Boolean),
+  V5_QUALITY_JUDGE_ENABLED: parseBoolean(process.env.V5_QUALITY_JUDGE_ENABLED, false),
+  V5_RELEASE_PROFILE: parseV5ReleaseProfile(process.env.V5_RELEASE_PROFILE),
+  V5_CONTEXT_WINDOW_TOKENS: parsePositiveInteger(process.env.V5_CONTEXT_WINDOW_TOKENS, 64000),
+  V5_STRUCTURED_OUTPUT_MODE: parseV5StructuredOutputMode(process.env.V5_STRUCTURED_OUTPUT_MODE),
+  JINA_API_KEY: process.env.JINA_API_KEY || '',
+  WEB_RESEARCH_TIMEOUT_MS: parseInt(process.env.WEB_RESEARCH_TIMEOUT_MS || '20000', 10),
   // GLM-OCR Configuration
   GLM_API_KEY: process.env.GLM_API_KEY || '',
   GLM_ENDPOINT: process.env.GLM_ENDPOINT || '',
@@ -184,6 +207,7 @@ export function getOcrEnvStatus() {
  * 验证必需的环境变量
  */
 export function validateEnv() {
+  assertV5ReleaseConfiguration(env)
   if (!env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY is required in environment variables')
   }

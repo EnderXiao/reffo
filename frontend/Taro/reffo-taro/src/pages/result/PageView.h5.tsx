@@ -14,6 +14,7 @@ import {
 } from '@/utils/shared-element-transition'
 import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
+import {RequirementAnalysisPanel} from './components/RequirementAnalysis.h5'
 import type {ResultPageViewModel} from './usePageModel'
 import {buildInterviewStoryViewItems} from './model/interviewReferences'
 import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
@@ -86,8 +87,8 @@ const RESULT_STAGES: ResultStage[] = [
     key: 'resume',
     title: '相契简历',
     accent: '相契',
-    label: '相契简历',
-    subtitle: '基于岗位分析生成人岗相契的简历，确保简历与目标岗位高度匹配！',
+    label: '最佳简历',
+    subtitle: '依据岗位要求，突出你已有的相关经历与优势，保留真实的岗位差距。',
     icon: textIcon,
   },
   {
@@ -375,8 +376,10 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
     <View className='reffo-result__panel'>
       <View className='reffo-result__score-row'>
         <Text className='reffo-result__grade'>{grade}</Text>
-        <Text className='reffo-result__grade-label'>评级</Text>
+        <Text className='reffo-result__grade-label'>源简历质量</Text>
       </View>
+
+      <RequirementAnalysisPanel value={result.matching?.requirement_analysis} />
 
       <View className='reffo-result__alert reffo-result__alert--danger'>
         <View className='reffo-result__alert-heading'>
@@ -639,18 +642,23 @@ function InterviewPanel({
               <Text className='reffo-result__story-bullet'>• {item.result}</Text>
             </View>
 
-            {item.storytellingApproach.length > 0 && (
-              <>
-                <Text className='reffo-result__story-label'>讲述思路：</Text>
-                <View className='reffo-result__story-bullets'>
-                  {item.storytellingApproach.map((point, pointIndex) => (
-                    <Text key={`${item.title}-approach-${pointIndex}`} className='reffo-result__story-bullet'>
-                      • {point}
-                    </Text>
-                  ))}
-                </View>
-              </>
-            )}
+            <Text className='reffo-result__story-label'>讲述思路：</Text>
+            <View className='reffo-result__story-bullets'>
+              {item.storytellingApproach.length > 0 ? item.storytellingApproach.map((point, pointIndex) => (
+                <Text key={`${item.title}-approach-${pointIndex}`} className='reffo-result__story-bullet'>
+                  • {point}
+                </Text>
+              )) : (
+                <>
+                  <Text className='reffo-result__story-bullet'>
+                    • 从岗位描述中 <SourceReference value={item.jdQuote} /> 对齐讲述重点，优先说明这段经历如何回应岗位要求。
+                  </Text>
+                  <Text className='reffo-result__story-bullet'>
+                    • 从源简历中 <SourceReference value={item.resumeQuote} /> 回到可核验事实，避免把岗位要求包装成自己已经做过的经历。
+                  </Text>
+                </>
+              )}
+            </View>
           </View>
         ))}
       </View>
