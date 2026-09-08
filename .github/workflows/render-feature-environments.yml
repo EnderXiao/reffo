@@ -5,14 +5,13 @@ on:
     branches:
       - feature
       - 'feature/**'
-  pull_request:
-    types: [closed]
+  delete:
 
 permissions:
   contents: read
 
 concurrency:
-  group: render-feature-${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+  group: render-feature-${{ github.event_name == 'delete' && github.event.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -35,15 +34,17 @@ jobs:
         run: bash .github/scripts/render-feature-frontend.sh
 
   cleanup:
+    # Keep feature environments alive after a PR merge. Delete only when the
+    # corresponding feature branch is actually removed.
     if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.merged == true &&
-      (github.event.pull_request.head.ref == 'feature' || startsWith(github.event.pull_request.head.ref, 'feature/'))
+      github.event_name == 'delete' &&
+      github.event.ref_type == 'branch' &&
+      (github.event.ref == 'feature' || startsWith(github.event.ref, 'feature/'))
     runs-on: ubuntu-latest
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_OWNER_ID: ${{ secrets.RENDER_OWNER_ID }}
-      RENDER_FEATURE_BRANCH: ${{ github.event.pull_request.head.ref }}
+      RENDER_FEATURE_BRANCH: ${{ github.event.ref }}
       RENDER_FEATURE_ACTION: delete
     steps:
       - uses: actions/checkout@v4

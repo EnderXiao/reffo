@@ -71,7 +71,7 @@ describe('ResumeApi', () => {
       expect(mockPost).toHaveBeenCalledTimes(1);
       expect(mockPost).toHaveBeenCalledWith('/mvp/analyze', {
         resume_markdown: sampleResume,
-      });
+      }, {timeout: 120000});
 
       // 验证返回结果
       expect(result).toEqual(mockAnalysisResponse);
@@ -146,7 +146,7 @@ describe('ResumeApi', () => {
       // 验证 API 被调用
       expect(mockPost).toHaveBeenCalledWith('/mvp/analyze', {
         resume_markdown: minResume,
-      });
+      }, {timeout: 120000});
     });
   });
 
