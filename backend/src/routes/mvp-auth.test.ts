@@ -8,6 +8,7 @@ describe('mvpRoutes auth guard', () => {
     const run = spyOn(ResumeOptimizationWorkflow.prototype, 'run').mockImplementation(async input => {
       expect(input.onAnalysisSucceeded).toBeFunction()
       expect(input.output_language).toBe('en-US')
+      expect(await input.onAnalysisSucceeded?.()).toBeUndefined()
       throw new ResumeQuotaError(3, 3)
     })
     try {

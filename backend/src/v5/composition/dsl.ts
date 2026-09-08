@@ -178,7 +178,7 @@ export function materializeDslComposition(input: {
         code: 'DSL_SOURCE_CONCAT_NOT_ADJACENT',
         outputPath: `blocks[${index}].joiner`,
         message: 'P06 DSL 请求无分隔拼接，但引用证据不满足服务端的安全续行证明。',
-        expectedConstraint: 'source_concat 仅允许安全业务证据在同文档、同 scope、Bxxxx 块号连续、sourceSpan 仅隔一个换行，且相邻文本边界可由数量单位或指标数值关系确定性闭合',
+        expectedConstraint: 'source_concat 仅允许安全业务证据在同文档、同 scope、Bxxxx 块号连续、sourceSpan 仅隔一个换行或服务端已证明的排版空白，且相邻文本边界可确定性闭合',
         evidenceIds,
       }))
       return []

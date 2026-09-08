@@ -9,6 +9,7 @@ import type {
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 import { measureArtifactMarkdown, plannedContentEvidenceIds } from '@/v5/validators'
 import { compositionSectionForScopeKind } from '@/v5/composition/blueprint'
+import { formatTimelineHeading as timelineText } from '@/v5/composition/timeline-display'
 import {
   P06_COMPOSITION_COMPILER_VERSION,
   P06_COMPOSITION_CONTRACT_VERSION,
@@ -48,14 +49,6 @@ function sectionTitle(section: CompositionSectionKey, language: string) {
   return SECTION_TITLES[section][isEnglishOutput(language) ? 0 : 1]
 }
 
-function timelineText(item: ResumeEvidenceBundle['timeline'][number]) {
-  return [
-    item.organization,
-    item.title,
-    [item.start, item.end].filter(Boolean).join(' - '),
-  ].filter(Boolean).join('｜')
-}
-
 function timelineStart(value: string | null) {
   const parts = value?.match(/((?:19|20)\d{2})(?:\s*[.年/\-]\s*(\d{1,2}))?/u)
   return parts ? Number(parts[1]) * 12 + Number(parts[2] ?? 0) : 0
@@ -87,7 +80,7 @@ function transformationFor(input: {
   slot?: CompositionBlueprintSlot
 }): GeneratedResumeArtifact['claims'][number]['transformation'] {
   if (/^timeline(?:\.|\[|$)/i.test(input.outputPath)) return 'safe_paraphrase'
-  if (input.slot?.kind === 'summary') {
+  if (input.slot?.kind === 'summary' || input.slot?.kind === 'skill') {
     return input.atoms.length > 1 && new Set(input.atoms.map(atom => atom.sourceScopeId)).size === 1
       ? 'same_scope_merge' : 'safe_paraphrase'
   }
@@ -226,7 +219,11 @@ export function renderValidatedCompositionArtifact(input: {
     lines.push(`## ${sectionTitle(section, input.blueprint.outputLanguage)}`, '')
     for (const item of items) {
       if (item.kind === 'heading') lines.push(item.text, '')
-      else appendClaim(item.claim)
+      else {
+        if (item.claim.outputPath.startsWith('timeline.')) lines.push('')
+        appendClaim(item.claim)
+        if (item.claim.outputPath.startsWith('timeline.')) lines.push('')
+      }
     }
     lines.push('')
   }

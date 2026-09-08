@@ -75,9 +75,17 @@ bun run migrate:sqlite-to-supabase:prod
 
 完整简历优化流程固定执行 V5：代码先生成并预检源简历 scope 计划，P01 按稳定 scope 有界分片抽取且通过后才执行 P02，随后执行 P03 匹配、P04 条件策略、本地代码构建 P05 形状的计划，再经 Blueprint 零调用预检、单次 P06D 受控 DSL、服务端编译和本地代码门禁生成成品。产物完成交付判定后立即转换为旧 MVP 响应；正式 `/process` 链路不再注册或调用 P05/P05R、P07、P09、P10/P10R 或 P11 模型。`legacy` kill switch 仍保留旧 P06/P08 路径。
 
-完整流程固定执行 V5，不再提供 V4、shadow 或请求级版本切换。响应保留旧步骤字段，同时增加 Agent 状态、release status 和安全回退标识；架构、调用成本与发布门槛见 [`src/v5/README.md`](src/v5/README.md)。当前改动只在测试分支验证，暂不合入 `main`。
+完整流程固定执行 V5，不再提供 V4、shadow 或请求级版本切换。响应保留旧步骤字段，同时增加 Agent 状态、release status 和安全回退标识；架构、调用成本与发布门槛见 [`src/v5/README.md`](src/v5/README.md)。2026-09-08 起按产品负责人授权准备 entry r5 生产发布；部署状态、切换与回滚见 [`docs/v5-entry-r5-production-rollout.md`](docs/v5-entry-r5-production-rollout.md)。
+
+正式接口通过服务端 `V5_RELEASE_PROFILE=legacy-dsl|entry-r5` 原子切换编排，默认保持 `legacy-dsl`，请求体不能切换版本。`entry-r5` 要求 `AI_MODEL=deepseek-v4-flash`、`OPENAI_BASE_URL=https://api.deepseek.com`、`DEEPSEEK_THINKING_MODE=disabled`、`DEEPSEEK_P01_THINKING_MODE=disabled`。配置不匹配时启动失败，不静默切换其他模型。`/api/v1/mvp/health` 的 `generation` 返回实际版本与模型配置（无密钥）。
 
 ### V5 插件清单
+
+P01/P01R r19 使用可选 `temporalRiskQuote`（完整源句）定位独立证据单元：有限的“当前职责＋末句状态”即使被误标未来，也可隔离状态句，避免连带封锁职责；不清除被引用句的风险、不把已批准升级为已任职。条件依赖/其他风险/未知表达仍保守处理，不提高 Token/事实容量。根结构不变，新指纹使旧抽取缓存失效。当前已通过真实失败响应本地回放、840 项后端测试与 Case3 零外呼预检，尚非新模型或成品质量通过；见 [r19 测试就绪记录](docs/v5-p01-r19-readiness.md)。
+
+P01/P01R 支持独立 `DEEPSEEK_P01_THINKING_MODE=inherit|enabled|disabled`，默认 `inherit` 不改变现有部署。非生产 Flash 对照建议显式设置 `DEEPSEEK_P01_THINKING_MODE=disabled`，同时保留全局 `DEEPSEEK_THINKING_MODE=enabled` 与原思考强度供 P02/P03/Writer 使用。按编译后的阶段 metadata 分流，不检查用户正文关键词；独立配置进入运行和抽取缓存指纹及逐次调用诊断，不复用其他模式旧缓存。仅增加配置能力，不自动修改环境文件或切换生产默认。
+
+P01/P01R r17 保持 9 字段契约，区分上下文不足与真实冲突，保留自述、指标碎片和限定；不把材料抽取当成外部真实性审查。`qualityAssessment` 仍为兼容保留的本片评价，不是整份招聘评分。`extraction.validation.observed` 新增可选 `retention` 数值观察：原始事实/未映射/遗漏、代码补记、最终排除/限定及业务分类数量；不会因为覆盖率好看就证明成品可用。旧缓存没有该观察时不补造数字，也不新增质量阻断或模型调用。
 
 非生产单案例验证可显式使用 `AI_MODEL=deepseek-v4-flash DEEPSEEK_THINKING_MODE=enabled DEEPSEEK_REASONING_EFFORT=low`。思考模式通过请求体显式指定，禁用无效 temperature；`completion_tokens` 已包含思考 Token，预算不能再次相加。只记录思考 Token 数，不保存或回传推理正文。模型、模式和强度进入运行及抽取缓存指纹，不提升旧缓存。调用方未传 `maxOutputTokens` 时，Provider 使用 `DEEPSEEK_THINKING_MAX_TOKENS`（默认 12000）为思考与最终输出预留共享预算；V5 阶段显式上限仍以阶段配置为准。截断仍失败即停，不自动修复/重跑。默认环境与生产模型不因此变更。
 

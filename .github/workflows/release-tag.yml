@@ -68,6 +68,7 @@ jobs:
         working-directory: backend
         run: |
           bun install --frozen-lockfile
+          bunx --no-install tsc --noEmit
           bun test ./src
 
       - name: Build H5
@@ -80,8 +81,8 @@ jobs:
       - name: Trigger Render deploy
         run: |
           if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "RENDER_DEPLOY_HOOK_URL 未配置，跳过 Render 发布"
-            exit 0
+            echo "RENDER_DEPLOY_HOOK_URL 未配置，不能将此版本标记为已触发发布"
+            exit 1
           fi
           curl --fail --retry 3 -X POST "$RENDER_DEPLOY_HOOK_URL"
         env:

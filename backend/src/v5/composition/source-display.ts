@@ -1,5 +1,11 @@
 import type { EvidenceAtom, ResumeEvidenceBundle } from '@/v5/types'
 
+/** A dangling numeric comparison is not a complete result, even with valid quotes. */
+export function hasIncompleteMetricValue(value: string) {
+  const text = value.trim().replace(/[。.!！?？]+$/u, '').trimEnd()
+  return /\d/u.test(text) && /(?:提升至|提高至|增长至|降低至|减少至|下降至|增至|降至|达到|\b(?:to|from))$/iu.test(text)
+}
+
 /** Presentation-only edits. Never drop attribution, uncertainty, numbers or negation. */
 export function sourceBusinessDisplayText(value: string) {
   return value.trim()
@@ -17,7 +23,7 @@ export function hasEditorialSourceText(value: string) {
     || /^(?:PRD|材料|原文|研究事实).{0,8}(?:已交叉验证|已确认|已核验)/iu.test(value.trim())
 }
 
-export function isBusinessMetadata(atom: EvidenceAtom, resume: ResumeEvidenceBundle) {
+export function isBusinessMetadata(atom: EvidenceAtom, resume: ResumeEvidenceBundle, hasSourceAnchoredAction = false) {
   const raw = atom.verbatimText.trim()
   const text = sourceBusinessDisplayText(raw)
   if (/^#{1,6}\s/u.test(raw) || !text) return true
@@ -25,7 +31,7 @@ export function isBusinessMetadata(atom: EvidenceAtom, resume: ResumeEvidenceBun
   const compact = (value: string) => value.replace(/[\s。.;；|｜丨]+/gu, '').toLowerCase()
   const scope = resume.timeline.find(item => item.scopeId === atom.sourceScopeId)
   if (scope?.title && compact(scope.title) === compact(text)) return true
-  if (atom.claimType === 'responsibility' && !/[。；;：:]/u.test(text)
+  if (!hasSourceAnchoredAction && atom.claimType === 'responsibility' && !/[。；;：:]/u.test(text)
     && !/(?:主导|负责|推动|参与|完成|交付|建立|形成|实现|支持|承担|设计了|管理了)/u.test(text)) return true
   // A role followed by areas of responsibility is metadata, not an action.
   if (/^(?:(?:高级|中级|初级|资深)\s*)?(?:产品经理|产品助理|项目经理|创新策略设计师|设计师|工程师)\s*[；;|｜丨]/u.test(text)) return true

@@ -49,6 +49,13 @@ export interface CanonicalSourceDocument {
   primaryLanguage: string
   canonicalLength: number
   blocks: SourceBlock[]
+  /** Server-derived, sparse proofs of non-LF-only layout separators. */
+  sourceLineContinuations?: Array<{
+    previousBlockId: string
+    currentBlockId: string
+    separator: string
+    binding: string
+  }>
 }
 
 export interface NumericAtom {
@@ -75,6 +82,12 @@ export interface EvidenceAtom {
   qualifiers: string[]
   numericAtoms: NumericAtom[]
   riskFlags: EvidenceRiskFlag[]
+  /** Created only from validated canonical blocks, never extraction output. */
+  sourceContinuation?: {
+    previousEvidenceId: string
+    separator: string
+    binding: string
+  }
 }
 
 export interface ResumeExtractionCandidate {
@@ -129,6 +142,8 @@ export interface ResumeExtractionCandidate {
     qualifiers: string[]
     numericAtoms: NumericAtom[]
     riskFlags: EvidenceRiskFlag[]
+    /** Optional source sentence locating a model-proposed temporal risk, not proof of truth. */
+    temporalRiskQuote?: string | null
   }>
   unmappedFragments: Array<{
     sourceBlockId: string
@@ -688,6 +703,8 @@ export interface V5DeliveryDiagnostics {
 }
 
 export interface V5WorkflowResult {
+  /** Internal replay metadata; public MVP response projection does not expose it. */
+  entryWriting?: { version: 'entry-writing-v1'; renderingPlan: V5ResumePlan; paragraphPaths: string[] }
   requirementAnalysis?: import('@/job-analysis/requirements').RequirementAnalysis
   state: ResumeAgentState
   releaseStatus: V5ReleaseStatus

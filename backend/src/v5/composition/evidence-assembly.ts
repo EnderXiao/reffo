@@ -1,5 +1,5 @@
 import type { EvidenceAtom, ResumeEvidenceBundle, V5ResumePlan } from '@/v5/types'
-import { areCanonicalAdjacentSourceAtoms, businessSourceContinuationGroups } from '@/v5/composition/source-continuation'
+import { areCanonicalAdjacentSourceAtoms, businessSourceContinuationGroups, hasCanonicalSourceLineSeparator } from '@/v5/composition/source-continuation'
 
 const BUSINESS_CLAIM_TYPES = new Set<EvidenceAtom['claimType']>([
   'responsibility',
@@ -81,7 +81,7 @@ function isCanonicalLineNeighbor(left: EvidenceAtom, right: EvidenceAtom) {
     && left.sourceDocumentHash === right.sourceDocumentHash
     && left.sourceScopeId === right.sourceScopeId
     && rightOrdinal === leftOrdinal + 1
-    && right.sourceSpan.start === left.sourceSpan.end + 1
+    && hasCanonicalSourceLineSeparator(left, right)
     && !TERMINAL_PUNCTUATION_PATTERN.test(left.verbatimText.trim())
 }
 

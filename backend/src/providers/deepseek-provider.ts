@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { env } from '@/config/env'
-import { deepSeekThinkingParameters, parseDeepSeekThinking, type DeepSeekThinkingSettings } from '@/config/deepseek-thinking'
+import { deepSeekThinkingParameters, parseDeepSeekThinking, isResumeExtractionRequest, resolveDeepSeekStageThinking, type DeepSeekThinkingSettings, type DeepSeekExtractionThinkingMode } from '@/config/deepseek-thinking'
 import { createHarnessEvent } from '@/harness/events'
 import { createDigest } from '@/harness/run-context'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
@@ -46,7 +46,8 @@ function composeAbortSignals(...candidates: Array<AbortSignal | undefined>) {
 export class DeepSeekProvider implements LlmProvider {
   private readonly client: OpenAI
 
-  constructor(client?: OpenAI, private readonly thinkingSettings?: DeepSeekThinkingSettings) {
+  constructor(client?: OpenAI, private readonly thinkingSettings?: DeepSeekThinkingSettings,
+    private readonly extractionThinkingMode: DeepSeekExtractionThinkingMode = env.DEEPSEEK_P01_THINKING_MODE) {
     this.client = client ?? new OpenAI({
       apiKey: env.OPENAI_API_KEY,
       baseURL: env.OPENAI_BASE_URL,
@@ -55,7 +56,11 @@ export class DeepSeekProvider implements LlmProvider {
 
   async complete(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     const model = input.model ?? env.AI_MODEL
-    const settings = this.thinkingSettings ?? parseDeepSeekThinking(env.DEEPSEEK_THINKING_MODE, env.DEEPSEEK_REASONING_EFFORT)
+    const settings = resolveDeepSeekStageThinking(
+      this.thinkingSettings ?? parseDeepSeekThinking(env.DEEPSEEK_THINKING_MODE, env.DEEPSEEK_REASONING_EFFORT),
+      this.extractionThinkingMode,
+      isResumeExtractionRequest(input)
+    )
     const thinking = deepSeekThinkingParameters(model, env.OPENAI_BASE_URL, settings)
     const maxOutputTokens = input.maxOutputTokens
       ?? (settings.mode === 'enabled' ? env.DEEPSEEK_THINKING_MAX_TOKENS : undefined)
@@ -112,10 +117,39 @@ export class DeepSeekProvider implements LlmProvider {
       ...thinking,
       max_tokens: maxOutputTokens,
     }
-    let responseThinking = thinking
-    let physicalAttempts = 0
+    const responseThinking = thinking
+    const physicalAttempts = 1
     const response = await (async () => {
       try {
+        if (input.onContentDelta) {
+          const stream = await this.client.chat.completions.create({
+            ...requestBody, stream: true, stream_options: { include_usage: true },
+          } as unknown as OpenAI.ChatCompletionCreateParamsStreaming,
+          { signal: requestSignal.signal, maxRetries: 0 })
+          let content = '', id = '', resolvedModel = model
+          let finishReason: OpenAI.ChatCompletion['choices'][number]['finish_reason'] = 'stop'
+          let finished = false
+          let usage: OpenAI.CompletionUsage | undefined
+          // Bound accumulation even if a faulty provider ignores max_tokens.
+          const maxCharacters = Math.max(65536, (maxOutputTokens ?? 16384) * 32)
+          for await (const chunk of stream) {
+            requestSignal.signal?.throwIfAborted()
+            id = chunk.id || id
+            resolvedModel = chunk.model || resolvedModel
+            if (chunk.usage) usage = chunk.usage
+            const choice = chunk.choices.find(item => item.index === 0)
+            if (choice?.finish_reason) { finishReason = choice.finish_reason; finished = true }
+            const delta = choice?.delta.content
+            if (delta) {
+              content += delta
+              if (content.length > maxCharacters) throw new Error('PROVIDER_STREAM_SIZE_EXCEEDED')
+              input.onContentDelta(delta)
+            }
+          }
+          // A clean transport EOF without a terminal model frame is incomplete.
+          if (!finished) throw new Error('PROVIDER_STREAM_INCOMPLETE')
+          return { id, model: resolvedModel, choices: [{ message: { content }, finish_reason: finishReason }], usage }
+        }
         const createCompletion = (body: DeepSeekChatBody) => this.client.chat.completions.create(
           // DeepSeek's documented `max` effort is not in this SDK's OpenAI enum.
           // Keep that compatibility boundary local; the body is typed above.
@@ -127,17 +161,9 @@ export class DeepSeekProvider implements LlmProvider {
           }
         )
 
-        physicalAttempts += 1
-        let result = await createCompletion(requestBody)
-        const firstContent = result.choices[0]?.message?.content
-        // DeepSeek may stop after reasoning with an empty final message. Retry
-        // once at low effort, keeping thinking enabled, before surfacing empty output.
-        if (!firstContent && result.choices[0]?.finish_reason !== 'length' && settings.mode === 'enabled') {
-          responseThinking = { thinking: { type: 'enabled' as const }, reasoning_effort: 'low' }
-          physicalAttempts += 1
-          result = await createCompletion({ ...requestBody, ...responseThinking })
-        }
-        return result
+        // One complete invocation is exactly one physical request. Recovery belongs
+        // to the observable orchestration/budget layer, never an implicit second call.
+        return await createCompletion(requestBody)
       } finally {
         requestSignal.dispose()
       }
@@ -147,7 +173,7 @@ export class DeepSeekProvider implements LlmProvider {
 
     // A reasoning-only truncation still has billable usage. Let the structured
     // stage reject `length` after the budget wrapper records the actual total.
-    if (!content && !(input.structuredOutput && response.choices[0]?.finish_reason === 'length')) {
+    if (!content && !input.structuredOutput) {
       throw new Error('AI 返回内容为空')
     }
 

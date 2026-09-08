@@ -31,6 +31,54 @@ function context() {
 }
 
 describe('supported writing facts and contract', () => {
+  test('allows source-backed summary numbers but still rejects invented totals', () => {
+    const input = context()
+    const fact = input.writingPlan.facts.find(f => f.text.includes('交付3个功能'))!
+    const summary = { slotId: 'summary:0', evidenceIds: [fact.evidenceId], text: '参与团队产品迭代，交付3个功能。' }
+    input.writingPlan.blueprint.slots.unshift({ slotId: 'summary:0', kind: 'summary', sectionKey: 'summary', scopeId: null,
+      outputPath: 'summary[0]', order: -1, required: true, allowedEvidenceIds: [fact.evidenceId] })
+    input.writingPlan.blueprint.sectionOrder.unshift('summary')
+    input.writingPlan.coreEvidenceIdsBySlot['summary:0'] = []
+    input.composition.blocks.unshift(summary)
+    expect(() => compileWritingArtifact(input)).not.toThrow()
+    summary.text = '参与团队产品迭代，累计交付30个功能。'
+    try { compileWritingArtifact(input); throw new Error('expected validation error') }
+    catch (error) { expect((error as SupportedWritingError).issues.map(i => i.code)).toContain('WRITER_NUMBER_CHANGED') }
+  })
+  test('recognizes source-supported reverse collaboration phrases without inferring departments from product development', () => {
+    expect(inspectSupportedWriting('跨部门交付：协同研发、设计、商务、宣发团队。', [
+      atom('方案设计、研发协同、上线落地。'), atom('联动设计、商务和宣发支持功能发布。'),
+    ], 'skills[0]')).toEqual([])
+    expect(inspectSupportedWriting('协同研发完成任务。', [atom('产品开发设计。')], 'skills[0]').map(issue => issue.code)).toContain('WRITER_COLLABORATOR_ADDED')
+    expect(inspectSupportedWriting('协同研发、商务完成任务。', [atom('研发协同。')], 'skills[0]').map(issue => issue.code)).toContain('WRITER_COLLABORATOR_ADDED')
+  })
+  test('recognizes cross-functional delivery as collective work without allowing ownership upgrades', () => {
+    const source = atom('参与团队产品交付。')
+    source.riskFlags = ['team_attribution']
+    expect(inspectSupportedWriting('具有跨部门交付实践。', [source], 'summary[0]')).toEqual([])
+    expect(inspectSupportedWriting('具有产品交付实践。', [source], 'summary[0]').map(issue => issue.code)).toContain('WRITER_BOUNDARY_LOST')
+    expect(inspectSupportedWriting('跨部门交付中独立完成全部工作。', [source], 'summary[0]').map(issue => issue.code)).toContain('WRITER_OWNERSHIP_UPGRADE')
+  })
+  test('Writer receives team boundaries recorded in evidence metadata, not only lexical source phrases', () => {
+    const source = atom('平均每两周发布一个版本。')
+    source.riskFlags = ['team_attribution']
+    expect(buildWritingFact(source)?.boundaries).toContain('团队或参与贡献')
+    expect(inspectSupportedWriting('平均每两周发布一个版本。', [source], 'summary[0]').map(i => i.code)).toContain('WRITER_BOUNDARY_LOST')
+    expect(inspectSupportedWriting('协同团队平均每两周发布一个版本。', [source], 'summary[0]').map(i => i.code)).not.toContain('WRITER_BOUNDARY_LOST')
+  })
+
+  test('rejects an unfinished metric even when its evidence references are valid', () => {
+    const input = context()
+    const block = input.composition.blocks.find(b => input.writingPlan.blueprint.slots.find(s => s.slotId === b.slotId)?.kind !== 'summary')!
+    block.text = '参与团队产品迭代并交付3个功能，覆盖率提升至'
+    try { compileWritingArtifact(input); throw new Error('expected writer validation error') }
+    catch (error) {
+      expect(error).toBeInstanceOf(SupportedWritingError)
+      expect((error as SupportedWritingError).issues.some(i => i.code === 'WRITER_INCOMPLETE_METRIC')).toBe(true)
+    }
+    expect(() => compileWritingArtifact(context())).not.toThrow()
+  })
+
   test('Writer preflight reserves the actual P06C allowance and never authorizes both writers', () => {
     const shape = { validatedShardIndexes: [0], artifactGenerationMode: 'writer_v1' as const }
     expect(v5EvaluationComponentQuotas(1, 'generation-only', shape)).toEqual({ P02: 1, P02R: 1, P03: 1, P03R: 1, P04: 1, P06C: 1 })
@@ -51,6 +99,13 @@ describe('supported writing facts and contract', () => {
   test('does not erase unrecognized editorial or uncertain qualifications', () => {
     expect(buildWritingFact(atom('可能尚未上线，投递前需本人确认。'))).toBeNull()
     expect(buildWritingFact(atom('参与概念方案设计，尚未上线。'))?.text).toContain('尚未上线')
+  })
+  test('removes only explicit provenance labels while retaining numbers and uncertainty', () => {
+    const source = atom('交付产品，个人简历记录iOS日活200K，尚未验证。')
+    const before = structuredClone(source)
+    expect(writingDisplayText(source.verbatimText)).toBe('交付产品，iOS日活200K，尚未验证。')
+    expect(source).toEqual(before)
+    expect(writingDisplayText('可能达到200K，个人仍需确认。')).toContain('可能')
   })
 
   test.each([
@@ -150,12 +205,13 @@ describe('supported writing facts and contract', () => {
     const block = input.composition.blocks.find(block => !block.slotId.startsWith('summary'))!
     const source = input.resume.evidenceAtoms.find(atom => atom.evidenceId === block.evidenceIds[0])!
     source.verbatimText += '转化率提升15%。'
-    input.writingPlan.editorial = { version: 'writing-editorial-v1', slots: { [block.slotId]: {
+    input.writingPlan.editorial = { version: 'writing-editorial-v4', slots: { [block.slotId]: {
       role: 'contribution', targetTaskIds: [], emphasis: [{ evidenceId: source.evidenceId, text: '转化率提升15%。', kind: 'outcome' }],
-      lengthHint: { unit: 'cjk_characters', target: 10, max: 15 }, avoidRepeatingSlotIds: [],
+      lengthHint: { unit: 'cjk_characters', target: 10, max: 15 }, avoidRepeatingSlotIds: [], priorityEvidenceIds: ['optional-practice'],
     } } }
     const compiled = compileWritingArtifact(input)
     expect(compiled.writingIssues).toContainEqual(expect.objectContaining({code: 'WRITER_PRIORITY_OUTCOME_OMITTED', severity: 'warning'}))
+    expect(compiled.writingIssues).toContainEqual(expect.objectContaining({code: 'WRITER_PRIORITY_PRACTICE_OMITTED', severity: 'warning'}))
     expect(compiled.artifact.markdown).toContain('交付3个功能')
   })
 
@@ -182,11 +238,11 @@ describe('supported writing facts and contract', () => {
     const input = context()
     const payload = writingPayload(input.writingPlan)
     const compiled = compileV5Prompt({ component: 'P06C', envelope: { payload } })
-    expect(compiled.promptVersion).toBe('5.1.0-p06c-supported-writer-r8')
+    expect(compiled.promptVersion).toBe('5.1.0-p06c-supported-writer-r16')
     expect(compiled.maxOutputTokens).toBeLessThanOrEqual(4800)
     expect(compiled.schema.safeParse(input.composition).success).toBe(true)
     expect(payload).not.toHaveProperty('resumeEvidenceBundle')
     expect(payload).not.toHaveProperty('identity')
-    expect(compiled.messages[0].content).toContain('材料简略时解释已知职责')
+    expect(compiled.messages[0].content).toContain('稀疏材料解释已知工作的职业含义')
   })
 })

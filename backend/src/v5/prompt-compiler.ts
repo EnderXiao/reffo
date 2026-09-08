@@ -4,6 +4,7 @@ import { createDigest } from '@/harness/run-context'
 import type { ChatMessage } from '@/providers/llm-provider'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { p06CompositionOutputSchema } from '@/v5/composition/contract'
+import { entryWritingOutputSchema, isEntryWritingEnvelope } from '@/v5/writing/entries'
 import { p06DslOutputSchema } from '@/v5/composition/dsl'
 import { isJobTargetedEnvelope, jobFitMapSchema, targetedJobExtractionSchema } from '@/v5/targeting/contracts'
 import { resumeDocumentFromEnvelope, resumeExtractionTransportSchema } from '@/v5/resume-extraction-transport'
@@ -26,7 +27,7 @@ import {
   estimateResumeExtractionOutputTokens,
   resumeExtractionRawFactCandidateLimit,
 } from '@/v5/chunked-resume-extraction'
-import { buildV5SystemPrompt, buildV5UserPrompt, loadV5Prompt, type V5PromptComponent, V5_PROMPT_VERSIONS } from '@/v5/prompts'
+import { buildV5SystemPrompt, buildV5UserPrompt, loadV5Prompt, type V5PromptComponent } from '@/v5/prompts'
 import {
   V5_ADAPTIVE_POLICY_VERSION,
   V5_SCHEMA_VERSION,
@@ -126,6 +127,13 @@ export interface CompiledV5Prompt {
     temperature: number
     inputDocumentIds: string[]
     repairAttempt: number
+    inputSummary: {
+      envelopeBytes: number
+      envelopeTopLevelFields: string[]
+      messageCount: number
+      messageCharacterCounts: number[]
+      estimatedInputTokens: number
+    }
     promptFileSha256: string
     promptFilePath: string
   }
@@ -246,7 +254,7 @@ export function schemaForV5Component(component: V5PromptComponent, envelope?: un
     case 'P08':
       return generatedResumeArtifactSchema
     case 'P06C':
-      return p06CompositionOutputSchema
+      return isEntryWritingEnvelope(envelope) ? entryWritingOutputSchema : p06CompositionOutputSchema
     case 'P06D':
       return p06DslOutputSchema
     case 'P09': {
@@ -277,6 +285,7 @@ export function estimateV5PromptInputTokens(messages: readonly ChatMessage[]) {
 
 function calculateMaxOutputTokens(component: V5PromptComponent, envelope: unknown, envelopeLength: number) {
   const structuralHeadroom = Math.ceil(OUTPUT_TOKEN_BASE[component] * 1.2)
+  if (component === 'P06C' && isEntryWritingEnvelope(envelope)) return structuralHeadroom
   if (component === 'P01' || component === 'P01R') {
     return resumeExtractionOutputTokenCapForBlocks(canonicalResumeBlocks(envelope) ?? [])
   }
@@ -296,35 +305,52 @@ export class V5PromptBudgetError extends Error {
   }
 }
 
+function isSupportedWritingEnvelope(envelope: unknown) {
+  if (!envelope || typeof envelope !== 'object' || !('payload' in envelope)) return false
+  const payload = envelope.payload
+  return !!payload && typeof payload === 'object' && 'writingPolicy' in payload
+    && payload.writingPolicy === 'supported-writing-v1'
+}
+
 export function compileV5Prompt(input: {
   component: V5PromptComponent
   envelope: unknown
   inputDocumentIds?: string[]
   repairAttempt?: number
 }): CompiledV5Prompt {
-  const serializedEnvelope = JSON.stringify(input.envelope)
+  // These sparse attestations are consumed only by local source validators.
+  // Keep them in persisted data, never duplicate them in model context.
+  const serializedEnvelope = JSON.stringify(input.envelope, (key, value) => (
+    key === 'sourceLineContinuations' || key === 'sourceContinuation' ? undefined : value
+  ))
   const schema = schemaForV5Component(input.component, input.envelope)
   const extractionDocument = input.component === 'P01' || input.component === 'P01R'
     ? resumeDocumentFromEnvelope(input.envelope) : null
   const providerSchema = extractionDocument ? resumeExtractionTransportSchema(extractionDocument) : schema
   const schemaName = input.component === 'P06C'
-    ? 'reffo_p06c_composition_v1'
+    ? isEntryWritingEnvelope(input.envelope) ? 'reffo_p06c_entry_v1' : 'reffo_p06c_composition_v1'
     : input.component === 'P06D'
       ? 'reffo_p06d_dsl_v1'
     : `reffo_${input.component.toLowerCase()}_${V5_SCHEMA_VERSION.replaceAll('.', '_')}`
   const generatedOutputContract = zodResponseFormat(providerSchema, schemaName).json_schema.schema
   if (!generatedOutputContract) throw new Error(`${input.component} JSON Schema 生成失败。`)
   const outputContract = compactV5PromptJsonSchema(generatedOutputContract, schemaName)
+  const supportedWriting = input.component === 'P06C' && isSupportedWritingEnvelope(input.envelope)
+  const payload = (input.envelope as { payload?: { documentEditorial?: { version?: string } } } | null)?.payload
+  const structuralWriting = supportedWriting && payload?.documentEditorial?.version === 'document-editorial-v1'
+  const targetedMatching = ['P03', 'P03R'].includes(input.component) && isJobTargetedEnvelope(input.envelope)
+  const entryWriting = supportedWriting && isEntryWritingEnvelope(input.envelope)
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildV5SystemPrompt(input.component) },
+    { role: 'system', content: buildV5SystemPrompt(input.component,
+      supportedWriting, structuralWriting, targetedMatching, entryWriting) },
     {
       role: 'user',
       content: `${buildV5UserPrompt(input.component, serializedEnvelope)}\n\nSTRICT_OUTPUT_JSON_SCHEMA:\n${JSON.stringify(outputContract)}`,
     },
   ]
   const promptSha256 = createDigest(messages)
-  const promptVersion = V5_PROMPT_VERSIONS[input.component]
-  const promptFile = loadV5Prompt(input.component)
+  const promptFile = loadV5Prompt(input.component, structuralWriting, targetedMatching, entryWriting)
+  const promptVersion = promptFile.version
   const temperature = TEMPERATURES[input.component]
   const estimatedInputTokens = estimateV5PromptInputTokens(messages)
   const desiredOutputTokens = calculateMaxOutputTokens(input.component, input.envelope, serializedEnvelope.length)

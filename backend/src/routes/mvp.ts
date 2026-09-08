@@ -7,6 +7,7 @@ import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
 import { ResumeRevisionAgent } from '@/agents/resume-revision'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { createHarnessEvent } from '@/harness/events'
+import { getV5ReleaseDescriptor } from '@/v5/release'
 import {
   assertBusinessEvaluationPassed,
   evaluateWithBusinessRecovery,
@@ -152,7 +153,9 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           jd_text,
           enable_llm_judge,
           output_language,
-          onAnalysisSucceeded: () => consumeResumeQuota(userContext),
+          onAnalysisSucceeded: async () => {
+            await consumeResumeQuota(userContext)
+          },
         })
 
         const response: ApiResponse<MvpProcessResponse> = {
@@ -876,6 +879,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         status: 'ok',
         timestamp: new Date().toISOString(),
         service: 'reffo-mvp',
+        generation: getV5ReleaseDescriptor(),
         dependencies: {
           harnessDatabase: getHarnessDatabaseHealth(),
         },

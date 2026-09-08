@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { evaluationDeepSeekPolicy } from '@/config/deepseek-thinking'
+import { evaluationDeepSeekPolicy, parseDeepSeekThinking, parseDeepSeekExtractionThinking, resolveDeepSeekStageThinking, isResumeExtractionRequest } from '@/config/deepseek-thinking'
 import type { DoubleOrderAbResult } from '@/v5/ab-evaluator'
 import { canonicalizeSourceDocument } from '@/v5/canonical-source'
 import {
@@ -172,6 +172,7 @@ interface RunManifest {
     maxProviderAttempts: 1
     fallbackEnabled: false
     generationPolicy?: ReturnType<typeof evaluationDeepSeekPolicy>
+    extractionPolicy?: ReturnType<typeof evaluationDeepSeekPolicy>
   }
   executionPolicy: {
     releaseGateMode: 'deterministic_product_delivery_v2'
@@ -179,6 +180,7 @@ interface RunManifest {
     agentQualityJudgeEnabled: false
     artifactGenerationMode: 'dsl_v1' | 'writer_v1'
     jobTargetingPolicy?: 'job-targeted-v1'
+    entryWritingPolicy?: 'entry-writing-v1'
     artifactRepairMax: 0
     interviewMode: 'deferred'
     componentQuotaPolicy: typeof V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION
@@ -383,6 +385,7 @@ function usage() {
   --stage <stage>   generation-only、judge-only 或 full 可实跑；extract-only 当前仅允许 dry-run
   --artifact-mode <mode>  dsl_v1（默认）或 writer_v1（非生产受控写作）
   --job-targeted          启用 r2 岗位画像与胜任映射（须同时选择 writer_v1）
+  --entry-writer          经历级单次 Writer + 正文流接收（须同时启用 --job-targeted）
   --source-run      judge-only 使用的冻结 generation-only/full 输出目录；必须与新输出目录隔离
   --dry-run         只做输入、预算、指纹与调用上界预检；这是默认模式
   --live            显式启用真实调用，且必须同时提供 --output
@@ -898,6 +901,12 @@ async function main() {
   const implementationDigest = await createImplementationDigest(backendRoot)
   const model = process.env.AI_MODEL?.trim() || 'deepseek-chat'
   const generationPolicy = evaluationDeepSeekPolicy(model, process.env.DEEPSEEK_THINKING_MODE, process.env.DEEPSEEK_REASONING_EFFORT)
+  const extractionThinkingMode = parseDeepSeekExtractionThinking(process.env.DEEPSEEK_P01_THINKING_MODE)
+  const extractionThinking = resolveDeepSeekStageThinking(
+    parseDeepSeekThinking(process.env.DEEPSEEK_THINKING_MODE, process.env.DEEPSEEK_REASONING_EFFORT),
+    extractionThinkingMode, true
+  )
+  const extractionPolicy = evaluationDeepSeekPolicy(model, extractionThinking.mode, extractionThinking.effort)
   const contextWindowTokens = Number.parseInt(process.env.V5_CONTEXT_WINDOW_TOKENS || '64000', 10)
   if (!Number.isSafeInteger(contextWindowTokens) || contextWindowTokens <= 0) {
     throw new Error('V5_CONTEXT_WINDOW_TOKENS 必须是正安全整数')
@@ -907,7 +916,9 @@ async function main() {
     runtime: { bunVersion: Bun.version },
     providerEndpoint,
     model,
-    ...(generationPolicy ? { generationPolicy } : {}),
+    // Only the effective extraction policy belongs in this cache key.
+    // Changing Writer effort must not invalidate a disabled-thinking P01 cache.
+    ...(extractionPolicy ? { generationPolicy: extractionPolicy } : {}),
     maxProviderAttempts: 1,
     fallbackEnabled: false,
     structuredOutputMode,
@@ -927,6 +938,7 @@ async function main() {
     agentQualityJudgeEnabled: false,
     artifactGenerationMode: args.artifactGenerationMode,
     ...(args.jobTargetingPolicy ? { jobTargetingPolicy: args.jobTargetingPolicy } : {}),
+    ...(args.entryWritingPolicy ? { entryWritingPolicy: args.entryWritingPolicy } : {}),
     artifactRepairMax: 0,
     interviewMode: 'deferred',
     componentQuotaPolicy: V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION,
@@ -942,6 +954,7 @@ async function main() {
     providerEndpoint,
     model,
     ...(generationPolicy ? { generationPolicy } : {}),
+    extractionPolicy,
     maxProviderAttempts: 1,
     fallbackEnabled: false,
     ...executionPolicy,
@@ -1118,7 +1131,7 @@ async function main() {
         }
       : null,
     failFast: args.failFast,
-    provider: { endpoint: providerEndpoint, model, ...(generationPolicy ? { generationPolicy } : {}), fallbackEnabled: false, maxProviderAttempts: 1 },
+    provider: { endpoint: providerEndpoint, model, ...(generationPolicy ? { generationPolicy } : {}), extractionPolicy, fallbackEnabled: false, maxProviderAttempts: 1 },
     executionPolicy,
     budgetProfile,
     implementationDigest,
@@ -1239,6 +1252,7 @@ async function main() {
         endpoint: providerEndpoint,
         model,
         ...(generationPolicy ? { generationPolicy } : {}),
+        extractionPolicy,
         maxProviderAttempts: 1,
         fallbackEnabled: false,
       },
@@ -1560,7 +1574,8 @@ async function main() {
                 promptVersion: request.promptVersion,
                 messages: request.messages,
                 response: { content: response.content, finishReason: response.finishReason },
-                providerMetadata: { requestedModel: model, returnedModel: response.model, generationPolicy,
+                providerMetadata: { requestedModel: model, returnedModel: response.model,
+                  generationPolicy: isResumeExtractionRequest(request) ? extractionPolicy : generationPolicy,
                   inputTokens: response.inputTokens, outputTokens: response.outputTokens, reasoningTokens: response.reasoningTokens },
               })
             } catch {
@@ -1628,6 +1643,13 @@ async function main() {
             enableDefaultSubscribers: false,
             artifactGenerationMode: args.artifactGenerationMode,
             jobTargetingPolicy: args.jobTargetingPolicy,
+            entryWritingPolicy: args.entryWritingPolicy,
+            onEntryStreamEvent: event => {
+              // Audit progress only. Resume text belongs in protected final artifacts,
+              // never in stdout or the general Harness event log.
+              console.log(JSON.stringify({ type: event.type, sequence: event.sequence,
+                ...(event.type === 'entry.preview' ? { order: event.order, paragraphs: event.paragraphs.length } : {}) }))
+            },
             onTargetingAnalysis: analysis => writeCheckpoint({
               path: resolve(args.outputRoot, 'cases', `${prefix}-job-targeting.json`),
               kind: 'job_targeting_analysis', caseId: id, fingerprints, payload: analysis,

@@ -20,6 +20,9 @@ export interface V5StageRunOptions {
   inputDocumentIds?: string[]
   repairAttempt?: number
   model?: string
+  onContentDelta?: (text: string) => void
+  maxProviderAttempts?: number
+  maxProviderModels?: number
 }
 
 export interface V5StageRunResult<T> {
@@ -138,6 +141,9 @@ export async function runV5StructuredStage<T>(input: {
       promptManifest: providerPromptManifest,
       eventBus: input.options?.eventBus,
       stepContext: input.options?.stepContext,
+      onContentDelta: input.options?.onContentDelta,
+      maxProviderAttempts: input.options?.maxProviderAttempts,
+      maxProviderModels: input.options?.maxProviderModels,
     })
   } catch (error) {
     throw new V5ProviderCallError({ component: input.component, cause: error })

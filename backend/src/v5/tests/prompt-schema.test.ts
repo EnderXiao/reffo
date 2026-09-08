@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { zodResponseFormat } from 'openai/helpers/zod'
+import { z } from 'zod'
 import { env } from '@/config/env'
 import {
   DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
@@ -56,7 +57,7 @@ describe('v5 prompt compiler and strict schemas', () => {
   test('P03 carries recruiter value and sparse-source guidance without changing its contract', () => {
     const compiled = compileV5Prompt({ component: 'P03', envelope: { payload: {} } })
     const system = compiled.messages[0].content
-    expect(compiled.promptVersion).toBe('5.1.0-p03-job-fit-map-r4')
+    expect(compiled.promptVersion).toBe('5.1.0-p03-job-fit-map-r5')
     expect(compiled.maxOutputTokens).toBe(6_000)
     expect(system).toContain('以岗位任务和成功条件为锚点')
     expect(system).toContain('材料简略时挖掘已知行动的职业含义')
@@ -178,7 +179,7 @@ describe('v5 prompt compiler and strict schemas', () => {
 
     expect(compiled.schema).toBe(p06CompositionOutputSchema)
     expect(compiled.schemaName).toBe('reffo_p06c_composition_v1')
-    expect(compiled.promptVersion).toBe('5.1.0-p06c-supported-writer-r8')
+    expect(compiled.promptVersion).toBe('5.1.0-p06c-supported-writer-r16')
     expect(compiled.temperature).toBe(0.1)
     expect(compiled.maxOutputTokens).toBeLessThanOrEqual(4_800)
     expect(compiled.maxOutputTokens).toBeGreaterThanOrEqual(3_600)
@@ -414,13 +415,40 @@ describe('v5 prompt compiler and strict schemas', () => {
     }
   })
 
-  test('keeps source ambiguity as excluded evidence instead of blocking on high unmapped content', () => {
+  test('keeps explicit unresolved risks as excluded evidence instead of blocking on high unmapped content', () => {
     for (const component of ['P01', 'P01R'] as const) {
       const systemPrompt = compileV5Prompt({ component, envelope: { payload: {} } }).messages[0].content
       expect(systemPrompt).toContain('high importance unmapped')
       expect(systemPrompt).toContain('factCandidate')
       expect(systemPrompt).toContain('excluded')
       expect(systemPrompt).toContain('不得')
+    }
+  })
+
+  test('separates missing context from conflicts and retains self-reported metrics in both extraction prompts', () => {
+    for (const component of ['P01', 'P01R'] as const) {
+      const compiled = compileV5Prompt({ component, envelope: { payload: {} } })
+      const prompt = compiled.messages[0].content
+      for (const rule of ['缺上下文不等于冲突', '自述不等于无效', '指标名称、数值、单位、观察周期和业务规模',
+        '同一对象、指标、周期和口径', '前后变化、子集与总量、不同周期、重复展示', '分类只做一遍',
+        '只评价本片可见材料', 'prompt_injection_like_text', 'source_qualified']) expect(prompt).toContain(rule)
+      expect(V5_PROMPT_VERSIONS[component]).toEndWith('-r19')
+      expect(prompt).toContain('风险定位不是整段裁决')
+      expect(prompt).toContain('独立职责')
+      expect(prompt).toContain('temporalRiskQuote')
+      expect(prompt).toContain('不代表已任职、已上线或已完成')
+      expect(prompt).toContain('尚未批准/待批准/拟任/计划')
+      expect(prompt).toContain('未来风险不得同时 source_supported')
+      expect(prompt).toContain('待服务端校验的事实候选')
+      expect(prompt).not.toContain('候选人事实只能来自通过服务端校验的 EvidenceAtom')
+      const schema = schemaForV5Component(component)
+      expect(schema instanceof z.ZodObject).toBe(true)
+      if (!(schema instanceof z.ZodObject)) throw new Error('Expected unchanged object contract')
+      expect(Object.keys(schema.shape)).toHaveLength(9)
+    }
+    for (const component of ['P03', 'P06C', 'P06D'] as const) {
+      expect(compileV5Prompt({ component, envelope: { payload: {} } }).messages[0].content)
+        .toContain('候选人事实只能来自通过服务端校验的 EvidenceAtom')
     }
   })
 

@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { CanonicalSourceDocument, SourceBlock } from '@/v5/types'
+import { isLexicallyProvenSourceContinuation } from '@/v5/composition/source-continuation'
+import { isPlainSourceContinuationBlock, isSourceLayoutWhitespace, sourceLineBlockBinding } from '@/v5/composition/source-continuation-proof'
 
 const ZERO_WIDTH_OR_BIDI = /[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/u
 const HIDDEN_MARKUP = /<!--|-->|<[^>]+(?:hidden|display\s*:\s*none)[^>]*>/i
@@ -75,6 +77,19 @@ export function canonicalizeSourceDocument(rawInput: string, documentId: string 
     canonicalLength: canonicalText.length,
     blocks: splitCanonicalBlocks(canonicalText),
   }
+  const sourceLineContinuations: NonNullable<CanonicalSourceDocument['sourceLineContinuations']> = []
+  for (let index = 1; index < canonicalDocument.blocks.length; index += 1) {
+    const previous = canonicalDocument.blocks[index - 1]
+    const current = canonicalDocument.blocks[index]
+    const separator = canonicalText.slice(previous.canonicalEnd, current.canonicalStart)
+    if (!isSourceLayoutWhitespace(separator)
+      || previous.inputRiskFlags.length || current.inputRiskFlags.length
+      || !isPlainSourceContinuationBlock(previous.text) || !isPlainSourceContinuationBlock(current.text)
+      || !isLexicallyProvenSourceContinuation(previous.text, current.text)) continue
+    sourceLineContinuations.push({ previousBlockId: previous.sourceBlockId, currentBlockId: current.sourceBlockId,
+      separator, binding: sourceLineBlockBinding(canonicalDocument.sha256, previous, current, separator) })
+  }
+  if (sourceLineContinuations.length) canonicalDocument.sourceLineContinuations = sourceLineContinuations
 
   return {
     rawSha256: sha256(rawInput),

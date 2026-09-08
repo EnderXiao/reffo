@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import type OpenAI from 'openai'
 import { z } from 'zod'
-import { deepSeekThinkingParameters, evaluationDeepSeekPolicy, parseDeepSeekThinking } from '@/config/deepseek-thinking'
+import { deepSeekThinkingParameters, evaluationDeepSeekPolicy, parseDeepSeekThinking, parseDeepSeekExtractionThinking, isResumeExtractionRequest, resolveDeepSeekStageThinking } from '@/config/deepseek-thinking'
+import { compileV5Prompt } from '@/v5/prompt-compiler'
 import { createRunContext, createStepExecutionContext } from '@/harness/run-context'
 import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
 import { DeepSeekProvider } from '@/providers/deepseek-provider'
@@ -123,6 +124,66 @@ describe('DeepSeekProvider abort signals', () => {
 })
 
 describe('explicit DeepSeek V4 thinking', () => {
+  test('routes real compiled P01/P01R metadata without disabling JD or Writer thinking', async () => {
+    const sent: Array<Record<string, unknown>> = []
+    const eventBus = new FakeHarnessEventBus()
+    const provider = new DeepSeekProvider(createClient(async body => {
+      sent.push(body as Record<string, unknown>)
+      return createResponse()
+    }), parseDeepSeekThinking('enabled', 'low'), 'disabled')
+    for (const component of ['P01', 'P01R', 'P02', 'P03', 'P06C'] as const) {
+      const compiled = compileV5Prompt({ component, envelope: { payload: {} } })
+      await provider.complete({ model: 'deepseek-v4-flash', messages: compiled.messages,
+        promptVersion: compiled.promptVersion, promptManifest: compiled.manifest,
+        maxOutputTokens: 14400, eventBus,
+        stepContext: createStepExecutionContext(createRunContext(), component),
+      })
+    }
+    for (const body of sent.slice(0, 2)) {
+      expect(body).toMatchObject({ thinking: { type: 'disabled' }, max_tokens: 14400 })
+      expect(body).not.toHaveProperty('reasoning_effort')
+    }
+    for (const body of sent.slice(2)) expect(body).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'low' })
+    expect(eventBus.events.filter(e => e.type === 'provider.requested').map(e => e.payload.thinking))
+      .toEqual(sent.map(body => body.thinking))
+    expect(sent).toHaveLength(5)
+  })
+
+  test('P01 disabled mode never performs the reasoning-only internal retry', async () => {
+    let calls = 0
+    const provider = new DeepSeekProvider(createClient(async () => {
+      calls += 1
+      return { ...createResponse(), choices: [{ message: { content: '' }, finish_reason: 'stop' }] }
+    }), parseDeepSeekThinking('enabled'), 'disabled')
+    await expect(provider.complete({ model: 'deepseek-v4-flash', messages: [],
+      promptVersion: '5.0.0-p01-resume-evidence-r17', maxOutputTokens: 14400 })).rejects.toThrow('AI 返回内容为空')
+    expect(calls).toBe(1)
+  })
+
+  test('defaults to inheritance and selects stages only from trusted exact metadata', () => {
+    expect(parseDeepSeekExtractionThinking()).toBe('inherit')
+    expect(() => parseDeepSeekExtractionThinking('default')).toThrow('INVALID_DEEPSEEK_P01_THINKING_MODE')
+    const global = parseDeepSeekThinking('enabled', 'max')
+    expect(resolveDeepSeekStageThinking(global, 'inherit', true)).toEqual(global)
+    expect(resolveDeepSeekStageThinking(global, 'disabled', false)).toEqual(global)
+    expect(isResumeExtractionRequest({ promptVersion: '5.0.0-p01r-resume-evidence-repair-r17' })).toBe(true)
+    expect(isResumeExtractionRequest({ promptVersion: 'user said P01' })).toBe(false)
+    expect(isResumeExtractionRequest({ promptVersion: '5.0.0-p01-resume-evidence-r17',
+      promptManifest: { componentPromptId: 'P02' } })).toBe(false)
+    expect(isResumeExtractionRequest({})).toBe(false)
+  })
+
+  test('extraction mode alters extraction policy fingerprints without altering global policy', () => {
+    const global = parseDeepSeekThinking('enabled', 'low')
+    const policy = (override: 'inherit' | 'disabled', extraction: boolean) => {
+      const settings = resolveDeepSeekStageThinking(global, override, extraction)
+      return evaluationDeepSeekPolicy('deepseek-v4-flash', settings.mode, settings.effort)
+    }
+    expect(policy('disabled', true)).not.toEqual(policy('inherit', true))
+    expect(policy('disabled', false)).toEqual(policy('inherit', false))
+    expect(() => evaluationDeepSeekPolicy('deepseek-chat', 'disabled')).toThrow()
+  })
+
   test('leaves legacy requests unchanged without an explicit mode', async () => {
     let sent: Record<string, unknown> = {}
     const provider = new DeepSeekProvider(createClient(async body => {
@@ -163,7 +224,7 @@ describe('explicit DeepSeek V4 thinking', () => {
     expect(sent.max_tokens).toBe(12000)
   })
 
-  test('retries reasoning-only empty response at low effort', async () => {
+  test('returns structured empty-output usage without a hidden physical retry', async () => {
     const sent: Array<Record<string, unknown>> = []
     const provider = new DeepSeekProvider(createClient(async body => {
       sent.push(body as Record<string, unknown>)
@@ -177,12 +238,12 @@ describe('explicit DeepSeek V4 thinking', () => {
       return createResponse()
     }), parseDeepSeekThinking('enabled', 'high'))
 
-    const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [] })
+    const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [], maxProviderAttempts: 1,
+      structuredOutput: { name: 'test', schema: z.object({ ok: z.boolean() }), strict: true } })
 
-    expect(sent).toHaveLength(2)
+    expect(sent).toHaveLength(1)
     expect(sent[0]).toMatchObject({ reasoning_effort: 'high', max_tokens: 12000 })
-    expect(sent[1]).toMatchObject({ reasoning_effort: 'low', max_tokens: 12000 })
-    expect(result).toMatchObject({ content: '{"ok":true}', physicalAttempts: 2 })
+    expect(result).toMatchObject({ content: '', physicalAttempts: 1, inputTokens: 2, outputTokens: 20, reasoningTokens: 20 })
   })
 
   test('allows disabled mode without sending reasoning effort', () => {

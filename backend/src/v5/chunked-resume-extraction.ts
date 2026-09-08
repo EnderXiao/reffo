@@ -14,7 +14,7 @@ export const RESUME_EXTRACTION_OUTPUT_TOKENS_PER_FACT = 400
 export const RESUME_EXTRACTION_OUTPUT_CHARACTERS_PER_TOKEN = 4
 export const RESUME_EXTRACTION_FACT_CANDIDATE_HEADROOM = 4
 export const RESUME_EXTRACTION_RAW_FACT_SLOP_MAX = 16
-export const RESUME_EXTRACTION_CHUNK_PLAN_VERSION = 'deterministic-scope-plan-v9'
+export const RESUME_EXTRACTION_CHUNK_PLAN_VERSION = 'deterministic-scope-plan-v10'
 
 export interface ResumeExtractionScopeContext {
   /** Server-owned scope ID shared by every output shard of one source scope. */
@@ -371,8 +371,15 @@ const STRONG_ROLE_HEADING = /(?:产品经理|项目经理|运营经理|客户经
 
 function isTimelineRangeBlock(text: string) {
   // Reporting periods attached to a metric are not a new employment entry.
-  return EXPLICIT_TIMELINE_RANGE.test(text)
+  return (EXPLICIT_TIMELINE_RANGE.test(text) || isSingleMonthProjectHeading(text))
     && !/(?:完成率|及时率|转化率|覆盖率|崩溃率|统计周期|报表周期|统计期间)/u.test(text)
+}
+
+function isSingleMonthProjectHeading(text: string) {
+  // A project identity plus a separated date is an anchor; a date in prose is not.
+  const title = text.trim().replace(/^#{1,6}\s+/u, '')
+  return title.length <= 120 && !/^[-*•]\s|[。；;，,！？]/u.test(title)
+    && /(?:^个人项目\s*[:：]\s*\S+|\S+\s*[|｜]\s*(?:个人练习|个人项目|课程项目|独立项目))\s*[|｜]\s*(?:19|20)\d{2}[./](?:0?[1-9]|1[0-2])\s*$/u.test(title)
 }
 
 /** PDF/OCR case cards often lose heading markers. Require a title plus a
@@ -988,7 +995,8 @@ export function normalizeResumeExtractionChunkCandidate(
     serverScopeLocalId: context.serverScopeLocalId,
     sourceBlockIds: chunk.blocks.map(block => block.sourceBlockId),
   }] : [])
-  if (!context && assignments.length === 0) return candidate
+  const hasServerPlan = chunk.extractionScopeAssignments !== undefined || context !== undefined
+  if (!hasServerPlan) return candidate
 
   const factLocalIds = candidate.factCandidates.map(fact => fact.factLocalId)
   // Duplicate IDs make every map-based reference rewrite ambiguous. Preserve
@@ -1003,10 +1011,19 @@ export function normalizeResumeExtractionChunkCandidate(
   const originalFactCandidates = candidate.factCandidates
     .filter(fact => targetBlockIds.has(fact.sourceBlockId))
   const originalFactsById = new Map(originalFactCandidates.map(fact => [fact.factLocalId, fact]))
-  const factCandidates = originalFactCandidates.map(fact => ({
-    ...fact,
-    sourceScopeLocalId: scopeByBlockId.get(fact.sourceBlockId) ?? fact.sourceScopeLocalId,
-  }))
+  const businessClaimTypes = new Set(['responsibility', 'action', 'deliverable', 'result'])
+  const factCandidates = originalFactCandidates.map(fact => {
+    const assignedScope = scopeByBlockId.get(fact.sourceBlockId)
+    if (assignedScope) return { ...fact, sourceScopeLocalId: assignedScope }
+    // The server plan is authoritative about membership, including absence.
+    // Keep unassigned overview material, but never attach its metrics to a job
+    // merely because the model borrowed a valid scope ID from another block.
+    if (fact.sourceScopeLocalId?.startsWith('srv_scope_') || businessClaimTypes.has(fact.claimType)) {
+      return { ...fact, sourceScopeLocalId: 'unscoped_source',
+        claimType: businessClaimTypes.has(fact.claimType) ? 'other' as const : fact.claimType }
+    }
+    return fact
+  })
   const factsById = new Map(factCandidates.map(fact => [fact.factLocalId, fact]))
   const factIds = new Set(factCandidates.map(fact => fact.factLocalId))
   const mapFacts = (ids: string[]) => ids.filter(id => factIds.has(id))
@@ -1034,6 +1051,7 @@ export function normalizeResumeExtractionChunkCandidate(
     const outputScopeIds = serverScopeIds.length > 0 ? serverScopeIds : [item.scopeLocalId]
 
     for (const scopeLocalId of outputScopeIds) {
+      if (serverScopeIds.length === 0 && ['experience', 'internship', 'project', 'research'].includes(item.kind)) continue
       if (scopeLocalId.startsWith('srv_scope_') && !anchorScopeIds.has(scopeLocalId)) continue
       const scopedFactLocalIds = serverScopeIds.length > 0
         ? factCandidates
@@ -1067,14 +1085,15 @@ export function normalizeResumeExtractionChunkCandidate(
     const anchor = chunk.blocks.find(block => block.sourceBlockId === scope.timelineAnchorBlockIds[0])
     const anchorIndex = chunk.blocks.findIndex(block => block === anchor)
     const cardTitle = anchorIndex >= 0 && isSourceProjectCardTitle(chunk.blocks, anchorIndex)
-    const heading = anchor ? parseHeading(anchor.text) ?? (cardTitle ? { title: anchor.text.trim() } : null) : null
+    const singleMonthTitle = Boolean(anchor && isSingleMonthProjectHeading(anchor.text))
+    const heading = anchor ? parseHeading(anchor.text) ?? (cardTitle || singleMonthTitle ? { title: anchor.text.trim() } : null) : null
     if (!heading) continue
     const scopeText = scopeFacts.map(fact => fact.verbatimText).join('\n')
     const projectSection = candidate.sectionCandidates.find(section => (
       ['project', 'research'].includes(section.type)
       && section.factLocalIds.some(id => scopeFacts.some(fact => fact.factLocalId === id))
     ))
-    if (!projectSection && !/(?:关键动作|项目|系统|平台|研究|论文|原型|project|research)/iu.test(scopeText)) continue
+    if (!projectSection && !singleMonthTitle && !/(?:关键动作|项目|系统|平台|研究|论文|原型|project|research)/iu.test(scopeText)) continue
     const existing = timelineByScope.get(scope.serverScopeLocalId)
     if (existing) {
       // A model timeline can reference multiple server scopes. Retain a field
@@ -1082,7 +1101,8 @@ export function normalizeResumeExtractionChunkCandidate(
       for (const key of ['organization', 'title', 'start', 'end'] as const) {
         if (existing[key] && !scopeText.includes(existing[key]!)) existing[key] = null
       }
-      if (cardTitle) existing.kind = /(?:论文|研究)/u.test(scopeText) ? 'research' : 'project'
+      if (singleMonthTitle) existing.kind = 'project'
+      else if (cardTitle) existing.kind = /(?:论文|研究)/u.test(scopeText) ? 'research' : 'project'
       if (['project', 'research'].includes(existing.kind)) existing.title = heading.title
       continue
     }

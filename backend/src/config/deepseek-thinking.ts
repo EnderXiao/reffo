@@ -3,6 +3,33 @@ export interface DeepSeekThinkingSettings {
   effort: 'low' | 'high' | 'max'
 }
 
+export type DeepSeekExtractionThinkingMode = 'inherit' | 'enabled' | 'disabled'
+
+export function parseDeepSeekExtractionThinking(value = 'inherit'): DeepSeekExtractionThinkingMode {
+  if (value !== 'inherit' && value !== 'enabled' && value !== 'disabled') throw new Error('INVALID_DEEPSEEK_P01_THINKING_MODE')
+  return value
+}
+
+/** Only trusted request metadata selects a stage, never text in a résumé. */
+export function isResumeExtractionRequest(input: {
+  promptManifest?: { componentPromptId: string }
+  promptVersion?: string
+}) {
+  const component = input.promptManifest?.componentPromptId
+  if (component !== undefined) return component === 'P01' || component === 'P01R'
+  return /^5\.0\.0-p01(?:-resume-evidence|r-resume-evidence-repair)-r\d+$/u.test(input.promptVersion ?? '')
+}
+
+export function resolveDeepSeekStageThinking(
+  global: DeepSeekThinkingSettings,
+  extractionMode: DeepSeekExtractionThinkingMode,
+  extractionRequest: boolean
+): DeepSeekThinkingSettings {
+  return extractionRequest && extractionMode !== 'inherit'
+    ? { ...global, mode: extractionMode }
+    : global
+}
+
 /** Pure configuration shared by the request adapter and the cache fingerprint. */
 export function parseDeepSeekThinking(mode = 'default', effort = 'high'): DeepSeekThinkingSettings {
   if (mode !== 'default' && mode !== 'enabled' && mode !== 'disabled') throw new Error('INVALID_DEEPSEEK_THINKING_MODE')

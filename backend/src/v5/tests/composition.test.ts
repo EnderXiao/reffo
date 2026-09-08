@@ -246,6 +246,7 @@ describe('P06 composition blueprint and compiler', () => {
     expect(artifact.markdown).toContain('zhangsan@example.com')
     expect(artifact.markdown).not.toContain(nonIdentityPhoneAtom.verbatimText)
     expect(artifact.markdown).toContain('乙公司｜产品助理｜2020 - 2021')
+    expect(artifact.markdown).toContain('\n\n乙公司｜产品助理｜2020 - 2021\n\n')
     expect(artifact.claims).toEqual(expect.arrayContaining([
       expect.objectContaining({ outputPath: 'identity.name', evidenceIds: [emailAtom.evidenceId] }),
       expect.objectContaining({ outputPath: 'identity.email', evidenceIds: [emailAtom.evidenceId] }),

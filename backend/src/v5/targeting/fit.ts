@@ -39,6 +39,12 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
     if (link.status === 'unknown' || target.basis === 'unknown') {
       link.status = 'unknown'; link.evidenceIds = []
     }
+    if (link.status === 'explicit_gap' && !link.evidenceIds.length) {
+      link.status = 'unknown'
+      link.similarity = ''; link.expressionAngle = ''
+      link.difference = '当前材料未提供足够证据，不能据此判定候选人存在该项缺陷。'
+      report('JOB_FIT_UNPROVEN_GAP_ALIGNED', link.targetId, [], '无证据的缺陷判断降为未知，不要求模型补造证据或重试。', 'warning')
+    }
     if (link.status !== 'unknown' && !link.evidenceIds.length) report('JOB_FIT_PROOF_MISSING', link.targetId, [], '支持、差异或冲突判断需要具体简历证据。')
     if (link.status === 'transferable' && (!link.similarity.trim() || !link.difference.trim())) report('JOB_FIT_TRANSFER_BASIS_MISSING', link.targetId, link.evidenceIds, '可迁移判断需说明相似点与差异。')
     if (link.status === 'direct' && link.evidenceIds.length && link.evidenceIds.every(id => {
@@ -60,6 +66,16 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
     targetId: target.id, status: 'unknown', evidenceIds: [], similarity: '', difference: '当前材料未形成该项判断。', expressionAngle: '',
   })
   const linkById = new Map(fit.links.map(link => [link.targetId, link]))
+  // Related task IDs describe the job model, not an AND-qualification contract.
+  // Diagnose mixed support without guessing semantics or rejecting useful practice.
+  for (const link of fit.links.filter(item => item.status === 'direct')) {
+    const target = targetById.get(link.targetId)
+    if (!target || target.kind === 'task') continue
+    const unprovenTasks = target.taskIds.filter(id => targetById.get(id)?.kind === 'task'
+      && !['direct', 'transferable'].includes(linkById.get(id)?.status ?? 'unknown'))
+    if (unprovenTasks.length) report('JOB_FIT_RELATED_TASK_UNPROVEN', link.targetId, link.evidenceIds,
+      '该目标关联的部分任务尚无独立支持。目标本身的判断不等于这些任务已被证明；保留原判断与差异供离线审阅，不自动重试。', 'warning')
+  }
   const retainedNarratives: JobFitMap['narratives'] = []
   for (const [index, narrative] of fit.narratives.entries()) {
     const supported = new Set(narrative.targetIds.flatMap(id => {
@@ -70,7 +86,7 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
     const invalidReferences = !narrative.targetIds.length || narrative.targetIds.some(id => !targetById.has(id))
       || !narrative.evidenceIds.length || narrative.evidenceIds.some(id => !evidence.has(id) || !referenced.has(id))
     if (invalidReferences) {
-      report('JOB_FIT_NARRATIVE_UNSUPPORTED', `narratives[${index}]`, [], '胜任主线的目标或证据引用无效，不能引用未建立的对应关系。')
+      report('JOB_FIT_NARRATIVE_UNSUPPORTED', `narratives[${index}]`, [], '可选主线引用无效，已局部省略；不影响经过验证的事实关联。', 'warning')
       continue
     }
     if (narrative.targetIds.some(id => !['direct', 'transferable'].includes(linkById.get(id)?.status ?? 'unknown'))
