@@ -91,6 +91,32 @@ describe('navigation-transition', () => {
     expect(startViewTransition).toHaveBeenCalledTimes(1)
   })
 
+  test('waits for Taro page DOM commit before finishing View Transition update', async () => {
+    const requestAnimationFrame = window.requestAnimationFrame as jest.Mock
+    const startViewTransition = jest.fn(callback => {
+      const updateCallbackDone = Promise.resolve().then(callback)
+      return {
+        ready: Promise.resolve(),
+        finished: updateCallbackDone.then(() => undefined),
+        updateCallbackDone,
+        skipTransition: jest.fn(),
+      }
+    })
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: startViewTransition,
+    })
+    const action = jest.fn(async () => undefined)
+    requestAnimationFrame.mockClear()
+
+    await runWithNavigationTransition(action, {kind: 'forward'})
+
+    expect(action).toHaveBeenCalledTimes(1)
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(2)
+    expect(startViewTransition).toHaveBeenCalledTimes(1)
+  })
+
   test('treats skipped or timed-out View Transitions as visual fallback', async () => {
     const abortError = new DOMException('Transition was skipped', 'AbortError')
     const timeoutError = new DOMException('Transition timed out', 'TimeoutError')
