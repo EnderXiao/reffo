@@ -1,5 +1,5 @@
 import { parseDeepSeekExtractionThinking } from './deepseek-thinking'
-import { assertV5ReleaseConfiguration, parseV5ReleaseProfile } from './v5-release'
+import { assertV5ReleaseConfiguration } from './v5-release'
 
 const NONPROD_CORS_ORIGIN = 'https://reffo-web-nonprod.onrender.com'
 
@@ -133,23 +133,20 @@ export const env = {
   // AI Provider Configuration
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || 'https://api.deepseek.com',
-  AI_MODEL: process.env.AI_MODEL || 'deepseek-chat',
-  DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'default',
-  DEEPSEEK_P01_THINKING_MODE: parseDeepSeekExtractionThinking(process.env.DEEPSEEK_P01_THINKING_MODE),
+  AI_MODEL: process.env.AI_MODEL || 'deepseek-v4-flash',
+  DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'enabled',
+  DEEPSEEK_P01_THINKING_MODE: parseDeepSeekExtractionThinking(process.env.DEEPSEEK_P01_THINKING_MODE || 'enabled'),
   DEEPSEEK_REASONING_EFFORT: process.env.DEEPSEEK_REASONING_EFFORT || 'high',
   // DeepSeek thinking consumes the same completion budget as final output.
-  // Legacy agents may omit maxOutputTokens, so reserve an explicit budget.
+  // Reserve an explicit budget when a provider caller omits maxOutputTokens.
   DEEPSEEK_THINKING_MAX_TOKENS: parsePositiveInteger(process.env.DEEPSEEK_THINKING_MAX_TOKENS, 12000),
   AI_FALLBACK_MODELS: (process.env.AI_FALLBACK_MODELS || '')
     .split(',')
     .map((model) => model.trim())
     .filter(Boolean),
   V5_QUALITY_JUDGE_ENABLED: parseBoolean(process.env.V5_QUALITY_JUDGE_ENABLED, false),
-  V5_RELEASE_PROFILE: parseV5ReleaseProfile(process.env.V5_RELEASE_PROFILE),
   V5_CONTEXT_WINDOW_TOKENS: parsePositiveInteger(process.env.V5_CONTEXT_WINDOW_TOKENS, 64000),
   V5_STRUCTURED_OUTPUT_MODE: parseV5StructuredOutputMode(process.env.V5_STRUCTURED_OUTPUT_MODE),
-  JINA_API_KEY: process.env.JINA_API_KEY || '',
-  WEB_RESEARCH_TIMEOUT_MS: parseInt(process.env.WEB_RESEARCH_TIMEOUT_MS || '20000', 10),
   // GLM-OCR Configuration
   GLM_API_KEY: process.env.GLM_API_KEY || '',
   GLM_ENDPOINT: process.env.GLM_ENDPOINT || '',

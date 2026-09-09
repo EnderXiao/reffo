@@ -47,14 +47,13 @@ const v5Response: MvpProcessResponse = {
 }
 
 describe('ResumeOptimizationWorkflow v5-only entry', () => {
-  test.each(['entry-r5','legacy-dsl'] as const)('formal adapter uses %s in production and exposes the effective version', async profile => {
-    const previous = {APP_ENV:env.APP_ENV,V5_RELEASE_PROFILE:env.V5_RELEASE_PROFILE}
+  test('formal adapter always uses entry-r5 in production and exposes the effective version', async () => {
+    const previous = {APP_ENV:env.APP_ENV}
     env.APP_ENV = 'prod'
-    env.V5_RELEASE_PROFILE = profile
     const run = spyOn(V5ResumeOptimizationWorkflow.prototype, 'run').mockImplementation(async function(this: V5ResumeOptimizationWorkflow, input) {
-      expect(Reflect.get(this,'artifactGenerationMode')).toBe(profile === 'entry-r5' ? 'writer_v1' : 'dsl_v1')
-      expect(Reflect.get(this,'entryWritingPolicy')).toBe(profile === 'entry-r5' ? 'entry-writing-v1' : undefined)
-      expect(Reflect.get(this,'jobTargetingPolicy')).toBe(profile === 'entry-r5' ? 'job-targeted-v1' : undefined)
+      expect(Reflect.get(this,'artifactGenerationMode')).toBe('writer_v1')
+      expect(Reflect.get(this,'entryWritingPolicy')).toBe('entry-writing-v1')
+      expect(Reflect.get(this,'jobTargetingPolicy')).toBe('job-targeted-v1')
       expect(input.enableQualityJudge).toBe(false)
       return createV5ResultFixture()
     })
@@ -62,7 +61,7 @@ describe('ResumeOptimizationWorkflow v5-only entry', () => {
       const workflow = new ResumeOptimizationWorkflow(new FakeHarnessEventBus(),{enableDefaultSubscribers:false})
       const result = await workflow.run({resume_markdown:'source',jd_text:'job'})
       expect(result.step3_optimized_resume).toBeTruthy()
-      expect(getV5ReleaseDescriptor()).toMatchObject({profile,writerPromptVersion:profile === 'entry-r5' ? '5.2.0-p06c-entry-writer-r5' : null})
+      expect(getV5ReleaseDescriptor()).toMatchObject({profile:'entry-r5',writerPromptVersion:'5.2.0-p06c-entry-writer-r5'})
     } finally {
       run.mockRestore()
       Object.assign(env,previous)
