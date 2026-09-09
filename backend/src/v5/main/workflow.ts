@@ -1,6 +1,6 @@
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
 import { createHarnessEvent } from '@/harness/events'
-import { createDigest, createRunContext, type RunContext, type StepExecutionContext } from '@/harness/run-context'
+import { createDigest, type RunContext, type StepExecutionContext } from '@/harness/run-context'
 import { runStep, StepRunError, type StepRunSnapshot } from '@/harness/run-step'
 import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
@@ -70,12 +70,9 @@ import {
 } from '@/v5/p01-validation-diagnostics'
 import type {
   V5WorkflowPlugin,
-  V5WorkflowPluginContext,
-  V5WorkflowPluginManifest,
 } from '@/v5/plugins/contract'
 import {
   V5PluginExecutionError,
-  V5WorkflowPluginRegistry,
 } from '@/v5/plugins/registry'
 import {
   V5ResumeExtractionCacheError,
@@ -87,6 +84,7 @@ import {
   V5ProviderCallError,
   V5StructuredOutputError,
 } from '@/v5/stage-runner'
+import { V5StageRuntime } from '@/v5/stage-runtime'
 import type { V5PromptComponent } from '@/v5/prompts'
 import { JOB_TARGETING_POLICY, type JobFitMap, type TargetedJobExtraction } from '@/v5/targeting/contracts'
 import { buildJobTargets, validateTargetedJobExtraction } from '@/v5/targeting/profile'
@@ -100,6 +98,7 @@ import type {
   ValidationIssue,
   ValidationResult,
   V5ResumeExtractionResult,
+  InterviewPreparation,
   V5MatchAnalysis,
   V5ResumePlan,
   V5StageEnvelope,
@@ -113,6 +112,7 @@ import {
   RELAXED_RELEASE_ADVISORY_CODES,
   validateGeneratedResumeArtifact,
   validateV5MatchAnalysis,
+  validateInterviewPreparation,
   validateV5ResumePlan,
 } from '@/v5/validators'
 
@@ -124,6 +124,22 @@ export interface V5WorkflowInput {
   enableQualityJudge?: boolean
   workflowTimeoutMs?: number
   onAnalysisSucceeded?: () => void | Promise<void>
+}
+
+/** 仅供服务端适配器保存/恢复，HTTP 请求不能提供这些可信证据。 */
+export interface V5MatchingCheckpoint {
+  stepStatuses: StepRunSnapshot[]
+  state: 'matched'
+  runId: string
+  input: Pick<V5WorkflowInput, 'resumeMarkdown' | 'jobDescription'>
+  extraction: V5ResumeExtractionResult
+  canonicalJobDocument: V5ResumeExtractionResult['canonicalSourceDocument']
+  jobCandidate: JobExtractionCandidate | TargetedJobExtraction
+  jobRequirementBundle: V5WorkflowResult['jobRequirementBundle']
+  matchAnalysis: V5MatchAnalysis
+  matchScore: V5WorkflowResult['matchScore']
+  jobFitMap?: JobFitMap
+  requirementAnalysis?: V5WorkflowResult['requirementAnalysis']
 }
 
 interface RepairableStageResolution {
@@ -360,6 +376,7 @@ function normalizeBlockedError(error: unknown): V5WorkflowBlockedError {
       message: cause.retryable ? '模型服务暂时不可用。' : '模型请求未被接受或未完成。',
       retryable: cause.retryable,
       httpStatus: cause.retryable ? 503 : 502,
+      providerStatus: cause.status,
     })
   }
   if (cause instanceof V5PromptBudgetError) {
@@ -479,20 +496,10 @@ export class V5ResumeOptimizationWorkflow {
   }
 
   async extractResume(input: V5ResumeExtractionInput): Promise<V5ResumeExtractionResult> {
-    const runContext = createRunContext(V5_WORKFLOW_VERSION)
-    const deadline = Date.now() + (input.workflowTimeoutMs ?? 300000)
-    const remaining = () => Math.max(1, deadline - Date.now())
-    let state: ResumeAgentState = 'received'
-    const setState = async (next: ResumeAgentState) => {
-      const previous = state
-      state = next
-      await this.eventBus.publish(createHarnessEvent({
-        type: 'workflow.state.changed',
-        runId: runContext.runId,
-        requestId: runContext.requestId,
-        payload: { previous, state: next },
-      }))
-    }
+    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 300000)
+    const { runContext } = runtime
+    const remaining = runtime.context.remainingMs
+    const setState = (next: ResumeAgentState) => runtime.setState(next)
 
     await this.eventBus.publish(createHarnessEvent({
       type: 'workflow.started',
@@ -535,7 +542,7 @@ export class V5ResumeOptimizationWorkflow {
           workflowName: runContext.workflowName,
           workflowVersion: runContext.workflowVersion,
           finishedAt: new Date().toISOString(),
-          agentState: state,
+          agentState: runtime.state,
           usedSafeFallback: false,
           stepCount: 1,
           executionMode: 'extract_only',
@@ -544,6 +551,7 @@ export class V5ResumeOptimizationWorkflow {
 
       return {
         state: 'resume_extracted',
+        stepStatuses: [resumeStep.step],
         releaseStatus: 'preproduction_candidate',
         runId: runContext.runId,
         canonicalSourceDocument: sourceDocument.canonicalDocument,
@@ -582,38 +590,88 @@ export class V5ResumeOptimizationWorkflow {
   }
 
   async run(input: V5WorkflowInput): Promise<V5WorkflowResult> {
-    const runContext = createRunContext(V5_WORKFLOW_VERSION)
-    const steps: StepRunSnapshot[] = []
-    const deadline = Date.now() + (input.workflowTimeoutMs ?? 600000)
-    const remaining = () => Math.max(1, deadline - Date.now())
-    const pluginRegistry = new V5WorkflowPluginRegistry()
-    const pluginManifest: V5WorkflowPluginManifest = { plugins: [] }
-    let entryWritingRecord: V5WorkflowResult['entryWriting']
-    const pluginContext: V5WorkflowPluginContext = {
-      runContext,
-      eventBus: this.eventBus,
-      remainingMs: remaining,
-      shared: {},
-      config: {
-        enableQualityJudge: false,
-        releaseGateMode: 'deterministic_product_delivery_v2',
-        artifactGenerationMode: this.artifactGenerationMode,
-      },
-      manifest: pluginManifest,
-      completedPluginIds: new Set(),
-      providers: { primary: this.provider, judge: this.judgeProvider },
-    }
-    let state: ResumeAgentState = 'received'
-    const setState = async (next: ResumeAgentState) => {
-      const previous = state
-      state = next
+    const result = await this.runStages(input)
+    if (!('artifact' in result)) throw new Error('V5_GENERATION_RESULT_MISSING')
+    return result
+  }
+
+  async matchResume(input: V5WorkflowInput, extraction: V5ResumeExtractionResult): Promise<V5MatchingCheckpoint> {
+    const result = await this.runStages(input, { stopAfterMatching: true, extraction })
+    if ('artifact' in result) throw new Error('V5_MATCH_STAGE_OVERRUN')
+    return result
+  }
+
+  async generateResume(checkpoint: V5MatchingCheckpoint, options: Pick<V5WorkflowInput, 'outputLanguage' | 'workflowTimeoutMs'> = {}): Promise<V5WorkflowResult> {
+    const result = await this.runStages({ ...checkpoint.input, ...options }, {
+      extraction: checkpoint.extraction,
+      matching: checkpoint,
+    })
+    if (!('artifact' in result)) throw new Error('V5_GENERATION_RESULT_MISSING')
+    return result
+  }
+
+  /** 独立按需 P10；完整流程仍在交付后停止，不增加面试调用。 */
+  async prepareInterview(result: V5WorkflowResult, timeoutMs = 60000): Promise<{runId: string; preparation: InterviewPreparation; stepStatuses: StepRunSnapshot[]}> {
+    if (result.deliveryDecision !== 'deliver' || result.usedSafeFallback) throw new V5WorkflowBlockedError({
+      code: 'V5_INTERVIEW_REQUIRES_DELIVERABLE', state: 'blocked_quality_validation', message: '请先完成可交付简历生成。',
+    })
+    const runtime = this.createRuntime(timeoutMs)
+    const {runContext} = runtime
+    const stepStatuses: StepRunSnapshot[] = []
+    await this.eventBus.publish(createHarnessEvent({
+      type: 'workflow.started', runId: runContext.runId, requestId: runContext.requestId,
+      payload: {workflowName: runContext.workflowName, workflowVersion: runContext.workflowVersion,
+        executionMode: 'interview_only', parentRunId: result.runId, startedAt: runContext.startedAt,
+        inputDigest: createDigest({artifact: result.artifact, job: result.jobRequirementBundle})},
+    }))
+    try {
+      const preparation = await runtime.execute({
+        plugin: {id: 'interview-preparation', version: V5_WORKFLOW_VERSION, stage: 'interview',
+          failureMapping: {apiCode: 'V5_INTERVIEW_FAILED', agentState: 'blocked_fact_validation'},
+          run: async () => {
+            const step = await runStep({runContext, eventBus: this.eventBus, stepName: 'v5_p10_interview',
+              timeoutMs: runtime.context.remainingMs(), execute: stepContext => this.runRepairableStage<InterviewPreparation>({
+                component: 'P10', repairComponent: 'P10R', stepContext,
+                documentIds: [result.resumeEvidenceBundle.sourceDocument.documentId],
+                envelope: this.envelope(runContext.runId, {artifact: result.artifact,
+                  resumeEvidenceBundle: buildModelSafeResumeEvidenceBundle(result.resumeEvidenceBundle),
+                  jobRequirementBundle: result.jobRequirementBundle, matchAnalysis: result.matchAnalysis}),
+                validate: preparation => validateInterviewPreparation({preparation, artifact: result.artifact,
+                  resume: result.resumeEvidenceBundle, job: result.jobRequirementBundle, match: result.matchAnalysis}),
+              })})
+            stepStatuses.push(step.step)
+            return step.result
+          }}, input: {},
+      })
       await this.eventBus.publish(createHarnessEvent({
-        type: 'workflow.state.changed',
-        runId: runContext.runId,
-        requestId: runContext.requestId,
-        payload: { previous, state: next },
+        type: 'workflow.succeeded', runId: runContext.runId, requestId: runContext.requestId,
+        payload: {finishedAt: new Date().toISOString(), executionMode: 'interview_only', pluginManifest: runtime.manifest.plugins},
       }))
+      return {runId: runContext.runId, preparation, stepStatuses}
+    } catch (error) {
+      const blocked = normalizeBlockedError(error)
+      blocked.runId ??= runContext.runId
+      await this.eventBus.publish(createHarnessEvent({
+        type: 'workflow.failed', runId: runContext.runId, requestId: runContext.requestId,
+        payload: {finishedAt: new Date().toISOString(), errorCode: blocked.code, agentState: blocked.state,
+          executionMode: 'interview_only', errorMessage: 'V5 面试建议未完成。'},
+      }))
+      throw blocked
     }
+  }
+
+  private async runStages(input: V5WorkflowInput, resume: {
+    stopAfterMatching?: boolean
+    extraction?: V5ResumeExtractionResult
+    matching?: V5MatchingCheckpoint
+  } = {}): Promise<V5WorkflowResult | V5MatchingCheckpoint> {
+
+    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 600000)
+    const { runContext, manifest: pluginManifest } = runtime
+    const remaining = runtime.context.remainingMs
+    const steps: StepRunSnapshot[] = []
+    let entryWritingRecord: V5WorkflowResult['entryWriting']
+    const setState = (next: ResumeAgentState) => runtime.setState(next)
 
     await this.eventBus.publish(createHarnessEvent({
       type: 'workflow.started',
@@ -626,21 +684,21 @@ export class V5ResumeOptimizationWorkflow {
         startedAt: runContext.startedAt,
         releaseStatus: 'preproduction_candidate',
         artifactGenerationMode: this.artifactGenerationMode,
+        executionMode: resume.stopAfterMatching ? 'match_only' : resume.matching ? 'generate_only' : 'complete',
+        ...(resume.matching || resume.extraction ? { parentRunId: (resume.matching ?? resume.extraction)!.runId } : {}),
       },
     }))
 
     try {
-      const { sourceDocument, jobDocument } = await this.executePlugin({
-        registry: pluginRegistry,
-        context: pluginContext,
+      const { sourceDocument, jobDocument } = await runtime.execute({
         plugin: {
           id: 'canonical-source',
           version: '5.0.0',
           stage: 'normalize',
           failureMapping: { apiCode: 'CANONICAL_INPUT_INVALID', agentState: 'blocked_input_validation' },
           run: async (_context, workflowInput: V5WorkflowInput) => {
-            const normalizedResume = canonicalizeSourceDocument(workflowInput.resumeMarkdown)
-            const normalizedJob = canonicalizeSourceDocument(workflowInput.jobDescription)
+            const normalizedResume = canonicalizeSourceDocument(workflowInput.resumeMarkdown, resume.extraction?.canonicalSourceDocument.documentId)
+            const normalizedJob = canonicalizeSourceDocument(workflowInput.jobDescription, resume.matching?.canonicalJobDocument.documentId)
             if (normalizedResume.canonicalDocument.blocks.length === 0 || normalizedJob.canonicalDocument.blocks.length === 0) {
               throw new V5WorkflowBlockedError({
                 code: 'CANONICAL_INPUT_EMPTY',
@@ -660,9 +718,7 @@ export class V5ResumeOptimizationWorkflow {
       // input gate. Do not start an unrelated JD call until P01 has completed:
       // a deterministic scope-plan failure must cost zero provider calls beyond
       // the work that could actually validate the resume.
-      const resumeResult = await this.executePlugin({
-        registry: pluginRegistry,
-        context: pluginContext,
+      const resumeResult = await runtime.execute({
         plugin: {
           id: 'resume-extraction',
           version: '5.0.0-p01',
@@ -670,6 +726,12 @@ export class V5ResumeOptimizationWorkflow {
           dependencies: ['canonical-source'],
           failureMapping: { apiCode: 'V5_RESUME_EXTRACTION_FAILED', agentState: 'blocked_input_validation' },
           run: async () => {
+            if (resume.extraction) {
+              if (createDigest(resume.extraction.canonicalSourceDocument) !== createDigest(sourceDocument.canonicalDocument)) {
+                throw new Error('V5_RESUME_CHECKPOINT_SOURCE_MISMATCH')
+              }
+              return resume.extraction
+            }
             const resumeStep = await this.runResumeExtractionStep({
               document: sourceDocument.canonicalDocument,
               runContext,
@@ -682,12 +744,10 @@ export class V5ResumeOptimizationWorkflow {
         input,
       })
       await setState('resume_extracted')
-      await input.onAnalysisSucceeded?.()
+      if (!resume.extraction) await input.onAnalysisSucceeded?.()
 
       await setState('job_extracting')
-      const jobCandidate = await this.executePlugin({
-        registry: pluginRegistry,
-        context: pluginContext,
+      const jobCandidate = await runtime.execute({
         plugin: {
           id: 'job-extraction',
           version: this.jobTargetingPolicy ? '5.1.0-p02-job-success-profile-v1' : '5.0.0-p02',
@@ -695,6 +755,7 @@ export class V5ResumeOptimizationWorkflow {
           dependencies: ['canonical-source'],
           failureMapping: { apiCode: 'V5_JOB_EXTRACTION_FAILED', agentState: 'blocked_input_validation' },
           run: async () => {
+            if (resume.matching) return resume.matching.jobCandidate
             const jobStep = await runStep({
               runContext,
               eventBus: this.eventBus,
@@ -732,13 +793,11 @@ export class V5ResumeOptimizationWorkflow {
       const targetedCandidate = this.jobTargetingPolicy && 'jobSuccessProfile' in jobCandidate ? jobCandidate as TargetedJobExtraction : undefined
       if (this.jobTargetingPolicy && !targetedCandidate) throw new Error('JOB_TARGETING_PROFILE_MISSING')
       const jobTargets = targetedCandidate ? buildJobTargets(targetedCandidate, jobRequirementBundle) : []
-      let jobFitMap: JobFitMap | undefined
+      let jobFitMap: JobFitMap | undefined = resume.matching?.jobFitMap
       await setState('job_extracted')
 
       await setState('matching')
-      const matchAnalysis = await this.executePlugin({
-        registry: pluginRegistry,
-        context: pluginContext,
+      const matchAnalysis = await runtime.execute({
         plugin: {
           id: 'matching',
           version: this.jobTargetingPolicy ? '5.1.0-p03-job-fit-map-v1' : '5.0.0-p03',
@@ -746,6 +805,7 @@ export class V5ResumeOptimizationWorkflow {
           dependencies: ['resume-extraction', 'job-extraction'],
           failureMapping: { apiCode: 'V5_MATCHING_FAILED', agentState: 'blocked_fact_validation' },
           run: async () => {
+            if (resume.matching) return resume.matching.matchAnalysis
             const matchStep = await runStep({
               runContext,
               eventBus: this.eventBus,
@@ -791,9 +851,25 @@ export class V5ResumeOptimizationWorkflow {
       const targetingScores = targeting ? targetingEvidenceScores(targeting.fit, targeting.targets, resumeEvidenceBundle) : undefined
       await setState('matched')
 
-      const { strategyProfile, generationPolicy } = await this.executePlugin({
-        registry: pluginRegistry,
-        context: pluginContext,
+      if (resume.stopAfterMatching) {
+        if (!resume.extraction) throw new Error('V5_MATCH_EXTRACTION_REQUIRED')
+        await this.eventBus.publish(createHarnessEvent({
+          type: 'workflow.succeeded', runId: runContext.runId, requestId: runContext.requestId,
+          payload: {
+            workflowName: runContext.workflowName, workflowVersion: runContext.workflowVersion,
+            agentState: runtime.state, finishedAt: new Date().toISOString(), executionMode: 'match_only',
+            stepCount: steps.length, pluginManifest: pluginManifest.plugins,
+          },
+        }))
+        return {
+          state: 'matched', runId: runContext.runId, stepStatuses: steps,
+          input: { resumeMarkdown: input.resumeMarkdown, jobDescription: input.jobDescription },
+          extraction: resume.extraction, canonicalJobDocument: jobDocument.canonicalDocument, jobCandidate, jobRequirementBundle, matchAnalysis, matchScore, jobFitMap,
+          ...(targetedCandidate ? { requirementAnalysis: buildRequirementAnalysis(targetedCandidate, jobDocument.canonicalDocument) } : {}),
+        }
+      }
+
+      const { strategyProfile, generationPolicy } = await runtime.execute({
         plugin: {
           id: 'adaptive-policy',
           version: '5.0.0-p04',
@@ -888,9 +964,7 @@ export class V5ResumeOptimizationWorkflow {
         repairCount: 0,
         triggerIssueCodes: [],
       }
-      const resumePlan = await this.executePlugin({
-        registry: pluginRegistry,
-        context: pluginContext,
+      const resumePlan = await runtime.execute({
         plugin: {
           id: 'resume-planning',
           version: '5.0.0-p05',
@@ -955,9 +1029,7 @@ export class V5ResumeOptimizationWorkflow {
         usedSafeFallback,
         fallbackIssues,
         artifactGenerationDiagnostics,
-      } = await this.executePlugin({
-        registry: pluginRegistry,
-        context: pluginContext,
+      } = await runtime.execute({
         plugin: {
           id: 'artifact-generation',
           version: '5.3.0-writer-v1-dsl-v1-composition-v1-legacy',
@@ -1042,7 +1114,7 @@ export class V5ResumeOptimizationWorkflow {
                 mode: 'writer_v1' as const, contractVersion: SUPPORTED_WRITING_POLICY,
                 compilerVersion: entryPlan ? ENTRY_WRITING_POLICY : WRITING_COMPILER_VERSION,
               }
-              pluginContext.shared.artifactGeneration = artifactGenerationDiagnostics
+              runtime.context.shared.artifactGeneration = artifactGenerationDiagnostics
               return {
                 artifact: validation.value ?? artifact, repairAttempts: 0, validation,
                 usedSafeFallback: false, fallbackIssues: [] as ValidationIssue[], artifactGenerationDiagnostics,
@@ -1201,7 +1273,7 @@ export class V5ResumeOptimizationWorkflow {
                 contractVersion: P06_DSL_CONTRACT_VERSION,
                 compilerVersion: compositionDiagnostics?.compilerVersion ?? null,
               }
-              pluginContext.shared.artifactGeneration = artifactGenerationDiagnostics
+              runtime.context.shared.artifactGeneration = artifactGenerationDiagnostics
               return {
                 artifact: validation.value ?? artifact,
                 repairAttempts: 0,
@@ -1333,7 +1405,7 @@ export class V5ResumeOptimizationWorkflow {
                 contractVersion: compositionDiagnostics?.contractVersion ?? blueprint.contractVersion,
                 compilerVersion: compositionDiagnostics?.compilerVersion ?? null,
               }
-              pluginContext.shared.artifactGeneration = artifactGenerationDiagnostics
+              runtime.context.shared.artifactGeneration = artifactGenerationDiagnostics
               return {
                 artifact: validation.value ?? artifact,
                 repairAttempts: 0,
@@ -1476,7 +1548,7 @@ export class V5ResumeOptimizationWorkflow {
               contractVersion: null,
               compilerVersion: null,
             }
-            pluginContext.shared.artifactGeneration = artifactGenerationDiagnostics
+            runtime.context.shared.artifactGeneration = artifactGenerationDiagnostics
             return {
               artifact,
               repairAttempts,
@@ -1546,9 +1618,7 @@ export class V5ResumeOptimizationWorkflow {
         rejectedCandidateIssues: fallbackIssues,
       })
 
-      return await this.executePlugin({
-        registry: pluginRegistry,
-        context: pluginContext,
+      return await runtime.execute({
         plugin: {
           id: 'response-compatibility',
           version: '5.0.0',
@@ -1567,7 +1637,7 @@ export class V5ResumeOptimizationWorkflow {
                 workflowName: runContext.workflowName,
                 workflowVersion: runContext.workflowVersion,
                 finishedAt,
-                agentState: state,
+                agentState: runtime.state,
                 usedSafeFallback,
                 stepCount: steps.length,
                 pluginManifest: pluginManifest.plugins,
@@ -1584,8 +1654,8 @@ export class V5ResumeOptimizationWorkflow {
             }))
 
             return {
-              state,
-              releaseStatus: 'preproduction_candidate',
+              state: runtime.state,
+              stepStatuses: steps,              releaseStatus: 'preproduction_candidate',
               runId: runContext.runId,
               resumeEvidenceBundle,
               jobRequirementBundle,
@@ -1647,20 +1717,15 @@ export class V5ResumeOptimizationWorkflow {
     }
   }
 
-  private async executePlugin<TInput, TOutput>(input: {
-    registry: V5WorkflowPluginRegistry
-    context: V5WorkflowPluginContext
-    plugin: V5WorkflowPlugin<TInput, TOutput> & { id: V5BuiltinPluginId }
-    input: TInput
-    enabled?: boolean
-  }): Promise<TOutput> {
-    input.registry.register(input.plugin)
-    const override = this.pluginOverrides?.[input.plugin.id]
-    if (override) input.registry.replace(override)
-    if (input.enabled === false) input.registry.disable(input.plugin.id)
-    input.registry.assertReady()
-    const result = await input.registry.execute<TInput, TOutput>(input.plugin.id, input.context, input.input)
-    return result.output as TOutput
+  private createRuntime(timeoutMs: number) {
+    return new V5StageRuntime({
+      eventBus: this.eventBus,
+      timeoutMs,
+      provider: this.provider,
+      judgeProvider: this.judgeProvider,
+      pluginOverrides: this.pluginOverrides,
+      config: { artifactGenerationMode: this.artifactGenerationMode },
+    })
   }
 
   private envelope<T>(runId: string, payload: T): V5StageEnvelope<T> {
@@ -2197,7 +2262,7 @@ export class V5ResumeOptimizationWorkflow {
   }
 
   private async repairArtifact(input: {
-    runContext: ReturnType<typeof createRunContext>
+    runContext: RunContext
     runId: string
     artifact: GeneratedResumeArtifact
     issues: ValidationIssue[]

@@ -3,11 +3,9 @@ import { buildRequirementAnalysis } from '@/v5/targeting/presentation'
 import { normalizeRequirementAnalysis, type RequirementAnalysis } from '@/job-analysis/requirements'
 import { createTargetingFixture } from '@/v5/tests/targeting-fixtures'
 import { createV5ResultFixture } from '@/v5/tests/fixtures'
-import { toLegacyMvpProcessResponse } from '@/v5/main/compatibility'
-import { JDParserAgent } from '@/agents/jd-parser'
-import { MatchingAgent } from '@/agents/matching-agent'
-import type { LlmProvider } from '@/providers/llm-provider'
-import type { ResumeStructure } from '@/types'
+import { toLegacyMvpProcessResponse, toMatchAnalysis } from '@/v5/main/compatibility'
+import { createSingleStepFixture } from './single-step-fixtures'
+import { FIXTURE_RESUME, FIXTURE_JD } from './fixtures'
 import { compileV5Prompt } from '@/v5/prompt-compiler'
 
 function fixture() {
@@ -66,31 +64,24 @@ describe('JD-only requirement analysis', () => {
     expect(response.step2_matching.match_score).toBe(20)
     expect(response.step3_optimized_resume).toBe(result.artifact.markdown)
   })
-  test('parser adds the optional view in the existing call, malformed view does not cause repair', async () => {
-    for (const optional of [fixture().analysis, { invalid: true }, undefined]) {
-      let calls = 0
-      const f = fixture()
-      const provider: LlmProvider = { complete: async input => {
-        calls += 1
-        expect(input.messages[0].content).toContain('requirement_analysis')
-        return { provider: 'fake', model: 'fixture', latencyMs: 0, content: JSON.stringify({
-          basic_info: {title: '产品经理'}, hard_requirements: {required_skills: []}, responsibilities: [], tasks: [], soft_skills: [], nice_to_have: [], requirement_analysis: optional,
-        }) }
-      } }
-      const jd = await new JDParserAgent(provider).parse(f.document.blocks.map(b => b.text).join('\n'))
-      expect(calls).toBe(1)
-      expect(jd.requirement_analysis).toEqual(optional && 'version' in optional ? optional : undefined)
-    }
-  })
-  test('matcher cannot replace the JD-only analysis with candidate-dependent content', async () => {
-    const f = fixture(), resumes: ResumeStructure[] = [
-      { personal_info: {name: 'A'}, education: [], experience: [], skills: {hard_skills: []} },
-      { personal_info: {name: 'B'}, education: [], experience: [], skills: {hard_skills: ['SQL']} },
-    ]
-    const provider: LlmProvider = { complete: async () => ({ provider: 'fake', model: 'fixture', latencyMs: 0,
-      content: JSON.stringify({ match_score: 20, skill_match: {}, experience_match: '材料未证明', requirement_analysis: {text: '模型试图根据候选人降低要求'} }) }) }
-    const jd = { basic_info: { title: '产品经理' }, hard_requirements: {required_skills: []}, responsibilities: [], tasks: [], soft_skills: [], nice_to_have: [], requirement_analysis: f.analysis }
-    for (const resume of resumes) expect((await new MatchingAgent(provider).match(resume, jd)).requirement_analysis).toEqual(f.analysis)
+  test('V5 matching projects the JD-only profile using only P02 and P03 after extraction', async () => {
+    const { createWorkflow, versions } = createSingleStepFixture()
+    const extraction = await createWorkflow().extractResume({ resumeMarkdown: FIXTURE_RESUME })
+    const matched = await createWorkflow().matchResume({ resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD }, extraction)
+    expect(versions).toHaveLength(3)
+    expect(versions[1]).toContain('-p02-')
+    expect(versions[2]).toContain('-p03-')
+    if (!('jobSuccessProfile' in matched.jobCandidate)) throw new Error('Expected V5 targeted job extraction')
+    const expected = buildRequirementAnalysis(matched.jobCandidate, matched.canonicalJobDocument)
+    expect(expected).toBeDefined()
+    expect(matched.requirementAnalysis).toEqual(expected)
+    const projection = { ...matched, resumeEvidenceBundle: extraction.resumeEvidenceBundle }
+    expect(toMatchAnalysis(projection).requirement_analysis).toEqual(expected)
+    // 候选人证据与匹配分不能改写由 JD 提取的岗位要求。
+    const otherCandidate = structuredClone(projection)
+    otherCandidate.resumeEvidenceBundle.evidenceAtoms = []
+    otherCandidate.matchScore.score = 0
+    expect(toMatchAnalysis(otherCandidate).requirement_analysis).toEqual(expected)
   })
   test('material-conditional instructions keep existing output allowances', () => {
     const p02 = compileV5Prompt({ component: 'P02', envelope: {payload: { jobTargetingPolicy: 'job-targeted-v1' }} })

@@ -1,3 +1,5 @@
+import type { StepRunSnapshot } from '@/harness/run-step'
+
 export const V5_SCHEMA_VERSION = '5.0.0' as const
 export const V5_WORKFLOW_VERSION = '5.0.0-deterministic-release-r3' as const
 export const V5_VALIDATOR_VERSION = '5.0.0-validator-v9' as const
@@ -639,6 +641,7 @@ export type ResumeAgentState =
 export type V5ReleaseStatus = 'prompt_only_unverified' | 'preproduction_candidate' | 'production_reliable'
 
 export interface V5ResumeExtractionResult {
+  stepStatuses?: StepRunSnapshot[]
   state: 'resume_extracted'
   releaseStatus: V5ReleaseStatus
   runId: string
@@ -703,6 +706,7 @@ export interface V5DeliveryDiagnostics {
 }
 
 export interface V5WorkflowResult {
+  stepStatuses?: StepRunSnapshot[]
   /** Internal replay metadata; public MVP response projection does not expose it. */
   entryWriting?: { version: 'entry-writing-v1'; renderingPlan: V5ResumePlan; paragraphPaths: string[] }
   requirementAnalysis?: import('@/job-analysis/requirements').RequirementAnalysis

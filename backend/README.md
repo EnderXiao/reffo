@@ -15,7 +15,6 @@
 ```text
 backend/
 ├── src/
-│   ├── agents/           # AI Agents：简历分析、JD 解析、匹配、生成、修订、面试建议
 │   ├── harness/          # Agent Harness：事件、step、attempt、评估、持久化订阅
 │   ├── providers/        # LLM provider 与 fallback
 │   ├── repositories/     # SQLite 仓储：Harness、源简历、生成历史
@@ -71,13 +70,15 @@ bun run migrate:sqlite-to-supabase:prod
 
 ## 核心 API
 
-### `POST /api/v1/mvp/process`
+### `POST /api/v1/mvp/process`（多步统一测试入口）
+
+该接口仅用于多步工作流测试和回归验证，前端生产流程不调用；前端继续按顺序调用 `/analyze`、`/match`、`/generate`、`/interview`。
 
 完整简历优化流程固定执行 V5：代码先生成并预检源简历 scope 计划，P01 按稳定 scope 有界分片抽取且通过后才执行 P02，随后执行 P03 匹配、P04 条件策略、本地代码构建 P05 形状的计划，再经 Blueprint 零调用预检、单次 P06D 受控 DSL、服务端编译和本地代码门禁生成成品。产物完成交付判定后立即转换为旧 MVP 响应；正式 `/process` 链路不再注册或调用 P05/P05R、P07、P09、P10/P10R 或 P11 模型。`legacy` kill switch 仍保留旧 P06/P08 路径。
 
 完整流程固定执行 V5，不再提供 V4、shadow 或请求级版本切换。响应保留旧步骤字段，同时增加 Agent 状态、release status 和安全回退标识；架构、调用成本与发布门槛见 [`src/v5/README.md`](src/v5/README.md)。2026-09-08 起按产品负责人授权准备 entry r5 生产发布；部署状态、切换与回滚见 [`docs/v5-entry-r5-production-rollout.md`](docs/v5-entry-r5-production-rollout.md)。
 
-正式接口通过服务端 `V5_RELEASE_PROFILE=legacy-dsl|entry-r5` 原子切换编排，默认保持 `legacy-dsl`，请求体不能切换版本。`entry-r5` 要求 `AI_MODEL=deepseek-v4-flash`、`OPENAI_BASE_URL=https://api.deepseek.com`、`DEEPSEEK_THINKING_MODE=disabled`、`DEEPSEEK_P01_THINKING_MODE=disabled`。配置不匹配时启动失败，不静默切换其他模型。`/api/v1/mvp/health` 的 `generation` 返回实际版本与模型配置（无密钥）。
+正式接口固定使用 V5 entry-r5 配置：`AI_MODEL=deepseek-v4-flash`、`OPENAI_BASE_URL=https://api.deepseek.com`、`DEEPSEEK_THINKING_MODE=disabled`、`DEEPSEEK_P01_THINKING_MODE=disabled`。配置不匹配时启动失败，不静默切换其他模型。单步接口通过服务端适配器复用同一 V5 阶段与检查点，前端无需切换调用方式。
 
 ### V5 插件清单
 
@@ -105,12 +106,14 @@ P01/P01R r17 保持 9 字段契约，区分上下文不足与真实冲突，保�
 
 插件可通过 `pluginOverrides` 替换；只有标记为 `optional` 的插件允许禁用。插件版本、状态、耗时和错误会写入 workflow manifest。当前内置插件的注册定义仍集中在 `src/v5/main/workflow.ts`，`src/v5/plugins/` 先承载通用 contract/registry；后续可将单个插件实现继续拆成独立文件。
 
-### 单步 Agent 接口
+### V5 单步接口
 
 - `POST /api/v1/mvp/analyze`: 单独分析简历。
 - `POST /api/v1/mvp/match`: 单独解析 JD 并做匹配分析。
 - `POST /api/v1/mvp/generate`: 单独生成最佳简历，并执行质量门禁和修订。
 - `POST /api/v1/mvp/interview`: 单独生成面试建议。
+
+四个接口统一使用 `src/v5/single-step-adapter.ts` 和 V5 插件运行时，Prompt 版本从 `src/v5/prompts/manifest.json` 读取。V4 Agent、Prompt、版本选择器及离线模拟脚本已移除，历史实现可从 `main` 查阅。原始输入与阶段检查点仅保存在服务端；前端按原顺序传递响应对象即可。Supabase 部署需要执行 `supabase/migrations/202609090001_v5_checkpoints.sql`，本地 SQLite 自动建表。
 
 ### Harness 接口
 

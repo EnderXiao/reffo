@@ -349,6 +349,7 @@ function buildGenerationState(args: {
       jobDescriptionState.positionName,
     ),
     detailItems,
+    phase: 'analyzing',
   }
 }
 
@@ -1132,6 +1133,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
 
       resumeWorkspaceActions.transitionGeneration(workspaceRunId, 'matching')
+      setGenerationState(previous => previous ? {...previous, phase: 'matching'} : previous)
 
       const matching = await resumeApi.matchResume(
         analysis,
@@ -1171,6 +1173,8 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }))
 
       const processResult = buildInitialProcessResult(analysis, matching)
+
+      setGenerationState(previous => previous ? {...previous, phase: 'generating'} : previous)
 
       setWorkspaceAnalysis(processResult.analysis)
       setWorkspaceMatching(processResult.matching)

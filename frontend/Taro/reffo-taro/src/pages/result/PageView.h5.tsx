@@ -373,7 +373,7 @@ function SourceReference({value}: {value: string}) {
 
 function AnalysisPanel({result}: {result: ProcessResult}) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const grade = resolveResumeGrade(result.analysis.quality_score)
+  const grade = resolveResumeGrade(result.matching.match_score)
   const weaknesses = normalizeItems(result.analysis.weaknesses, 3)
   const strategies = normalizeItems(result.matching.optimization_suggestions, 5)
   const visibleWeaknesses = isExpanded ? weaknesses : weaknesses.slice(0, 2)
@@ -384,7 +384,7 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
     <View className='reffo-result__panel'>
       <View className='reffo-result__score-row'>
         <Text className='reffo-result__grade'>{grade}</Text>
-        <Text className='reffo-result__grade-label'>源简历质量</Text>
+        <Text className='reffo-result__grade-label'>岗位匹配度</Text>
       </View>
 
       <RequirementAnalysisPanel value={result.matching?.requirement_analysis} />

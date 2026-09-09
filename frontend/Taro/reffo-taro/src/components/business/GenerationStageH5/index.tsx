@@ -14,6 +14,7 @@ export interface GenerationStageState {
   positionName: string
   baseLocation: string
   monogram: string
+  phase: 'analyzing' | 'matching' | 'generating'
 }
 
 export interface GenerationStageH5Props {
@@ -93,9 +94,11 @@ export default function GenerationStageH5({
               正在为你的目标岗位量身定做相契简历……
             </Text>
             <View className='reffo-create-generation__steps' aria-hidden='true'>
-              <View className='reffo-create-generation__step reffo-create-generation__step--active'><View className='reffo-create-generation__step-dot' /><Text>分析源简历</Text></View>
-              <View className='reffo-create-generation__step'><View className='reffo-create-generation__step-dot' /><Text>匹配目标岗位</Text></View>
-              <View className='reffo-create-generation__step'><View className='reffo-create-generation__step-dot' /><Text>生成相契简历</Text></View>
+              {(['analyzing', 'matching', 'generating'] as const).map((phase, index) => (
+                <View key={phase} className={`reffo-create-generation__step ${state.phase === phase ? 'reffo-create-generation__step--active' : ''} ${index < ['analyzing', 'matching', 'generating'].indexOf(state.phase) ? 'reffo-create-generation__step--done' : ''}`}>
+                  <View className='reffo-create-generation__step-dot' /><Text>{['分析源简历', '匹配目标岗位', '生成相契简历'][index]}</Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>

@@ -1,35 +1,17 @@
+import type { StepRunSnapshot } from '@/harness/run-step'
 import { Elysia, t } from 'elysia'
-import { JDParserAgent } from '@/agents/jd-parser'
-import { ResumeAnalyzerAgent } from '@/agents/resume-analyzer'
-import { MatchingAgent } from '@/agents/matching-agent'
-import { ResumeGeneratorAgent } from '@/agents/resume-generator'
-import { InterviewAdvisorAgent } from '@/agents/interview-advisor'
-import { ResumeRevisionAgent } from '@/agents/resume-revision'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
-import { createHarnessEvent } from '@/harness/events'
 import { getV5ReleaseDescriptor } from '@/v5/release'
-import {
-  assertBusinessEvaluationPassed,
-  evaluateWithBusinessRecovery,
-  getBusinessEvaluationErrorDetails,
-} from '@/harness/business-recovery'
-import {
-  evaluateInterviewSuggestionsBusiness,
-  evaluateMatchAnalysisBusiness,
-  evaluateResumeAnalysisBusiness,
-  evaluateSourceResumeForGeneration,
-} from '@/harness/evaluators/business-evaluators'
-import { assertBusinessEvaluation, publishEvaluationCompleted } from '@/harness/evaluators/evaluation-events'
-import { evaluateMarkdownResume } from '@/harness/evaluators/markdown-resume-evaluator'
-import { runHarnessedRequest, runHarnessedStep } from '@/harness/harnessed-request'
+import { getBusinessEvaluationErrorDetails } from '@/harness/business-recovery'
 import { recoveryAdviceForErrorCode } from '@/harness/recovery-advice'
-import { buildQualityGateAttempt, classifyAttemptResult, decideNextAction } from '@/harness/runtime-state'
-import { runStep } from '@/harness/run-step'
 import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 import { getHarnessDatabaseHealth } from '@/repositories/database'
 import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
+import { V5CheckpointError } from '@/repositories/v5-checkpoint-repository'
+import { v5SingleStepAdapter } from '@/v5/single-step-adapter'
+import { V5_WORKFLOW_VERSION } from '@/v5/types'
 import { V5WorkflowBlockedError } from '@/v5/errors'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 import {consumeResumeQuota, ensureResumeQuotaAvailable, ResumeQuotaError} from '@/services/resume-quota'
@@ -46,7 +28,8 @@ function buildErrorPayload(code: string, fallbackMessage: string, error: unknown
     ? {
         agent_state: error.state,
         issue_codes: [...new Set(error.issues.map(item => item.code))],
-        retryable: error.state === 'provider_failure',
+        retryable: error.retryable,
+        run_id: error.runId,
       }
     : getBusinessEvaluationErrorDetails(error)
   const recoveryAdvice = recoveryAdviceForErrorCode(errorCode)
@@ -56,7 +39,10 @@ function buildErrorPayload(code: string, fallbackMessage: string, error: unknown
     details: {
       ...(details && typeof details === 'object' && !Array.isArray(details) ? details : {}),
       ...(errorCode ? { error_code: errorCode } : {}),
-      recovery_advice: recoveryAdvice,
+        recovery_advice: recoveryAdvice,
+        ...(error instanceof V5WorkflowBlockedError && error.providerStatus
+          ? { provider_status: error.providerStatus }
+          : {}),
     },
   }
 }
@@ -85,6 +71,27 @@ export function buildMvpProcessErrorResponse(error: unknown) {
       ),
     } satisfies ApiResponse<never>,
   }
+}
+
+function singleStepFailure(error: unknown, code: string, message: string) {
+  if (error instanceof RequestAuthError || error instanceof ResumeQuotaError || error instanceof V5CheckpointError) {
+    return {status: error.status, response: {success: false, error: {
+      code: error.code, message: error.message,
+      ...(error instanceof ResumeQuotaError ? {details: {limit: error.limit, used: error.used}} : {}),
+    }} satisfies ApiResponse<never>}
+  }
+  return {status: error instanceof V5WorkflowBlockedError ? error.httpStatus : 500,
+    response: {success: false, error: buildErrorPayload(code, message, error)} satisfies ApiResponse<never>}
+}
+
+function singleStepSuccess<T>(result: {runId: string; data: T; steps: StepRunSnapshot[]}, startedAt: number) {
+  return {success: true, data: result.data, meta: {harness: {
+    run_id: result.runId, workflow_version: V5_WORKFLOW_VERSION, workflow_status: 'succeeded', step_statuses: result.steps, duration_ms: Date.now() - startedAt,
+  }}} satisfies ApiResponse<T>
+}
+
+async function stepOwner(headers: Record<string, string | undefined>, guest: boolean) {
+  return guest ? 'guest' : (await resolveRequestUser(headers)).userId
 }
 
 /**
@@ -135,7 +142,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
   })
   /**
    * POST /api/v1/mvp/process
-   * 完整流程：简历分析 -> 匹配分析 -> 简历生成 -> 面试建议
+   * 多步统一测试入口：简历分析 -> 匹配分析 -> 简历生成 -> 面试建议。
+   * 前端生产流程继续使用 /analyze、/match、/generate、/interview 单步接口。
    */
   .post(
     '/process',
@@ -204,8 +212,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         })),
       }),
       detail: {
-        summary: 'MVP 完整流程',
-        description: '固定执行 V5 R2 工作流。复用 V6 插件框架、原子证据、确定性计划、composition/writing 编译、交付门禁和旧响应兼容；安全回退稿与质量待审稿不作为成功结果交付。',
+        summary: 'MVP 多步统一测试流程',
+        description: '仅用于多步工作流测试和回归验证，固定执行 V5 R2；前端生产流程不调用此接口，继续使用单步接口。',
         tags: ['MVP'],
       },
     }
@@ -373,64 +381,17 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
   .post(
     '/analyze',
     async ({ body, headers, set }) => {
+      const startedAt = Date.now()
       try {
-        const userContext = body.landing === true ? null : await resolveRequestUser(headers)
-        if (userContext) await ensureResumeQuotaAvailable(userContext)
-        const resumeMarkdown = normalizeMarkdownText(body.resume_markdown)
-        const analyzer = new ResumeAnalyzerAgent()
-        const { result, meta } = await runHarnessedStep({
-          workflowVersion: 'single:v4.4:analyze_resume',
-          stepName: 'analyze_resume',
-          inputDigestSource: { resume_markdown: resumeMarkdown },
-          stepTimeoutMs: 120000,
-          execute: async (stepContext, { eventBus }) => {
-            const analysis = await analyzer.analyze(resumeMarkdown, {
-              eventBus,
-              stepContext,
-            })
-            const recovered = await evaluateWithBusinessRecovery({
-              eventBus,
-              stepContext,
-              outputName: 'ResumeAnalysis',
-              currentOutput: analysis,
-              evaluate: evaluateResumeAnalysisBusiness,
-              repair: ({ currentOutput, evaluation }) =>
-                analyzer.repairBusinessOutput(resumeMarkdown, currentOutput, evaluation, {
-                  eventBus,
-                  stepContext,
-                }),
-            })
-            assertBusinessEvaluationPassed({
-              evaluation: recovered.evaluation,
-              errorPrefix: '简历分析业务校验失败',
-            })
-
-            return recovered.output
-          },
-        })
-
-        if (userContext) await consumeResumeQuota(userContext)
-        const response: ApiResponse<typeof result> = {
-          success: true,
-          data: result,
-          meta: { harness: meta },
-        }
-
-        return response
+        const user = body.landing === true ? null : await resolveRequestUser(headers)
+        if (user) await ensureResumeQuotaAvailable(user)
+        const result = await v5SingleStepAdapter.analyze(normalizeMarkdownText(body.resume_markdown), user?.userId ?? 'guest')
+        if (user) await consumeResumeQuota(user)
+        return singleStepSuccess(result, startedAt)
       } catch (error) {
-        if (error instanceof ResumeQuotaError) {
-          set.status = error.status
-          return {success: false, error: {code: error.code, message: error.message, details: {limit: error.limit, used: error.used}}} satisfies ApiResponse<never>
-        }
-        console.error('简历分析失败:', error)
-        set.status = 500
-
-        const response: ApiResponse<never> = {
-          success: false,
-          error: buildErrorPayload('ANALYSIS_FAILED', '分析失败', error),
-        }
-
-        return response
+        const failure = singleStepFailure(error, 'ANALYSIS_FAILED', '分析失败')
+        set.status = failure.status
+        return failure.response
       }
     },
     {
@@ -445,7 +406,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       }),
       detail: {
         summary: '分析简历',
-        description: '仅执行简历分析步骤',
+        description: '执行 V5 P01/P01R 简历分析并返回兼容结构；结构中的上下文句柄需原样透传给后续接口',
         tags: ['MVP', 'Analysis'],
       },
     }
@@ -457,85 +418,21 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .post(
     '/match',
-    async ({ body, set }) => {
+    async ({ body, headers, set }) => {
+      const startedAt = Date.now()
       try {
         const presetJob = resolveLandingPresetJob(body.preset_jd_id)
-        const jdText = normalizeMarkdownText(presetJob || body.jd_text || '')
-        const parser = new JDParserAgent()
-        const matcher = new MatchingAgent()
-        const { result, meta } = await runHarnessedRequest({
-          workflowVersion: 'single:v4.4:match_resume_to_jd',
-          inputDigestSource: {
-            structured_resume: body.structured_resume,
-            jd_text: jdText,
-          },
-          execute: async ({ runContext, eventBus, steps, getRemainingWorkflowTimeout }) => {
-            const jdStep = await runStep({
-              runContext,
-              eventBus,
-              stepName: 'parse_jd',
-              timeoutMs: Math.min(90000, getRemainingWorkflowTimeout()),
-              execute: (stepContext) =>
-                parser.parse(jdText, {
-                  eventBus,
-                  stepContext,
-                }),
-            })
-            steps.push(jdStep.step)
-
-            const matchingStep = await runStep({
-              runContext,
-              eventBus,
-              stepName: 'match_resume_to_jd',
-              timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
-              execute: async (stepContext) => {
-                const matchAnalysis = await matcher.match(body.structured_resume, jdStep.result, {
-                  eventBus,
-                  stepContext,
-                })
-                const recovered = await evaluateWithBusinessRecovery({
-                  eventBus,
-                  stepContext,
-                  outputName: 'MatchAnalysis',
-                  currentOutput: matchAnalysis,
-                  evaluate: (output) => evaluateMatchAnalysisBusiness(output, body.structured_resume),
-                  repair: ({ currentOutput, evaluation }) =>
-                    matcher.repairBusinessOutput(body.structured_resume, jdStep.result, currentOutput, evaluation, {
-                      eventBus,
-                      stepContext,
-                    }),
-                })
-                assertBusinessEvaluationPassed({
-                  evaluation: recovered.evaluation,
-                  errorPrefix: '匹配分析业务校验失败',
-                })
-
-                return recovered.output
-              },
-            })
-            steps.push(matchingStep.step)
-
-            return matchingStep.result
-          },
-        })
-
-        const response: ApiResponse<typeof result> = {
-          success: true,
-          data: result,
-          meta: { harness: meta },
+        const jd = normalizeMarkdownText(presetJob || body.jd_text || '')
+        if (jd.trim().length < 10) {
+          set.status = 400
+          return {success: false, error: {code: 'INVALID_JD', message: '请提供有效的目标岗位描述'}}
         }
-
-        return response
+        const owner = await stepOwner(headers, isLandingPresetJobId(body.preset_jd_id))
+        return singleStepSuccess(await v5SingleStepAdapter.match(body.structured_resume, jd, owner), startedAt)
       } catch (error) {
-        console.error('匹配分析失败:', error)
-        set.status = 500
-
-        const response: ApiResponse<never> = {
-          success: false,
-          error: buildErrorPayload('MATCH_FAILED', '匹配分析失败', error),
-        }
-
-        return response
+        const failure = singleStepFailure(error, 'MATCH_FAILED', '匹配分析失败')
+        set.status = failure.status
+        return failure.response
       }
     },
     {
@@ -553,7 +450,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       }),
       detail: {
         summary: '匹配分析',
-        description: '基于结构化简历和 JD 执行岗位匹配分析',
+        description: '基于 V5 服务端简历检查点执行 P02/P03；保持结构化简历与 JD 请求格式',
         tags: ['MVP', 'Matching'],
       },
     }
@@ -565,190 +462,15 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .post(
     '/generate',
-    async ({ body, set }) => {
+    async ({ body, headers, set }) => {
+      const startedAt = Date.now()
       try {
-        const generator = new ResumeGeneratorAgent()
-        const reviser = new ResumeRevisionAgent()
-        const { result: optimizedResume, meta } = await runHarnessedRequest({
-          workflowVersion: 'single:v4.4:generate_resume',
-          inputDigestSource: {
-            structured_resume: body.structured_resume,
-            matching: body.matching,
-          },
-          execute: async ({ runContext, eventBus, steps, getRemainingWorkflowTimeout }) => {
-            const precheckStep = await runStep({
-              runContext,
-              eventBus,
-              stepName: 'validate_source_resume_for_generation',
-              timeoutMs: Math.min(30000, getRemainingWorkflowTimeout()),
-              execute: async (stepContext) => {
-                const evaluation = evaluateSourceResumeForGeneration(body.structured_resume)
-                await assertBusinessEvaluation({
-                  eventBus,
-                  stepContext,
-                  evaluation,
-                  errorPrefix: '优化简历生成前置校验失败',
-                })
-
-                return evaluation
-              },
-            })
-            steps.push(precheckStep.step)
-
-            const generationStep = await runStep({
-              runContext,
-              eventBus,
-              stepName: 'generate_resume',
-              timeoutMs: Math.min(240000, getRemainingWorkflowTimeout()),
-              execute: (stepContext) =>
-                generator.generate(
-                  body.structured_resume,
-                  body.matching.jd_structure,
-                  body.matching,
-                  {
-                    eventBus,
-                    stepContext,
-                  }
-                ),
-            })
-            steps.push(generationStep.step)
-
-            let optimizedResume = generationStep.result
-            let revisionAttempts = 0
-            const maxRevisionAttempts = 2
-
-            while (revisionAttempts <= maxRevisionAttempts) {
-              const validationStep = await runStep({
-                runContext,
-                eventBus,
-                stepName: 'validate_resume',
-                timeoutMs: Math.min(30000, getRemainingWorkflowTimeout()),
-                execute: async (stepContext) => {
-                  const evaluation = evaluateMarkdownResume(optimizedResume, body.structured_resume)
-                  await publishEvaluationCompleted({ eventBus, stepContext, evaluation })
-                  return evaluation
-                },
-              })
-              steps.push(validationStep.step)
-
-              const qualityGateAttempt = buildQualityGateAttempt({
-                stepName: validationStep.step.stepName,
-                attemptNumber: revisionAttempts + 1,
-                evaluation: validationStep.result,
-              })
-              const decision = decideNextAction(classifyAttemptResult(qualityGateAttempt))
-
-              if (decision.action === 'accept') {
-                if (revisionAttempts > 0) {
-                  await eventBus.publish(createHarnessEvent({
-                    type: 'recovery.succeeded',
-                    runId: runContext.runId,
-                    requestId: runContext.requestId,
-                    payload: {
-                      triggerStep: 'validate_resume',
-                      action: 'revise_output',
-                      attempts: revisionAttempts,
-                      maxAttempts: maxRevisionAttempts,
-                      reason: `第 ${revisionAttempts} 次修订后通过质量门禁`,
-                    },
-                  }))
-                }
-                return optimizedResume
-              }
-
-              if (decision.action !== 'revise_output' || revisionAttempts >= maxRevisionAttempts) {
-                await eventBus.publish(createHarnessEvent({
-                  type: 'recovery.failed',
-                  runId: runContext.runId,
-                  requestId: runContext.requestId,
-                  payload: {
-                    triggerStep: 'validate_resume',
-                    action: decision.action,
-                    attempts: revisionAttempts,
-                    maxAttempts: maxRevisionAttempts,
-                    reason: qualityGateAttempt.error?.message ?? '优化简历质量门禁未通过',
-                  },
-                }))
-                throw new Error(qualityGateAttempt.error?.message ?? '优化简历质量门禁未通过')
-              }
-
-              revisionAttempts += 1
-              const recoveryPayload = {
-                triggerStep: 'validate_resume',
-                action: decision.action,
-                revisionStep: decision.revisionStep,
-                attempts: revisionAttempts,
-                maxAttempts: maxRevisionAttempts,
-                issueCodes: validationStep.result.issues.map((issue) => issue.code),
-                reason: decision.reason,
-              }
-              await eventBus.publish(createHarnessEvent({
-                type: 'recovery.planned',
-                runId: runContext.runId,
-                requestId: runContext.requestId,
-                payload: recoveryPayload,
-              }))
-              await eventBus.publish(createHarnessEvent({
-                type: 'recovery.started',
-                runId: runContext.runId,
-                requestId: runContext.requestId,
-                payload: recoveryPayload,
-              }))
-              const revisionStep = await runStep({
-                runContext,
-                eventBus,
-                stepName: decision.revisionStep,
-                timeoutMs: Math.min(120000, getRemainingWorkflowTimeout()),
-                execute: (stepContext) =>
-                  reviser.revise(
-                    body.structured_resume,
-                    body.matching.jd_structure,
-                    body.matching,
-                    optimizedResume,
-                    validationStep.result,
-                    {
-                      eventBus,
-                      stepContext,
-                    }
-                  ),
-              })
-              steps.push(revisionStep.step)
-              optimizedResume = revisionStep.result
-            }
-
-            return optimizedResume
-          },
-        })
-
-        const response: ApiResponse<{
-          optimized_resume: string
-          changes_summary: string[]
-          improvement_score: number
-        }> = {
-          success: true,
-          data: {
-            optimized_resume: optimizedResume,
-            changes_summary: Array.isArray(body.matching.optimization_suggestions)
-              ? body.matching.optimization_suggestions
-              : Array.isArray(body.matching.weaknesses)
-                ? body.matching.weaknesses
-              : [],
-            improvement_score: Math.max(0, (body.matching.match_score ?? 0) - 75),
-          },
-          meta: { harness: meta },
-        }
-
-        return response
+        const owner = await stepOwner(headers, body.landing === true && isLandingPresetJobId(body.preset_jd_id))
+        return singleStepSuccess(await v5SingleStepAdapter.generate(body.structured_resume, body.matching, owner), startedAt)
       } catch (error) {
-        console.error('简历生成失败:', error)
-        set.status = 500
-
-        const response: ApiResponse<never> = {
-          success: false,
-          error: buildErrorPayload('GENERATE_FAILED', '简历生成失败', error),
-        }
-
-        return response
+        const failure = singleStepFailure(error, 'GENERATE_FAILED', '简历生成失败')
+        set.status = failure.status
+        return failure.response
       }
     },
     {
@@ -764,7 +486,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       }),
       detail: {
         summary: '生成优化简历',
-        description: '基于结构化简历和岗位匹配分析生成优化后的 Markdown 简历',
+        description: '从 V5 匹配检查点继续执行 R5 Writer 和交付门禁，不重复分析与匹配',
         tags: ['MVP', 'Generation'],
       },
     }
@@ -776,73 +498,15 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .post(
     '/interview',
-    async ({ body, set }) => {
+    async ({ body, headers, set }) => {
+      const startedAt = Date.now()
       try {
-        const advisor = new InterviewAdvisorAgent()
-        const { result, meta } = await runHarnessedStep({
-          workflowVersion: 'single:v4.4:generate_interview_advice',
-          stepName: 'generate_interview_advice',
-          inputDigestSource: {
-            analysis: body.analysis,
-            matching: body.matching,
-            optimized_resume: body.optimized_resume,
-          },
-          stepTimeoutMs: 120000,
-          execute: async (stepContext, { eventBus }) => {
-            const suggestions = await advisor.advise(
-              body.analysis,
-              body.matching,
-              body.optimized_resume,
-              {
-                eventBus,
-                stepContext,
-              }
-            )
-            const recovered = await evaluateWithBusinessRecovery({
-              eventBus,
-              stepContext,
-              outputName: 'InterviewSuggestions',
-              currentOutput: suggestions,
-              evaluate: evaluateInterviewSuggestionsBusiness,
-              repair: ({ currentOutput, evaluation }) =>
-                advisor.repairBusinessOutput(
-                  body.analysis,
-                  body.matching,
-                  body.optimized_resume,
-                  currentOutput,
-                  evaluation,
-                  {
-                    eventBus,
-                    stepContext,
-                  }
-                ),
-            })
-            assertBusinessEvaluationPassed({
-              evaluation: recovered.evaluation,
-              errorPrefix: '面试建议业务校验失败',
-            })
-
-            return recovered.output
-          },
-        })
-
-        const response: ApiResponse<typeof result> = {
-          success: true,
-          data: result,
-          meta: { harness: meta },
-        }
-
-        return response
+        const owner = await stepOwner(headers, body.landing === true && isLandingPresetJobId(body.preset_jd_id))
+        return singleStepSuccess(await v5SingleStepAdapter.interview(body.analysis, body.matching, body.optimized_resume, owner), startedAt)
       } catch (error) {
-        console.error('面试建议生成失败:', error)
-        set.status = 500
-
-        const response: ApiResponse<never> = {
-          success: false,
-          error: buildErrorPayload('INTERVIEW_FAILED', '面试建议生成失败', error),
-        }
-
-        return response
+        const failure = singleStepFailure(error, 'INTERVIEW_FAILED', '面试建议生成失败')
+        set.status = failure.status
+        return failure.response
       }
     },
     {
@@ -862,7 +526,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       }),
       detail: {
         summary: '生成面试建议',
-        description: '基于简历分析、岗位匹配分析和优化后的简历生成面试建议',
+        description: '基于已交付的 V5 简历执行按需 P10/P10R 面试建议；不自动加入 /process',
         tags: ['MVP', 'Interview'],
       },
     }

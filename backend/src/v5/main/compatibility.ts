@@ -8,7 +8,7 @@ import type {
 } from '@/types'
 import { isV5ProductDeliverable } from '@/v5/delivery-gate'
 import { V5WorkflowBlockedError } from '@/v5/errors'
-import type { EvidenceAtom, ValidationIssue, V5WorkflowResult } from '@/v5/types'
+import type { EvidenceAtom, InterviewPreparation, ValidationIssue, V5WorkflowResult } from '@/v5/types'
 
 function deliveryIssueCodes(result: V5WorkflowResult) {
   const issues = Array.isArray(result.validationIssues) ? result.validationIssues : []
@@ -32,7 +32,7 @@ function sanitizedDeliveryIssues(result: V5WorkflowResult): ValidationIssue[] {
   }))
 }
 
-function scopeEvidence(result: V5WorkflowResult, scopeId: string) {
+function scopeEvidence(result: Pick<V5WorkflowResult, 'resumeEvidenceBundle'>, scopeId: string) {
   return result.resumeEvidenceBundle.evidenceAtoms.filter(atom => (
     atom.sourceScopeId === scopeId && atom.status !== 'excluded'
   ))
@@ -44,7 +44,7 @@ function factText(atoms: EvidenceAtom[], types: EvidenceAtom['claimType'][]) {
     .map(atom => atom.normalizedClaim || atom.verbatimText)
 }
 
-function toResumeStructure(result: V5WorkflowResult): ResumeStructure {
+function toResumeStructure(result: Pick<V5WorkflowResult, 'resumeEvidenceBundle'>): ResumeStructure {
   const { identity, timeline, evidenceAtoms } = result.resumeEvidenceBundle
   const experience = timeline.filter(item => item.kind === 'experience' || item.kind === 'internship')
   const education = timeline.filter(item => item.kind === 'education')
@@ -93,7 +93,7 @@ function toResumeStructure(result: V5WorkflowResult): ResumeStructure {
   }
 }
 
-function toResumeAnalysis(result: V5WorkflowResult): ResumeAnalysis {
+export function toResumeAnalysis(result: Pick<V5WorkflowResult, 'resumeEvidenceBundle'>): ResumeAnalysis {
   const assessment = result.resumeEvidenceBundle.qualityAssessment
   return {
     quality_score: assessment.score,
@@ -105,7 +105,7 @@ function toResumeAnalysis(result: V5WorkflowResult): ResumeAnalysis {
   }
 }
 
-function toJdStructure(result: V5WorkflowResult): JDStructure {
+function toJdStructure(result: Pick<V5WorkflowResult, 'jobRequirementBundle'>): JDStructure {
   const { jobRequirementBundle: job } = result
   const byCategory = (category: string) => job.requirementAtoms
     .filter(atom => atom.category === category)
@@ -148,7 +148,7 @@ function toJdStructure(result: V5WorkflowResult): JDStructure {
   }
 }
 
-function toMatchAnalysis(result: V5WorkflowResult): MatchAnalysis {
+export function toMatchAnalysis(result: Pick<V5WorkflowResult, 'resumeEvidenceBundle' | 'jobRequirementBundle' | 'matchAnalysis' | 'matchScore' | 'requirementAnalysis'>): MatchAnalysis {
   const requirement = new Map(result.jobRequirementBundle.requirementAtoms.map(atom => [atom.requirementId, atom]))
   const evidence = new Map(result.resumeEvidenceBundle.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
   const direct = result.matchAnalysis.requirementMatches.filter(item => item.status === 'direct_match')
@@ -209,6 +209,10 @@ function toInterviewSuggestions(result: V5WorkflowResult): InterviewSuggestions 
   if (result.deliveryDiagnostics.provenance.interview !== 'generated') return undefined
   const preparation = result.interviewPreparation
   if (!preparation) return undefined
+  return toInterviewPreparation(preparation)
+}
+
+export function toInterviewPreparation(preparation: InterviewPreparation): InterviewSuggestions {
   return {
     questions: preparation.questions.map(item => item.question),
     story_recommendations: preparation.storyRecommendations.map(item => ({

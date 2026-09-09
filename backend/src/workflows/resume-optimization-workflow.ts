@@ -62,7 +62,9 @@ export class ResumeOptimizationWorkflow {
 
     getV5ReleaseDescriptor()
     const workflow = new V5ResumeOptimizationWorkflow({
-      ...v5ReleaseWorkflowOptions(env.V5_RELEASE_PROFILE),
+      // The public workflow is permanently the R5 entry workflow. Runtime
+      // configuration must not select a different generation pipeline.
+      ...v5ReleaseWorkflowOptions(),
       eventBus: this.eventBus,
       enableDefaultSubscribers: false,
       resumeExtractionCache: sharedResumeExtractionCache,

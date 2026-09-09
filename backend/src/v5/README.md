@@ -2,7 +2,7 @@
 
 ## 经历级 Writer 发布入口（2026-09-08）
 
-非生产 runner 使用 `--artifact-mode writer_v1 --job-targeted --entry-writer`。正式接口新增服务端 `V5_RELEASE_PROFILE=entry-r5`，同时启用 JD 定向分析及经历 Writer；默认 `legacy-dsl` 可用于切换回旧编排。产品负责人已授权推进发布，不将这项授权写成黄金集全面通过。部署核对及当前状态见 [生产发布记录](../../docs/v5-entry-r5-production-rollout.md)。
+非生产 runner 使用 `--artifact-mode writer_v1 --job-targeted --entry-writer`。正式接口固定使用 entry-r5，启用 JD 定向分析及经历 Writer；运行配置由服务端统一管理。产品负责人已授权推进发布，不将这项授权写成黄金集全面通过。部署核对及当前状态见 [生产发布记录](../../docs/v5-entry-r5-production-rollout.md)。
 
 ## r2 岗位定向升级（非生产显式选项）
 
@@ -100,7 +100,7 @@ P06D 漏选计划要求的正文证据时，代码可在同 scope、同 section�
 
 ## 配置和兼容
 
-`POST /api/v1/mvp/process` 固定执行 V5，不再提供 V4、shadow 或请求级版本选择。`output_language` 只影响 V5；兼容字段 `enable_llm_judge` 被忽略，不会增加外部 Judge 调用。响应保持既有顶层结构：`run_id`、`workflow_status`、`agent_version`、`agent_state`、`release_status`、`used_safe_fallback`、`step1_analysis`、`step2_matching`、`step3_optimized_resume`、`step4_interview_suggestions`；其中当前 `/process` 的 `step4_interview_suggestions` 为空，历史 `generated` 结果仍可转换，历史 `failed_optional` 仍可读取。更详细的门禁、回退和 provenance 只保留在内部 V5 结果与运行记录中。现有单步 `/analyze`、`/match`、`/generate`、`/interview` 仍是独立旧接口，不参与完整流程编排。
+`POST /api/v1/mvp/process` 固定执行 V5，不再提供 V4、shadow 或请求级版本选择。`output_language` 只影响 V5；兼容字段 `enable_llm_judge` 被忽略，不会增加外部 Judge 调用。响应保持既有顶层结构：`run_id`、`workflow_status`、`agent_version`、`agent_state`、`release_status`、`used_safe_fallback`、`step1_analysis`、`step2_matching`、`step3_optimized_resume`、`step4_interview_suggestions`；其中当前 `/process` 的 `step4_interview_suggestions` 为空，历史 `generated` 结果仍可转换，历史 `failed_optional` 仍可读取。更详细的门禁、回退和 provenance 只保留在内部 V5 结果与运行记录中。单步 `/analyze`、`/match`、`/generate`、`/interview` 由 V5 单步适配器串行复用 P01/P02/P03/R5 Writer/P10，保持旧请求和响应契约；`/process` 仅用于多步测试。
 
 Harness SQLite 初始化会以可重复的 additive migration 增加 Agent state、release status、safe fallback 和 Prompt manifest 列，并把 harness schema version 更新为 2。没有破坏性迁移。
 
