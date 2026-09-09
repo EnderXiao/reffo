@@ -1,0 +1,23 @@
+backend/src/v5/release.ts
+  s_05d38d6d17fd5d::t_913f96806051fe 7,11-13
+backend/src/workflows/resume-optimization-workflow.test.ts
+  s_05d38d6d17fd5d::t_d808ff65147b5e 50-51,54-56,64
+backend/src/workflows/resume-optimization-workflow.ts
+  s_05d38d6d17fd5d::t_875f5ac6c6fe52 65-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "fcc30acc19fd417bb3dedbc1b3e68aceed57cf90",
+  "prompts": {},
+  "sessions": {
+    "s_05d38d6d17fd5d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08166-0f33-7610-8257-b2a5a781344f",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
