@@ -1,0 +1,23 @@
+frontend/Taro/reffo-taro/src/pages/index/index.h5.scss
+  s_b15ffcb2ac7470::t_d58d494a5d5d0b 643
+frontend/Taro/reffo-taro/src/pages/index/__tests__/index.test.tsx
+  s_b15ffcb2ac7470::t_3c51abafb2eb20 220-221
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  s_b15ffcb2ac7470::t_d58d494a5d5d0b 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "83ee9e5b648bfb1347ab304db7822592d63a4fab",
+  "prompts": {},
+  "sessions": {
+    "s_b15ffcb2ac7470": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075b4-c6a6-7f11-828b-d943a5e93927",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}

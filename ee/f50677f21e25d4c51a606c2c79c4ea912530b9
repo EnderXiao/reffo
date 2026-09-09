@@ -1,0 +1,21 @@
+frontend/Taro/reffo-taro/src/pages/result/__tests__/PageView.test.tsx
+  s_b15ffcb2ac7470::t_c1b0bdd3da0dc3 1-94
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  s_b15ffcb2ac7470::t_c757eca5bae77c 366-373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "eef50677f21e25d4c51a606c2c79c4ea912530b9",
+  "prompts": {},
+  "sessions": {
+    "s_b15ffcb2ac7470": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a075b4-c6a6-7f11-828b-d943a5e93927",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
