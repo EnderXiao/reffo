@@ -1,0 +1,23 @@
+backend/.env.example
+  s_64b7c6fe25072c::t_5a2392d7837af9 84,97-98
+backend/src/config/v5-release.test.ts
+  s_64b7c6fe25072c::t_4d19667a0112e4 2,4-5,10-11,16-17
+backend/src/config/v5-release.ts
+  s_64b7c6fe25072c::t_1053ff8ed9a590 1-4,8,15,19,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "def0b1938cbe4a175be0ca2997c1a87711e7c891",
+  "prompts": {},
+  "sessions": {
+    "s_64b7c6fe25072c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08640-0fe7-7051-941e-9acb0374e662",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
