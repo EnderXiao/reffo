@@ -10,6 +10,7 @@ import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 
 export interface HarnessResponseMeta {
   run_id: string
+  workflow_version?: string
   workflow_status: WorkflowStatus
   step_statuses: StepRunSnapshot[]
   duration_ms: number

@@ -62,6 +62,7 @@ export interface CreateGenerationState {
   baseLocation: string
   monogram: string
   detailItems: string[]
+  phase: 'analyzing' | 'matching' | 'generating'
 }
 
 export interface CreateTitleSegment {

@@ -10,6 +10,7 @@ import { resumeHistoryRoutes } from '@/routes/resume-history'
 import { systemRoutes } from '@/routes/system'
 import { authRoutes } from '@/routes/auth'
 import { profileRoutes } from '@/routes/profile'
+import { startV5CheckpointCleanup } from '@/repositories/v5-checkpoint-repository'
 import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 
 /**
@@ -114,6 +115,7 @@ async function bootstrap() {
     })
 
   startSupabaseHarnessCleanup()
+  startV5CheckpointCleanup()
 
   console.log('\n🚀 Reffo MVP 服务启动成功！')
   console.log('========================================')

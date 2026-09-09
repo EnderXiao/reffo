@@ -337,8 +337,6 @@ export default function PageView({
   handleCancelCreate,
   handleViewHistory,
   handleCardPress,
-  handleCardEdit,
-  handleCardDelete,
   handleCardChange,
   handleDeckFirstInteraction,
   logoSource,
@@ -575,29 +573,6 @@ export default function PageView({
           onCardChange={handleCardChange}
           onFirstInteraction={handleDeckFirstInteraction}
         />
-
-        {!isCreateMode && currentCard ? (
-          <View className='reffo-home__card-actions' aria-label='当前简历操作'>
-            <View
-              className='reffo-home__card-action'
-              role='button'
-              aria-label='编辑当前简历'
-              aria-disabled={Boolean(deletingCardId)}
-              onClick={() => handleCardEdit(currentCard)}
-            >
-              <Text>编辑</Text>
-            </View>
-            <View
-              className='reffo-home__card-action reffo-home__card-action--danger'
-              role='button'
-              aria-label='删除当前简历'
-              aria-disabled={Boolean(deletingCardId)}
-              onClick={() => handleCardDelete(currentCard)}
-            >
-              <Text>删除</Text>
-            </View>
-          </View>
-        ) : null}
 
         <View className='reffo-home__footer'>
           {!isCreateMode ? (

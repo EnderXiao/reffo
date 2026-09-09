@@ -6,6 +6,8 @@ export class V5WorkflowBlockedError extends Error {
   readonly issues: ValidationIssue[]
   readonly retryable: boolean
   readonly httpStatus: number
+  /** 上游 Provider 的 HTTP 状态，仅用于诊断，不包含响应正文或凭据。 */
+  readonly providerStatus?: number
   runId?: string
   deliveryDiagnostics?: V5DeliveryDiagnostics
 
@@ -16,6 +18,7 @@ export class V5WorkflowBlockedError extends Error {
     issues?: ValidationIssue[]
     retryable?: boolean
     httpStatus?: number
+    providerStatus?: number
   }) {
     super(input.message)
     this.name = 'V5WorkflowBlockedError'
@@ -28,5 +31,6 @@ export class V5WorkflowBlockedError extends Error {
         ? 502
         : input.state === 'workflow_failure' ? 500 : 422
     )
+    this.providerStatus = input.providerStatus
   }
 }

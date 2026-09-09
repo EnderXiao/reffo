@@ -19,8 +19,7 @@
     "v5:nonprod-nine:blind-eval": "bun --env-file=.env.nonprod run scripts/run-v5-nonprod-nine-case-blind-eval.ts",
     "migrate:sqlite-to-supabase": "bun --env-file=.env.nonprod run scripts/migrate-sqlite-to-supabase.ts",
     "migrate:sqlite-to-supabase:nonprod": "bun --env-file=.env.nonprod run scripts/migrate-sqlite-to-supabase.ts",
-    "migrate:sqlite-to-supabase:prod": "bun --env-file=.env.prod run scripts/migrate-sqlite-to-supabase.ts",
-    "prompt-simulate:v44:one-job": "bun --env-file=.env.nonprod run scripts/run-prompt-v44-one-job-simulation.ts"
+    "migrate:sqlite-to-supabase:prod": "bun --env-file=.env.prod run scripts/migrate-sqlite-to-supabase.ts"
   },
   "dependencies": {
     "elysia": "^1.0.0",
