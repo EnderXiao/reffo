@@ -317,6 +317,14 @@ function SectionTitle({children, icon}: {children: string; icon?: string}) {
   )
 }
 
+function SourceReference({value}: {value?: string}) {
+  return (
+    <Text className='reffo-result__story-reference'>
+      {value?.trim() || '暂无可引用原文'}
+    </Text>
+  )
+}
+
 function ResultStageTitle({stage}: {stage: ResultStage}) {
   const accentIndex = stage.title.indexOf(stage.accent)
   const titleBeforeAccent = accentIndex >= 0 ? stage.title.slice(0, accentIndex) : ''

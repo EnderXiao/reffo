@@ -507,9 +507,8 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
 }
 
 .reffo-result__title-spark {
-  position: absolute;
+  position: relative;
   top: -4px;
-  right: 0;
   display: inline-block;
   flex: 0 0 18px;
   width: 18px;
