@@ -317,6 +317,14 @@ function SectionTitle({children, icon}: {children: string; icon?: string}) {
   )
 }
 
+function SourceReference({value}: {value?: string}) {
+  return (
+    <Text className='reffo-result__story-reference'>
+      {value?.trim() || '暂无可引用原文'}
+    </Text>
+  )
+}
+
 function ResultStageTitle({stage}: {stage: ResultStage}) {
   const accentIndex = stage.title.indexOf(stage.accent)
   const titleBeforeAccent = accentIndex >= 0 ? stage.title.slice(0, accentIndex) : ''
@@ -372,13 +380,9 @@ function SourceReference({value}: {value: string}) {
 }
 
 function AnalysisPanel({result}: {result: ProcessResult}) {
-  const [isExpanded, setIsExpanded] = useState(false)
   const grade = resolveResumeGrade(result.matching.match_score)
-  const weaknesses = normalizeItems(result.analysis.weaknesses, 3)
-  const strategies = normalizeItems(result.matching.optimization_suggestions, 5)
-  const visibleWeaknesses = isExpanded ? weaknesses : weaknesses.slice(0, 2)
-  const visibleStrategies = isExpanded ? strategies : strategies.slice(0, 3)
-  const hasHiddenItems = visibleWeaknesses.length < weaknesses.length || visibleStrategies.length < strategies.length
+  const weaknesses = normalizeItems(result.analysis.weaknesses, Infinity)
+  const strategies = normalizeItems(result.matching.optimization_suggestions, Infinity)
 
   return (
     <View className='reffo-result__panel'>
@@ -394,12 +398,14 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
           <Image className='reffo-result__alert-icon' src={alertIcon} mode='aspectFit' />
           <Text>差距分析</Text>
         </View>
-        {visibleWeaknesses.length > 0 ? (
-          visibleWeaknesses.map((item, index) => (
-            <Text key={`${item}-${index}`} className='reffo-result__paragraph'>
-              {item}
-            </Text>
-          ))
+        {weaknesses.length > 0 ? (
+          <ul className='reffo-result__analysis-list'>
+            {weaknesses.map((item, index) => (
+              <li key={`${item}-${index}`} className='reffo-result__analysis-list-item'>
+                {item}
+              </li>
+            ))}
+          </ul>
         ) : (
           <EmptyText />
         )}
@@ -410,25 +416,18 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
           <Image className='reffo-result__alert-icon' src={confirmIcon} mode='aspectFit' />
           <Text>优化策略</Text>
         </View>
-        {visibleStrategies.length > 0 ? (
-          visibleStrategies.map((item, index) => (
-            <Text key={`${item}-${index}`} className='reffo-result__paragraph'>
-              {item}
-            </Text>
-          ))
+        {strategies.length > 0 ? (
+          <ul className='reffo-result__analysis-list'>
+            {strategies.map((item, index) => (
+              <li key={`${item}-${index}`} className='reffo-result__analysis-list-item'>
+                {item}
+              </li>
+            ))}
+          </ul>
         ) : (
           <EmptyText />
         )}
       </View>
-      {(hasHiddenItems || isExpanded) ? (
-        <View
-          className='reffo-result__analysis-toggle'
-          role='button'
-          onClick={() => setIsExpanded(previous => !previous)}
-        >
-          <Text>{isExpanded ? '收起分析' : '查看完整分析'}</Text>
-        </View>
-      ) : null}
     </View>
   )
 }
