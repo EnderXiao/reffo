@@ -1,0 +1,42 @@
+frontend/Taro/reffo-taro/src/utils/__tests__/navigation-transition.test.ts
+  s_e137d4caa84b1c::t_615ce395a3e73e 43-44,150-210,270,276
+  s_e137d4caa84b1c::t_feb41c848f5aa8 211
+  s_e137d4caa84b1c::t_3a6f23b8ef91ef 271-275
+  s_e137d4caa84b1c::t_f1dd93f450dfef 277-279
+  s_9a699f48669332::t_c5fe627a9066c1 245-250,280-345
+frontend/Taro/reffo-taro/src/utils/navigation-transition.ts
+  s_e137d4caa84b1c::t_ec867f0a8fd7ad 33,115,307-308,311-324,326-332,334-337,344,348,407,409,412,414,417,425-430
+  s_e137d4caa84b1c::t_ec17c5d1120d70 309-310,325
+  s_e137d4caa84b1c::t_db5fd1c56a1e8d 306,333,391
+  s_e137d4caa84b1c::t_6e56aebd4b9c78 114
+  s_e137d4caa84b1c::t_64a117c3511f56 116
+  s_e137d4caa84b1c::t_49e3f3ca2e143b 338-339
+  s_e137d4caa84b1c::t_056bf2c505d4c6 341-343
+  s_e137d4caa84b1c::t_435f7689615856 346-347
+  s_e137d4caa84b1c::t_7dbd063447c602 349-351
+  s_9a699f48669332::t_bdf60eca11c114 29,352-360,453,484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4bdbf8fb96f1d5587d3c037af4071c03fce40eb2",
+  "prompts": {},
+  "sessions": {
+    "s_9a699f48669332": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08b8f-35d8-7352-811f-a3ee952d9e89",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    },
+    "s_e137d4caa84b1c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08b71-4124-70d0-9de7-81800dc442f0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
