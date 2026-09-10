@@ -1,0 +1,16 @@
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  h_1edca6cb63ac1c 320-327
+frontend/Taro/reffo-taro/src/pages/result/index.h5.scss
+  h_1edca6cb63ac1c 510
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d1e71f700cfec2b7a25aa0948c8c251276aeff23",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
