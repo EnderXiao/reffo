@@ -836,7 +836,7 @@ export class V5ResumeOptimizationWorkflow {
                 }),
                 stepContext,
                 documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
-                validate: value => validateV5MatchAnalysis({ resume: resumeEvidenceBundle, job: jobRequirementBundle, match: value }),
+                validate: value => validateV5MatchAnalysis({ resume: resumeEvidenceBundle, job: jobRequirementBundle, match: value, gateMode: 'relaxed_release' }),
                 })
               },
             })

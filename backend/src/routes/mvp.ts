@@ -90,8 +90,8 @@ function singleStepSuccess<T>(result: {runId: string; data: T; steps: StepRunSna
   }}} satisfies ApiResponse<T>
 }
 
-async function stepOwner(headers: Record<string, string | undefined>, guest: boolean) {
-  return guest ? 'guest' : (await resolveRequestUser(headers)).userId
+async function stepOwner(headers: Record<string, string | undefined>, landing: boolean) {
+  return landing ? 'guest' : (await resolveRequestUser(headers)).userId
 }
 
 /**
@@ -112,6 +112,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       && requestBody?.landing === true
     ) || (
       path === '/api/v1/mvp/match'
+      && requestBody?.landing === true
       && isLandingPresetJobId(requestBody?.preset_jd_id)
     ) || (
       (path === '/api/v1/mvp/generate' || path === '/api/v1/mvp/interview')
@@ -427,7 +428,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           set.status = 400
           return {success: false, error: {code: 'INVALID_JD', message: '请提供有效的目标岗位描述'}}
         }
-        const owner = await stepOwner(headers, isLandingPresetJobId(body.preset_jd_id))
+        const owner = await stepOwner(headers, body.landing === true && isLandingPresetJobId(body.preset_jd_id))
         return singleStepSuccess(await v5SingleStepAdapter.match(body.structured_resume, jd, owner), startedAt)
       } catch (error) {
         const failure = singleStepFailure(error, 'MATCH_FAILED', '匹配分析失败')
@@ -447,6 +448,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         preset_jd_id: t.Optional(t.String({
           description: 'Landing 预设岗位 ID',
         })),
+        landing: t.Optional(t.Boolean({description: '是否为未登录 Landing 体验流程'})),
       }),
       detail: {
         summary: '匹配分析',

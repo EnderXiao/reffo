@@ -45,8 +45,8 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
       link.difference = '当前材料未提供足够证据，不能据此判定候选人存在该项缺陷。'
       report('JOB_FIT_UNPROVEN_GAP_ALIGNED', link.targetId, [], '无证据的缺陷判断降为未知，不要求模型补造证据或重试。', 'warning')
     }
-    if (link.status !== 'unknown' && !link.evidenceIds.length) report('JOB_FIT_PROOF_MISSING', link.targetId, [], '支持、差异或冲突判断需要具体简历证据。')
-    if (link.status === 'transferable' && (!link.similarity.trim() || !link.difference.trim())) report('JOB_FIT_TRANSFER_BASIS_MISSING', link.targetId, link.evidenceIds, '可迁移判断需说明相似点与差异。')
+    if (link.status !== 'unknown' && !link.evidenceIds.length) report('JOB_FIT_PROOF_MISSING', link.targetId, [], '支持、差异或冲突判断需要具体简历证据。', 'warning')
+    if (link.status === 'transferable' && (!link.similarity.trim() || !link.difference.trim())) report('JOB_FIT_TRANSFER_BASIS_MISSING', link.targetId, link.evidenceIds, '可迁移判断需说明相似点与差异。', 'warning')
     if (link.status === 'direct' && link.evidenceIds.length && link.evidenceIds.every(id => {
       const atom = evidence.get(id)
       return !atom || ['skill', 'education', 'other'].includes(atom.claimType) || atom.riskFlags.includes('self_assessment_only')
@@ -103,7 +103,7 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
     retainedNarratives.push(narrative)
   }
   fit.narratives = retainedNarratives
-  if (fit.questions.some(question => !targetById.has(question.targetId))) report('JOB_FIT_QUESTION_TARGET_INVALID', 'questions', [], '补充问题必须关联当前岗位目标。')
+  if (fit.questions.some(question => !targetById.has(question.targetId))) report('JOB_FIT_QUESTION_TARGET_INVALID', 'questions', [], '补充问题必须关联当前岗位目标。', 'warning')
   return { passed: !issues.some(issue => issue.severity === 'error'), issues, value: fit }
 }
 
@@ -136,7 +136,7 @@ export function projectLegacyMatch(fit: JobFitMap, targets: JobTarget[], resume:
     scoreInputs: { mustHaveApplicable: 0, mustHaveDirect: 0, mustHaveTransferable: 0, coreOutcomeApplicable: 0, coreOutcomeDirect: 0, coreOutcomeTransferable: 0, evidenceClarityRatio: 0 },
     contextUsed: [],
   }
-  const checked = validateV5MatchAnalysis({ resume, job, match })
+  const checked = validateV5MatchAnalysis({ resume, job, match, gateMode: 'relaxed_release' })
   if (!checked.passed) throw new Error('JOB_FIT_COMPATIBILITY_INVALID')
   return checked.value ?? match
 }

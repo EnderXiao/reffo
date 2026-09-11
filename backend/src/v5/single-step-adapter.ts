@@ -72,7 +72,11 @@ export class V5SingleStepAdapter {
 
   async match(structured: unknown, jd: string, owner: string) {
     const {stored, token: resumeToken} = await this.resume(structured, owner)
-    const result = await this.workflow().matchResume({resumeMarkdown: stored.source, jobDescription: jd, workflowTimeoutMs: 60000}, stored.extraction)
+    // Matching may perform bounded structured-output continuation calls when
+    // the provider truncates a response. Keep the workflow budget above the
+    // individual provider call budget so recoverable truncation is not turned
+    // into a premature workflow timeout.
+    const result = await this.workflow().matchResume({resumeMarkdown: stored.source, jobDescription: jd, workflowTimeoutMs: 180000}, stored.extraction)
     const token = await this.repository.save(owner, {kind: 'matching', resumeToken, checkpoint: result} satisfies MatchingCheckpoint)
     const matching = toMatchAnalysis({...result, resumeEvidenceBundle: stored.extraction.resumeEvidenceBundle})
     return {runId: result.runId, steps: result.stepStatuses ?? [], data: {...matching, jd_structure: {...matching.jd_structure, _v5_context: token}}}

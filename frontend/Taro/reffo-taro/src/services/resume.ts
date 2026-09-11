@@ -475,7 +475,10 @@ export class ResumeApi {
           ? {jd_text: jd}
           : {preset_jd_id: jd.presetJdId}),
       } satisfies MatchResumeRequest,
-      {timeout: 60000},
+      // Match may perform up to two server-side continuation calls after a
+      // truncated structured response. Keep the client timeout above the
+      // backend's 60s workflow budget plus continuation overhead.
+      {timeout: 240000},
     );
 
     return normalizeMatching(response);

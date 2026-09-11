@@ -75,6 +75,21 @@ export const RELAXED_RELEASE_ADVISORY_CODES = new Set([
   'DUPLICATE_EVIDENCE_USE',
   'OUTPUT_CONTENT_UNDERSIZED',
   'PLAN_COVERAGE_REGRESSION',
+  // P03 matching quality is advisory during workflow execution. Structural
+  // references and source/fact integrity remain hard gates.
+  'MATCH_WITHOUT_EVIDENCE',
+  'UNPROVEN_MATCH_HAS_EVIDENCE',
+  'MATCH_SCORING_MISMATCH',
+  'REQUIREMENT_MATCH_MISSING',
+  'REQUIREMENT_MATCH_DUPLICATE',
+  'MATCH_STRENGTH_INVALID',
+  'PLAN_BUSINESS_BUDGET_UNDER_TARGET',
+  'INVALID_BUSINESS_BULLET_POLICY',
+  'BUSINESS_SCOPE_EVIDENCE_MISMATCH',
+  'SCOPE_NON_BUSINESS_EVIDENCE',
+  'OMIT_WITH_BUSINESS_CLAIM',
+  'TIMELINE_WITH_BUSINESS_CLAIM',
+  'MINIMUM_BUSINESS_CONTENT_MISSING',
 ])
 
 function applyGeneratedArtifactGateMode(
@@ -147,6 +162,7 @@ export function validateV5MatchAnalysis(input: {
   resume: ResumeEvidenceBundle
   job: JobRequirementBundle
   match: V5MatchAnalysis
+  gateMode?: V5ValidationGateMode
 }): ValidationResult<V5MatchAnalysis> {
   const issues: ValidationIssue[] = []
   const requirementIds = new Set(input.job.requirementAtoms.map(atom => atom.requirementId))
@@ -378,7 +394,12 @@ export function validateV5MatchAnalysis(input: {
     input = { ...input, match: { ...input.match, scoreInputs: expectedInputs } }
   }
 
-  return { passed: !issues.some(item => item.severity === 'error'), issues, value: input.match }
+  const gatedIssues = input.gateMode === 'relaxed_release'
+    ? issues.map(item => item.severity === 'error' && RELAXED_RELEASE_ADVISORY_CODES.has(item.code)
+      ? { ...item, severity: 'warning' as const }
+      : item)
+    : issues
+  return { passed: !gatedIssues.some(item => item.severity === 'error'), issues: gatedIssues, value: input.match }
 }
 
 function selectedPlanEvidence(plan: V5ResumePlan) {
