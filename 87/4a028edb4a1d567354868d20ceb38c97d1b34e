@@ -1,0 +1,19 @@
+frontend/Taro/reffo-taro/src/pages/result/components/requirement-analysis.h5.scss
+  s_7b5a4cc3ac8dae::t_dbaeab4fce3a2c 16,35,40,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "874a028edb4a1d567354868d20ceb38c97d1b34e",
+  "prompts": {},
+  "sessions": {
+    "s_7b5a4cc3ac8dae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08bbe-f0bc-7282-83a1-0fe17f213b73",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
