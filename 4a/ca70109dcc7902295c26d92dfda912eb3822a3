@@ -1,0 +1,23 @@
+frontend/Taro/reffo-taro/src/pages/result/components/requirement-analysis.h5.scss
+  s_7b5a4cc3ac8dae::t_83647567b41efc 9,16,27-38
+  s_7b5a4cc3ac8dae::t_e449e0e0c438cd 44
+  s_7b5a4cc3ac8dae::t_13b9fa59eda2ec 39-40
+frontend/Taro/reffo-taro/src/pages/result/components/RequirementAnalysis.h5.tsx
+  s_7b5a4cc3ac8dae::t_83647567b41efc 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4aca70109dcc7902295c26d92dfda912eb3822a3",
+  "prompts": {},
+  "sessions": {
+    "s_7b5a4cc3ac8dae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08bbe-f0bc-7282-83a1-0fe17f213b73",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
