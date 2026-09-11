@@ -245,13 +245,13 @@ describe('首页组件', () => {
     expect(document.querySelector('.reffo-home')?.getAttribute('data-loading-error')).toBe('加载失败')
   })
 
-  test('返回首页时应清理上一次导航的即时反馈', () => {
+  test('返回首页时应清理上一次导航的即时反馈', async () => {
     render(<Index />)
 
     fireEvent.click(screen.getByText('登录'))
     expect(screen.getByText('打开中…')).toBeTruthy()
 
-    act(() => {
+    await act(async () => {
       didShowCallbacks.forEach(callback => callback())
     })
 

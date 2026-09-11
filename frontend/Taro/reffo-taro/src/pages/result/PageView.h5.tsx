@@ -371,14 +371,6 @@ function EmptyText() {
   return <Text className='reffo-result__empty'>暂无内容</Text>
 }
 
-function SourceReference({value}: {value: string}) {
-  return (
-    <Text className='reffo-result__story-reference'>
-      {value || '暂无可引用原文'}
-    </Text>
-  )
-}
-
 function AnalysisPanel({result}: {result: ProcessResult}) {
   const grade = resolveResumeGrade(result.matching.match_score)
   const weaknesses = normalizeItems(result.analysis.weaknesses, Infinity)

@@ -93,10 +93,12 @@ describe('navigation-transition', () => {
     expect(startViewTransition).toHaveBeenCalledTimes(1)
   })
 
-  test('waits for Taro page DOM commit before finishing View Transition update', async () => {
+  test('finishes a same-route View Transition without waiting for suspended paint frames', async () => {
     const requestAnimationFrame = window.requestAnimationFrame as jest.Mock
+    requestAnimationFrame.mockImplementation(() => 1)
+    let updated = false
     const startViewTransition = jest.fn(callback => {
-      const updateCallbackDone = Promise.resolve().then(callback)
+      const updateCallbackDone = Promise.resolve().then(callback).then(() => { updated = true })
       return {
         ready: Promise.resolve(),
         finished: updateCallbackDone.then(() => undefined),
@@ -115,7 +117,8 @@ describe('navigation-transition', () => {
     await runWithNavigationTransition(action, {kind: 'forward'})
 
     expect(action).toHaveBeenCalledTimes(1)
-    expect(requestAnimationFrame).toHaveBeenCalledTimes(2)
+    expect(updated).toBe(true)
+    expect(requestAnimationFrame).not.toHaveBeenCalled()
     expect(startViewTransition).toHaveBeenCalledTimes(1)
   })
 
