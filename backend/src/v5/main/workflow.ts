@@ -727,7 +727,9 @@ export class V5ResumeOptimizationWorkflow {
           failureMapping: { apiCode: 'V5_RESUME_EXTRACTION_FAILED', agentState: 'blocked_input_validation' },
           run: async () => {
             if (resume.extraction) {
-              if (createDigest(resume.extraction.canonicalSourceDocument) !== createDigest(sourceDocument.canonicalDocument)) {
+              // Supabase JSONB 不保证对象字段顺序；比较规范化文档内容摘要，避免
+              // 仅因持久化后字段重排而误判检查点来源不一致。
+              if (resume.extraction.canonicalSourceDocument.sha256 !== sourceDocument.canonicalDocument.sha256) {
                 throw new Error('V5_RESUME_CHECKPOINT_SOURCE_MISMATCH')
               }
               return resume.extraction
