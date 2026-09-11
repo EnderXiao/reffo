@@ -1,0 +1,25 @@
+frontend/Taro/reffo-taro/src/utils/__tests__/navigation-transition.test.ts
+  s_7b5a4cc3ac8dae::t_95b4ba1a17ebcd 96,98-99,101,120-121
+frontend/Taro/reffo-taro/jest.setup.js
+  s_7b5a4cc3ac8dae::t_95b4ba1a17ebcd 7-9
+frontend/Taro/reffo-taro/src/__mocks__/@tarojs/components.tsx
+  s_7b5a4cc3ac8dae::t_95b4ba1a17ebcd 6-7,10-11
+frontend/Taro/reffo-taro/src/pages/index/__tests__/index.test.tsx
+  s_7b5a4cc3ac8dae::t_7c891631407fb2 248,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4c42a617b5a54ff8b59dc6e3c17c5267f152b401",
+  "prompts": {},
+  "sessions": {
+    "s_7b5a4cc3ac8dae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08bbe-f0bc-7282-83a1-0fe17f213b73",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
