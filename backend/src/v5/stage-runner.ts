@@ -130,9 +130,18 @@ export async function runV5StructuredStage<T>(input: {
   }
   const provider = input.options?.provider ?? fallbackLlmProvider
   let providerResult: ChatCompletionResult
+  let continuation = ''
+  const maxContinuations = 2
   try {
-    providerResult = await provider.complete({
-      messages: compiled.messages,
+    for (let attempt = 0; ; attempt += 1) {
+      const messages = continuation
+        ? [...compiled.messages, {role: 'assistant' as const, content: continuation}, {
+            role: 'user' as const,
+            content: '上一次输出因长度限制被截断。请从截断位置继续输出，保持同一个 JSON 对象，不要重复已经输出的内容，不要添加 Markdown。',
+          }]
+        : compiled.messages
+      providerResult = await provider.complete({
+      messages,
       model: input.options?.model,
       temperature: compiled.temperature,
       structuredOutput: { name: compiled.schemaName, schema: compiled.providerSchema, strict: true },
@@ -144,10 +153,14 @@ export async function runV5StructuredStage<T>(input: {
       onContentDelta: input.options?.onContentDelta,
       maxProviderAttempts: input.options?.maxProviderAttempts,
       maxProviderModels: input.options?.maxProviderModels,
-    })
+      })
+      if (providerResult.finishReason !== 'length' || attempt >= maxContinuations) break
+      continuation += providerResult.content
+    }
   } catch (error) {
     throw new V5ProviderCallError({ component: input.component, cause: error })
   }
+  if (continuation) providerResult = {...providerResult, content: continuation + providerResult.content}
   if (providerResult.finishReason === 'length') {
     throw new V5StructuredOutputError({
       code: 'V5_OUTPUT_TRUNCATED',
