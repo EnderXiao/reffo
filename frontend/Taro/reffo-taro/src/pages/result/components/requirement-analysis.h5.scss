@@ -1,21 +1,28 @@
 .reffo-requirements {
+  width: 100%;
+  margin-bottom: 21px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  width: 100%;
   min-width: 0;
   min-height: 193px;
   position: relative;
-  margin-bottom: 21px;
   padding: 10px 16px;
   gap: 22px;
   border: 1px solid #ffffff;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 2PX 5PX rgba(0, 0, 0, 0.06);
-  -webkit-backdrop-filter: blur(10.4PX);
-  backdrop-filter: blur(10.4PX);
+  background: transparent;
+  box-shadow: 0 1PX 3PX rgba(0, 0, 0, 0.025);
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 22px;
+  }
 
   &__quote {
     display: block;
@@ -25,23 +32,20 @@
   }
 
   &__title {
-    position: absolute;
-    top: 20px;
-    right: 24px;
-    padding: 8px 28px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.35);
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: rgba(225, 227, 236, 0.3);
+    box-shadow: inset 0 1PX 2PX rgba(110, 118, 145, 0.05);
     color: #17c964;
-    font-size: 16px;
+    font-size: 10px;
     font-weight: 500;
-    line-height: 24px;
-    white-space: nowrap;
+    line-height: 14px;
+    overflow-wrap: anywhere;
   }
 
   &__text {
     display: block;
     width: 100%;
-    margin-top: 36px;
     color: #000000;
     font-family: 'PingFang SC', sans-serif;
     font-size: 16px;
