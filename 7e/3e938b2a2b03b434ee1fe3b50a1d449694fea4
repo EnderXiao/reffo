@@ -1,0 +1,27 @@
+backend/src/v5/single-step-adapter.ts
+  s_bc8cb6c71468ac::t_7a347d450c1724 75-79
+backend/src/routes/mvp.ts
+  s_bc8cb6c71468ac::t_15843fb03bfb4b 115
+  s_bc8cb6c71468ac::t_0e1f182343a02b 93-94,431,451
+backend/src/v5/stage-runner.ts
+  s_bc8cb6c71468ac::t_4c5786c0d3b94f 133-134,136-144,156-159,163
+frontend/Taro/reffo-taro/src/services/resume.ts
+  s_bc8cb6c71468ac::t_eb704fe1a8ab9b 481
+  s_bc8cb6c71468ac::t_b347cad395bb6d 478-480
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7e3e938b2a2b03b434ee1fe3b50a1d449694fea4",
+  "prompts": {},
+  "sessions": {
+    "s_bc8cb6c71468ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08bbf-1ccd-7290-8475-54c9cc0a6553",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
