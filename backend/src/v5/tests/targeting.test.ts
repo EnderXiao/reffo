@@ -101,13 +101,21 @@ describe('job-targeted internal contracts', () => {
     const match = projectLegacyMatch(checked.value!, fixture.targets, fixture.resume, fixture.job)
     expect(match.requirementMatches.every(item => item.status === 'currently_unproven')).toBe(true)
   })
-  test.each(['jd_as_evidence', 'missing_proof', 'missing_difference', 'duplicate_target'] as const)('rejects concrete mapping error %s', mutation => {
+  test.each(['jd_as_evidence', 'duplicate_target'] as const)('rejects concrete mapping error %s', mutation => {
     const fixture = createTargetingFixture()
     if (mutation === 'jd_as_evidence') fixture.fit.links[0].evidenceIds = [fixture.targets[0].id]
     if (mutation === 'missing_proof') fixture.fit.links[0].evidenceIds = []
     if (mutation === 'missing_difference') fixture.fit.links[0].difference = ''
     if (mutation === 'duplicate_target') fixture.fit.links.push(structuredClone(fixture.fit.links[0]))
     expect(validateJobFitMap(fixture.fit, fixture.targets, fixture.resume).passed).toBe(false)
+  })
+  test.each(['missing_proof', 'missing_difference'] as const)('keeps business mapping quality issue %s as warning', mutation => {
+    const fixture = createTargetingFixture()
+    if (mutation === 'missing_proof') fixture.fit.links[0].evidenceIds = []
+    if (mutation === 'missing_difference') fixture.fit.links[0].difference = ''
+    const checked = validateJobFitMap(fixture.fit, fixture.targets, fixture.resume)
+    expect(checked.passed).toBe(true)
+    expect(checked.issues.some(issue => issue.severity === 'warning')).toBe(true)
   })
   test('drops an unsupported optional narrative without repairing valid matching links', () => {
     const fixture = createTargetingFixture()

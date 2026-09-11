@@ -1540,8 +1540,9 @@ export function validateJobExtractionCandidate(
       spanCode: 'JD_SPAN_MISMATCH',
     }))
     if (requirement.importance === 'must_have' && requirement.explicitness !== 'explicit') {
-      issues.push(createIssue({
-        code: 'UNSUPPORTED_MUST_HAVE',
+        issues.push(createIssue({
+          code: 'UNSUPPORTED_MUST_HAVE',
+          severity: 'warning',
         outputPath: `${path}.importance`,
         message: '语义归纳项不得升级为 must-have。',
         expectedConstraint: 'must_have 必须有 explicit 原文依据',
@@ -1675,6 +1676,7 @@ export function validateJobExtractionCandidate(
     if (fragment.importance === 'high') {
       issues.push(createIssue({
         code: 'HIGH_IMPORTANCE_UNMAPPED',
+        severity: 'warning',
         outputPath: `unmappedFragments[${index}]`,
         message: '高重要度 JD 内容尚未安全映射。',
         expectedConstraint: '高重要度未映射数量必须为 0 才能进入匹配',
