@@ -10,6 +10,7 @@ export function RequirementAnalysisPanel({value}: {value: unknown}) {
 
   return (
     <View className='reffo-requirements' role='region' aria-label='岗位理想候选人画像'>
+      <Text className='reffo-requirements__title'>岗位理想候选人画像</Text>
       <Image className='reffo-requirements__quote' src={quoteIcon} mode='aspectFit' aria-hidden='true' />
       <Text className='reffo-requirements__text'>{portrait}</Text>
     </View>
