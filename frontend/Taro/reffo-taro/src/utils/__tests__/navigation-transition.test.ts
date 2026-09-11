@@ -40,6 +40,8 @@ describe('navigation-transition', () => {
     window.sessionStorage.clear()
     document.documentElement.className = ''
     document.getElementById('reffo-navigation-transition-style')?.remove()
+    document.body.innerHTML = ''
+    Object.defineProperty(document, 'startViewTransition', {configurable: true, writable: true, value: undefined})
   })
 
   afterEach(() => {
@@ -91,10 +93,12 @@ describe('navigation-transition', () => {
     expect(startViewTransition).toHaveBeenCalledTimes(1)
   })
 
-  test('waits for Taro page DOM commit before finishing View Transition update', async () => {
+  test('finishes a same-route View Transition without waiting for suspended paint frames', async () => {
     const requestAnimationFrame = window.requestAnimationFrame as jest.Mock
+    requestAnimationFrame.mockImplementation(() => 1)
+    let updated = false
     const startViewTransition = jest.fn(callback => {
-      const updateCallbackDone = Promise.resolve().then(callback)
+      const updateCallbackDone = Promise.resolve().then(callback).then(() => { updated = true })
       return {
         ready: Promise.resolve(),
         finished: updateCallbackDone.then(() => undefined),
@@ -113,7 +117,8 @@ describe('navigation-transition', () => {
     await runWithNavigationTransition(action, {kind: 'forward'})
 
     expect(action).toHaveBeenCalledTimes(1)
-    expect(requestAnimationFrame).toHaveBeenCalledTimes(2)
+    expect(updated).toBe(true)
+    expect(requestAnimationFrame).not.toHaveBeenCalled()
     expect(startViewTransition).toHaveBeenCalledTimes(1)
   })
 
@@ -171,6 +176,68 @@ describe('navigation-transition', () => {
     expect(document.querySelectorAll('#reffo-navigation-transition-style')).toHaveLength(1)
   })
 
+  test.each(['forward', 'back'] as const)('waits for the %s page to be visible, not just the URL', async kind => {
+    document.body.innerHTML = '<div class="taro_router"><div id="old" class="taro_page taro_page_show"></div></div>'
+    let pages = [{path: 'old'}]
+    jest.spyOn(Taro, 'getCurrentPages').mockImplementation(() => pages as ReturnType<typeof Taro.getCurrentPages>)
+    let finish!: () => void
+    let updated = false
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: jest.fn(callback => {
+        const updateCallbackDone = Promise.resolve().then(callback).then(() => { updated = true })
+        return {
+          ready: updateCallbackDone,
+          updateCallbackDone,
+          finished: new Promise<void>(resolve => { finish = resolve }),
+          skipTransition: jest.fn(),
+        }
+      }),
+    })
+    const target = document.createElement('div')
+    target.id = 'target'
+    target.className = 'taro_page taro_page_shade'
+    // 返回时目标节点已经缓存；前进时目标节点仍在异步加载。
+    if (kind === 'back') document.querySelector('.taro_router')?.appendChild(target)
+    const navigation = runWithNavigationTransition(async () => {
+      window.history.pushState({}, '', '#/pages/target/index')
+    }, {kind})
+    await jest.advanceTimersByTimeAsync(100)
+    expect(updated).toBe(false)
+    pages = [{path: 'target'}]
+    document.querySelector('.taro_router')?.appendChild(target)
+    await jest.advanceTimersByTimeAsync(30)
+    expect(updated).toBe(false)
+    target.className = 'taro_page taro_page_show'
+    await navigation
+    expect(updated).toBe(true)
+    // 导航就绪即可解除业务按钮的 loading，样式保留至动画真正结束。
+    expect(document.documentElement.dataset.reffoViewTransition).toBe(kind)
+    finish()
+    await jest.advanceTimersByTimeAsync(0)
+    expect(document.documentElement.dataset.reffoViewTransition).toBeUndefined()
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled()
+  })
+
+  test('releases the snapshot on slow page loading without repeating navigation', async () => {
+    document.body.innerHTML = '<div class="taro_router"></div>'
+    jest.spyOn(Taro, 'getCurrentPages').mockReturnValue([])
+    const skipTransition = jest.fn()
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: jest.fn(callback => {
+        const updateCallbackDone = Promise.resolve().then(callback)
+        return {ready: updateCallbackDone, updateCallbackDone, finished: updateCallbackDone, skipTransition}
+      }),
+    })
+    const action = jest.fn(async () => { window.history.pushState({}, '', '#/pages/slow/index') })
+    const navigation = runWithNavigationTransition(action, {kind: 'forward'})
+    await jest.advanceTimersByTimeAsync(1200)
+    await navigation
+    expect(skipTransition).toHaveBeenCalledTimes(1)
+    expect(action).toHaveBeenCalledTimes(1)
+  })
+
   test('keeps reduced motion controlled by CSS media query', async () => {
     mockMatchMedia(true)
     const action = jest.fn(async () => 'done')
@@ -204,7 +271,12 @@ describe('navigation-transition', () => {
     })
     const sourceElement = document.createElement('div')
     document.body.appendChild(sourceElement)
-    const nestedAction = jest.fn(async () => 'done')
+    const nestedAction = jest.fn(async () => {
+      const target = document.createElement('div')
+      target.className = 'reffo-home__return-card-stage--view-transition'
+      document.body.appendChild(target)
+      return 'done'
+    })
     const action = jest.fn(() => runWithNavigationTransition(nestedAction, {kind: 'back'}))
 
     expect(startResultCardReturnTransition(action, sourceElement)).toBe(true)
@@ -222,6 +294,82 @@ describe('navigation-transition', () => {
 
     expect(sourceElement.style.getPropertyValue('view-transition-name')).toBe('')
     expect(document.documentElement.dataset.reffoCardReturnTransition).toBeUndefined()
+  })
+
+  test('waits for the home return card before finishing the update callback', async () => {
+    let updateResolved = false
+    const transition = {
+      ready: Promise.resolve(),
+      finished: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+      skipTransition: jest.fn(),
+    }
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: jest.fn(callback => {
+        void Promise.resolve().then(callback).then(() => {
+          updateResolved = true
+        })
+        return transition
+      }),
+    })
+    const sourceElement = document.createElement('div')
+    document.body.appendChild(sourceElement)
+    const action = jest.fn(async () => 'done')
+
+    expect(startResultCardReturnTransition(action, sourceElement)).toBe(true)
+
+    await jest.advanceTimersByTimeAsync(30)
+    expect(updateResolved).toBe(false)
+    expect(transition.skipTransition).not.toHaveBeenCalled()
+
+    const target = document.createElement('div')
+    target.className = 'reffo-home__return-card-stage--view-transition'
+    document.body.appendChild(target)
+
+    await jest.advanceTimersByTimeAsync(0)
+    expect(updateResolved).toBe(true)
+    expect(transition.skipTransition).not.toHaveBeenCalled()
+  })
+
+  test('skips the card return transition when the home return card never mounts', async () => {
+    const skipTransition = jest.fn()
+    const transition = {
+      ready: Promise.resolve(),
+      finished: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+      skipTransition,
+    }
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: jest.fn(callback => {
+        void Promise.resolve().then(callback)
+        return transition
+      }),
+    })
+    const sourceElement = document.createElement('div')
+    document.body.appendChild(sourceElement)
+    const action = jest.fn(async () => 'done')
+
+    expect(startResultCardReturnTransition(action, sourceElement)).toBe(true)
+
+    await jest.advanceTimersByTimeAsync(1200)
+    expect(skipTransition).toHaveBeenCalledTimes(1)
+    expect(action).toHaveBeenCalledTimes(1)
+  })
+
+  test('strips view transition names from hidden pages during card return transition', () => {
+    initializeNavigationTransitions()
+
+    const style = document.getElementById('reffo-navigation-transition-style')
+    expect(style?.textContent).toContain(
+      'html[data-reffo-card-return-transition] .taro_router .taro_page:not(.taro_page_show) *',
+    )
+    expect(style?.textContent).toContain(
+      'html[data-reffo-card-return-transition] .taro_router .taro_page.taro_page_shade *',
+    )
   })
 
   test('does not start result card return transition without View Transition support', () => {

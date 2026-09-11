@@ -1,32 +1,23 @@
 import React from 'react'
 import '@testing-library/jest-dom'
-import {fireEvent, render, screen} from '@testing-library/react'
+import {render, screen} from '@testing-library/react'
 import {RequirementAnalysisPanel} from '../components/RequirementAnalysis.h5'
 import {requirementAnalysisFixture as fixture} from '@/utils/__tests__/fixtures/requirement-analysis'
 import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis'
 
 describe('要求解析', () => {
-  test('shows a concise portrait first, then requirements and source references on demand', () => {
+  test('shows only the ideal candidate portrait', () => {
     render(<RequirementAnalysisPanel value={fixture} />)
+    expect(screen.getByRole('region', {name: '岗位理想候选人画像'})).toBeVisible()
     expect(screen.getByText(fixture.portrait!.text)).toBeVisible()
-    expect(screen.queryByText('要求强度待确认')).not.toBeInTheDocument()
-    expect(screen.queryByText('对岗位的说明')).not.toBeInTheDocument()
-    const expand = screen.getByRole('button', {name: '展开岗位说明与候选人要求'})
-    expect(expand).toHaveAttribute('aria-expanded', 'false')
-    fireEvent.click(expand)
-    expect(screen.getByText('对岗位的说明')).toBeVisible()
-    expect(screen.getByText('对候选人的要求')).toBeVisible()
-    expect(screen.getByText('优先')).toBeVisible()
-    expect(screen.getByText('希望看到的证据：相似项目中的本人动作、交付及可验证结果。')).toBeVisible()
-    fireEvent.click(screen.getAllByRole('button', {name: '查看依据'})[0])
-    expect(screen.getByText('JD 原文：负责会员增长策略并推动跨部门落地。')).toBeVisible()
-    fireEvent.click(screen.getByRole('button', {name: '收起岗位说明与候选人要求'}))
-    expect(screen.queryByText('对岗位的说明')).not.toBeInTheDocument()
-  })
-  test.each([undefined, null, {}, {version: 'unknown'}])('old or unsupported results show a non-blocking empty state: %s', value => {
-    render(<RequirementAnalysisPanel value={value} />)
-    expect(screen.getByText('这份结果暂无要求解析，已有简历仍可查看。')).toBeVisible()
+    expect(screen.queryByText('要求解析')).not.toBeInTheDocument()
+    expect(screen.queryByText(fixture.tasks[0].text)).not.toBeInTheDocument()
+    expect(screen.queryByText(fixture.portrait!.rationale)).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+  test.each([undefined, null, {}, {version: 'unknown'}, {...fixture, portrait: null}])('results without a portrait omit the card: %s', value => {
+    const {container} = render(<RequirementAnalysisPanel value={value} />)
+    expect(container).toBeEmptyDOMElement()
   })
   test('normalization tolerates partial legacy snapshots and keeps inference separate from necessity', () => {
     const value = JSON.parse(JSON.stringify(fixture))
@@ -42,6 +33,6 @@ describe('要求解析', () => {
     const value = {...fixture, portrait: {...fixture.portrait!, text: '<img src=x onerror=alert(1)>说明'}}
     const {container} = render(<RequirementAnalysisPanel value={value} />)
     expect(screen.getByText(value.portrait.text)).toBeVisible()
-    expect(container.querySelector('img')).toBeNull()
+    expect(container.querySelector('img[src="x"]')).toBeNull()
   })
 })

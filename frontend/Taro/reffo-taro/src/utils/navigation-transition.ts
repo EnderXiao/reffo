@@ -26,9 +26,11 @@ const ROUTE_FADE_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
 const VIEW_TRANSITION_DURATION = 420
 const RESULT_CARD_RETURN_DURATION = 860
 const RESULT_CARD_RETURN_TRANSITION_NAME = 'reffo-result-card-return'
+const RESULT_CARD_RETURN_TARGET_SELECTOR = '.reffo-home__return-card-stage--view-transition'
 
 let styleInjected = false
 let shouldSuppressNextTransition = false
+let activeRouteTransition: ViewTransitionLike | undefined
 
 function getH5EnvType() {
   return Taro.ENV_TYPE ?? {
@@ -109,7 +111,9 @@ function injectNavigationTransitionStyle() {
     }
 
     html[data-reffo-view-transition] .taro_router .taro_page:not(.taro_page_show) *,
-    html[data-reffo-view-transition] .taro_router .taro_page.taro_page_shade * {
+    html[data-reffo-view-transition] .taro_router .taro_page.taro_page_shade *,
+    html[data-reffo-card-return-transition] .taro_router .taro_page:not(.taro_page_show) *,
+    html[data-reffo-card-return-transition] .taro_router .taro_page.taro_page_shade * {
       view-transition-name: none !important;
     }
 
@@ -299,15 +303,61 @@ function supportsViewTransition() {
   return typeof (document as DocumentWithViewTransition).startViewTransition === 'function'
 }
 
-function waitForNextPaint() {
-  if (typeof window === 'undefined') {
-    return Promise.resolve()
-  }
+async function navigateUntilPageVisible(action: NavigationAction, onTimeout?: () => void) {
+  const router = document.querySelector('.taro_router')
+  const previousUrl = window.location.href
+  const previousPages = Taro.getCurrentPages()
+  const previousPath = (previousPages[previousPages.length - 1] as {path?: string} | undefined)?.path
+  await action()
+  if (!router || window.location.href === previousUrl) return
 
+  // Taro 的 Promise 只代表 history 更新，页面 chunk、React 挂载和 show 类名仍是异步的。
+  // View Transition 回调中不能等待绘制帧：浏览器此时暂停了绘制。
+  await new Promise<void>(resolve => {
+    const cleanup = () => {
+      observer.disconnect()
+      window.clearTimeout(timer)
+      resolve()
+    }
+    const check = () => {
+      const pages = Taro.getCurrentPages()
+      const current = pages[pages.length - 1] as {path?: string} | undefined
+      if (current?.path === previousPath) return
+      const page = current?.path ? document.getElementById(current.path) : null
+      if (page?.classList.contains('taro_page_show')
+        && !page.classList.contains('taro_page_shade')) cleanup()
+    }
+    const observer = new MutationObserver(check)
+    // 慢网或路由失败时及时恢复绘制，后续页面继续由 Taro 正常加载。
+    const timer = window.setTimeout(() => {
+      onTimeout?.()
+      cleanup()
+    }, 1200)
+    observer.observe(router, {childList: true, subtree: true, attributes: true, attributeFilter: ['class']})
+    check()
+  })
+}
+
+// 卡片返回转场必须等首页返回卡片挂载后再放行新状态捕获，否则共享元素动效
+// 会退化成旧页面原地淡出。View Transition 回调中绘制被暂停，只能用
+// MutationObserver 等待；超时立即跳过转场，避免页面长时间冻结在旧快照上。
+function waitForElement(selector: string, onTimeout?: () => void) {
   return new Promise<void>(resolve => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => resolve())
-    })
+    const cleanup = () => {
+      observer.disconnect()
+      window.clearTimeout(timer)
+      resolve()
+    }
+    const check = () => {
+      if (document.querySelector(selector)) cleanup()
+    }
+    const observer = new MutationObserver(check)
+    const timer = window.setTimeout(() => {
+      onTimeout?.()
+      cleanup()
+    }, 1200)
+    observer.observe(document.documentElement, {childList: true, subtree: true})
+    check()
   })
 }
 
@@ -338,8 +388,7 @@ export async function runWithNavigationTransition(
     document.documentElement.dataset.reffoSkipRouteTransition = '1'
 
     try {
-      await action()
-      await waitForNextPaint()
+      await navigateUntilPageVisible(action)
       return undefined
     } finally {
       delete document.documentElement.dataset.reffoSkipRouteTransition
@@ -355,17 +404,17 @@ export async function runWithNavigationTransition(
   let actionStarted = false
   let actionPromise: Promise<unknown> | null = null
 
+  activeRouteTransition?.skipTransition()
   root.dataset.reffoViewTransition = options.kind
+  let transition: ViewTransitionLike | undefined
 
   try {
-    const transition = startViewTransition?.call(document, async () => {
+    transition = startViewTransition?.call(document, async () => {
       actionStarted = true
-      actionPromise = Promise.resolve().then(action)
+      actionPromise = navigateUntilPageVisible(action, () => transition?.skipTransition())
       await actionPromise
-      // Taro.navigateTo 先完成路由调用，再异步提交新页面 DOM。等待提交后再让浏览器
-      // 捕获新快照，避免 View Transition 结束后又触发一次 Taro page opacity 动画。
-      await waitForNextPaint()
     })
+    activeRouteTransition = transition
 
     if (!transition) {
       return action()
@@ -373,7 +422,12 @@ export async function runWithNavigationTransition(
 
     const ready = transition.ready.catch(() => undefined)
     const updateCallbackDone = transition.updateCallbackDone.catch(() => undefined)
-    const finished = transition.finished.catch(() => undefined)
+    void transition.finished.catch(() => undefined).finally(() => {
+      if (activeRouteTransition === transition) {
+        activeRouteTransition = undefined
+        delete root.dataset.reffoViewTransition
+      }
+    })
 
     void ready
     await updateCallbackDone
@@ -383,7 +437,6 @@ export async function runWithNavigationTransition(
     }
 
     await actionPromise
-    await finished
     return undefined
   } catch (error) {
     if (actionStarted) {
@@ -397,7 +450,7 @@ export async function runWithNavigationTransition(
 
     return action()
   } finally {
-    delete root.dataset.reffoViewTransition
+    if (!transition) delete root.dataset.reffoViewTransition
   }
 }
 
@@ -428,7 +481,7 @@ export function startResultCardReturnTransition(
       actionStarted = true
       shouldSuppressNextTransition = true
       await action()
-      await waitForNextPaint()
+      await waitForElement(RESULT_CARD_RETURN_TARGET_SELECTOR, () => transition?.skipTransition())
     })
 
     void transition.ready.catch(() => undefined)

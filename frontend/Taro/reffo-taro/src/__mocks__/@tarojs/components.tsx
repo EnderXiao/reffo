@@ -3,11 +3,12 @@
  */
 import React from 'react'
 
-export const View = ({ children, className, onClick, style, ...props }: any) => (
-  <div className={className} onClick={onClick} style={style} {...props}>
+export const View = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ children, className, onClick, style, ...props }, ref) => (
+  <div ref={ref} className={className} onClick={onClick} style={style} {...props}>
     {children}
   </div>
-)
+))
+View.displayName = 'View'
 
 export const Text = ({
   children,
