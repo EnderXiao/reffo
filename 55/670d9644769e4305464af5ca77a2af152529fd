@@ -1,0 +1,31 @@
+backend/src/v5/evidence.ts
+  s_7b5a4cc3ac8dae::t_39a3fcaff80a34 1543-1545,1679
+backend/src/v5/targeting/fit.ts
+  s_7b5a4cc3ac8dae::t_bc850f07e8111e 48-49,106
+  s_7b5a4cc3ac8dae::t_58ed4f87ac141e 139
+backend/src/v5/validators.ts
+  s_7b5a4cc3ac8dae::t_0b394be8f737cc 165,397-402
+  s_7b5a4cc3ac8dae::t_ff21f1922ed4f8 78-85
+  s_7b5a4cc3ac8dae::t_036accb661df45 86-92
+backend/src/v5/tests/targeting.test.ts
+  s_7b5a4cc3ac8dae::t_584ab12ecda033 104,112-118
+  s_7b5a4cc3ac8dae::t_1fde14f103e3e8 119
+backend/src/v5/main/workflow.ts
+  s_7b5a4cc3ac8dae::t_58ed4f87ac141e 839
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "55670d9644769e4305464af5ca77a2af152529fd",
+  "prompts": {},
+  "sessions": {
+    "s_7b5a4cc3ac8dae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08bbe-f0bc-7282-83a1-0fe17f213b73",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
