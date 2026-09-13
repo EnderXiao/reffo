@@ -1,5 +1,8 @@
+import { interviewDeliveryContradictions } from '@/v5/interview-delivery-boundaries'
 import { createHash } from 'node:crypto'
 import { formatTimelineHeading as timelineHeading } from '@/v5/composition/timeline-display'
+import { deriveInterviewCaseGroups } from '@/v5/interview-source-structure'
+import { interviewResultEvidenceAtoms, hasIncompleteInterviewResult } from '@/v5/interview-results'
 import { educationCompanion, educationDetailPriority } from '@/v5/writing/education'
 import { isExactWorkScopeBrief, workScopeBrief } from '@/v5/writing/work-coverage'
 import { entryLayoutItemLimit } from '@/v5/writing/entry-layout'
@@ -205,7 +208,12 @@ export function validateV5MatchAnalysis(input: {
     }
     const validEvidenceIds = [...new Set(gap.evidenceIds.filter(id => {
       const atom = evidence.get(id)
-      return Boolean(atom && atom.status !== 'excluded')
+      // 冲突依据可用于提示核对，但仍保持 excluded，不能成为写作事实。
+      const conflictReference = validRequirementIds.length > 0 && validRequirementIds.every(
+        requirementId => statusByRequirement.get(requirementId) === 'conflicting_evidence'
+      )
+      return Boolean(atom && (atom.status !== 'excluded' || conflictReference)
+        && !atom.riskFlags.some(flag => ['sensitive_pii', 'prompt_injection_like_text'].includes(flag)))
     }))]
     if (validRequirementIds.length === 0 || validEvidenceIds.length === 0) return []
     return [{ ...gap, requirementIds: validRequirementIds, evidenceIds: validEvidenceIds }]
@@ -2086,9 +2094,23 @@ export function validateGeneratedResumeArtifact(input: {
       ? companionAssemblyByMembers.get(JSON.stringify(claim.evidenceIds))
       : undefined
     const companionEvidenceIds = new Set(companionAssembly?.memberEvidenceIds ?? [])
+    const skillCompanionEvidenceIds = new Set<string>()
+    // 同段可引用完整来源组合和其他事实；经历归属仍由下方标题与 scope 校验约束。
+    if (input.textPolicy === 'supported_writing_v1' && !isIdentityClaim && !isTimelineOutputPath(claim.outputPath)) {
+      for (const assembly of companionAssemblyByMembers.values()) {
+        if (!assembly.memberEvidenceIds.every(id => claim.evidenceIds.includes(id))) continue
+        assembly.memberEvidenceIds.forEach(id => companionEvidenceIds.add(id))
+        const anchor = evidence.get(assembly.anchorEvidenceId)
+        if (anchor && isPracticeSkillEvidence(anchor, plan)) {
+          assembly.memberEvidenceIds.forEach(id => skillCompanionEvidenceIds.add(id))
+        }
+      }
+    }
     for (const excerpt of writingExcerpts) {
       if (claim.evidenceIds.includes(excerpt.anchorEvidenceId) && claim.evidenceIds.includes(excerpt.evidenceId)) {
         companionEvidenceIds.add(excerpt.evidenceId)
+        const anchor = evidence.get(excerpt.anchorEvidenceId)
+        if (anchor && isPracticeSkillEvidence(anchor, plan)) skillCompanionEvidenceIds.add(excerpt.evidenceId)
       }
     }
     if (/^(?:experience|project|research|other)(?:\.|\[)/u.test(claim.outputPath)) {
@@ -2257,7 +2279,7 @@ export function validateGeneratedResumeArtifact(input: {
       }
     }
     if (markdownContext?.section === 'skills' && atoms.some(atom => isSkillAbstraction
-      ? !isPracticeSkillEvidence(atom, plan)
+      ? !isPracticeSkillEvidence(atom, plan) && !skillCompanionEvidenceIds.has(atom.evidenceId)
       : atom.claimType !== 'skill' || !plan.featuredSkillEvidenceIds.includes(atom.evidenceId))) {
       issues.push(issue({
         code: 'SKILL_SECTION_EVIDENCE_MISMATCH',
@@ -2835,6 +2857,25 @@ export function normalizeBlockingFactJudgeResult(
   }
 }
 
+function interviewNegativePremises(text: string) {
+  const premises: Array<{ statement: string; topic: string }> = []
+  const pattern = /(?:没有|缺乏|欠缺|从未|未曾|不曾)(?:承担过?|负责过?|担任过?|拥有|具备|参与过?|使用过?)?[^，,。；;！？!?]{1,24}?(?:职责|经验|经历|能力|背景|实践|管理|产品线|项目)(?=的情况下|的前提下|时|下|[，,。；;！？!?]|$)/gu
+  for (const match of text.matchAll(pattern)) {
+    const prefix = text.slice(0, match.index).split(/[，,。；;！？!?]/u).at(-1) ?? ''
+    const sentencePrefix = text.slice(0, match.index).split(/[。；;！？!?]/u).at(-1) ?? ''
+    // Explicit hypotheticals and descriptions of missing documentation are not
+    // assertions that the candidate lacks the corresponding experience.
+    if (/如果|假设|假如|倘若|若(?:你|您|是)?$|是否|尚待确认/u.test(sentencePrefix)) continue
+    if (/(?:材料|简历|文档|证据|记录)[^，,。；;！？!?]{0,12}$/u.test(prefix)) continue
+    if (/(?:不能|不应|不得|不可|不足以|不等于|并非|不是|无法)[^，,。；;！？!?]{0,16}$/u.test(prefix)) continue
+    if (/^(?:没有|缺乏|欠缺)(?:提供|说明|提及|证明|体现|展示|记录|披露)/u.test(match[0])) continue
+    const topic = match[0].replace(/^(?:没有|缺乏|欠缺|从未|未曾|不曾)(?:承担过?|负责过?|担任过?|拥有|具备|参与过?|使用过?)?/u, '')
+      .replace(/(?:相关)?(?:职责|经验|经历|能力|背景|实践)$/u, '').replace(/\s/g, '')
+    if (topic) premises.push({ statement: match[0], topic })
+  }
+  return premises
+}
+
 export function validateInterviewPreparation(input: {
   preparation: InterviewPreparation
   artifact: GeneratedResumeArtifact
@@ -2847,6 +2888,9 @@ export function validateInterviewPreparation(input: {
   const requirements = new Set(input.job.requirementAtoms.map(atom => atom.requirementId))
   const contexts = new Set(input.job.sourcedContext.map(item => item.contextId))
   const scopes = new Set(input.resume.timeline.map(item => item.scopeId))
+  const caseByEvidence = new Map(deriveInterviewCaseGroups(input.resume)
+    .flatMap(group => group.evidenceIds.map(id => [id, group.caseGroupId] as const)))
+  const caseIds = (ids: string[]) => new Set(ids.map(id => caseByEvidence.get(id)).filter(Boolean))
   const checkReferences = (path: string, evidenceIds: string[], requirementIds: string[], contextIds: string[]) => {
     const invalidEvidence = evidenceIds.filter(id => !evidence.has(id) || evidence.get(id)?.status === 'excluded')
     const invalidRequirements = requirementIds.filter(id => !requirements.has(id))
@@ -2870,9 +2914,36 @@ export function validateInterviewPreparation(input: {
       question.relatedRequirementIds,
       question.assumptionContextIds
     )
+    if (question.category === 'project_deep_dive' && caseIds(question.relatedEvidenceIds).size > 1
+      && !/分别|对比|比较|各自/u.test(question.question)) {
+      issues.push(issue({ code: 'INTERVIEW_CASE_GROUP_MIXED', outputPath: `questions[${index}].question`,
+        evidenceIds: question.relatedEvidenceIds, message: '项目深挖题把原文中两个独立案例当作一个项目。请选择同一 caseGroupId 的证据，或明确分别/对比讨论两个案例。',
+        expectedConstraint: '同一任职 scope 不等于同一项目；明确案例分组不得静默混用' }))
+    }
+    const sourceTopics = new Set(question.relatedEvidenceIds.flatMap(id => {
+      const atom = evidence.get(id)
+      if (!atom || atom.status === 'excluded' || atom.riskFlags.some(flag => ['uncertain', 'conflicting', 'sensitive_pii', 'prompt_injection_like_text'].includes(flag))) return []
+      return interviewNegativePremises(atom.verbatimText).map(premise => premise.topic)
+    }))
+    const unsupportedPremises = interviewNegativePremises(question.question).filter(premise => !sourceTopics.has(premise.topic))
+    if (unsupportedPremises.length) {
+      issues.push(issue({
+        code: 'UNSUPPORTED_INTERVIEW_NEGATIVE_PREMISE',
+        outputPath: `questions[${index}].question`,
+        evidenceIds: question.relatedEvidenceIds,
+        requirementIds: question.relatedRequirementIds,
+        message: '问题把材料未说明的职责或经历预设为候选人没有。请改为“材料尚未明确，请说明是否承担及职责边界”，或明确提出假设；只在所引原文明确否定同一经历时保留否定前提。',
+        expectedConstraint: 'unknown/currently_unproven 表示证据未充分提供，不能推断本人没有、从未承担或缺乏对应经历',
+      }))
+    }
   }
+  const storyPlans = new Set<string>()
   for (const [index, story] of input.preparation.storyRecommendations.entries()) {
     checkReferences(`storyRecommendations[${index}]`, story.evidenceIds, [], [])
+    if (caseIds(story.evidenceIds).size > 1) issues.push(issue({
+      code: 'INTERVIEW_CASE_GROUP_MIXED', outputPath: `storyRecommendations[${index}]`, evidenceIds: story.evidenceIds,
+      message: '故事混用了原文已明确分开的案例。一个故事只保留同一 caseGroupId 的证据；任职 scope 相同不授权合并案例。',
+      expectedConstraint: '每个故事至多引用一个已证明独立的 caseGroupId' }))
     if (!scopes.has(story.scopeId) || story.evidenceIds.some(id => evidence.get(id)?.sourceScopeId !== story.scopeId)) {
       issues.push(issue({
         code: 'INTERVIEW_SCOPE_MISMATCH',
@@ -2882,9 +2953,51 @@ export function validateInterviewPreparation(input: {
         expectedConstraint: '故事只能引用同一真实 source scope',
       }))
     }
+    // Historical records may omit plans; the P10 output schema requires them for new calls.
+    if (story.storytellingApproach) {
+      const points = story.storytellingApproach
+      const normalized = points.map(point => point.normalize('NFKC').replace(/[\s\p{P}\p{S}]/gu, ''))
+      const planKey = JSON.stringify([...normalized].sort())
+      if (points.length < 3 || points.length > 5 || normalized.some(point => !point)
+        || points.some(point => /从岗位描述中[\s\S]*对齐讲述重点|从源简历中[\s\S]*回到可核验事实|【引用内容】/u.test(point))) {
+        issues.push(issue({ code: 'INTERVIEW_STORY_APPROACH_GENERIC',
+          outputPath: `storyRecommendations[${index}].storytellingApproach`, evidenceIds: story.evidenceIds,
+          message: '讲述思路缺少具体方案或沿用固定引用模板。请依据本故事的问题、动作、取舍、实际结果及目标岗位，给出3–5条具体讲述步骤。',
+          expectedConstraint: '引用不替代分析；讲述步骤必须基于当前故事，不能用通用模板填充' }))
+      }
+      if (new Set(normalized).size !== normalized.length || storyPlans.has(planKey)) {
+        issues.push(issue({ code: 'INTERVIEW_STORY_APPROACH_DUPLICATED',
+          outputPath: `storyRecommendations[${index}].storytellingApproach`, evidenceIds: story.evidenceIds,
+          message: '同一故事的步骤重复，或整组讲述方案复制自另一故事。请重新选择本案例有区分度的讲述主线和具体步骤。',
+          expectedConstraint: '每个故事的方案应对应自身证据与岗位价值，各步骤提供不同准备信息' }))
+      }
+      storyPlans.add(planKey)
+      for (const [pointIndex, point] of points.entries()) {
+        const contradictions = interviewDeliveryContradictions({ preparationGap: point,
+          evidenceIds: story.evidenceIds, scopeId: story.scopeId, resume: input.resume })
+        if (contradictions.length) issues.push(issue({ code: 'INTERVIEW_DELIVERY_CONTRADICTION',
+          outputPath: `storyRecommendations[${index}].storytellingApproach[${pointIndex}]`,
+          evidenceIds: contradictions.map(atom => atom.evidenceId),
+          message: '讲述方案否定了同案例所引原文的已完成动作。请区分自述落地与独立佐证范围，保留实际阶段边界。',
+          expectedConstraint: '有限佐证不等于未落地，讲述方案不得与本故事已有证据矛盾' }))
+      }
+    }
+    if (story.preparationGap) {
+      const contradictions = interviewDeliveryContradictions({ preparationGap: story.preparationGap,
+        evidenceIds: story.evidenceIds, scopeId: story.scopeId, resume: input.resume })
+      if (contradictions.length > 0) issues.push(issue({
+        code: 'INTERVIEW_DELIVERY_CONTRADICTION', outputPath: `storyRecommendations[${index}].preparationGap`,
+        evidenceIds: contradictions.map(atom => atom.evidenceId),
+        message: '准备提醒否定了同案例所引原文明示的已完成动作/落地。请区分简历自述的落地与 PRD 等材料的有限佐证范围，保留自述来源并建议另备上线/推送/交付记录；不得把佐证不全改成项目未完成。',
+        expectedConstraint: '有限佐证不等于未落地；真实待立项、未上线的源文边界仍须保留',
+      }))
+    }
     if (story.knownResult) {
-      const atoms = story.evidenceIds.map(id => evidence.get(id)).filter((atom): atom is EvidenceAtom => Boolean(atom))
-      const resultAtoms = atoms.filter(atom => atom.claimType === 'result' || atom.claimType === 'deliverable')
+      if (hasIncompleteInterviewResult(story.knownResult)) issues.push(issue({
+        code: 'INCOMPLETE_INTERVIEW_RESULT', outputPath: `storyRecommendations[${index}].knownResult`, evidenceIds: story.evidenceIds,
+        message: 'knownResult 含截断数值或占位说明。请依据有绑定的完整原文尾块表达结果并保留月份/归因限定；不能可靠还原时设为 null，在 preparationGap 说明需确认项。',
+        expectedConstraint: '不交付“原文截断/待补数值/提升至…”等不完整结果' }))
+      const resultAtoms = interviewResultEvidenceAtoms(story.evidenceIds, input.resume.evidenceAtoms)
       const unsupportedNumbers = normalizedNumbers(story.knownResult).filter(number => (
         !resultAtoms.some(atom => atom.verbatimText.replace(/\s/g, '').includes(number))
       ))

@@ -181,7 +181,7 @@ interface RunManifest {
     artifactGenerationMode: 'dsl_v1' | 'writer_v1'
     jobTargetingPolicy?: 'job-targeted-v1'
     entryWritingPolicy?: 'entry-writing-v1'
-    artifactRepairMax: 0
+    artifactRepairMax: 0 | 2
     interviewMode: 'deferred'
     componentQuotaPolicy: typeof V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION
   }
@@ -201,12 +201,14 @@ export function providerComponentQuotasForRun(input: {
   stage: EvaluationRunStage
   validatedShardIndexes: readonly number[]
   artifactGenerationMode?: 'dsl_v1' | 'writer_v1'
+  entryWritingPolicy?: 'entry-writing-v1'
 }) {
   // Historical usage is cumulative. Only new runs can shrink extraction
   // quotas to the missing shards without invalidating an existing journal.
   return v5EvaluationComponentQuotas(input.resumeChunks, input.stage, {
     ...(input.resume ? {} : { validatedShardIndexes: input.validatedShardIndexes }),
     artifactGenerationMode: input.artifactGenerationMode,
+    entryWritingPolicy: input.entryWritingPolicy,
   })
 }
 
@@ -939,7 +941,7 @@ async function main() {
     artifactGenerationMode: args.artifactGenerationMode,
     ...(args.jobTargetingPolicy ? { jobTargetingPolicy: args.jobTargetingPolicy } : {}),
     ...(args.entryWritingPolicy ? { entryWritingPolicy: args.entryWritingPolicy } : {}),
-    artifactRepairMax: 0,
+    artifactRepairMax: args.entryWritingPolicy ? 2 : 0,
     interviewMode: 'deferred',
     componentQuotaPolicy: V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION,
   } as const
@@ -1020,6 +1022,7 @@ async function main() {
     const sourceShape = {
       shardOutputTokenCaps: chunks.map(chunk => resumeExtractionOutputTokenCapForBlocks(chunk.blocks)),
       artifactGenerationMode: args.artifactGenerationMode,
+      entryWritingPolicy: args.entryWritingPolicy,
     }
     const outputTokenEnvelopeWithoutCache = v5CaseOutputTokenEnvelope(resumeChunks, args.stage, sourceShape)
     const extractionFingerprints: EvaluationCheckpointFingerprints = {
@@ -1591,6 +1594,7 @@ async function main() {
           resume: args.resume, resumeChunks, stage: args.stage,
           validatedShardIndexes: resumeExtractionCache.progress(canonicalResumeDocument).validatedShardIndices,
           artifactGenerationMode: args.artifactGenerationMode,
+          entryWritingPolicy: args.entryWritingPolicy,
         }),
         usageSink,
       })

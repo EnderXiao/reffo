@@ -534,6 +534,8 @@ export interface InterviewPreparation {
     background: string
     knownResult: string | null
     preparationGap: string | null
+    // Historical stored interviews may have no plan; new model output requires one.
+    storytellingApproach?: string[]
   }>
   followUpQuestions: Array<{
     question: string

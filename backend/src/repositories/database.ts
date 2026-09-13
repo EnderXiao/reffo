@@ -56,7 +56,10 @@ function acquireHarnessDatabaseLock() {
       } catch {
         ownerPid = 0
       }
-      if (ownerPid > 0 && isProcessAlive(ownerPid)) throw new HarnessDatabaseOwnershipError()
+      // Bun --watch 会保留 PID 并重建模块状态；旧锁属于本进程时允许重新获取。
+      if (ownerPid > 0 && ownerPid !== process.pid && isProcessAlive(ownerPid)) {
+        throw new HarnessDatabaseOwnershipError()
+      }
       unlinkSync(lockPath)
     }
   }

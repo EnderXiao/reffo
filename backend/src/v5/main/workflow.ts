@@ -41,7 +41,9 @@ import {
 } from '@/v5/chunked-resume-extraction'
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { boundedMap } from '@/v5/bounded-map'
-import { buildEntryWritingPlan, compileEntryWriting, entryWritingPayload, ENTRY_WRITING_POLICY } from '@/v5/writing/entries'
+import { writeValidatedEntries } from '@/v5/writing/entry-correction'
+import { buildEntryWritingPlan, compileEntryWriting, ENTRY_WRITING_POLICY } from '@/v5/writing/entries'
+import { EntrySetValidationError } from '@/v5/writing/entry-set'
 import { EntryJsonStream, EntryPreviewJournal, type EntryStreamEvent } from '@/v5/writing/entry-stream'
 import {
   buildJobRequirementBundle,
@@ -85,6 +87,7 @@ import {
   V5StructuredOutputError,
 } from '@/v5/stage-runner'
 import { V5StageRuntime } from '@/v5/stage-runtime'
+import { buildInterviewContext } from '@/v5/interview-context'
 import type { V5PromptComponent } from '@/v5/prompts'
 import { JOB_TARGETING_POLICY, type JobFitMap, type TargetedJobExtraction } from '@/v5/targeting/contracts'
 import { buildJobTargets, validateTargetedJobExtraction } from '@/v5/targeting/profile'
@@ -633,9 +636,7 @@ export class V5ResumeOptimizationWorkflow {
               timeoutMs: runtime.context.remainingMs(), execute: stepContext => this.runRepairableStage<InterviewPreparation>({
                 component: 'P10', repairComponent: 'P10R', stepContext,
                 documentIds: [result.resumeEvidenceBundle.sourceDocument.documentId],
-                envelope: this.envelope(runContext.runId, {artifact: result.artifact,
-                  resumeEvidenceBundle: buildModelSafeResumeEvidenceBundle(result.resumeEvidenceBundle),
-                  jobRequirementBundle: result.jobRequirementBundle, matchAnalysis: result.matchAnalysis}),
+                envelope: this.envelope(runContext.runId, buildInterviewContext(result)),
                 validate: preparation => validateInterviewPreparation({preparation, artifact: result.artifact,
                   resume: result.resumeEvidenceBundle, job: result.jobRequirementBundle, match: result.matchAnalysis}),
               })})
@@ -1065,27 +1066,50 @@ export class V5ResumeOptimizationWorkflow {
                 timeoutMs: Math.min(180000, remaining()),
                 execute: async stepContext => {
                   try {
-                    const output = await runV5StructuredStage<unknown>({
-                      component: 'P06C', envelope: this.envelope(runContext.runId, entryPlan ? entryWritingPayload(entryPlan) : writingPayload(writingPlan)),
-                      options: {
-                        provider: this.provider, eventBus: this.eventBus, stepContext,
-                        inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
-                        ...(stream ? { onContentDelta: (text: string) => stream.push(text), maxProviderAttempts: 1, maxProviderModels: 1 } : {}),
-                      },
-                    })
-                    if (entryPlan) return compileEntryWriting({ output: output.value, entryPlan,
-                      resume: resumeEvidenceBundle, policy: generationPolicy })
+                    const write = async (payload: unknown, attempt: number) => {
+                      const output = await runV5StructuredStage<unknown>({
+                        component: 'P06C', envelope: this.envelope(runContext.runId, payload),
+                        options: {
+                          provider: this.provider, eventBus: this.eventBus, stepContext, repairAttempt: attempt,
+                          inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
+                          ...(stream ? { ...(attempt === 0 ? { onContentDelta: (text: string) => stream.push(text) } : {}),
+                            maxProviderAttempts: 1, maxProviderModels: 1 } : {}),
+                        },
+                      })
+                      return output.value
+                    }
+                    if (entryPlan) {
+                      const corrected = await writeValidatedEntries({ plan: entryPlan, write,
+                        validate: output => {
+                          const compiled = compileEntryWriting({ output, entryPlan, resume: resumeEvidenceBundle, policy: generationPolicy })
+                          const validation = validateGeneratedResumeArtifact({ artifact: compiled.artifact, resume: resumeEvidenceBundle,
+                            plan: compiled.renderingPlan, policy: generationPolicy, gateMode: 'relaxed_release',
+                            textPolicy: 'supported_writing_v1', skillPolicy: writingPlan.skillPolicy,
+                            entryParagraphPaths: compiled.entryParagraphPaths })
+                          if (!validation.passed) throw new SupportedWritingError(validation.issues)
+                          return { ...compiled, validation }
+                        },
+                      })
+                      return { ...corrected.result, repairAttempts: corrected.repairAttempts }
+                    }
                     return { ...compileWritingArtifact({
-                      composition: output.value, writingPlan, resume: resumeEvidenceBundle,
+                      composition: await write(writingPayload(writingPlan), 0), writingPlan, resume: resumeEvidenceBundle,
                       plan: resumePlan, policy: generationPolicy,
-                    }), renderingPlan: resumePlan, entryParagraphPaths: undefined }
+                    }), renderingPlan: resumePlan, entryParagraphPaths: undefined, repairAttempts: 0, validation: undefined }
                   } catch (error) {
                     journal?.finish(false)
+                    if (error instanceof EntrySetValidationError) {
+                      await this.eventBus.publish(createHarnessEvent({
+                        type: 'writing.validation.observed', runId: runContext.runId, requestId: runContext.requestId,
+                        stepRunId: stepContext.stepRunId, attemptId: stepContext.attemptId,
+                        payload: {version: 'entry-set-v1', ...error.diagnostics, passed: false, code: error.issues[0].code},
+                      }))
+                    }
                     if (!(error instanceof SupportedWritingError)) throw error
                     throw new V5WorkflowBlockedError({
                       code: 'V5_SUPPORTED_WRITING_BLOCKED', state: error.issues.filter(issue => issue.severity === 'error')
                         .every(issue => WRITING_QUALITY_CODES.has(issue.code)) ? 'blocked_quality_validation' : 'blocked_fact_validation',
-                      message: '正文未通过本地写作校验；未调用模型重写。', issues: error.issues,
+                      message: '正文在限定纠正次数内仍未通过本地写作校验。', issues: error.issues,
                     })
                   }
                 },
@@ -1094,7 +1118,7 @@ export class V5ResumeOptimizationWorkflow {
               await setState('drafted')
               await setState('validating')
               const artifact = writerStep.result.artifact
-              const validation = validateGeneratedResumeArtifact({
+              const validation = writerStep.result.validation ?? validateGeneratedResumeArtifact({
                 artifact, resume: resumeEvidenceBundle, plan: writerStep.result.renderingPlan, policy: generationPolicy,
                 gateMode: 'relaxed_release', textPolicy: 'supported_writing_v1',
                 skillPolicy: writingPlan.skillPolicy,
@@ -1118,7 +1142,7 @@ export class V5ResumeOptimizationWorkflow {
               }
               runtime.context.shared.artifactGeneration = artifactGenerationDiagnostics
               return {
-                artifact: validation.value ?? artifact, repairAttempts: 0, validation,
+                artifact: validation.value ?? artifact, repairAttempts: writerStep.result.repairAttempts, validation,
                 usedSafeFallback: false, fallbackIssues: [] as ValidationIssue[], artifactGenerationDiagnostics,
               }
             }

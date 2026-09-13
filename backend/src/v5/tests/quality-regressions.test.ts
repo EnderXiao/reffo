@@ -176,5 +176,47 @@ describe('V5 product-quality regressions', () => {
     input.resume.timeline.push(parallel)
     input.resume.evidenceAtoms.push({ ...input.atoms[0], evidenceId: 'parallel_action', sourceScopeId: parallel.scopeId })
     expect([...duplicateTimelineOnlyScopes(input.resume, new Set([detail.scopeId]))]).toEqual([])
+    parallel.evidenceIds = []
+    expect([...duplicateTimelineOnlyScopes(input.resume, new Set([detail.scopeId]))]).toEqual([])
+  })
+
+  test('suppresses a title-null overview only when its own metadata proves the same role and employer', () => {
+    const input = fixture(['参与团队产品设计并交付原型。'])
+    const detail = input.resume.timeline[0]
+    detail.organization = '示例科技有限公司'; detail.start = '2024. 07'; detail.end = '2025.06'
+    const role: EvidenceAtom = { ...input.atoms[0], evidenceId: 'overview-role', sourceScopeId: 'overview',
+      claimType: 'timeline', verbatimText: '产品经理；会员运营', riskFlags: [] }
+    input.resume.evidenceAtoms.push(role)
+    input.resume.timeline.push({ ...detail, scopeId: 'overview', organization: '示例科技', title: null,
+      start: '2024.07', evidenceIds: [role.evidenceId] })
+    expect([...duplicateTimelineOnlyScopes(input.resume, new Set([detail.scopeId]))]).toEqual(['overview'])
+    role.verbatimText = '运营经理；会员运营'
+    expect([...duplicateTimelineOnlyScopes(input.resume, new Set([detail.scopeId]))]).toEqual([])
+  })
+
+  test('uses an employer brand in a source header but never a customer mentioned in the business body', () => {
+    const input = fixture(['为星图客户交付产品方案。'])
+    const detail = input.resume.timeline[0]
+    detail.organization = '示例科技有限公司'
+    const role: EvidenceAtom = { ...input.atoms[0], evidenceId: 'overview-role', sourceScopeId: 'overview',
+      claimType: 'timeline', verbatimText: '产品经理；移动端产品', riskFlags: [] }
+    input.resume.evidenceAtoms.push(role)
+    input.resume.timeline.push({ ...detail, scopeId: 'overview', organization: '星图', title: null, evidenceIds: [role.evidenceId] })
+    expect([...duplicateTimelineOnlyScopes(input.resume, new Set([detail.scopeId]))]).toEqual([])
+    const header: EvidenceAtom = { ...role, evidenceId: 'brand-header', sourceScopeId: detail.scopeId,
+      verbatimText: '## 示例科技有限公司 | 星图产品部' }
+    input.resume.evidenceAtoms.push(header); detail.evidenceIds.push(header.evidenceId)
+    expect([...duplicateTimelineOnlyScopes(input.resume, new Set([detail.scopeId]))]).toEqual(['overview'])
+  })
+
+  test('keeps a title-null overview when two matching detailed employers make its identity ambiguous', () => {
+    const input = fixture(['参与团队产品设计并交付原型。'])
+    const detail = input.resume.timeline[0]
+    const role: EvidenceAtom = { ...input.atoms[0], evidenceId: 'overview-role', sourceScopeId: 'overview',
+      claimType: 'timeline', verbatimText: '产品经理', riskFlags: [] }
+    input.resume.evidenceAtoms.push(role)
+    input.resume.timeline.push({ ...detail, scopeId: 'parallel', evidenceIds: [...detail.evidenceIds] },
+      { ...detail, scopeId: 'overview', title: null, evidenceIds: [role.evidenceId] })
+    expect([...duplicateTimelineOnlyScopes(input.resume, new Set([detail.scopeId, 'parallel']))]).toEqual([])
   })
 })

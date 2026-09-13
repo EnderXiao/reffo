@@ -570,6 +570,7 @@ export const interviewPreparationSchema = z.object({
     background: nonEmptyString,
     knownResult: nullableString,
     preparationGap: nullableString,
+    storytellingApproach: z.array(z.string().trim().min(1)).min(3).max(5),
   }).strict()).min(1).max(2),
   followUpQuestions: z.array(z.object({
     question: nonEmptyString,

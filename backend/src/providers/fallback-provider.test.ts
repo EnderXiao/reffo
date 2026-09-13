@@ -3,6 +3,7 @@ import { createRunContext, createStepExecutionContext } from '@/harness/run-cont
 import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
 import { FallbackLlmProvider } from '@/providers/fallback-provider'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
+import { APIConnectionError, APIUserAbortError } from 'openai'
 
 function createStepInput(eventBus: FakeHarnessEventBus): ChatCompletionInput {
   const runContext = createRunContext()
@@ -24,6 +25,21 @@ function createResult(model: string): ChatCompletionResult {
 }
 
 describe('FallbackLlmProvider transient retry', () => {
+  test.each(['recover', 'exhaust', 'abort'] as const)('SDK connection handling remains bounded: %s', async variant => {
+    const eventBus = new FakeHarnessEventBus()
+    let calls = 0
+    const provider = new FallbackLlmProvider({ complete: async input => {
+      calls++
+      if (variant === 'abort') throw new APIUserAbortError()
+      if (calls === 1 || variant === 'exhaust') throw new APIConnectionError({})
+      return createResult(input.model!)
+    } })
+    const pending = provider.complete({...createStepInput(eventBus), maxProviderAttempts: 2, maxProviderModels: 1})
+    if (variant === 'recover') expect((await pending).physicalAttempts).toBe(2)
+    else await expect(pending).rejects.toThrow()
+    expect(calls).toBe(variant === 'abort' ? 1 : 2)
+    expect(eventBus.events.some(event => event.payload.errorCode === 'undefined')).toBe(false)
+  })
   test('retries the same model for transient provider errors', async () => {
     const eventBus = new FakeHarnessEventBus()
     let callCount = 0

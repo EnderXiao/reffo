@@ -74,6 +74,11 @@ export function buildMvpProcessErrorResponse(error: unknown) {
 }
 
 function singleStepFailure(error: unknown, code: string, message: string) {
+  if (code === 'GENERATE_FAILED' && error instanceof V5WorkflowBlockedError
+    && error.issues.some(issue => issue.code === 'ENTRY_SET_INVALID')) {
+    code = 'GENERATED_ENTRIES_INCOMPLETE'
+    message = '生成内容不完整，部分经历未正确生成，请重新生成'
+  }
   if (error instanceof RequestAuthError || error instanceof ResumeQuotaError || error instanceof V5CheckpointError) {
     return {status: error.status, response: {success: false, error: {
       code: error.code, message: error.message,

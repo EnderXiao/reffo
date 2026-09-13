@@ -12,6 +12,7 @@ import { compileV5Prompt, type CompiledV5Prompt } from '@/v5/prompt-compiler'
 import type { V5PromptComponent } from '@/v5/prompts'
 import { normalizeBlindABEvaluationSemanticsWithAudit } from '@/v5/schemas'
 import { materializeResumeExtractionTransport, resumeDocumentFromEnvelope } from '@/v5/resume-extraction-transport'
+import { isEntryWritingEnvelope, normalizeEntryWritingOutput } from '@/v5/writing/entries'
 
 export interface V5StageRunOptions {
   provider?: LlmProvider
@@ -184,6 +185,12 @@ export async function runV5StructuredStage<T>(input: {
   const rawParsedDigest = createDigest(parsed)
   let normalizationApplied = false
   let normalizationChanges: string[] = []
+  if (input.component === 'P06C' && isEntryWritingEnvelope(input.envelope)) {
+    const normalized = normalizeEntryWritingOutput(parsed)
+    parsed = normalized.value
+    normalizationApplied = normalized.removedNotes > 0
+    if (normalizationApplied) normalizationChanges = ['empty_entry_id_note_removed']
+  }
   if ((input.component === 'P01' || input.component === 'P01R') && !compiled.schema.safeParse(parsed).success) {
     const document = resumeDocumentFromEnvelope(input.envelope)
     if (document) {
