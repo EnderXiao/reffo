@@ -1,0 +1,191 @@
+backend/src/routes/mvp-single-step.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 11,13,17-21,78-95
+  s_7b5a4cc3ac8dae::t_c03b63362da089 96
+backend/src/v5/interview-context.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-123
+backend/src/v5/prompt-compiler.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 7,329-330
+backend/src/v5/tests/interview-delivery-boundaries.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-85
+backend/src/v5/chunked-resume-extraction.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 3,1223,1241-1244,1247
+backend/src/v5/prompts/P02.md
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 30-32
+backend/src/v5/targeting/profile.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 10-63,75-104,106-116,193-207
+backend/src/v5/tests/entry-writing.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1,6,13-14,50-105,159,168-226,387-420
+backend/src/v5/tests/targeted-presentation.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-244
+backend/src/v5/main/compatibility.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 222
+backend/src/v5/tests/writing-source-excerpts.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 8-9,36-98
+backend/src/v5/tests/single-step-fixtures.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 32,59-63
+backend/src/v5/tests/interview-context.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-135
+backend/src/routes/mvp.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 82-86
+backend/src/v5/tests/writing-structure.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 38,45
+backend/README.md
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 57-58,85
+  s_7b5a4cc3ac8dae::t_1c745d476d13b2 86
+backend/src/v5/resume-quality-assessment.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-129
+backend/src/providers/fallback-provider.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 6,28-42
+backend/src/v5/prompts/P10R.md
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 3-4,6-17
+frontend/Taro/reffo-taro/src/services/auth.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 347-352
+backend/src/v5/writing/entry-set.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-28
+backend/src/harness/subscribers/log-subscriber.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 23
+frontend/Taro/reffo-taro/src/store/__tests__/sourceResumeStore.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 33,47,53-54,90-178
+backend/src/v5/schemas.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 573
+backend/.env.example
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 19
+backend/src/v5/prompts/P02R.md
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 16,18-19
+backend/scripts/run-v5-nonprod-nine-case-blind-eval.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 184,204,211,944,1025,1597
+backend/src/v5/prompts/manifest.json
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 5,7-8,12,18-19
+backend/src/services/ocr/glm-ocr-provider.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 191-253,256-257,259-260
+backend/src/v5/prompts/P03-targeted.md
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 20
+backend/src/v5/prompts/P06C-entry.md
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-5,30-31
+backend/src/v5/interview-results.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-81
+backend/package.json
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 8-9
+backend/src/v5/writing/facts.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 34-35,39-42,102-112,114-116,151-152,162-164
+backend/src/v5/tests/entry-workflow.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 11-12,19,21-24,39-40,45,53-64,68,74,78,92,94-95,102-105,107-116
+frontend/Taro/reffo-taro/src/pages/result/__tests__/analysisPresentation.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 79-82,89-92,117,128-144
+frontend/Taro/reffo-taro/src/services/resume.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 344
+frontend/Taro/reffo-taro/src/utils/__tests__/client-error.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 5-8
+backend/src/v5/validators.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1,4-5,211-216,2097-2108,2112-2113,2282,2860-2878,2891-2893,2917-2938,2940,2943-2946,2956-2994,2996-3000
+backend/src/v5/tests/supported-writing.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 34-72,127-129
+backend/src/v5/types.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 537-538
+backend/src/harness/events.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 29
+backend/src/v5/writing/entry-stream.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1,45
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 20,377-378,396-398,414-416,628-630,635-638,644-645,655
+backend/src/routes/parse.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 59,83,161-187
+backend/src/auth/request-context.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 44-45,52-53
+  s_7b5a4cc3ac8dae::t_9d2c44df0d04d6 54-55
+backend/src/providers/fallback-provider.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 5,22-23,52-53
+backend/src/v5/tests/interview-storytelling.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-174
+frontend/Taro/reffo-taro/src/services/__tests__/parse.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-58
+frontend/Taro/reffo-taro/src/services/__tests__/resume.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 190-213
+backend/src/v5/planning-quality.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 47-50,54-56,63,66-71,75
+backend/src/v5/tests/quality-regressions.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 179-220
+backend/src/v5/tests/interview-results.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-94
+backend/src/v5/prompts/P03R-targeted.md
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 5
+backend/src/v5/tests/targeted-summary-qualifications.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-313
+backend/src/v5/writing/education.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 3-9
+backend/src/repositories/database-ownership.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-49
+frontend/Taro/reffo-taro/src/store/sourceResumeStore.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 10,197-206,211-221
+backend/src/v5/interview-delivery-boundaries.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-56
+backend/src/routes/system.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 8,25
+backend/src/v5/prompts/P10.md
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 3-14,16-25
+backend/src/v5/tests/entry-set.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-32
+backend/src/v5/tests/interview-source-structure.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-80
+backend/src/v5/tests/resume-quality-assessment.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-132
+backend/src/v5/tests/writing-numeric-equivalence.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-67
+frontend/Taro/reffo-taro/src/pages/result/__tests__/PageView.test.tsx
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1,85-107,117-174
+backend/src/v5/stage-runner.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 15,188-193
+frontend/Taro/reffo-taro/src/pages/create/__tests__/index.test.tsx
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 10,453-454
+backend/src/v5/tests/interview-negative-premise.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-84
+backend/src/auth/request-context.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1,6-12,29,34-50
+backend/src/repositories/database.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 59-62
+frontend/Taro/reffo-taro/src/utils/client-error.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 64
+backend/src/workflows/resume-optimization-workflow.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 64
+backend/src/v5/evaluation-runner-support.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 92,145,777,807
+backend/src/v5/evidence.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 15,1430
+backend/src/services/ocr/glm-ocr-provider.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-128
+backend/src/v5/writing/entry-correction.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-60
+frontend/Taro/reffo-taro/src/services/__tests__/auth.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 3-4,42,55-78
+  s_7b5a4cc3ac8dae::t_25e97af262465c 79
+backend/src/v5/tests/single-stage-workflow.test.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 24
+backend/src/v5/interview-source-structure.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 1-66
+frontend/Taro/reffo-taro/src/pages/result/model/analysisPresentation.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 41,45,61-62,74,79,94
+frontend/Taro/reffo-taro/src/pages/result/model/interviewReferences.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 75-79
+backend/src/v5/targeting/fit.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 23-41,82-86,136,140-191,203,212-221
+frontend/Taro/reffo-taro/src/services/runtime-config.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 8
+backend/src/v5/single-step-adapter.ts
+  s_7b5a4cc3ac8dae::t_0abe0054faa066 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "20db18de095da23e60bbe2444dcf3eea4c2bf406",
+  "prompts": {},
+  "sessions": {
+    "s_7b5a4cc3ac8dae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08bbe-f0bc-7282-83a1-0fe17f213b73",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
