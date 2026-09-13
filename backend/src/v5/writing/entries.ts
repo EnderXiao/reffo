@@ -10,6 +10,7 @@ import { hasCanonicalSourceLineSeparator } from '@/v5/composition/source-continu
 import { targetingEvidenceScores } from '@/v5/targeting/fit'
 import { workScopeBrief } from '@/v5/writing/work-coverage'
 import { canCompactEntryParagraphs, entryLayoutItemLimit, ENTRY_LAYOUT_VERSION } from '@/v5/writing/entry-layout'
+import { EntrySetValidationError, inspectEntrySet } from './entry-set'
 
 export const ENTRY_WRITING_POLICY = 'entry-writing-v1' as const
 export const entryParagraphSchema = z.object({
@@ -24,6 +25,37 @@ export const entryWritingOutputSchema = z.object({
   contractVersion: z.literal(ENTRY_WRITING_POLICY), entries: z.array(writtenEntrySchema).min(1).max(100),
 })
 export type WrittenEntry = z.infer<typeof writtenEntrySchema>
+
+export function normalizeWrittenEntry(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+  const record = value as Record<string, unknown>
+  if (record.entryIdNote !== '') return value
+  const { entryIdNote: _emptyNote, ...entry } = record
+  return entry
+}
+
+export function normalizeEntryWritingOutput(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { value, removedNotes: 0 }
+  const record = value as Record<string, unknown>
+  if (record.contractVersion !== ENTRY_WRITING_POLICY || !Array.isArray(record.entries)) return { value, removedNotes: 0 }
+  let removedNotes = 0
+  const entries = record.entries.map(entry => {
+    const normalized = normalizeWrittenEntry(entry)
+    if (normalized !== entry) removedNotes += 1
+    return normalized
+  })
+  return { value: removedNotes ? { ...record, entries } : value, removedNotes }
+}
+
+export function entryWritingTransportSchema(envelope: unknown) {
+  const { payload } = z.object({ payload: z.object({ entries: z.array(z.object({ entryId: z.string() })).min(1).max(100) }) }).parse(envelope)
+  const ids = payload.entries.map(entry => entry.entryId)
+  const diagnostics = inspectEntrySet(ids, ids)
+  if (!diagnostics.passed) throw new EntrySetValidationError(diagnostics, 'ENTRY_PLAN_INVALID')
+  return entryWritingOutputSchema.extend({
+    entries: z.array(writtenEntrySchema.extend({ entryId: z.enum(ids as [string, ...string[]]) })).length(ids.length),
+  })
+}
 
 export const SECTION_WRITING_ROLES: Partial<Record<CompositionSectionKey, string>> = {
   summary: '职业定位—有依据的能力主张—目标岗位价值；正文负责具体证明。',
@@ -206,6 +238,7 @@ export function entryWritingPayload(plan: EntryWritingPlan) {
     layoutPolicy: ENTRY_LAYOUT_VERSION, listItemHardLimit: plan.listItemHardLimit,
     jobTargeting: old.jobTargeting, candidateIdentity: old.candidateIdentity,
     // Body first, abstraction last; presentation order remains server-owned.
+    requiredEntryIds: plan.entries.map(entry => entry.entryId), requiredEntryCount: plan.entries.length,
     entries: [...plan.entries].sort((a, b) => Number(['summary', 'skills'].includes(a.section)) - Number(['summary', 'skills'].includes(b.section)) || a.order - b.order)
       .map(entry => ({ entryId: entry.entryId, section: entry.section,
         paragraphLimit: entry.slot.kind === 'business_bullet'
