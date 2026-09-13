@@ -1,0 +1,4 @@
+:root { --reffo-wide-frame-width: min(100vw, 46.1268dvh, 430px); }
+.reffo-responsive-page { position: relative; width: 100%; min-height: 100dvh; overflow: hidden; isolation: isolate; }
+.reffo-responsive-page__frame { position: relative; z-index: 1; width: min(100%, var(--reffo-wide-frame-width)); min-height: 100dvh; margin-inline: auto; display: flex; flex-direction: column; box-sizing: border-box; }
+@media (max-width: 600px) { .reffo-responsive-page__frame { width: 100%; } }

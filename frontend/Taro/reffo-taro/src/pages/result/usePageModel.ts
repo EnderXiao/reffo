@@ -385,6 +385,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           enteredFromLanding && currentSession.context.presetJdId
             ? {presetJdId: currentSession.context.presetJdId}
             : currentSession.context.jdContent,
+          {landing: enteredFromLanding},
         )
 
         if (continuationRef.current !== runId) return

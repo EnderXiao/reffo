@@ -1138,6 +1138,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       const matching = await resumeApi.matchResume(
         analysis,
         presetJdId ? {presetJdId} : jdText,
+        {landing: isLandingFlow},
       )
 
       if (generationRequestRef.current !== requestId) {
