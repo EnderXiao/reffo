@@ -5,6 +5,8 @@ import { buildWritingPlan } from '@/v5/writing/plan'
 import { compileWritingArtifact } from '@/v5/writing/compiler'
 import { validateGeneratedResumeArtifact } from '@/v5/validators'
 import type { EvidenceAtom } from '@/v5/types'
+import { PRACTICE_SKILL_POLICY } from '@/v5/writing/skills'
+import { deriveEvidenceAssemblies } from '@/v5/composition/evidence-assembly'
 
 function fixture() {
   const result = createV5ResultFixture()
@@ -31,6 +33,69 @@ function fixture() {
 }
 
 describe('bounded writing source excerpts', () => {
+  test('skill abstractions retain a verified result excerpt only together with its planned practice anchor', () => {
+    const input = fixture(), writingPlan = buildWritingPlan(input)
+    const fact = writingPlan.facts.find(f => f.evidenceId === input.anchor.evidenceId)!
+    writingPlan.skillPolicy = PRACTICE_SKILL_POLICY
+    if (!writingPlan.blueprint.sectionOrder.includes('skills')) writingPlan.blueprint.sectionOrder.push('skills')
+    writingPlan.blueprint.slots.push({ slotId: 'skill-excerpt', kind: 'skill', sectionKey: 'skills', scopeId: null,
+      outputPath: 'skills[0]', order: 100, required: true, allowedEvidenceIds: [input.anchor.evidenceId] })
+    const composition = { contractVersion: writingPlan.blueprint.contractVersion,
+      blocks: writingPlan.blueprint.slots.map(slot => ({ slotId: slot.slotId,
+        evidenceIds: [input.anchor.evidenceId], text: slot.kind === 'summary' ? '参与团队辅导产品设计。'
+          : slot.kind === 'skill' ? `辅导流程实践：${fact.text}` : fact.text })) }
+    const { artifact } = compileWritingArtifact({ ...input, writingPlan, composition })
+    const validate = () => validateGeneratedResumeArtifact({ ...input, artifact, gateMode: 'relaxed_release',
+      textPolicy: 'supported_writing_v1', skillPolicy: PRACTICE_SKILL_POLICY })
+    expect(validate().issues.filter(issue => issue.severity === 'error')).toEqual([])
+    const skill = artifact.claims.find(c => c.outputPath === 'skills[0]')!
+    expect(skill.evidenceIds).toContain(input.support.evidenceId)
+    skill.evidenceIds = [input.support.evidenceId]
+    expect(validate().issues.map(i => i.code)).toContain('SKILL_SECTION_EVIDENCE_MISMATCH')
+    skill.evidenceIds = [input.anchor.evidenceId, input.support.evidenceId]
+    input.support.riskFlags = ['conflicting']
+    expect(validate().issues.map(i => i.code)).toContain('SKILL_SECTION_EVIDENCE_MISMATCH')
+  })
+
+  test('a summary may combine a complete verified source group with another planned fact, but not an orphan companion', () => {
+    const input = fixture()
+    input.anchor.status = 'source_supported'
+    input.anchor.verbatimText = input.anchor.verbatimText.replace(/。$/u, '')
+    input.anchor.sourceBlockId = 'B0100'
+    input.anchor.sourceSpan = { start: 500, end: 500 + input.anchor.verbatimText.length }
+    Object.assign(input.support, { claimType: 'other', verbatimText: '产品反馈与审核流程', status: 'source_supported',
+      riskFlags: [], sourceBlockId: 'B0101', sourceSpan: { start: input.anchor.sourceSpan.end + 1, end: input.anchor.sourceSpan.end + 10 } })
+    input.support.sourceSpan.end = input.support.sourceSpan.start + input.support.verbatimText.length
+    const extra: EvidenceAtom = { ...input.anchor, evidenceId: 'extra-practice', sourceBlockId: 'B0200',
+      verbatimText: '参与团队数据汇总。', sourceSpan: { start: 1000, end: 1010 } }
+    extra.sourceSpan.end = extra.sourceSpan.start + extra.verbatimText.length
+    input.resume.evidenceAtoms.push(extra)
+    input.plan.scopePlans.find(s => s.scopeId === extra.sourceScopeId)!.selectedEvidenceIds.push(extra.evidenceId)
+    expect(deriveEvidenceAssemblies(input.resume, input.plan).some(a => a.memberEvidenceIds.includes(input.support.evidenceId))).toBe(true)
+    const writingPlan = buildWritingPlan(input)
+    writingPlan.blueprint.sectionOrder = ['summary', ...writingPlan.blueprint.sectionOrder.filter(s => s !== 'summary')]
+    writingPlan.blueprint.slots = writingPlan.blueprint.slots.filter(s => s.kind !== 'summary')
+    writingPlan.blueprint.slots.unshift({ slotId: 'summary-combined', kind: 'summary', sectionKey: 'summary', scopeId: null,
+      outputPath: 'summary[0]', order: -1, required: true, allowedEvidenceIds: [input.anchor.evidenceId, extra.evidenceId] })
+    const composition = { contractVersion: writingPlan.blueprint.contractVersion,
+      blocks: writingPlan.blueprint.slots.map(slot => ({ slotId: slot.slotId,
+        evidenceIds: slot.kind === 'summary' ? [input.anchor.evidenceId, extra.evidenceId] : [slot.allowedEvidenceIds[0]],
+        text: slot.kind === 'summary' ? '参与团队辅导产品设计与数据汇总。' : writingPlan.facts.find(f => f.evidenceId === slot.allowedEvidenceIds[0])!.text })) }
+    const { artifact } = compileWritingArtifact({ ...input, writingPlan, composition })
+    const validate = () => validateGeneratedResumeArtifact({ ...input, artifact, gateMode: 'relaxed_release', textPolicy: 'supported_writing_v1' })
+    expect(validate().issues.filter(i => i.severity === 'error')).toEqual([])
+    const summary = artifact.claims.find(c => c.outputPath === 'summary[0]')!
+    expect(summary.evidenceIds).toContain(input.support.evidenceId)
+    const body = artifact.claims.find(c => /^(?:experience|project|research)\./u.test(c.outputPath) && c.evidenceIds.includes(input.anchor.evidenceId))!
+    body.evidenceIds = [...new Set([...body.evidenceIds, extra.evidenceId])]
+    expect(validate().issues.filter(i => i.severity === 'error')).toEqual([])
+    const originalBody = [...body.evidenceIds]
+    body.evidenceIds = [input.support.evidenceId, extra.evidenceId]
+    expect(validate().issues.map(i => i.code)).toContain('UNPLANNED_EVIDENCE')
+    body.evidenceIds = originalBody
+    summary.evidenceIds = [input.support.evidenceId, extra.evidenceId]
+    expect(validate().issues.map(i => i.code)).toContain('UNPLANNED_EVIDENCE')
+  })
   test('recovers only a complete prefix with exact immutable source coordinates', () => {
     const input = fixture(), before = structuredClone(input.resume)
     const excerpt = completeMetricPrefix(input.support)!

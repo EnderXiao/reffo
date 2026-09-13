@@ -31,13 +31,15 @@ export function writingDisplayText(value: string) {
 
 export function writingNumbers(text: string) {
   const protectedExpressions: string[] = []
-  // Keep priority and count paired: P010条 and P0 10条 describe the same quantity.
-  const normalized = text.normalize('NFKC').replace(/\bP([0-2])\s*(\d+)\s*(条|项|个)/giu, (_, priority: string, count: string, unit: string) => {
+  // 优先级与数量绑定；空格或冒号仅为排版，不能拆成两个独立数字。
+  const normalized = text.normalize('NFKC').replace(/\bP([0-2])\s*(?::\s*)?(\d+)\s*(条|项|个)/giu, (_, priority: string, count: string, unit: string) => {
     protectedExpressions.push(`p${priority}:${count}${unit}`)
     return ' '
   })
-  return [...protectedExpressions, ...[...normalized.matchAll(/(?:约|近|超过|至少|最多|不足|不低于|逾|超|>=|<=|[<>≥≤≈])?\s*[¥$￥]?\s*\d+(?:[.,]\d+)*(?:\s*[-~至]\s*\d+(?:[.,]\d+)*)?\s*(?:(?:[kmb](?![a-z])|万|亿|千|百)\s*)?(?:\+|%)?\s*(?:人|次|个|份|项|条|套|种|名|步|家|天|周|个月|月|年|小时|分钟|QPS|ms|MB|GB)?/giu)]
-    .map(match => match[0].replace(/\s/g, '').toLowerCase())]
+  // “0-1”与“从0到1”保留为同一个数值表达，不能拆成两个可独立复用的数字。
+  // 只归一连接写法；端点、限定词、数量级和单位仍须与引用来源一致。
+  return [...protectedExpressions, ...[...normalized.matchAll(/(?:约|近|超过|至少|最多|不足|不低于|逾|超|>=|<=|[<>≥≤≈])?\s*[¥$￥]?\s*\d+(?:[.,]\d+)*(?:\s*[-~至到]\s*\d+(?:[.,]\d+)*)?\s*(?:(?:[kmb](?![a-z])|万|亿|千|百)\s*)?(?:\+|%)?\s*(?:人|次|个|份|项|条|套|种|名|步|家|天|周|个月|月|年|小时|分钟|QPS|ms|MB|GB)?/giu)]
+    .map(match => match[0].replace(/\s/g, '').replace(/(\d)到(?=\d)/gu, '$1-').toLowerCase())]
 }
 
 export const TEAM_CONTRIBUTION_PATTERN = /团队|参与|协助|支持|配合|协同|跨(?:部门|团队|职能)(?:交付|协作|协同|合作|推进)|team|contribut|assist|support/iu
@@ -97,10 +99,21 @@ export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], pat
   const sources = atoms.map(atom => writingDisplayText(atom.verbatimText))
   const issues: ValidationIssue[] = []
   const report = (code: string, message: string) => issues.push(writingIssue(code, path, ids, message))
-  const numericSources = areCanonicalAdjacentSourceAtoms(atoms) ? [...sources, sources.join('')] : sources
+  // 摘要可引用多个经历；其中一组已验证的断行数字，不应因其他引用而失效。
+  const ordered = [...atoms].sort((a, b) => a.sourceSpan.start - b.sourceSpan.start)
+  const numericSources = [...sources]
+  let group: EvidenceAtom[] = []
+  for (const atom of ordered) {
+    if (!group.length || !areCanonicalAdjacentSourceAtoms([...group, atom])) group = [atom]
+    else {
+      group.push(atom)
+      numericSources.push(group.map(item => writingDisplayText(item.verbatimText)).join(''))
+    }
+  }
   const allowedNumbers = new Set(numericSources.flatMap(writingNumbers))
-  if (writingNumbers(text).some(value => !allowedNumbers.has(value))) {
-    report('WRITER_NUMBER_CHANGED', '正文出现引用来源中不存在的数字、单位或限定表达。')
+  const unsupportedNumbers = writingNumbers(text).filter(value => !allowedNumbers.has(value))
+  if (unsupportedNumbers.length) {
+    report('WRITER_NUMBER_CHANGED', `正文出现引用来源中不存在的数字、单位或限定表达：${[...new Set(unsupportedNumbers)].join('、')}。请使用原始数字表达，或移除无依据的量化表述。`)
   }
   for (const rule of BOUNDARIES) {
     if (rule.label === '团队或参与贡献' && allowTeamAbstraction && isAbilityAbstraction(text, path)) continue
@@ -135,7 +148,8 @@ export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], pat
     report('WRITER_OWNERSHIP_UPGRADE', '平台规模不能转化为本人或个人模块的承载业绩。')
   }
   const teams = (value: string) => [
-    ...value.matchAll(/(?:协同|协调|联合|对接|联动|和|与)\s*((?:(?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?:团队|部门)?[、，,与和及\s]*){1,8})/gu),
+    // 市场洞察、销售数据等是业务概念；不能只截取其中的部门同名词。
+    ...value.matchAll(/(?:协同|协调|联合|对接|联动|和|与)\s*((?:(?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?!洞察|数据|指标|增长|收入)(?:团队|部门)?[、，,与和及\s]*){1,8})/gu),
     ...value.matchAll(/(?:^|[、，,；;。\s])((?:(?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?:团队|部门)?[、,与和及\s]*){1,8})(?:协同|协作|沟通|联动|对接)/gu),
     // Explicit organizations, or an actor followed by a concrete action. A metric
     // such as 销售增长 / 工艺改善 alone does not establish a collaborator.
@@ -145,8 +159,9 @@ export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], pat
     // Only normalize names inside a collaboration phrase; never rewrite product development.
     .map(team => team === '开发' ? '研发' : team)
   const supportedTeams = new Set(sources.flatMap(teams))
-  if (teams(text).some(team => !supportedTeams.has(team))) {
-    report('WRITER_COLLABORATOR_ADDED', '输出新增引用来源未说明的协作部门。')
+  const unsupportedTeams = teams(text).filter(team => !supportedTeams.has(team))
+  if (unsupportedTeams.length) {
+    report('WRITER_COLLABORATOR_ADDED', `输出新增引用来源未说明的协作部门：${[...new Set(unsupportedTeams)].join('、')}。请删除这些部门的协作表述；其他条目的材料不能作为本段事实依据。`)
   }
   const concreteTerms = /\b(?:PRD|SQL|Python|Figma|Jira|Tableau|Excel|PowerBI|SPSS|JMeter|Redis|Kubernetes)\b|A\/B\s*(?:测试|test)|可用性测试/giu
   for (const match of text.matchAll(concreteTerms)) {

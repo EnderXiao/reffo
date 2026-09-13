@@ -11,7 +11,7 @@ import manifest from '@/v5/prompts/manifest.json'
 
 // 版本读取真实 Prompt manifest；变更模型、思考模式或 Prompt 后旧检查点不能混用。
 export function singleStepFingerprint() {
-  return createDigest({workflow: V5_WORKFLOW_VERSION, manifest, protocol: 'v5-single-step-v1',
+  return createDigest({workflow: V5_WORKFLOW_VERSION, manifest, protocol: 'v5-single-step-v2',
     model: env.AI_MODEL, endpoint: env.OPENAI_BASE_URL, thinking: env.DEEPSEEK_THINKING_MODE,
     extractionThinking: env.DEEPSEEK_P01_THINKING_MODE, structuredOutput: env.V5_STRUCTURED_OUTPUT_MODE})
 }

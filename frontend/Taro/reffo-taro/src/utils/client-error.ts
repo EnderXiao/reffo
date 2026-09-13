@@ -61,6 +61,7 @@ const CLIENT_ERROR_MESSAGES: Record<string, string> = {
   ANALYSIS_FAILED: '简历分析失败，请稍后重试',
   MATCH_FAILED: '岗位匹配分析失败，请稍后重试',
   GENERATE_FAILED: '简历生成失败，请稍后重试',
+  GENERATED_ENTRIES_INCOMPLETE: '生成内容不完整，部分经历未正确生成，请重新生成',
   INTERVIEW_FAILED: '面试建议生成失败，请稍后重试',
   OCR_FILE_MISSING: '请选择要解析的文件',
   OCR_UNSUPPORTED_FILE: '文件类型或内容不支持，请更换文件后重试',

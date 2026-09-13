@@ -7,6 +7,7 @@ import {sourceResumeApi} from '@/services/sourceResume'
 import {useAuthStore, useLandingFlowStore, useResumeWorkspaceStore, useSourceResumeStore} from '@/store'
 import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
+import {RequestError} from '@/utils/request'
 
 const defaultProcessResult = {
   analysis: {
@@ -449,7 +450,8 @@ describe('CreatePage', () => {
     })
   })
 
-  test('源简历卡片删除后直接进入空白上传编辑页', async () => {
+  test.each(['success', 'missing'])('源简历删除 %s 后直接进入空白上传编辑页', async status => {
+    if (status === 'missing') mockDeleteSourceResume.mockRejectedValue(new RequestError('源简历不存在或已删除', 'SOURCE_RESUME_NOT_FOUND', 404))
     const existingSourceResume = {
       id: 'source-resume-1',
       title: 'Jeremy Smith',

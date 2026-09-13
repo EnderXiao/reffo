@@ -29,7 +29,7 @@ export function createSingleStepFixture() {
         targetId: target.id, status: 'transferable', evidenceIds: [fact.evidenceId],
         similarity: '具有相邻产品实践。', difference: '尚不等于完整岗位经验。', expressionAngle: '突出已有交付。',
       })), narratives: [], questions: [] }
-    } else if (version === '5.2.0-p06c-entry-writer-r5') {
+    } else if (version === '5.2.0-p06c-entry-writer-r8') {
       expect(input.onContentDelta).toBeFunction()
       expect(input.maxOutputTokens).toBe(4320)
       expect(input.maxProviderAttempts).toBe(1)
@@ -56,7 +56,11 @@ export function createSingleStepFixture() {
           question: '你如何参与产品迭代？', category, relatedRequirementIds: [requirement], relatedEvidenceIds: [fact.evidenceId],
           preparationFocus: '说明自己的贡献', assumptionContextIds: [],
         })), storyRecommendations: [{title: '产品迭代', scopeId: fact.sourceScopeId, evidenceIds: [fact.evidenceId],
-          background: fact.verbatimText, knownResult: null, preparationGap: '准备真实反馈'}],
+          background: fact.verbatimText, knownResult: null, preparationGap: '准备真实反馈', storytellingApproach: [
+            '从这次产品迭代的需求背景切入，先确认自己参与的具体环节及团队分工。',
+            '围绕参与团队交付3个功能，准备需求取舍和协作记录，说明本人具体贡献如何支持产品规划工作。',
+            '用团队交付的功能收束，保留参与归因；实际业务效果需补充可核验反馈，不把功能交付等同于业绩提升。',
+          ]}],
         followUpQuestions: [1, 2, 3].map(i => ({question: `岗位的第${i}项成功标准是什么？`, purpose: '了解职责',
           relatedRequirementIds: [requirement], assumptionContextIds: []})),
       }

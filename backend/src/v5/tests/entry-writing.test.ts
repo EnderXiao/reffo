@@ -1,14 +1,17 @@
+import { writeValidatedEntries } from '@/v5/writing/entry-correction'
 import { test, expect } from 'bun:test'
 import { createV5ResultFixture } from '@/v5/tests/fixtures'
 import { createTargetingFixture } from '@/v5/tests/targeting-fixtures'
 import { buildWritingPlan, writingPayload } from '@/v5/writing/plan'
-import { buildEntryWritingPlan, compileEntryWriting, entryWritingPayload, ENTRY_WRITING_POLICY, isEntryWritingEnvelope, entryWritingOutputSchema } from '@/v5/writing/entries'
+import { buildEntryWritingPlan, compileEntryWriting, entryWritingPayload, ENTRY_WRITING_POLICY, isEntryWritingEnvelope, entryWritingOutputSchema, normalizeEntryWritingOutput } from '@/v5/writing/entries'
 import { compileV5Prompt } from '@/v5/prompt-compiler'
 import { validateGeneratedResumeArtifact } from '@/v5/validators'
 import { parseEvaluationRunnerArgs } from '@/v5/evaluation-runner-support'
 import { workScopeBrief } from '@/v5/writing/work-coverage'
 import type { EvidenceAtom } from '@/v5/types'
 import { canCompactEntryParagraphs, entryLayoutItemLimit } from '@/v5/writing/entry-layout'
+import { EntrySetValidationError, inspectEntrySet } from '@/v5/writing/entry-set'
+import { explicitEducationDegree } from '@/v5/writing/education'
 
 function fixture(withSummary = false) {
   const r = createV5ResultFixture(), t = createTargetingFixture()
@@ -43,6 +46,62 @@ function withScopeOnlyJob() {
   f.input.policy.hardTotalListItemMax = 18
   return { ...f, descriptor, scopeId }
 }
+
+test('retains an explicit same-scope degree when the model writes only academic distinctions', () => {
+  const f = fixture()
+  const template = f.input.resume.evidenceAtoms[0]
+  const scopeId = 'education-retention'
+  const degree: EvidenceAtom = { ...template, evidenceId: 'education-degree', sourceScopeId: scopeId,
+    claimType: 'education', verbatimText: '理学硕士', normalizedClaim: '理学硕士', status: 'source_supported', riskFlags: [],
+    qualifiers: [], numericAtoms: [], sourceSpan: { start: 10000, end: 10004 } }
+  const distinction: EvidenceAtom = { ...degree, evidenceId: 'education-distinction',
+    verbatimText: '连续获得学校奖学金。', normalizedClaim: '连续获得学校奖学金。', sourceSpan: { start: 10005, end: 10020 } }
+  f.input.resume.evidenceAtoms.push(degree, distinction)
+  f.input.resume.timeline.push({ scopeId, kind: 'education', organization: '示例大学', title: '服务设计', start: '2021', end: '2024',
+    evidenceIds: [degree.evidenceId, distinction.evidenceId] })
+  f.input.plan.scopePlans.push({ scopeId, scopeType: 'education', treatment: 'include', selectedEvidenceIds: [degree.evidenceId, distinction.evidenceId],
+    bulletBudget: 1, rewriteAngle: '保留学历及学习成果' })
+  f.input.policy.sectionOrder = [...new Set([...f.input.policy.sectionOrder, 'education' as const])]
+  const base = buildWritingPlan(f.input)
+  const entryPlan = buildEntryWritingPlan({ ...f.input, base })
+  const entry = entryPlan.entries.find(item => item.scopeId === scopeId)!
+  expect(entry.facts.map(fact => fact.evidenceId)).toContain(degree.evidenceId)
+  const output = { ...f.output, entries: [...f.output.entries, { entryId: entry.entryId,
+    paragraphs: [{ role: 'detail' as const, text: distinction.verbatimText, evidenceIds: [distinction.evidenceId] }] }] }
+  const compiled = compileEntryWriting({ output, entryPlan, resume: f.input.resume, policy: f.input.policy })
+  expect(compiled.artifact.markdown).toContain('理学硕士；连续获得学校奖学金。')
+  expect(compiled.artifact.claims.find(claim => claim.outputText.includes('理学硕士；'))?.evidenceIds).toContain(degree.evidenceId)
+  expect(compiled.artifact.markdown).not.toContain('硕士毕业')
+  expect(output.entries.at(-1)?.paragraphs[0]?.text).toBe(distinction.verbatimText)
+})
+
+test('does not infer a degree from a school, planned admission or qualified evidence', () => {
+  const template = fixture().input.resume.evidenceAtoms[0]
+  const atom: EvidenceAtom = { ...template, claimType: 'education', status: 'source_supported', riskFlags: [] }
+  expect(explicitEducationDegree({ ...atom, verbatimText: '示例大学服务设计' })).toBeNull()
+  expect(explicitEducationDegree({ ...atom, verbatimText: '计划申请理学硕士' })).toBeNull()
+  expect(explicitEducationDegree({ ...atom, verbatimText: '理学硕士', riskFlags: ['future_or_planned'] })).toBeNull()
+  expect(explicitEducationDegree({ ...atom, verbatimText: '本科' })).toBe('本科')
+})
+
+test('only empty entry ID notes are removed without changing content, references, IDs or input', () => {
+  const f = fixture(true)
+  const value = { ...f.output, entries: f.output.entries.map(entry => ({ ...entry, entryIdNote: '' })) }
+  const before = structuredClone(value)
+  const normalized = normalizeEntryWritingOutput(value)
+  expect(normalized.removedNotes).toBe(f.output.entries.length)
+  expect(normalized.value).toEqual(f.output)
+  expect(value).toEqual(before)
+  expect(entryWritingOutputSchema.safeParse(value).success).toBe(false)
+  expect(entryWritingOutputSchema.safeParse(normalized.value).success).toBe(true)
+  for (const extra of [{ entryIdNote: '正文不可丢弃' }, { entryIdNote: null }, { entryIdNote: '', note: '' }]) {
+    const invalid = { ...f.output, entries: f.output.entries.map(entry => ({ ...entry, ...extra })) }
+    expect(entryWritingOutputSchema.safeParse(normalizeEntryWritingOutput(invalid).value).success).toBe(false)
+  }
+  const missing = normalizeEntryWritingOutput({ ...value, entries: value.entries.slice(1) })
+  expect(() => compileEntryWriting({ output: missing.value, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy }))
+    .toThrow(EntrySetValidationError)
+})
 
 test('scope-only work gets an exact server-owned brief, not an empty title or an invented contribution', () => {
   const f = withScopeOnlyJob(), before = structuredClone(f.input)
@@ -97,13 +156,72 @@ test('versioned entry prompt changes only the opt-in schema and preserves old Wr
   expect(old.promptVersion).toBe('5.1.0-p06c-supported-writer-r19')
   expect(next.manifest.promptFilePath).toBe('prompts/P06C-entry.md')
   expect(next.schema).toBe(entryWritingOutputSchema)
-  expect(next.promptVersion).toBe('5.2.0-p06c-entry-writer-r5')
+  expect(next.promptVersion).toBe('5.2.0-p06c-entry-writer-r8')
   expect(next.maxOutputTokens).toBe(old.maxOutputTokens)
   expect(next.messages[0].content).toContain('方案行')
   expect(next.messages[0].content).toContain('不是四项强制填空')
   expect(next.messages[0].content).not.toContain('每个 blueprint.slots')
   expect(next.messages[0].content).not.toContain('无安全证据使用 null')
   expect(isEntryWritingEnvelope({ payload: { source: { entryWritingPolicy: ENTRY_WRITING_POLICY } } })).toBe(false)
+})
+
+test('request schema constrains IDs and count while compilation preserves presentation order', () => {
+  const f = fixture(true)
+  const payload = entryWritingPayload(f.entryPlan)
+  const ids = f.entryPlan.entries.map(entry => entry.entryId)
+  expect(payload.requiredEntryIds).toEqual(ids)
+  expect(payload.requiredEntryCount).toBe(ids.length)
+  expect(payload.entries.map(entry => entry.entryId)).not.toEqual(ids)
+  const prompt = compileV5Prompt({ component: 'P06C', envelope: { payload } })
+  expect(prompt.providerSchema.safeParse(f.output).success).toBe(true)
+  for (const entries of [f.output.entries.slice(1), [...f.output.entries, f.output.entries[0]],
+    f.output.entries.map((entry, index) => index ? entry : { ...entry, entryId: 'entry:999' })]) {
+    expect(prompt.providerSchema.safeParse({ ...f.output, entries }).success).toBe(false)
+    expect(prompt.schema.safeParse({ ...f.output, entries }).success).toBe(true)
+  }
+  const schema = JSON.parse(prompt.messages[1].content.split('STRICT_OUTPUT_JSON_SCHEMA:\n')[1])
+  expect(schema.properties.entries).toMatchObject({ minItems: ids.length, maxItems: ids.length })
+  expect(schema.properties.entries.items.properties.entryId.enum).toEqual(payload.entries.map(entry => entry.entryId))
+  const before = structuredClone(f)
+  const original = compileEntryWriting({ output: f.output, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy })
+  const reversed = compileEntryWriting({ output: { ...f.output, entries: [...f.output.entries].reverse() },
+    entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy })
+  expect(reversed.artifact.markdown).toBe(original.artifact.markdown)
+  expect(f).toEqual(before)
+})
+
+test.each(['missing', 'duplicate', 'unknown'] as const)('reports precise %s entry IDs without leaking arbitrary model text', mutation => {
+  const f = fixture(true), ids = f.entryPlan.entries.map(entry => entry.entryId)
+  if (mutation === 'missing') f.output.entries.shift()
+  if (mutation === 'duplicate') f.output.entries[0] = structuredClone(f.output.entries[1])
+  if (mutation === 'unknown') f.output.entries[0].entryId = '私人姓名和联系方式'
+  try {
+    compileEntryWriting({ output: f.output, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy })
+    throw new Error('expected rejection')
+  } catch (error) {
+    expect(error).toBeInstanceOf(EntrySetValidationError)
+    const { diagnostics } = error as EntrySetValidationError
+    expect(diagnostics).toMatchObject({ passed: false, expectedCount: ids.length,
+      actualCount: ids.length - Number(mutation === 'missing'), missingIds: [ids[0]] })
+    expect(diagnostics.duplicateIds).toEqual(mutation === 'duplicate' ? [ids[1]] : [])
+    expect(diagnostics.unknownIds).toHaveLength(Number(mutation === 'unknown'))
+    expect(JSON.stringify(diagnostics)).not.toContain('私人姓名和联系方式')
+    expect(f.output.entries).toHaveLength(diagnostics.actualCount)
+  }
+})
+
+test('rejects ambiguous server plans before compiling a model request', () => {
+  const f = fixture()
+  f.entryPlan.entries.push(structuredClone(f.entryPlan.entries[0]))
+  expect(() => entryWritingPayload(f.entryPlan)).toThrow(EntrySetValidationError)
+  expect(inspectEntrySet(['entry:0', 'entry:0'], ['entry:0']).duplicateExpectedIds).toEqual(['entry:0'])
+  const scope = withScopeOnlyJob()
+  const plan = buildEntryWritingPlan({ ...scope.input, base: scope.base })
+  const payload = entryWritingPayload(plan)
+  expect(payload.entries.every(entry => plan.entries.find(e => e.entryId === entry.entryId)!.scopeId !== scope.scopeId)).toBe(true)
+  const fixed = plan.base.fixedBlocks![0]
+  plan.entries[0].slot.slotId = fixed.slotId
+  expect(() => entryWritingPayload(plan)).toThrow(EntrySetValidationError)
 })
 
 test('a long source can support distinct paragraphs without being pruned as repeated evidence', () => {
@@ -265,4 +383,38 @@ test('entry writer CLI requires targeted mode and stays dry-run by default', () 
   const args = parseEvaluationRunnerArgs(['--artifact-mode', 'writer_v1', '--job-targeted', '--entry-writer'], { backendRoot: process.cwd() })
   expect(args.entryWritingPolicy).toBe(ENTRY_WRITING_POLICY)
   expect(args.live).toBe(false)
+})
+
+// 通过真实编译器验证纠正，未涉及条目不得被模型顺带改写。
+test.each(['corrected', 'still_invalid', 'extra_entry'] as const)('bounded fact correction: %s', async variant => {
+  const f = fixture(true)
+  const target = f.entryPlan.entries.find(entry => entry.slot.kind === 'business_bullet')!
+  const original = structuredClone(f.output)
+  let calls = 0
+  const promise = writeValidatedEntries({ plan: f.entryPlan,
+    write: async (payload, attempt) => {
+      calls++
+      if (attempt) {
+        expect(payload.requiredEntryIds).toEqual([target.entryId])
+        expect(payload.entries.map(entry => entry.entryId)).toEqual([target.entryId])
+        expect(payload.correction?.issues.some(issue => issue.code === 'WRITER_NUMBER_CHANGED')).toBe(true)
+      }
+      const output = structuredClone(f.output)
+      if (attempt === 0 || variant === 'still_invalid') {
+        output.entries.find(entry => entry.entryId === target.entryId)!.paragraphs[0].text += '新增999个用户。'
+      }
+      if (attempt && variant !== 'extra_entry') output.entries = output.entries.filter(entry => entry.entryId === target.entryId)
+      return output
+    },
+    validate: output => compileEntryWriting({output, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy}),
+  })
+  if (variant === 'corrected') {
+    const result = await promise
+    expect(result.repairAttempts).toBe(1)
+    expect(result.result.artifact.markdown).not.toContain('999')
+    const originalResult = compileEntryWriting({output: original, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy})
+    expect(result.result.artifact.markdown).toBe(originalResult.artifact.markdown)
+  } else await expect(promise).rejects.toThrow()
+  expect(calls).toBe(variant === 'still_invalid' ? 3 : 2)
+  expect(f.output).toEqual(original)
 })

@@ -20,6 +20,25 @@ export function unprovenSpecialties(targetText: string, sourceTexts: string[]) {
     && !sourceTexts.some(text => signal.pattern.test(text))).map(signal => signal.label)
 }
 
+function sourceBoundedFitPresentation(link: JobFitMap['links'][number], target: JobTarget, atoms: EvidenceAtom[]) {
+  const unsupportedDenial = ['unknown', 'weak_signal', 'transferable'].includes(link.status)
+    && link.difference.split(/[，,。；;！？!?]/u).some(clause => [...clause.matchAll(/不具备|不会|不擅长|无法胜任|不能胜任|不胜任|缺乏|欠缺/gu)].some(match => {
+      const prefix = clause.slice(0, match.index), following = clause.slice(match.index! + match[0].length)
+      if (/(?:不能|不应|不得|不可|不足以|不等于|并非|不是|无法|未能证明|未证明)[^，,；;。]{0,16}$/u.test(prefix)) return false
+      if (/(?:材料|简历|文档|证据|记录)(?:中|里|目前|尚)?$/u.test(prefix)) return false
+      return !/^.{0,18}(?:证据|材料|记录|证明|描述|说明)/u.test(following)
+    }))
+  // Inspect affirmative advice only: “不写成独立负责” preserves the boundary.
+  const affirmativeAdvice = link.expressionAngle.split(/[，,。；;]|但|而是|不过|然而/u)
+    .filter(clause => !/不要|不得|不应|不可|不宜|不能|不写|不称|不表述|不包装|避免|勿/u.test(clause)).join('；')
+  const unsafeAngle = inspectSupportedWriting(affirmativeAdvice, atoms, 'matching.expressionAngle')
+    .some(issue => issue.code === 'WRITER_OWNERSHIP_UPGRADE')
+  return {
+    difference: unsupportedDenial ? `当前材料尚未充分证明“${target.text}”相关能力；证据有限不代表候选人不具备该能力。` : link.difference,
+    expressionAngle: unsafeAngle ? '' : link.expressionAngle,
+  }
+}
+
 export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume: ResumeEvidenceBundle): ValidationResult<JobFitMap> {
   const fit = structuredClone(value)
   const targetById = new Map(targets.map(target => [target.id, target]))
@@ -59,6 +78,11 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
       link.status = 'weak_signal'
       link.difference = `所引材料未明确支持：${missing.join('、')}。局部相关不能认证整项任务。`
       report('JOB_FIT_PARTIAL_COVERAGE_ALIGNED', link.targetId, link.evidenceIds, '具体专项缺乏证据，整体直接匹配改为局部信号；细分任务可保留独立匹配。', 'warning')
+    }
+    const presentation = sourceBoundedFitPresentation(link, target, link.evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : []))
+    if (presentation.difference !== link.difference || presentation.expressionAngle !== link.expressionAngle) {
+      Object.assign(link, presentation)
+      report('JOB_FIT_PRESENTATION_BOUNDARY_ALIGNED', link.targetId, link.evidenceIds, '已将无依据的能力否定限定为材料证据边界，并省略职责升级建议。', 'warning')
     }
   }
   // Omitted judgments become unknown, never an implicit pass or a reason for another API call.
@@ -109,9 +133,62 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
 
 export function projectLegacyMatch(fit: JobFitMap, targets: JobTarget[], resume: ResumeEvidenceBundle, job: JobRequirementBundle): V5MatchAnalysis {
   const targetById = new Map(targets.map(target => [target.id, target]))
+  const requirementById = new Map(job.requirementAtoms.map(requirement => [requirement.requirementId, requirement]))
   const links = new Map(fit.links.map(link => [link.targetId, link]))
   const requirementsFor = (ids: string[]) => [...new Set(ids.flatMap(id => targetById.get(id)?.requirementIds ?? []))]
   const states = { direct: 'direct_match', transferable: 'transferable_match', weak_signal: 'currently_unproven', unknown: 'currently_unproven', explicit_gap: 'currently_unproven', conflicted: 'conflicting_evidence' } as const
+  const evidence = new Map(resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
+  const gaps: V5MatchAnalysis['gaps'] = []
+  const priority = { core: 0, supporting: 1, optional: 2, unclear: 3 }
+  // Questions are optional follow-ups, not the source of gap analysis or writing advice.
+  // Prefer task-level differences and avoid repeating them for their qualification nodes.
+  const gapTargets = targets.filter(target => ['task', 'requirement'].includes(target.kind) && target.basis !== 'unknown')
+    .sort((a, b) => priority[a.priority] - priority[b.priority] || Number(a.kind !== 'task') - Number(b.kind !== 'task'))
+  for (const target of gapTargets) {
+    const link = links.get(target.id)
+    if (link?.status === 'direct') continue
+    const requirementIds = target.requirementIds
+    if (!requirementIds.length) continue
+    const evidenceIds = (link?.evidenceIds ?? []).filter(id => {
+      const atom = evidence.get(id)
+      return atom && (atom.status !== 'excluded' || link?.status === 'conflicted')
+        && !atom.riskFlags.some(flag => ['sensitive_pii', 'prompt_injection_like_text'].includes(flag))
+    })
+    const presentation = link && sourceBoundedFitPresentation(link, target, evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : []))
+    const requirement = target.kind === 'requirement' ? requirementById.get(target.id) : undefined
+    const unprovenQualification = ['unknown', 'weak_signal', 'transferable'].includes(link?.status ?? 'unknown')
+    const pureYears = requirement?.category === 'experience'
+      && /^(?:(?:要求|需|至少|具备|拥有|具有)\s*)?(?:(?:相关)?(?:工作|从业|岗位|产品经理)?(?:经验|经历|年限)\s*)?(?:至少|不少于)?\d+(?:\.\d+)?(?:\s*[-~至到]\s*\d+(?:\.\d+)?)?\s*年(?:以上|及以上|以内|以下|左右)?(?:的)?(?:(?:相关|全职|累计)?(?:工作|从业|岗位|产品经理)?(?:经验|经历|年限))?(?:优先)?[。.]?$/u.test(target.text.trim())
+    const pureEducation = requirement?.category === 'education'
+      && /^(?:(?:要求|需|至少|具备|具有|拥有)\s*)?(?:大专|本科|学士|硕士|研究生|博士)(?:及以上|以上)?(?:学历|学位)?(?:及以上|以上)?(?:优先)?[。.]?$/u.test(target.text.trim())
+    const qualification = !unprovenQualification ? undefined : pureYears ? {
+      difference: resume.timeline.some(item => ['experience', 'internship'].includes(item.kind) && (item.start || item.end))
+        ? '已有任职时间线，累计相关年限及实习是否计入仍需按招聘方口径核对。'
+        : '当前材料尚缺少可核对的任职起止时间，暂不能判断累计相关年限。',
+      safeHandling: '核对每段相关任职的起止时间、全职或实习性质及重叠周期，按招聘方口径计算累计年限。',
+    } : requirement?.category === 'location' ? {
+      difference: '工作地、到岗或出差安排与本人意向是否一致仍待确认。',
+      safeHandling: '核对工作地点及岗位明确的到岗、出差安排，并确认本人意向与可接受条件。',
+    } : pureEducation ? {
+      difference: resume.timeline.some(item => item.kind === 'education')
+        ? '已有教育经历材料，最高学历、学位与专业是否符合该要求仍需核对。'
+        : '当前材料尚未提供足够的教育信息，暂不能判断学历与专业是否符合。',
+      safeHandling: '核对最高学历、学位、专业及毕业状态，并补充对应的教育信息。',
+    } : undefined
+    const difference = qualification?.difference ?? (presentation?.difference.trim() || '当前材料未提供足够的相关证据，尚不能判断是否符合。')
+    const angle = presentation?.expressionAngle.trim()
+    const safeHandling = link?.status === 'conflicted'
+      ? `先核对“${target.text}”相关材料中的冲突，统一职责、时间与结果口径后再写入简历。`
+      : link?.status === 'explicit_gap'
+        ? `如实保留“${target.text}”的条件差异，不改写为已满足。${angle || '仅展示已有的相关经历与适用边界。'}`
+        : qualification ? qualification.safeHandling : evidenceIds.length && angle
+          ? angle
+          : `补充“${target.text}”相关经历中的本人职责、交付物和可核验结果；没有实际经历时保留为待补充，不写成已有能力。`
+    gaps.push({ gapId: `target_gap_${target.id}`, requirementIds,
+      evidenceType: evidenceIds.length ? 'implicit_evidence' : 'direct_missing',
+      priority: target.priority === 'core' ? 'high' : target.priority === 'optional' ? 'low' : 'medium',
+      evidenceIds, impact: `${target.text}：${difference}`, safeHandling })
+  }
   const match: V5MatchAnalysis = {
     schemaVersion: '5.0.0',
     // A task link never certifies a whole compound qualification. Use its own judgment.
@@ -123,13 +200,7 @@ export function projectLegacyMatch(fit: JobFitMap, targets: JobTarget[], resume:
     }),
     strengths: fit.narratives.map((narrative, index) => ({ strengthId: `target_strength_${index}`,
       requirementIds: requirementsFor(narrative.targetIds), evidenceIds: narrative.evidenceIds, statement: narrative.statement })),
-    gaps: fit.questions.flatMap((question, index) => {
-      const requirementIds = requirementsFor([question.targetId])
-      const link = links.get(question.targetId)
-      return requirementIds.length ? [{ gapId: `target_gap_${index}`, requirementIds,
-        evidenceType: 'direct_missing' as const, priority: 'medium' as const, evidenceIds: [],
-        impact: link?.status === 'explicit_gap' ? '来源明确存在岗位条件差异。' : '当前证据不足，不能据此判定本人不具备能力。', safeHandling: question.question }] : []
-    }),
+    gaps,
     positioning: { statement: fit.narratives.map(item => item.statement).join('；'),
       primaryRequirementIds: requirementsFor(fit.narratives.flatMap(item => item.targetIds)).slice(0, 3),
       primaryEvidenceIds: [...new Set(fit.narratives.flatMap(item => item.evidenceIds))], forbiddenIdentityClaims: [] },
@@ -138,7 +209,16 @@ export function projectLegacyMatch(fit: JobFitMap, targets: JobTarget[], resume:
   }
   const checked = validateV5MatchAnalysis({ resume, job, match, gateMode: 'relaxed_release' })
   if (!checked.passed) throw new Error('JOB_FIT_COMPATIBILITY_INVALID')
-  return checked.value ?? match
+  const aligned = checked.value ?? match
+  // Only retained task gaps cover their requirement projection. Collect them before
+  // deduplication so a core requirement cannot preempt a supporting task by sort order.
+  const taskGapIds = new Set(gapTargets.filter(target => target.kind === 'task').map(target => `target_gap_${target.id}`))
+  const coveredRequirements = new Set(aligned.gaps.filter(gap => taskGapIds.has(gap.gapId)).flatMap(gap => gap.requirementIds))
+  return { ...aligned, gaps: aligned.gaps.flatMap(gap => {
+    if (taskGapIds.has(gap.gapId)) return [gap]
+    const requirementIds = gap.requirementIds.filter(id => !coveredRequirements.has(id))
+    return requirementIds.length ? [{ ...gap, requirementIds }] : []
+  }) }
 }
 
 function isConcretePractice(atom: EvidenceAtom) {

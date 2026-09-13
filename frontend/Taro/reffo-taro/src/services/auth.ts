@@ -344,6 +344,12 @@ export class AuthApi {
   }
 
   async restoreSession(): Promise<AuthSession | null> {
+    const runtimeConfig = await getPublicRuntimeConfig().catch(() => null)
+    if (runtimeConfig?.appEnv === 'local' && runtimeConfig.authRequired === false) {
+      apiClient.setAuthToken(null)
+      return null
+    }
+
     const storageKey = await getAuthSessionStorageKey()
     const legacyStorageKey = getLegacyAuthSessionStorageKey()
     let session = await getJSON<AuthSession>(storageKey)

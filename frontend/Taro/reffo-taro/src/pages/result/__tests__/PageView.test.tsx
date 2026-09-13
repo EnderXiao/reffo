@@ -1,4 +1,4 @@
-import {fireEvent, render, screen} from '@testing-library/react'
+import {fireEvent, render, screen, within} from '@testing-library/react'
 import type {ProcessResult} from '@/types'
 import PageView from '../PageView.h5'
 import type {ResultPageViewModel} from '../usePageModel'
@@ -82,6 +82,29 @@ const model: ResultPageViewModel = {
 }
 
 describe('结果页', () => {
+  test('岗位分析显示匹配差距与结构化策略，不能显示简历质量问题', () => {
+    const current: ProcessResult = {
+      ...result,
+      analysis: {...result.analysis, weaknesses: ['本片未见姓名和教育信息']},
+      matching: {...result.matching,
+        weaknesses: ['旧版差距摘要'],
+        weakness_details: [{id: 'G1', priority: 'high', evidence_type: 'implicit_evidence',
+          weakness: '团队统筹：尚未提供任务分工与成员赋能的证据',
+          jd_requirement: '统筹产品团队', evidence: '参与跨部门交付',
+          impact: '现有材料支撑跨部门推进，尚不足以证明团队管理', suggestion: '保留协同角色'}],
+        optimization_suggestions: ['是否有更多团队管理经历？'],
+        optimization_strategy_details: [{id: 'S1', related_gap_ids: ['G1'],
+          strategy_point: '用跨部门交付案例说明推进方式，保留参与边界', rationale: '对应团队协同要求',
+          optimization_example: {source_path: '', source_quote: '', optimized_content: ''}}],
+      },
+    }
+    render(<PageView {...model} result={current} />)
+    expect(screen.getByText('团队统筹：尚未提供任务分工与成员赋能的证据')).toBeTruthy()
+    expect(screen.getByText('用跨部门交付案例说明推进方式，保留参与边界')).toBeTruthy()
+    expect(screen.queryByText('本片未见姓名和教育信息')).toBeNull()
+    expect(screen.queryByText('是否有更多团队管理经历？')).toBeNull()
+  })
+
   test('进入面试建议 tab 时正常渲染原文引用', () => {
     render(<PageView {...model} />)
 
@@ -90,5 +113,63 @@ describe('结果页', () => {
     expect(screen.getByText('核心业务系统项目')).toBeTruthy()
     expect(screen.getAllByText('负责核心业务系统开发并按期完成上线').length).toBeGreaterThan(0)
     expect(screen.getAllByText('负责核心业务系统开发，熟悉 React').length).toBeGreaterThan(0)
+  })
+
+  test('每个故事完整显示各自的讲述方案，引用独立保留', () => {
+    const stories = [{
+      title: '核心业务系统项目', background: '核心业务系统审批流程复杂', result: '按期完成上线',
+      storytelling_approach: [
+        '从审批阻塞的用户反馈切入，说明为什么要重做流程。',
+        '按权限模型、审批节点、接口联调的顺序说明本人推进的工作。',
+        '解释统一状态机和逐个页面修补两种方案之间的取舍。',
+        '收尾时展示上线验收记录，将本人实现与团队协作区分开。',
+        '面对复杂需求追问，用异常审批回退说明方案完整性。',
+      ],
+    }, {
+      title: '移动端性能优化', background: '课程列表加载缓慢', result: '完成列表渲染优化',
+      storytelling_approach: [
+        '以课程列表卡顿的复现路径开场，不泛讲性能术语。',
+        '结合分析工具的调用轨迹，讲清定位重复渲染的过程。',
+        '比较虚拟列表与局部缓存，解释为何选用当前实现。',
+        '用相同设备和数据规模下的对照记录展示优化结果。',
+      ],
+    }]
+    const current: ProcessResult = {...result, interview: {...result.interview, story_recommendations: stories}}
+    render(<PageView {...model} result={current} />)
+    fireEvent.click(screen.getByLabelText('面试建议'))
+
+    stories.forEach(story => {
+      const block = screen.getByText(story.title).closest('.reffo-result__story-block') as HTMLElement
+      story.storytelling_approach.forEach(point => expect(within(block).getByText(`• ${point}`)).toBeTruthy())
+      const otherStory = stories.find(other => other.title !== story.title)!
+      otherStory.storytelling_approach.forEach(point => expect(within(block).queryByText(`• ${point}`)).toBeNull())
+      expect(within(block).getByText(/参考源简历/)).toBeTruthy()
+    })
+    expect(screen.queryByText(/对齐讲述重点，优先说明这段经历如何回应岗位要求/)).toBeNull()
+    expect(screen.queryByText(/此故事尚未生成讲述思路/)).toBeNull()
+  })
+
+  test('历史故事缺失讲述思路时提示重新生成，不用原文引用套写方案或补齐故事', () => {
+    const current: ProcessResult = {...result, interview: {...result.interview,
+      story_recommendations: [{...result.interview.story_recommendations[0], storytelling_approach: []}],
+    }}
+    render(<PageView {...model} result={current} />)
+    fireEvent.click(screen.getByLabelText('面试建议'))
+
+    expect(screen.getByText('此故事尚未生成讲述思路，请重新生成面试建议。')).toBeTruthy()
+    expect(screen.queryByText(/对齐讲述重点，优先说明这段经历如何回应岗位要求/)).toBeNull()
+    expect(screen.queryByText(/回到可核验事实，避免把岗位要求包装成自己已经做过的经历/)).toBeNull()
+    expect(screen.queryByText('补齐短板的备选故事')).toBeNull()
+    expect(screen.getAllByText('负责核心业务系统开发并按期完成上线')).toHaveLength(1)
+  })
+
+  test('没有故事推荐时展示未生成状态', () => {
+    const current: ProcessResult = {...result, interview: {...result.interview, story_recommendations: []}}
+    render(<PageView {...model} result={current} />)
+    fireEvent.click(screen.getByLabelText('面试建议'))
+
+    expect(screen.getByText('尚未生成故事推荐，请重新生成面试建议。')).toBeTruthy()
+    expect(screen.queryByText('讲述思路：')).toBeNull()
+    expect(screen.queryByText('高匹配项目经历')).toBeNull()
   })
 })

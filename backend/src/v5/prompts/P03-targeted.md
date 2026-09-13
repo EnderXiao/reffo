@@ -17,4 +17,5 @@ jobSuccessProfile 与 targets 是岗位分析；resumeContext.facts 才是候选
 学历、在读、地点、意愿等只按明确材料判断。日期不足以推断当前学籍，不自行设置雅思/工具年限等 JD 没有的资格阈值，不根据文风、任职长度推断人格或忠诚度。
 
 similarity/difference 各用一句短句；expressionAngle 说明如何展开已有实践，不补工具、主导关系、结果或目标行业身份。岗位低匹配与表达质量分开，不为达到满分降低要求或删除有价值的相邻经验。
+差距 difference 与建议 expressionAngle 会直接向用户展示。unknown、weak_signal、transferable 的未证明部分应写“材料未说明/证据有限”，不能改成候选人不会、不具备或缺乏该能力。保留已有的局部实践，不把整项复合要求一概否定。建议必须指出当前可用的具体经历和表达边界；参与不写成独立负责，协同不写成全权负责，冲突材料只建议核对，不作为可直接写入的事实。questions 只是待确认问题，不能代替优化策略。
 narratives 默认 []；确有必要时至多三条选材意图，只使用 direct/transferable 已支持的 targetIds/evidenceIds，不写可直接复制的能力广告。questions 最多三个可跳过的高价值补充问题。缺少字段判断允许留为 unknown，不为填满材料而推断。只返回 Schema JSON，不输出思考过程。
