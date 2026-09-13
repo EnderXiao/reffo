@@ -30,19 +30,14 @@ function buildErrorPayload(code: string, fallbackMessage: string, error: unknown
         issue_codes: [...new Set(error.issues.map(item => item.code))],
         retryable: error.retryable,
         run_id: error.runId,
-        issues: error.issues,
       }
     : getBusinessEvaluationErrorDetails(error)
   const recoveryAdvice = recoveryAdviceForErrorCode(errorCode)
-  const validationIssues = error && typeof error === 'object' && 'validationIssues' in error
-    ? (error as {validationIssues?: unknown}).validationIssues
-    : undefined
   return {
     code,
     message: fallbackMessage,
     details: {
       ...(details && typeof details === 'object' && !Array.isArray(details) ? details : {}),
-      ...(Array.isArray(validationIssues) ? {validation_issues: validationIssues} : {}),
       ...(errorCode ? { error_code: errorCode } : {}),
         recovery_advice: recoveryAdvice,
         ...(error instanceof V5WorkflowBlockedError && error.providerStatus

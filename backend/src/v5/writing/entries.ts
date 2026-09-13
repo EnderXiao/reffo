@@ -8,26 +8,29 @@ import { compileWritingArtifact, SupportedWritingError } from '@/v5/writing/comp
 import { hasIncompleteMetricValue } from '@/v5/composition/source-display'
 import { hasCanonicalSourceLineSeparator } from '@/v5/composition/source-continuation'
 import { targetingEvidenceScores } from '@/v5/targeting/fit'
+import { EntrySetValidationError, inspectEntrySet } from './entry-set'
 import { workScopeBrief } from '@/v5/writing/work-coverage'
 import { canCompactEntryParagraphs, entryLayoutItemLimit, ENTRY_LAYOUT_VERSION } from '@/v5/writing/entry-layout'
-import { EntrySetValidationError, inspectEntrySet } from './entry-set'
+import { explicitEducationDegree } from '@/v5/writing/education'
 
 export const ENTRY_WRITING_POLICY = 'entry-writing-v1' as const
 export const entryParagraphSchema = z.object({
   role: z.enum(['positioning', 'scope', 'problem', 'approach', 'contribution', 'outcome', 'method', 'education', 'credential', 'detail']),
   text: z.string().trim().min(1).max(6000),
   evidenceIds: z.array(z.string().min(1)).min(1).max(80),
-})
+}).strict()
 export const writtenEntrySchema = z.object({
   entryId: z.string().min(1), paragraphs: z.array(entryParagraphSchema).min(1).max(12),
-})
+}).strict()
 export const entryWritingOutputSchema = z.object({
-  contractVersion: z.literal(ENTRY_WRITING_POLICY), entries: z.array(writtenEntrySchema).min(1).max(100),
-})
+  // 空数组交给集合校验诊断为经历缺失；发给模型的 Schema 仍要求本次计划的准确数量。
+  contractVersion: z.literal(ENTRY_WRITING_POLICY), entries: z.array(writtenEntrySchema).max(100),
+}).strict()
 export type WrittenEntry = z.infer<typeof writtenEntrySchema>
 
+/** 兼容模型附加的空注释，不接受有内容的额外字段或改动正文。 */
 export function normalizeWrittenEntry(value: unknown): unknown {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value
   const record = value as Record<string, unknown>
   if (record.entryIdNote !== '') return value
   const { entryIdNote: _emptyNote, ...entry } = record
@@ -35,7 +38,7 @@ export function normalizeWrittenEntry(value: unknown): unknown {
 }
 
 export function normalizeEntryWritingOutput(value: unknown) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return { value, removedNotes: 0 }
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return { value, removedNotes: 0 }
   const record = value as Record<string, unknown>
   if (record.contractVersion !== ENTRY_WRITING_POLICY || !Array.isArray(record.entries)) return { value, removedNotes: 0 }
   let removedNotes = 0
@@ -47,13 +50,14 @@ export function normalizeEntryWritingOutput(value: unknown) {
   return { value: removedNotes ? { ...record, entries } : value, removedNotes }
 }
 
+/** 约束本次请求的 ID 和数量；重复、缺失仍由最终集合校验明确诊断。 */
 export function entryWritingTransportSchema(envelope: unknown) {
-  const { payload } = z.object({ payload: z.object({ entries: z.array(z.object({ entryId: z.string() })).min(1).max(100) }) }).parse(envelope)
+  const {payload} = z.object({payload: z.object({entries: z.array(z.object({entryId: z.string()})).min(1).max(100)})}).parse(envelope)
   const ids = payload.entries.map(entry => entry.entryId)
   const diagnostics = inspectEntrySet(ids, ids)
   if (!diagnostics.passed) throw new EntrySetValidationError(diagnostics, 'ENTRY_PLAN_INVALID')
   return entryWritingOutputSchema.extend({
-    entries: z.array(writtenEntrySchema.extend({ entryId: z.enum(ids as [string, ...string[]]) })).length(ids.length),
+    entries: z.array(writtenEntrySchema.extend({entryId: z.enum(ids as [string, ...string[]])})).length(ids.length),
   })
 }
 
@@ -230,15 +234,21 @@ export function buildEntryWritingPlan(input: {
 }
 
 export function entryWritingPayload(plan: EntryWritingPlan) {
+  const ids = plan.entries.map(entry => entry.entryId)
+  const diagnostics = inspectEntrySet(ids, ids)
+  if (!diagnostics.passed || !ids.length || ids.length > 100
+    || plan.entries.some(entry => plan.base.fixedBlocks?.some(block => block.slotId === entry.slot.slotId))) {
+    throw new EntrySetValidationError(diagnostics, 'ENTRY_PLAN_INVALID')
+  }
   const old = writingPayload(plan.base)
   return {
     writingPolicy: plan.base.version, entryWritingPolicy: plan.version,
     guidance: plan.base.guidance, outputLength: plan.base.outputLength,
     listItemBudget: plan.listItemBudget,
     layoutPolicy: ENTRY_LAYOUT_VERSION, listItemHardLimit: plan.listItemHardLimit,
+    requiredEntryIds: ids, requiredEntryCount: ids.length,
     jobTargeting: old.jobTargeting, candidateIdentity: old.candidateIdentity,
     // Body first, abstraction last; presentation order remains server-owned.
-    requiredEntryIds: plan.entries.map(entry => entry.entryId), requiredEntryCount: plan.entries.length,
     entries: [...plan.entries].sort((a, b) => Number(['summary', 'skills'].includes(a.section)) - Number(['summary', 'skills'].includes(b.section)) || a.order - b.order)
       .map(entry => ({ entryId: entry.entryId, section: entry.section,
         paragraphLimit: entry.slot.kind === 'business_bullet'
@@ -258,7 +268,8 @@ export function compileEntryWriting(input: {
   const entries = input.previewEntryId ? input.entryPlan.entries.filter(e => e.entryId === input.previewEntryId) : input.entryPlan.entries
   const byId = new Map(output.entries.map(entry => [entry.entryId, entry]))
   const fail = (code: string) => { throw new SupportedWritingError([writingIssue(code, 'entries', [], '经历结构与服务端计划不一致。')]) }
-  if (byId.size !== output.entries.length || byId.size !== entries.length || entries.some(entry => !byId.has(entry.entryId))) fail('ENTRY_SET_INVALID')
+  const diagnostics = inspectEntrySet(entries.map(entry => entry.entryId), output.entries.map(entry => entry.entryId))
+  if (!diagnostics.passed) throw new EntrySetValidationError(diagnostics)
   const writingPlan = structuredClone(input.entryPlan.base)
   const plan = structuredClone(input.entryPlan.renderingPlan)
   const fixedSlots = writingPlan.blueprint.slots.filter(slot => writingPlan.fixedBlocks?.some(block => block.slotId === slot.slotId))
@@ -327,9 +338,26 @@ export function compileEntryWriting(input: {
         '摘要无依据的“主导”已降为“参与”；不新增经历，不修改来源。', 'warning'))
       return {...paragraph, text:paragraph.text.replace(/主导过/gu, '参与过')}
     })
+    if (entry.section === 'education') {
+      const degrees = entry.facts.flatMap(fact => {
+        const atom = input.resume.evidenceAtoms.find(item => item.evidenceId === fact.evidenceId && item.sourceScopeId === entry.scopeId)
+        const label = atom && explicitEducationDegree(atom)
+        return label ? [{ label, evidenceId: fact.evidenceId }] : []
+      })
+      const labels = [...new Set(degrees.map(item => item.label))]
+      const scope = input.resume.timeline.find(item => item.scopeId === entry.scopeId)
+      const displayed = [scope?.organization, scope?.title, ...paragraphs.map(item => item.text)].filter(Boolean).join(' ')
+      if (labels.length === 1 && !displayed.includes(labels[0])) {
+        const first = paragraphs[0]
+        paragraphs = [{ ...first, text: `${labels[0]}；${first.text}`,
+          evidenceIds: [...new Set([...degrees.map(item => item.evidenceId), ...first.evidenceIds])] }, ...paragraphs.slice(1)]
+        warnings.push(writingIssue('WRITER_EDUCATION_DEGREE_RETAINED', entry.entryId, degrees.map(item => item.evidenceId),
+          '教育正文保留了同一经历中明确给出的学历原文，未推断毕业状态或新增学历。', 'warning'))
+      }
+    }
     const allowed = entry.facts.map(fact => fact.evidenceId)
-    const used = new Set(written.paragraphs.flatMap(p => p.evidenceIds))
-    const joined = written.paragraphs.map(p => p.text).join('；')
+    const used = new Set(paragraphs.flatMap(p => p.evidenceIds))
+    const joined = paragraphs.map(p => p.text).join('；')
     if (entry.coreEvidenceIds.some(id => !used.has(id))) warnings.push(writingIssue('WRITER_PRIORITY_PRACTICE_OMITTED', entry.entryId, entry.coreEvidenceIds, '经历核心材料未充分呈现，保留离线质量提示。', 'warning'))
     const requiredNumbers = entry.facts.filter(f => entry.coreEvidenceIds.includes(f.evidenceId)).flatMap(f => f.requiredNumbers ?? [])
     if (requiredNumbers.some(n => !writingNumbers(joined).includes(n))) warnings.push(writingIssue('WRITER_PRIORITY_OUTCOME_OMITTED', entry.entryId, entry.coreEvidenceIds, '核心结果数值未呈现，保留离线质量提示。', 'warning'))
