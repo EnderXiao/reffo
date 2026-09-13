@@ -193,7 +193,10 @@ export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
   deleteLatestSourceResume: async (id: string) => {
     const operationEpoch = sourceResumeStoreEpoch;
     const storageKey = getSourceResumeStorageKey();
-    await sourceResumeApi.deleteSourceResume(id);
+    // Guest resumes are local-only; do not look them up in the server database.
+    if (useAuthStore.getState().session) {
+      await sourceResumeApi.deleteSourceResume(id);
+    }
     await removeSourceResumeCache(storageKey);
     if (operationEpoch !== sourceResumeStoreEpoch) {
       return;

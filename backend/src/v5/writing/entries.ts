@@ -16,13 +16,13 @@ export const entryParagraphSchema = z.object({
   role: z.enum(['positioning', 'scope', 'problem', 'approach', 'contribution', 'outcome', 'method', 'education', 'credential', 'detail']),
   text: z.string().trim().min(1).max(6000),
   evidenceIds: z.array(z.string().min(1)).min(1).max(80),
-}).strict()
+})
 export const writtenEntrySchema = z.object({
   entryId: z.string().min(1), paragraphs: z.array(entryParagraphSchema).min(1).max(12),
-}).strict()
+})
 export const entryWritingOutputSchema = z.object({
   contractVersion: z.literal(ENTRY_WRITING_POLICY), entries: z.array(writtenEntrySchema).min(1).max(100),
-}).strict()
+})
 export type WrittenEntry = z.infer<typeof writtenEntrySchema>
 
 export const SECTION_WRITING_ROLES: Partial<Record<CompositionSectionKey, string>> = {

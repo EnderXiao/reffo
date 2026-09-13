@@ -39,12 +39,80 @@
 .reffo-landing-onboarding__visual-scale {
   position: absolute;
   z-index: 1;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  // Keep the onboarding canvas at the mobile viewport ratio while allowing
+  // its physical size to follow the available viewport height.
+  width: min(100vw, calc(100dvh * 0.345));
+  max-width: 100vw;
   overflow: visible;
-  transform: scale(var(--landing-visual-scale, 1));
+  transform: translateX(-50%) scale(var(--landing-visual-scale, 1));
   transform-origin: 50% 50%;
   pointer-events: none;
   transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-landing-onboarding__frame {
+  height: 100%;
+  overflow: visible;
+}
+
+@media screen and (max-width: 600px) {
+  .reffo-landing-onboarding__visual-scale {
+    width: 100vw;
+  }
+}
+
+// Desktop keeps the same 393px design coordinates while the full-screen
+// background remains responsive. These overrides prevent viewport-relative
+// offsets from spreading the onboarding artwork across a wide monitor.
+@media screen and (min-width: 601px) {
+  .reffo-landing-onboarding__frame { width: 430px; }
+  .reffo-landing-onboarding__visual-scale {
+    width: 430px;
+  }
+
+  .reffo-landing-onboarding__logo {
+    left: 30px;
+    width: 108px;
+  }
+
+  .reffo-landing-onboarding__headline {
+    left: 32px;
+    right: 32px;
+    top: 338px;
+    padding: 0;
+  }
+
+  .reffo-landing-onboarding__body {
+    left: 32px;
+    right: 32px;
+    top: 282px;
+  }
+
+  .reffo-landing-onboarding__continue {
+    right: 20px;
+  }
+
+  .reffo-landing-onboarding__card--experience-left,
+  .reffo-landing-onboarding__card--target {
+    top: 290px;
+  }
+
+  .reffo-landing-onboarding__card--experience-right {
+    top: 192px;
+  }
+}
+
+/* Keep job files centered after the state-specific animation rules above. */
+.reffo-landing-onboarding--queue-folder .reffo-landing-onboarding__target-file,
+.reffo-landing-onboarding--queue-folder-returning .reffo-landing-onboarding__target-file,
+.reffo-landing-onboarding--queue-folder-opening .reffo-landing-onboarding__target-file,
+.reffo-landing-onboarding--job-selecting .reffo-landing-onboarding__target-file,
+.reffo-landing-onboarding--queue-folder-closing .reffo-landing-onboarding__target-file {
+  left: 50%;
+  margin-left: -124px;
 }
 
 .reffo-landing-onboarding::before {
@@ -76,7 +144,7 @@
   transform: scale(1.006);
 }
 
-.reffo-landing-onboarding--analysis-active > :not(.reffo-landing-analysis):not(.reffo-landing-onboarding__queue-top):not(.reffo-landing-onboarding__detail-chrome) {
+.reffo-landing-onboarding--analysis-active > :not(.reffo-landing-analysis):not(.reffo-landing-onboarding__frame):not(.reffo-landing-onboarding__queue-top):not(.reffo-landing-onboarding__detail-chrome) {
   opacity: 0 !important;
   pointer-events: none !important;
 }
@@ -330,7 +398,7 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
 
 .reffo-landing-onboarding__queue-top {
   position: absolute;
-  z-index: 8;
+  z-index: 9999;
   left: 0;
   right: 0;
   top: max(42px, calc(var(--reffo-safe-area-top) + 24px));
@@ -339,13 +407,33 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  pointer-events: none;
-  opacity: 0;
+  pointer-events: auto;
+  opacity: 1;
   view-transition-name: reffo-landing-flow-progress;
+}
+
+.reffo-landing-onboarding__queue-top .reffo-landing-onboarding__pager,
+.reffo-landing-onboarding__queue-top .reffo-landing-onboarding__skip--queue,
+.reffo-landing-onboarding__queue-top .reffo-landing-onboarding__detail-chrome {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .reffo-landing-onboarding--step-queue .reffo-landing-onboarding__queue-top {
   animation: reffo-landing-onboarding-queue-top-in 520ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
+}
+
+.reffo-landing-onboarding--result-active > .reffo-landing-onboarding__queue-top {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 240;
+}
+
+.reffo-landing-onboarding--analysis-active .reffo-landing-onboarding__queue-top {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 240;
 }
 
 .reffo-landing-onboarding__skip--queue {
@@ -691,7 +779,7 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
 }
 
 .reffo-landing-onboarding--step-queue .reffo-landing-onboarding__card {
-  left: 50vw;
+  left: 50%;
   right: auto;
   top: min(41.2dvh, 352px);
   animation: none;
@@ -1558,7 +1646,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   left: 50%;
   right: auto;
   bottom: var(--landing-folder-origin-bottom, 0px);
-  width: calc(100% / var(--landing-visual-scale, 1));
+  width: 100%;
   aspect-ratio: 720 / 147;
   opacity: 1;
   pointer-events: none;
@@ -1623,6 +1711,8 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   overflow: visible;
   opacity: 0;
   transform-origin: 50% 100%;
+  left: 50%;
+  margin-left: -124px;
 }
 
 .reffo-landing-onboarding__target-file-front {
@@ -2796,6 +2886,8 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
 }
 
 .reffo-landing__logo {
+  position: relative;
+  z-index: 1;
   width: clamp(140px, 40vw, 180px);
   height: auto;
   aspect-ratio: 198 / 52;
@@ -2816,6 +2908,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   gap: 7px;
   opacity: 1;
   pointer-events: none;
+  z-index: 1;
   transition:
     opacity 160ms ease,
     transform 180ms cubic-bezier(0.2, 0.92, 0.28, 1);
@@ -2925,7 +3018,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   from {
     opacity: 0;
     transform:
-      translate3d(-58vw, 60px, -128PX)
+      translate3d(-244px, 60px, -128PX)
       rotateZ(-23deg)
       rotate3d(1, 1, 0, 46deg)
       scale(0.92);
@@ -2946,7 +3039,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   from {
     opacity: 0;
     transform:
-      translate3d(58vw, 0, -116PX)
+      translate3d(244px, 0, -116PX)
       rotateZ(18deg)
       rotateY(-46deg)
       rotateX(17deg)
@@ -3953,7 +4046,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   }
 
   100% {
-    left: 50vw;
+    left: 50%;
     top: min(41.2dvh, 352px);
     opacity: 1;
     transform:
@@ -3989,7 +4082,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   }
 
   100% {
-    left: 50vw;
+    left: 50%;
     top: min(41.2dvh, 352px);
     opacity: 1;
     transform:
@@ -4004,7 +4097,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
 @keyframes reffo-landing-onboarding-card-right-to-queue {
   0% {
     right: auto;
-    left: calc(100vw - 233px);
+    left: calc(100% - 233px);
     top: min(54dvh, 462px);
     opacity: 1;
     transform:
@@ -4017,7 +4110,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
 
   72% {
     right: auto;
-    left: 50vw;
+    left: 50%;
     opacity: 1;
     transform:
       translate3d(48px, -86px, -54PX)
@@ -4029,7 +4122,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
 
   100% {
     right: auto;
-    left: 50vw;
+    left: 50%;
     top: min(41.2dvh, 352px);
     opacity: 1;
     transform:
@@ -4043,7 +4136,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
 
 @keyframes reffo-landing-onboarding-card-rear-to-slot-3 {
   0% {
-    left: 50vw;
+    left: 50%;
     top: min(41.2dvh, 352px);
     opacity: 0;
     transform:
@@ -4059,7 +4152,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   }
 
   100% {
-    left: 50vw;
+    left: 50%;
     top: min(41.2dvh, 352px);
     opacity: 1;
     transform:
@@ -4073,7 +4166,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
 
 @keyframes reffo-landing-onboarding-card-rear-to-slot-4 {
   0% {
-    left: 50vw;
+    left: 50%;
     top: min(41.2dvh, 352px);
     opacity: 0;
     transform:
@@ -4089,7 +4182,7 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
   }
 
   100% {
-    left: 50vw;
+    left: 50%;
     top: min(41.2dvh, 352px);
     opacity: 1;
     transform:
@@ -4444,4 +4537,36 @@ html[data-reffo-view-transition='forward']::view-transition-new(reffo-landing-fl
       rotateX(var(--queue-rotate-x, 0deg))
       scale(0.756);
   }
+}
+
+@media screen and (min-width: 601px) {
+  .reffo-landing-onboarding__visual-scale { width: 430px; }
+  .reffo-landing-onboarding { overflow-x: auto; overflow-y: hidden; touch-action: pan-x; }
+  .reffo-landing-onboarding__visual-scale { pointer-events: auto; }
+  .reffo-landing-onboarding__detail-folder,
+  .reffo-landing-onboarding__target-files {
+    width: 64% !important;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+  .reffo-landing-onboarding__target-files {
+    width: 100% !important;
+    left: 0;
+    transform: none;
+  }
+  .reffo-landing-onboarding__logo { left: calc(50% - 185px); width: 108px; }
+  .reffo-landing-onboarding__headline { left: 32px; right: 32px; padding: 0; }
+  .reffo-landing-onboarding__body { left: 32px; right: 32px; }
+  .reffo-landing-onboarding__continue { position: fixed; left: calc(50% + 145px); right: auto; }
+}
+
+/* Final override: state animations must retain the folder-centered file origin. */
+.reffo-landing-onboarding--queue-folder .reffo-landing-onboarding__target-file,
+.reffo-landing-onboarding--queue-folder-returning .reffo-landing-onboarding__target-file,
+.reffo-landing-onboarding--queue-folder-opening .reffo-landing-onboarding__target-file,
+.reffo-landing-onboarding--job-selecting .reffo-landing-onboarding__target-file,
+.reffo-landing-onboarding--queue-folder-closing .reffo-landing-onboarding__target-file {
+  left: 50%;
+  margin-left: -124px;
 }

@@ -1301,7 +1301,7 @@ export default function PageView({
         </View>
       </View>
 
-      <View className='reffo-result__shell'>
+      <View className='reffo-result__shell reffo-responsive-page__frame'>
         <View className='reffo-result__content'>
           <View className='reffo-result__header'>
             <View className='reffo-result__title-viewport'>

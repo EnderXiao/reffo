@@ -890,7 +890,7 @@ export default function PageView({
       })}
     >
       <CreateBackdrop variant={isJobStep ? 'warm' : 'cool'} />
-      <View className='reffo-create__frame'>
+      <View className='reffo-create__frame reffo-responsive-page__frame'>
         {!isLandingFlow ? <View className='reffo-create__close' onClick={handleClose} role='button' data-testid='create-flow-close'>
           <Text>×</Text>
         </View> : null}

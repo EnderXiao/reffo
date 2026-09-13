@@ -56,6 +56,7 @@ export interface MatchResumeRequest {
   structured_resume: ResumeAnalysis['structured_resume'];
   jd_text?: string;
   preset_jd_id?: string;
+  landing?: boolean;
 }
 
 export interface GenerateOptimizedResumeRequest {
@@ -454,6 +455,7 @@ export class ResumeApi {
   async matchResume(
     analysis: ResumeAnalysis,
     jd: string | {presetJdId: string},
+    options: {landing?: boolean} = {},
   ): Promise<MatchingResult> {
     if (!analysis?.structured_resume) {
       throw new Error('简历分析结果不存在');
@@ -474,6 +476,7 @@ export class ResumeApi {
         ...(typeof jd === 'string'
           ? {jd_text: jd}
           : {preset_jd_id: jd.presetJdId}),
+        ...(options.landing ? {landing: true} : {}),
       } satisfies MatchResumeRequest,
       // Match may perform up to two server-side continuation calls after a
       // truncated structured response. Keep the client timeout above the

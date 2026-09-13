@@ -98,7 +98,9 @@ const ONBOARDING_QUEUE_CARD_ROTATE_X = '0deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Y = '-15deg'
 const ONBOARDING_QUEUE_CARD_ROTATE_Z = '0deg'
 const ONBOARDING_JOB_CREATE_TRANSITION_MS = 1180
-const resolveLandingVisualScale = () => resolveH5CardScale({amplification: 1})
+// Landing onboarding uses a fixed 393px mobile canvas. Keep its card geometry
+// at the mobile scale on wider viewports so desktop only adds side gutters.
+const resolveLandingVisualScale = () => Math.min(resolveH5CardScale({amplification: 1}), 1)
 type LandingPhase = 'splash' | 'onboarding'
 type InlineLandingPhase = 'analysis' | 'result'
 type OnboardingStep = 'target' | 'experience' | 'queue'
@@ -298,11 +300,7 @@ function resolveQueueLaneFrame(index: number, progress: number): QueueTrackFrame
 }
 
 function resolveQueueTransform(frame: QueueTrackFrame) {
-  const viewportX = frame.x >= 0
-    ? `clamp(0px, ${(frame.x / 3.93).toFixed(3)}vw, ${frame.x}px)`
-    : `clamp(${frame.x}px, ${(frame.x / 3.93).toFixed(3)}vw, 0px)`
-
-  return `translate3d(${viewportX}, ${frame.y}px, ${frame.z}PX) rotateZ(var(--queue-rotate-z, -1deg)) rotateY(var(--queue-rotate-y, -6deg)) rotateX(var(--queue-rotate-x, 0deg)) scale(${frame.scale})`
+  return `translate3d(${frame.x}px, ${frame.y}px, ${frame.z}PX) rotateZ(var(--queue-rotate-z, -1deg)) rotateY(var(--queue-rotate-y, -6deg)) rotateX(var(--queue-rotate-x, 0deg)) scale(${frame.scale})`
 }
 
 function resolveSelectedQueueY() {
@@ -330,7 +328,7 @@ function resolveSelectedQueueTransform() {
 }
 
 function resolveSelectedDetailQueueTransform() {
-  return `translate3d(clamp(${ONBOARDING_QUEUE_SELECTED_X}px, ${(ONBOARDING_QUEUE_SELECTED_X / 3.93).toFixed(3)}vw, 0px), var(--queue-detail-y), var(--queue-detail-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-detail-scale))`
+  return `translate3d(${ONBOARDING_QUEUE_SELECTED_X}px, var(--queue-detail-y), var(--queue-detail-z)) rotateZ(0deg) rotateY(0deg) rotateX(0deg) scale(var(--queue-detail-scale))`
 }
 
 function resolveQueueProgress(elapsedMs: number) {
@@ -1605,12 +1603,14 @@ export default function LandingPage() {
     void completeOnboarding()
   }
 
+  const getInteractionPoint = (event: any) => event.touches?.[0] ?? event.changedTouches?.[0] ?? event
+
   const handleTouchStart = (event: any) => {
     if (phase !== 'onboarding') {
       return
     }
 
-    const touch = event.touches?.[0] ?? event.changedTouches?.[0]
+    const touch = getInteractionPoint(event)
 
     if (!touch) {
       return
@@ -1661,7 +1661,7 @@ export default function LandingPage() {
       return
     }
 
-    const touch = event.touches?.[0] ?? event.changedTouches?.[0]
+    const touch = getInteractionPoint(event)
     const jobDrag = jobDragRef.current
 
     if (queueMotionPhase === 'job-selecting' && touch && jobDrag) {
@@ -1762,7 +1762,7 @@ export default function LandingPage() {
     const queueDrag = queueDragRef.current
     const jobDrag = jobDragRef.current
     const start = touchStartRef.current
-    const touch = event.changedTouches?.[0]
+    const touch = getInteractionPoint(event)
     queueDragRef.current = null
     jobDragRef.current = null
 
@@ -2018,7 +2018,15 @@ export default function LandingPage() {
           setJobDragOffset(0)
           setIsJobDragging(false)
         }}
+        onMouseDown={event => handleTouchStart(event as unknown as Parameters<typeof handleTouchStart>[0])}
+        onMouseMove={event => {
+          if (touchStartRef.current) {
+            handleTouchMove(event as unknown as Parameters<typeof handleTouchMove>[0])
+          }
+        }}
+        onMouseUp={event => handleTouchEnd(event as unknown as Parameters<typeof handleTouchEnd>[0])}
       >
+        <View className='reffo-responsive-page__frame reffo-landing-onboarding__frame'>
         <img src={REFFO_LOGO} className='reffo-landing-onboarding__logo' alt='Reffo' />
         {onboardingLogoSnapshot && onboardingLogoStyle ? (
           <img
@@ -2081,6 +2089,12 @@ export default function LandingPage() {
                       ) && isQueueSelectionDetail,
                     })
                     : undefined}
+                  onClick={() => {
+                    if (isQueueFlow && !queueSuppressClickUntilRef.current && position) {
+                      stopQueueAutoMotion()
+                      selectQueueCardAtProgress(position.progress)
+                    }
+                  }}
                 >
                   <View className='reffo-landing-onboarding__queue-flipper'>
                     <View className='reffo-landing-onboarding__queue-original'>
@@ -2330,7 +2344,7 @@ export default function LandingPage() {
               'reffo-landing-onboarding__pager-dot--active': inlineLandingPhase === 'result',
             })} />
           </View>
-          {(isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode ? (
+          {((isQueueSelectionDetail || isQueueDetailLeaving) && selectedQueueDetailMode) || inlineLandingPhase === 'result' ? (
             <View className='reffo-landing-onboarding__detail-chrome'>
               <View
                 className={classNames('reffo-landing-onboarding__detail-return', {
@@ -2489,6 +2503,7 @@ export default function LandingPage() {
             }}
           />
         ) : null}
+        </View>
       </View>
     )
   }

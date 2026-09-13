@@ -1064,9 +1064,15 @@ export class V5ResumeOptimizationWorkflow {
                 runContext, eventBus: this.eventBus, stepName: 'v5_p06c_supported_writer',
                 timeoutMs: Math.min(180000, remaining()),
                 execute: async stepContext => {
+                  const basePayload = entryPlan ? entryWritingPayload(entryPlan) : writingPayload(writingPlan)
+                  let lastError: unknown
+                  for (let attempt = 0; attempt < 2; attempt += 1) {
                   try {
                     const output = await runV5StructuredStage<unknown>({
-                      component: 'P06C', envelope: this.envelope(runContext.runId, entryPlan ? entryWritingPayload(entryPlan) : writingPayload(writingPlan)),
+                      component: 'P06C', envelope: this.envelope(runContext.runId, attempt === 0 ? basePayload : {
+                        ...basePayload as Record<string, unknown>,
+                        repair_instruction: '上一版正文未通过事实校验。只能使用来源证据中明确存在的数字、单位和限定表达；无法证明的数字必须删除，不得改写为其他数字。涉及团队协作或参与贡献时，必须保留来源中的本人参与边界，不得将支持、协作、参与改写为主导、负责或独立完成。请重新输出完整契约。',
+                      }),
                       options: {
                         provider: this.provider, eventBus: this.eventBus, stepContext,
                         inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
@@ -1080,14 +1086,25 @@ export class V5ResumeOptimizationWorkflow {
                       plan: resumePlan, policy: generationPolicy,
                     }), renderingPlan: resumePlan, entryParagraphPaths: undefined }
                   } catch (error) {
-                    journal?.finish(false)
-                    if (!(error instanceof SupportedWritingError)) throw error
-                    throw new V5WorkflowBlockedError({
+                    lastError = error
+                    if (!(error instanceof SupportedWritingError) && !(error instanceof V5StructuredOutputError) || attempt === 1) {
+                      journal?.finish(false)
+                      if (error instanceof V5StructuredOutputError) {
+                        throw new V5WorkflowBlockedError({
+                          code: error.code, state: 'blocked_fact_validation',
+                          message: error.message, issues: structuredIssues(error),
+                        })
+                      }
+                      if (!(error instanceof SupportedWritingError)) throw error
+                      throw new V5WorkflowBlockedError({
                       code: 'V5_SUPPORTED_WRITING_BLOCKED', state: error.issues.filter(issue => issue.severity === 'error')
                         .every(issue => WRITING_QUALITY_CODES.has(issue.code)) ? 'blocked_quality_validation' : 'blocked_fact_validation',
                       message: '正文未通过本地写作校验；未调用模型重写。', issues: error.issues,
-                    })
+                      })
+                    }
                   }
+                  }
+                  throw lastError
                 },
               })
               steps.push(writerStep.step)

@@ -505,7 +505,7 @@ export default function PageView({
         </View>
       ) : null}
       <View className='reffo-home__backdrop' />
-      <View className='reffo-home__frame'>
+      <View className='reffo-home__frame reffo-responsive-page__frame'>
         <View className='reffo-home__header'>
           <View
             className={classNames('reffo-home__source-button', {
