@@ -1,0 +1,19 @@
+backend/src/v5/writing/entries.ts
+  s_7b5a4cc3ac8dae::t_69c172a2ae4369 11,14,21,24,26-28,31,33,41,53,55,60,237-242,249,271-272,341-357,359-360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b1a934faa3e2f10071ba3e9d8f5d7c94d7e719da",
+  "prompts": {},
+  "sessions": {
+    "s_7b5a4cc3ac8dae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08bbe-f0bc-7282-83a1-0fe17f213b73",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
