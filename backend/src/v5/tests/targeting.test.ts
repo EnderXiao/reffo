@@ -104,8 +104,6 @@ describe('job-targeted internal contracts', () => {
   test.each(['jd_as_evidence', 'duplicate_target'] as const)('rejects concrete mapping error %s', mutation => {
     const fixture = createTargetingFixture()
     if (mutation === 'jd_as_evidence') fixture.fit.links[0].evidenceIds = [fixture.targets[0].id]
-    if (mutation === 'missing_proof') fixture.fit.links[0].evidenceIds = []
-    if (mutation === 'missing_difference') fixture.fit.links[0].difference = ''
     if (mutation === 'duplicate_target') fixture.fit.links.push(structuredClone(fixture.fit.links[0]))
     expect(validateJobFitMap(fixture.fit, fixture.targets, fixture.resume).passed).toBe(false)
   })

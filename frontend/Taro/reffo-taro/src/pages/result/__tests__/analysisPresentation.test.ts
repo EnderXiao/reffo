@@ -76,10 +76,18 @@ describe('analysis presentation', () => {
 
   test('keeps source references when historical interview data has no storytelling points', () => {
     const result = buildResult()
+    result.interview.story_recommendations = [{
+      title: '用户调研', background: '负责用户调研', result: '推进方案落地',
+      storytelling_approach: [],
+    }]
     const [story] = buildInterviewStoryViewItems(result, '负责用户调研和方案落地', '岗位要求用户调研')
     expect(story.storytellingApproach).toEqual([])
     expect(story.resumeQuote).toBeTruthy()
     expect(story.jdQuote).toBeTruthy()
+  })
+
+  test('does not create generic stories when recommendations have not been generated', () => {
+    expect(buildInterviewStoryViewItems(buildResult(), '负责用户调研和方案落地', '岗位要求用户调研')).toEqual([])
   })
 
   test('uses JD-specific structured gaps instead of generic resume weaknesses', () => {
@@ -106,7 +114,7 @@ describe('analysis presentation', () => {
     })
   })
 
-  test('falls back to legacy matching strings before generic analysis strings', () => {
+  test('falls back to legacy matching strings', () => {
     const result = buildResult()
     result.matching.weakness_details = []
     result.matching.optimization_strategy_details = []
@@ -116,5 +124,22 @@ describe('analysis presentation', () => {
       strategyPoint: '旧版策略摘要',
       structured: false,
     })
+  })
+
+  test('never substitutes resume quality weaknesses for missing job gaps', () => {
+    const result = buildResult()
+    result.matching.weakness_details = []
+    result.matching.weaknesses = []
+    expect(buildGapViewItems(result)).toEqual([])
+  })
+
+  test('allows H5 to show every gap and strategy without silent truncation', () => {
+    const result = buildResult()
+    result.matching.weakness_details = []
+    result.matching.optimization_strategy_details = []
+    result.matching.weaknesses = Array.from({length: 7}, (_, i) => `差距${i + 1}`)
+    result.matching.optimization_suggestions = Array.from({length: 7}, (_, i) => `策略${i + 1}`)
+    expect(buildGapViewItems(result, Infinity)).toHaveLength(7)
+    expect(buildOptimizationStrategyViewItems(result, Infinity)).toHaveLength(7)
   })
 })

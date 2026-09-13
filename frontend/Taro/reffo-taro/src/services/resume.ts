@@ -341,10 +341,9 @@ function normalizeInterviewSuggestions(value: Partial<InterviewSuggestions> | nu
           title: typeof item.title === 'string' ? item.title : '',
           background: typeof item.background === 'string' ? item.background : '',
           result: typeof item.result === 'string' ? item.result : '',
-          storytelling_approach: toStringArray(item.storytelling_approach).slice(0, 3),
+          storytelling_approach: toStringArray(item.storytelling_approach),
         }))
         .filter(item => item.title || item.background || item.result || item.storytelling_approach.length > 0)
-        .slice(0, 2)
       : [],
   };
 }

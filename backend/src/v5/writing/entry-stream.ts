@@ -1,4 +1,4 @@
-import { writtenEntrySchema, type WrittenEntry } from '@/v5/writing/entries'
+import { normalizeWrittenEntry, writtenEntrySchema, type WrittenEntry } from '@/v5/writing/entries'
 
 /** Frames only complete objects in the root entries array; braces inside JSON
  * strings, escapes, and arbitrary network chunk boundaries are not delimiters. */
@@ -42,7 +42,7 @@ export class EntryJsonStream {
           const framed = this.buffer.slice(this.start, i + 1)
           this.start = -1
           try {
-            const parsed = writtenEntrySchema.safeParse(JSON.parse(framed))
+            const parsed = writtenEntrySchema.safeParse(normalizeWrittenEntry(JSON.parse(framed)))
             if (parsed.success) this.receive(parsed.data)
           } catch { /* Previews are optional; final parsing decides validity. */ }
         }

@@ -187,6 +187,30 @@ describe('ResumeApi', () => {
       },
     };
 
+    test('保留每个故事的完整讲述方案，不截掉第 4、5 条建议', async () => {
+      const stories = [{
+        title: '用户调研', background: '用户反馈审批链路复杂', result: '完成流程方案',
+        storytelling_approach: ['从审批痛点切入', '说明访谈对象的选择', '解释优先级取舍', '展示流程方案', '准备异常场景追问'],
+      }, {
+        title: '交付协作', background: '多个团队共同交付', result: '按计划完成联调',
+        storytelling_approach: ['先说明接口依赖', '交代本人负责的范围', '解释冲突处理', '展示联调验收结果'],
+      }];
+      mockPost.mockResolvedValue({questions: [], story_recommendations: stories, follow_up_questions: []});
+      const matching: MatchingResult = {
+        match_score: 80,
+        hard_requirements_match: [],
+        skill_match: {matched_skills: [], missing_skills: [], match_percentage: 80},
+        experience_match: {years_required: 0, years_actual: 0, relevant_experience: [], match_percentage: 80},
+        optimization_suggestions: [],
+      };
+
+      const result = await resumeApi.generateInterviewSuggestions(analysis, matching, {
+        optimized_resume: '# 张三\n负责用户调研和跨团队产品交付', changes_summary: [], improvement_score: 5,
+      });
+
+      expect(result.story_recommendations).toEqual(stories);
+    });
+
     test('normalizes final-v3 matching fields for the result pages', async () => {
       mockPost.mockResolvedValue({
         match_score: 82,

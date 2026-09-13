@@ -12,6 +12,7 @@ import type {
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 import { bindSourceLineContinuations } from '@/v5/composition/source-continuation-proof'
 import { localizeTemporalRisk } from '@/v5/temporal-risk'
+import { assessResumeDocumentQuality } from '@/v5/resume-quality-assessment'
 import {
   readResumeExtractionScopePlan,
   resumeExtractionFactCandidateLimit,
@@ -1426,7 +1427,7 @@ export function buildResumeEvidenceBundle(
       warnings: validation.issues.filter(issue => issue.severity !== 'error').map(issue => issue.code),
     },
     qualityAssessment: {
-      ...candidate.qualityAssessment,
+      ...assessResumeDocumentQuality(candidate),
       ...serviceQualityAssessment(document, candidate),
     },
   }

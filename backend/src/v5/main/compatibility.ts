@@ -219,8 +219,7 @@ export function toInterviewPreparation(preparation: InterviewPreparation): Inter
       title: item.title,
       background: item.background,
       result: item.knownResult ?? `待核实：${item.preparationGap ?? '结果证据不足'}`,
-      // Historical P10 records have no dedicated approach; the UI keeps its source-reference fallback.
-      storytelling_approach: [],
+      storytelling_approach: item.storytellingApproach ?? [],
     })),
     follow_up_questions: preparation.followUpQuestions.map(item => item.question),
   }

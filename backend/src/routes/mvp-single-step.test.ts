@@ -8,12 +8,17 @@ import { V5_WORKFLOW_VERSION } from '@/v5/types'
 import { createSingleStepFixture } from '@/v5/tests/single-step-fixtures'
 import { MemoryCheckpointStorage } from '@/v5/tests/checkpoint-storage-fixture'
 import { FIXTURE_RESUME, FIXTURE_JD } from '@/v5/tests/fixtures'
+import { writingIssue } from '@/v5/writing/facts'
 
-async function post(path: string, body: unknown) {
+async function post<T extends 'analyze' | 'match' | 'generate' | 'interview'>(path: T, body: unknown) {
   const response = await mvpRoutes.handle(new Request(`http://localhost/api/v1/mvp/${path}`, {
     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
   }))
-  return {status: response.status, body: await response.json()}
+  return {status: response.status, body: await response.json() as {
+    data: Awaited<ReturnType<V5SingleStepAdapter[T]>>['data']
+    meta: { harness: { workflow_version: string; step_statuses: Array<{ stepName: string }> } }
+    error: { code: string }
+  }}
 }
 
 test('existing frontend request sequence reaches V5 analysis, matching, Writer and on-demand interview', async () => {
@@ -69,4 +74,23 @@ test('V5 failures retain HTTP status, run ID and diagnostic codes without leakin
     expect(result.body.error).toMatchObject({code: 'MATCH_FAILED', details: {run_id: 'failed-run', error_code: 'V5_PROVIDER_UNAVAILABLE', retryable: true}})
     expect(JSON.stringify(result.body)).not.toContain('private upstream error')
   } finally { match.mockRestore(); env.AUTH_REQUIRED = previous }
+})
+
+test('incomplete generated entries return an actionable error and retain the diagnostic run', async () => {
+  const previous = { APP_ENV: env.APP_ENV, AUTH_REQUIRED: env.AUTH_REQUIRED }
+  env.APP_ENV = 'local'
+  env.AUTH_REQUIRED = false
+  const failure = new V5WorkflowBlockedError({ code: 'V5_SUPPORTED_WRITING_BLOCKED', state: 'blocked_fact_validation',
+    message: 'private model output', issues: [writingIssue('ENTRY_SET_INVALID', 'entries', [], '经历结构不一致')] })
+  failure.runId = 'entry-failed-run'
+  const generate = spyOn(v5SingleStepAdapter, 'generate').mockRejectedValue(failure)
+  try {
+    const result = await post('generate', { structured_resume: {}, matching: {} })
+    expect(result.status).toBe(422)
+    expect(result.body.error).toMatchObject({ code: 'GENERATED_ENTRIES_INCOMPLETE',
+      message: '生成内容不完整，部分经历未正确生成，请重新生成',
+      details: { run_id: 'entry-failed-run', error_code: 'V5_SUPPORTED_WRITING_BLOCKED' } })
+    expect(JSON.stringify(result.body)).toContain('ENTRY_SET_INVALID')
+    expect(JSON.stringify(result.body)).not.toContain('private model output')
+  } finally { generate.mockRestore(); Object.assign(env, previous) }
 })

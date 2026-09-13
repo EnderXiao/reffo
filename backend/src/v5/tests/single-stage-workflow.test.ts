@@ -21,7 +21,7 @@ test('V5 single stages reuse validated checkpoints without repeating model stage
 
   const result = await createWorkflow().generateResume(matching)
   expect(versions).toHaveLength(4)
-  expect(versions[3]).toBe('5.2.0-p06c-entry-writer-r5')
+  expect(versions[3]).toBe('5.2.0-p06c-entry-writer-r8')
   expect(result.state).toBe('succeeded')
   expect(toLegacyMvpProcessResponse(result).step3_optimized_resume).toContain('参与团队产品迭代')
   expect(result.matchScore).toEqual(matching.matchScore)

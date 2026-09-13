@@ -1,5 +1,6 @@
 import type { CanonicalSourceDocument, ResumeExtractionCandidate, SourceBlock } from '@/v5/types'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
+import { assessResumeDocumentQuality } from '@/v5/resume-quality-assessment'
 
 export const DEFAULT_RESUME_EXTRACTION_CONCURRENCY = 2
 export const RESUME_EXTRACTION_INITIAL_REPAIR_RATIO = 0.2
@@ -1219,7 +1220,7 @@ export function mergeResumeExtractionCandidates(candidates: ResumeExtractionCand
   const unmapped = unique(namespaced.flatMap(item => item.coverageClaim.unmappedSourceBlockIds))
     .filter(id => !mapped.includes(id))
     .sort((left, right) => sourceBlockOrder(left) - sourceBlockOrder(right))
-  return {
+  const merged: ResumeExtractionCandidate = {
     schemaVersion: V5_SCHEMA_VERSION,
     identityCandidates: namespaced.flatMap(item => item.identityCandidates),
     timelineCandidates: namespaced.flatMap(item => item.timelineCandidates),
@@ -1237,12 +1238,13 @@ export function mergeResumeExtractionCandidates(candidates: ResumeExtractionCand
         clarity: 0,
         sectionCoverage: 0,
       },
-      strengths: namespaced.flatMap(item => item.qualityAssessment.strengths).slice(0, 5),
-      weaknesses: namespaced.flatMap(item => item.qualityAssessment.weaknesses).slice(0, 5),
-      suggestions: namespaced.flatMap(item => item.qualityAssessment.suggestions).slice(0, 5),
-      capabilitySummary: namespaced.map(item => item.qualityAssessment.capabilitySummary).filter(Boolean).join('；'),
+      strengths: [],
+      weaknesses: [],
+      suggestions: [],
+      capabilitySummary: '',
     },
   }
+  return { ...merged, qualityAssessment: assessResumeDocumentQuality(merged) }
 }
 
 function sourceBlockOrder(sourceBlockId: string) {

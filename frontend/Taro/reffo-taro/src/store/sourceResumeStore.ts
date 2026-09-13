@@ -7,6 +7,7 @@ import {useAuthStore} from './authStore';
 import {getJSON, setJSON, storage} from '@/utils/storage';
 import {getUserStorageKey, SOURCE_RESUME_STORAGE_KEY} from '@/utils/user-data-storage';
 import {PENDING_LANDING_SOURCE_RESUME_KEY} from '@/utils/pending-landing-data';
+import {RequestError} from '@/utils/request';
 
 let loadLatestSourceResumePromise: Promise<void> | null = null;
 let sourceResumeStoreEpoch = 0;
@@ -193,14 +194,31 @@ export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
   deleteLatestSourceResume: async (id: string) => {
     const operationEpoch = sourceResumeStoreEpoch;
     const storageKey = getSourceResumeStorageKey();
-    // Guest resumes are local-only; do not look them up in the server database.
-    if (useAuthStore.getState().session) {
-      await sourceResumeApi.deleteSourceResume(id);
+    // Landing 未登录上传只产生本地 ID；服务端 ID 即使来自缓存也要尝试删除。
+    if (!/^landing-source-\d+$/.test(id)) {
+      try {
+        await sourceResumeApi.deleteSourceResume(id);
+      } catch (error) {
+        if (!(error instanceof RequestError)
+          || error.statusCode !== 404 || error.code !== 'SOURCE_RESUME_NOT_FOUND') {
+          throw error;
+        }
+      }
     }
-    await removeSourceResumeCache(storageKey);
     if (operationEpoch !== sourceResumeStoreEpoch) {
       return;
     }
+    // 使删除前启动的加载失效，避免旧响应把已删简历重新写回。
+    const deletionEpoch = ++sourceResumeStoreEpoch;
+    loadLatestSourceResumePromise = null;
+    const keys = new Set([storageKey, SOURCE_RESUME_STORAGE_KEY, PENDING_LANDING_SOURCE_RESUME_KEY]);
+    for (const key of keys) {
+      const cached = await getJSON<SourceResumeSummary>(key);
+      if (deletionEpoch !== sourceResumeStoreEpoch) return;
+      if (cached?.id === id) await storage.removeItem(key);
+    }
+    if (deletionEpoch !== sourceResumeStoreEpoch
+      || (get().latestSourceResume && get().latestSourceResume?.id !== id)) return;
     set({
       latestSourceResume: null,
       loading: {

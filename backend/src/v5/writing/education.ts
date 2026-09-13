@@ -1,5 +1,12 @@
 import type { EvidenceAtom, ResumeEvidenceBundle } from '@/v5/types'
 
+/** An explicit standalone degree can be preserved as layout metadata, never inferred from a school. */
+export function explicitEducationDegree(atom: EvidenceAtom) {
+  if (atom.claimType !== 'education' || atom.status !== 'source_supported' || atom.riskFlags.length > 0) return null
+  const label = atom.verbatimText.trim()
+  return /^(?:本科|专科|(?:理学|工学|文学|管理学|工商管理|经济学|法学|教育学|医学|艺术学|哲学|农学|历史学|军事学)?(?:学士|硕士|博士)(?:学位)?|B\.?Sc\.?|M\.?Sc\.?|MBA|Ph\.?D\.?|(?:Bachelor|Master|Doctor)(?: of (?:Science|Arts|Engineering|Philosophy|Business Administration))?)$/iu.test(label) ? label : null
+}
+
 /** Prefer additional education information over repeating the server-rendered heading. */
 export function educationDetailPriority(atom: EvidenceAtom, scope: ResumeEvidenceBundle['timeline'][number]) {
   if (atom.claimType !== 'education') return 0

@@ -89,6 +89,7 @@ export type V5EvaluationComponent = keyof typeof V5_PROMPT_MAX_OUTPUT_TOKENS
 export type V5EvaluationComponentQuotas = Readonly<Partial<Record<V5EvaluationComponent, number>>>
 
 export interface V5ExtractionBudgetShape {
+  entryWritingPolicy?: 'entry-writing-v1'
   artifactGenerationMode?: 'dsl_v1' | 'writer_v1'
   /** Output caps derived by the prompt compiler from each original source shard. */
   shardOutputTokenCaps?: readonly number[]
@@ -141,7 +142,7 @@ export function v5EvaluationComponentQuotas(
     P03: 1,
     P03R: 1,
     P04: 1,
-    ...(shape.artifactGenerationMode === 'writer_v1' ? { P06C: 1 } : { P06D: 1 }),
+    ...(shape.artifactGenerationMode === 'writer_v1' ? { P06C: shape.entryWritingPolicy ? 3 : 1 } : { P06D: 1 }),
     ...(stage === 'full' ? { P12: V5_JUDGE_CALL_UPPER_BOUND } : {}),
   })
 }
@@ -773,7 +774,7 @@ export function v5CaseOutputTokenEnvelope(
   const generationNonExtractionTokens = stage === 'full' || stage === 'generation-only'
     ? V5_GENERATION_NON_EXTRACTION_OUTPUT_TOKEN_ENVELOPE
       + (shape.artifactGenerationMode === 'writer_v1'
-        ? V5_PROMPT_MAX_OUTPUT_TOKENS.P06C - V5_PROMPT_MAX_OUTPUT_TOKENS.P06D : 0)
+        ? V5_PROMPT_MAX_OUTPUT_TOKENS.P06C * (shape.entryWritingPolicy ? 3 : 1) - V5_PROMPT_MAX_OUTPUT_TOKENS.P06D : 0)
     : 0
   const judgeTokens = stage === 'full' || stage === 'judge-only'
     ? V5_JUDGE_OUTPUT_TOKEN_ENVELOPE
@@ -803,7 +804,7 @@ export function v5CasePhysicalCallUpperBound(
   const extractionCalls = extraction.pendingCaps.length + extraction.repairCalls
   if (stage === 'extract-only') return extractionCalls
   if (stage === 'judge-only') return V5_JUDGE_CALL_UPPER_BOUND
-  return extractionCalls + (stage === 'generation-only'
+  return extractionCalls + (shape.artifactGenerationMode === 'writer_v1' && shape.entryWritingPolicy ? 2 : 0) + (stage === 'generation-only'
     ? V5_GENERATION_NON_EXTRACTION_CALL_UPPER_BOUND
     : V5_NON_EXTRACTION_CALL_UPPER_BOUND)
 }
