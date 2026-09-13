@@ -54,6 +54,8 @@ bun run dev
 - `.env.prod`: 正式 Supabase，仅在正式迁移或正式后端启动时使用。
 - `.env.example`: 变量模板，不保存真实 key。
 
+`bun run dev` / `bun run dev:local` 固定使用本地 SQLite 和免登录开发用户，源简历以 Base64 直传后端，不依赖 Supabase 登录或云存储。浏览器缓存的登录态不会参与本地免登录请求。需要在本地验证真实登录时，可在 `.env.local` 设置 `AUTH_REQUIRED=true` 并配置 Supabase，再使用 `bun run start:local`；非生产和生产环境始终要求登录。
+
 常用命令：
 
 ```bash
@@ -79,6 +81,8 @@ bun run migrate:sqlite-to-supabase:prod
 完整流程固定执行 V5，不再提供 V4、shadow 或请求级版本切换。响应保留旧步骤字段，同时增加 Agent 状态、release status 和安全回退标识；架构、调用成本与发布门槛见 [`src/v5/README.md`](src/v5/README.md)。2026-09-08 起按产品负责人授权准备 entry r5 生产发布；部署状态、切换与回滚见 [`docs/v5-entry-r5-production-rollout.md`](docs/v5-entry-r5-production-rollout.md)。
 
 正式接口固定使用 V5 entry-r5 配置：`AI_MODEL=deepseek-v4-flash`、`OPENAI_BASE_URL=https://api.deepseek.com`、`DEEPSEEK_THINKING_MODE=disabled`、`DEEPSEEK_P01_THINKING_MODE=disabled`。配置不匹配时启动失败，不静默切换其他模型。单步接口通过服务端适配器复用同一 V5 阶段与检查点，前端无需切换调用方式。
+
+经历写作 P06C r8 遇到可定位的数字、贡献边界等事实错误时，最多定向纠正两次；只提交出错条目，保留其他条目，再对完整成品执行相同的事实和结构校验。未知引用、条目缺失及结构异常仍阻断；纠正后不合格也不交付。正常写作一次模型调用，触发纠正时最多三次逻辑调用（原有长度续写上限仍适用），评测预算同步预留。
 
 ### V5 插件清单
 

@@ -5,6 +5,7 @@ export type RuntimeAppEnv = 'local' | 'nonprod' | 'prod';
 export interface PublicRuntimeConfig {
   appEnv: RuntimeAppEnv;
   databaseProvider: 'sqlite' | 'supabase';
+  authRequired: boolean;
   supabase: {
     url: string;
     publishableKey: string;

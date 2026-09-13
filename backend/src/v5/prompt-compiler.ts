@@ -4,7 +4,7 @@ import { createDigest } from '@/harness/run-context'
 import type { ChatMessage } from '@/providers/llm-provider'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { p06CompositionOutputSchema } from '@/v5/composition/contract'
-import { entryWritingOutputSchema, isEntryWritingEnvelope } from '@/v5/writing/entries'
+import { entryWritingOutputSchema, entryWritingTransportSchema, isEntryWritingEnvelope } from '@/v5/writing/entries'
 import { p06DslOutputSchema } from '@/v5/composition/dsl'
 import { isJobTargetedEnvelope, jobFitMapSchema, targetedJobExtractionSchema } from '@/v5/targeting/contracts'
 import { resumeDocumentFromEnvelope, resumeExtractionTransportSchema } from '@/v5/resume-extraction-transport'
@@ -326,7 +326,8 @@ export function compileV5Prompt(input: {
   const schema = schemaForV5Component(input.component, input.envelope)
   const extractionDocument = input.component === 'P01' || input.component === 'P01R'
     ? resumeDocumentFromEnvelope(input.envelope) : null
-  const providerSchema = extractionDocument ? resumeExtractionTransportSchema(extractionDocument) : schema
+  const providerSchema = extractionDocument ? resumeExtractionTransportSchema(extractionDocument)
+    : input.component === 'P06C' && isEntryWritingEnvelope(input.envelope) ? entryWritingTransportSchema(input.envelope) : schema
   const schemaName = input.component === 'P06C'
     ? isEntryWritingEnvelope(input.envelope) ? 'reffo_p06c_entry_v1' : 'reffo_p06c_composition_v1'
     : input.component === 'P06D'

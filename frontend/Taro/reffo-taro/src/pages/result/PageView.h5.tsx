@@ -17,6 +17,7 @@ import {resolveResumeGrade} from '@/utils/score-grade'
 import {RequirementAnalysisPanel} from './components/RequirementAnalysis.h5'
 import type {ResultPageViewModel} from './usePageModel'
 import {buildInterviewStoryViewItems} from './model/interviewReferences'
+import {buildGapViewItems, buildOptimizationStrategyViewItems} from './model/analysisPresentation'
 import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
@@ -373,8 +374,8 @@ function EmptyText() {
 
 function AnalysisPanel({result}: {result: ProcessResult}) {
   const grade = resolveResumeGrade(result.matching.match_score)
-  const weaknesses = normalizeItems(result.analysis.weaknesses, Infinity)
-  const strategies = normalizeItems(result.matching.optimization_suggestions, Infinity)
+  const weaknesses = buildGapViewItems(result, Infinity)
+  const strategies = buildOptimizationStrategyViewItems(result, Infinity)
 
   return (
     <View className='reffo-result__panel'>
@@ -392,9 +393,9 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
         </View>
         {weaknesses.length > 0 ? (
           <ul className='reffo-result__analysis-list'>
-            {weaknesses.map((item, index) => (
-              <li key={`${item}-${index}`} className='reffo-result__analysis-list-item'>
-                {item}
+            {weaknesses.map(item => (
+              <li key={item.id} className='reffo-result__analysis-list-item'>
+                {item.title}
               </li>
             ))}
           </ul>
@@ -410,9 +411,9 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
         </View>
         {strategies.length > 0 ? (
           <ul className='reffo-result__analysis-list'>
-            {strategies.map((item, index) => (
-              <li key={`${item}-${index}`} className='reffo-result__analysis-list-item'>
-                {item}
+            {strategies.map(item => (
+              <li key={item.id} className='reffo-result__analysis-list-item'>
+                {item.strategyPoint}
               </li>
             ))}
           </ul>
@@ -624,21 +625,24 @@ function InterviewPanel({
 
       <SectionTitle>明星故事推荐</SectionTitle>
       <View className='reffo-result__story-list'>
+        {storyItems.length === 0 && (
+          <Text className='reffo-result__story-bullet'>尚未生成故事推荐，请重新生成面试建议。</Text>
+        )}
         {storyItems.map((item, index) => (
           <View key={`${item.title}-${index}`} className='reffo-result__story-block'>
             <Text className='reffo-result__story-title'>{item.title}</Text>
             <Text className='reffo-result__story-source'>
-              来自源简历
-              <Text className='reffo-result__story-reference'>{item.resumeQuote || '暂无可引用原文'}</Text>
-              和岗位描述
-              <Text className='reffo-result__story-reference'>{item.jdQuote || '暂无可引用原文'}</Text>
+              参考源简历
+              <SourceReference value={item.resumeQuote} />
+              ；参考岗位描述
+              <SourceReference value={item.jdQuote} />
               。
             </Text>
 
             <Text className='reffo-result__story-label'>故事回顾：</Text>
             <View className='reffo-result__story-bullets'>
-              <Text className='reffo-result__story-bullet'>• {item.background}</Text>
-              <Text className='reffo-result__story-bullet'>• {item.result}</Text>
+              {item.background && <Text className='reffo-result__story-bullet'>• {item.background}</Text>}
+              {item.result && <Text className='reffo-result__story-bullet'>• {item.result}</Text>}
             </View>
 
             <Text className='reffo-result__story-label'>讲述思路：</Text>
@@ -648,14 +652,7 @@ function InterviewPanel({
                   • {point}
                 </Text>
               )) : (
-                <>
-                  <Text className='reffo-result__story-bullet'>
-                    • 从岗位描述中 <SourceReference value={item.jdQuote} /> 对齐讲述重点，优先说明这段经历如何回应岗位要求。
-                  </Text>
-                  <Text className='reffo-result__story-bullet'>
-                    • 从源简历中 <SourceReference value={item.resumeQuote} /> 回到可核验事实，避免把岗位要求包装成自己已经做过的经历。
-                  </Text>
-                </>
+                <Text className='reffo-result__story-bullet'>此故事尚未生成讲述思路，请重新生成面试建议。</Text>
               )}
             </View>
           </View>

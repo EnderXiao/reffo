@@ -188,19 +188,76 @@ function parseStructuredJobDescription(text: string): ParsedJobDescriptionResult
 }
 
 function buildStructuredJobDescriptionFromText(text: string): ParsedJobDescriptionResult {
-  const companyMatch = text.match(/(?:公司名称|公司|Company)[:：\s]+([^\n]+)/i)
-  const positionMatch = text.match(/(?:岗位名称|职位名称|岗位|职位|Position|Title)[:：\s]+([^\n]+)/i)
-  const requirementLines = text
-    .split('\n')
-    .map(line => line.replace(/^[-*\d.\s]+/, '').trim())
-    .filter(line => /要求|熟练|精通|经验|能力|技能|负责|职责|Type/i.test(line))
+  const lines = text.split('\n').map(line => ({
+    text: line.trim().replace(/^#{1,6}\s+/, '').replace(/\*\*|__/g, '').trim(),
+    heading: /^\s*#{1,6}\s+/.test(line),
+  }))
+  const companyLabel = /^(?:公司名称|公司|Company)\s*[:：]\s*(.+)$/i
+  const positionLabel = /^(?:岗位名称|职位名称|岗位|职位|Position|Title)\s*[:：]\s*(.+)$/i
+  const recruitingTitle = /^(.+?)\s*(?:正在招聘|诚聘|招聘中)[！!。]?$/
+  const responsibilitiesHeading = /^(?:岗位职责|工作职责|职位职责|主要职责|职责描述|工作内容|职责|(?:job\s+)?responsibilities)\s*[:：]?\s*$/i
+  const requirementsHeading = /^(?:任职要求|任职资格|岗位要求|职位要求|招聘要求|资格要求|要求|requirements|qualifications)\s*[:：]?\s*$/i
+  const otherSectionHeading = /^(?:职位详情|岗位详情|职位描述|福利待遇|薪资福利|公司介绍|关于我们|联系方式)\s*[:：]?\s*$/
+  const advertisement = /^(?:BOSS\s*ZHIPIN\b|BOSS直聘|扫码(?:查看|了解|投递)|找工作[，,、\s]*BOSS)/i
+  const listPrefix = /^(?:[-*+]\s+|[•·]\s*|(?:\d+|[一二三四五六七八九十]+)(?:[、．)）]|\.(?!\d))\s*|[（(](?:\d+|[一二三四五六七八九十]+)[）)]\s*)/
+  const isSectionHeading = (line: string) => responsibilitiesHeading.test(line)
+    || requirementsHeading.test(line) || otherSectionHeading.test(line)
+  const companyLineIndex = lines.findIndex(line => companyLabel.test(line.text) || recruitingTitle.test(line.text))
+  const companyLine = lines[companyLineIndex]?.text ?? ''
+  const companyName = companyLine.match(companyLabel)?.[1] ?? companyLine.match(recruitingTitle)?.[1] ?? ''
+  const explicitPosition = lines.map(line => line.text.match(positionLabel)?.[1]).find(Boolean)
+  const firstSectionIndex = lines.findIndex(line => isSectionHeading(line.text))
+  const headerLines = lines.slice(0, firstSectionIndex < 0 ? lines.length : firstSectionIndex)
+  const positionCandidates = headerLines.filter((line, index) => line.text
+    && (line.heading || (companyLineIndex >= 0 && index > companyLineIndex))
+    && !companyLabel.test(line.text) && !recruitingTitle.test(line.text)
+    && !isSectionHeading(line.text) && !advertisement.test(line.text)
+    && !/^!\[|^\d|\d\s*[kK万薪]|[/|].*(?:年|本科|大专)/.test(line.text))
+  const positionCandidate = positionCandidates.find(line => line.heading) ?? positionCandidates[0]
+  const responsibilities: string[] = []
+  const requirements: string[] = []
+  let activeList: string[] | undefined
+  let afterBlank = true
+
+  for (const line of lines) {
+    if (!line.text) {
+      afterBlank = true
+      continue
+    }
+    if (responsibilitiesHeading.test(line.text)) {
+      activeList = responsibilities
+      afterBlank = true
+      continue
+    }
+    if (requirementsHeading.test(line.text)) {
+      activeList = requirements
+      afterBlank = true
+      continue
+    }
+    if (advertisement.test(line.text)) break
+    if (line.heading || otherSectionHeading.test(line.text)) {
+      activeList = undefined
+      continue
+    }
+    if (!activeList || /^!\[/.test(line.text)) continue
+
+    const item = line.text.replace(listPrefix, '').trim()
+    if (!item) continue
+    // 章节归属优先于“负责”等措辞；续行仍属于同一条职责或要求。
+    if (listPrefix.test(line.text) || afterBlank || activeList.length === 0) {
+      activeList.push(item)
+    } else {
+      activeList[activeList.length - 1] += `\n${item}`
+    }
+    afterBlank = false
+  }
 
   return {
-    companyName: companyMatch?.[1]?.trim() ?? '',
-    positionName: positionMatch?.[1]?.trim() ?? '',
+    companyName: companyName.trim(),
+    positionName: explicitPosition?.trim() ?? positionCandidate?.text ?? '',
     jdText: text.trim(),
-    responsibilities: requirementLines.filter(line => /负责|职责/.test(line)),
-    requirements: requirementLines.filter(line => !/负责|职责/.test(line)),
+    responsibilities,
+    requirements,
   }
 }
 

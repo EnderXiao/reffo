@@ -26,6 +26,7 @@ export type HarnessEventType =
   | 'output.parsed'
   | 'output.validated'
   | 'extraction.validation.observed'
+  | 'writing.validation.observed'
   | 'evaluation.completed'
 
 export interface HarnessEvent<TPayload = Record<string, unknown>> {

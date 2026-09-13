@@ -38,11 +38,11 @@ function cleanItems(value: unknown, limit: number) {
     .slice(0, limit)
 }
 
-export function buildGapViewItems(result: ProcessResult): GapViewItem[] {
+export function buildGapViewItems(result: ProcessResult, limit = 4): GapViewItem[] {
   const details = result.matching.weakness_details ?? []
   const structuredItems = details
     .filter(detail => clean(detail.weakness).length > 0)
-    .slice(0, 4)
+    .slice(0, limit)
     .map((detail, index) => ({
       id: clean(detail.id) || `G${index + 1}`,
       priority: detail.priority,
@@ -58,12 +58,8 @@ export function buildGapViewItems(result: ProcessResult): GapViewItem[] {
     return structuredItems
   }
 
-  const fallbackItems = cleanItems(result.matching.weaknesses, 4)
-  const legacyItems = fallbackItems.length > 0
-    ? fallbackItems
-    : cleanItems(result.analysis.weaknesses, 4)
-
-  return legacyItems.map((title, index) => ({
+  const fallbackItems = cleanItems(result.matching.weaknesses, limit)
+  return fallbackItems.map((title, index) => ({
     id: `G${index + 1}`,
     title,
     jdRequirement: '',
@@ -75,11 +71,12 @@ export function buildGapViewItems(result: ProcessResult): GapViewItem[] {
 
 export function buildOptimizationStrategyViewItems(
   result: ProcessResult,
+  limit = 4,
 ): OptimizationStrategyViewItem[] {
   const details = result.matching.optimization_strategy_details ?? []
   const structuredItems = details
     .filter(detail => clean(detail.strategy_point).length > 0)
-    .slice(0, 4)
+    .slice(0, limit)
     .map((detail, index) => ({
       id: clean(detail.id) || `S${index + 1}`,
       relatedGapIds: cleanItems(detail.related_gap_ids, 4),
@@ -94,7 +91,7 @@ export function buildOptimizationStrategyViewItems(
     return structuredItems
   }
 
-  return cleanItems(result.matching.optimization_suggestions, 5)
+  return cleanItems(result.matching.optimization_suggestions, limit)
     .map((strategyPoint, index) => ({
       id: `S${index + 1}`,
       relatedGapIds: [],

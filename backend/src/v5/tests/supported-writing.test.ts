@@ -31,6 +31,45 @@ function context() {
 }
 
 describe('supported writing facts and contract', () => {
+  test('preserves a proven split metric among unrelated summary references', () => {
+    const left = { ...atom('调研10+'), evidenceId: 'left', sourceBlockId: 'B0010', sourceSpan: {start: 100, end: 105} }
+    const right = { ...left, evidenceId: 'right', sourceBlockId: 'B0011', verbatimText: '家门店并形成报告。', sourceSpan: {start: 106, end: 116} }
+    const other = { ...atom('梳理需求。'), evidenceId: 'other', sourceScopeId: 'another', sourceBlockId: 'B0020', sourceSpan: {start: 200, end: 205} }
+    const codes = (sources: EvidenceAtom[], text = '调研10+家门店并梳理需求。') => inspectSupportedWriting(text, sources, 'summary[0]').map(i => i.code)
+    expect(codes([other, right, left])).not.toContain('WRITER_NUMBER_CHANGED')
+    expect(codes([other, left])).toContain('WRITER_NUMBER_CHANGED')
+    expect(codes([other, left, {...right, sourceScopeId: 'different'}])).toContain('WRITER_NUMBER_CHANGED')
+    expect(codes([other, left, {...right, riskFlags: ['conflicting']}])).toContain('WRITER_NUMBER_CHANGED')
+    expect(codes([other, left, right], '调研20+家门店。')).toContain('WRITER_NUMBER_CHANGED')
+  })
+  test.each(['P010条、P14条、P26条', 'P0 10条、P1 4条、P2 6条', 'P0：10条、P1：4条、P2：6条'])('keeps priority counts equivalent across separators: %s', output => {
+    const source = atom('整理P010条、P14条、P26条需求。')
+    expect(writingNumbers(output)).toEqual(['p0:10条', 'p1:4条', 'p2:6条'])
+    expect(inspectSupportedWriting(output, [source], 'body').map(i => i.code)).not.toContain('WRITER_NUMBER_CHANGED')
+    for (const changed of ['P0：11条', 'P1：10条', 'P0：10项']) {
+      expect(inspectSupportedWriting(changed, [source], 'body').map(i => i.code)).toContain('WRITER_NUMBER_CHANGED')
+    }
+  })
+  test('product incubation expressions require source support, while quantities and ownership stay protected', () => {
+    const source = atom('参与产品0-1需求梳理与上线。')
+    expect(inspectSupportedWriting('可迁移至AI产品从0到1孵化。', [source], 'summary[0]').map(i => i.code))
+      .not.toContain('WRITER_NUMBER_CHANGED')
+    expect(writingNumbers('支持产品从0到1孵化，交付3项功能。')).toEqual(['0-1', '3项'])
+    expect(inspectSupportedWriting('完成产品从0到1孵化。', [atom('参与产品需求梳理与上线。')], 'summary[0]').map(i => i.code))
+      .toContain('WRITER_NUMBER_CHANGED')
+    for (const output of ['用户数从0到1万。', '营收从0到100万元。', '产品从0到1万元收入。', '支持产品从0到1孵化，增长50%。']) {
+      expect(inspectSupportedWriting(output, [source], 'summary[0]').map(i => i.code)).toContain('WRITER_NUMBER_CHANGED')
+    }
+    expect(inspectSupportedWriting('独立完成产品从0到1孵化。', [source], 'summary[0]').map(i => i.code))
+      .toContain('WRITER_OWNERSHIP_UPGRADE')
+  })
+  test.each(['市场洞察', '销售数据', '运营指标', '销售增长', '业务收入'])('does not infer a collaborator from %s', term => {
+    const source = atom(`整理${term}，形成竞品分析。`)
+    const codes = (text: string) => inspectSupportedWriting(text, [source], 'skills[0]').map(issue => issue.code)
+    expect(codes(`围绕竞品与${term}形成分析。`)).not.toContain('WRITER_COLLABORATOR_ADDED')
+    expect(codes(`与市场团队分析${term}。`)).toContain('WRITER_COLLABORATOR_ADDED')
+    expect(codes(`与研发、${term}相关团队合作。`)).toContain('WRITER_COLLABORATOR_ADDED')
+  })
   test('allows source-backed summary numbers but still rejects invented totals', () => {
     const input = context()
     const fact = input.writingPlan.facts.find(f => f.text.includes('交付3个功能'))!
@@ -85,6 +124,9 @@ describe('supported writing facts and contract', () => {
     const writer = v5CaseOutputTokenEnvelope(1, 'generation-only', shape)
     const dsl = v5CaseOutputTokenEnvelope(1, 'generation-only', { validatedShardIndexes: [0] })
     expect(writer.totalTokens - dsl.totalTokens).toBe(1800)
+    const entries = {...shape, entryWritingPolicy: 'entry-writing-v1' as const}
+    expect(v5EvaluationComponentQuotas(1, 'generation-only', entries).P06C).toBe(3)
+    expect(v5CaseOutputTokenEnvelope(1, 'generation-only', entries).totalTokens - writer.totalTokens).toBe(9600)
     expect(parseEvaluationRunnerArgs(['--artifact-mode', 'writer_v1'], { backendRoot: '/repo/backend' }).artifactGenerationMode).toBe('writer_v1')
     expect(parseEvaluationRunnerArgs([], { backendRoot: '/repo/backend' }).artifactGenerationMode).toBe('dsl_v1')
   })

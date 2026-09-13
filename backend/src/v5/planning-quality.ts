@@ -44,29 +44,35 @@ export function duplicateTimelineOnlyScopes(resume: ResumeEvidenceBundle, select
   const norm = (value: string | null) => (value ?? '').normalize('NFKC').toLowerCase().replace(/[\s.。|｜丨、]/gu, '')
   const title = (value: string | null) => norm((value ?? '').split(/[；;]/)[0])
   const atomById = new Map(resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
-  const scopeText = (scope: ResumeEvidenceBundle['timeline'][number]) => scope.evidenceIds
-    .map(id => atomById.get(id)?.verbatimText ?? '').join('\n').toLowerCase()
+  const metadata = (scope: ResumeEvidenceBundle['timeline'][number]) => scope.evidenceIds
+    .map(id => atomById.get(id)).filter((atom): atom is EvidenceAtom => Boolean(atom)
+      && atom!.status !== 'excluded' && (atom!.claimType === 'timeline' || /^#{1,6}\s/u.test(atom!.verbatimText)))
+    .map(atom => atom.verbatimText.replace(/^#{1,6}\s*/u, ''))
   const work = resume.timeline.filter(scope => ['experience', 'internship'].includes(scope.kind))
   const omitted = new Set<string>()
   for (const source of work) {
-    if (selectedScopes.has(source.scopeId) || !source.start || !source.end || !source.organization || !source.title) continue
-    const hasSubstantiveBody = source.evidenceIds.some(id => {
-      const atom = atomById.get(id)
-      return atom && atom.status !== 'excluded'
+    if (selectedScopes.has(source.scopeId) || !source.start || !source.end || !source.organization) continue
+    const hasSubstantiveBody = resume.evidenceAtoms.some(atom => {
+      return atom.sourceScopeId === source.scopeId && atom.status !== 'excluded'
         && ['responsibility', 'action', 'deliverable', 'result'].includes(atom.claimType)
         && !isBusinessMetadata(atom, resume)
     })
     if (hasSubstantiveBody) continue
     const equivalents = work.filter(target => {
       const richerTarget = selectedScopes.has(target.scopeId)
+        || (!source.title && Boolean(target.title))
         || target.evidenceIds.length > source.evidenceIds.length
       if (target.scopeId === source.scopeId || !richerTarget
-        || norm(source.start) !== norm(target.start) || norm(source.end) !== norm(target.end)
-        || title(source.title) !== title(target.title)) return false
+        || norm(source.start) !== norm(target.start) || norm(source.end) !== norm(target.end)) return false
+      // P01 can omit the structured title while retaining it in a standalone
+      // overview metadata line. Require that exact role, not just equal dates.
+      const sameTitle = source.title ? title(source.title) === title(target.title)
+        : Boolean(target.title) && metadata(source).some(text => text.split(/[；;|｜丨]/u).some(part => title(part) === title(target.title)))
+      if (!sameTitle) return false
       const organization = norm(source.organization)
       return (target.organization && (norm(target.organization).includes(organization)
         || organization.includes(norm(target.organization))))
-        || norm(scopeText(target)).includes(organization)
+        || metadata(target).some(text => norm(text).includes(organization))
     })
     if (equivalents.length === 1) omitted.add(source.scopeId)
   }

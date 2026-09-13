@@ -1,6 +1,7 @@
 import {authApi, resetPasswordEncryptionConfigCache} from '../auth'
 import {apiClient} from '../api'
-import {setJSON} from '@/utils/storage'
+import {getJSON, setJSON} from '@/utils/storage'
+import {resetPublicRuntimeConfigCache} from '../runtime-config'
 import {encryptPasswordPayload} from '@/utils/password-encryption'
 
 jest.mock('@/utils/password-encryption', () => ({
@@ -38,6 +39,7 @@ describe('authApi', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     resetPasswordEncryptionConfigCache()
+    resetPublicRuntimeConfigCache()
     mockApiGet.mockImplementation((path: string) => Promise.resolve(
       path === '/system/public-config'
         ? {appEnv: 'nonprod', databaseProvider: 'supabase', supabase: {}}
@@ -48,6 +50,31 @@ describe('authApi', () => {
             public_key: 'test-public-key',
           },
     ))
+  })
+
+  test('does not restore cached cloud credentials in local no-login mode', async () => {
+    mockApiGet.mockResolvedValue({appEnv: 'local', authRequired: false})
+    ;(getJSON as jest.Mock).mockResolvedValue({accessToken: 'stale-token', user: {id: 'old-user'}})
+
+    await expect(authApi.restoreSession()).resolves.toBeNull()
+
+    expect(apiClient.setAuthToken).toHaveBeenCalledWith(null)
+    expect(getJSON).not.toHaveBeenCalled()
+    expect(mockApiPost).not.toHaveBeenCalled()
+  })
+
+  test.each([
+    {appEnv: 'local', authRequired: true},
+    {appEnv: 'local'},
+    {appEnv: 'nonprod', authRequired: false},
+    {appEnv: 'prod', authRequired: true},
+  ])('preserves session handling outside explicit local no-login mode: %o', async config => {
+    mockApiGet.mockResolvedValue(config)
+    const session = {accessToken: 'user-token', user: {id: 'user-1'}}
+    ;(getJSON as jest.Mock).mockResolvedValue(session)
+
+    await expect(authApi.restoreSession()).resolves.toEqual(session)
+    expect(apiClient.setAuthToken).toHaveBeenCalledWith('user-token')
   })
 
   test('encrypts password login before calling Reffo backend', async () => {

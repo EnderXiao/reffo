@@ -2,7 +2,7 @@ import { env } from '@/config/env'
 import { createHarnessEvent } from '@/harness/events'
 import { deepSeekProvider } from '@/providers/deepseek-provider'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
-import { APIUserAbortError } from 'openai'
+import { APIConnectionError, APIUserAbortError } from 'openai'
 
 const DEFAULT_MAX_PROVIDER_ATTEMPTS = 2
 
@@ -19,8 +19,8 @@ export function getErrorStatus(error: unknown) {
 }
 
 function getErrorCode(error: unknown) {
-  if (typeof error === 'object' && error !== null && 'code' in error) {
-    return String((error as { code?: unknown }).code)
+  if (typeof error === 'object' && error !== null && 'code' in error && error.code != null) {
+    return String(error.code)
   }
 
   const status = getErrorStatus(error)
@@ -49,6 +49,8 @@ export function isProviderTransientError(error: unknown) {
   if (isAbortError(error)) {
     return false
   }
+  // SDK 的连接异常通常只有“Connection error.”，不能依赖底层错误字符串。
+  if (error instanceof APIConnectionError) return true
 
   const status = getErrorStatus(error)
   if (status && [408, 409, 429].includes(status)) {

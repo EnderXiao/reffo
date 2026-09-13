@@ -5,8 +5,8 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun --env-file=.env.local --watch src/index.ts",
-    "dev:local": "bun --env-file=.env.local --watch src/index.ts",
+    "dev": "bun run dev:local",
+    "dev:local": "APP_ENV=local DATABASE_PROVIDER=sqlite AUTH_REQUIRED=false bun --env-file=.env.local --watch src/index.ts",
     "dev:nonprod": "bun --env-file=.env.nonprod --watch src/index.ts",
     "dev:prod": "bun --env-file=.env.prod --watch src/index.ts",
     "start": "bun --env-file=.env.local run src/index.ts",

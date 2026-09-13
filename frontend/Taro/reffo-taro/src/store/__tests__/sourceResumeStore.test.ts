@@ -30,6 +30,7 @@ import {sourceResumeApi} from '@/services/sourceResume'
 import {isLocalRuntimeEnvironment} from '@/services/runtime-config'
 import {useSourceResumeStore} from '../sourceResumeStore'
 import {getJSON, setJSON, storage} from '@/utils/storage'
+import {RequestError} from '@/utils/request'
 
 const resume: SourceResumeSummary = {
   id: 'resume-1',
@@ -43,12 +44,14 @@ const resume: SourceResumeSummary = {
 
 describe('SourceResumeStore', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    jest.resetAllMocks()
     useSourceResumeStore.getState().reset()
     mockAuthState.session = {user: {id: 'user-1'}}
     ;(isLocalRuntimeEnvironment as jest.Mock).mockResolvedValue(false)
     ;(sourceResumeApi.getLatestSourceResume as jest.Mock).mockResolvedValue(null)
     ;(storage.removeItem as jest.Mock).mockResolvedValue(undefined)
+    ;(sourceResumeApi.deleteSourceResume as jest.Mock).mockResolvedValue(undefined)
+    ;(getJSON as jest.Mock).mockResolvedValue(null)
   })
 
   test('nonprod 接口失败时不读取或展示本地简历', async () => {
@@ -84,4 +87,93 @@ describe('SourceResumeStore', () => {
     expect(useSourceResumeStore.getState().latestSourceResume).toEqual(resume)
     expect(useSourceResumeStore.getState().loading.error).toBeNull()
   })
+  function cacheRecords(records: Record<string, SourceResumeSummary>) {
+    const cache = new Map(Object.entries(records))
+    ;(getJSON as jest.Mock).mockImplementation(async (key: string) => cache.get(key) ?? null)
+    ;(storage.removeItem as jest.Mock).mockImplementation(async (key: string) => {cache.delete(key)})
+    return cache
+  }
+
+  test.each(['success', 'missing'] as const)('服务端删除 %s 后清除同一简历的所有缓存，重新加载不复活', async status => {
+    mockAuthState.session = null
+    const cache = cacheRecords({'latest_source_resume': resume, 'reffo.landing.pendingSourceResume': resume})
+    useSourceResumeStore.setState({latestSourceResume: resume})
+    if (status === 'missing') {
+      ;(sourceResumeApi.deleteSourceResume as jest.Mock).mockRejectedValue(new RequestError('已删除', 'SOURCE_RESUME_NOT_FOUND', 404))
+    }
+    await useSourceResumeStore.getState().deleteLatestSourceResume(resume.id)
+    expect(sourceResumeApi.deleteSourceResume).toHaveBeenCalledWith(resume.id)
+    expect(cache.size).toBe(0)
+    expect(useSourceResumeStore.getState().latestSourceResume).toBeNull()
+    await useSourceResumeStore.getState().loadLatestSourceResume({force: true})
+    expect(useSourceResumeStore.getState().latestSourceResume).toBeNull()
+  })
+
+  test('纯本地 Landing 简历删除不调用 API', async () => {
+    mockAuthState.session = null
+    const local = {...resume, id: 'landing-source-123456'}
+    const cache = cacheRecords({'reffo.landing.pendingSourceResume': local})
+    useSourceResumeStore.setState({latestSourceResume: local})
+    await useSourceResumeStore.getState().deleteLatestSourceResume(local.id)
+    expect(sourceResumeApi.deleteSourceResume).not.toHaveBeenCalled()
+    expect(cache.size).toBe(0)
+    expect(useSourceResumeStore.getState().latestSourceResume).toBeNull()
+  })
+
+  test.each([
+    new RequestError('需登录', 'AUTH_REQUIRED', 401),
+    new RequestError('网络失败', 'NETWORK_ERROR'),
+    new RequestError('服务错误', 'SOURCE_RESUME_DELETE_FAILED', 500),
+    new RequestError('接口不存在', 'NOT_FOUND', 404),
+  ])('其他删除错误保留记录和缓存：%s', async error => {
+    const cache = cacheRecords({'latest_source_resume.user-1': resume})
+    useSourceResumeStore.setState({latestSourceResume: resume})
+    ;(sourceResumeApi.deleteSourceResume as jest.Mock).mockRejectedValue(error)
+    await expect(useSourceResumeStore.getState().deleteLatestSourceResume(resume.id)).rejects.toBe(error)
+    expect(cache.get('latest_source_resume.user-1')).toEqual(resume)
+    expect(useSourceResumeStore.getState().latestSourceResume).toEqual(resume)
+    expect(storage.removeItem).not.toHaveBeenCalled()
+  })
+
+  test('删除旧记录时保留新简历和其他待同步简历', async () => {
+    const newer = {...resume, id: 'new-resume'}
+    const cache = cacheRecords({'latest_source_resume.user-1': resume, 'latest_source_resume': newer, 'reffo.landing.pendingSourceResume': newer})
+    useSourceResumeStore.setState({latestSourceResume: resume})
+    ;(sourceResumeApi.deleteSourceResume as jest.Mock).mockImplementation(async () => {
+      useSourceResumeStore.setState({latestSourceResume: newer})
+    })
+    await useSourceResumeStore.getState().deleteLatestSourceResume(resume.id)
+    expect(cache.has('latest_source_resume.user-1')).toBe(false)
+    expect(cache.get('latest_source_resume')).toEqual(newer)
+    expect(cache.get('reffo.landing.pendingSourceResume')).toEqual(newer)
+    expect(useSourceResumeStore.getState().latestSourceResume).toEqual(newer)
+  })
+
+  test('删除前发起的加载响应不能恢复已删简历', async () => {
+    let finishLoad!: (value: SourceResumeSummary) => void
+    let started!: () => void
+    const loading = new Promise<void>(resolve => {started = resolve})
+    ;(sourceResumeApi.getLatestSourceResume as jest.Mock).mockImplementation(() => {
+      started()
+      return new Promise(resolve => {finishLoad = resolve})
+    })
+    useSourceResumeStore.setState({latestSourceResume: resume})
+    const pending = useSourceResumeStore.getState().loadLatestSourceResume()
+    await loading
+    await useSourceResumeStore.getState().deleteLatestSourceResume(resume.id)
+    finishLoad(resume)
+    await pending
+    expect(useSourceResumeStore.getState().latestSourceResume).toBeNull()
+  })
+
+  test('删除期间切换账号不清除新会话缓存', async () => {
+    cacheRecords({'latest_source_resume.user-1': resume})
+    ;(sourceResumeApi.deleteSourceResume as jest.Mock).mockImplementation(async () => {
+      useSourceResumeStore.getState().reset()
+      mockAuthState.session = {user: {id: 'user-2'}}
+    })
+    await useSourceResumeStore.getState().deleteLatestSourceResume(resume.id)
+    expect(storage.removeItem).not.toHaveBeenCalled()
+  })
+
 })
