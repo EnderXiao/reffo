@@ -1,0 +1,19 @@
+backend/src/v5/writing/entries.ts
+  s_7b5a4cc3ac8dae::t_92caa28934caa8 13,29-59,241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "742d575eb5931376d950e055388a7d3e6528f839",
+  "prompts": {},
+  "sessions": {
+    "s_7b5a4cc3ac8dae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08bbe-f0bc-7282-83a1-0fe17f213b73",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
