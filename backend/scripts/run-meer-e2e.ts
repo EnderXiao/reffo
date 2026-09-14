@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 
 const baseUrl = process.env.REFFO_BASE_URL ?? 'http://127.0.0.1:3000/api/v1'
 const pdfPath = process.env.MEER_RESUME_PDF ?? '../output/Meer（海双珑）求职源工作简历_2026-08-25.pdf'
+const jdImagePath = process.env.MEER_JD_IMAGE ?? '../output/微信图片_20260914000249_641_14.jpg'
 const jdPath = process.env.MEER_JD_FILE
 const token = process.env.REFFO_AUTH_TOKEN
 
@@ -16,6 +17,12 @@ async function extractPdf(path: string) {
   if (exitCode !== 0) throw new Error(`pdftotext failed (${exitCode}): ${stderr.slice(0, 200)}`)
   if (stdout.trim().length < 10) throw new Error('PDF 未提取到足够文本')
   return stdout
+}
+
+async function filePayload(path: string, mimeType: string, landing = false) {
+  const bytes = await readFile(path)
+  return {file_name: path.split('/').at(-1) ?? 'upload', mime_type: mimeType,
+    content_base64: Buffer.from(bytes).toString('base64'), ...(landing ? {landing: true} : {})}
 }
 
 async function request(path: string, body: unknown, timeoutMs: number) {
@@ -35,9 +42,16 @@ async function request(path: string, body: unknown, timeoutMs: number) {
   } finally { clearTimeout(timer) }
 }
 
-const resumeMarkdown = await extractPdf(pdfPath)
-const jdText = jdPath ? await readFile(jdPath, 'utf8') : jdFallback
-console.log(JSON.stringify({stage: 'input', resumeChars: resumeMarkdown.length, jdChars: jdText.length}))
+const resumeUpload = await request('/parse/resume-file', await filePayload(pdfPath, 'application/pdf'), 180_000)
+const resumeMarkdown = String((resumeUpload.rawText ?? resumeUpload.markdown ?? resumeUpload.data?.rawText) ?? '')
+if (resumeMarkdown.length < 10) throw new Error('简历上传解析未返回文本')
+console.log(JSON.stringify({stage: 'resume-upload-parse', success: true, fileName: pdfPath.split('/').at(-1), textChars: resumeMarkdown.length, runId: resumeUpload.run_id ?? null}))
+const jdUpload = await request('/parse/jd-image', await filePayload(jdImagePath, 'image/jpeg'), 60_000)
+const jdText = jdUpload
+  ? String((jdUpload.structured?.jdText ?? jdUpload.rawText ?? jdUpload.data?.structured?.jdText) ?? '')
+  : (jdPath ? await readFile(jdPath, 'utf8') : jdFallback)
+if (jdText.length < 10) throw new Error('JD 上传解析未返回文本')
+console.log(JSON.stringify({stage: 'jd-upload-parse', success: true, fileName: jdImagePath.split('/').at(-1), textChars: jdText.length, runId: jdUpload?.run_id ?? null}))
 
 const analyzed = await request('/mvp/analyze', {resume_markdown: resumeMarkdown}, 120_000)
 const analysis = ('analysis' in analyzed ? analyzed.analysis : analyzed) as Record<string, unknown>
