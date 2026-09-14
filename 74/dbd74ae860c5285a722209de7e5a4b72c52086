@@ -1,0 +1,20 @@
+backend/scripts/run-meer-e2e.ts
+  s_7b5a4cc3ac8dae::t_7e44acb6fdc409 11-14
+  s_7b5a4cc3ac8dae::t_1da8d69cc43d46 1-10,15-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "74dbd74ae860c5285a722209de7e5a4b72c52086",
+  "prompts": {},
+  "sessions": {
+    "s_7b5a4cc3ac8dae": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08bbe-f0bc-7282-83a1-0fe17f213b73",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
