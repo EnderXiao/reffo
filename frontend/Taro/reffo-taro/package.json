@@ -17,6 +17,7 @@
     "build:h5:nonprod": "pnpm generate:compliance && REFFO_ENV=nonprod taro build --type h5 --no-check",
     "build:h5:prod": "pnpm generate:compliance && REFFO_ENV=prod taro build --type h5 --no-check",
     "serve:h5": "npx --yes http-server dist -p 4173 -c-1",
+    "package:minitool": "bash scripts/package-minitool.sh",
     "dev:h5": "npm run build:h5 -- --watch",
     "dev:h5:local": "REFFO_ENV=local npm run build:h5 -- --watch",
     "dev:h5:nonprod": "REFFO_ENV=nonprod npm run build:h5 -- --watch",
@@ -26,6 +27,8 @@
     "test:coverage": "jest --coverage"
   },
   "browserslist": [
+    "Chrome >= 61",
+    "ios_saf >= 18.4",
     "last 3 versions",
     "last 2 Chrome versions",
     "last 2 Safari versions"

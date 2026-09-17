@@ -15,12 +15,10 @@ import {
 } from '@/utils/shared-element-transition'
 import type {IndexPageViewModel} from './model/usePageModel'
 import {HOME_PAGE_CONTENT} from './constants/content'
-import {resolveUserAvatar} from '@/utils/generated-avatar'
-import {useAuthStore} from '@/store/authStore'
 import './index.h5.scss'
 
 type HeroMode = 'brand' | 'strategy' | 'create'
-type PendingNavigation = 'source' | 'login' | 'profile' | 'create' | null
+type PendingNavigation = 'source' | 'create' | null
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const RESULT_RETURN_HOME_DOM_KEY = 'reffoReturnHomePending'
 const CARD_OPEN_RECT_STORAGE_KEY = 'reffo.homeCardOpenRect'
@@ -342,9 +340,6 @@ export default function PageView({
 }: IndexPageViewModel) {
   const route = useRouteTransition()
   const visualCapability = useVisualTier({benchmark: true})
-  const session = useAuthStore(state => state.session)
-  const profile = useAuthStore(state => state.profile)
-  const loadProfile = useAuthStore(state => state.loadProfile)
   const sourceLabel = hasSourceResume && sourceResumeTitle ? sourceResumeTitle : '源简历'
   const [returnHomePayload, setReturnHomePayload] = useState<ReturningHomePayload | null>(() => readReturnHomeMarker())
   const [isReturningFromResult, setIsReturningFromResult] = useState(() => Boolean(readReturnHomeMarker()))
@@ -373,11 +368,6 @@ export default function PageView({
     })
   }
 
-  useEffect(() => {
-    if (session && !profile) {
-      void loadProfile()
-    }
-  }, [loadProfile, profile, session])
   const returnCard = useMemo(() => (
     returningCardId ? cardItems.find(card => card.id === returningCardId) ?? currentCard : currentCard
   ), [cardItems, currentCard, returningCardId])
@@ -517,28 +507,12 @@ export default function PageView({
             {!hasSourceResume ? <Text className='reffo-home__source-plus'>+</Text> : null}
             <Text className='reffo-home__source-text'>{pendingNavigation === 'source' ? '打开中…' : sourceLabel}</Text>
           </View>
-          {session ? (
-            <View
-              className='reffo-home__account-button reffo-home__account-button--avatar'
-              onClick={() => runNavigation('profile', () => route.navigate(routePaths.profile))}
-              aria-label='打开用户资料'
-            >
-              <Image
-                src={resolveUserAvatar(session.user.id, profile?.avatarUrl)}
-                className='reffo-home__account-avatar'
-                mode='aspectFill'
-              />
-            </View>
-          ) : (
-            <View
-              className='reffo-home__account-button reffo-home__account-button--guest'
-              onClick={() => runNavigation('login', () => route.navigate(routePaths.auth))}
-              aria-label='登录'
-              aria-busy={pendingNavigation === 'login'}
-            >
-              <Text>{pendingNavigation === 'login' ? '打开中…' : '登录'}</Text>
-            </View>
-          )}
+          <View
+            className='reffo-home__account-button reffo-home__account-button--guest'
+            aria-label='本机分析'
+          >
+            <Text>本机分析</Text>
+          </View>
         </View>
 
         <HomeHeroH5

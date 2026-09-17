@@ -1,21 +1,15 @@
 import React from 'react'
 import {act, fireEvent, render, screen} from '@testing-library/react'
 import LandingPage from '../index'
-import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
 import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
+import {sourceResumeApi} from '@/services/sourceResume'
 import {feedback} from '@/utils/feedback'
 import {navigation} from '@/utils/navigation'
-import {setJSON, storage} from '@/utils/storage'
+import {storage} from '@/utils/storage'
 import {pickAndParseResumeFile} from '@/utils/resume-file-upload'
 import {routePaths} from '@/shared/routing'
-
-jest.mock('@/store/authStore', () => ({
-  useAuthStore: {
-    getState: jest.fn(),
-  },
-}))
 
 jest.mock('@/store/historyStore', () => ({
   useHistoryStore: {
@@ -35,6 +29,12 @@ jest.mock('@/store/sourceResumeStore', () => ({
   },
 }))
 
+jest.mock('@/services/sourceResume', () => ({
+  sourceResumeApi: {
+    saveSourceResume: jest.fn(),
+  },
+}))
+
 jest.mock('@/utils/navigation', () => ({
   navigation: {
     reLaunch: jest.fn(),
@@ -43,7 +43,6 @@ jest.mock('@/utils/navigation', () => ({
 
 jest.mock('@/utils/storage', () => ({
   getJSON: jest.fn(),
-  setJSON: jest.fn(),
   storage: {
     getItem: jest.fn(),
     setItem: jest.fn(),
@@ -112,17 +111,16 @@ jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
   ),
 }))
 
-const mockUseAuthStoreGetState = useAuthStore.getState as jest.Mock
 const mockUseHistoryStoreGetState = useHistoryStore.getState as jest.Mock
 const mockSetSourceResume = resumeWorkspaceActions.setSourceResume as jest.Mock
 const mockUseSourceResumeStoreGetState = useSourceResumeStore.getState as jest.Mock
+const mockSaveSourceResume = sourceResumeApi.saveSourceResume as jest.Mock
 const mockFeedbackSuccess = feedback.success as jest.Mock
 const mockFeedbackError = feedback.error as jest.Mock
 const mockPickAndParseResumeFile = pickAndParseResumeFile as jest.Mock
 const mockReLaunch = navigation.reLaunch as jest.Mock
 const mockStorageGetItem = storage.getItem as jest.Mock
 const mockStorageSetItem = storage.setItem as jest.Mock
-const mockSetJSON = setJSON as jest.Mock
 
 async function enterQueueStep(container: HTMLElement) {
   await act(async () => {
@@ -187,26 +185,34 @@ async function swipeSelectedCardDown(container: HTMLElement) {
 }
 
 describe('启动封页', () => {
-  const restoreSession = jest.fn()
   const loadHistories = jest.fn()
   const loadLatestSourceResume = jest.fn()
+  const setLatestSourceResume = jest.fn()
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
     window.history.pushState({}, '', '/')
 
-    restoreSession.mockResolvedValue(null)
     loadHistories.mockResolvedValue(undefined)
     loadLatestSourceResume.mockResolvedValue(undefined)
+    setLatestSourceResume.mockResolvedValue(undefined)
     mockSetSourceResume.mockReset()
+    mockSaveSourceResume.mockReset()
+    mockSaveSourceResume.mockImplementation(async (payload: Record<string, unknown>) => ({
+      id: 'local-source',
+      title: payload.title,
+      resumeMarkdown: payload.resume_markdown,
+      sourceType: payload.source_type,
+      originalFileName: payload.original_file_name || null,
+      createdAt: '2026-09-15T00:00:00.000Z',
+      updatedAt: '2026-09-15T00:00:00.000Z',
+    }))
     mockReLaunch.mockResolvedValue(undefined)
     mockStorageGetItem.mockResolvedValue('1')
     mockStorageSetItem.mockResolvedValue(undefined)
-    mockSetJSON.mockResolvedValue(undefined)
 
-    mockUseAuthStoreGetState.mockReturnValue({restoreSession})
     mockUseHistoryStoreGetState.mockReturnValue({loadHistories})
-    mockUseSourceResumeStoreGetState.mockReturnValue({loadLatestSourceResume})
+    mockUseSourceResumeStoreGetState.mockReturnValue({loadLatestSourceResume, setLatestSourceResume})
     mockPickAndParseResumeFile.mockResolvedValue(null)
   })
 
@@ -222,7 +228,6 @@ describe('启动封页', () => {
       await Promise.resolve()
     })
 
-    expect(restoreSession).toHaveBeenCalledTimes(1)
     expect(loadHistories).toHaveBeenCalledWith({skipIfLoaded: true})
     expect(loadLatestSourceResume).toHaveBeenCalledWith({skipIfLoaded: true})
     expect(mockStorageGetItem).toHaveBeenCalledWith('reffo.landing.seen')
@@ -1032,8 +1037,14 @@ describe('启动封页', () => {
 
     expect(mockPickAndParseResumeFile).toHaveBeenCalledTimes(1)
     expect(mockSetSourceResume).toHaveBeenCalledWith('# Melvin Kuffour\n\n## Experience')
-    expect(mockSetJSON).toHaveBeenCalledWith(
-      'reffo.landing.pendingSourceResume',
+    expect(mockSaveSourceResume).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'resume.pdf',
+        resume_markdown: '# Melvin Kuffour\n\n## Experience',
+        source_type: 'file',
+      }),
+    )
+    expect(setLatestSourceResume).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'resume.pdf',
         resumeMarkdown: '# Melvin Kuffour\n\n## Experience',

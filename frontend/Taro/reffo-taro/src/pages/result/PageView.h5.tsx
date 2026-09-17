@@ -14,6 +14,9 @@ import {
 } from '@/utils/shared-element-transition'
 import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
+import {feedback} from '@/utils/feedback'
+import {buildMiniToolReport} from '@/utils/minitool-report.h5'
+import {publishReportNote, saveImageToAlbum} from '@/utils/minitool-bridge.h5'
 import {RequirementAnalysisPanel} from './components/RequirementAnalysis.h5'
 import type {ResultPageViewModel} from './usePageModel'
 import {buildInterviewStoryViewItems} from './model/interviewReferences'
@@ -268,18 +271,29 @@ function getVisibleStageStatus(
   return 'pending'
 }
 
-function sanitizeFileNameSegment(value: string, fallback: string) {
-  const sanitized = value.replace(/[\\/:*?"<>|]/g, '').trim()
-  return sanitized || fallback
-}
+function buildOptimizationPrompt(result: ProcessResult, resumeContent: string, jdContent: string) {
+  const missingSkills = result.matching.skill_match.missing_skills.slice(0, 10)
+  const suggestions = result.matching.optimization_suggestions.slice(0, 8)
 
-function getDownloadName(result: ProcessResult, companyName: string, positionName: string) {
-  const name = result.analysis.structured_resume.personal_info.name.trim()
-  const safeCompany = sanitizeFileNameSegment(companyName, '目标公司')
-  const safePosition = sanitizeFileNameSegment(positionName, '目标岗位')
-  const safeName = sanitizeFileNameSegment(name, '用户')
-
-  return `${safeCompany}-${safePosition}-${safeName}-相契简历.md`
+  return [
+    '请基于以下源简历和目标 JD 优化简历。只重组、压缩和突出已有事实，不要虚构经历、技能或成果。',
+    '',
+    '## 优化要求',
+    '1. 优先补齐岗位关键词，但仅在真实经历支持时使用。',
+    '2. 核心经历采用“动作 + 方法 + 结果”的表达，保留原有事实边界。',
+    '3. 提高岗位相关性、结构完整度和量化成果密度。',
+    `4. 重点关注缺失关键词：${missingSkills.join('、') || '无明显缺失关键词'}。`,
+    '5. 输出结构化 Markdown，包含个人优势、工作经历、项目经历、教育背景和专业技能。',
+    '',
+    '## 当前分析建议',
+    ...suggestions.map(item => `- ${item}`),
+    '',
+    '## 目标 JD',
+    jdContent.trim() || '未提供',
+    '',
+    '## 源简历',
+    resumeContent.trim() || '未提供',
+  ].join('\n')
 }
 
 function renderInlineMarkdown(value: string) {
@@ -371,10 +385,18 @@ function EmptyText() {
   return <Text className='reffo-result__empty'>暂无内容</Text>
 }
 
-function AnalysisPanel({result}: {result: ProcessResult}) {
+function AnalysisPanel({result, resumeContent, jdContent}: {
+  result: ProcessResult
+  resumeContent: string
+  jdContent: string
+}) {
   const grade = resolveResumeGrade(result.matching.match_score)
   const weaknesses = normalizeItems(result.analysis.weaknesses, Infinity)
   const strategies = normalizeItems(result.matching.optimization_suggestions, Infinity)
+  const optimizationPrompt = useMemo(
+    () => buildOptimizationPrompt(result, resumeContent, jdContent),
+    [jdContent, result, resumeContent],
+  )
 
   return (
     <View className='reffo-result__panel'>
@@ -420,17 +442,29 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
           <EmptyText />
         )}
       </View>
+
+      <View className='reffo-result__prompt'>
+        <View className='reffo-result__prompt-heading'>优化提示词</View>
+        <textarea
+          className='reffo-result__prompt-textarea'
+          value={optimizationPrompt}
+          readOnly
+          onFocus={event => event.currentTarget.select()}
+        />
+      </View>
     </View>
   )
 }
 
 function ResumePanel({
   result,
+  resumeContent,
   companyName,
   positionName,
   onOptimizedResumeChange,
 }: {
   result: ProcessResult
+  resumeContent: string
   companyName: string
   positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
@@ -441,6 +475,8 @@ function ResumePanel({
   const editorRef = useRef<HTMLTextAreaElement | null>(null)
   const markdown = useMemo(() => lines.map(line => line.raw).join('\n'), [lines])
   const isEditing = editingIndex !== null
+  const [reportImage, setReportImage] = useState<string | null>(null)
+  const [reportAction, setReportAction] = useState<'generate' | 'save' | 'publish' | null>(null)
 
   const resizeEditor = (element: HTMLTextAreaElement | null) => {
     if (!element) return
@@ -484,34 +520,99 @@ function ResumePanel({
     await commitMarkdown(nextLines)
   }
 
-  const handleDownload = () => {
-    if (isEditing) return
+  const ensureReportImage = async () => {
+    if (reportImage) return reportImage
+    const image = buildMiniToolReport({
+      result,
+      resumeMarkdown: resumeContent,
+      companyName,
+      positionName,
+    })
+    setReportImage(image)
+    return image
+  }
 
-    const blob = new Blob([markdown], {type: 'text/markdown;charset=utf-8'})
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
+  const handleGenerateReport = async () => {
+    if (isEditing || reportAction) return
+    setReportAction('generate')
+    try {
+      await ensureReportImage()
+      feedback.success('报告图片已生成')
+    } catch (error) {
+      feedback.error(error instanceof Error ? error.message : '生成报告失败')
+    } finally {
+      setReportAction(null)
+    }
+  }
 
-    link.href = url
-    link.download = getDownloadName(result, companyName, positionName)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+  const handleSaveReport = async () => {
+    if (isEditing || reportAction) return
+    setReportAction('save')
+    try {
+      await saveImageToAlbum(await ensureReportImage())
+      feedback.success('已保存到相册')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '保存失败')
+    } finally {
+      setReportAction(null)
+    }
+  }
+
+  const handlePublishReport = async () => {
+    if (isEditing || reportAction) return
+    setReportAction('publish')
+    try {
+      await publishReportNote({
+        title: `${companyName || '目标岗位'}简历分析`,
+        content: `${positionName || '目标岗位'}匹配度 ${result.matching.match_score}。报告由 Reffo 本地规则生成，请核实内容后发布。`,
+        imageUri: await ensureReportImage(),
+      })
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '发布失败')
+    } finally {
+      setReportAction(null)
+    }
   }
 
   return (
     <View className='reffo-result__panel reffo-result__panel--resume'>
       <View className='reffo-result__resume-paper'>
-        <View
-          className={classNames('reffo-result__download', {
-            'reffo-result__download--disabled': isEditing,
-          })}
-          onClick={handleDownload}
-          aria-disabled={isEditing}
-        >
-          <Image className='reffo-result__download-icon' src={downloadIcon} mode='aspectFit' />
-          <Text>下载</Text>
+        <View className={classNames('reffo-result__report-actions', {
+          'reffo-result__report-actions--disabled': isEditing,
+        })}>
+          <View
+            className='reffo-result__download'
+            onClick={() => void handleGenerateReport()}
+            aria-busy={reportAction === 'generate'}
+          >
+            <Image className='reffo-result__download-icon' src={downloadIcon} mode='aspectFit' />
+            <Text>{reportAction === 'generate' ? '生成中' : '生成图片'}</Text>
+          </View>
+          <View
+            className='reffo-result__download'
+            onClick={() => void handleSaveReport()}
+            aria-busy={reportAction === 'save'}
+          >
+            <Image className='reffo-result__download-icon' src={saveIcon} mode='aspectFit' />
+            <Text>{reportAction === 'save' ? '保存中' : '保存相册'}</Text>
+          </View>
+          <View
+            className='reffo-result__download'
+            onClick={() => void handlePublishReport()}
+            aria-busy={reportAction === 'publish'}
+          >
+            <Image className='reffo-result__download-icon' src={suggestionIcon} mode='aspectFit' />
+            <Text>发布笔记</Text>
+          </View>
         </View>
+
+        {reportImage ? (
+          <Image
+            className='reffo-result__report-preview'
+            src={reportImage}
+            mode='widthFix'
+          />
+        ) : null}
 
         <View className='reffo-result__markdown'>
           {lines.map((line, index) => (
@@ -685,11 +786,18 @@ function ResultContent({
   positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
 }) {
-  if (stage === 'analysis') return <AnalysisPanel result={result} />
+  if (stage === 'analysis') return (
+    <AnalysisPanel
+      result={result}
+      resumeContent={resumeContent}
+      jdContent={jdContent}
+    />
+  )
   if (stage === 'resume') {
     return (
       <ResumePanel
         result={result}
+        resumeContent={resumeContent}
         companyName={companyName}
         positionName={positionName}
         onOptimizedResumeChange={onOptimizedResumeChange}

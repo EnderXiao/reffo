@@ -248,14 +248,14 @@ describe('首页组件', () => {
   test('返回首页时应清理上一次导航的即时反馈', async () => {
     render(<Index />)
 
-    fireEvent.click(screen.getByText('登录'))
+    fireEvent.click(screen.getByText('源简历'))
     expect(screen.getByText('打开中…')).toBeTruthy()
 
     await act(async () => {
       didShowCallbacks.forEach(callback => callback())
     })
 
-    expect(screen.getByLabelText('登录')).toBeTruthy()
+    expect(screen.getByText('源简历')).toBeTruthy()
     expect(screen.queryByText('打开中…')).toBeNull()
   })
 })

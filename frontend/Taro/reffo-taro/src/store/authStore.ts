@@ -246,14 +246,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signInWithOAuth: async provider => {
-    set({loading: true, error: null})
-    try {
-      const authorizeUrl = await authApi.getOAuthAuthorizeUrl(provider)
-      window.location.assign(authorizeUrl)
-    } catch (error) {
-      set({loading: false, error: getErrorMessage(error, '第三方登录失败')})
-      throw error
-    }
+    set({loading: false, error: '离线小工具已移除登录流程'})
+    throw new Error(`离线小工具不支持 ${provider} 登录`)
   },
 
   signOut: async () => {

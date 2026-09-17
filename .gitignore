@@ -18,6 +18,7 @@ backend/data/*.sqlite-*
 .vscode/
 .idea/
 .artifacts/
+output/
 .playwright-cli/
 supabase/.temp/
 backend/supabase/.temp/

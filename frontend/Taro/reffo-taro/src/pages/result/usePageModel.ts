@@ -18,8 +18,6 @@ import {
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
 import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
-import {savePendingLandingHistory} from '@/utils/pending-landing-data'
-import {useAuthStore} from '@/store/authStore'
 import {toHistoryCardItem} from '../index/model/homeCardData'
 
 const DONE_PROGRESS: LatestResultSessionProgress = {
@@ -525,9 +523,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         },
         progress,
       }
-      const historyId = enteredFromLanding && !useAuthStore.getState().session
-        ? await savePendingLandingHistory(history)
-        : await addHistory(history)
+      const historyId = await addHistory(history)
 
       setSaved(true)
       setSavedHistoryId(historyId)

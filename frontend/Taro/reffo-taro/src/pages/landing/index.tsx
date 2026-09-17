@@ -12,18 +12,15 @@ import type {JobDescriptionStepState} from '@/pages/create/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {deriveCardPalette} from '@/components/business/HomeCardDeck/palette'
 import {resolveH5CardScale} from '@/components/business/HomeCardDeck/motion.h5'
-import {useAuthStore} from '@/store/authStore'
 import {runViewTransition} from '@/shared/motion'
 import {routePaths} from '@/shared/routing'
 import {useHistoryStore} from '@/store/historyStore'
 import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {apiClient} from '@/services/api'
 import {useLandingFlowStore} from '@/store/landingFlowStore'
 import {feedback} from '@/utils/feedback'
 import {storage} from '@/utils/storage'
-import {savePendingLandingSourceResume} from '@/utils/pending-landing-data'
 import {navigation} from '@/utils/navigation'
 import {
   formatResumeFileSize,
@@ -528,18 +525,10 @@ function shouldStartLandingByQuery() {
 async function preloadHomeData() {
   const homeRoutePromise = preloadHomeRoute()
 
-  const authState = useAuthStore.getState()
-  const session = await authState.restoreSession()
-  const shouldLoadUserData = Boolean(session) || useAuthStore.getState().initialized !== true
-  const loadProfile = useAuthStore.getState().loadProfile
-
   await Promise.all([
     homeRoutePromise,
-    ...(shouldLoadUserData ? [
-      useHistoryStore.getState().loadHistories({skipIfLoaded: true}),
-      useSourceResumeStore.getState().loadLatestSourceResume({skipIfLoaded: true}),
-      ...(typeof loadProfile === 'function' ? [loadProfile()] : []),
-    ] : []),
+    useHistoryStore.getState().loadHistories({skipIfLoaded: true}),
+    useSourceResumeStore.getState().loadLatestSourceResume({skipIfLoaded: true}),
   ].map(promise => promise.catch(error => {
     console.warn('[LandingPage] Failed to preload home data:', error)
   })))
@@ -1147,28 +1136,13 @@ export default function LandingPage() {
         markdown: parsedFile.extractedText,
       })
 
-      if (apiClient.getAuthToken()) {
-        const savedSourceResume = await sourceResumeApi.saveSourceResume({
-          title: parsedFile.name,
-          resume_markdown: parsedFile.extractedText,
-          source_type: 'file',
-          original_file_name: parsedFile.name,
-        })
-        await useSourceResumeStore.getState().setLatestSourceResume(savedSourceResume)
-      } else {
-        const now = new Date().toISOString()
-        await savePendingLandingSourceResume({
-          id: `landing-source-${Date.now()}`,
-          title: parsedFile.name,
-          resumeMarkdown: parsedFile.extractedText,
-          sourceType: 'file',
-          originalFileName: parsedFile.name,
-          sourcePath: parsedFile.path,
-          sizeBytes: parsedFile.size,
-          createdAt: now,
-          updatedAt: now,
-        })
-      }
+      const savedSourceResume = await sourceResumeApi.saveSourceResume({
+        title: parsedFile.name,
+        resume_markdown: parsedFile.extractedText,
+        source_type: 'file',
+        original_file_name: parsedFile.name,
+      })
+      await useSourceResumeStore.getState().setLatestSourceResume(savedSourceResume)
 
       setIsQueueUploadComplete(true)
       setIsQueueUploadRemoving(false)

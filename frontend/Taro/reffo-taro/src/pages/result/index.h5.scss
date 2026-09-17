@@ -819,6 +819,41 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   background: #e0f8ec;
 }
 
+.reffo-result__prompt {
+  margin-top: 21px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #edf4ff;
+}
+
+.reffo-result__prompt-heading {
+  margin-bottom: 10px;
+  color: #111111;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 25px;
+}
+
+.reffo-result__prompt-textarea {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-height: 240px;
+  padding: 12px;
+  border: 1px solid #b8cdf5;
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+  color: #1f2937;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 21px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .reffo-result__alert-heading {
   display: flex;
   align-items: center;
@@ -1085,20 +1120,37 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   line-height: 22px;
 }
 
-.reffo-result__download {
+.reffo-result__report-actions {
   position: absolute;
-  top: 6px;
+  z-index: 3;
+  top: 5px;
   right: 9px;
+  display: flex;
+  align-items: center;
+  max-width: calc(100% - 18px);
+}
+
+.reffo-result__report-actions .reffo-result__download + .reffo-result__download {
+  margin-left: 5px;
+}
+
+.reffo-result__report-actions--disabled .reffo-result__download {
+  background: linear-gradient(90deg, #bfbfbf 0%, #dedede 100%);
+  box-shadow: 0 8PX 14PX rgba(154, 167, 187, 0.12);
+}
+
+.reffo-result__download {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
   flex: 0 0 auto;
   height: 30px;
-  padding: 0 12px;
+  padding: 0 9px;
   border-radius: 15px;
   color: #ffffff;
-  font-size: 12px;
+  white-space: nowrap;
+  font-size: 11px;
   font-weight: 800;
   line-height: 30px;
   background: linear-gradient(45deg, #1d5cff 0%, #2e83ff 58%, #73b8ff 100%);
@@ -1106,16 +1158,17 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   cursor: pointer;
 }
 
-.reffo-result__download--disabled {
-  background: linear-gradient(90deg, #bfbfbf 0%, #dedede 100%);
-  box-shadow: 0 8PX 14PX rgba(154, 167, 187, 0.12);
-  cursor: default;
-}
-
 .reffo-result__download-icon {
   display: block;
   width: 11px;
   height: 10px;
+}
+
+.reffo-result__report-preview {
+  display: block;
+  width: 100%;
+  margin: 0 auto 24px;
+  border: 1px solid #e5e7eb;
 }
 
 .reffo-result__markdown {

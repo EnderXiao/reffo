@@ -1,11 +1,9 @@
 import {Component, type PropsWithChildren} from 'react'
 import Taro from '@tarojs/taro'
 import {initializeNavigationTransitions} from '@/utils/navigation-transition'
-import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {storage} from '@/utils/storage'
-import {syncPendingLandingData} from '@/utils/pending-landing-data'
 import {routePaths} from '@/shared/routing'
 
 import './app.scss'
@@ -23,48 +21,21 @@ async function guardLandingEntry() {
 }
 
 class App extends Component<PropsWithChildren> {
-  private unsubscribeAuth?: () => void
-  private authenticatedDataUserId?: string
-
-  private loadAuthenticatedData = async () => {
-    const userId = useAuthStore.getState().session?.user.id
-    if (!userId || this.authenticatedDataUserId === userId) return
-    this.authenticatedDataUserId = userId
-
-    try {
-      await syncPendingLandingData()
-    } catch (error) {
-      console.error('[App] 同步 Landing 本地数据失败:', error)
-    }
-
+  private loadLocalData = async () => {
     await Promise.all([
       useHistoryStore.getState().loadHistories({force: true}),
       useSourceResumeStore.getState().loadLatestSourceResume({force: true}),
-      useAuthStore.getState().loadProfile(),
     ])
   }
 
   componentDidMount() {
     initializeNavigationTransitions()
     void guardLandingEntry()
-    void useAuthStore.getState().restoreSession().then(session => {
-      if (session) void this.loadAuthenticatedData()
-    })
-    this.unsubscribeAuth = useAuthStore.subscribe((state, previous) => {
-      if (state.session?.user.id && state.session.user.id !== previous.session?.user.id) {
-        void this.loadAuthenticatedData()
-      } else if (!state.session && previous.session) {
-        this.authenticatedDataUserId = undefined
-      }
-    })
+    void this.loadLocalData()
   }
 
   componentDidShow() {
     initializeNavigationTransitions()
-  }
-
-  componentWillUnmount() {
-    this.unsubscribeAuth?.()
   }
 
   render() {
