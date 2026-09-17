@@ -1,0 +1,89 @@
+.gitignore
+  s_69839b0a2d9e2b::t_5c2fb40e68db86 21
+frontend/Taro/reffo-taro/config/index.ts
+  s_69839b0a2d9e2b::t_0f48fef3761f58 2,37-76,133,175-177,186-187,201
+frontend/Taro/reffo-taro/package.json
+  s_69839b0a2d9e2b::t_139997ea0a0fea 20,30-31
+frontend/Taro/reffo-taro/scripts/package-minitool.sh
+  s_69839b0a2d9e2b::t_93e3903cae438c 1-62
+frontend/Taro/reffo-taro/src/__mocks__/h5/taro-components.js
+  s_69839b0a2d9e2b::t_826c13359b528b 9-17,32-42,44-49
+frontend/Taro/reffo-taro/src/__mocks__/h5/three.js
+  s_69839b0a2d9e2b::t_9c58f3a161d55d 1-3
+frontend/Taro/reffo-taro/src/app.ts
+  s_69839b0a2d9e2b::t_208b37c0e044b1 24,34
+frontend/Taro/reffo-taro/src/index.html
+  s_69839b0a2d9e2b::t_e74873fa5a3d8d 14
+frontend/Taro/reffo-taro/src/minitool-runtime.js
+  s_69839b0a2d9e2b::t_be3a47cd125456 1-46
+frontend/Taro/reffo-taro/src/pages/index/PageView.h5.tsx
+  s_69839b0a2d9e2b::t_a0560124d3d08f 21,510-515
+frontend/Taro/reffo-taro/src/pages/index/__tests__/index.test.tsx
+  s_69839b0a2d9e2b::t_68c98d9a519ed3 251,258
+frontend/Taro/reffo-taro/src/pages/landing/__tests__/index.test.tsx
+  s_69839b0a2d9e2b::t_0ab4c60ebba1f1 7,10,32-37,117,190,198,200-209,215,1040-1047
+frontend/Taro/reffo-taro/src/pages/landing/index.tsx
+  s_69839b0a2d9e2b::t_eae299c54ab05f 530-531,1139-1145
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  s_69839b0a2d9e2b::t_be4d3de88b0fc9 17-19,274-296,388-392,396-399,445-454,461,467,478-479,523-546,548-559,561-574,580-606,609-616,789-795,800
+frontend/Taro/reffo-taro/src/pages/result/index.h5.scss
+  s_69839b0a2d9e2b::t_4eee62ec380601 822-856,1123,1125-1126,1128-1142,1149,1152-1153,1167-1173
+frontend/Taro/reffo-taro/src/pages/result/usePageModel.ts
+  s_69839b0a2d9e2b::t_ab4ba739394d82 526
+frontend/Taro/reffo-taro/src/services/api.h5.ts
+  s_69839b0a2d9e2b::t_6dbded5a5e8e09 1
+frontend/Taro/reffo-taro/src/services/auth.h5.ts
+  s_69839b0a2d9e2b::t_e2d1ce7f5e3768 1
+frontend/Taro/reffo-taro/src/services/offline/api.ts
+  s_69839b0a2d9e2b::t_b07d6471ad4f47 1-25
+frontend/Taro/reffo-taro/src/services/offline/auth.ts
+  s_69839b0a2d9e2b::t_7f65941e60449c 1-128
+frontend/Taro/reffo-taro/src/services/offline/parse.ts
+  s_69839b0a2d9e2b::t_f50d9e66b9a0e0 1-81
+frontend/Taro/reffo-taro/src/services/offline/profile.ts
+  s_69839b0a2d9e2b::t_6abb818c061373 1-31
+frontend/Taro/reffo-taro/src/services/offline/resume.ts
+  s_69839b0a2d9e2b::t_83f96563a31b44 1-573
+frontend/Taro/reffo-taro/src/services/offline/resumeHistory.ts
+  s_69839b0a2d9e2b::t_f4ae11e13fd212 1-65
+frontend/Taro/reffo-taro/src/services/offline/runtime-config.ts
+  s_69839b0a2d9e2b::t_56f5f47780713d 1-41
+frontend/Taro/reffo-taro/src/services/offline/sourceResume.ts
+  s_69839b0a2d9e2b::t_7d3e45a69b603c 1-40
+frontend/Taro/reffo-taro/src/services/parse.h5.ts
+  s_69839b0a2d9e2b::t_2f6ad71706db06 1
+frontend/Taro/reffo-taro/src/services/profile.h5.ts
+  s_69839b0a2d9e2b::t_b0d297561b6ea5 1
+frontend/Taro/reffo-taro/src/services/resume.h5.ts
+  s_69839b0a2d9e2b::t_35982d9c7cdec1 1
+frontend/Taro/reffo-taro/src/services/resumeHistory.h5.ts
+  s_69839b0a2d9e2b::t_6c951cc1d6c6e6 1
+frontend/Taro/reffo-taro/src/services/runtime-config.h5.ts
+  s_69839b0a2d9e2b::t_8d739d5a02d7b5 1
+frontend/Taro/reffo-taro/src/services/sourceResume.h5.ts
+  s_69839b0a2d9e2b::t_e397b7c2e9d923 1
+frontend/Taro/reffo-taro/src/store/authStore.ts
+  s_69839b0a2d9e2b::t_307fa78be0b475 249-250
+frontend/Taro/reffo-taro/src/types/minitool.ts
+  s_69839b0a2d9e2b::t_839f2040e029c6 1-24
+frontend/Taro/reffo-taro/src/utils/minitool-bridge.h5.ts
+  s_69839b0a2d9e2b::t_4d3a46342306ae 1-39
+frontend/Taro/reffo-taro/src/utils/minitool-report.h5.ts
+  s_69839b0a2d9e2b::t_217b11169838f4 1-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1e3c48ba972d3c516df64e7a832068bea056acdf",
+  "prompts": {},
+  "sessions": {
+    "s_69839b0a2d9e2b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a43a-8f7d-7842-9d38-d639fc282da4",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
