@@ -152,6 +152,14 @@ OCR 会优先读取 `GLM_OCR_API_KEY`，缺省时回退到 `GLM_API_KEY`。接�
 
 服务启动时也会输出 OCR 配置状态，便于本地联调提前发现配置缺失。
 
+若内网网关使用企业 CA，Bun 可能返回 `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`。本地配置 CA PEM 文件的相对路径后重启服务：
+
+```bash
+OCR_CA_CERT_PATH=config/certs/enterprise-root-ca.pem
+```
+
+OCR provider 会把该文件作为 Bun `fetch` 的 `tls.ca` 传入。不要通过关闭 TLS 校验绕过证书错误。
+
 ## 测试
 
 ```bash
