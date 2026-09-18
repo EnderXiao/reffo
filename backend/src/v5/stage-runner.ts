@@ -7,7 +7,7 @@ import {
   getErrorStatus,
   isProviderTransientError,
 } from '@/providers/fallback-provider'
-import type { ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
+import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
 import { compileV5Prompt, type CompiledV5Prompt } from '@/v5/prompt-compiler'
 import type { V5PromptComponent } from '@/v5/prompts'
 import { normalizeBlindABEvaluationSemanticsWithAudit } from '@/v5/schemas'
@@ -103,6 +103,131 @@ export class V5ProviderCallError extends Error {
   }
 }
 
+interface V5TransportRecoveryInput {
+  component: V5PromptComponent
+  action: 'repair_json'
+  eventBus?: HarnessEventBus
+  stepContext?: StepExecutionContext
+  reason: string
+  outputDigest?: string
+  providerResult?: ChatCompletionResult
+}
+
+async function publishV5TransportRecoveryStatus(
+  input: V5TransportRecoveryInput,
+  type: 'recovery.planned' | 'recovery.started' | 'recovery.succeeded' | 'recovery.failed'
+) {
+  if (!input.eventBus || !input.stepContext) return
+  await input.eventBus.publish(createHarnessEvent({
+    type,
+    runId: input.stepContext.runId,
+    requestId: input.stepContext.requestId,
+    stepRunId: input.stepContext.stepRunId,
+    attemptId: input.stepContext.attemptId,
+    payload: {
+      triggerStep: input.stepContext.stepName,
+      action: input.action,
+      outputName: input.component,
+      triggerErrorCode: 'V5_JSON_PARSE_FAILED',
+      attempts: 1,
+      maxAttempts: 1,
+      reason: input.reason,
+      ...(input.outputDigest ? { outputDigest: input.outputDigest } : {}),
+      ...(input.providerResult ? {
+        finishReason: input.providerResult.finishReason,
+        inputTokens: input.providerResult.inputTokens,
+        outputTokens: input.providerResult.outputTokens,
+      } : {}),
+    },
+  }))
+}
+
+async function repairV5JsonOutput(input: {
+  component: V5PromptComponent
+  compiled: CompiledV5Prompt
+  provider: LlmProvider
+  providerPromptManifest: NonNullable<ChatCompletionInput['promptManifest']>
+  malformedOutput: string
+  parseErrorMessage: string
+  options?: V5StageRunOptions
+}): Promise<{ content: string; providerResult: ChatCompletionResult }> {
+  const recoveryInput: V5TransportRecoveryInput = {
+    component: input.component,
+    action: 'repair_json',
+    eventBus: input.options?.eventBus,
+    stepContext: input.options?.stepContext,
+    reason: input.parseErrorMessage,
+    outputDigest: createDigest(input.malformedOutput),
+  }
+  await publishV5TransportRecoveryStatus(recoveryInput, 'recovery.planned')
+  await publishV5TransportRecoveryStatus(recoveryInput, 'recovery.started')
+
+  try {
+    const providerResult = await input.provider.complete({
+      messages: [
+        ...input.compiled.messages,
+        { role: 'assistant' as const, content: input.malformedOutput },
+        {
+          role: 'user' as const,
+          content: [
+            '上一次结构化输出无法解析为 JSON。',
+            `解析错误：${input.parseErrorMessage}`,
+            '请忽略损坏的输出片段，根据原始任务、输入材料和 STRICT_OUTPUT_JSON_SCHEMA 重新生成一个完整 JSON 对象。',
+            '只返回 JSON，不复述输入，不输出 Markdown，不保留无法验证的残缺字段。',
+          ].join('\n'),
+        },
+      ],
+      model: input.options?.model,
+      temperature: input.compiled.temperature,
+      structuredOutput: {
+        name: input.compiled.schemaName,
+        schema: input.compiled.providerSchema,
+        strict: true,
+      },
+      maxOutputTokens: input.compiled.maxOutputTokens,
+      promptVersion: input.compiled.promptVersion,
+      promptManifest: input.providerPromptManifest,
+      eventBus: input.options?.eventBus,
+      stepContext: input.options?.stepContext,
+      callMetadata: {
+        callReason: 'json_repair',
+        contextMode: 'full',
+        repairScope: ['json_output'],
+        retryIndex: 1,
+        budgetRemaining: null,
+      },
+      maxProviderAttempts: input.options?.maxProviderAttempts,
+      maxProviderModels: input.options?.maxProviderModels,
+    })
+
+    if (providerResult.finishReason === 'length') {
+      await publishV5TransportRecoveryStatus({
+        ...recoveryInput,
+        reason: 'JSON 修复输出达到模型长度上限',
+        providerResult,
+      }, 'recovery.failed')
+      throw new V5StructuredOutputError({
+        code: 'V5_OUTPUT_TRUNCATED',
+        component: input.component,
+        message: `${input.component} JSON 修复输出达到模型长度上限；禁止解析残缺结果。`,
+        unsafeOutput: providerResult.content,
+      })
+    }
+
+    const content = deterministicJsonCleanup(providerResult.content)
+    return { content, providerResult }
+  } catch (error) {
+    if (!(error instanceof V5StructuredOutputError)) {
+      await publishV5TransportRecoveryStatus({
+        ...recoveryInput,
+        reason: 'JSON 修复 Provider 请求失败',
+      }, 'recovery.failed')
+      throw new V5ProviderCallError({ component: input.component, cause: error })
+    }
+    throw error
+  }
+}
+
 export async function runV5StructuredStage<T>(input: {
   component: V5PromptComponent
   envelope: unknown
@@ -128,6 +253,7 @@ export async function runV5StructuredStage<T>(input: {
     // provider events; they are not needed for aggregate cost observability.
     inputDocumentIds: [],
     repairAttempt: compiled.manifest.repairAttempt,
+    transportRepairAttempt: 0,
   }
   const provider = input.options?.provider ?? fallbackLlmProvider
   let providerResult: ChatCompletionResult
@@ -170,17 +296,51 @@ export async function runV5StructuredStage<T>(input: {
       unsafeOutput: providerResult.content,
     })
   }
-  const cleaned = deterministicJsonCleanup(providerResult.content)
+  let cleaned = deterministicJsonCleanup(providerResult.content)
   let parsed: unknown
   try {
     parsed = JSON.parse(cleaned)
   } catch (error) {
-    throw new V5StructuredOutputError({
-      code: 'V5_JSON_PARSE_FAILED',
+    const parseErrorMessage = error instanceof Error ? error.message : '未知错误'
+    const repaired = await repairV5JsonOutput({
       component: input.component,
-      message: `${input.component} JSON 解析失败：${error instanceof Error ? error.message : '未知错误'}`,
-      unsafeOutput: cleaned,
+      compiled,
+      provider,
+      providerPromptManifest: { ...providerPromptManifest, transportRepairAttempt: 1 },
+      malformedOutput: cleaned,
+      parseErrorMessage,
+      options: input.options,
     })
+    providerResult = repaired.providerResult
+    cleaned = repaired.content
+    try {
+      parsed = JSON.parse(cleaned)
+    } catch (repairError) {
+      await publishV5TransportRecoveryStatus({
+        component: input.component,
+        action: 'repair_json',
+        eventBus: input.options?.eventBus,
+        stepContext: input.options?.stepContext,
+        reason: repairError instanceof Error ? repairError.message : 'JSON 修复输出仍无法解析',
+        outputDigest: createDigest(cleaned),
+        providerResult,
+      }, 'recovery.failed')
+      throw new V5StructuredOutputError({
+        code: 'V5_JSON_PARSE_FAILED',
+        component: input.component,
+        message: `${input.component} JSON 修复后仍解析失败：${repairError instanceof Error ? repairError.message : '未知错误'}`,
+        unsafeOutput: cleaned,
+      })
+    }
+    await publishV5TransportRecoveryStatus({
+      component: input.component,
+      action: 'repair_json',
+      eventBus: input.options?.eventBus,
+      stepContext: input.options?.stepContext,
+      reason: 'JSON transport repair parsed successfully',
+      outputDigest: createDigest(cleaned),
+      providerResult,
+    }, 'recovery.succeeded')
   }
   const rawParsedDigest = createDigest(parsed)
   let normalizationApplied = false

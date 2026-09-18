@@ -32,6 +32,7 @@ export interface ChatCompletionInput {
     temperature: number
     inputDocumentIds: string[]
     repairAttempt: number
+    transportRepairAttempt?: number
     inputSummary?: {
       envelopeBytes: number
       envelopeTopLevelFields: string[]
@@ -41,7 +42,7 @@ export interface ChatCompletionInput {
     }
   }
   callMetadata?: {
-    callReason: 'business_stage' | 'validation_repair' | 'network_retry' | 'semantic_gate'
+    callReason: 'business_stage' | 'validation_repair' | 'json_repair' | 'network_retry' | 'semantic_gate'
     contextMode: 'full' | 'scoped' | 'patch'
     repairScope: string[]
     retryIndex: number
