@@ -1,0 +1,29 @@
+.codex/skills/reffo-taro-rn-android-compare/SKILL.md
+  s_67f6b327e1db8a::t_c62f271ceaa6a1 31,61,100
+.codex/skills/reffo-taro-rn-android-compare/references/reffo-project.md
+  s_67f6b327e1db8a::t_f441f8769debf6 5-12
+doc/Supabase数据库迁移TODO.md
+  s_67f6b327e1db8a::t_81d73466dd08c2 105-106
+doc/Supabase数据库迁移方案.md
+  s_67f6b327e1db8a::t_0a47b81644ec60 205,212,227,479
+doc/Supabase正式迁移执行与回滚方案.md
+  s_67f6b327e1db8a::t_a787e912d12927 42
+doc/上线部署方案调研.md
+  s_67f6b327e1db8a::t_1d9330abccd81e 93-94,191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d4aef4f6a495a864c7021a0610877cc278a6a76e",
+  "prompts": {},
+  "sessions": {
+    "s_67f6b327e1db8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b25c-37e5-76b2-b5ba-4a95f24491ce",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
