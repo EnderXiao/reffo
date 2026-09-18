@@ -61,7 +61,11 @@ describe('ResumeOptimizationWorkflow v5-only entry', () => {
       const workflow = new ResumeOptimizationWorkflow(new FakeHarnessEventBus(),{enableDefaultSubscribers:false})
       const result = await workflow.run({resume_markdown:'source',jd_text:'job'})
       expect(result.step3_optimized_resume).toBeTruthy()
-      expect(getV5ReleaseDescriptor()).toMatchObject({profile:'entry-r5',writerPromptVersion:'5.2.0-p06c-entry-writer-r8'})
+      expect(getV5ReleaseDescriptor()).toMatchObject({
+        profile: 'entry-r5',
+        reasoningEffort: env.DEEPSEEK_REASONING_EFFORT,
+        writerPromptVersion: '5.2.0-p06c-entry-writer-r8',
+      })
     } finally {
       run.mockRestore()
       Object.assign(env,previous)
