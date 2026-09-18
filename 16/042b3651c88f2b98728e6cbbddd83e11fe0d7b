@@ -1,0 +1,27 @@
+backend/src/v5/README.md
+  s_67f6b327e1db8a::t_009c8c9373d795 115-116
+backend/src/v5/tests/evidence-routing.test.ts
+  s_67f6b327e1db8a::t_476d49dc0f1c8a 315,347,349
+backend/src/v5/tests/pilot-regressions.test.ts
+  s_67f6b327e1db8a::t_454a3ac3220c07 77,80-85
+backend/src/v5/tests/policy-score-validator.test.ts
+  s_67f6b327e1db8a::t_2ea051baa7b860 714,731,734
+backend/src/v5/tests/workflow.test.ts
+  s_67f6b327e1db8a::t_af27482db639bb 1018,1029,1033,1044,1279,1293-1296,1742,1754
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "16042b3651c88f2b98728e6cbbddd83e11fe0d7b",
+  "prompts": {},
+  "sessions": {
+    "s_67f6b327e1db8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b25c-37e5-76b2-b5ba-4a95f24491ce",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
