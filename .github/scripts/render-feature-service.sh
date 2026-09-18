@@ -71,19 +71,25 @@ case "${action}" in
       echo 'RENDER_FEATURE_ENV_VARS_JSON must be a JSON array' >&2
       exit 1
     fi
-    # Render injects PORT for Web Services. Feature environments must never
-    # inherit a Pro model or model fallback from the shared secret.
+    # Render injects PORT for Web Services. Feature environments pin the
+    # nonprod Flash model, fallback, and thinking profile explicitly.
     env_vars="$(jq --arg frontendOrigin "${frontend_origin}" '
       [.[] | select(
         .key != "PORT"
         and .key != "HOST"
         and .key != "AI_MODEL"
         and .key != "AI_FALLBACK_MODELS"
+        and .key != "DEEPSEEK_THINKING_MODE"
+        and .key != "DEEPSEEK_P01_THINKING_MODE"
+        and .key != "DEEPSEEK_REASONING_EFFORT"
         and .key != "CORS_ORIGIN"
       )]
       + [
         {key:"AI_MODEL",value:"deepseek-v4-flash"},
         {key:"AI_FALLBACK_MODELS",value:""},
+        {key:"DEEPSEEK_THINKING_MODE",value:"enabled"},
+        {key:"DEEPSEEK_P01_THINKING_MODE",value:"disabled"},
+        {key:"DEEPSEEK_REASONING_EFFORT",value:"low"},
         {key:"CORS_ORIGIN",value:$frontendOrigin}
       ]
     ' <<<"${env_vars}")"
