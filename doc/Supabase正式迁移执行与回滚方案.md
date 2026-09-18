@@ -39,10 +39,9 @@ SUPABASE_PROJECT_ENV=prod
 
 ## 正式执行步骤
 
-1. 登录 Supabase CLI：
+1. 在仓库根目录登录 Supabase CLI：
 
 ```bash
-cd /Users/mi/code/reffo
 bunx supabase login
 ```
 

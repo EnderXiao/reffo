@@ -28,7 +28,7 @@ Read `references/reffo-project.md` once at the start for repo-specific defaults 
 
 ### 1. Verify prerequisites
 
-- Work in `/Users/mi/code/reffo` and treat `frontend/Taro/reffo-taro` as the RN project root.
+- Work from the repository root (`.`) and treat `frontend/Taro/reffo-taro` as the RN project root.
 - Ensure `node -v` is `v22.x`, `pnpm` is available, and `adb devices -l` shows at least one device with state `device`.
 - If multiple devices are connected, always pass `--serial` or `--device` explicitly.
 - If the task uses a Figma link, ensure `FIGMA_ACCESS_TOKEN` is available or pass `--figma-token` explicitly.
@@ -58,7 +58,7 @@ Read `references/reffo-project.md` once at the start for repo-specific defaults 
 - Save comparison artifacts under `.artifacts/reffo-rn-android/<screen>/<timestamp>/`.
 - Keep the fetched or local design asset and the device screenshot in the same artifact folder.
 - Record the device serial, page name, route or state, and the adb steps used to reach the screen.
-- If the user asks for an image in the Codex desktop app, surface the generated local file with an absolute Markdown image path or `view_image`.
+- If the user asks for an image in the Codex desktop app, surface the generated local file with a repo-relative Markdown image path or `view_image`.
 
 ### 5. Compare with the design
 
@@ -97,7 +97,7 @@ Read `references/reffo-project.md` once at the start for repo-specific defaults 
 
 - Build a comparison report from a local image:
 
-  `python3 scripts/build_compare_report.py --design /absolute/path/to/design.png --screenshot .artifacts/reffo-rn-android/index/20260307-220000/device.png --output-dir .artifacts/reffo-rn-android/index/20260307-220000 --label index-empty-state`
+  `python3 scripts/build_compare_report.py --design path/to/design.png --screenshot .artifacts/reffo-rn-android/index/20260307-220000/device.png --output-dir .artifacts/reffo-rn-android/index/20260307-220000 --label index-empty-state`
 
 - Build a comparison report directly from Figma:
 

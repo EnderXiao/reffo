@@ -102,7 +102,8 @@ Taro H5 最小回归：
 
 ```bash
 cd frontend/Taro/reffo-taro
-source ~/.nvm/nvm.sh && nvm use 22
+# 先确保当前 shell 已加载 nvm
+nvm use 22
 corepack pnpm@10.33.2 build:h5
 ```
 
