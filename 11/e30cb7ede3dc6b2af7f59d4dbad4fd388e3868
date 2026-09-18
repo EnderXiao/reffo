@@ -1,0 +1,18 @@
+.github/scripts/render-feature-service.sh
+  h_1edca6cb63ac1c 74-75,82-84,90-92
+backend/src/v5/release.ts
+  h_1edca6cb63ac1c 10-12
+backend/src/workflows/resume-optimization-workflow.test.ts
+  h_1edca6cb63ac1c 64-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "11e30cb7ede3dc6b2af7f59d4dbad4fd388e3868",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
