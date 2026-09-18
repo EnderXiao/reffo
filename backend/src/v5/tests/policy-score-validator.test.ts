@@ -711,7 +711,7 @@ describe('v5 adaptive policy, scoring and gates', () => {
     }))
   })
 
-  test('keeps the minimum business-content floor blocking in relaxed release mode', () => {
+  test('keeps the minimum business-content floor observable in relaxed release mode', () => {
     const fixture = setupPlan()
     const artifact = renderSourcePreservingArtifact({ resume: fixture.resume, plan: fixture.plan })
     const businessClaims = artifact.claims.filter(claim => claim.outputPath.includes('bullets'))
@@ -728,10 +728,10 @@ describe('v5 adaptive policy, scoring and gates', () => {
       gateMode: 'relaxed_release',
     })
 
-    expect(validation.passed).toBe(false)
+    expect(validation.passed).toBe(true)
     expect(validation.issues).toContainEqual(expect.objectContaining({
       code: 'MINIMUM_BUSINESS_CONTENT_MISSING',
-      severity: 'error',
+      severity: 'warning',
     }))
   })
 

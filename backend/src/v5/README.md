@@ -112,6 +112,8 @@ Harness SQLite 初始化会以可重复的 additive migration 增加 Agent state
 
 ## 调用量、延迟与成本
 
+调用量按逻辑 Pxx 组件统计。结构化输出连续截断时，transport 最多追加两次 continuation，因此单个逻辑阶段最多产生三次 Provider 物理调用；continuation 不计作 PxxR 或下游阶段调用，全部耗尽后仍按 `V5_OUTPUT_TRUNCATED` 终止。
+
 无修复、单 P01 分片且质量放行的 v5 默认正式链路基线为 4 次调用：P01、P02、P03、P06D。为避免源简历抽取失败后仍支付 JD 调用，P02 只在 P01 完整通过后启动。P01 默认以 24 个 block 为打包目标；语义 scope 与传输 shard 分离，超长经历保持同一服务端 scope，每个 shard 只重复最小时间线锚点上下文。每个 chunk 带服务端序号，代码等待全部已启动调用收敛后按原始序号归并，缺号或重复号直接拒绝，因此 Provider 返回先后不会改变证据顺序。低置信策略至多增加 P04 一次，P02/P03 各至多一次结构修复；P06D 只调用一次，Schema、DSL 或 Composition 错误直接进入仅供内部诊断的确定性 source-preserving renderer，不调用 P08，Provider 失败则直接向外失败。`composition_v1` 与 `legacy` 仍作为 kill switch，其中只有 `legacy` 可能走 P06/P08。正式链路不调用 P05/P05R、P07、P09、P10/P10R、P11，也不会因质量 warning 触发重写。
 
 nonprod runner 当前协议为 `reffo-v5-nonprod-blind-eval-runner-v10`，固定 `dsl_v1`、P06D 单次、artifact repair 为 0、interview deferred。除 P01 外，generation-only 最坏为 6 次 / 31,560 输出 Token；full 加双顺序 P12 后为 8 次 / 43,560 输出 Token。P01 先以并发 2 完成全部 primary，再按源顺序处理修复队列；每 shard 至多一次 P01R，总上限为 `ceil(shardCount × 50%)`。初始额度为 `ceil(shardCount × 20%)`，成功修复逐次解锁后续额度；修复失败立即停止。若队列总量已超过硬上限，直接在任何 P01R 外呼前停止，保留已验证 primary 检查点。

@@ -1015,7 +1015,7 @@ describe('v5 production adaptive workflow', () => {
     expect(provider.p02Calls).toBe(0)
   })
 
-  test('does not spend a P01R call when extract-only output is truncated', async () => {
+  test('uses bounded continuations after extract-only truncation without spending P01R', async () => {
     const provider = new TruncatedResumeExtractionProvider()
     const workflow = new V5ResumeOptimizationWorkflow({ provider, enableDefaultSubscribers: false })
 
@@ -1026,11 +1026,11 @@ describe('v5 production adaptive workflow', () => {
         retryable: false,
         httpStatus: 502,
       })
-    expect(provider.p01Calls).toBe(1)
+    expect(provider.p01Calls).toBe(3)
     expect(provider.p01RepairCalls).toBe(0)
   })
 
-  test('does not spend a repair call after P01 output is truncated', async () => {
+  test('uses bounded continuations after P01 truncation without spending a repair call', async () => {
     const provider = new TruncatedResumeExtractionProvider()
     const workflow = new V5ResumeOptimizationWorkflow({ provider, enableDefaultSubscribers: false })
 
@@ -1041,7 +1041,7 @@ describe('v5 production adaptive workflow', () => {
         retryable: false,
         httpStatus: 502,
       })
-    expect(provider.p01Calls).toBe(1)
+    expect(provider.p01Calls).toBe(3)
     expect(provider.p01RepairCalls).toBe(0)
     expect(provider.p02Calls).toBe(0)
   })
@@ -1276,7 +1276,7 @@ describe('v5 production adaptive workflow', () => {
     expect(provider.downstreamCalls).toBe(0)
   })
 
-  test('settles the active primary batch after truncation without repairing or starting downstream work', async () => {
+  test('settles active primary truncation continuations without repairs or downstream work', async () => {
     const { resumeMarkdown } = createShardedExtractionFixture()
     const provider = new ResumeExtractionRepairBudgetProvider({
       failedPrimaries: [1],
@@ -1290,8 +1290,10 @@ describe('v5 production adaptive workflow', () => {
     await expect(workflow.run({ resumeMarkdown, jobDescription: FIXTURE_JD }))
       .rejects.toMatchObject({ code: 'V5_OUTPUT_TRUNCATED', state: 'provider_failure' })
 
-    expect(provider.p01Calls).toBe(2)
-    expect(provider.primaryCompletionOrder).toHaveLength(2)
+    expect(provider.p01Calls).toBe(4)
+    expect(provider.primaryCompletionOrder).toHaveLength(4)
+    expect([...new Set(provider.primaryCompletionOrder)].sort()).toEqual([0, 1])
+    expect(provider.primaryCompletionOrder.filter(index => index === 0)).toHaveLength(3)
     expect(provider.p01RepairCalls).toBe(0)
     expect(provider.downstreamCalls).toBe(0)
     expect(events.filter(event => event.type === 'extraction.validation.observed').map(event => event.payload))
@@ -1737,7 +1739,7 @@ describe('v5 production adaptive workflow', () => {
     expect(JSON.stringify(failed?.payload)).not.toContain('fixture P06D provider failure')
   })
 
-  test('surfaces P06D truncation without calling P08 or rendering a fallback', async () => {
+  test('surfaces P06D truncation after continuations without calling P08 or a fallback', async () => {
     const provider = new RoutingProvider()
     provider.truncateP06D = true
     const workflow = new V5ResumeOptimizationWorkflow({ provider, enableDefaultSubscribers: false })
@@ -1749,7 +1751,7 @@ describe('v5 production adaptive workflow', () => {
         retryable: false,
         httpStatus: 502,
       })
-    expect(provider.promptVersions.filter(version => version.includes('-p06d-'))).toHaveLength(1)
+    expect(provider.promptVersions.filter(version => version.includes('-p06d-'))).toHaveLength(3)
     expect(provider.promptVersions.filter(version => version.includes('-p08-'))).toHaveLength(0)
     expect(provider.promptVersions.some(version => /-p10r?-/.test(version))).toBe(false)
   })

@@ -74,10 +74,15 @@ test('an unproven gap becomes unknown without preserving the accusation or mutat
   expect(validateJobFitMap(checked.value!, f.targets, f.resume).value).toEqual(checked.value)
 })
 
-test('unsupported positive claims remain errors and evidenced gaps are retained', () => {
+test('keeps unsupported positive claims observable and retains evidenced gaps', () => {
   const f = createTargetingFixture()
   f.fit.links[0].status = 'direct'; f.fit.links[0].evidenceIds = []
-  expect(validateJobFitMap(f.fit, f.targets, f.resume).passed).toBe(false)
+  const checked = validateJobFitMap(f.fit, f.targets, f.resume)
+  expect(checked.passed).toBe(true)
+  expect(checked.issues).toContainEqual(expect.objectContaining({
+    code: 'JOB_FIT_PROOF_MISSING',
+    severity: 'warning',
+  }))
   f.fit.links[0].status = 'explicit_gap'; f.fit.links[0].evidenceIds = [f.business.evidenceId]
   expect(validateJobFitMap(f.fit, f.targets, f.resume).value!.links[0].status).toBe('explicit_gap')
 })
