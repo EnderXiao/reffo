@@ -1,42 +1,69 @@
 import { expect, test } from 'bun:test'
 import { V5CheckpointRepository, V5CheckpointError } from '@/repositories/v5-checkpoint-repository'
-import { V5SingleStepAdapter } from '@/v5/single-step-adapter'
+import { analysisCacheKeyFor, V5SingleStepAdapter } from '@/v5/single-step-adapter'
 import { createSingleStepFixture } from './single-step-fixtures'
 import { MemoryCheckpointStorage } from './checkpoint-storage-fixture'
+import { MemoryAnalysisCacheStorage } from './analysis-cache-storage-fixture'
+import { V5AnalysisCacheRepository } from '@/repositories/v5-analysis-cache-repository'
 import { FIXTURE_RESUME, FIXTURE_JD } from './fixtures'
 
 test('legacy-shaped single requests run V5 only, preserve context across instances and cache successful generation', async () => {
   const storage = new MemoryCheckpointStorage()
+  const analysisCacheStorage = new MemoryAnalysisCacheStorage()
   const {createWorkflow, versions} = createSingleStepFixture()
-  const adapter = () => new V5SingleStepAdapter(new V5CheckpointRepository('fixture', storage), createWorkflow)
-  const analysis = await adapter().analyze(FIXTURE_RESUME, 'user1')
+  const adapter = () => new V5SingleStepAdapter(
+    new V5CheckpointRepository('fixture', storage),
+    createWorkflow,
+    new V5AnalysisCacheRepository(analysisCacheStorage),
+  )
+  let cacheMissChecks = 0
+  const analysis = await adapter().analyze(FIXTURE_RESUME, 'user1', {
+    onCacheMiss: async () => { cacheMissChecks += 1 },
+  })
   expect(analysis.data.structured_resume._v5_context).toMatch(/^[a-f0-9]{64}$/)
   expect(JSON.stringify(analysis.data)).not.toContain('resumeEvidenceBundle')
   await expect(adapter().match(analysis.data.structured_resume, FIXTURE_JD, 'user2')).rejects.toBeInstanceOf(V5CheckpointError)
   await expect(adapter().match({...analysis.data.structured_resume, personal_info: {name: '伪造'}}, FIXTURE_JD, 'user1')).rejects.toBeInstanceOf(V5CheckpointError)
   expect(versions).toHaveLength(1)
+  const cacheMiss = analysis.cache.status
+  const cachedAnalysis = await adapter().analyze(FIXTURE_RESUME, 'user1', {
+    onCacheMiss: async () => { throw new Error('cache hit invoked quota check') },
+  })
+  expect(cacheMiss).toBe('miss')
+  expect(cacheMissChecks).toBe(1)
+  expect(cachedAnalysis.cache.status).toBe('hit')
+  expect(cachedAnalysis.data.structured_resume._v5_context).toMatch(/^[a-f0-9]{64}$/)
+  expect(cachedAnalysis.data.structured_resume._v5_context).not.toBe(analysis.data.structured_resume._v5_context)
+  expect(versions).toHaveLength(1)
 
-  const matching = await adapter().match(analysis.data.structured_resume, FIXTURE_JD, 'user1')
+  const matching = await adapter().match(cachedAnalysis.data.structured_resume, FIXTURE_JD, 'user1')
   expect(versions).toHaveLength(3)
   expect(matching.data.match_score).toBeGreaterThanOrEqual(0)
   expect(matching.data.match_score).toBeLessThanOrEqual(100)
   // 前端的匹配标准化会重建外层对象，但原样保留 jd_structure。
   const normalized = {match_score: 999, jd_structure: JSON.parse(JSON.stringify(matching.data.jd_structure))}
-  const generated = await adapter().generate(analysis.data.structured_resume, normalized, 'user1')
+  const generated = await adapter().generate(cachedAnalysis.data.structured_resume, normalized, 'user1')
   expect(versions).toHaveLength(4)
   expect(generated.data.optimized_resume).toContain('产品迭代')
-  expect(await adapter().generate(analysis.data.structured_resume, normalized, 'user1')).toEqual(generated)
+  expect(await adapter().generate(cachedAnalysis.data.structured_resume, normalized, 'user1')).toEqual(generated)
   expect(versions).toHaveLength(4)
 
-  await expect(adapter().interview(analysis.data, normalized, '伪造的成品', 'user1')).rejects.toBeInstanceOf(V5CheckpointError)
-  const interview = await adapter().interview(analysis.data, normalized, generated.data.optimized_resume, 'user1')
+  await expect(adapter().interview(cachedAnalysis.data, normalized, '伪造的成品', 'user1')).rejects.toBeInstanceOf(V5CheckpointError)
+  const interview = await adapter().interview(cachedAnalysis.data, normalized, generated.data.optimized_resume, 'user1')
   expect(versions).toHaveLength(5)
   expect(versions[4]).toContain('-p10-')
   expect(interview.data.questions).toHaveLength(4)
   expect(interview.data.story_recommendations).toHaveLength(1)
   expect(interview.data.follow_up_questions).toHaveLength(3)
-  expect(await adapter().interview(analysis.data, normalized, generated.data.optimized_resume, 'user1')).toEqual(interview)
+  expect(await adapter().interview(cachedAnalysis.data, normalized, generated.data.optimized_resume, 'user1')).toEqual(interview)
   expect(versions).toHaveLength(5)
+})
+
+test('analysis cache keys isolate users, resume content and release configuration', () => {
+  const base = analysisCacheKeyFor(FIXTURE_RESUME, 'user1')
+  expect(analysisCacheKeyFor(FIXTURE_RESUME, 'user1')).toBe(base)
+  expect(analysisCacheKeyFor(`${FIXTURE_RESUME}\n\n新增项目经历`, 'user1')).not.toBe(base)
+  expect(analysisCacheKeyFor(FIXTURE_RESUME, 'user2')).not.toBe(base)
 })
 
 test('checkpoint tokens reject expired, unknown and different-release state', async () => {
