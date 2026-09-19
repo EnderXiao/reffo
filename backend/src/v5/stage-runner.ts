@@ -105,10 +105,12 @@ export class V5ProviderCallError extends Error {
 
 interface V5TransportRecoveryInput {
   component: V5PromptComponent
-  action: 'repair_json'
+  action: 'repair_json' | 'disable_thinking'
   eventBus?: HarnessEventBus
   stepContext?: StepExecutionContext
   reason: string
+  triggerErrorCode: 'V5_JSON_PARSE_FAILED' | 'V5_OUTPUT_TRUNCATED'
+  recoveryMode: 'json_repair' | 'thinking_disabled'
   outputDigest?: string
   providerResult?: ChatCompletionResult
 }
@@ -128,7 +130,8 @@ async function publishV5TransportRecoveryStatus(
       triggerStep: input.stepContext.stepName,
       action: input.action,
       outputName: input.component,
-      triggerErrorCode: 'V5_JSON_PARSE_FAILED',
+      triggerErrorCode: input.triggerErrorCode,
+      recoveryMode: input.recoveryMode,
       attempts: 1,
       maxAttempts: 1,
       reason: input.reason,
@@ -157,6 +160,8 @@ async function repairV5JsonOutput(input: {
     eventBus: input.options?.eventBus,
     stepContext: input.options?.stepContext,
     reason: input.parseErrorMessage,
+    triggerErrorCode: 'V5_JSON_PARSE_FAILED',
+    recoveryMode: 'json_repair',
     outputDigest: createDigest(input.malformedOutput),
   }
   await publishV5TransportRecoveryStatus(recoveryInput, 'recovery.planned')
@@ -196,8 +201,9 @@ async function repairV5JsonOutput(input: {
         retryIndex: 1,
         budgetRemaining: null,
       },
-      maxProviderAttempts: input.options?.maxProviderAttempts,
-      maxProviderModels: input.options?.maxProviderModels,
+      thinkingOverride: 'disabled',
+      maxProviderAttempts: 1,
+      maxProviderModels: 1,
     })
 
     if (providerResult.finishReason === 'length') {
@@ -228,6 +234,93 @@ async function repairV5JsonOutput(input: {
   }
 }
 
+async function retryWithThinkingDisabled(input: {
+  component: V5PromptComponent
+  compiled: CompiledV5Prompt
+  provider: LlmProvider
+  providerPromptManifest: NonNullable<ChatCompletionInput['promptManifest']>
+  options?: V5StageRunOptions
+}): Promise<ChatCompletionResult> {
+  const recoveryInput: V5TransportRecoveryInput = {
+    component: input.component,
+    action: 'disable_thinking',
+    eventBus: input.options?.eventBus,
+    stepContext: input.options?.stepContext,
+    reason: 'reasoning-only structured output truncation',
+    triggerErrorCode: 'V5_OUTPUT_TRUNCATED',
+    recoveryMode: 'thinking_disabled',
+  }
+  await publishV5TransportRecoveryStatus(recoveryInput, 'recovery.planned')
+  await publishV5TransportRecoveryStatus(recoveryInput, 'recovery.started')
+
+  try {
+    const providerResult = await input.provider.complete({
+      messages: input.compiled.messages,
+      model: input.options?.model,
+      temperature: input.compiled.temperature,
+      structuredOutput: {
+        name: input.compiled.schemaName,
+        schema: input.compiled.providerSchema,
+        strict: true,
+      },
+      maxOutputTokens: input.compiled.maxOutputTokens,
+      promptVersion: input.compiled.promptVersion,
+      promptManifest: input.providerPromptManifest,
+      eventBus: input.options?.eventBus,
+      stepContext: input.options?.stepContext,
+      callMetadata: {
+        callReason: 'thinking_fallback',
+        contextMode: 'full',
+        repairScope: ['thinking_disabled'],
+        retryIndex: 1,
+        budgetRemaining: null,
+      },
+      thinkingOverride: 'disabled',
+      maxProviderAttempts: 1,
+      maxProviderModels: 1,
+    })
+
+    if (providerResult.finishReason === 'length') {
+      await publishV5TransportRecoveryStatus({
+        ...recoveryInput,
+        reason: 'thinking-disabled structured output still reached the length limit',
+        providerResult,
+      }, 'recovery.failed')
+      throw new V5StructuredOutputError({
+        code: 'V5_OUTPUT_TRUNCATED',
+        component: input.component,
+        message: `${input.component} thinking-disabled 重试仍达到模型长度上限；停止继续追问。`,
+        unsafeOutput: providerResult.content,
+      })
+    }
+
+    await publishV5TransportRecoveryStatus({
+      ...recoveryInput,
+      reason: 'thinking-disabled structured output completed',
+      outputDigest: createDigest(providerResult.content),
+      providerResult,
+    }, 'recovery.succeeded')
+    return providerResult
+  } catch (error) {
+    if (!(error instanceof V5StructuredOutputError)) {
+      await publishV5TransportRecoveryStatus({
+        ...recoveryInput,
+        reason: 'thinking-disabled Provider 请求失败',
+      }, 'recovery.failed')
+      throw new V5ProviderCallError({ component: input.component, cause: error })
+    }
+    throw error
+  }
+}
+
+function isReasoningOnlyTruncation(result: ChatCompletionResult) {
+  if (result.finishReason !== 'length') return false
+  if (!result.content.trim()) return true
+  const reasoningTokens = result.reasoningTokens ?? 0
+  const outputTokens = result.outputTokens ?? 0
+  return reasoningTokens > 0 && outputTokens > 0 && reasoningTokens / outputTokens >= 0.8
+}
+
 export async function runV5StructuredStage<T>(input: {
   component: V5PromptComponent
   envelope: unknown
@@ -254,11 +347,13 @@ export async function runV5StructuredStage<T>(input: {
     inputDocumentIds: [],
     repairAttempt: compiled.manifest.repairAttempt,
     transportRepairAttempt: 0,
+    transportRecoveryMode: undefined,
   }
   const provider = input.options?.provider ?? fallbackLlmProvider
   let providerResult: ChatCompletionResult
   let continuation = ''
   const maxContinuations = 2
+  let thinkingFallbackAttempted = false
   try {
     for (let attempt = 0; ; attempt += 1) {
       const messages = continuation
@@ -281,10 +376,28 @@ export async function runV5StructuredStage<T>(input: {
       maxProviderAttempts: input.options?.maxProviderAttempts,
       maxProviderModels: input.options?.maxProviderModels,
       })
-      if (providerResult.finishReason !== 'length' || attempt >= maxContinuations) break
+      if (providerResult.finishReason !== 'length') break
+      if (!thinkingFallbackAttempted && isReasoningOnlyTruncation(providerResult)) {
+        providerResult = await retryWithThinkingDisabled({
+          component: input.component,
+          compiled,
+          provider,
+          providerPromptManifest: {
+            ...providerPromptManifest,
+            transportRepairAttempt: 0,
+            transportRecoveryMode: 'thinking_disabled',
+          },
+          options: input.options,
+        })
+        thinkingFallbackAttempted = true
+        continuation = ''
+        break
+      }
+      if (attempt >= maxContinuations) break
       continuation += providerResult.content
     }
   } catch (error) {
+    if (error instanceof V5StructuredOutputError) throw error
     throw new V5ProviderCallError({ component: input.component, cause: error })
   }
   if (continuation) providerResult = {...providerResult, content: continuation + providerResult.content}
@@ -292,7 +405,7 @@ export async function runV5StructuredStage<T>(input: {
     throw new V5StructuredOutputError({
       code: 'V5_OUTPUT_TRUNCATED',
       component: input.component,
-      message: `${input.component} 输出达到模型长度上限，已按截断失败处理；禁止解析或进入结构修复。`,
+      message: `${input.component} 输出达到模型长度上限，有界 transport 恢复已耗尽；禁止解析或进入结构修复。`,
       unsafeOutput: providerResult.content,
     })
   }
@@ -306,7 +419,11 @@ export async function runV5StructuredStage<T>(input: {
       component: input.component,
       compiled,
       provider,
-      providerPromptManifest: { ...providerPromptManifest, transportRepairAttempt: 1 },
+      providerPromptManifest: {
+        ...providerPromptManifest,
+        transportRepairAttempt: 1,
+        transportRecoveryMode: 'json_repair',
+      },
       malformedOutput: cleaned,
       parseErrorMessage,
       options: input.options,
@@ -322,6 +439,8 @@ export async function runV5StructuredStage<T>(input: {
         eventBus: input.options?.eventBus,
         stepContext: input.options?.stepContext,
         reason: repairError instanceof Error ? repairError.message : 'JSON 修复输出仍无法解析',
+        triggerErrorCode: 'V5_JSON_PARSE_FAILED',
+        recoveryMode: 'json_repair',
         outputDigest: createDigest(cleaned),
         providerResult,
       }, 'recovery.failed')
@@ -338,6 +457,8 @@ export async function runV5StructuredStage<T>(input: {
       eventBus: input.options?.eventBus,
       stepContext: input.options?.stepContext,
       reason: 'JSON transport repair parsed successfully',
+      triggerErrorCode: 'V5_JSON_PARSE_FAILED',
+      recoveryMode: 'json_repair',
       outputDigest: createDigest(cleaned),
       providerResult,
     }, 'recovery.succeeded')
