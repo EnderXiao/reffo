@@ -15,7 +15,7 @@ import {
 import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
 import {RequirementAnalysisPanel} from './components/RequirementAnalysis.h5'
-import type {ResultPageViewModel} from './usePageModel'
+import type {ResultPageViewModel, ResultRetryStageKey} from './usePageModel'
 import {buildInterviewStoryViewItems} from './model/interviewReferences'
 import {buildGapViewItems, buildOptimizationStrategyViewItems} from './model/analysisPresentation'
 import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
@@ -33,7 +33,7 @@ import exitIcon from '@/assets/result/exit.svg'
 import './index.h5.scss'
 
 type ResultStageKey = 'analysis' | 'resume' | 'interview'
-type VisibleStageStatus = 'ready' | 'generating' | 'pending'
+type VisibleStageStatus = 'ready' | 'generating' | 'pending' | 'failed'
 type StageMotionDirection = 'left' | 'right'
 
 const CARD_OPEN_RECT_STORAGE_KEY = 'reffo.homeCardOpenRect'
@@ -251,11 +251,13 @@ function getVisibleStageStatus(
   progress: ResultPageViewModel['progress'],
 ): VisibleStageStatus {
   if (stage === 'analysis') {
-    return progress.analysis === 'done' ? 'ready' : 'generating'
+    if (progress.analysis === 'done') return 'ready'
+    return progress.analysis === 'failed' ? 'failed' : 'generating'
   }
 
   if (stage === 'resume') {
     if (progress.optimized === 'done') return 'ready'
+    if (progress.matching === 'failed' || progress.optimized === 'failed') return 'failed'
     if (progress.matching === 'generating' || progress.optimized === 'generating') {
       return 'generating'
     }
@@ -264,6 +266,7 @@ function getVisibleStageStatus(
   }
 
   if (progress.interview === 'done') return 'ready'
+  if (progress.interview === 'failed') return 'failed'
   if (progress.interview === 'generating') return 'generating'
 
   return 'pending'
@@ -717,6 +720,7 @@ export default function PageView({
   handleComplete,
   handleBackHome,
   handleEditHistory,
+  handleRetryStage,
   handleOptimizedResumeChange,
   isCompleting,
   hideLandingHeader = false,
@@ -940,6 +944,12 @@ export default function PageView({
     }
 
     if (!stageAvailability[nextStage.key]) {
+      const stageStatus = getVisibleStageStatus(nextStage.key, progress)
+      if (stageStatus === 'failed') {
+        setBlockedBubble(null)
+        void handleRetryStage(nextStage.key satisfies ResultRetryStageKey)
+        return
+      }
       if (options.showBubble !== false) {
         showBlockedBubble(nextStage.key, options)
       }
@@ -964,7 +974,7 @@ export default function PageView({
       stageTransitionTimerRef.current = null
       setStageTransition(current => current?.toIndex === nextIndex ? null : current)
     }, RESULT_STAGE_SWITCH_DURATION)
-  }, [showBlockedBubble, stageAvailability, stageIndex])
+  }, [handleRetryStage, progress, showBlockedBubble, stageAvailability, stageIndex])
 
   const handleStageTouchStart = useCallback((event: TouchEvent) => {
     const touch = event.touches[0] ?? event.changedTouches[0]
@@ -1356,9 +1366,14 @@ export default function PageView({
                           [`reffo-result__tab--${stage.key}`]: true,
                           'reffo-result__tab--active': index === stageIndex,
                           'reffo-result__tab--ready': stageStatus === 'ready' && index !== stageIndex,
+                          'reffo-result__tab--failed': stageStatus === 'failed',
                         })}
                         onClick={() => requestStageSwitch(index)}
-                        aria-label={stage.label}
+                        aria-label={stageStatus === 'failed' && stage.key === 'resume'
+                          ? '重试最佳简历'
+                          : stageStatus === 'failed' && stage.key === 'interview'
+                            ? '重试面试建议'
+                            : stage.label}
                       >
                         <Image
                           className='reffo-result__tab-icon'
@@ -1382,10 +1397,15 @@ export default function PageView({
                       [`reffo-result__tab--${stage.key}`]: true,
                       'reffo-result__tab--generating': stageStatus === 'generating',
                       'reffo-result__tab--pending': stageStatus === 'pending',
+                      'reffo-result__tab--failed': stageStatus === 'failed',
                       'reffo-result__tab--blocked-bubble': blockedBubble?.stageKey === stage.key,
                     })}
                     onClick={() => requestStageSwitch(index)}
-                    aria-label={stage.label}
+                    aria-label={stageStatus === 'failed' && stage.key === 'resume'
+                      ? '重试最佳简历'
+                      : stageStatus === 'failed' && stage.key === 'interview'
+                        ? '重试面试建议'
+                        : stage.label}
                   >
                     <Image
                       className='reffo-result__tab-icon'
