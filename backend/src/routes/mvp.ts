@@ -10,7 +10,7 @@ import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
 import { V5CheckpointError } from '@/repositories/v5-checkpoint-repository'
-import { v5SingleStepAdapter } from '@/v5/single-step-adapter'
+import { v5SingleStepAdapter, type SingleStepCacheMetadata } from '@/v5/single-step-adapter'
 import { V5_WORKFLOW_VERSION } from '@/v5/types'
 import { V5WorkflowBlockedError } from '@/v5/errors'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
@@ -89,8 +89,15 @@ function singleStepFailure(error: unknown, code: string, message: string) {
     response: {success: false, error: buildErrorPayload(code, message, error)} satisfies ApiResponse<never>}
 }
 
-function singleStepSuccess<T>(result: {runId: string; data: T; steps: StepRunSnapshot[]}, startedAt: number) {
-  return {success: true, data: result.data, meta: {harness: {
+function singleStepSuccess<T>(result: {
+  runId: string
+  data: T
+  steps: StepRunSnapshot[]
+  cache?: SingleStepCacheMetadata
+}, startedAt: number) {
+  return {success: true, data: result.data, meta: {
+    cache: result.cache ?? {status: 'not_applicable'},
+    harness: {
     run_id: result.runId, workflow_version: V5_WORKFLOW_VERSION, workflow_status: 'succeeded', step_statuses: result.steps, duration_ms: Date.now() - startedAt,
   }}} satisfies ApiResponse<T>
 }
@@ -390,9 +397,12 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       const startedAt = Date.now()
       try {
         const user = body.landing === true ? null : await resolveRequestUser(headers)
-        if (user) await ensureResumeQuotaAvailable(user)
-        const result = await v5SingleStepAdapter.analyze(normalizeMarkdownText(body.resume_markdown), user?.userId ?? 'guest')
-        if (user) await consumeResumeQuota(user)
+        const result = await v5SingleStepAdapter.analyze(
+          normalizeMarkdownText(body.resume_markdown),
+          user?.userId ?? 'guest',
+          user ? {onCacheMiss: async () => { await ensureResumeQuotaAvailable(user) }} : {},
+        )
+        if (user && result.cache.status === 'miss') await consumeResumeQuota(user)
         return singleStepSuccess(result, startedAt)
       } catch (error) {
         const failure = singleStepFailure(error, 'ANALYSIS_FAILED', '分析失败')

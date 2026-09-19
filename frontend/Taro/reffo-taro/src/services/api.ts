@@ -195,6 +195,7 @@ export class ApiClient {
           code: requestError.code,
           message: requestError.message,
           statusCode: requestError.statusCode,
+          details: requestError.response,
           timestamp: new Date().toISOString(),
         })
       }
