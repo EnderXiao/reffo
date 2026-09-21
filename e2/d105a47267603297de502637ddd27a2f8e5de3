@@ -1,0 +1,35 @@
+.github/scripts/supabase-migrate.sh
+  s_67f6b327e1db8a::t_6f42a61d2f563d 1-61
+.github/workflows/backend-quality.yml
+  s_67f6b327e1db8a::t_a3fba1c861687c 7-8,27-28
+.github/workflows/release-tag.yml
+  s_67f6b327e1db8a::t_c843aacb3f9c25 1,5-7,14-17,19-20,28-29,31-47,53-68,91,111-120
+.github/workflows/render-feature-environments.yml
+  s_67f6b327e1db8a::t_1acc84d8107060 1,31-42
+backend/README.md
+  s_67f6b327e1db8a::t_9c2ccb4f7ddf1f 122-124
+doc/Profile与内测配额版本发布TODO.md
+  s_67f6b327e1db8a::t_5d507d5b86894a 66,68,70,72-73,76
+doc/Supabase正式迁移执行与回滚方案.md
+  s_67f6b327e1db8a::t_454e910b86e6bd 40-51,54,100-107
+doc/上线准备TODO.md
+  s_67f6b327e1db8a::t_e8f685f3bf8510 115,124
+supabase/migrations/README.md
+  s_67f6b327e1db8a::t_a1e93d98786150 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e2d105a47267603297de502637ddd27a2f8e5de3",
+  "prompts": {},
+  "sessions": {
+    "s_67f6b327e1db8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b25c-37e5-76b2-b5ba-4a95f24491ce",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
