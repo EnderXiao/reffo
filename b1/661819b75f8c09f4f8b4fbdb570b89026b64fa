@@ -1,0 +1,27 @@
+backend/src/harness/recovery-advice.test.ts
+  s_67f6b327e1db8a::t_e56013614baa8e 26-32
+backend/src/harness/recovery-advice.ts
+  s_67f6b327e1db8a::t_6c5da11567c52b 23-27
+backend/src/providers/llm-provider.ts
+  s_67f6b327e1db8a::t_e98c377f41d06a 35,45
+backend/src/v5/stage-runner.ts
+  s_67f6b327e1db8a::t_40cb5042df08c7 10,106-230,256,299,304-305,307-312,314-343
+backend/src/v5/tests/stage-runner.test.ts
+  s_67f6b327e1db8a::t_f10a70c33e41be 2-4,61,63-65,71-72,83-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b1661819b75f8c09f4f8b4fbdb570b89026b64fa",
+  "prompts": {},
+  "sessions": {
+    "s_67f6b327e1db8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b25c-37e5-76b2-b5ba-4a95f24491ce",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
