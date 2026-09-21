@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'supabase/migrations/**'
+      - '.github/scripts/supabase-migrate.sh'
       - '.github/workflows/backend-quality.yml'
   workflow_dispatch:
 
@@ -22,6 +24,8 @@ jobs:
         with:
           bun-version: '1.3.14'
       - run: bun install --frozen-lockfile
+      - name: Validate Supabase migration inventory
+        run: bash ../.github/scripts/supabase-migrate.sh --check-only
       - run: bunx --no-install tsc --noEmit
       - run: bun test ./src
       - run: git diff --check

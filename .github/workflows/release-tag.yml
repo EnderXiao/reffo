@@ -1,15 +1,23 @@
-name: Tag Release
+name: Production Release
 
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
       - 'v*.*.*'
 
 permissions:
   contents: read
 
+concurrency:
+  group: production-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  build-and-publish:
+  quality-migration-release:
+    environment: production
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,25 +25,47 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify tag points to main
+      - name: Verify release ref
+        shell: bash
         run: |
-          git fetch origin main --no-tags
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          if [[ "$GITHUB_REF_TYPE" != "tag" ]]; then
+            exit 0
+          fi
+
+          valid=false
+          for branch in main master; do
+            if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+              git fetch --no-tags origin "$branch"
+              if git merge-base --is-ancestor "$GITHUB_SHA" "origin/$branch"; then
+                valid=true
+              fi
+            fi
+          done
+          if [[ "$valid" != "true" ]]; then
+            echo "版本 tag 必须指向 main 或 master 分支包含的 commit"
+            exit 1
+          fi
 
       - name: Resolve release metadata
         id: metadata
         shell: bash
         run: |
-          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] || {
-            echo "非法版本 tag: $GITHUB_REF_NAME"
-            exit 1
-          }
-          version="${GITHUB_REF_NAME#v}"
-          subject="$(git for-each-ref --format='%(contents:subject)' "refs/tags/${GITHUB_REF_NAME}")"
-          body="$(git for-each-ref --format='%(contents:body)' "refs/tags/${GITHUB_REF_NAME}")"
-          notes="$subject"
-          [ -z "$body" ] || notes="${subject}"$'\n\n'"${body}"
-          [ -n "$notes" ] || notes="版本 ${version}"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] || {
+              echo "非法版本 tag: $GITHUB_REF_NAME"
+              exit 1
+            }
+            version="${GITHUB_REF_NAME#v}"
+            subject="$(git for-each-ref --format='%(contents:subject)' "refs/tags/${GITHUB_REF_NAME}")"
+            body="$(git for-each-ref --format='%(contents:body)' "refs/tags/${GITHUB_REF_NAME}")"
+            notes="$subject"
+            [ -z "$body" ] || notes="${subject}"$'\n\n'"${body}"
+            [ -n "$notes" ] || notes="版本 ${version}"
+          else
+            base_version="$(node -p "require('./frontend/Taro/reffo-taro/package.json').version")"
+            version="${base_version}-${GITHUB_REF_NAME}.${GITHUB_RUN_NUMBER}.${GITHUB_SHA:0:12}"
+            notes="${GITHUB_REF_NAME} 分支第 ${GITHUB_RUN_NUMBER} 次正式发布，commit ${GITHUB_SHA}"
+          fi
           {
             echo "version=${version}"
             echo 'notes<<EOF'
@@ -58,7 +88,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: '1.3.14'
 
       - name: Install frontend dependencies
         working-directory: frontend/Taro/reffo-taro
@@ -77,6 +107,16 @@ jobs:
           REFFO_VERSION: ${{ steps.metadata.outputs.version }}
           REFFO_RELEASE_NOTES: ${{ steps.metadata.outputs.notes }}
         run: pnpm build:h5:prod
+
+      - name: Validate Supabase migration inventory
+        run: bash .github/scripts/supabase-migrate.sh --check-only
+
+      - name: Apply production Supabase migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }}
+          SUPABASE_MIGRATION_ENV: production
+          SUPABASE_CLI: backend/node_modules/.bin/supabase
+        run: bash .github/scripts/supabase-migrate.sh
 
       - name: Trigger Render deploy
         run: |

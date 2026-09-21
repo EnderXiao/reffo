@@ -119,7 +119,9 @@ P01/P01R r17 保持 9 字段契约，区分上下文不足与真实冲突，保�
 
 四个接口统一使用 `src/v5/single-step-adapter.ts` 和 V5 插件运行时，Prompt 版本从 `src/v5/prompts/manifest.json` 读取。V4 Agent、Prompt、版本选择器及离线模拟脚本已移除，历史实现可从 `main` 查阅。原始输入与阶段检查点仅保存在服务端；前端按原顺序传递响应对象即可。Supabase 部署需要执行 `supabase/migrations/202609090001_v5_checkpoints.sql`，本地 SQLite 自动建表。
 
-认证用户的 analyze 成功结果会按“用户 + 规范化简历摘要 + 模型/Prompt/thinking 发布指纹”缓存 24 小时；相同输入的并发请求通过持久化租约收敛为一次模型调用，缓存命中会重新签发后续接口所需的 checkpoint。Landing guest 不写持久分析缓存。Supabase 部署还需执行 `supabase/migrations/202609190001_v5_analysis_cache.sql`；响应 `meta.cache.status` 为 `miss`、`hit`、`coalesced` 或 `disabled`，`miss` 与缓存基础设施故障后直接分析的 `disabled` 会消耗认证用户分析配额。缓存读写或租约存储不可用时 analyze 会降级为直接执行分析，服务日志记录 `V5_ANALYSIS_CACHE_UNAVAILABLE`，健康检查的 `dependencies.analysisCache` 返回 `degraded`；此时业务可用，但缓存与跨实例幂等不生效。
+认证用户的 analyze 成功结果会按“用户 + 规范化简历摘要 + 模型/Prompt/thinking 发布指纹”缓存 24 小时；相同输入的并发请求通过持久化租约收敛为一次模型调用，缓存命中会重新签发后续接口所需的 checkpoint。Landing guest 不写持久分析缓存。响应 `meta.cache.status` 为 `miss`、`hit`、`coalesced` 或 `disabled`，`miss` 与缓存基础设施故障后直接分析的 `disabled` 会消耗认证用户分析配额。缓存读写或租约存储不可用时 analyze 会降级为直接执行分析，服务日志记录 `V5_ANALYSIS_CACHE_UNAVAILABLE`，健康检查的 `dependencies.analysisCache` 返回 `degraded`；此时业务可用，但缓存与跨实例幂等不生效。
+
+Supabase schema 统一由 `supabase/migrations/` 管理。PR 会校验 migration 已纳入 Git；feature push 使用 `SUPABASE_NONPROD_DB_URL` 先同步 nonprod，`main`、`master` 和正式版本 tag 使用 production environment 中的 `SUPABASE_PROD_DB_URL`，migration 成功后才允许触发 Render 部署。完整流程与 secret 配置见 [`../supabase/migrations/README.md`](../supabase/migrations/README.md)。
 
 ### Harness 接口
 
