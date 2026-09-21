@@ -1,0 +1,39 @@
+.gitignore
+  s_67f6b327e1db8a::t_280e1b72282de5 21
+backend/README.md
+  s_67f6b327e1db8a::t_08ab9565f178f9 122-123
+backend/src/repositories/v5-analysis-cache-repository.ts
+  s_67f6b327e1db8a::t_3ab76cbd33a64c 1-423
+backend/src/routes/mvp-single-step.test.ts
+  s_67f6b327e1db8a::t_3262d81ae8aeed 10-11,21-24,34-38,49
+backend/src/routes/mvp.ts
+  s_67f6b327e1db8a::t_4d2c7353606a0e 13,92-100,400-405
+backend/src/types/index.ts
+  s_67f6b327e1db8a::t_74abf304e82fbe 186-188
+backend/src/v5/single-step-adapter.ts
+  s_67f6b327e1db8a::t_d6232749191090 6-11,18-19,27-58,75-88,109-113,116-152
+backend/src/v5/tests/analysis-cache-repository.test.ts
+  s_67f6b327e1db8a::t_ca77e4415dbab4 1-55
+backend/src/v5/tests/analysis-cache-storage-fixture.ts
+  s_67f6b327e1db8a::t_a2c77b228d92b1 1-106
+backend/src/v5/tests/single-step-adapter.test.ts
+  s_67f6b327e1db8a::t_336ee3a211b9bb 3,6-7,12,14-22,28-37,39,45,48,51-52,58,62-68
+supabase/migrations/202609190001_v5_analysis_cache.sql
+  s_67f6b327e1db8a::t_03f72c894c1706 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f647b7249d999eebf8087aaeb7f4204e6e895df1",
+  "prompts": {},
+  "sessions": {
+    "s_67f6b327e1db8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b25c-37e5-76b2-b5ba-4a95f24491ce",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
