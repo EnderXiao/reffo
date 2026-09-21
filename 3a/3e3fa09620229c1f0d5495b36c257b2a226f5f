@@ -1,0 +1,29 @@
+frontend/Taro/reffo-taro/src/services/__tests__/api.test.ts
+  s_67f6b327e1db8a::t_e71cc143fb93ce 326-339
+frontend/Taro/reffo-taro/src/services/__tests__/resume.test.ts
+  s_67f6b327e1db8a::t_1819afc6173f66 74,149
+frontend/Taro/reffo-taro/src/services/api.ts
+  s_67f6b327e1db8a::t_e6f9203dee7d26 42-46,241-246,248,253,271,273-276,298,300-303,325,327-330,348,350-353
+frontend/Taro/reffo-taro/src/services/resume.ts
+  s_67f6b327e1db8a::t_bec2beb8a374c7 12-13,339-340,388-391
+frontend/Taro/reffo-taro/src/utils/__tests__/request.test.ts
+  s_67f6b327e1db8a::t_ca66a407bae984 123-135
+frontend/Taro/reffo-taro/src/utils/httpTransport.ts
+  s_67f6b327e1db8a::t_bfe4925440886e 90-93,100-102,258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3a3e3fa09620229c1f0d5495b36c257b2a226f5f",
+  "prompts": {},
+  "sessions": {
+    "s_67f6b327e1db8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b25c-37e5-76b2-b5ba-4a95f24491ce",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
