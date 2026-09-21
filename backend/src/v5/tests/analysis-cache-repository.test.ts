@@ -1,5 +1,5 @@
-import { expect, test } from 'bun:test'
-import { V5AnalysisCacheRepository } from '@/repositories/v5-analysis-cache-repository'
+import { expect, spyOn, test } from 'bun:test'
+import { getV5AnalysisCacheHealth, V5AnalysisCacheRepository } from '@/repositories/v5-analysis-cache-repository'
 import { MemoryAnalysisCacheStorage } from './analysis-cache-storage-fixture'
 
 const input = {
@@ -52,4 +52,85 @@ test('clears the failed lease so the next request can retry', async () => {
 
   const result = await repository.resolve({...input, compute: async () => 'recovered'})
   expect(result).toEqual({value: 'recovered', cacheStatus: 'miss'})
+})
+
+test('falls back to direct analysis when cache coordination is unavailable', async () => {
+  class ClaimUnavailableStorage extends MemoryAnalysisCacheStorage {
+    async claim(): Promise<never> {
+      throw new Error('cache table missing')
+    }
+  }
+  const log = spyOn(console, 'error').mockImplementation(() => {})
+  let computeCalls = 0
+  try {
+    const result = await new V5AnalysisCacheRepository(new ClaimUnavailableStorage()).resolve({
+      ...input,
+      compute: async () => {
+        computeCalls += 1
+        return {analysis: 'direct'}
+      },
+    })
+    expect(result).toEqual({value: {analysis: 'direct'}, cacheStatus: 'disabled'})
+    expect(computeCalls).toBe(1)
+    expect(JSON.stringify(log.mock.calls)).toContain('V5_ANALYSIS_CACHE_UNAVAILABLE')
+  } finally {
+    log.mockRestore()
+  }
+})
+
+test('returns a computed result without recompute when cache completion fails', async () => {
+  class CompletionUnavailableStorage extends MemoryAnalysisCacheStorage {
+    async complete(): Promise<void> {
+      throw new Error('cache completion unavailable')
+    }
+  }
+  const log = spyOn(console, 'error').mockImplementation(() => {})
+  let computeCalls = 0
+  try {
+    const result = await new V5AnalysisCacheRepository(new CompletionUnavailableStorage()).resolve({
+      ...input,
+      compute: async () => {
+        computeCalls += 1
+        return 'computed'
+      },
+    })
+    expect(result).toEqual({value: 'computed', cacheStatus: 'disabled'})
+    expect(computeCalls).toBe(1)
+  } finally {
+    log.mockRestore()
+  }
+})
+
+test('does not replace compute failures with cache fallback', async () => {
+  class ClaimUnavailableStorage extends MemoryAnalysisCacheStorage {
+    async claim(): Promise<never> {
+      throw new Error('cache table missing')
+    }
+  }
+  const log = spyOn(console, 'error').mockImplementation(() => {})
+  let computeCalls = 0
+  try {
+    await expect(new V5AnalysisCacheRepository(new ClaimUnavailableStorage()).resolve({
+      ...input,
+      compute: async () => {
+        computeCalls += 1
+        throw new Error('model failed')
+      },
+    })).rejects.toThrow('model failed')
+    expect(computeCalls).toBe(1)
+  } finally {
+    log.mockRestore()
+  }
+})
+
+test('reports analysis cache dependency health without exposing provider details', async () => {
+  class HealthUnavailableStorage extends MemoryAnalysisCacheStorage {
+    async health(): Promise<void> {
+      throw new Error('private provider detail')
+    }
+  }
+  expect(await getV5AnalysisCacheHealth(new HealthUnavailableStorage())).toEqual({
+    status: 'degraded',
+    errorCode: 'V5_ANALYSIS_CACHE_UNAVAILABLE',
+  })
 })

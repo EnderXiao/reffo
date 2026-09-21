@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, spyOn, test } from 'bun:test'
 import { V5CheckpointRepository, V5CheckpointError } from '@/repositories/v5-checkpoint-repository'
 import { analysisCacheKeyFor, V5SingleStepAdapter } from '@/v5/single-step-adapter'
 import { createSingleStepFixture } from './single-step-fixtures'
@@ -64,6 +64,35 @@ test('analysis cache keys isolate users, resume content and release configuratio
   expect(analysisCacheKeyFor(FIXTURE_RESUME, 'user1')).toBe(base)
   expect(analysisCacheKeyFor(`${FIXTURE_RESUME}\n\n新增项目经历`, 'user1')).not.toBe(base)
   expect(analysisCacheKeyFor(FIXTURE_RESUME, 'user2')).not.toBe(base)
+})
+
+test('analysis continues with a fresh checkpoint when persistent cache is unavailable', async () => {
+  class CacheUnavailableStorage extends MemoryAnalysisCacheStorage {
+    async claim(): Promise<never> {
+      throw new Error('v5_analysis_cache missing')
+    }
+  }
+  const log = spyOn(console, 'error').mockImplementation(() => {})
+  const checkpointStorage = new MemoryCheckpointStorage()
+  const {createWorkflow, versions} = createSingleStepFixture()
+  const adapter = new V5SingleStepAdapter(
+    new V5CheckpointRepository('fixture', checkpointStorage),
+    createWorkflow,
+    new V5AnalysisCacheRepository(new CacheUnavailableStorage()),
+  )
+  let cacheMissChecks = 0
+  try {
+    const analysis = await adapter.analyze(FIXTURE_RESUME, 'user1', {
+      onCacheMiss: async () => { cacheMissChecks += 1 },
+    })
+    expect(analysis.cache.status).toBe('disabled')
+    expect(cacheMissChecks).toBe(1)
+    expect(versions).toHaveLength(1)
+    expect(analysis.data.structured_resume._v5_context).toMatch(/^[a-f0-9]{64}$/)
+    expect(checkpointStorage.rows.size).toBe(1)
+  } finally {
+    log.mockRestore()
+  }
 })
 
 test('checkpoint tokens reject expired, unknown and different-release state', async () => {

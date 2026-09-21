@@ -94,6 +94,8 @@ export class MemoryAnalysisCacheStorage implements V5AnalysisCacheStorage {
     if (row?.status === 'pending' && row.lease_token === input.leaseToken) this.rows.delete(key)
   }
 
+  async health() {}
+
   async cleanup() {
     const now = Date.now()
     for (const [key, row] of this.rows) {
