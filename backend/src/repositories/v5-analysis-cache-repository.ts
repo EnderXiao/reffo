@@ -7,7 +7,7 @@ export const V5_ANALYSIS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 export const V5_ANALYSIS_CACHE_LEASE_MS = 150 * 1000
 
 export type V5AnalysisCacheStatus = 'pending' | 'ready'
-export type V5AnalysisCacheResultStatus = 'miss' | 'hit' | 'coalesced'
+export type V5AnalysisCacheResultStatus = 'miss' | 'hit' | 'coalesced' | 'disabled'
 
 export interface V5AnalysisCacheRow {
   cache_key: string
@@ -57,6 +57,7 @@ export interface V5AnalysisCacheStorage {
     fingerprint: string
     leaseToken: string
   }): Promise<void>
+  health(): Promise<void>
   cleanup(): Promise<void>
 }
 
@@ -97,6 +98,20 @@ function sqliteAnalysisCache() {
 
 function parseSqliteRow(row: (V5AnalysisCacheRow & {payload: string | null}) | null): V5AnalysisCacheRow | null {
   return row ? {...row, payload: row.payload === null ? null : JSON.parse(row.payload)} : null
+}
+
+function logAnalysisCacheUnavailable(operation: string, error: unknown) {
+  const providerStatus = error && typeof error === 'object' && 'status' in error
+    && typeof (error as {status?: unknown}).status === 'number'
+    ? (error as {status: number}).status
+    : undefined
+  console.error(JSON.stringify({
+    type: 'analysis_cache.unavailable',
+    code: 'V5_ANALYSIS_CACHE_UNAVAILABLE',
+    operation,
+    errorName: error instanceof Error ? error.name : 'UnknownError',
+    ...(providerStatus === undefined ? {} : {providerStatus}),
+  }))
 }
 
 export const v5AnalysisCacheStorage: V5AnalysisCacheStorage = {
@@ -299,6 +314,17 @@ export const v5AnalysisCacheStorage: V5AnalysisCacheStorage = {
     )
   },
 
+  async health() {
+    if (env.DATABASE_PROVIDER === 'supabase') {
+      await createSupabaseRestClient({useServiceRole: true}).request<V5AnalysisCacheRow[]>(
+        '/rest/v1/v5_analysis_cache',
+        {searchParams: {cache_key: 'eq.__health_check__', select: 'cache_key', limit: 1}},
+      )
+      return
+    }
+    sqliteAnalysisCache().query('SELECT 1 AS ok FROM v5_analysis_cache LIMIT 1').get()
+  },
+
   async cleanup() {
     const now = new Date().toISOString()
     if (env.DATABASE_PROVIDER === 'supabase') {
@@ -319,6 +345,20 @@ export const v5AnalysisCacheStorage: V5AnalysisCacheStorage = {
   },
 }
 
+export async function getV5AnalysisCacheHealth(
+  storage: Pick<V5AnalysisCacheStorage, 'health'> = v5AnalysisCacheStorage,
+): Promise<{
+  status: 'ok' | 'degraded'
+  errorCode?: string
+}> {
+  try {
+    await storage.health()
+    return {status: 'ok'}
+  } catch {
+    return {status: 'degraded', errorCode: 'V5_ANALYSIS_CACHE_UNAVAILABLE'}
+  }
+}
+
 function cloneValue<T>(value: T): T {
   return structuredClone(value)
 }
@@ -331,6 +371,15 @@ export class V5AnalysisCacheRepository {
   private readonly inFlight = new Map<string, Promise<V5AnalysisCacheResolveResult<unknown>>>()
 
   constructor(private readonly storage: V5AnalysisCacheStorage = v5AnalysisCacheStorage) {}
+
+  private async computeWithoutCache<T>(
+    input: V5AnalysisCacheResolveInput<T>,
+    operation: string,
+    error: unknown,
+  ): Promise<V5AnalysisCacheResolveResult<T>> {
+    logAnalysisCacheUnavailable(operation, error)
+    return {value: await input.compute(), cacheStatus: 'disabled'}
+  }
 
   async resolve<T>(input: V5AnalysisCacheResolveInput<T>): Promise<V5AnalysisCacheResolveResult<T>> {
     const existing = this.inFlight.get(input.cacheKey)
@@ -357,17 +406,38 @@ export class V5AnalysisCacheRepository {
     for (let claimAttempt = 0; claimAttempt < 3; claimAttempt += 1) {
       const leaseToken = randomBytes(24).toString('hex')
       const leaseExpiresAt = new Date(Date.now() + leaseMs).toISOString()
-      const claim = await this.storage.claim({
-        cacheKey: input.cacheKey,
-        owner: input.owner,
-        fingerprint: input.fingerprint,
-        leaseToken,
-        leaseExpiresAt,
-      })
+      let claim: V5AnalysisCacheClaim
+      try {
+        claim = await this.storage.claim({
+          cacheKey: input.cacheKey,
+          owner: input.owner,
+          fingerprint: input.fingerprint,
+          leaseToken,
+          leaseExpiresAt,
+        })
+      } catch (error) {
+        return this.computeWithoutCache(input, 'claim', error)
+      }
 
       if (claim.acquired) {
+        let value: T
         try {
-          const value = await input.compute()
+          value = await input.compute()
+        } catch (error) {
+          try {
+            await this.storage.fail({
+              cacheKey: input.cacheKey,
+              owner: input.owner,
+              fingerprint: input.fingerprint,
+              leaseToken,
+            })
+          } catch (cleanupError) {
+            logAnalysisCacheUnavailable('fail_after_compute_error', cleanupError)
+          }
+          throw error
+        }
+
+        try {
           await this.storage.complete({
             cacheKey: input.cacheKey,
             owner: input.owner,
@@ -378,6 +448,7 @@ export class V5AnalysisCacheRepository {
           })
           return {value, cacheStatus: 'miss'}
         } catch (error) {
+          logAnalysisCacheUnavailable('complete', error)
           try {
             await this.storage.fail({
               cacheKey: input.cacheKey,
@@ -385,39 +456,66 @@ export class V5AnalysisCacheRepository {
               fingerprint: input.fingerprint,
               leaseToken,
             })
-          } catch {
-            // 保留模型或持久化完成阶段的原始错误，避免清理租约失败覆盖根因。
+          } catch (cleanupError) {
+            logAnalysisCacheUnavailable('fail_after_complete_error', cleanupError)
           }
-          throw error
+          return {value, cacheStatus: 'disabled'}
         }
       }
 
       if (claim.row.status === 'ready') {
-        await this.storage.recordHit({
-          cacheKey: input.cacheKey,
-          owner: input.owner,
-          fingerprint: input.fingerprint,
-          expectedHitCount: claim.row.hit_count,
-        })
-        return {value: cloneValue(claim.row.payload) as T, cacheStatus: 'hit'}
+        try {
+          const value = cloneValue(claim.row.payload) as T
+          try {
+            await this.storage.recordHit({
+              cacheKey: input.cacheKey,
+              owner: input.owner,
+              fingerprint: input.fingerprint,
+              expectedHitCount: claim.row.hit_count,
+            })
+          } catch (error) {
+            logAnalysisCacheUnavailable('record_hit', error)
+          }
+          return {value, cacheStatus: 'hit'}
+        } catch (error) {
+          return this.computeWithoutCache(input, 'read_ready', error)
+        }
       }
 
       const deadline = Date.parse(claim.row.lease_expires_at)
       while (Date.now() < deadline) {
         await sleep(Math.min(pollIntervalMs, Math.max(1, deadline - Date.now())))
-        const row = await this.storage.read(input.cacheKey, input.owner, input.fingerprint)
+        let row: V5AnalysisCacheRow | null
+        try {
+          row = await this.storage.read(input.cacheKey, input.owner, input.fingerprint)
+        } catch (error) {
+          return this.computeWithoutCache(input, 'poll', error)
+        }
         if (row?.status === 'ready') {
-          await this.storage.recordHit({
-            cacheKey: input.cacheKey,
-            owner: input.owner,
-            fingerprint: input.fingerprint,
-            expectedHitCount: row.hit_count,
-          })
-          return {value: cloneValue(row.payload) as T, cacheStatus: 'hit'}
+          try {
+            const value = cloneValue(row.payload) as T
+            try {
+              await this.storage.recordHit({
+                cacheKey: input.cacheKey,
+                owner: input.owner,
+                fingerprint: input.fingerprint,
+                expectedHitCount: row.hit_count,
+              })
+            } catch (error) {
+              logAnalysisCacheUnavailable('record_hit', error)
+            }
+            return {value, cacheStatus: 'hit'}
+          } catch (error) {
+            return this.computeWithoutCache(input, 'read_polled_result', error)
+          }
         }
         if (!row || Date.parse(row.lease_expires_at) <= Date.now()) break
       }
     }
-    throw new Error('V5 analyze cache coordination failed')
+    return this.computeWithoutCache(
+      input,
+      'coordination_retry_exhausted',
+      new Error('V5 analyze cache coordination failed'),
+    )
   }
 }

@@ -10,6 +10,7 @@ import { normalizeMarkdownText } from '@/services/text-normalizer'
 import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-presets'
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
 import { V5CheckpointError } from '@/repositories/v5-checkpoint-repository'
+import { getV5AnalysisCacheHealth } from '@/repositories/v5-analysis-cache-repository'
 import { v5SingleStepAdapter, type SingleStepCacheMetadata } from '@/v5/single-step-adapter'
 import { V5_WORKFLOW_VERSION } from '@/v5/types'
 import { V5WorkflowBlockedError } from '@/v5/errors'
@@ -402,9 +403,18 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           user?.userId ?? 'guest',
           user ? {onCacheMiss: async () => { await ensureResumeQuotaAvailable(user) }} : {},
         )
-        if (user && result.cache.status === 'miss') await consumeResumeQuota(user)
+        if (user && (result.cache.status === 'miss' || result.cache.status === 'disabled')) {
+          await consumeResumeQuota(user)
+        }
         return singleStepSuccess(result, startedAt)
       } catch (error) {
+        console.error('analyze request failed:', {
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+          errorCode: error && typeof error === 'object' && 'code' in error
+            && typeof (error as {code?: unknown}).code === 'string'
+            ? (error as {code: string}).code
+            : undefined,
+        })
         const failure = singleStepFailure(error, 'ANALYSIS_FAILED', '分析失败')
         set.status = failure.status
         return failure.response
@@ -555,14 +565,17 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
    */
   .get(
     '/health',
-    () => {
+    async () => {
+      const harnessDatabase = getHarnessDatabaseHealth()
+      const analysisCache = await getV5AnalysisCacheHealth()
       return {
         status: 'ok',
         timestamp: new Date().toISOString(),
         service: 'reffo-mvp',
         generation: getV5ReleaseDescriptor(),
         dependencies: {
-          harnessDatabase: getHarnessDatabaseHealth(),
+          harnessDatabase,
+          analysisCache,
         },
       }
     },

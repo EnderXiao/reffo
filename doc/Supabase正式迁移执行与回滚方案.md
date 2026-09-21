@@ -37,9 +37,21 @@ SUPABASE_PROJECT_ENV=prod
 - 正式执行窗口已确认，避免在用户使用高峰操作 schema。
 - migration 文件只来自仓库 `supabase/migrations/`，不在 SQL Editor 手写临时 SQL。
 
+## CI 自动同步
+
+仓库已将 Supabase migration 纳入部署门禁，常规发布不再依赖个人记住执行 SQL：
+
+- Pull Request 会校验 `supabase/migrations/*.sql` 文件名有效且已纳入 Git。
+- `feature` / `feature/**` push 使用 GitHub Secret `SUPABASE_NONPROD_DB_URL` 执行 `.github/scripts/supabase-migrate.sh`，成功后才部署 Render Feature。
+- `main`、`master` 和 `v*.*.*` tag 使用 production environment 中的 `SUPABASE_PROD_DB_URL`，顺序为后端测试、H5 production build、production migration、Render deploy hook。
+- CI 在 migration 前后执行 `supabase migration list`；存在 pending、执行失败或 secret 缺失时发布失败。
+- GitHub Secret 中的数据库连接串不得写入仓库。migration SQL 可以公开 schema，但不能包含数据、密钥或真实用户信息。
+
+人工 CLI 流程保留用于首次接入、故障处理、备份和受控生产变更。
+
 ## 正式执行步骤
 
-1. 在仓库根目录登录 Supabase CLI：
+1. CI 使用 GitHub Secrets 自动执行 migration；人工执行时，在仓库根目录登录 Supabase CLI：
 
 ```bash
 bunx supabase login
@@ -84,6 +96,14 @@ curl https://<prod-api-domain>/api/v1/mvp/health
 - 删除测试生成历史。
 
 真实 AI 生成链路 smoke 固定在非生产环境执行，避免正式环境产生模型调用费用和测试数据。
+
+## CI 所需 GitHub Secrets
+
+- `SUPABASE_NONPROD_DB_URL`：feature CI 使用的 nonprod Postgres 连接串。
+- `SUPABASE_PROD_DB_URL`：配置在 GitHub `production` environment 中的正式 Postgres 连接串。
+- `RENDER_DEPLOY_HOOK_URL`：正式 Render deploy hook，只在质量检查和 production migration 成功后调用。
+
+连接串中的特殊字符必须按 URL 规则 percent-encode。正式环境建议使用具备 migration 权限的专用 CI 角色，并开启 GitHub Environment 审批和分支保护。
 
 ## 备份策略
 
