@@ -1,0 +1,31 @@
+backend/README.md
+  s_67f6b327e1db8a::t_76a33b9efcc1fb 122
+backend/src/repositories/v5-analysis-cache-repository.ts
+  s_67f6b327e1db8a::t_3f3583f7ae3e82 10,60,103-116,317-327,348-361,375-383,409-420,423-439,451,459-460,462,467-482,488-493,495-510,515-519
+backend/src/routes/mvp-auth.test.ts
+  s_67f6b327e1db8a::t_068c6da1513325 34-37
+backend/src/routes/mvp.ts
+  s_67f6b327e1db8a::t_16e983356e33bb 13,406-408,411-417,568-570,577-578
+backend/src/v5/tests/analysis-cache-repository.test.ts
+  s_67f6b327e1db8a::t_0203f52901d948 1-2,56-136
+backend/src/v5/tests/analysis-cache-storage-fixture.ts
+  s_67f6b327e1db8a::t_0e99957d873cff 97-98
+backend/src/v5/tests/single-step-adapter.test.ts
+  s_67f6b327e1db8a::t_54d5b9d1ae6c29 1,69-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d06685ee7ad1dd2a06608c3f027f0cac6fafceb1",
+  "prompts": {},
+  "sessions": {
+    "s_67f6b327e1db8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b25c-37e5-76b2-b5ba-4a95f24491ce",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
