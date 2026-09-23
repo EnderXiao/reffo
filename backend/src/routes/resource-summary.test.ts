@@ -1,46 +1,36 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test'
+import { env } from '@/config/env'
+import { resumeHistoryRepository } from '@/repositories/resume-history-repository'
+import { sourceResumeRepository } from '@/repositories/source-resume-repository'
 import type {
   ResumeHistoryRecord,
   ResumeHistorySummaryRecord,
   SourceResumeRecord,
   SourceResumeSummaryRecord,
 } from '@/types'
+import { resumeHistoryRoutes } from '@/routes/resume-history'
+import { sourceResumeRoutes } from '@/routes/source-resume'
 
 let historyRecords: ResumeHistoryRecord[] = []
 let latestSourceResume: SourceResumeRecord | null = null
-
-class TestRequestAuthError extends Error {
-  readonly status = 401
-  readonly code = 'AUTH_REQUIRED'
+const originalEnv = {
+  APP_ENV: env.APP_ENV,
+  AUTH_REQUIRED: env.AUTH_REQUIRED,
 }
-
-mock.module('@/auth/request-context', () => ({
-  RequestAuthError: TestRequestAuthError,
-  resolveRequestUser: async () => ({
-    userId: 'user-1',
-    useServiceRole: true,
-  }),
-}))
-
-mock.module('@/repositories/resume-history-repository', () => ({
-  resumeHistoryRepository: {
-    list: async () => historyRecords,
-  },
-}))
-
-mock.module('@/repositories/source-resume-repository', () => ({
-  sourceResumeRepository: {
-    getLatest: async () => latestSourceResume,
-  },
-}))
-
-const { resumeHistoryRoutes } = await import('@/routes/resume-history')
-const { sourceResumeRoutes } = await import('@/routes/source-resume')
 
 describe('resource summary routes', () => {
   beforeEach(() => {
     historyRecords = []
     latestSourceResume = null
+    env.APP_ENV = 'local'
+    env.AUTH_REQUIRED = false
+    spyOn(resumeHistoryRepository, 'list').mockImplementation(async () => historyRecords)
+    spyOn(sourceResumeRepository, 'getLatest').mockImplementation(async () => latestSourceResume)
+  })
+
+  afterEach(() => {
+    mock.restore()
+    Object.assign(env, originalEnv)
   })
 
   test('历史摘要只返回首页卡片所需字段', async () => {
