@@ -1,0 +1,109 @@
+backend/src/routes/resource-summary.test.ts
+  s_1342fe7313028e::t_2f0b91e3ec5b10 1-127
+backend/src/routes/resume-history.ts
+  s_3f5be978068241::t_cf65ddb2564835 4,81-130,168-203
+backend/src/routes/source-resume.ts
+  s_3f5be978068241::t_14d60d93bf8950 4,18-28,124-159
+backend/src/types/index.ts
+  s_3f5be978068241::t_21f71c1848d1ee 247-255,302-317
+frontend/Taro/reffo-taro/src/app.config.ts
+  s_3f5be978068241::t_66e2296ce5b092 23-24
+frontend/Taro/reffo-taro/src/app.ts
+  s_1342fe7313028e::t_ed822d832dce47 41-42
+frontend/Taro/reffo-taro/src/components/AppPageShell/index.tsx
+  s_3f5be978068241::t_2965f519b22639 104
+frontend/Taro/reffo-taro/src/components/business/DeleteBreakCard/index.h5.tsx
+  s_3f5be978068241::t_d5760fd3d0c606 48
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/HomeScoreCard.h5.tsx
+  s_3f5be978068241::t_e09ff9dcce9f25 13,171,190-204,273
+frontend/Taro/reffo-taro/src/pages/complete/usePageModel.ts
+  s_1342fe7313028e::t_ec6de37cea2a5d 5,18,22,24,27-28,30-31,33-34,37-38
+frontend/Taro/reffo-taro/src/pages/create/PageView.h5.tsx
+  s_3f5be978068241::t_e56da461a72727 1,3,12-20,22,333,484,522,527,625,633,640,648,687
+frontend/Taro/reffo-taro/src/pages/create/components/CreateStepLoading.h5.tsx
+  s_3f5be978068241::t_7c3b3faaeea9ab 1-11
+frontend/Taro/reffo-taro/src/pages/create/components/JobDescriptionFormH5.tsx
+  s_3f5be978068241::t_ebebc784a505c1 7,30-33
+frontend/Taro/reffo-taro/src/pages/create/components/ResumeSummaryStepH5.tsx
+  s_3f5be978068241::t_df8d145d8ccb10 1-54
+frontend/Taro/reffo-taro/src/pages/create/components/ResumeUploadStepH5.tsx
+  s_3f5be978068241::t_0f6f8f06d0e6ea 1-166
+frontend/Taro/reffo-taro/src/pages/create/index.h5.scss
+  s_3f5be978068241::t_601e1ae9e27b93 183-223,1936
+frontend/Taro/reffo-taro/src/pages/create/model/__tests__/useCreateFlowRoute.test.tsx
+  s_3f5be978068241::t_d86da7d8dfc202 1-60
+frontend/Taro/reffo-taro/src/pages/create/model/lazyCreateSteps.tsx
+  s_3f5be978068241::t_51ad463f30429b 1-115
+frontend/Taro/reffo-taro/src/pages/create/model/useCreateFlowRoute.ts
+  s_3f5be978068241::t_72ddc0a45f9478 1-45
+frontend/Taro/reffo-taro/src/pages/create/usePageModel.ts
+  s_1342fe7313028e::t_9ceb2d61ed2fc9 15,28,30,46,62,225,230-232,239,243,363,373-376,380-385,395,418-422,482,504,516-525,541,554,556,585,587,596-597,643,664,741-746,748,752,754-770,774-776,796-799,804,809,821,899-903,992,996,1018,1037,1127-1130,1153,1156,1160,1163,1167
+frontend/Taro/reffo-taro/src/pages/create/utils/jobDescriptionAttachment.ts
+  s_3f5be978068241::t_0e1fe366e85233 10,31
+frontend/Taro/reffo-taro/src/pages/index/PageView.h5.tsx
+  s_1342fe7313028e::t_22f06ebee78e9a 9,515
+frontend/Taro/reffo-taro/src/pages/index/__tests__/homeCardData.test.ts
+  s_1342fe7313028e::t_c3e643e38c850c 1-2,5-31
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  s_1342fe7313028e::t_73a03d986b7d12 7-14,106-111,123-124,130-132,141-144,146,185-186,225-226,235-236,245,248,283-284,286-287
+frontend/Taro/reffo-taro/src/pages/landing/index.tsx
+  s_1342fe7313028e::t_b236457de71000 537-538
+frontend/Taro/reffo-taro/src/pages/profile/content.tsx
+  s_1342fe7313028e::t_fe2abd73e91834 61-62
+frontend/Taro/reffo-taro/src/pages/profile/index.tsx
+  s_1342fe7313028e::t_f7ee28303b21f9 43-46,57-58,60,144,157
+frontend/Taro/reffo-taro/src/pages/result/usePageModel.ts
+  s_1342fe7313028e::t_269862ef40086b 251
+frontend/Taro/reffo-taro/src/services/sourceResume.ts
+  s_1342fe7313028e::t_0fa826b35e75e6 2,14-22,42-65,77-81
+frontend/Taro/reffo-taro/src/shared/routing/__tests__/useRouteTransition.test.ts
+  s_1342fe7313028e::t_c87b09c007bfee 12,23,52-63
+frontend/Taro/reffo-taro/src/shared/routing/index.ts
+  s_3f5be978068241::t_29b4925538e93d 10
+frontend/Taro/reffo-taro/src/shared/routing/preloadCreateRoute.ts
+  s_3f5be978068241::t_a4cebf23c1e1e7 1-20
+frontend/Taro/reffo-taro/src/shared/routing/useRouteTransition.ts
+  s_3f5be978068241::t_ae3173b1ff4902 3,25-30
+frontend/Taro/reffo-taro/src/store/__tests__/historyStore.test.ts
+  s_1342fe7313028e::t_c2798bfbe3a01f 12-14,17-18,55,213-299
+frontend/Taro/reffo-taro/src/store/__tests__/sourceResumeStore.test.ts
+  s_1342fe7313028e::t_1e0e75fb6faadc 5-7,9,11,57,84-114
+frontend/Taro/reffo-taro/src/store/types.ts
+  s_1342fe7313028e::t_c8426c5cc06e4b 8,10,46,56,60-61,72,75,77
+frontend/Taro/reffo-taro/src/types/index.ts
+  s_1342fe7313028e::t_a68612cce6e668 29,45-60,293-301
+frontend/Taro/reffo-taro/src/utils/file-upload.ts
+  s_3f5be978068241::t_8b928e5cdbcbbc 1-23
+frontend/Taro/reffo-taro/src/utils/navigation-transition.ts
+  s_3f5be978068241::t_3568a5a08a153c 24,26
+frontend/Taro/reffo-taro/src/utils/navigation.ts
+  s_3f5be978068241::t_c10dc5760a54dc 75-77
+frontend/Taro/reffo-taro/src/utils/resume-file-upload.ts
+  s_3f5be978068241::t_b4e6f7aed0765c 9-10
+frontend/Taro/reffo-taro/src/utils/schedule-idle.ts
+  s_3f5be978068241::t_6e264630515006 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f6c456cb77a2bbc5b4385442ae37020e174774ed",
+  "prompts": {},
+  "sessions": {
+    "s_1342fe7313028e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cc05-98bc-76d1-875e-ef4e600a6830",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    },
+    "s_3f5be978068241": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c6bd-465b-7751-8b2d-3611663bbf5b",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
