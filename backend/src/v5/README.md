@@ -112,7 +112,7 @@ Harness SQLite 初始化会以可重复的 additive migration 增加 Agent state
 
 ## 调用量、延迟与成本
 
-调用量按逻辑 Pxx 组件统计。结构化输出连续截断时，transport 最多追加两次 continuation，因此单个逻辑阶段最多产生三次 Provider 物理调用；continuation 不计作 PxxR 或下游阶段调用，全部耗尽后仍按 `V5_OUTPUT_TRUNCATED` 终止。
+调用量按逻辑 Pxx 组件统计。普通正文截断时，transport 仍最多追加两次 continuation；reasoning-only 截断只增加一次 `thinking=disabled` 同 Schema 重试；`finish_reason=stop` 但 JSON 无法解析时只增加一次 transport JSON 重生成。continuation 和 transport recovery 都不计作 PxxR 或下游阶段调用；修复输出仍失败时不递归再调用业务修复器，分别按 `V5_OUTPUT_TRUNCATED` 或 `V5_JSON_PARSE_FAILED` 终止。
 
 无修复、单 P01 分片且质量放行的 v5 默认正式链路基线为 4 次调用：P01、P02、P03、P06D。为避免源简历抽取失败后仍支付 JD 调用，P02 只在 P01 完整通过后启动。P01 默认以 24 个 block 为打包目标；语义 scope 与传输 shard 分离，超长经历保持同一服务端 scope，每个 shard 只重复最小时间线锚点上下文。每个 chunk 带服务端序号，代码等待全部已启动调用收敛后按原始序号归并，缺号或重复号直接拒绝，因此 Provider 返回先后不会改变证据顺序。低置信策略至多增加 P04 一次，P02/P03 各至多一次结构修复；P06D 只调用一次，Schema、DSL 或 Composition 错误直接进入仅供内部诊断的确定性 source-preserving renderer，不调用 P08，Provider 失败则直接向外失败。`composition_v1` 与 `legacy` 仍作为 kill switch，其中只有 `legacy` 可能走 P06/P08。正式链路不调用 P05/P05R、P07、P09、P10/P10R、P11，也不会因质量 warning 触发重写。
 

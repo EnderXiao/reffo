@@ -534,8 +534,8 @@ async function preloadHomeData() {
   await Promise.all([
     homeRoutePromise,
     ...(shouldLoadUserData ? [
-      useHistoryStore.getState().loadHistories({skipIfLoaded: true}),
-      useSourceResumeStore.getState().loadLatestSourceResume({skipIfLoaded: true}),
+      useHistoryStore.getState().loadHistorySummaries({skipIfLoaded: true}),
+      useSourceResumeStore.getState().loadLatestSourceSummary({skipIfLoaded: true}),
       ...(typeof loadProfile === 'function' ? [loadProfile()] : []),
     ] : []),
   ].map(promise => promise.catch(error => {

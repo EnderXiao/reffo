@@ -1,28 +1,25 @@
-import {useEffect, useMemo, useRef, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {flushSync} from 'react-dom'
-import {Image, Input, Text, Textarea, View} from '@tarojs/components'
+import {Image, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
-import CANCEL_ICON from '@/assets/create/cancel.svg'
 import DELETE_ICON from '@/assets/create/delete.svg'
-import {Card} from '@/components/Card'
-import DeleteBreakCard from '@/components/business/DeleteBreakCard/index.h5'
-import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
-import ResumeUploadIcon from '@/components/business/ResumeUploadIcon/index.h5'
-import GenerationStageH5 from '@/components/business/GenerationStageH5'
 import {useVisualTier} from '@/utils'
 import {runViewTransition} from '@/shared/motion'
-import JobDescriptionFormH5 from './components/JobDescriptionFormH5'
 import CreatePrimaryActionH5 from './components/CreatePrimaryActionH5'
 import {buildPendingGenerationState} from './utils/generationState'
 import LandingFlowHeader from './components/LandingFlowHeader.h5'
+import {
+  GenerationStageRoute,
+  DeleteBreakCardRoute,
+  JobDescriptionStepRoute,
+  ResumeSummaryStepRoute,
+  ResumeUploadStepRoute,
+  preloadDeleteBreakCard,
+  preloadGenerationStage,
+} from './model/lazyCreateSteps'
 import type {CreatePageViewModel} from './usePageModel'
-import type {
-  CreateGenerationState,
-  CreateStepMeta,
-  JobDescriptionStepState,
-  ResumeUploadStepState,
-} from './types'
+import type {CreateGenerationState, CreateStepMeta} from './types'
 import './index.h5.scss'
 
 type DocumentWithViewTransition = Document & {
@@ -122,283 +119,6 @@ function StepHeader({meta}: {meta: CreateStepMeta}) {
     </View>
   )
 }
-
-function ResumeUploadStepH5({
-  state,
-  onPickFile,
-  onRemoveFile,
-  onMarkdownChange,
-}: {
-  state: ResumeUploadStepState
-  onPickFile: CreatePageViewModel['handlePickResumeFile']
-  onRemoveFile: CreatePageViewModel['handleRemoveResumeFile']
-  onMarkdownChange: CreatePageViewModel['handleResumeMarkdownChange']
-}) {
-  const [visualProgress, setVisualProgress] = useState(0)
-  const [isCompletingUpload, setIsCompletingUpload] = useState(false)
-  const wasUploadingRef = useRef(false)
-  const uploadCompleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const uploadFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null)
-  const fileKey = state.file ? `${state.file.name}-${state.file.size}` : ''
-  const isVisualUploading = state.status === 'uploading' || isCompletingUpload
-  const isSuccess = state.status === 'success' && Boolean(state.file) && !isVisualUploading
-  const hasError = state.status === 'error'
-  const progress = Math.max(0, Math.min(100, visualProgress))
-  const uploadProgressStyle = isVisualUploading
-    ? ({'--upload-progress': progress / 100} as any)
-    : undefined
-  const handleRemoveClick = (event: {stopPropagation?: () => void}) => {
-    event.stopPropagation?.()
-    onRemoveFile()
-  }
-
-  useEffect(() => {
-    return () => {
-      if (uploadCompleteTimerRef.current) {
-        clearTimeout(uploadCompleteTimerRef.current)
-      }
-      if (uploadFrameRef.current) {
-        cancelAnimationFrame(uploadFrameRef.current)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    if (uploadCompleteTimerRef.current) {
-      clearTimeout(uploadCompleteTimerRef.current)
-      uploadCompleteTimerRef.current = null
-    }
-
-    if (state.status === 'uploading') {
-      const nextProgress = Math.max(6, Math.min(88, state.progress))
-
-      if (!wasUploadingRef.current) {
-        wasUploadingRef.current = true
-        setIsCompletingUpload(false)
-        setVisualProgress(0)
-        if (uploadFrameRef.current) {
-          cancelAnimationFrame(uploadFrameRef.current)
-        }
-        uploadFrameRef.current = requestAnimationFrame(() => {
-          setVisualProgress(nextProgress)
-          uploadFrameRef.current = null
-        })
-        return
-      }
-
-      setIsCompletingUpload(false)
-      setVisualProgress(previous => Math.max(previous, nextProgress))
-      return
-    }
-
-    if (state.status === 'success' && wasUploadingRef.current) {
-      setIsCompletingUpload(true)
-      setVisualProgress(100)
-      uploadCompleteTimerRef.current = setTimeout(() => {
-        wasUploadingRef.current = false
-        setIsCompletingUpload(false)
-      }, 560)
-      return
-    }
-
-    wasUploadingRef.current = false
-    setIsCompletingUpload(false)
-    setVisualProgress(0)
-  }, [fileKey, state.progress, state.status])
-
-  return (
-    <View className='reffo-create-step'>
-      <View className='reffo-create-section'>
-        <Text className='reffo-create-section__title'>上传源简历</Text>
-        <View
-          className={classNames('reffo-create-upload', {
-            'reffo-create-upload--uploading': isVisualUploading,
-            'reffo-create-upload--filled': isSuccess,
-            'reffo-create-upload--error': hasError,
-          })}
-          style={uploadProgressStyle}
-          onClick={isSuccess || isVisualUploading ? undefined : onPickFile}
-          role='button'
-          data-testid={
-            hasError
-              ? 'resume-upload-error'
-              : isSuccess
-                ? 'resume-upload-success'
-                : isVisualUploading
-                  ? 'resume-upload-progress'
-                  : 'resume-upload-trigger'
-          }
-        >
-          <ResumeUploadIcon status={state.status} extension={state.file?.extension} />
-          <View className='reffo-create-upload__body'>
-            <Text className='reffo-create-upload__label'>
-              {hasError ? state.errorMessage || '上传失败' : state.file ? state.file.name : '上传文件'}
-            </Text>
-            {state.file?.sizeLabel ? (
-              <Text className='reffo-create-upload__meta'>{state.file?.sizeLabel || state.file?.extension}</Text>
-            ) : null}
-          </View>
-          {isSuccess || hasError ? (
-            <View
-              className='reffo-create-upload__remove'
-              onClick={handleRemoveClick}
-              role='button'
-              data-testid='resume-upload-remove'
-            >
-              <View className='reffo-create-upload__remove-icon' />
-            </View>
-          ) : null}
-        </View>
-      </View>
-
-      <View className='reffo-create-divider'>
-        <View className='reffo-create-divider__line' />
-        <Text className='reffo-create-divider__text'>OR</Text>
-        <View className='reffo-create-divider__line' />
-      </View>
-
-      <View className='reffo-create-section'>
-        <View className='reffo-create-section__title-row'>
-          <Text className='reffo-create-section__title'>输入文字描述</Text>
-          <Text className='reffo-create-section__optional'>（可选）</Text>
-        </View>
-        <Textarea
-          value={state.markdown}
-          placeholder='描述你的简历内容'
-          maxlength={20000}
-          onInput={event => onMarkdownChange(event.detail?.value ?? event.target?.value ?? '')}
-          className='reffo-create-textarea reffo-create-textarea--resume'
-          data-testid='resume-markdown-input'
-        />
-      </View>
-
-      <Text className='reffo-create-tip'>您提供的信息越详细，Reffo 就越能为您生成一份与目标职位高度契合的简历</Text>
-    </View>
-  )
-}
-
-function ResumeSummaryStepH5({
-  state,
-  onEdit,
-  onDelete,
-}: {
-  state: NonNullable<CreatePageViewModel['resumeSummaryState']>
-  onEdit: () => void
-  onDelete: () => Promise<void>
-}) {
-  const fileExtension = state.fileName.includes('.')
-    ? state.fileName.slice(state.fileName.lastIndexOf('.')).toLowerCase()
-    : '.md'
-
-  return (
-    <View className='reffo-create-step'>
-      <View className='reffo-create-section'>
-        <Text className='reffo-create-section__title'>源简历文件</Text>
-        <View
-          className='reffo-create-summary'
-          onClick={onEdit}
-          role='button'
-          data-testid='resume-summary-card'
-        >
-          <View className='reffo-create-summary__icon'>
-            <ResumeUploadIcon status='success' extension={fileExtension} />
-          </View>
-          <View className='reffo-create-summary__body'>
-            <Text className='reffo-create-summary__name'>{state.fileName}</Text>
-            <Text className='reffo-create-summary__meta'>{state.sizeLabel || state.sourceTypeLabel}</Text>
-          </View>
-          <View
-            className='reffo-create-summary__delete'
-            onClick={event => {
-              event.stopPropagation()
-              void onDelete()
-            }}
-            role='button'
-            data-testid='resume-summary-delete'
-          >
-            <Image className='reffo-create-summary__delete-icon' src={CANCEL_ICON} mode='aspectFit' />
-          </View>
-        </View>
-        <Text className='reffo-create-section__hint reffo-create-section__hint--right'>上传时间 {state.updatedAtLabel}</Text>
-      </View>
-    </View>
-  )
-}
-
-function JobUploadPanel({
-  state,
-  onPickAttachment,
-  onContentChange,
-  readOnly = false,
-}: {
-  state: JobDescriptionStepState
-  onPickAttachment: CreatePageViewModel['handlePickJobAttachment']
-  onContentChange: CreatePageViewModel['handleJobDescriptionChange']
-  readOnly?: boolean
-}) {
-  const isUploading = state.attachmentStatus === 'uploading'
-  const hasError = state.attachmentStatus === 'error'
-  const hasAttachment = state.attachmentStatus === 'success' && Boolean(state.attachment)
-  const uploadProgress = Math.max(0, Math.min(100, state.attachmentProgress))
-  const uploadTestId = hasError
-    ? 'job-upload-error'
-    : isUploading
-      ? 'job-upload-loading'
-      : hasAttachment
-        ? 'job-upload-preview'
-        : 'job-upload-trigger'
-
-  return (
-    <View className='reffo-create-job__content reffo-create-job__content--combined'>
-      {!readOnly ? (
-        <View
-          className={classNames('reffo-create-job__upload-strip', {
-            'reffo-create-job__upload-strip--filled': hasAttachment,
-            'reffo-create-job__upload-strip--error': hasError,
-            'reffo-create-job__upload-strip--uploading': isUploading,
-          })}
-          style={{'--job-upload-progress': uploadProgress / 100} as any}
-          onClick={isUploading ? undefined : onPickAttachment}
-          role='button'
-          data-testid={uploadTestId}
-        >
-          <Text
-            className={classNames('reffo-create-job__upload-strip-text', {
-              'reffo-create-job__upload-strip-text--success': hasAttachment,
-              'reffo-create-job__upload-strip-text--error': hasError,
-              'reffo-create-job__upload-strip-text--uploading': isUploading,
-            })}
-          >
-            {hasError
-              ? `! ${state.attachmentErrorMessage || '上传失败，请重试'}`
-              : isUploading
-                ? `正在解析图片 ${Math.round(uploadProgress)}%`
-              : hasAttachment
-                ? '✅ 已成功上传并解析岗位描述'
-                : '+ 上传岗位描述截图'}
-          </Text>
-        </View>
-      ) : null}
-      <Textarea
-        value={state.content}
-        placeholder='或输入岗位描述'
-        maxlength={20000}
-        disabled={isUploading || readOnly}
-        onInput={event => {
-          if (!isUploading && !readOnly) {
-            onContentChange(event.detail.value)
-          }
-        }}
-        className={classNames('reffo-create-textarea reffo-create-textarea--job', {
-          'reffo-create-textarea--disabled': isUploading,
-          'reffo-create-textarea--readonly': readOnly,
-        })}
-        data-testid='job-description-input'
-      />
-    </View>
-  )
-}
-const JobDescriptionStepH5 = JobDescriptionFormH5
 
 function DeleteResumeOverlay({
   card,
@@ -610,7 +330,7 @@ function DeleteResumeOverlay({
         <View className='reffo-create-delete__close' onClick={onClose} role='button' aria-label='关闭编辑简历'>
           <Text>×</Text>
         </View>
-        <DeleteBreakCard
+        <DeleteBreakCardRoute
           card={card}
           phase={phase === 'preview' ? 'idle' : phase}
           visualTier={visualTier}
@@ -761,6 +481,7 @@ export default function PageView({
 
       setIsLaunchingGeneration(true)
       setIsGenerationCompleted(false)
+      await preloadGenerationStage()
 
       const finishGeneration = (didNavigateToResult: boolean) => {
         if (didNavigateToResult) {
@@ -798,11 +519,12 @@ export default function PageView({
     await handlePrimaryAction()
   }
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = async () => {
     if (!isHistoryEditMode || isSavingCurrentStep || isDeletePreviewActive || !editingHistoryCard) {
       return
     }
 
+    await preloadDeleteBreakCard()
     runDeleteCardViewTransition('enter', () => {
       setDeletePreviewCard(editingHistoryCard)
       setDeletePreviewPhase('preview')
@@ -900,7 +622,7 @@ export default function PageView({
         <StepHeader meta={currentStepMeta} />
         <View className='reffo-create__body'>
           {currentStep === 'resumeUpload' ? (
-            <ResumeUploadStepH5
+            <ResumeUploadStepRoute
               state={resumeUploadState}
               onPickFile={handlePickResumeFile}
               onRemoveFile={handleRemoveResumeFile}
@@ -908,14 +630,14 @@ export default function PageView({
             />
           ) : null}
           {currentStep === 'resumeSummary' && resumeSummaryState ? (
-            <ResumeSummaryStepH5
+            <ResumeSummaryStepRoute
               state={resumeSummaryState}
               onEdit={handleEditSourceResume}
               onDelete={handleDeleteSourceResume}
             />
           ) : null}
           {currentStep === 'resumeSummary' && !resumeSummaryState ? (
-            <ResumeUploadStepH5
+            <ResumeUploadStepRoute
               state={resumeUploadState}
               onPickFile={handlePickResumeFile}
               onRemoveFile={handleRemoveResumeFile}
@@ -923,7 +645,7 @@ export default function PageView({
             />
           ) : null}
           {currentStep === 'jobDescription' && !visibleGenerationState ? (
-            <JobDescriptionStepH5
+            <JobDescriptionStepRoute
               state={jobDescriptionState}
               onCompanyNameChange={handleJobCompanyNameChange}
               onPositionNameChange={handleJobPositionNameChange}
@@ -962,7 +684,7 @@ export default function PageView({
         </View>
       </View>
       {visibleGenerationState ? (
-        <GenerationStageH5
+        <GenerationStageRoute
           state={visibleGenerationState}
           onCancelGeneration={handleGenerationCancelClick}
           header={isLandingFlow ? (

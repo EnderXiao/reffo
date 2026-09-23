@@ -6,7 +6,7 @@ import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import type {CSSProperties} from 'react'
 import {useDidShow} from '@tarojs/taro'
 import {useVisualTier} from '@/utils'
-import {routePaths, useRouteTransition} from '@/shared/routing'
+import {preloadCreateRoute, routePaths, useRouteTransition} from '@/shared/routing'
 import {
   clearSharedElementSnapshot,
   readSharedElementSnapshot,
@@ -512,6 +512,7 @@ export default function PageView({
               'reffo-home__source-button--active': hasSourceResume,
             })}
             onClick={() => runNavigation('source', handleViewHistory)}
+            onTouchStart={() => void preloadCreateRoute()}
             aria-busy={pendingNavigation === 'source'}
           >
             {!hasSourceResume ? <Text className='reffo-home__source-plus'>+</Text> : null}

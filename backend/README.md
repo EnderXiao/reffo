@@ -92,7 +92,7 @@ P01/P01R 支持独立 `DEEPSEEK_P01_THINKING_MODE=inherit|enabled|disabled`，�
 
 P01/P01R r17 保持 9 字段契约，区分上下文不足与真实冲突，保留自述、指标碎片和限定；不把材料抽取当成外部真实性审查。`qualityAssessment` 仍为兼容保留的本片评价，不是整份招聘评分。`extraction.validation.observed` 新增可选 `retention` 数值观察：原始事实/未映射/遗漏、代码补记、最终排除/限定及业务分类数量；不会因为覆盖率好看就证明成品可用。旧缓存没有该观察时不补造数字，也不新增质量阻断或模型调用。
 
-非生产单案例验证可显式使用 `AI_MODEL=deepseek-v4-flash DEEPSEEK_THINKING_MODE=enabled DEEPSEEK_REASONING_EFFORT=low`。思考模式通过请求体显式指定，禁用无效 temperature；`completion_tokens` 已包含思考 Token，预算不能再次相加。只记录思考 Token 数，不保存或回传推理正文。模型、模式和强度进入运行及抽取缓存指纹，不提升旧缓存。调用方未传 `maxOutputTokens` 时，Provider 使用 `DEEPSEEK_THINKING_MAX_TOKENS`（默认 12000）为思考与最终输出预留共享预算；V5 阶段显式上限仍以阶段配置为准。截断仍失败即停，不自动修复/重跑。默认环境与生产模型不因此变更。
+非生产单案例验证可显式使用 `AI_MODEL=deepseek-v4-flash DEEPSEEK_THINKING_MODE=enabled DEEPSEEK_REASONING_EFFORT=low`。思考模式通过请求体显式指定，禁用无效 temperature；`completion_tokens` 已包含思考 Token，预算不能再次相加。只记录思考 Token 数，不保存或回传推理正文。模型、模式和强度进入运行及抽取缓存指纹，不提升旧缓存。调用方未传 `maxOutputTokens` 时，Provider 使用 `DEEPSEEK_THINKING_MAX_TOKENS`（默认 12000）为思考与最终输出预留共享预算；V5 阶段显式上限仍以阶段配置为准。结构化阶段只有在 `finish_reason=length` 且正文为空，或 reasoning token 占总输出至少 80% 时，才执行一次服务端 `thinking=disabled` 同 Schema 重试；重试仍截断则失败即停。普通正文截断仍最多续写两次；`finish_reason=stop` 但 JSON 无法解析时只做一次有界 JSON 重生成，不递归调用业务修复器。默认环境与生产模型不因此变更。
 
 主流程通过 `V5WorkflowPluginRegistry` 调度以下插件：
 

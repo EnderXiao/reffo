@@ -23,4 +23,18 @@ describe('Harness recovery advice', () => {
       action: 'inspect_harness_events',
     })
   })
+
+  test('maps exhausted V5 JSON transport repair to an inspectable recovery action', () => {
+    expect(recoveryAdviceForErrorCode('V5_JSON_PARSE_FAILED')).toMatchObject({
+      retryable: false,
+      action: 'repair_structured_json_output',
+    })
+  })
+
+  test('maps exhausted thinking-disabled truncation recovery to a bounded output action', () => {
+    expect(recoveryAdviceForErrorCode('V5_OUTPUT_TRUNCATED')).toMatchObject({
+      retryable: false,
+      action: 'retry_with_thinking_disabled_and_reduced_scope',
+    })
+  })
 })
