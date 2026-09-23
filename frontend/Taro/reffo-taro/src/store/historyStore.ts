@@ -45,8 +45,9 @@
 
 import {create} from 'zustand';
 import type {HistoryState, LoadOptions} from './types';
-import type {ResumeHistory} from '@/types';
+import type {ResumeHistory, ResumeHistorySummary} from '@/types';
 import {resumeHistoryApi} from '@/services/resumeHistory';
+import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary';
 import {isLocalRuntimeEnvironment} from '@/services/runtime-config';
 import {useAuthStore} from './authStore';
 import {getJSON, setJSON, storage} from '@/utils/storage';
@@ -60,6 +61,7 @@ const HISTORY_ID_PREFIX = 'JD';
 const HISTORY_ID_SEQUENCE_LENGTH = 5;
 const HISTORY_ID_MAX_SEQUENCE = 99999;
 let loadHistoriesPromise: Promise<void> | null = null;
+let loadHistorySummariesPromise: Promise<void> | null = null;
 let historyStoreEpoch = 0;
 
 function allowsLocalFallback() {
@@ -161,6 +163,45 @@ function mergeHistories(primaryHistories: ResumeHistory[], fallbackHistories: Re
   return sortHistories(Array.from(historyMap.values()));
 }
 
+function sortHistorySummaries(summaries: ResumeHistorySummary[]) {
+  return [...summaries].sort((left, right) => {
+    const leftTime = new Date(left.createdAt).getTime() || 0;
+    const rightTime = new Date(right.createdAt).getTime() || 0;
+    return rightTime - leftTime;
+  });
+}
+
+function mergeHistorySummaries(
+  primarySummaries: ResumeHistorySummary[],
+  fallbackSummaries: ResumeHistorySummary[],
+) {
+  const summaryMap = new Map<string, ResumeHistorySummary>();
+
+  fallbackSummaries.forEach(summary => {
+    summaryMap.set(summary.id, summary);
+  });
+  primarySummaries.forEach(summary => {
+    summaryMap.set(summary.id, summary);
+  });
+
+  return sortHistorySummaries(Array.from(summaryMap.values()));
+}
+
+function summariesFromHistories(histories: ResumeHistory[]) {
+  return sortHistorySummaries(histories.map(toResumeHistorySummaryFromHistory));
+}
+
+async function readCachedHistories(storageKey: string, includePending: boolean) {
+  const [storedHistories, pendingLandingHistories] = await Promise.all([
+    getJSON<ResumeHistory[]>(storageKey),
+    includePending
+      ? getJSON<ResumeHistory[]>(PENDING_LANDING_HISTORIES_KEY)
+      : Promise.resolve(null),
+  ]);
+
+  return mergeHistories(storedHistories || [], pendingLandingHistories || []);
+}
+
 async function syncMissingLocalHistories(
   remoteHistories: ResumeHistory[],
   cachedHistories: ResumeHistory[],
@@ -191,12 +232,14 @@ async function syncMissingLocalHistories(
  */
 const initialState = {
   histories: [],
+  historySummaries: [],
   currentHistory: null,
   loading: {
     isLoading: false,
     error: null,
   },
   initialized: false,
+  summaryInitialized: false,
 };
 
 /**
@@ -211,6 +254,104 @@ const initialState = {
  */
 export const useHistoryStore = create<HistoryState>((set, get) => ({
   ...initialState,
+
+  loadHistorySummaries: async (options: LoadOptions = {}) => {
+    if (options.skipIfLoaded && get().summaryInitialized && !options.force) {
+      return;
+    }
+
+    if (loadHistorySummariesPromise && !options.force) {
+      return loadHistorySummariesPromise;
+    }
+
+    loadHistorySummariesPromise = (async () => {
+      const operationEpoch = historyStoreEpoch;
+      const storageKey = getHistoryStorageKey();
+      const isGuest = !hasAuthenticatedSession();
+      const allowLocalFallback = isGuest || await allowsLocalFallback();
+      let cachedSummaries: ResumeHistorySummary[] = [];
+
+      set(state => ({
+        loading: {
+          ...state.loading,
+          isLoading: true,
+          error: null,
+        },
+      }));
+
+      if (allowLocalFallback) {
+        try {
+          const cachedHistories = await readCachedHistories(storageKey, isGuest);
+          if (operationEpoch !== historyStoreEpoch) {
+            return;
+          }
+
+          cachedSummaries = summariesFromHistories(cachedHistories);
+          if (cachedSummaries.length > 0) {
+            set({historySummaries: cachedSummaries});
+          }
+        } catch (error) {
+          console.warn('[HistoryStore] Failed to read cached history summaries:', error);
+        }
+      }
+
+      if (isGuest) {
+        if (operationEpoch !== historyStoreEpoch) {
+          return;
+        }
+
+        set({
+          historySummaries: cachedSummaries,
+          loading: {
+            isLoading: false,
+            error: null,
+          },
+          summaryInitialized: true,
+        });
+        return;
+      }
+
+      try {
+        const remoteSummaries = await resumeHistoryApi.getHistorySummaries();
+        if (operationEpoch !== historyStoreEpoch) {
+          return;
+        }
+
+        set({
+          historySummaries: allowLocalFallback
+            ? mergeHistorySummaries(remoteSummaries, cachedSummaries)
+            : sortHistorySummaries(remoteSummaries),
+          loading: {
+            isLoading: false,
+            error: null,
+          },
+          summaryInitialized: true,
+        });
+      } catch (error) {
+        if (operationEpoch !== historyStoreEpoch) {
+          return;
+        }
+
+        const errorMessage = error instanceof Error ? error.message : '加载历史摘要失败';
+        set(state => ({
+          historySummaries: allowLocalFallback && cachedSummaries.length > 0
+            ? cachedSummaries
+            : state.historySummaries,
+          loading: {
+            ...state.loading,
+            isLoading: false,
+            error: allowLocalFallback && cachedSummaries.length > 0 ? null : errorMessage,
+          },
+          summaryInitialized: true,
+        }));
+        console.error('[HistoryStore] Failed to load history summaries:', error);
+      }
+    })().finally(() => {
+      loadHistorySummariesPromise = null;
+    });
+
+    return loadHistorySummariesPromise;
+  },
 
   /**
    * 从接口加载历史记录
@@ -256,16 +397,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
       if (allowLocalFallback) {
         try {
-          const [storedHistories, pendingLandingHistories] = await Promise.all([
-            getJSON<ResumeHistory[]>(storageKey),
-            isGuest
-              ? getJSON<ResumeHistory[]>(PENDING_LANDING_HISTORIES_KEY)
-              : Promise.resolve(null),
-          ]);
-          cachedHistories = mergeHistories(
-            storedHistories || [],
-            pendingLandingHistories || [],
-          );
+          cachedHistories = await readCachedHistories(storageKey, isGuest);
 
           if (operationEpoch !== historyStoreEpoch) {
             return;
@@ -288,11 +420,13 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
         set({
           histories: sortHistories(cachedHistories),
+          historySummaries: summariesFromHistories(cachedHistories),
           loading: {
             isLoading: false,
             error: null,
           },
           initialized: true,
+          summaryInitialized: true,
         });
         return;
       }
@@ -315,11 +449,13 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
         set({
           histories,
+          historySummaries: summariesFromHistories(histories),
           loading: {
             isLoading: false,
             error: null,
           },
           initialized: true,
+          summaryInitialized: true,
         });
       } catch (error) {
         if (operationEpoch !== historyStoreEpoch) {
@@ -332,12 +468,16 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           histories: allowLocalFallback && cachedHistories.length > 0
             ? sortHistories(cachedHistories)
             : [],
+          historySummaries: allowLocalFallback && cachedHistories.length > 0
+            ? summariesFromHistories(cachedHistories)
+            : state.historySummaries,
           loading: {
             ...state.loading,
             isLoading: false,
             error: allowLocalFallback && cachedHistories.length > 0 ? null : errorMessage,
           },
           initialized: true,
+          summaryInitialized: true,
         }));
 
         console.error('[HistoryStore] Failed to load histories:', error);
@@ -347,6 +487,55 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     });
 
     return loadHistoriesPromise;
+  },
+
+  loadHistory: async (id: string) => {
+    const existing = get().histories.find(history => history.id === id);
+    if (existing) {
+      set({currentHistory: existing});
+      return existing;
+    }
+
+    const operationEpoch = historyStoreEpoch;
+    const storageKey = getHistoryStorageKey();
+    const isGuest = !hasAuthenticatedSession();
+    const allowLocalFallback = isGuest || await allowsLocalFallback();
+    let history: ResumeHistory | null = null;
+
+    if (allowLocalFallback) {
+      const cachedHistories = await readCachedHistories(storageKey, isGuest);
+      history = cachedHistories.find(item => item.id === id) || null;
+    }
+
+    if (!history && !isGuest) {
+      try {
+        history = await resumeHistoryApi.getHistory(id);
+      } catch (error) {
+        const isMissing = error instanceof Error && /not found|不存在/i.test(error.message);
+        if (!isMissing) {
+          throw error;
+        }
+      }
+    }
+
+    if (!history || operationEpoch !== historyStoreEpoch) {
+      return history;
+    }
+
+    const histories = sortHistories([
+      history,
+      ...get().histories.filter(item => item.id !== history.id),
+    ]);
+    set({
+      histories,
+      historySummaries: mergeHistorySummaries(
+        [toResumeHistorySummaryFromHistory(history)],
+        get().historySummaries,
+      ),
+      currentHistory: history,
+      summaryInitialized: true,
+    });
+    return history;
   },
 
   /**
@@ -425,11 +614,16 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
       set({
         histories: updatedHistories,
+        historySummaries: mergeHistorySummaries(
+          [toResumeHistorySummaryFromHistory(savedHistory)],
+          get().historySummaries,
+        ),
         loading: {
           isLoading: false,
           error: null,
         },
         initialized: true,
+        summaryInitialized: true,
       });
 
       return savedHistory.id;
@@ -519,11 +713,16 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
       set({
         histories: updatedHistories,
+        historySummaries: mergeHistorySummaries(
+          [toResumeHistorySummaryFromHistory(updatedHistory)],
+          get().historySummaries,
+        ),
         loading: {
           isLoading: false,
           error: null,
         },
         initialized: true,
+        summaryInitialized: true,
       });
     } catch (error) {
       const errorMessage =
@@ -598,12 +797,14 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
       set({
         histories: updatedHistories,
+        historySummaries: get().historySummaries.filter(summary => summary.id !== id),
         currentHistory: updatedCurrentHistory,
         loading: {
           isLoading: false,
           error: null,
         },
         initialized: true,
+        summaryInitialized: true,
       });
     } catch (error) {
       const errorMessage =
@@ -671,12 +872,14 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
       set({
         histories: [],
+        historySummaries: [],
         currentHistory: null,
         loading: {
           isLoading: false,
           error: null,
         },
         initialized: true,
+        summaryInitialized: true,
       });
     } catch (error) {
       const errorMessage =
@@ -728,6 +931,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   reset: () => {
     historyStoreEpoch += 1;
     loadHistoriesPromise = null;
+    loadHistorySummariesPromise = null;
     set(initialState);
   },
 }));

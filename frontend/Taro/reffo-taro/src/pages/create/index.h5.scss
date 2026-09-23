@@ -180,6 +180,47 @@ taro-page-core,
   flex-direction: column;
 }
 
+.reffo-create-step-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 220px;
+  padding-top: 4px;
+}
+
+.reffo-create-step-loading__title,
+.reffo-create-step-loading__block {
+  width: 100%;
+  border-radius: 6px;
+  background: #edf1f6;
+  animation: reffo-create-step-loading-pulse 1.2s ease-in-out infinite;
+}
+
+.reffo-create-step-loading__title {
+  width: 38%;
+  height: 20px;
+}
+
+.reffo-create-step-loading__block {
+  height: 86px;
+}
+
+.reffo-create-step-loading__block--short {
+  width: 72%;
+  height: 54px;
+}
+
+@keyframes reffo-create-step-loading-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+}
+
 .reffo-create-section {
   margin-bottom: 0;
 }
@@ -1892,7 +1933,7 @@ html.reffo-delete-vt-return .reffo-create-delete__card-stage {
 }
 
 ::view-transition-new(root) {
-  animation: reffo-view-root-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: reffo-view-root-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 html.reffo-delete-vt-enter::view-transition-old(root),

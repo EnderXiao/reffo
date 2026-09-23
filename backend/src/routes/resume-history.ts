@@ -1,7 +1,7 @@
 import { Elysia, t } from 'elysia'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { resumeHistoryRepository } from '@/repositories/resume-history-repository'
-import type { ApiResponse, ResumeHistoryRecord } from '@/types'
+import type { ApiResponse, ResumeHistoryRecord, ResumeHistorySummaryRecord } from '@/types'
 
 const resultStepStatusSchema = t.Union([
   t.Literal('pending'),
@@ -78,6 +78,56 @@ function toAuthErrorResponse(error: RequestAuthError, set: { status?: unknown })
   } satisfies ApiResponse<never>
 }
 
+function firstSuggestions(values?: string[]) {
+  return (values ?? []).map(value => value.trim()).filter(Boolean).slice(0, 2)
+}
+
+function extractLocation(record: ResumeHistoryRecord) {
+  const location = record.result_context?.location?.trim()
+  if (location) return location
+
+  const match = record.jd_content.match(
+    /(?:工作地点|工作地|办公地点|办公地|地点|城市|Base地|base地|Base|base)[：:]\s*(.+?)(?:\n|\r|$)/i,
+  )
+  return match?.[1]?.trim() || '--'
+}
+
+function extractSuggestions(record: ResumeHistoryRecord) {
+  const processResult = record.process_result as {
+    matching?: {optimization_suggestions?: string[]}
+    optimized?: {changes_summary?: string[]}
+    analysis?: {suggestions?: string[]}
+  } | undefined
+
+  return firstSuggestions(
+    record.optimization_suggestions
+      || processResult?.matching?.optimization_suggestions
+      || record.changes_summary
+      || processResult?.optimized?.changes_summary
+      || processResult?.analysis?.suggestions,
+  )
+}
+
+function toSummary(record: ResumeHistoryRecord): ResumeHistorySummaryRecord {
+  const suggestions = extractSuggestions(record)
+
+  return {
+    id: record.id,
+    position: record.position,
+    company: record.company,
+    name: record.name,
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+    quality_score: record.quality_score,
+    match_score: record.match_score,
+    tags: record.tags,
+    location: extractLocation(record),
+    strategy_body: suggestions.join('\n\n') || '暂无后端优化策略，请进入详情页查看完整分析。',
+    ...(record.card_color ? {card_color: record.card_color} : {}),
+    ...(record.card_pattern ? {card_pattern: record.card_pattern} : {}),
+  }
+}
+
 export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history' })
   .get(
     '/',
@@ -111,6 +161,42 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
       detail: {
         summary: '获取生成卡片历史',
         description: '返回已生成的一岗一简历卡片历史，用于首页卡片列表展示。',
+        tags: ['ResumeHistory'],
+      },
+    }
+  )
+  .get(
+    '/summaries',
+    async ({ headers, set }) => {
+      try {
+        const userContext = await resolveRequestUser(headers)
+        const response: ApiResponse<ResumeHistorySummaryRecord[]> = {
+          success: true,
+          data: (await resumeHistoryRepository.list(userContext)).map(toSummary),
+        }
+
+        return response
+      } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
+        console.error('获取生成卡片摘要失败:', error)
+        set.status = 500
+
+        return {
+          success: false,
+          error: {
+            code: 'RESUME_HISTORY_SUMMARY_LIST_FAILED',
+            message: '获取生成卡片摘要失败，请稍后重试',
+          },
+        } satisfies ApiResponse<never>
+      }
+    },
+    {
+      detail: {
+        summary: '获取生成卡片摘要',
+        description: '只返回首页卡片展示所需的元数据和策略摘要。',
         tags: ['ResumeHistory'],
       },
     }

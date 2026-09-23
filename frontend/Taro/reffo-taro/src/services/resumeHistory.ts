@@ -1,5 +1,5 @@
 import {apiClient} from './api';
-import type {ResumeHistory} from '@/types';
+import type {ResumeHistory, ResumeHistorySummary} from '@/types';
 
 interface ResumeHistoryApiRecord {
   id: string;
@@ -19,6 +19,22 @@ interface ResumeHistoryApiRecord {
   process_result?: unknown;
   result_context?: unknown;
   progress?: unknown;
+  card_color?: string;
+  card_pattern?: string;
+}
+
+interface ResumeHistorySummaryApiRecord {
+  id: string;
+  position: string;
+  company: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  quality_score: number;
+  match_score: number;
+  tags: string[];
+  location: string;
+  strategy_body: string;
   card_color?: string;
   card_pattern?: string;
 }
@@ -83,6 +99,7 @@ function toResumeHistory(record: ResumeHistoryApiRecord): ResumeHistory {
     company: record.company,
     name: record.name,
     createdAt: record.created_at,
+    updatedAt: record.updated_at,
     qualityScore: record.quality_score,
     matchScore: record.match_score,
     tags: record.tags,
@@ -99,10 +116,33 @@ function toResumeHistory(record: ResumeHistoryApiRecord): ResumeHistory {
   };
 }
 
+function toResumeHistorySummary(record: ResumeHistorySummaryApiRecord): ResumeHistorySummary {
+  return {
+    id: record.id,
+    position: record.position,
+    company: record.company,
+    name: record.name,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+    qualityScore: record.quality_score,
+    matchScore: record.match_score,
+    tags: record.tags,
+    location: record.location,
+    strategyBody: record.strategy_body,
+    ...(record.card_color ? {cardColor: record.card_color} : {}),
+    ...(record.card_pattern ? {cardPattern: record.card_pattern} : {}),
+  };
+}
+
 export class ResumeHistoryApi {
   async getHistories(): Promise<ResumeHistory[]> {
     const response = await apiClient.get<ResumeHistoryApiRecord[]>('/resume-history');
     return response.map(toResumeHistory);
+  }
+
+  async getHistorySummaries(): Promise<ResumeHistorySummary[]> {
+    const response = await apiClient.get<ResumeHistorySummaryApiRecord[]>('/resume-history/summaries');
+    return response.map(toResumeHistorySummary);
   }
 
   async getHistory(id: string): Promise<ResumeHistory> {

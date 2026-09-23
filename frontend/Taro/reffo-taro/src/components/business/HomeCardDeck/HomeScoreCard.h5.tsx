@@ -10,6 +10,7 @@ import ResumeUploadIcon, {
   type ResumeUploadIconStatus,
 } from '@/components/business/ResumeUploadIcon/index.h5'
 import {CardGlass, CardTexture} from './CardMaterial.h5'
+import {scheduleIdle} from '@/utils/schedule-idle'
 
 const PremiumCardEffect = lazy(() => import('./PremiumCardEffect.h5'))
 const CREATE_CARD_PALETTE = deriveCardPalette('#1C77EB')
@@ -167,6 +168,7 @@ export default function HomeScoreCard({
   onUploadRemove,
 }: HomeScoreCardProps) {
   const [isValueMarqueeReady, setIsValueMarqueeReady] = useState(false)
+  const [isPremiumReady, setIsPremiumReady] = useState(false)
   const card = variant === 'create' ? CREATE_CARD_ITEM : inputCard
 
   useEffect(() => {
@@ -184,6 +186,21 @@ export default function HomeScoreCard({
       window.clearTimeout(timer)
     }
   }, [active, depth, variant, card?.id])
+
+  useEffect(() => {
+    const shouldDeferPremium = visualTier === 'premium'
+      && active
+      && depth === 0
+      && variant !== 'generating'
+
+    if (!shouldDeferPremium) {
+      setIsPremiumReady(false)
+      return undefined
+    }
+
+    setIsPremiumReady(false)
+    return scheduleIdle(() => setIsPremiumReady(true), 1800)
+  }, [active, depth, variant, visualTier])
 
   if (!card) {
     return null
@@ -253,7 +270,7 @@ export default function HomeScoreCard({
         </View>
       ) : null}
       <View className='reffo-home-card__surface'>
-        {visualTier === 'premium' ? (
+        {visualTier === 'premium' && isPremiumReady ? (
           <Suspense fallback={null}>
             <PremiumCardEffect
               tone={isDark ? 'dark' : 'light'}

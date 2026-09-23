@@ -64,7 +64,7 @@ describe('navigation-transition', () => {
 
     const style = document.getElementById('reffo-navigation-transition-style')
     expect(style?.textContent).toContain('.taro_router .taro_page')
-    expect(style?.textContent).toContain('opacity 280ms cubic-bezier(0.16, 1, 0.3, 1)')
+    expect(style?.textContent).toContain('opacity 180ms cubic-bezier(0.16, 1, 0.3, 1)')
     expect(document.documentElement.className).toBe('')
   })
 

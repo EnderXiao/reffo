@@ -248,14 +248,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
 
   const loadFromHistory = async (id: string) => {
     try {
-      let {histories} = useHistoryStore.getState()
-      let history = histories.find(item => item.id === id)
-
-      if (!history) {
-        await useHistoryStore.getState().loadHistories()
-        histories = useHistoryStore.getState().histories
-        history = histories.find(item => item.id === id)
-      }
+      const history = await useHistoryStore.getState().loadHistory(id)
 
       if (history) {
         setReturnCard(toHistoryCardItem(history))

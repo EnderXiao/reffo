@@ -5,7 +5,9 @@
 import type {
   OptimizedResume,
   ResumeHistory,
+  ResumeHistorySummary,
   SourceResumeSummary,
+  SourceResumeSummaryMeta,
 } from '@/types';
 
 // ============ 加载状态 ============
@@ -41,6 +43,7 @@ export interface OptimizedState {
 export interface HistoryState {
   // 历史记录列表
   histories: ResumeHistory[];
+  historySummaries: ResumeHistorySummary[];
 
   // 当前选中的历史记录
   currentHistory: ResumeHistory | null;
@@ -50,9 +53,12 @@ export interface HistoryState {
 
   // 是否完成过一次加载尝试
   initialized: boolean;
+  summaryInitialized: boolean;
 
   // Actions
   loadHistories: (options?: LoadOptions) => Promise<void>;
+  loadHistorySummaries: (options?: LoadOptions) => Promise<void>;
+  loadHistory: (id: string) => Promise<ResumeHistory | null>;
   addHistory: (history: ResumeHistory) => Promise<string>;
   updateHistory: (id: string, history: Partial<ResumeHistory>) => Promise<void>;
   deleteHistory: (id: string) => Promise<void>;
@@ -63,9 +69,12 @@ export interface HistoryState {
 
 export interface SourceResumeState {
   latestSourceResume: SourceResumeSummary | null;
+  latestSourceResumeSummary: SourceResumeSummaryMeta | null;
   loading: LoadingState;
   initialized: boolean;
+  summaryInitialized: boolean;
   loadLatestSourceResume: (options?: LoadOptions) => Promise<void>;
+  loadLatestSourceSummary: (options?: LoadOptions) => Promise<void>;
   setLatestSourceResume: (resume: SourceResumeSummary | null) => Promise<void>;
   deleteLatestSourceResume: (id: string) => Promise<void>;
   clearLatestSourceResume: () => Promise<void>;

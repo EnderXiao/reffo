@@ -9,6 +9,7 @@ jest.mock('@/utils/navigation', () => ({
     navigateTo: jest.fn(),
     redirectTo: jest.fn(),
     navigateBack: jest.fn(),
+    canGoBack: jest.fn(),
     reLaunch: jest.fn(),
   },
 }))
@@ -19,6 +20,7 @@ describe('useRouteTransition', () => {
     jest.mocked(navigation.navigateTo).mockResolvedValue(undefined)
     jest.mocked(navigation.redirectTo).mockResolvedValue(undefined)
     jest.mocked(navigation.navigateBack).mockResolvedValue(undefined)
+    jest.mocked(navigation.canGoBack).mockReturnValue(true)
     jest.mocked(navigation.reLaunch).mockResolvedValue(undefined)
   })
 
@@ -46,5 +48,17 @@ describe('useRouteTransition', () => {
     await expect(act(async () => {
       await result.current.navigate(routePaths.result)
     })).rejects.toBe(error)
+  })
+
+  test('页面栈为空时返回首页', async () => {
+    jest.mocked(navigation.canGoBack).mockReturnValue(false)
+    const {result} = renderHook(() => useRouteTransition())
+
+    await act(async () => {
+      await result.current.back()
+    })
+
+    expect(navigation.navigateBack).not.toHaveBeenCalled()
+    expect(navigation.reLaunch).toHaveBeenCalledWith(routePaths.home)
   })
 })

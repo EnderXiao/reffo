@@ -1,6 +1,4 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
-import {resumeApi} from '@/services/resume'
-import {sourceResumeApi} from '@/services/sourceResume'
 import {
   useHistoryStore,
   useLandingFlowStore,
@@ -14,6 +12,7 @@ import type {
   ResumeAnalysis,
   ResumeHistory,
   SourceResumeSummary,
+  SourceResumeSummaryMeta,
 } from '@/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {feedback} from '@/utils/feedback'
@@ -26,9 +25,9 @@ import {
 import {toHistoryCardItem} from '../index/model/homeCardData'
 import {
   formatResumeFileSize,
+  getFileExtension,
   isResumeFileUploadCancelled,
-  pickAndParseResumeFile,
-} from '@/utils/resume-file-upload'
+} from '@/utils/file-upload'
 import {
   CREATE_STEP_META,
   CREATE_STEP_SEQUENCE,
@@ -44,18 +43,7 @@ import {
 import {
   buildSourceResumePayload,
 } from './utils/resumeMarkdown'
-import {
-  getFileExtension,
-  getJobDescriptionFileValidationMessage,
-  parseJobDescriptionAttachment,
-  pickJobDescriptionFile,
-} from './utils/jobDescriptionAttachment'
-import {
-  extractJobMetadataFromOcrText,
-  normalizeCompanyNameCandidate,
-  resolveBaseLocationCandidate,
-  resolvePositionNameCandidate,
-} from './utils/jobMetadata'
+import {useCreateFlowRoute} from './model/useCreateFlowRoute'
 
 export interface CreatePageViewModel {
   currentStep: CreateStepId
@@ -71,7 +59,7 @@ export interface CreatePageViewModel {
   primaryActionLabel: string
   handlePickResumeFile: () => Promise<void>
   handleRemoveResumeFile: () => void
-  handleEditSourceResume: () => void
+  handleEditSourceResume: () => Promise<void> | void
   handleDeleteSourceResume: () => Promise<void>
   handleResumeMarkdownChange: (content: string) => void
   handleJobDescriptionChange: (content: string) => void
@@ -234,22 +222,25 @@ function formatDateTime(value: string) {
 }
 
 function buildResumeSummaryState(
-  latestSourceResume: SourceResumeSummary | null,
+  latestSourceResume: SourceResumeSummary | SourceResumeSummaryMeta | null,
 ): ResumeSummaryStepState | null {
   if (!latestSourceResume) {
     return null
   }
+  const markdown = 'resumeMarkdown' in latestSourceResume
+    ? latestSourceResume.resumeMarkdown
+    : ''
 
   return {
     id: latestSourceResume.id,
     title: latestSourceResume.title,
     fileName:
       latestSourceResume.originalFileName || `${latestSourceResume.title}.md`,
-    sizeLabel: `${latestSourceResume.resumeMarkdown.length.toLocaleString()} 字符`,
+    sizeLabel: markdown ? `${markdown.length.toLocaleString()} 字符` : null,
     updatedAtLabel: formatDateTime(latestSourceResume.updatedAt),
     sourceTypeLabel:
       latestSourceResume.sourceType === 'file' ? '来自文件上传' : 'Markdown 输入',
-    markdown: latestSourceResume.resumeMarkdown,
+    markdown,
   }
 }
 
@@ -369,7 +360,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   )
   const landingJob = useLandingFlowStore(state => state.selectedJob)
   const landingResume = useLandingFlowStore(state => state.selectedResume)
-  const requestedStepRef = useRef(normalizeRouteStep(pageRoute.readString('step')))
+  const requestedStepRef = useRef(normalizeRouteStep(pageRoute.readString('step') ?? undefined))
   const editHistoryId = pageRoute.readString('historyId')
   const isHistoryEditMode = pageRoute.readString('mode') === 'editHistory' && Boolean(editHistoryId)
   const uploadRequestRef = useRef(0)
@@ -379,13 +370,19 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   const workspaceGenerationRunRef = useRef<number | null>(null)
   const autoGenerateStartedRef = useRef(false)
   const initialSourceResume = useSourceResumeStore.getState().latestSourceResume
-  const [currentStep, setCurrentStep] = useState<CreateStepId>(() =>
-    isHistoryEditMode
+  const initialSourceResumeSummary =
+    useSourceResumeStore.getState().latestSourceResumeSummary
+  const hasInitialSourceResume = Boolean(initialSourceResume || initialSourceResumeSummary)
+  const initialCreateStep: CreateStepId = isHistoryEditMode
       ? 'jobDescription'
       : initialLandingFlow.source === 'landing'
         ? 'jobDescription'
-      : resolveInitialStep(requestedStepRef.current, Boolean(initialSourceResume)),
-  )
+        : resolveInitialStep(requestedStepRef.current, hasInitialSourceResume)
+  const {
+    currentStep,
+    transitionToStep,
+    replaceStep,
+  } = useCreateFlowRoute(initialCreateStep)
   const [editingHistory, setEditingHistory] = useState<ResumeHistory | null>(null)
   const [hasLoadedEditingHistory, setHasLoadedEditingHistory] = useState(!isHistoryEditMode)
   const [hasResolvedLatestSourceResume, setHasResolvedLatestSourceResume] =
@@ -395,7 +392,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       isHistoryEditMode ||
       !requestedStepRef.current ||
       requestedStepRef.current === 'resumeUpload' ||
-      Boolean(initialSourceResume),
+      hasInitialSourceResume,
   )
   const [resumeUploadState, setResumeUploadState] = useState<ResumeUploadStepState>(
     createInitialResumeUploadState(),
@@ -418,10 +415,11 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     null,
   )
   const [isSavingCurrentStep, setIsSavingCurrentStep] = useState(false)
-  const {
-    latestSourceResume,
-    loadLatestSourceResume,
-  } = useSourceResumeStore()
+  const latestSourceResume = useSourceResumeStore(state => state.latestSourceResume)
+  const latestSourceResumeSummary =
+    useSourceResumeStore(state => state.latestSourceResumeSummary)
+  const loadLatestSourceResume =
+    useSourceResumeStore(state => state.loadLatestSourceResume)
 
   useEffect(() => {
     return () => {
@@ -481,7 +479,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
     }
 
-    void loadLatestSourceResume().finally(() => {
+    void loadLatestSourceResume({skipIfLoaded: true}).finally(() => {
       if (isMounted) {
         setHasResolvedLatestSourceResume(true)
       }
@@ -503,14 +501,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       setHasLoadedEditingHistory(false)
 
       try {
-        let {histories} = useHistoryStore.getState()
-        let history = histories.find(item => item.id === editHistoryId)
-
-        if (!history) {
-          await useHistoryStore.getState().loadHistories()
-          histories = useHistoryStore.getState().histories
-          history = histories.find(item => item.id === editHistoryId)
-        }
+        const history = await useHistoryStore.getState().loadHistory(editHistoryId)
 
         if (!isMounted) {
           return
@@ -522,15 +513,16 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
           return
         }
 
-        setEditingHistory(history)
-        setJobDescriptionState(buildJobDescriptionStateFromHistory(history))
-        setWorkspaceSourceResume(
-          history.resultContext?.resumeContent || history.resumeContent,
-        )
-        setWorkspaceJobDescription(
-          history.resultContext?.jdContent || history.jdContent,
-        )
-        setCurrentStep('jobDescription')
+        await replaceStep('jobDescription', () => {
+          setEditingHistory(history)
+          setJobDescriptionState(buildJobDescriptionStateFromHistory(history))
+          setWorkspaceSourceResume(
+            history.resultContext?.resumeContent || history.resumeContent,
+          )
+          setWorkspaceJobDescription(
+            history.resultContext?.jdContent || history.jdContent,
+          )
+        })
       } catch (error) {
         console.error('load editing history failed', error)
         feedback.error('加载简历信息失败')
@@ -546,7 +538,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     return () => {
       isMounted = false
     }
-  }, [editHistoryId, isHistoryEditMode])
+  }, [editHistoryId, isHistoryEditMode, replaceStep, setWorkspaceJobDescription, setWorkspaceSourceResume])
 
   useEffect(() => {
     const requestedStep = requestedStepRef.current
@@ -559,9 +551,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       return
     }
 
-    setCurrentStep(latestSourceResume ? requestedStep : 'resumeUpload')
+    void replaceStep(latestSourceResume ? requestedStep : 'resumeUpload')
     routeStepAppliedRef.current = true
-  }, [hasResolvedLatestSourceResume, latestSourceResume])
+  }, [hasResolvedLatestSourceResume, latestSourceResume, replaceStep])
 
   useEffect(() => {
     if (isLandingFlow || !latestSourceResume?.resumeMarkdown) {
@@ -590,9 +582,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       hasResolvedLatestSourceResume &&
       !latestSourceResume
     ) {
-      setCurrentStep('resumeUpload')
+      void replaceStep('resumeUpload')
     }
-  }, [currentStep, hasResolvedLatestSourceResume, isHistoryEditMode, isLandingFlow, latestSourceResume])
+  }, [currentStep, hasResolvedLatestSourceResume, isHistoryEditMode, isLandingFlow, latestSourceResume, replaceStep])
 
   const currentStepMeta = currentStep === 'jobDescription' && isLandingFlow
     ? LANDING_JOB_STEP_META
@@ -601,14 +593,8 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       : CREATE_STEP_META[currentStep]
   const primaryActionLabel = currentStepMeta.actionLabel
   const resumeSummaryState = useMemo(
-    () => buildResumeSummaryState(latestSourceResume),
-    [
-    latestSourceResume?.id,
-    latestSourceResume?.originalFileName,
-    latestSourceResume?.sourceType,
-    latestSourceResume?.title,
-    latestSourceResume?.updatedAt,
-    ],
+    () => buildResumeSummaryState(latestSourceResume || latestSourceResumeSummary),
+    [latestSourceResume, latestSourceResumeSummary],
   )
   const editingHistoryCard = useMemo(() => {
     if (!editingHistory) {
@@ -654,7 +640,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     }
 
     if (currentStep === 'resumeSummary') {
-      return !isSavingCurrentStep
+      return !isSavingCurrentStep && Boolean(latestSourceResume)
     }
 
     const hasManualDescription = jobDescriptionState.content.trim().length > 0
@@ -675,6 +661,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     jobDescriptionState.content,
     resumeUploadState.markdown,
     resumeUploadState.status,
+    latestSourceResume,
   ])
 
   const handleResumeMarkdownChange = (content: string) => {
@@ -751,37 +738,42 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     }))
   }
 
-  const handleEditSourceResume = () => {
-    const sourceResume = latestSourceResume
+  const handleEditSourceResume = async () => {
+    let sourceResume = latestSourceResume
+    if (!sourceResume && latestSourceResumeSummary) {
+      await loadLatestSourceResume()
+      sourceResume = useSourceResumeStore.getState().latestSourceResume
+    }
     if (!sourceResume) {
-      setCurrentStep('resumeUpload')
+      await transitionToStep('resumeUpload', 'back')
       return
     }
 
+    void transitionToStep('resumeUpload', 'back', () => {
       setWorkspaceSourceResume(sourceResume.resumeMarkdown)
-    setResumeUploadState(previous => ({
-      ...previous,
-      status: 'success',
-      progress: 100,
-      file: sourceResume.sourceType === 'file' && sourceResume.originalFileName
-        ? {
-            name: sourceResume.originalFileName,
-            path: '',
-            size: sourceResume.resumeMarkdown.length,
-            extension: getFileExtension(sourceResume.originalFileName),
-            extractedText: sourceResume.resumeMarkdown,
-          }
-        : null,
-      markdown: sourceResume.resumeMarkdown,
-      errorMessage: null,
-    }))
-    setCurrentStep('resumeUpload')
+      setResumeUploadState(previous => ({
+        ...previous,
+        status: 'success',
+        progress: 100,
+        file: sourceResume.sourceType === 'file' && sourceResume.originalFileName
+          ? {
+              name: sourceResume.originalFileName,
+              path: '',
+              size: sourceResume.resumeMarkdown.length,
+              extension: getFileExtension(sourceResume.originalFileName),
+              extractedText: sourceResume.resumeMarkdown,
+            }
+          : null,
+        markdown: sourceResume.resumeMarkdown,
+        errorMessage: null,
+      }))
+    })
   }
 
   const handleDeleteSourceResume = async () => {
-    const sourceResume = latestSourceResume
-    if (!sourceResume) {
-      setCurrentStep('resumeUpload')
+    const sourceResumeSummary = latestSourceResumeSummary
+    if (!sourceResumeSummary) {
+      await transitionToStep('resumeUpload', 'back')
       return
     }
 
@@ -801,19 +793,20 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       return
     }
 
-    setIsSavingCurrentStep(true)
-    setCurrentStep('resumeUpload')
-    setResumeUploadState(createInitialResumeUploadState())
+    await transitionToStep('resumeUpload', 'back', () => {
+      setIsSavingCurrentStep(true)
+      setResumeUploadState(createInitialResumeUploadState())
+    })
 
     try {
       await useSourceResumeStore
         .getState()
-        .deleteLatestSourceResume(sourceResume.id)
+        .deleteLatestSourceResume(sourceResumeSummary.id)
       setWorkspaceSourceResume('')
       feedback.success('请上传新的源简历', {duration: 1400})
     } catch (error) {
       console.error('delete source resume failed', error)
-      setCurrentStep('resumeSummary')
+      await transitionToStep('resumeSummary')
       feedback.error(error instanceof Error ? error.message : '删除源简历失败，请重试')
     } finally {
       setIsSavingCurrentStep(false)
@@ -825,6 +818,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     uploadRequestRef.current = requestId
 
     try {
+      const {pickAndParseResumeFile} = await import('@/utils/resume-file-upload')
       const parsedFile = await pickAndParseResumeFile({
         isActive: () => uploadRequestRef.current === requestId,
         onFileSelected: selectedFile => {
@@ -902,6 +896,11 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     }
 
     try {
+      const {
+        getJobDescriptionFileValidationMessage,
+        parseJobDescriptionAttachment,
+        pickJobDescriptionFile,
+      } = await import('./utils/jobDescriptionAttachment')
       const selectedFile = await pickJobDescriptionFile()
       if (!selectedFile) {
         return
@@ -990,11 +989,11 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   const handlePrimaryAction = async () => {
     if (currentStep === 'resumeSummary') {
       if (!latestSourceResume) {
-        setCurrentStep('resumeUpload')
+        await transitionToStep('resumeUpload', 'back')
         return true
       }
 
-      setCurrentStep('jobDescription')
+      await transitionToStep('jobDescription')
       return true
     }
 
@@ -1016,6 +1015,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       setIsSavingCurrentStep(true)
 
       try {
+        const {sourceResumeApi} = await import('@/services/sourceResume')
         const payload = buildSourceResumePayload(
           resumeUploadState.markdown,
           resumeUploadState.file,
@@ -1034,7 +1034,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
 
         feedback.success('源简历已保存', {duration: 1200})
 
-        setCurrentStep('resumeSummary')
+        await transitionToStep('resumeSummary')
         return true
       } catch (error) {
         console.error('save source resume failed', error)
@@ -1124,6 +1124,10 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       setWorkspaceJobDescription(jdText)
 
       const presetJdId = isLandingFlow ? landingJob?.id : undefined
+      const [{resumeApi}, jobMetadataUtils] = await Promise.all([
+        import('@/services/resume'),
+        import('./utils/jobMetadata'),
+      ])
       const analysis = isLandingFlow
         ? await resumeApi.analyzeResume(resumeMarkdown, {landing: true})
         : await resumeApi.analyzeResume(resumeMarkdown)
@@ -1146,21 +1150,21 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
 
       const parsedJdInfo = matching.jd_structure?.basic_info
-      const extractedJdMetadata = extractJobMetadataFromOcrText(jobDescriptionState.content)
+      const extractedJdMetadata = jobMetadataUtils.extractJobMetadataFromOcrText(jobDescriptionState.content)
       const resolvedCompanyName =
         jobDescriptionState.companyName.trim() ||
-        normalizeCompanyNameCandidate(parsedJdInfo?.company || '') ||
+        jobMetadataUtils.normalizeCompanyNameCandidate(parsedJdInfo?.company || '') ||
         extractedJdMetadata.companyName
       const resolvedPositionName =
         jobDescriptionState.positionName.trim() ||
-        resolvePositionNameCandidate(parsedJdInfo?.title || '', extractedJdMetadata.positionName)
+        jobMetadataUtils.resolvePositionNameCandidate(parsedJdInfo?.title || '', extractedJdMetadata.positionName)
       const resolvedBaseLocation =
         jobDescriptionState.baseLocation.trim() ||
-        resolveBaseLocationCandidate(
+        jobMetadataUtils.resolveBaseLocationCandidate(
           [extractedJdMetadata.baseLocation],
           [
             resolvedCompanyName,
-            normalizeCompanyNameCandidate(parsedJdInfo?.company || ''),
+            jobMetadataUtils.normalizeCompanyNameCandidate(parsedJdInfo?.company || ''),
             extractedJdMetadata.companyName,
             resolvedPositionName,
           ],

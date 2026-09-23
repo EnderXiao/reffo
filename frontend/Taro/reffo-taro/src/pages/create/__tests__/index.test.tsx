@@ -1215,6 +1215,10 @@ describe('CreatePage', () => {
   })
 
   test('点击关闭按钮会返回上一页', async () => {
+    jest.spyOn(Taro, 'getCurrentPages').mockReturnValue([
+      {route: 'pages/index/index'},
+      {route: 'pages/create/index'},
+    ] as ReturnType<typeof Taro.getCurrentPages>)
     await renderPage()
 
     fireEvent.click(screen.getByTestId('create-flow-close'))
