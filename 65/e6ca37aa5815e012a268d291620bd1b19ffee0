@@ -1,0 +1,19 @@
+backend/src/routes/resource-summary.test.ts
+  s_1342fe7313028e::t_68f0765196d8b3 1-4,11-12,16-18,25-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "65e6ca37aa5815e012a268d291620bd1b19ffee0",
+  "prompts": {},
+  "sessions": {
+    "s_1342fe7313028e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cc05-98bc-76d1-875e-ef4e600a6830",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
