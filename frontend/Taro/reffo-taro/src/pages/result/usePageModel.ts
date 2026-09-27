@@ -1,4 +1,4 @@
-import {strategyResultExcerpts} from '../../../../../../shared/resume-strategy'
+import {strategyResultExcerpts} from '@/shared/resume-strategy'
 import {useEffect, useRef, useState} from 'react'
 import Taro from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'

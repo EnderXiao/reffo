@@ -1,6 +1,6 @@
 import {expect, test} from 'bun:test'
 import {currentStrategyReview, normalizeStrategyReview, resumeTextFingerprint, strategyResultExcerpts,
-  type ResumeStrategyReview} from '../../../../shared/resume-strategy'
+  type ResumeStrategyReview} from '@/shared/resume-strategy'
 
 const markdown = '# 示例\n\n## 项目\n完成原型并通过内部评审，尚未上线。'
 const review: ResumeStrategyReview = {

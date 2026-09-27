@@ -1,6 +1,6 @@
 import {expect, test} from 'bun:test'
 import {buildResumeValueSummary, normalizeStrategyReview, resumeTextFingerprint, type ResumeStrategyReference,
-  type ResumeStrategyReview} from '../../../../shared/resume-strategy'
+  type ResumeStrategyReview} from '@/shared/resume-strategy'
 
 const first = '完成问答原型并通过内部评审，尚未上线。'
 const second = '协同运营完成三轮迭代；完成率由 60% 到 72%，为团队结果。'

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { currentStrategyReview, resumeTextFingerprint } from '../../../../shared/resume-strategy'
+import { currentStrategyReview, resumeTextFingerprint } from '@/shared/resume-strategy'
 import { createV5ResultFixture } from './fixtures'
 import { createTargetingFixture } from './targeting-fixtures'
 import { buildWritingPlan } from '@/v5/writing/plan'

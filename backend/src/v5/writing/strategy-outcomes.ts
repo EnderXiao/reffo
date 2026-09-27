@@ -1,4 +1,4 @@
-import { resumeTextFingerprint, type ResumeStrategyReview } from '../../../../shared/resume-strategy'
+import { resumeTextFingerprint, type ResumeStrategyReview } from '@/shared/resume-strategy'
 import type { GeneratedResumeArtifact, ResumeEvidenceBundle, V5MatchAnalysis } from '@/v5/types'
 import { normalizeEntryFact, type EntryWritingPlan } from './entries'
 import { buildWritingIntents, type EntryStrategyAction } from './intents'

@@ -1,5 +1,5 @@
 import type {ResumeHistory, ResumeHistorySummary} from '@/types'
-import {buildResumeValueSummary} from '../../../../../shared/resume-strategy'
+import {buildResumeValueSummary} from '@/shared/resume-strategy'
 
 export function toResumeHistorySummaryFromHistory(
   history: ResumeHistory,
