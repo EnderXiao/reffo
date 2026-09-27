@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { resumeHistoryRepository } from '@/repositories/resume-history-repository'
 import type { ApiResponse, ResumeHistoryRecord, ResumeHistorySummaryRecord } from '@/types'
+import { buildResumeValueSummary } from '../../../shared/resume-strategy'
 
 const resultStepStatusSchema = t.Union([
   t.Literal('pending'),
@@ -78,10 +79,6 @@ function toAuthErrorResponse(error: RequestAuthError, set: { status?: unknown })
   } satisfies ApiResponse<never>
 }
 
-function firstSuggestions(values?: string[]) {
-  return (values ?? []).map(value => value.trim()).filter(Boolean).slice(0, 2)
-}
-
 function extractLocation(record: ResumeHistoryRecord) {
   const location = record.result_context?.location?.trim()
   if (location) return location
@@ -92,24 +89,18 @@ function extractLocation(record: ResumeHistoryRecord) {
   return match?.[1]?.trim() || '--'
 }
 
-function extractSuggestions(record: ResumeHistoryRecord) {
+export function toSummary(record: ResumeHistoryRecord): ResumeHistorySummaryRecord {
   const processResult = record.process_result as {
     matching?: {optimization_suggestions?: string[]}
-    optimized?: {changes_summary?: string[]}
+    optimized?: {strategy_review?: unknown}
     analysis?: {suggestions?: string[]}
   } | undefined
-
-  return firstSuggestions(
-    record.optimization_suggestions
-      || processResult?.matching?.optimization_suggestions
-      || record.changes_summary
-      || processResult?.optimized?.changes_summary
-      || processResult?.analysis?.suggestions,
-  )
-}
-
-function toSummary(record: ResumeHistoryRecord): ResumeHistorySummaryRecord {
-  const suggestions = extractSuggestions(record)
+  const summary = buildResumeValueSummary({
+    markdown: record.optimized_content,
+    review: processResult?.optimized?.strategy_review,
+    advice: [record.optimization_suggestions, processResult?.matching?.optimization_suggestions,
+      processResult?.analysis?.suggestions].flatMap(values => Array.isArray(values) ? values : []),
+  })
 
   return {
     id: record.id,
@@ -122,7 +113,8 @@ function toSummary(record: ResumeHistoryRecord): ResumeHistorySummaryRecord {
     match_score: record.match_score,
     tags: record.tags,
     location: extractLocation(record),
-    strategy_body: suggestions.join('\n\n') || '暂无后端优化策略，请进入详情页查看完整分析。',
+    strategy_title: summary.title,
+    strategy_body: summary.body,
     ...(record.card_color ? {card_color: record.card_color} : {}),
     ...(record.card_pattern ? {card_pattern: record.card_pattern} : {}),
   }

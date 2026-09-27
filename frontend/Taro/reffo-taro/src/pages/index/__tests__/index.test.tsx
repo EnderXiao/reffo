@@ -203,7 +203,7 @@ describe('首页组件', () => {
 
     expect(screen.getByText('前端工程师')).toBeTruthy()
     expect(screen.getByText('后端工程师')).toBeTruthy()
-    expect(screen.getByText('85')).toBeTruthy()
+    expect(screen.getByText('90')).toBeTruthy()
     expect(screen.getByText(/当前简历/)).toBeTruthy()
     expect(screen.queryByText('编辑')).toBeNull()
     expect(screen.queryByText('删除')).toBeNull()

@@ -1,6 +1,7 @@
 import {ResumeApi} from '../resume';
 import {apiClient} from '../api';
 import {RequestError} from '@/utils/request';
+import {resumeTextFingerprint} from '../../../../../../shared/resume-strategy';
 import type {ResumeAnalysis, MatchingResult, StructuredResume} from '@/types';
 
 // Mock apiClient
@@ -223,6 +224,7 @@ describe('ResumeApi', () => {
         weakness_details: [{
           id: 'G1',
           priority: 'high',
+          is_required: false,
           weakness: '跨团队协作证据不足',
           evidence_type: 'wording_gap',
           jd_requirement: '跨团队协作推进需求落地',
@@ -261,6 +263,7 @@ describe('ResumeApi', () => {
       expect(result.weakness_details?.[0]).toMatchObject({
         id: 'G1',
         priority: 'high',
+        is_required: false,
         jd_requirement: '跨团队协作推进需求落地',
         impact: '岗位关键协作能力不够醒目',
       });
@@ -307,13 +310,23 @@ describe('ResumeApi', () => {
         positioning_strategy: '突出用户调研到产品落地的链路',
         jd_structure: jdStructure,
       };
+      const markdown = '# 张三\n\n## 工作经历\n负责用户调研，形成需求清单';
+      const review = {
+        version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(markdown),
+        items: [{strategyId: 'S1', strategy: '前置用户调研证据', status: 'linked',
+          explanation: '相关材料对应到以下正文。', references: [{outputPath: 'experience.1',
+            location: '工作经历', quote: '负责用户调研，形成需求清单'}]}],
+      };
       mockPost.mockResolvedValue({
-        optimized_resume: '# 张三\n\n## 工作经历\n...',
+        optimized_resume: markdown,
         changes_summary: [],
+        strategy_review: review,
         improvement_score: 7,
       });
 
-      await resumeApi.generateOptimizedResume(analysis, matching);
+      const generated = await resumeApi.generateOptimizedResume(analysis, matching);
+      expect(generated.strategy_review).toEqual(review);
+      expect(generated.changes_summary).toEqual([]);
 
       expect(mockPost).toHaveBeenCalledWith(
         '/mvp/generate',
@@ -424,9 +437,7 @@ describe('ResumeApi', () => {
 
       // 验证优化结果
       expect(result.optimized.optimized_resume).toContain('高级软件工程师');
-      expect(result.optimized.changes_summary).toEqual(
-        mockProcessResponse.step2_matching.optimization_suggestions,
-      );
+      expect(result.optimized.changes_summary).toEqual([]);
       expect(result.optimized.improvement_score).toBe(5); // 80 - 75
     });
 

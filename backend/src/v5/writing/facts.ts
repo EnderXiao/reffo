@@ -49,6 +49,7 @@ const PLATFORM_NOT_PERSONAL = /(?:整个平台|平台整体)(?:的)?规模[^。�
 const BOUNDARIES = [
   { label: '未上线或概念阶段', source: /未(?:真实)?(?:开发)?上线|尚未(?:正式)?上线|未发布|概念(?:项目|方案)|not (?:yet )?(?:launched|released)/iu, output: /未(?:真实)?(?:开发)?上线|尚未(?:正式)?上线|未发布|概念|方案设计|规划|not (?:yet )?(?:launched|released)|concept|prototype/iu },
   { label: '未验证', source: /未.{0,8}(?:验证|验收)|未经.{0,6}验证|not (?:yet )?validated/iu, output: /未.{0,8}(?:验证|验收)|未经.{0,6}验证|not (?:yet )?validated/iu },
+  { label: '未评测或测试', source: /(?:尚未|未曾|未|没有)(?:开展|进行|做过|做)?[^，,。；;！？!?]{0,12}(?:评测|测试)|not (?:yet )?(?:evaluated|tested)/iu, output: /(?:尚未|未曾|未|没有)(?:开展|进行|做过|做)?[^，,。；;！？!?]{0,12}(?:评测|测试)|not (?:yet )?(?:evaluated|tested)/iu, strategyOnly: true },
   { label: '仅获批', source: /(?:晋升|升职|调任).{0,35}(?:获批|批准)/u, output: /获批|批准|approved/iu },
   { label: '团队或参与贡献', source: /团队(?:共同|整体|成果|实现|完成)|仅参与|协助|assisted|team (?:achieved|delivered)/iu, output: TEAM_CONTRIBUTION_PATTERN },
   { label: '尚无实际数据', source: /(?:没有|尚无|无)(?:真实用户|实际用户|商业收益|长期运行数据)/u, output: /(?:没有|尚无|无)(?:真实用户|实际用户|商业收益|长期运行数据)|未验证|概念|实验|本地压测/u },
@@ -94,6 +95,13 @@ export function buildWritingFact(atom: EvidenceAtom): WritingFact | null {
   }
 }
 
+/** A limitation can qualify same-scope practice, but never supplies practice by itself. */
+export function isWritingBoundaryContext(atom: EvidenceAtom): boolean {
+  const fact = buildWritingFact(atom)
+  return Boolean(fact && (fact.boundaries.some(boundary => boundary !== '团队或参与贡献')
+    || /(?:从未|未曾|并未|没有|未)(?:负责|参与|使用|主导)/u.test(fact.text)))
+}
+
 export function writingIssue(code: string, path: string, ids: string[], message: string, severity: ValidationIssue['severity'] = 'error'): ValidationIssue {
   return {
     issueId: `issue_${createHash('sha256').update(`${code}|${path}`).digest('hex').slice(0, 16)}`,
@@ -110,7 +118,8 @@ export function isAbilityAbstraction(text: string, path: string) {
     && !/独立|全权|主导|唯一|首创|实现|达成|增长|上线|完成了|交付了|提升了|sole|led\b/iu.test(text)
 }
 
-export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], path: string, allowTeamAbstraction = false): ValidationIssue[] {
+export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], path: string, allowTeamAbstraction = false,
+  options?: {strategyBoundaries?: boolean}): ValidationIssue[] {
   const ids = atoms.map(atom => atom.evidenceId)
   const sources = atoms.map(atom => writingDisplayText(atom.verbatimText))
   const issues: ValidationIssue[] = []
@@ -132,6 +141,7 @@ export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], pat
     report('WRITER_NUMBER_CHANGED', `正文出现引用来源中不存在的数字、单位或限定表达：${[...new Set(unsupportedNumbers)].join('、')}。请使用原始数字表达，或移除无依据的量化表述。`)
   }
   for (const rule of BOUNDARIES) {
+    if ('strategyOnly' in rule && rule.strategyOnly && !options?.strategyBoundaries) continue
     if (rule.label === '团队或参与贡献' && allowTeamAbstraction && isAbilityAbstraction(text, path)) continue
     // An approval qualifies a promotion claim, not unrelated duties in the same source atom.
     if (rule.label === '仅获批' && !/晋升|升职|调任|履任|promot|appointed/iu.test(text)) continue
@@ -139,7 +149,12 @@ export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], pat
       || (rule.label === '团队或参与贡献' && atoms.some(atom => atom.riskFlags.includes('team_attribution')))
     const explicitPlatformBoundary = rule.label === '团队或参与贡献'
       && sources.some(source => PLATFORM_NOT_PERSONAL.test(source)) && PLATFORM_NOT_PERSONAL.test(text)
-    if (sourceRequiresBoundary && !rule.output.test(text) && !explicitPlatformBoundary) {
+    const explicitUnlaunched = rule.label === '未上线或概念阶段' && options?.strategyBoundaries
+      && sources.some(source => /未(?:真实)?(?:开发)?上线|尚未(?:正式)?上线|未发布|not (?:yet )?(?:launched|released)/iu.test(source))
+    const boundaryPresent = explicitUnlaunched
+      ? /未(?:真实)?(?:开发)?上线|尚未(?:正式)?上线|未发布|(?:尚未|未)投入(?:生产|使用)|上线前(?:阶段)?|not (?:yet )?(?:launched|released|live)|pre[- ]launch/iu.test(text)
+      : rule.output.test(text)
+    if (sourceRequiresBoundary && !boundaryPresent && !explicitPlatformBoundary) {
       report('WRITER_BOUNDARY_LOST', `正文未保留来源中的${rule.label}边界。`)
     }
   }

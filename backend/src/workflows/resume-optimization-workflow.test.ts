@@ -64,7 +64,7 @@ describe('ResumeOptimizationWorkflow v5-only entry', () => {
       expect(getV5ReleaseDescriptor()).toMatchObject({
         profile: 'entry-r5',
         reasoningEffort: env.DEEPSEEK_REASONING_EFFORT,
-        writerPromptVersion: '5.2.0-p06c-entry-writer-r8',
+        writerPromptVersion: '5.2.0-p06c-entry-writer-r10',
       })
     } finally {
       run.mockRestore()

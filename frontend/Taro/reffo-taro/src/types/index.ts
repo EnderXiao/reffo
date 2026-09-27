@@ -1,3 +1,6 @@
+import type {ResumeStrategyReview} from '../../../../../shared/resume-strategy'
+export type {ResumeStrategyReview, ResumeStrategyOutcome, ResumeStrategyReference} from '../../../../../shared/resume-strategy'
+
 // 类型定义
 
 // ============ 历史记录 ============
@@ -54,6 +57,7 @@ export interface ResumeHistorySummary {
   tags: string[];
   location: string;
   strategyBody: string;
+  strategyTitle?: string;
   cardColor?: string;
   cardPattern?: string;
 }
@@ -181,6 +185,7 @@ export type MatchGapPriority = 'high' | 'medium' | 'low';
 export interface MatchWeaknessDetail {
   id?: string;
   priority?: MatchGapPriority;
+  is_required?: boolean;
   weakness: string;
   evidence_type: WeaknessEvidenceType;
   jd_requirement?: string;
@@ -255,6 +260,7 @@ export interface OptimizedResume {
   optimized_resume: string;
   changes_summary: string[];
   improvement_score: number;
+  strategy_review?: ResumeStrategyReview;
 }
 
 export interface InterviewStoryRecommendation {

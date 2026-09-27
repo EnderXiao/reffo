@@ -171,7 +171,7 @@ function resolveHeroMode(isCreateMode: boolean, isStrategyVisible: boolean): Her
   return isStrategyVisible ? 'strategy' : 'brand'
 }
 
-function HomeHeroH5({
+export function HomeHeroH5({
   currentCard,
   isCreateMode,
   isStrategyVisible,
@@ -187,25 +187,26 @@ function HomeHeroH5({
   logoSource: string
 }) {
   const [renderMode, setRenderMode] = useState<HeroMode>(() => resolveHeroMode(isCreateMode, isStrategyVisible))
-  const [renderStrategyBody, setRenderStrategyBody] = useState(currentCard?.strategyBody || '')
+  const [renderStrategy, setRenderStrategy] = useState(() => ({body: currentCard?.strategyBody || '', title: currentCard?.strategyTitle || HOME_PAGE_CONTENT.hero.strategyLabel}))
   const [isSwitching, setIsSwitching] = useState(false)
   const switchTimerRef = useRef<number | null>(null)
   const nextMode = resolveHeroMode(isCreateMode, isStrategyVisible)
   const nextStrategyBody = currentCard?.strategyBody || ''
+  const nextStrategyTitle = currentCard?.strategyTitle || HOME_PAGE_CONTENT.hero.strategyLabel
   const strategyParagraphs = useMemo(
     () =>
-      renderStrategyBody
+      renderStrategy.body
         .split(/\n+/)
         .map(paragraph => paragraph.replace(/[ \t]+/g, ' ').trim())
         .filter(Boolean)
         .slice(0, 2),
-    [renderStrategyBody],
+    [renderStrategy.body],
   )
 
   useEffect(() => {
     const shouldUpdate =
       renderMode !== nextMode ||
-      (nextMode === 'strategy' && renderStrategyBody !== nextStrategyBody)
+      (nextMode === 'strategy' && (renderStrategy.body !== nextStrategyBody || renderStrategy.title !== nextStrategyTitle))
 
     if (!shouldUpdate) {
       setIsSwitching(false)
@@ -218,7 +219,7 @@ function HomeHeroH5({
         switchTimerRef.current = null
       }
       setRenderMode(nextMode)
-      setRenderStrategyBody(nextStrategyBody)
+      setRenderStrategy({body: nextStrategyBody, title: nextStrategyTitle})
       setIsSwitching(false)
       return undefined
     }
@@ -231,7 +232,7 @@ function HomeHeroH5({
 
     switchTimerRef.current = window.setTimeout(() => {
       setRenderMode(nextMode)
-      setRenderStrategyBody(nextStrategyBody)
+      setRenderStrategy({body: nextStrategyBody, title: nextStrategyTitle})
       setIsSwitching(false)
       switchTimerRef.current = null
     }, 160)
@@ -242,7 +243,7 @@ function HomeHeroH5({
         switchTimerRef.current = null
       }
     }
-  }, [immediateStrategy, nextMode, nextStrategyBody, renderMode, renderStrategyBody])
+  }, [immediateStrategy, nextMode, nextStrategyBody, nextStrategyTitle, renderMode, renderStrategy])
 
   return (
     <View className='reffo-home__hero'>
@@ -285,9 +286,9 @@ function HomeHeroH5({
               className='reffo-home__hero-label-row'
               onClick={onStrategyClick}
               role={onStrategyClick ? 'button' : undefined}
-              aria-label={onStrategyClick ? '查看完整优化策略' : undefined}
+              aria-label={onStrategyClick ? (renderStrategy.title === '这份简历的重点' ? '查看简历重点与对应正文' : '查看完整优化建议') : undefined}
             >
-              <Text className='reffo-home__hero-label'>{HOME_PAGE_CONTENT.hero.strategyLabel}</Text>
+              <Text className='reffo-home__hero-label'>{renderStrategy.title}</Text>
               <View className='reffo-home__hero-label-spark' aria-hidden='true'>
                 <Text className='reffo-home__hero-label-spark-main'>✦</Text>
                 <Text className='reffo-home__hero-label-spark-small'>✦</Text>
@@ -297,7 +298,7 @@ function HomeHeroH5({
               className='reffo-home__hero-strategy-body'
               onClick={onStrategyClick}
               role={onStrategyClick ? 'button' : undefined}
-              aria-label={onStrategyClick ? '查看完整优化策略' : undefined}
+              aria-label={onStrategyClick ? (renderStrategy.title === '这份简历的重点' ? '查看简历重点与对应正文' : '查看完整优化建议') : undefined}
             >
               {strategyParagraphs.map((paragraph, index) => (
                 <Text

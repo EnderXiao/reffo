@@ -35,6 +35,7 @@ interface ResumeHistorySummaryApiRecord {
   tags: string[];
   location: string;
   strategy_body: string;
+  strategy_title?: string;
   card_color?: string;
   card_pattern?: string;
 }
@@ -129,6 +130,7 @@ function toResumeHistorySummary(record: ResumeHistorySummaryApiRecord): ResumeHi
     tags: record.tags,
     location: record.location,
     strategyBody: record.strategy_body,
+    strategyTitle: record.strategy_title || '优化建议',
     ...(record.card_color ? {cardColor: record.card_color} : {}),
     ...(record.card_pattern ? {cardPattern: record.card_pattern} : {}),
   };

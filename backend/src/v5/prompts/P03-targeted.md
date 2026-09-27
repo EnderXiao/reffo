@@ -19,3 +19,5 @@ jobSuccessProfile 与 targets 是岗位分析；resumeContext.facts 才是候选
 similarity/difference 各用一句短句；expressionAngle 说明如何展开已有实践，不补工具、主导关系、结果或目标行业身份。岗位低匹配与表达质量分开，不为达到满分降低要求或删除有价值的相邻经验。
 差距 difference 与建议 expressionAngle 会直接向用户展示。unknown、weak_signal、transferable 的未证明部分应写“材料未说明/证据有限”，不能改成候选人不会、不具备或缺乏该能力。保留已有的局部实践，不把整项复合要求一概否定。建议必须指出当前可用的具体经历和表达边界；参与不写成独立负责，协同不写成全权负责，冲突材料只建议核对，不作为可直接写入的事实。questions 只是待确认问题，不能代替优化策略。
 narratives 默认 []；确有必要时至多三条选材意图，只使用 direct/transferable 已支持的 targetIds/evidenceIds，不写可直接复制的能力广告。questions 最多三个可跳过的高价值补充问题。缺少字段判断允许留为 unknown，不为填满材料而推断。只返回 Schema JSON，不输出思考过程。
+
+展示规则：difference只写差距判断，自带简短主题与判断，不只写“该项”“相关能力”，不重印目标岗位整句，不使用“岗位原文：判断”的拼接格式。similarity保留已支持部分，证据来源由evidenceIds关联。difference优先约30–50字；expressionAngle优先约40–70字，用一句话提出一个主要编辑动作，自带简短主题，并说明使用哪项已有实践或需补充什么。原因留在difference，不在建议中重复；必要的参与程度、否定、范围、项目阶段和不确定性必须完整保留。字数是软参考，不机械截断、不删限定词、不把部分支持改成整体缺失。建议是生成前计划，不能称“已优化”“已完成”。使用正常句末标点，不输出“。：”等重复分隔符。

@@ -186,7 +186,7 @@ export class V5SingleStepAdapter {
     const response = toLegacyMvpProcessResponse(result)
     if (!stored.generated) await this.repository.update(row, {...stored, generated: result})
     return {runId: result.runId, steps: result.stepStatuses ?? [], data: {optimized_resume: response.step3_optimized_resume,
-      changes_summary: response.step2_matching.optimization_suggestions ?? [], improvement_score: 0}}
+      changes_summary: response.step3_changes_summary ?? [], strategy_review: response.step3_strategy_review, improvement_score: 0}}
   }
 
   async interview(analysis: unknown, matching: unknown, optimized: string, owner: string) {

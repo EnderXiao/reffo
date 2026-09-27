@@ -2,9 +2,9 @@ import type { ResumeEvidenceBundle } from '@/v5/types'
 import type { JobFitMap } from '@/v5/targeting/contracts'
 import type { JobTarget } from '@/v5/targeting/profile'
 import { targetingSelectionBasis } from '@/v5/targeting/fit'
-import { writingNumbers } from '@/v5/writing/facts'
+import { isWritingBoundaryContext, writingNumbers } from '@/v5/writing/facts'
 
-export const WRITING_INTENT_VERSION = 'writing-intent-v2' as const
+export const WRITING_INTENT_VERSION = 'writing-intent-v3' as const
 
 // A bounded numeric screen for analysis prose, not a new gate on resume writing.
 const analysisNumbers = (text: string) => [...writingNumbers(text),
@@ -17,6 +17,14 @@ export interface WritingIntent {
   similarity: string
   difference: string
   expressionAngle: string
+}
+
+/** A scoped editing request, never a new fact or a certificate of completion. */
+export interface EntryStrategyAction {
+  strategyId: string
+  instruction: string
+  targetIds: string[]
+  evidenceIds: string[]
 }
 
 /** Editing guidance is not a qualification verdict or an additional fact source. */
@@ -34,10 +42,17 @@ export function buildWritingIntents(input: {
     if (!target || target.basis === 'unknown') continue
     const evidenceIds = [...new Set(link.evidenceIds)].filter(id => {
       const atom = atoms.get(id)
+      const boundaryContext = atom?.claimType === 'other' && isWritingBoundaryContext(atom)
+        && link.evidenceIds.some(otherId => {
+          const practice = atoms.get(otherId)
+          return practice && input.selectedEvidenceIds.has(otherId) && practice.sourceScopeId === atom.sourceScopeId
+            && ['action', 'responsibility', 'deliverable', 'result'].includes(practice.claimType)
+            && !practice.riskFlags.includes('self_assessment_only') && targetingSelectionBasis(link, practice)
+        })
       return input.selectedEvidenceIds.has(id) && atom
-        && ['action', 'responsibility', 'deliverable', 'result'].includes(atom.claimType)
         && !atom.riskFlags.includes('self_assessment_only')
-        && targetingSelectionBasis(link, atom)
+        && (boundaryContext || (['action', 'responsibility', 'deliverable', 'result'].includes(atom.claimType)
+          && targetingSelectionBasis(link, atom)))
     }).sort()
     if (!evidenceIds.length) continue
     // A shortened evidence set cannot inherit a statement that depended on omitted facts.

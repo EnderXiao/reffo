@@ -43,6 +43,8 @@ import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { boundedMap } from '@/v5/bounded-map'
 import { writeValidatedEntries } from '@/v5/writing/entry-correction'
 import { buildEntryWritingPlan, compileEntryWriting, ENTRY_WRITING_POLICY } from '@/v5/writing/entries'
+import { assignEntryStrategyActions, buildStrategyActionPlan, buildStrategyReview, completeEntryStrategyEvidence,
+  type StrategyActionPlan, type EntryParagraphReference } from '@/v5/writing/strategy-outcomes'
 import { EntrySetValidationError } from '@/v5/writing/entry-set'
 import { EntryJsonStream, EntryPreviewJournal, type EntryStreamEvent } from '@/v5/writing/entry-stream'
 import {
@@ -672,6 +674,8 @@ export class V5ResumeOptimizationWorkflow {
     const remaining = runtime.context.remainingMs
     const steps: StepRunSnapshot[] = []
     let entryWritingRecord: V5WorkflowResult['entryWriting']
+    let strategyActionPlan: StrategyActionPlan | undefined
+    let strategyParagraphs: EntryParagraphReference[] = []
     const setState = (next: ResumeAgentState) => runtime.setState(next)
 
     await this.eventBus.publish(createHarnessEvent({
@@ -1047,9 +1051,14 @@ export class V5ResumeOptimizationWorkflow {
                 targeting,
                 editorialPolicy: this.entryWritingPolicy ? 'document-editorial-v1' : this.writingEditorialPolicy,
               })
-              const entryPlan = this.entryWritingPolicy ? buildEntryWritingPlan({
+              let entryPlan = this.entryWritingPolicy ? buildEntryWritingPlan({
                 base: writingPlan, resume: resumeEvidenceBundle, plan: resumePlan, policy: generationPolicy,
               }) : undefined
+              if (entryPlan) {
+                entryPlan = completeEntryStrategyEvidence({ match: matchAnalysis, resume: resumeEvidenceBundle, entryPlan })
+                strategyActionPlan = buildStrategyActionPlan({ match: matchAnalysis, resume: resumeEvidenceBundle, entryPlan })
+                entryPlan = assignEntryStrategyActions(entryPlan, strategyActionPlan)
+              }
               const journal = entryPlan ? new EntryPreviewJournal(runContext.runId, this.onEntryStreamEvent) : undefined
               const stream = entryPlan && journal ? new EntryJsonStream(entry => {
                 const brief = entryPlan.entries.find(item => item.entryId === entry.entryId)
@@ -1095,7 +1104,7 @@ export class V5ResumeOptimizationWorkflow {
                     return { ...compileWritingArtifact({
                       composition: await write(writingPayload(writingPlan), 0), writingPlan, resume: resumeEvidenceBundle,
                       plan: resumePlan, policy: generationPolicy,
-                    }), renderingPlan: resumePlan, entryParagraphPaths: undefined, repairAttempts: 0, validation: undefined }
+                    }), renderingPlan: resumePlan, entryParagraphPaths: undefined, entryParagraphReferences: [], repairAttempts: 0, validation: undefined }
                   } catch (error) {
                     journal?.finish(false)
                     if (error instanceof EntrySetValidationError) {
@@ -1136,6 +1145,7 @@ export class V5ResumeOptimizationWorkflow {
               journal?.finish(true)
               if (entryPlan) entryWritingRecord = { version: ENTRY_WRITING_POLICY,
                 renderingPlan: writerStep.result.renderingPlan, paragraphPaths: [...(writerStep.result.entryParagraphPaths ?? [])] }
+              strategyParagraphs = writerStep.result.entryParagraphReferences
               const artifactGenerationDiagnostics = {
                 mode: 'writer_v1' as const, contractVersion: SUPPORTED_WRITING_POLICY,
                 compilerVersion: entryPlan ? ENTRY_WRITING_POLICY : WRITING_COMPILER_VERSION,
@@ -1693,6 +1703,7 @@ export class V5ResumeOptimizationWorkflow {
               resumePlan,
               artifact,
               ...(entryWritingRecord ? { entryWriting: entryWritingRecord } : {}),
+              ...(strategyActionPlan ? { strategyReview: buildStrategyReview({ plan: strategyActionPlan, artifact, paragraphs: strategyParagraphs }) } : {}),
               usedSafeFallback,
               usedAnyFallback,
               executionStatus: 'completed',

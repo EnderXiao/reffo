@@ -127,7 +127,7 @@ describe('AuthPage', () => {
     render(<AuthPage />)
 
     expect(screen.queryByText('注册账号')).toBeNull()
-    expect(screen.queryByText('返回')).toBeNull()
+    expect(screen.getByRole('button', {name: '返回'})).not.toBeNull()
     fillLoginForm()
 
     await act(async () => {

@@ -36,12 +36,19 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
         targetId: target.id, status: 'transferable', evidenceIds: [fact.evidenceId],
         similarity: '具有相邻产品实践。', difference: '尚不等于完整岗位经验。', expressionAngle: '突出已有交付。',
       })), narratives: [], questions: [] }
-    } else if (version === '5.2.0-p06c-entry-writer-r8') {
+    } else if (version === '5.2.0-p06c-entry-writer-r10') {
       if (versions.filter(v => v.includes('-p06c-')).length === 1) expect(input.onContentDelta).toBeFunction()
       expect(input.maxOutputTokens).toBe(4320)
       expect(input.maxProviderAttempts).toBe(1)
       expect(input.maxProviderModels).toBe(1)
       expect(payload.entries).toBeDefined()
+      const actions = payload.entries!.flatMap(entry => entry.strategyActions ?? [])
+      expect(actions.length).toBeGreaterThan(0)
+      expect(actions.length).toBeLessThanOrEqual(3)
+      for (const entry of payload.entries!) for (const action of entry.strategyActions ?? []) {
+        expect(entry.section).not.toBe('summary')
+        expect(action.evidenceIds.every(id => entry.facts.some(fact => fact.evidenceId === id))).toBe(true)
+      }
       const entries = payload.entries!.map(entry => {
         const fact = entry.facts.find(f => entry.coreEvidenceIds.includes(f.evidenceId)) ?? entry.facts[0]
         const paragraphs = entry.section === 'experience'
@@ -83,6 +90,12 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
     expect(result.artifact.markdown).toContain('团队交付3个功能。')
     expect(result.artifact.markdown).not.toContain('entry:')
     expect(result.entryWriting?.version).toBe(ENTRY_WRITING_POLICY)
+    expect(result.strategyReview?.version).toBe('resume-strategy-v1')
+    expect(result.strategyReview?.items.some(item => item.status === 'linked')).toBe(true)
+    for (const item of result.strategyReview!.items) {
+      expect(result.matchAnalysis.gaps.some(gap => item.strategyId === `strategy_${gap.gapId}` && item.strategy === gap.safeHandling)).toBe(true)
+      for (const reference of item.references) expect(result.artifact.markdown).toContain(reference.quote)
+    }
     const replay = validateGeneratedResumeArtifact({ artifact: result.artifact, resume: result.resumeEvidenceBundle,
       plan: result.entryWriting!.renderingPlan, policy: result.generationPolicy,
       gateMode: 'relaxed_release', textPolicy: 'supported_writing_v1', skillPolicy: PRACTICE_SKILL_POLICY,

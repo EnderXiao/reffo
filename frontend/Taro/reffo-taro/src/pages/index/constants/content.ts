@@ -8,7 +8,7 @@ export const HOME_PAGE_CONTENT = {
     titleMiddle: '，',
     titleSuffixPrefix: '一份',
     titleAccentTwo: '简历',
-    strategyLabel: 'Reffo 优化策略',
+    strategyLabel: '优化建议',
     createTitlePrefix: '量身定制',
     createTitleAccent: '简历',
     createGuideLabel: 'Reffo是如何工作的',

@@ -1,7 +1,9 @@
-import {fireEvent, render, screen, within} from '@testing-library/react'
+import {fireEvent, render, screen, waitFor, within} from '@testing-library/react'
 import type {ProcessResult} from '@/types'
+import {resumeTextFingerprint} from '../../../../../../../shared/resume-strategy'
 import PageView from '../PageView.h5'
 import type {ResultPageViewModel} from '../usePageModel'
+import {requirementAnalysisFixture} from '@/utils/__tests__/fixtures/requirement-analysis'
 
 const result: ProcessResult = {
   analysis: {
@@ -106,6 +108,63 @@ describe('结果页', () => {
     expect(screen.queryByText('是否有更多团队管理经历？')).toBeNull()
   })
 
+  test('默认三项差距和策略，完整列表可展开再收起', () => {
+    const current: ProcessResult = {...result, matching: {...result.matching,
+      weakness_details: Array.from({length: 5}, (_, index) => ({id: `G${index}`, priority: 'medium', is_required: false,
+        weakness: `具体差距${index + 1}`, evidence_type: 'direct_missing', evidence: '', suggestion: ''})),
+      optimization_suggestions: Array.from({length: 5}, (_, index) => `具体策略${index + 1}`),
+    }}
+    render(<PageView {...model} result={current} />)
+    expect(screen.getByText('具体差距3')).toBeTruthy()
+    expect(screen.queryByText('具体差距4')).toBeNull()
+    expect(screen.queryByText('具体策略4')).toBeNull()
+    fireEvent.click(screen.getByRole('button', {name: '查看全部 5 项差距'}))
+    fireEvent.click(screen.getByRole('button', {name: '查看全部 5 条策略'}))
+    expect(screen.getByText('具体差距5')).toBeTruthy()
+    expect(screen.getByText('具体策略5')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', {name: '收起其他差距'}))
+    expect(screen.queryByText('具体差距4')).toBeNull()
+  })
+
+  test('超过三项的必要资格仍全部可见', () => {
+    const current: ProcessResult = {...result, matching: {...result.matching,
+      weakness_details: Array.from({length: 5}, (_, index) => ({id: `G${index}`, priority: 'medium', is_required: index > 0,
+        weakness: `资格判断${index}`, evidence_type: 'direct_missing', evidence: '', suggestion: ''})),
+    }}
+    render(<PageView {...model} result={current} />)
+    for (const index of [1, 2, 3, 4]) expect(screen.getByText(`资格判断${index}`)).toBeTruthy()
+    expect(screen.getAllByText('必要条件')).toHaveLength(4)
+    expect(screen.queryByText('资格判断0')).toBeNull()
+  })
+
+  test('逐项展开真实依据和表达建议，画像默认收起且位于策略之后', () => {
+    const source = '参与 Node.js 1.5 验收；仅负责部分模块，尚未上线。'
+    const current: ProcessResult = {...result, matching: {...result.matching,
+      requirement_analysis: requirementAnalysisFixture,
+      weakness_details: [{id: 'G1', priority: 'medium', weakness: '交付阶段尚未覆盖上线', evidence_type: 'implicit_evidence',
+        jd_requirement: '参与研发交付与上线', evidence: source, impact: '现有材料仅支撑验收阶段。', suggestion: '保留参与范围。'}],
+      optimization_strategy_details: [{id: 'S1', related_gap_ids: ['G1'], strategy_point: '突出已有验收实践', rationale: '便于识别本人参与的交付环节。',
+        optimization_example: {source_path: '', source_quote: source, optimized_content: '参与模块验收，尚未上线。'}}],
+    }}
+    render(<PageView {...model} result={current} />)
+    expect(screen.queryByText(source)).toBeNull()
+    expect(screen.queryByRole('region', {name: '岗位理想候选人画像'})).toBeNull()
+    const gap = screen.getByText('交付阶段尚未覆盖上线').closest('li')!
+    fireEvent.click(within(gap).getByRole('button', {name: '查看依据与建议'}))
+    expect(within(gap).getByText(source).tagName).toBe('BLOCKQUOTE')
+    expect(within(gap).getByText('参与研发交付与上线')).toBeTruthy()
+    expect(within(gap).getByText('保留参与范围。')).toBeTruthy()
+    const strategy = screen.getByText('突出已有验收实践').closest('li')!
+    fireEvent.click(within(strategy).getByRole('button', {name: '查看策略依据'}))
+    expect(within(strategy).getByText('表达示例')).toBeTruthy()
+    expect(within(strategy).getByText('此处为表达建议，实际内容请查看相契简历。')).toBeTruthy()
+    expect(within(strategy).queryByText('已落实')).toBeNull()
+    const portraitToggle = screen.getByRole('button', {name: '了解岗位画像'})
+    expect(screen.getByText('优化策略').compareDocumentPosition(portraitToggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(portraitToggle)
+    expect(screen.getByRole('region', {name: '岗位理想候选人画像'})).toBeTruthy()
+  })
+
   test('进入面试建议 tab 时正常渲染原文引用', () => {
     render(<PageView {...model} />)
 
@@ -206,5 +265,73 @@ describe('结果页', () => {
     expect(screen.getByText('尚未生成故事推荐，请重新生成面试建议。')).toBeTruthy()
     expect(screen.queryByText('讲述思路：')).toBeNull()
     expect(screen.queryByText('高匹配项目经历')).toBeNull()
+  })
+})
+
+function resultWithStrategyReview(): ProcessResult {
+  const markdown = '# 测试用户\n## 项目经历\n- 参与核心业务系统开发并完成模块验收。'
+  return {...result,
+    matching: {...result.matching, optimization_strategy_details: [
+      {id: 'strategy_G1', related_gap_ids: [], strategy_point: '突出已有交付实践', rationale: '回应交付要求。',
+        optimization_example: {source_path: '', source_quote: '', optimized_content: '旧表达示例，非最终正文。'}},
+      {id: 'strategy_G2', related_gap_ids: [], strategy_point: '补充管理范围', rationale: '',
+        optimization_example: {source_path: '', source_quote: '', optimized_content: ''}},
+      {id: 'strategy_G3', related_gap_ids: [], strategy_point: '补充其他项目', rationale: '',
+        optimization_example: {source_path: '', source_quote: '', optimized_content: ''}},
+    ]},
+    optimized: {...result.optimized, optimized_resume: markdown, strategy_review: {
+      version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(markdown), items: [
+        {strategyId: 'strategy_G1', strategy: '突出已有交付实践', status: 'linked', explanation: '项目经历保留了开发与验收环节。',
+          references: [{outputPath: 'projects[0]', location: '项目经历 · 业务系统', quote: '参与核心业务系统开发并完成模块验收。'}]},
+        {strategyId: 'strategy_G2', strategy: '补充管理范围', status: 'needs_material', explanation: '当前材料未提供直接管理范围。', references: []},
+        {strategyId: 'strategy_G3', strategy: '补充其他项目', status: 'not_selected', explanation: '本次优先保留直接相关的交付经历。', references: []},
+      ],
+    }},
+  }
+}
+
+describe('策略与生成正文的对应', () => {
+  test('展开实际说明、位置和原句，并在相契简历定位高亮', async () => {
+    const current = resultWithStrategyReview()
+    const {container} = render(<PageView {...model} result={current} />)
+    const strategy = screen.getByText('突出已有交付实践').closest('li')!
+    expect(within(strategy).getByText('正文对应内容')).toBeTruthy()
+    fireEvent.click(within(strategy).getByRole('button', {name: '查看说明与正文'}))
+    expect(within(strategy).getByText('项目经历保留了开发与验收环节。')).toBeTruthy()
+    expect(within(strategy).getByText('项目经历 · 业务系统')).toBeTruthy()
+    expect(within(strategy).getByText('参与核心业务系统开发并完成模块验收。').tagName).toBe('BLOCKQUOTE')
+    expect(within(strategy).getByText('此处为表达建议，实际内容请查看相契简历。')).toBeTruthy()
+    fireEvent.click(within(strategy).getByRole('button', {name: '在相契简历中查看'}))
+    await waitFor(() => expect(container.querySelector('.reffo-result__markdown-line--located')?.textContent)
+      .toContain('参与核心业务系统开发并完成模块验收。'))
+    await waitFor(() => expect(document.activeElement?.className).toContain('reffo-result__markdown-line--located'))
+    expect(screen.getByRole('status').textContent).toContain('已定位：项目经历 · 业务系统')
+  })
+
+  test('正文改变后隐藏原落地说明和引用，仍可阅读生成时的建议', () => {
+    const current = resultWithStrategyReview()
+    const {rerender} = render(<PageView {...model} result={current} />)
+    fireEvent.click(screen.getAllByRole('button', {name: '查看说明与正文'})[0])
+    expect(screen.getByText('项目经历保留了开发与验收环节。')).toBeTruthy()
+    rerender(<PageView {...model} result={{...current, optimized: {...current.optimized, optimized_resume: current.optimized.optimized_resume + '\n新增经历'}}} />)
+    expect(screen.getByText('简历已编辑，以下为生成时的建议，原正文对应说明已隐藏。')).toBeTruthy()
+    expect(screen.queryByText('项目经历保留了开发与验收环节。')).toBeNull()
+    expect(screen.queryByText('项目经历 · 业务系统')).toBeNull()
+    expect(screen.queryByRole('button', {name: '在相契简历中查看'})).toBeNull()
+    expect(screen.getByText('突出已有交付实践')).toBeTruthy()
+  })
+
+  test('缺材料和未选入都有明确解释，重复原句不生成定位按钮', () => {
+    const current = resultWithStrategyReview()
+    current.optimized.optimized_resume += '\n参与核心业务系统开发并完成模块验收。'
+    current.optimized.strategy_review!.resumeFingerprint = resumeTextFingerprint(current.optimized.optimized_resume)
+    render(<PageView {...model} result={current} />)
+    expect(screen.getByText('需补充材料')).toBeTruthy()
+    expect(screen.getByText('本次未选入')).toBeTruthy()
+    screen.getAllByRole('button', {name: '查看说明与正文'}).forEach(button => fireEvent.click(button))
+    expect(screen.getByText('当前材料未提供直接管理范围。')).toBeTruthy()
+    expect(screen.getByText('本次优先保留直接相关的交付经历。')).toBeTruthy()
+    expect(screen.queryByRole('button', {name: '在相契简历中查看'})).toBeNull()
+    expect(screen.queryByText('全部已落实')).toBeNull()
   })
 })
