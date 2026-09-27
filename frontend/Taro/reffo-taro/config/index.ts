@@ -71,6 +71,7 @@ export default defineConfig<'webpack5'>(async (merge, { mode }) => {
       enable: false,
     },
     mini: {
+      compile: {include: [path.resolve(__dirname, '../../../../shared')]},
       postcss: {
         pxtransform: {
           enable: true,
@@ -89,6 +90,8 @@ export default defineConfig<'webpack5'>(async (merge, { mode }) => {
       },
     },
     h5: {
+      // 首页与服务端共用正文核验和摘要逻辑，需编译仓库内共享 TypeScript。
+      compile: {include: [path.resolve(__dirname, '../../../../shared')]},
       publicPath: '/',
       staticDirectory: 'static',
       output: {

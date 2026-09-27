@@ -5,6 +5,7 @@ import type { WritingPlan } from '@/v5/writing/plan'
 import { writingPayload } from '@/v5/writing/plan'
 import {
   buildWritingFact,
+  inspectSupportedWriting,
   findUnsupportedCollaboratorTerms,
   TEAM_CONTRIBUTION_PATTERN,
   writingDisplayText,
@@ -20,6 +21,8 @@ import { EntrySetValidationError, inspectEntrySet } from './entry-set'
 import { workScopeBrief } from '@/v5/writing/work-coverage'
 import { canCompactEntryParagraphs, entryLayoutItemLimit, ENTRY_LAYOUT_VERSION } from '@/v5/writing/entry-layout'
 import { explicitEducationDegree } from '@/v5/writing/education'
+import type { EntryStrategyAction } from './intents'
+import type { EntryParagraphReference } from './strategy-outcomes'
 
 export const ENTRY_WRITING_POLICY = 'entry-writing-v1' as const
 export const entryParagraphSchema = z.object({
@@ -89,6 +92,9 @@ export interface EntryBrief {
   facts: WritingFact[]
   coreEvidenceIds: string[]
   taskIds: string[]
+  strategyActions?: EntryStrategyAction[]
+  /** Newly admitted action material whose explicit boundary must survive in this entry. */
+  strategyBoundaryEvidenceIds?: string[]
   lengthHint: { unit: 'words' | 'cjk_characters'; target: number }
 }
 export interface EntryWritingPlan {
@@ -162,6 +168,14 @@ export function omitSplitQuantityTail(fact: WritingFact, resume: ResumeEvidenceB
   const numbers = writingNumbers(text)
   return { ...fact, text, focusText: text, protectedNumbers: numbers,
     requiredNumbers: fact.requiredNumbers?.filter(n => numbers.includes(n)) }
+}
+
+export function normalizeEntryFact(fact: WritingFact, resume: ResumeEvidenceBundle): WritingFact {
+  let safe = omitSplitQuantityTail(fact, resume)
+  if (safe.boundaries.includes('团队或参与贡献') && !TEAM_CONTRIBUTION_PATTERN.test(safe.text)) {
+    safe = { ...safe, text: `团队协作中，${safe.text}` }
+  }
+  return safe
 }
 
 /** Version selection reads only the server envelope, never nested source text. */
@@ -241,12 +255,9 @@ export function buildEntryWritingPlan(input: {
     entry.taskIds = [...new Set(entry.taskIds)]
   }
   for (const entry of entries) entry.facts = entry.facts.map(fact => {
-    let safe = omitSplitQuantityTail(fact, input.resume)
     // Surface a verified attribution constraint in the prose material as well
     // as metadata, so it is not lost when copying a contribution sentence.
-    if (safe.boundaries.includes('团队或参与贡献') && !TEAM_CONTRIBUTION_PATTERN.test(safe.text)) {
-      safe = { ...safe, text: `团队协作中，${safe.text}` }
-    }
+    const safe = normalizeEntryFact(fact, input.resume)
     factMap.set(safe.evidenceId, safe)
     return safe
   })
@@ -303,6 +314,7 @@ export function entryWritingPayload(plan: EntryWritingPlan) {
           ? plan.renderingPlan.scopePlans.find(scope => scope.scopeId === entry.scopeId)?.treatment === 'compress' ? 2 : 4 : 1,
         purpose: SECTION_WRITING_ROLES[entry.section] ?? '准确呈现与岗位相关的源材料。',
         facts: entry.facts, coreEvidenceIds: entry.coreEvidenceIds, targetTaskIds: entry.taskIds,
+        ...(entry.strategyActions?.length ? { strategyActions: entry.strategyActions } : {}),
         lengthHint: entry.lengthHint })),
   }
 }
@@ -327,6 +339,7 @@ export function compileEntryWriting(input: {
   writingPlan.coreEvidenceIdsBySlot = {}
   writingPlan.editorial = undefined
   const blocks: Array<{ slotId: string; evidenceIds: string[]; text: string }> = []
+  const entryParagraphReferences: EntryParagraphReference[] = []
   const warnings = []
   const paragraphsById = new Map(entries.map(entry => [entry.entryId, byId.get(entry.entryId)!.paragraphs.map(paragraph => {
     if (entry.slot.kind !== 'business_bullet' || /(?:未|不|没有|非).{0,3}主导/u.test(paragraph.text)) return paragraph
@@ -406,6 +419,16 @@ export function compileEntryWriting(input: {
     const allowed = entry.facts.map(fact => fact.evidenceId)
     const used = new Set(paragraphs.flatMap(p => p.evidenceIds))
     const joined = paragraphs.map(p => p.text).join('；')
+    const actionEvidence = new Set(entry.strategyActions?.filter(action => action.evidenceIds.some(id => {
+      const atom = input.resume.evidenceAtoms.find(item => item.evidenceId === id)
+      return used.has(id) && atom && ['action', 'responsibility', 'deliverable', 'result'].includes(atom.claimType)
+    })).flatMap(action => action.evidenceIds))
+    const boundaryAtoms = input.resume.evidenceAtoms.filter(atom =>
+      entry.strategyBoundaryEvidenceIds?.includes(atom.evidenceId) && actionEvidence.has(atom.evidenceId)
+      && atom.sourceScopeId === entry.scopeId)
+    const boundaryIssues = inspectSupportedWriting(joined, boundaryAtoms, entry.slot.outputPath, false, {strategyBoundaries: true})
+      .filter(issue => ['WRITER_BOUNDARY_LOST', 'WRITER_NEGATION_LOST'].includes(issue.code))
+    if (boundaryIssues.length) throw new SupportedWritingError(boundaryIssues)
     if (entry.coreEvidenceIds.some(id => !used.has(id))) warnings.push(writingIssue('WRITER_PRIORITY_PRACTICE_OMITTED', entry.entryId, entry.coreEvidenceIds, '经历核心材料未充分呈现，保留离线质量提示。', 'warning'))
     const requiredNumbers = entry.facts.filter(f => entry.coreEvidenceIds.includes(f.evidenceId)).flatMap(f => f.requiredNumbers ?? [])
     if (requiredNumbers.some(n => !writingNumbers(joined).includes(n))) warnings.push(writingIssue('WRITER_PRIORITY_OUTCOME_OMITTED', entry.entryId, entry.coreEvidenceIds, '核心结果数值未呈现，保留离线质量提示。', 'warning'))
@@ -416,6 +439,12 @@ export function compileEntryWriting(input: {
       writingPlan.coreEvidenceIdsBySlot[slotId] = []
       writingPlan.entryParagraphGroups[slotId] = entry.entryId
       blocks.push({ slotId, evidenceIds: paragraph.evidenceIds, text: paragraph.text })
+      if (entry.slot.kind === 'business_bullet') {
+        const scope = input.resume.timeline.find(item => item.scopeId === entry.scopeId)
+        const section = entry.section === 'project' ? '项目经历' : entry.section === 'research' ? '研究经历' : '工作经历'
+        entryParagraphReferences.push({ entryId: entry.entryId, outputPath: path,
+          location: [section, scope?.organization || scope?.title, `第${index + 1}段`].filter(Boolean).join(' · ') })
+      }
     }
     const scope = plan.scopePlans.find(scope => scope.scopeId === entry.scopeId)
     if (scope && entry.slot.kind === 'business_bullet') {
@@ -467,5 +496,6 @@ export function compileEntryWriting(input: {
     writingIssues: [...result.writingIssues, ...warnings, ...collaboratorNormalizations],
     renderingPlan: plan,
     entryParagraphPaths,
+    entryParagraphReferences,
   }
 }

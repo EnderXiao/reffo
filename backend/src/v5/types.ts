@@ -708,6 +708,7 @@ export interface V5DeliveryDiagnostics {
 }
 
 export interface V5WorkflowResult {
+  strategyReview?: import('../../../shared/resume-strategy').ResumeStrategyReview
   stepStatuses?: StepRunSnapshot[]
   /** Internal replay metadata; public MVP response projection does not expose it. */
   entryWriting?: { version: 'entry-writing-v1'; renderingPlan: V5ResumePlan; paragraphPaths: string[] }

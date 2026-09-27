@@ -886,6 +886,90 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   margin-top: 10px;
 }
 
+.reffo-result__analysis-judgment {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.reffo-result__analysis-toggle,
+.reffo-result__analysis-more {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 32px;
+  margin: 4px 0 0;
+  padding: 3px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #58635c;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.reffo-result__analysis-toggle:focus-visible,
+.reffo-result__analysis-more:focus-visible {
+  outline: 2px solid #1aa36b;
+  outline-offset: 3px;
+}
+
+.reffo-result__analysis-more {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.reffo-result__analysis-copy,
+.reffo-result__analysis-source {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.reffo-result__analysis-source {
+  padding-left: 8px;
+  border-left: 2px solid rgba(17, 17, 17, 0.14);
+}
+
+.reffo-result__analysis-caption {
+  margin: 5px 0 0;
+  color: #68736c;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.reffo-result__analysis-outcome-label {
+  display: inline-block;
+  margin-top: 4px;
+  color: #58635c;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.reffo-result__strategy-outcome {
+  margin: 6px 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.reffo-result__strategy-locate {
+  color: #00854a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.reffo-result__portrait-secondary { margin-top: 20px; }
+
 .reffo-result__gap-list,
 .reffo-result__strategy-list {
   display: flex;
@@ -1138,6 +1222,14 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   position: relative;
   align-items: flex-start;
   min-height: 21px;
+}
+
+.reffo-result__markdown-line--located {
+  border-radius: 4px;
+  background: rgba(13, 204, 106, 0.16);
+  box-shadow: -3PX 0 0 #0bcc6a;
+  scroll-margin-block: 100px;
+  outline: none;
 }
 
 .reffo-result__markdown-rendered {

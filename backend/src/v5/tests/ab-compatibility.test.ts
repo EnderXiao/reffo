@@ -130,6 +130,8 @@ describe('v5 compatibility and offline A/B', () => {
     expect(response.step1_analysis.structured_resume.personal_info.name).toBe('张三')
     expect(response.step2_matching.match_score).toBeGreaterThan(0)
     expect(response.step3_optimized_resume).toContain('甲公司')
+    expect(response.step3_strategy_review).toBeUndefined()
+    expect(response.step3_changes_summary).toEqual([])
     expect(response.step4_interview_suggestions).toBeUndefined()
     expect(Object.keys(response).sort()).toEqual([
       'agent_state',
@@ -138,7 +140,9 @@ describe('v5 compatibility and offline A/B', () => {
       'run_id',
       'step1_analysis',
       'step2_matching',
+      'step3_changes_summary',
       'step3_optimized_resume',
+      'step3_strategy_review',
       'step4_interview_suggestions',
       'used_safe_fallback',
       'workflow_status',

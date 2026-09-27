@@ -451,7 +451,7 @@ export default function HomeScoreCard({
               <>
                 <View className='reffo-home-card__score'>
                   <Text className='reffo-home-card__grade-letter'>{scoreGrade}</Text>
-                  <Text className='reffo-home-card__grade-meta'>评级</Text>
+                  <Text className='reffo-home-card__grade-meta'>岗位匹配度</Text>
                 </View>
                 <CardGlass>
                   <View className='reffo-home-card__field'>

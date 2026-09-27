@@ -17,6 +17,7 @@ interface CardSeedInput {
   dateLabel: string
   score: number
   strategyBody: string
+  strategyTitle?: string
   seedColor?: string
 }
 
@@ -148,8 +149,9 @@ export function toHistorySummaryCardItem(
     location: summary.location || '--',
     role: summary.position || '--',
     dateLabel: formatDateLabel(summary.createdAt),
-    score: summary.qualityScore,
+    score: summary.matchScore,
     strategyBody: summary.strategyBody,
+    strategyTitle: summary.strategyTitle || '优化建议',
     seedColor: summary.cardColor,
   })
 }

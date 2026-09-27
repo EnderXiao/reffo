@@ -482,12 +482,7 @@ export default function AuthPage() {
       return
     }
 
-    const pages = Taro.getCurrentPages()
-    if (pages.length > 1) {
-      void route.back()
-    } else {
-      void route.reset(routePaths.home)
-    }
+    void route.reset(routePaths.home)
   }
 
   const updateEmail = (value: string) => {
@@ -695,11 +690,9 @@ export default function AuthPage() {
         gapY={48}
       />
       <View className='reffo-auth__wash' aria-hidden='true' />
-      {phase !== 'login' ? (
-        <View className='reffo-auth__back' role='button' aria-label='返回' onClick={handleBack}>
-          <Text>返回</Text>
-        </View>
-      ) : null}
+      <View className='reffo-auth__back' role='button' aria-label='返回' onClick={handleBack}>
+        <Text>返回</Text>
+      </View>
 
       <View className='reffo-auth__brand'>
         <View className='reffo-auth__brand-mark'><ReffoGlyph color='#126fe8' /></View>

@@ -26,6 +26,10 @@ requiredEntryIds 和 requiredEntryCount 是本次输出的完整清单及数量�
 
 经历 facts 才是个人事实；jobTargeting 和 targetTaskIds 只决定强调什么。仅使用本 entry 提供的事实，逐段选择真正支撑表述的 evidenceIds；不要自动引用整池。摘要、技能可归纳不同经历，不把它们合成一件事。保留数字单位、参与程度、团队归因、否定及项目阶段，不虚构工具、协作部门、方案比较、规模、成果、证书和动机。行动用途不等于已实现效果，职业总年限不改成细分职能年限。
 
+entry.strategyActions 是服务器为这条经历选定的优先编辑动作，全篇最多三条。仅在对应 entry 内，根据动作列出的 evidenceIds 及本 entry 的 facts 落实 instruction；targetIds 是编辑目标，不是个人事实。优先在相关业务段落清楚呈现已有动作、方法和真实交付，不用摘要代替正文；不为执行建议补造缺少的材料或扩张事实边界。不要在输出中复述策略、声明“已完成”，或增加 strategyId/actionId 等字段，仍只返回规定的段落结构。指令与事实边界冲突时以事实为准。
+
+优先动作列出的事实可能包含为同一经历补齐的阶段或否定信息。facts.boundaries 和 coreEvidenceIds 中的这类限定必须在该 entry 的实际正文呈现，例如尚未上线、尚未开展评测；仅填写 evidenceIds 不算呈现。可以在同一经历的结果或状态段落用等价自然表述说明，不必逐句复制原文，也不能用“原型设计”替代明确的未上线状态。
+
 输出 contractVersion=entry-writing-v1 和 entries。每个输入 entryId 恰好返回一次，每项有非空 paragraphs；按输入顺序先写正文再写概括，最终显示顺序由服务器决定。遵守各 entry 的 paragraphLimit；summary、skills、education、awards、certifications 的 paragraphs 数组只有一个对象。业务经历允许按内容安排多个段落，不凑固定条数。text 是单行自然纯文本，不含标题、Markdown、代码、推理或评分。role 选择与段落主要内容相符的枚举；可一段覆盖多个维度，不必每种 role 都出现。lengthHint 是软参考，不为凑篇幅删掉关键贡献或编造经历。
 
 当 payload.correction 存在时，本次仅纠正 requiredEntryIds 中列出的条目。rejectedEntries 是未通过校验的草稿，不是事实来源；issues 是服务端指出的具体错误。只围绕对应错误重写，保留其余有依据的内容。数字及其单位和限定符逐字使用 facts.protectedNumbers 的原始表达；保留 facts.boundaries 中每项实质边界，团队贡献明确写“参与/协同/团队”。不从草稿或目标岗位补造事实。摘要优先使用无数值的能力概括，移除没有事实依据的协作部门、工具和职责升级。仍为每个本次 requiredEntryId 返回完整 paragraphs，不能只返回修订片段；不要返回清单外的条目。纠正结果会再次接受相同的完整事实与结构校验。

@@ -1,5 +1,6 @@
 import {apiClient} from './api';
 import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis';
+import {normalizeStrategyReview} from '../../../../../shared/resume-strategy';
 import type {
   ResumeAnalysis,
   MatchingResult,
@@ -48,6 +49,8 @@ export interface ProcessResumeResponse {
   step2_matching: MatchingApiResult;
   /** 步骤 3: 优化后的简历 */
   step3_optimized_resume: string;
+  step3_strategy_review?: OptimizedResume['strategy_review'];
+  step3_changes_summary?: string[];
   /** 步骤 4: 面试建议 */
   step4_interview_suggestions?: InterviewSuggestions;
 }
@@ -137,6 +140,7 @@ function normalizeWeaknessDetails(value: unknown): MatchWeaknessDetail[] {
       priority: detail.priority === 'high' || detail.priority === 'medium' || detail.priority === 'low'
         ? detail.priority
         : undefined,
+      ...(typeof detail.is_required === 'boolean' ? {is_required: detail.is_required} : {}),
       weakness: typeof detail.weakness === 'string' ? detail.weakness : '',
       evidence_type: evidenceType,
       jd_requirement: typeof detail.jd_requirement === 'string' ? detail.jd_requirement : '',
@@ -516,7 +520,8 @@ export class ResumeApi {
 
     return {
       optimized_resume: response?.optimized_resume || '',
-      changes_summary: toStringArray(response?.changes_summary ?? matching.optimization_suggestions),
+      changes_summary: toStringArray(response?.changes_summary),
+      strategy_review: normalizeStrategyReview(response?.strategy_review, response?.optimized_resume || ''),
       improvement_score: response?.improvement_score ?? Math.max(0, matching.match_score - analysis.quality_score),
     };
   }
@@ -646,7 +651,8 @@ export class ResumeApi {
       matching,
       optimized: {
         optimized_resume: optimizedResume,
-        changes_summary: matching.optimization_suggestions,
+        changes_summary: toStringArray(response.step3_changes_summary),
+        strategy_review: normalizeStrategyReview(response.step3_strategy_review, optimizedResume),
         improvement_score:
           matching.match_score -
           (analysis.quality_score || 0),

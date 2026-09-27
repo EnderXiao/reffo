@@ -1,8 +1,8 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import type {CSSProperties, TouchEvent} from 'react'
+import {useCallback, useEffect, useId, useMemo, useRef, useState} from 'react'
+import type {CSSProperties, ReactNode, TouchEvent} from 'react'
 import {Image, ScrollView, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
-import type {HardRequirement, ProcessResult} from '@/types'
+import type {HardRequirement, ProcessResult, ResumeStrategyReference} from '@/types'
 import {FeedbackBubble} from '@/components/common/FeedbackBubble'
 import {
   startResultCardReturnTransition,
@@ -14,10 +14,12 @@ import {
 } from '@/utils/shared-element-transition'
 import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
+import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis'
 import {RequirementAnalysisPanel} from './components/RequirementAnalysis.h5'
 import type {ResultPageViewModel, ResultRetryStageKey} from './usePageModel'
 import {buildInterviewStoryViewItems} from './model/interviewReferences'
-import {buildGapViewItems, buildOptimizationStrategyViewItems} from './model/analysisPresentation'
+import {buildGapViewItems, buildOptimizationStrategyViewItems, findResumeReferenceLines,
+  hasStaleStrategyReview, representativeStrategyReference, selectGapPreview} from './model/analysisPresentation'
 import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
@@ -375,10 +377,46 @@ function EmptyText() {
   return <Text className='reffo-result__empty'>暂无内容</Text>
 }
 
-function AnalysisPanel({result}: {result: ProcessResult}) {
+function AnalysisDisclosure({label, children}: {label: string; children: ReactNode}) {
+  const [expanded, setExpanded] = useState(false)
+  const contentId = useId()
+  return (
+    <div className='reffo-result__analysis-disclosure'>
+      <button type='button' className='reffo-result__analysis-toggle' aria-expanded={expanded}
+        aria-controls={contentId} onClick={() => setExpanded(value => !value)}>
+        {expanded ? '收起详情' : label}<span aria-hidden='true'>{expanded ? '−' : '+'}</span>
+      </button>
+      {expanded && <div id={contentId} className='reffo-result__analysis-expanded'>{children}</div>}
+    </div>
+  )
+}
+
+function AnalysisDetail({label, value, quote = false}: {label: string; value: string; quote?: boolean}) {
+  if (!value) return null
+  return (
+    <div className='reffo-result__analysis-detail-row'>
+      <span className='reffo-result__analysis-detail-label'>{label}</span>
+      {quote
+        ? <blockquote className='reffo-result__analysis-detail-value reffo-result__analysis-source'>{value}</blockquote>
+        : <p className='reffo-result__analysis-detail-value reffo-result__analysis-copy'>{value}</p>}
+    </div>
+  )
+}
+
+function AnalysisPanel({result, onLocateReference}: {
+  result: ProcessResult
+  onLocateReference: (reference: ResumeStrategyReference) => void
+}) {
+  const [allGaps, setAllGaps] = useState(false)
+  const [allStrategies, setAllStrategies] = useState(false)
   const grade = resolveResumeGrade(result.matching.match_score)
   const weaknesses = buildGapViewItems(result, Infinity)
+  const previewGaps = selectGapPreview(weaknesses)
+  const visibleGaps = allGaps ? selectGapPreview(weaknesses, Infinity) : previewGaps
   const strategies = buildOptimizationStrategyViewItems(result, Infinity)
+  const visibleStrategies = allStrategies ? strategies : strategies.slice(0, 3)
+  const staleReview = hasStaleStrategyReview(result)
+  const hasPortrait = Boolean(normalizeRequirementAnalysis(result.matching.requirement_analysis)?.portrait?.text)
 
   return (
     <View className='reffo-result__panel'>
@@ -387,24 +425,35 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
         <Text className='reffo-result__grade-label'>岗位匹配度</Text>
       </View>
 
-      <RequirementAnalysisPanel value={result.matching?.requirement_analysis} />
-
       <View className='reffo-result__alert reffo-result__alert--danger'>
         <View className='reffo-result__alert-heading'>
           <Image className='reffo-result__alert-icon' src={alertIcon} mode='aspectFit' />
           <Text>差距分析</Text>
         </View>
         {weaknesses.length > 0 ? (
-          <ul className='reffo-result__analysis-list'>
-            {weaknesses.map(item => (
-              <li key={item.id} className='reffo-result__analysis-list-item'>
-                {item.title}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyText />
-        )}
+          <>
+            <ul className='reffo-result__analysis-list'>
+              {visibleGaps.map(item => (
+                <li key={item.id} className='reffo-result__analysis-list-item'>
+                  {item.isRequired && <span className='reffo-result__analysis-item-tag'>必要条件</span>}
+                  <p className='reffo-result__analysis-judgment'>{item.title}</p>
+                  {(item.jdRequirement || item.evidence || item.impact || item.suggestion) && (
+                    <AnalysisDisclosure label='查看依据与建议'>
+                      <AnalysisDetail label='岗位要求' value={item.jdRequirement} quote />
+                      <AnalysisDetail label='已有依据' value={item.evidence} quote />
+                      <AnalysisDetail label='影响与边界' value={item.impact} />
+                      <AnalysisDetail label='建议方向' value={item.suggestion} />
+                    </AnalysisDisclosure>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {weaknesses.length > previewGaps.length && <button type='button' className='reffo-result__analysis-more'
+              aria-expanded={allGaps} onClick={() => setAllGaps(value => !value)}>
+              {allGaps ? '收起其他差距' : `查看全部 ${weaknesses.length} 项差距`}
+            </button>}
+          </>
+        ) : <EmptyText />}
       </View>
 
       <View className='reffo-result__alert reffo-result__alert--success'>
@@ -412,18 +461,60 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
           <Image className='reffo-result__alert-icon' src={confirmIcon} mode='aspectFit' />
           <Text>优化策略</Text>
         </View>
+        {staleReview && <p className='reffo-result__analysis-caption'>简历已编辑，以下为生成时的建议，原正文对应说明已隐藏。</p>}
         {strategies.length > 0 ? (
-          <ul className='reffo-result__analysis-list'>
-            {strategies.map(item => (
-              <li key={item.id} className='reffo-result__analysis-list-item'>
-                {item.strategyPoint}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyText />
-        )}
+          <>
+            <ul className='reffo-result__analysis-list'>
+              {visibleStrategies.map(item => {
+                const related = weaknesses.filter(gap => item.relatedGapIds.includes(gap.id))
+                const reference = representativeStrategyReference(item.outcome, result.optimized.optimized_resume)
+                const canLocate = reference && findResumeReferenceLines(result.optimized.optimized_resume, reference.quote)
+                const outcomeLabel = item.outcome?.status === 'linked' && reference ? '正文对应内容'
+                  : item.outcome?.status === 'needs_material' ? '需补充材料'
+                    : item.outcome?.status === 'not_selected' ? '本次未选入' : '暂未定位到正文'
+                return (
+                  <li key={item.id} className='reffo-result__analysis-list-item'>
+                    <p className='reffo-result__analysis-judgment'>{item.strategyPoint}</p>
+                    {item.outcome && <span className='reffo-result__analysis-outcome-label'>{outcomeLabel}</span>}
+                    {(item.outcome || item.rationale || item.sourceQuote || item.optimizedContent || related.length > 0) && (
+                      <AnalysisDisclosure label={item.outcome ? '查看说明与正文' : '查看策略依据'}>
+                        {item.outcome && <div className='reffo-result__strategy-outcome'>
+                          <AnalysisDetail label='本次处理' value={item.outcome.explanation} />
+                          {reference && <>
+                            <AnalysisDetail label='简历位置' value={reference.location} />
+                            <AnalysisDetail label='正文原句' value={reference.quote} quote />
+                            {canLocate && <button type='button' className='reffo-result__analysis-toggle reffo-result__strategy-locate'
+                              onClick={() => onLocateReference(reference)}>在相契简历中查看</button>}
+                          </>}
+                        </div>}
+                        <AnalysisDetail label='为什么调整' value={item.rationale} />
+                        {related.map(gap => <div key={gap.id}>
+                          <AnalysisDetail label='相关要求' value={gap.jdRequirement} quote />
+                          <AnalysisDetail label='已有依据' value={gap.evidence} quote />
+                          <AnalysisDetail label='建议方向' value={gap.suggestion} />
+                        </div>)}
+                        <AnalysisDetail label='源简历原句' value={item.sourceQuote} quote />
+                        <AnalysisDetail label='表达示例' value={item.optimizedContent} />
+                        {item.optimizedContent && <p className='reffo-result__analysis-caption'>此处为表达建议，实际内容请查看相契简历。</p>}
+                      </AnalysisDisclosure>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+            {strategies.length > 3 && <button type='button' className='reffo-result__analysis-more'
+              aria-expanded={allStrategies} onClick={() => setAllStrategies(value => !value)}>
+              {allStrategies ? '收起其他策略' : `查看全部 ${strategies.length} 条策略`}
+            </button>}
+          </>
+        ) : <EmptyText />}
       </View>
+
+      {hasPortrait && <div className='reffo-result__portrait-secondary'>
+        <AnalysisDisclosure label='了解岗位画像'>
+          <RequirementAnalysisPanel value={result.matching.requirement_analysis} />
+        </AnalysisDisclosure>
+      </div>}
     </View>
   )
 }
@@ -433,18 +524,33 @@ function ResumePanel({
   companyName,
   positionName,
   onOptimizedResumeChange,
+  reference,
 }: {
   result: ProcessResult
   companyName: string
   positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
+  reference?: ResumeStrategyReference
 }) {
   const [lines, setLines] = useState(() => parseMarkdown(result.optimized.optimized_resume))
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editingDraft, setEditingDraft] = useState('')
   const editorRef = useRef<HTMLTextAreaElement | null>(null)
+  const referenceRef = useRef<HTMLDivElement | null>(null)
   const markdown = useMemo(() => lines.map(line => line.raw).join('\n'), [lines])
   const isEditing = editingIndex !== null
+  const referenceLines = !isEditing && markdown === result.optimized.optimized_resume
+    && result.optimized.strategy_review && !hasStaleStrategyReview(result) && reference
+    ? findResumeReferenceLines(markdown, reference.quote) : undefined
+
+  useEffect(() => {
+    if (!referenceLines) return
+    const frame = window.requestAnimationFrame(() => {
+      referenceRef.current?.scrollIntoView?.({block: 'center', behavior: 'auto'})
+      referenceRef.current?.focus({preventScroll: true})
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [reference?.quote, referenceLines?.start, referenceLines?.end])
 
   const resizeEditor = (element: HTMLTextAreaElement | null) => {
     if (!element) return
@@ -517,13 +623,17 @@ function ResumePanel({
           <Text>下载</Text>
         </View>
 
+        {referenceLines && <p className='reffo-result__analysis-caption' role='status'>已定位：{reference?.location}</p>}
         <View className='reffo-result__markdown'>
           {lines.map((line, index) => (
-            <View
+            <div
               key={`line-${index}`}
+              ref={index === referenceLines?.start ? referenceRef : undefined}
+              tabIndex={index === referenceLines?.start ? -1 : undefined}
               className={classNames(
                 'reffo-result__markdown-line',
                 `reffo-result__markdown-line--${line.kind}`,
+                {'reffo-result__markdown-line--located': referenceLines && index >= referenceLines.start && index <= referenceLines.end},
               )}
             >
               {editingIndex === index ? (
@@ -584,7 +694,7 @@ function ResumePanel({
                   )}
                 </>
               )}
-            </View>
+            </div>
           ))}
         </View>
       </View>
@@ -676,6 +786,8 @@ function ResultContent({
   companyName,
   positionName,
   onOptimizedResumeChange,
+  onLocateReference,
+  reference,
 }: {
   stage: ResultStageKey
   result: ProcessResult
@@ -684,8 +796,10 @@ function ResultContent({
   companyName: string
   positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
+  onLocateReference: (reference: ResumeStrategyReference) => void
+  reference?: ResumeStrategyReference
 }) {
-  if (stage === 'analysis') return <AnalysisPanel result={result} />
+  if (stage === 'analysis') return <AnalysisPanel result={result} onLocateReference={onLocateReference} />
   if (stage === 'resume') {
     return (
       <ResumePanel
@@ -693,6 +807,7 @@ function ResultContent({
         companyName={companyName}
         positionName={positionName}
         onOptimizedResumeChange={onOptimizedResumeChange}
+        reference={reference}
       />
     )
   }
@@ -726,6 +841,9 @@ export default function PageView({
   hideLandingHeader = false,
 }: ResultPageViewProps) {
   const [stageIndex, setStageIndex] = useState(0)
+  const [resumeReference, setResumeReference] = useState<ResumeStrategyReference>()
+
+  useEffect(() => setResumeReference(undefined), [result?.optimized.optimized_resume])
   const [isFromCardReady, setIsFromCardReady] = useState(!enteredFromCard)
   const [isEdgeEnterReady, setIsEdgeEnterReady] = useState(!enteredFromCard)
   const [isReturningHome, setIsReturningHome] = useState(false)
@@ -975,6 +1093,13 @@ export default function PageView({
       setStageTransition(current => current?.toIndex === nextIndex ? null : current)
     }, RESULT_STAGE_SWITCH_DURATION)
   }, [handleRetryStage, progress, showBlockedBubble, stageAvailability, stageIndex])
+
+  const handleLocateReference = (reference: ResumeStrategyReference) => {
+    if (!result || hasStaleStrategyReview(result)
+      || !findResumeReferenceLines(result.optimized.optimized_resume, reference.quote)) return
+    setResumeReference(reference)
+    requestStageSwitch(1)
+  }
 
   const handleStageTouchStart = useCallback((event: TouchEvent) => {
     const touch = event.touches[0] ?? event.changedTouches[0]
@@ -1495,6 +1620,7 @@ export default function PageView({
                         companyName={companyName}
                         positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
+                        onLocateReference={handleLocateReference}
                       />
                     </View>
                     <View
@@ -1513,6 +1639,7 @@ export default function PageView({
                         companyName={companyName}
                         positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
+                        onLocateReference={handleLocateReference}
                       />
                     </View>
                   </>
@@ -1529,6 +1656,8 @@ export default function PageView({
                       companyName={companyName}
                       positionName={positionName}
                       onOptimizedResumeChange={handleOptimizedResumeChange}
+                      onLocateReference={handleLocateReference}
+                      reference={resumeReference}
                     />
                   </View>
                 )}
