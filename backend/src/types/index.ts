@@ -183,6 +183,9 @@ export interface ApiResponse<T> {
   success: boolean
   data?: T
   meta?: {
+    cache?: {
+      status: 'miss' | 'hit' | 'coalesced' | 'disabled' | 'not_applicable'
+    }
     harness?: HarnessResponseMeta
   }
   error?: {
@@ -241,6 +244,15 @@ export interface SourceResumeRecord {
   updated_at: string
 }
 
+export interface SourceResumeSummaryRecord {
+  id: string
+  title: string
+  source_type: SourceResumeSourceType
+  original_file_name: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface SaveSourceResumeInput {
   title: string
   resume_markdown: string
@@ -283,6 +295,22 @@ export interface ResumeHistoryRecord {
   process_result?: unknown
   result_context?: ResultSessionContextRecord
   progress?: ResultSessionProgressRecord
+  card_color?: string
+  card_pattern?: string
+}
+
+export interface ResumeHistorySummaryRecord {
+  id: string
+  position: string
+  company: string
+  name: string
+  created_at: string
+  updated_at: string
+  quality_score: number
+  match_score: number
+  tags: string[]
+  location: string
+  strategy_body: string
   card_color?: string
   card_pattern?: string
 }

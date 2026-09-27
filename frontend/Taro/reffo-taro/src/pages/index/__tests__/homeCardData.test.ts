@@ -1,7 +1,34 @@
-import type {ResumeHistory} from '@/types'
-import {toHistoryCardItem} from '../model/homeCardData'
+import type {ResumeHistory, ResumeHistorySummary} from '@/types'
+import {toHistoryCardItem, toHistorySummaryCardItem} from '../model/homeCardData'
 
 describe('homeCardData', () => {
+  test('轻量摘要直接生成首页卡片，不依赖简历正文', () => {
+    const summary: ResumeHistorySummary = {
+      id: 'JD2026092300001',
+      position: 'AI 产品经理',
+      company: 'Reffo',
+      name: '候选人',
+      createdAt: '2026-09-23T12:00:00.000Z',
+      updatedAt: '2026-09-23T12:00:00.000Z',
+      qualityScore: 88,
+      matchScore: 84,
+      tags: ['AI'],
+      location: '北京',
+      strategyBody: '突出 AI 产品落地经验。',
+    }
+
+    const card = toHistorySummaryCardItem(summary)
+
+    expect(card).toMatchObject({
+      id: summary.id,
+      company: summary.company,
+      role: summary.position,
+      location: summary.location,
+      score: summary.qualityScore,
+      strategyBody: summary.strategyBody,
+    })
+  })
+
   test('历史卡片评级使用简历质量分而不是岗位匹配分', () => {
     const history: ResumeHistory = {
       id: 'JD2026070800001',

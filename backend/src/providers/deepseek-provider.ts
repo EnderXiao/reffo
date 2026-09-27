@@ -56,11 +56,14 @@ export class DeepSeekProvider implements LlmProvider {
 
   async complete(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     const model = input.model ?? env.AI_MODEL
-    const settings = resolveDeepSeekStageThinking(
+    const resolvedSettings = resolveDeepSeekStageThinking(
       this.thinkingSettings ?? parseDeepSeekThinking(env.DEEPSEEK_THINKING_MODE, env.DEEPSEEK_REASONING_EFFORT),
       this.extractionThinkingMode,
       isResumeExtractionRequest(input)
     )
+    const settings = input.thinkingOverride === 'disabled'
+      ? { ...resolvedSettings, mode: 'disabled' as const }
+      : resolvedSettings
     const thinking = deepSeekThinkingParameters(model, env.OPENAI_BASE_URL, settings)
     const maxOutputTokens = input.maxOutputTokens
       ?? (settings.mode === 'enabled' ? env.DEEPSEEK_THINKING_MAX_TOKENS : undefined)
@@ -85,6 +88,9 @@ export class DeepSeekProvider implements LlmProvider {
             inputDigest,
             temperature: settings.mode === 'enabled' ? undefined : input.temperature,
             ...thinking,
+            thinkingMode: settings.mode,
+            reasoningEffort: settings.mode === 'enabled' ? settings.effort : null,
+            thinkingOverride: input.thinkingOverride ?? null,
             maxOutputTokens,
             strictSchema: input.structuredOutput?.name,
             strictSchemaTransport: input.structuredOutput
@@ -216,6 +222,9 @@ export class DeepSeekProvider implements LlmProvider {
             reasoningTokens: result.reasoningTokens,
             requestedModel: model,
             ...responseThinking,
+            thinkingMode: settings.mode,
+            reasoningEffort: settings.mode === 'enabled' ? settings.effort : null,
+            thinkingOverride: input.thinkingOverride ?? null,
             outputDigest: createDigest(result.content),
             promptManifest: input.promptManifest
               ? {

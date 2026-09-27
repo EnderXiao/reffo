@@ -1,10 +1,19 @@
 import {apiClient} from './api';
-import type {SourceResumeSourceType, SourceResumeSummary} from '@/types';
+import type {SourceResumeSourceType, SourceResumeSummary, SourceResumeSummaryMeta} from '@/types';
 
 interface SourceResumeApiRecord {
   id: string;
   title: string;
   resume_markdown: string;
+  source_type: SourceResumeSourceType;
+  original_file_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SourceResumeSummaryApiRecord {
+  id: string;
+  title: string;
   source_type: SourceResumeSourceType;
   original_file_name: string | null;
   created_at: string;
@@ -30,6 +39,30 @@ function toSourceResumeSummary(record: SourceResumeApiRecord): SourceResumeSumma
   };
 }
 
+function toSourceResumeSummaryMeta(record: SourceResumeSummaryApiRecord): SourceResumeSummaryMeta {
+  return {
+    id: record.id,
+    title: record.title,
+    sourceType: record.source_type,
+    originalFileName: record.original_file_name,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+  };
+}
+
+export function toSourceResumeSummaryMetaFromSummary(
+  summary: SourceResumeSummary,
+): SourceResumeSummaryMeta {
+  return {
+    id: summary.id,
+    title: summary.title,
+    sourceType: summary.sourceType,
+    originalFileName: summary.originalFileName,
+    createdAt: summary.createdAt,
+    updatedAt: summary.updatedAt,
+  };
+}
+
 export class SourceResumeApi {
   async saveSourceResume(payload: SaveSourceResumeRequest): Promise<SourceResumeSummary> {
     const response = await apiClient.post<SourceResumeApiRecord>('/source-resume', payload);
@@ -39,6 +72,11 @@ export class SourceResumeApi {
   async getLatestSourceResume(): Promise<SourceResumeSummary | null> {
     const response = await apiClient.get<SourceResumeApiRecord | null>('/source-resume/latest');
     return response ? toSourceResumeSummary(response) : null;
+  }
+
+  async getLatestSourceResumeSummary(): Promise<SourceResumeSummaryMeta | null> {
+    const response = await apiClient.get<SourceResumeSummaryApiRecord | null>('/source-resume/latest-summary');
+    return response ? toSourceResumeSummaryMeta(response) : null;
   }
 
   async deleteSourceResume(id: string): Promise<void> {

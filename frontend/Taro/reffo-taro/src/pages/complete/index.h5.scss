@@ -29,6 +29,10 @@ body:has(.reffo-complete) {
   -webkit-tap-highlight-color: transparent;
 }
 
+.reffo-complete__frame {
+  align-items: center;
+}
+
 .reffo-complete::before {
   position: absolute;
   inset: -12% -24% auto;

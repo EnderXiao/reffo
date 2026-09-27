@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { env } from '@/config/env'
 import { GlmOcrProvider } from '@/services/ocr/glm-ocr-provider'
@@ -5,13 +8,16 @@ import { GlmOcrProvider } from '@/services/ocr/glm-ocr-provider'
 describe('GlmOcrProvider job description structure', () => {
   const originalFetch = globalThis.fetch
   const originalApiKey = env.GLM_OCR_API_KEY
+  const originalCaCertPath = env.OCR_CA_CERT_PATH
 
   beforeEach(() => {
     env.GLM_OCR_API_KEY = 'test-ocr-key'
+    env.OCR_CA_CERT_PATH = ''
   })
 
   afterEach(() => {
     env.GLM_OCR_API_KEY = originalApiKey
+    env.OCR_CA_CERT_PATH = originalCaCertPath
     globalThis.fetch = originalFetch
   })
 
@@ -124,5 +130,56 @@ describe('GlmOcrProvider job description structure', () => {
       responsibilities: ['推动产品落地。'],
       requirements: ['具备相关经验。'],
     })
+  })
+
+  test('passes the configured CA certificate to Bun fetch', async () => {
+    const certificateDirectory = mkdtempSync(join(tmpdir(), 'reffo-ocr-ca-'))
+    const certificatePath = join(certificateDirectory, 'xiaomi-root-ca.pem')
+    writeFileSync(certificatePath, 'test-ca-certificate\n')
+    env.OCR_CA_CERT_PATH = certificatePath
+
+    let requestInit: RequestInit | undefined
+    globalThis.fetch = mock(async (_input, init) => {
+      requestInit = init
+      return Response.json({ markdown: '# OCR test resume' })
+    }) as unknown as typeof fetch
+
+    try {
+      await new GlmOcrProvider().parseDocument({
+        fileName: 'resume.pdf',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        buffer: new ArrayBuffer(0),
+        purpose: 'resume',
+      })
+    } finally {
+      rmSync(certificateDirectory, { recursive: true, force: true })
+      env.OCR_CA_CERT_PATH = ''
+    }
+
+    expect(requestInit).toMatchObject({
+      tls: {
+        ca: 'test-ca-certificate\n',
+      },
+    })
+  })
+
+  test('reports a missing OCR configuration when the CA certificate cannot be read', async () => {
+    env.OCR_CA_CERT_PATH = join(tmpdir(), 'reffo-missing-ocr-ca.pem')
+    globalThis.fetch = mock(async () => Response.json({ markdown: '# unexpected' })) as unknown as typeof fetch
+
+    const request = new GlmOcrProvider().parseDocument({
+      fileName: 'resume.pdf',
+      fileType: 'pdf',
+      mimeType: 'application/pdf',
+      buffer: new ArrayBuffer(0),
+      purpose: 'resume',
+    })
+
+    await expect(request).rejects.toMatchObject({
+      code: 'OCR_CONFIG_MISSING',
+      message: 'GLM-OCR CA 证书文件不可读',
+    })
+    expect(globalThis.fetch).not.toHaveBeenCalled()
   })
 })

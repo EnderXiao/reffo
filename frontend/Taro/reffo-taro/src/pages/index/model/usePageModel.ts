@@ -4,8 +4,14 @@ import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import {useHistoryStore} from '@/store/historyStore'
 import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
-import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
-import {toHistoryCardItems} from './homeCardData'
+import {
+  appendRouteParams,
+  routePaths,
+  scheduleCreateRoutePreload,
+  usePageRoute,
+  useRouteTransition,
+} from '@/shared/routing'
+import {toHistorySummaryCardItems} from './homeCardData'
 import {suppressNextNavigationTransition} from '@/utils/navigation-transition'
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
@@ -97,12 +103,12 @@ export interface IndexPageViewModel {
 export function usePageModel(logoSource: string): IndexPageViewModel {
   const pageRoute = usePageRoute()
   const route = useRouteTransition()
-  const {histories, loading, loadHistories} = useHistoryStore()
-  const {
-    latestSourceResume,
-    loading: sourceResumeLoading,
-    loadLatestSourceResume,
-  } = useSourceResumeStore()
+  const historySummaries = useHistoryStore(state => state.historySummaries)
+  const historyLoading = useHistoryStore(state => state.loading)
+  const loadHistorySummaries = useHistoryStore(state => state.loadHistorySummaries)
+  const latestSourceResumeSummary = useSourceResumeStore(state => state.latestSourceResumeSummary)
+  const sourceResumeLoading = useSourceResumeStore(state => state.loading)
+  const loadLatestSourceSummary = useSourceResumeStore(state => state.loadLatestSourceSummary)
   const initialReturningHomeState = useMemo(readReturningHomeState, [])
   const [activeCardIndex, setActiveCardIndex] = useState(0)
   const [isStrategyVisible, setIsStrategyVisible] = useState(initialReturningHomeState.isReturning)
@@ -114,14 +120,16 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   const consumedEntryCardIdRef = useRef<string | null>(null)
   const hasShownHomeRef = useRef(false)
 
+  useEffect(() => scheduleCreateRoutePreload(), [])
+
   useEffect(() => {
     if (initialReturningHomeState.isReturning) {
       return
     }
 
-    loadHistories({skipIfLoaded: true})
-    loadLatestSourceResume({skipIfLoaded: true})
-  }, [initialReturningHomeState.isReturning, loadHistories, loadLatestSourceResume])
+    loadHistorySummaries({skipIfLoaded: true})
+    loadLatestSourceSummary({skipIfLoaded: true})
+  }, [initialReturningHomeState.isReturning, loadHistorySummaries, loadLatestSourceSummary])
 
   useEffect(() => {
     if (pageRoute.readString(NEW_CARD_ID_QUERY_KEY)) {
@@ -130,10 +138,12 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [pageRoute])
 
   const cardItems = useMemo(() => {
-    return histories.length > 0 ? toHistoryCardItems(histories) : []
-  }, [histories])
+    return historySummaries.length > 0
+      ? toHistorySummaryCardItems(historySummaries)
+      : []
+  }, [historySummaries])
 
-  const hasHistories = histories.length > 0
+  const hasHistories = historySummaries.length > 0
   const shouldShowCreateCard = !hasHistories
   const resolvedCreateMode = isCreateMode || shouldShowCreateCard
   const enteringCardIndex = useMemo(
@@ -172,8 +182,8 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
       setIsStrategyVisible(true)
     }
     if (!returningHomeState.isReturning) {
-      loadHistories({skipIfLoaded: isFirstHomeShow})
-      loadLatestSourceResume({skipIfLoaded: isFirstHomeShow})
+      loadHistorySummaries({skipIfLoaded: isFirstHomeShow})
+      loadLatestSourceSummary({skipIfLoaded: isFirstHomeShow})
     }
   })
 
@@ -212,8 +222,8 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   const handleConfirmCreate = useCallback(() => {
     resumeWorkspaceActions.reset()
 
-    void route.navigate(appendRouteParams(routePaths.create, latestSourceResume ? {step: 'jobDescription'} : undefined))
-  }, [latestSourceResume])
+    void route.navigate(appendRouteParams(routePaths.create, latestSourceResumeSummary ? {step: 'jobDescription'} : undefined))
+  }, [latestSourceResumeSummary])
 
   const handleCancelCreate = useCallback(() => {
     if (!shouldShowCreateCard) {
@@ -222,25 +232,20 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   }, [shouldShowCreateCard])
 
   const handleViewHistory = useCallback(() => {
-    void route.navigate(appendRouteParams(routePaths.create, latestSourceResume ? {step: 'resumeSummary'} : undefined))
-  }, [latestSourceResume])
+    void route.navigate(appendRouteParams(routePaths.create, latestSourceResumeSummary ? {step: 'resumeSummary'} : undefined))
+  }, [latestSourceResumeSummary])
 
   const handleCardPress = useCallback((card: HomeCardItem) => {
     if (resolvedCreateMode) {
       return Promise.resolve()
     }
 
-    const targetHistory = histories.find(history => history.id === card.id)
-    if (!targetHistory) {
-      return Promise.resolve()
-    }
-
     suppressNextNavigationTransition()
     return route.navigate(appendRouteParams(routePaths.result, {
-      id: targetHistory.id,
+      id: card.id,
       fromCard: 1,
     }))
-  }, [histories, resolvedCreateMode, route])
+  }, [resolvedCreateMode, route])
 
   const handleCardChange = useCallback((_: HomeCardItem, index: number) => {
     setActiveCardIndex(previousIndex =>
@@ -275,11 +280,11 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     currentCard: cardItems[activeCardIndex] ?? null,
     currentProgress,
     displayTotal: cardItems.length,
-    isLoading: loading.isLoading || sourceResumeLoading.isLoading,
-    loadingError: loading.error || sourceResumeLoading.error,
+    isLoading: historyLoading.isLoading || sourceResumeLoading.isLoading,
+    loadingError: historyLoading.error || sourceResumeLoading.error,
     hasHistories,
-    hasSourceResume: Boolean(latestSourceResume),
-    sourceResumeTitle: latestSourceResume?.title ?? null,
+    hasSourceResume: Boolean(latestSourceResumeSummary),
+    sourceResumeTitle: latestSourceResumeSummary?.title ?? null,
     isStrategyVisible,
     isCreateMode: resolvedCreateMode,
     initialCardIndex: initialDeckIndex,

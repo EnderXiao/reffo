@@ -7,6 +7,8 @@ import { V5WorkflowBlockedError } from '@/v5/errors'
 import { V5_WORKFLOW_VERSION } from '@/v5/types'
 import { createSingleStepFixture } from '@/v5/tests/single-step-fixtures'
 import { MemoryCheckpointStorage } from '@/v5/tests/checkpoint-storage-fixture'
+import { MemoryAnalysisCacheStorage } from '@/v5/tests/analysis-cache-storage-fixture'
+import { V5AnalysisCacheRepository } from '@/repositories/v5-analysis-cache-repository'
 import { FIXTURE_RESUME, FIXTURE_JD } from '@/v5/tests/fixtures'
 import { writingIssue } from '@/v5/writing/facts'
 
@@ -16,7 +18,10 @@ async function post<T extends 'analyze' | 'match' | 'generate' | 'interview'>(pa
   }))
   return {status: response.status, body: await response.json() as {
     data: Awaited<ReturnType<V5SingleStepAdapter[T]>>['data']
-    meta: { harness: { workflow_version: string; step_statuses: Array<{ stepName: string }> } }
+    meta: {
+      cache: {status: string}
+      harness: { workflow_version: string; step_statuses: Array<{ stepName: string }> }
+    }
     error: { code: string }
   }}
 }
@@ -26,7 +31,11 @@ test('existing frontend request sequence reaches V5 analysis, matching, Writer a
   env.APP_ENV = 'local'
   env.AUTH_REQUIRED = false
   const fixture = createSingleStepFixture()
-  const adapter = new V5SingleStepAdapter(new V5CheckpointRepository('fixture', new MemoryCheckpointStorage()), fixture.createWorkflow)
+  const adapter = new V5SingleStepAdapter(
+    new V5CheckpointRepository('fixture', new MemoryCheckpointStorage()),
+    fixture.createWorkflow,
+    new V5AnalysisCacheRepository(new MemoryAnalysisCacheStorage()),
+  )
   const mocks = [
     spyOn(v5SingleStepAdapter, 'analyze').mockImplementation(adapter.analyze.bind(adapter)),
     spyOn(v5SingleStepAdapter, 'match').mockImplementation(adapter.match.bind(adapter)),
@@ -37,6 +46,7 @@ test('existing frontend request sequence reaches V5 analysis, matching, Writer a
     const analysis = await post('analyze', {resume_markdown: FIXTURE_RESUME})
     expect(analysis.status).toBe(200)
     expect(analysis.body.meta.harness.workflow_version).toBe(V5_WORKFLOW_VERSION)
+    expect(analysis.body.meta.cache.status).toBe('miss')
     expect(analysis.body.meta.harness.step_statuses[0].stepName).toBe('v5_p01_resume_extract')
     const structured_resume = analysis.body.data.structured_resume
     const matching = await post('match', {structured_resume, jd_text: FIXTURE_JD})

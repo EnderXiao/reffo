@@ -77,6 +77,7 @@ const model: ResultPageViewModel = {
   handleBackHome: jest.fn(),
   handleEditHistory: jest.fn(),
   handlePendingStage: jest.fn(),
+  handleRetryStage: jest.fn(),
   handleOptimizedResumeChange: jest.fn(),
   canEditHistory: false,
 }
@@ -113,6 +114,40 @@ describe('结果页', () => {
     expect(screen.getByText('核心业务系统项目')).toBeTruthy()
     expect(screen.getAllByText('负责核心业务系统开发并按期完成上线').length).toBeGreaterThan(0)
     expect(screen.getAllByText('负责核心业务系统开发，熟悉 React').length).toBeGreaterThan(0)
+  })
+
+  test('简历生成失败后点击对应 tab 直接触发重试', () => {
+    const handleRetryStage = jest.fn()
+    render(
+      <PageView
+        {...model}
+        handleRetryStage={handleRetryStage}
+        progress={{...model.progress, optimized: 'failed'}}
+        generationError='简历生成失败，请稍后重试'
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('重试最佳简历'))
+
+    expect(handleRetryStage).toHaveBeenCalledWith('resume')
+    expect(screen.queryByText('简历生成失败，请稍后重试')).toBeNull()
+  })
+
+  test('生成中的 tab 仍保持阻塞提示，不触发重试', () => {
+    const handleRetryStage = jest.fn()
+    render(
+      <PageView
+        {...model}
+        handleRetryStage={handleRetryStage}
+        progress={{...model.progress, optimized: 'generating'}}
+      />,
+    )
+
+    const resumeTab = screen.getByLabelText('最佳简历')
+    fireEvent.click(resumeTab)
+
+    expect(handleRetryStage).not.toHaveBeenCalled()
+    expect(within(resumeTab).getByText('步骤正在生成中')).toBeTruthy()
   })
 
   test('每个故事完整显示各自的讲述方案，引用独立保留', () => {

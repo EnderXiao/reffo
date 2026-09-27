@@ -72,6 +72,9 @@ export interface NavigationAdapter {
    */
   navigateBack(delta?: number): Promise<void>;
 
+  /** 返回当前页面是否拥有可返回的 Taro 页面栈。 */
+  canGoBack(): boolean;
+
   /**
    * 关闭当前页面，跳转到应用内的某个页面
    *

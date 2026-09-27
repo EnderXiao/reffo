@@ -158,6 +158,42 @@ describe('Result usePageModel workspace generation state', () => {
     })
   })
 
+  test('结果页点击失败的简历 tab 会重新调用生成接口', async () => {
+    jest.mocked(resumeApi.generateOptimizedResume).mockRejectedValueOnce(new Error('优化失败'))
+    const {result} = renderHook(() => usePageModel())
+
+    await waitFor(() => {
+      expect(result.current.progress.optimized).toBe('failed')
+    })
+
+    await act(async () => {
+      await result.current.handleRetryStage('resume')
+    })
+
+    expect(resumeApi.generateOptimizedResume).toHaveBeenCalledTimes(2)
+    await waitFor(() => {
+      expect(result.current.progress).toMatchObject({
+        optimized: 'done',
+        interview: 'done',
+      })
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('completed')
+    })
+  })
+
+  test('未失败的 tab 不会触发额外生成调用', async () => {
+    const {result} = renderHook(() => usePageModel())
+    await waitFor(() => {
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('completed')
+    })
+
+    const interviewCalls = jest.mocked(resumeApi.generateInterviewSuggestions).mock.calls.length
+    await act(async () => {
+      await result.current.handleRetryStage('interview')
+    })
+
+    expect(jest.mocked(resumeApi.generateInterviewSuggestions)).toHaveBeenCalledTimes(interviewCalls)
+  })
+
   test('页面卸载会取消仍在执行的 workspace 请求', async () => {
     let resolveOptimized!: (value: typeof optimized) => void
     jest.mocked(resumeApi.generateOptimizedResume).mockReturnValueOnce(

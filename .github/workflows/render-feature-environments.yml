@@ -1,4 +1,4 @@
-name: Render Feature Environments
+name: Supabase and Render Feature Environments
 
 on:
   push:
@@ -28,6 +28,18 @@ jobs:
       RENDER_REPO_URL: https://github.com/${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+      - name: Install backend dependencies for Supabase CLI
+        working-directory: backend
+        run: bun install --frozen-lockfile
+      - name: Apply nonprod Supabase migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_NONPROD_DB_URL }}
+          SUPABASE_MIGRATION_ENV: nonprod
+          SUPABASE_CLI: backend/node_modules/.bin/supabase
+        run: bash .github/scripts/supabase-migrate.sh
       - name: Create or deploy Render feature service
         run: bash .github/scripts/render-feature-service.sh
       - name: Create or deploy Render feature frontend

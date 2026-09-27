@@ -32,6 +32,8 @@ export interface ChatCompletionInput {
     temperature: number
     inputDocumentIds: string[]
     repairAttempt: number
+    transportRepairAttempt?: number
+    transportRecoveryMode?: 'json_repair' | 'thinking_disabled'
     inputSummary?: {
       envelopeBytes: number
       envelopeTopLevelFields: string[]
@@ -41,7 +43,7 @@ export interface ChatCompletionInput {
     }
   }
   callMetadata?: {
-    callReason: 'business_stage' | 'validation_repair' | 'network_retry' | 'semantic_gate'
+    callReason: 'business_stage' | 'validation_repair' | 'json_repair' | 'thinking_fallback' | 'network_retry' | 'semantic_gate'
     contextMode: 'full' | 'scoped' | 'patch'
     repairScope: string[]
     retryIndex: number
@@ -49,6 +51,8 @@ export interface ChatCompletionInput {
   }
   maxProviderAttempts?: number
   maxProviderModels?: number
+  /** Server-owned transport recovery override; never selected from prompt content. */
+  thinkingOverride?: 'disabled'
   /** Internal content-only stream. Never forwards reasoning or raw provider frames. */
   onContentDelta?: (text: string) => void
   eventBus?: HarnessEventBus

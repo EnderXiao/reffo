@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test'
+import { createHarnessEventBus } from '@/harness/event-bus'
+import type { HarnessEvent } from '@/harness/events'
+import { createRunContext, createStepExecutionContext } from '@/harness/run-context'
 import type { LlmProvider } from '@/providers/llm-provider'
 import { runV5StructuredStage, V5ProviderCallError } from '@/v5/stage-runner'
 import { V5_SCHEMA_VERSION, type BlindABEvaluation } from '@/v5/types'
@@ -55,14 +58,18 @@ describe('v5 structured stage transport completion', () => {
   })
 
   test('keeps malformed non-truncated JSON as a parse failure', async () => {
+    let calls = 0
     const provider: LlmProvider = {
-      complete: async () => ({
+      complete: async () => {
+        calls += 1
+        return ({
         provider: 'fake',
         model: 'fixture',
         content: '{"schemaVersion":',
         finishReason: 'stop',
         latencyMs: 1,
-      }),
+        })
+      },
     }
 
     await expect(runV5StructuredStage({
@@ -73,6 +80,264 @@ describe('v5 structured stage transport completion', () => {
       code: 'V5_JSON_PARSE_FAILED',
       component: 'P01',
     })
+    expect(calls).toBe(2)
+  })
+
+  test('repairs malformed JSON once at the transport boundary and records recovery events', async () => {
+    const content: BlindABEvaluation = {
+      schemaVersion: V5_SCHEMA_VERSION,
+      evaluations: [
+        {
+          candidateId: 'A',
+          absoluteGate: 'pass',
+          dimensions: {
+            factualFidelity: 25,
+            jobSpecificity: 18,
+            evidenceSelection: 14,
+            highValueEvidenceRecall: 9,
+            careerCoherence: 9,
+            concisenessReadability: 9,
+            deliverability: 10,
+          },
+          unsupportedClaims: [],
+          attributionErrors: [],
+          emptyScopes: [],
+          missingHighValueEvidence: [],
+          internalAuditLeaks: [],
+          strengths: [],
+          weaknesses: [],
+        },
+        {
+          candidateId: 'B',
+          absoluteGate: 'pass',
+          dimensions: {
+            factualFidelity: 24,
+            jobSpecificity: 17,
+            evidenceSelection: 13,
+            highValueEvidenceRecall: 8,
+            careerCoherence: 9,
+            concisenessReadability: 9,
+            deliverability: 9,
+          },
+          unsupportedClaims: [],
+          attributionErrors: [],
+          emptyScopes: [],
+          missingHighValueEvidence: [],
+          internalAuditLeaks: [],
+          strengths: [],
+          weaknesses: [],
+        },
+      ],
+      pairwise: { winner: 'A', confidence: 'high', reason: 'transport repair' },
+    }
+    const requests: Array<Parameters<LlmProvider['complete']>[0]> = []
+    const eventBus = createHarnessEventBus()
+    const events: HarnessEvent[] = []
+    eventBus.subscribe('*', event => { events.push(event) })
+    const provider: LlmProvider = {
+      complete: async request => {
+        requests.push(request)
+        return {
+          provider: 'fake',
+          model: 'fixture',
+          content: requests.length === 1 ? '{"schemaVersion":' : JSON.stringify(content),
+          finishReason: 'stop',
+          latencyMs: 1,
+          inputTokens: 10,
+          outputTokens: requests.length === 1 ? 2 : 20,
+        }
+      },
+    }
+
+    const result = await runV5StructuredStage<BlindABEvaluation>({
+      component: 'P12',
+      envelope: { payload: {} },
+      options: {
+        provider,
+        eventBus,
+        stepContext: createStepExecutionContext(createRunContext(), 'v5_transport_json_repair'),
+      },
+    })
+
+    expect(result.value).toEqual(content)
+    expect(requests).toHaveLength(2)
+    expect(requests[1]).toMatchObject({
+      thinkingOverride: 'disabled',
+      maxProviderAttempts: 1,
+      maxProviderModels: 1,
+      callMetadata: {
+        callReason: 'json_repair',
+        contextMode: 'full',
+        repairScope: ['json_output'],
+        retryIndex: 1,
+      },
+      promptManifest: expect.objectContaining({
+        componentPromptId: 'P12',
+        transportRepairAttempt: 1,
+        transportRecoveryMode: 'json_repair',
+      }),
+    })
+    expect(requests[1].messages.at(-1)?.content).toContain('重新生成一个完整 JSON 对象')
+    expect(events.filter(event => event.type.startsWith('recovery.'))).toHaveLength(3)
+    expect(events.find(event => event.type === 'recovery.planned')?.payload).toMatchObject({
+      action: 'repair_json',
+      outputName: 'P12',
+      triggerErrorCode: 'V5_JSON_PARSE_FAILED',
+      maxAttempts: 1,
+    })
+    expect(events.find(event => event.type === 'recovery.succeeded')?.payload).toMatchObject({
+      action: 'repair_json',
+      outputName: 'P12',
+      finishReason: 'stop',
+    })
+  })
+
+  test('keeps JSON repair provider failures on the provider recovery boundary', async () => {
+    let calls = 0
+    const provider: LlmProvider = {
+      complete: async () => {
+        calls += 1
+        if (calls === 1) {
+          return {
+            provider: 'fake',
+            model: 'fixture',
+            content: '{"schemaVersion":',
+            finishReason: 'stop',
+            latencyMs: 1,
+          }
+        }
+        throw Object.assign(new Error('rate limited'), { status: 429 })
+      },
+    }
+
+    try {
+      await runV5StructuredStage({
+        component: 'P01',
+        envelope: { payload: {} },
+        options: { provider },
+      })
+      throw new Error('expected JSON repair provider call to fail')
+    } catch (error) {
+      expect(error).toBeInstanceOf(V5ProviderCallError)
+      expect(error).toMatchObject({
+        code: 'V5_PROVIDER_CALL_FAILED',
+        component: 'P01',
+        retryable: true,
+        status: 429,
+      })
+    }
+    expect(calls).toBe(2)
+  })
+
+  test('retries reasoning-only truncation once with thinking disabled', async () => {
+    const content = {
+      schemaVersion: V5_SCHEMA_VERSION,
+      selectedProfileId: 'profile-experienced',
+      selectedPolicyId: 'policy-balanced',
+      confidence: 'high',
+      basis: [],
+    }
+    const requests: Array<Parameters<LlmProvider['complete']>[0]> = []
+    const eventBus = createHarnessEventBus()
+    const events: HarnessEvent[] = []
+    eventBus.subscribe('*', event => { events.push(event) })
+    const provider: LlmProvider = {
+      complete: async request => {
+        requests.push(request)
+        return requests.length === 1
+          ? {
+              provider: 'fake',
+              model: 'fixture',
+              content: '',
+              finishReason: 'length',
+              latencyMs: 26,
+              inputTokens: 29_278,
+              outputTokens: 6_000,
+              reasoningTokens: 6_000,
+            }
+          : {
+              provider: 'fake',
+              model: 'fixture',
+              content: JSON.stringify(content),
+              finishReason: 'stop',
+              latencyMs: 7,
+              inputTokens: 29_278,
+              outputTokens: 800,
+              reasoningTokens: 0,
+            }
+      },
+    }
+
+    const result = await runV5StructuredStage<typeof content>({
+      component: 'P04',
+      envelope: { payload: {} },
+      options: {
+        provider,
+        eventBus,
+        stepContext: createStepExecutionContext(createRunContext(), 'v5_p04_reasoning_fallback'),
+      },
+    })
+
+    expect(result.value).toEqual(content)
+    expect(requests).toHaveLength(2)
+    expect(requests[0].thinkingOverride).toBeUndefined()
+    expect(requests[1]).toMatchObject({
+      thinkingOverride: 'disabled',
+      maxProviderAttempts: 1,
+      maxProviderModels: 1,
+      callMetadata: {
+        callReason: 'thinking_fallback',
+        contextMode: 'full',
+        repairScope: ['thinking_disabled'],
+        retryIndex: 1,
+      },
+      promptManifest: expect.objectContaining({
+        componentPromptId: 'P04',
+        transportRecoveryMode: 'thinking_disabled',
+      }),
+    })
+    expect(requests[1].messages).toEqual(requests[0].messages)
+    expect(events.filter(event => event.type.startsWith('recovery.'))).toHaveLength(3)
+    expect(events.find(event => event.type === 'recovery.planned')?.payload).toMatchObject({
+      action: 'disable_thinking',
+      outputName: 'P04',
+      triggerErrorCode: 'V5_OUTPUT_TRUNCATED',
+      recoveryMode: 'thinking_disabled',
+      maxAttempts: 1,
+    })
+    expect(events.find(event => event.type === 'recovery.succeeded')?.payload).toMatchObject({
+      action: 'disable_thinking',
+      finishReason: 'stop',
+    })
+  })
+
+  test('stops after a thinking-disabled retry remains truncated', async () => {
+    const requests: Array<Parameters<LlmProvider['complete']>[0]> = []
+    const provider: LlmProvider = {
+      complete: async request => {
+        requests.push(request)
+        return {
+          provider: 'fake',
+          model: 'fixture',
+          content: requests.length === 1 ? '' : '{"schemaVersion":"5.0.0",',
+          finishReason: 'length',
+          latencyMs: 1,
+          outputTokens: 6_000,
+          reasoningTokens: requests.length === 1 ? 6_000 : 0,
+        }
+      },
+    }
+
+    await expect(runV5StructuredStage({
+      component: 'P04',
+      envelope: { payload: {} },
+      options: { provider },
+    })).rejects.toMatchObject({
+      code: 'V5_OUTPUT_TRUNCATED',
+      component: 'P04',
+    })
+    expect(requests).toHaveLength(2)
+    expect(requests[1].thinkingOverride).toBe('disabled')
   })
 
   test('normalizes P12 semantic gate and winner before strict validation', async () => {

@@ -26,6 +26,7 @@ export interface ResumeHistory {
   company: string; // 公司名称
   name: string; // 姓名
   createdAt: string; // 创建时间（主成就日期）
+  updatedAt?: string; // 后端更新时间，旧的本地快照可能没有
   qualityScore: number; // 质量评分 0-100
   matchScore: number; // 匹配度 0-100
   tags: string[]; // 标签（技能、领域等）
@@ -39,6 +40,22 @@ export interface ResumeHistory {
   progress?: ResultSessionProgress; // 结果生成进度快照
   cardColor?: string; // 卡片背景色
   cardPattern?: string; // 卡片图案类型
+}
+
+export interface ResumeHistorySummary {
+  id: string;
+  position: string;
+  company: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  qualityScore: number;
+  matchScore: number;
+  tags: string[];
+  location: string;
+  strategyBody: string;
+  cardColor?: string;
+  cardPattern?: string;
 }
 
 // ============ API 响应 ============
@@ -268,6 +285,15 @@ export interface SourceResumeSummary {
   id: string;
   title: string;
   resumeMarkdown: string;
+  sourceType: SourceResumeSourceType;
+  originalFileName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SourceResumeSummaryMeta {
+  id: string;
+  title: string;
   sourceType: SourceResumeSourceType;
   originalFileName: string | null;
   createdAt: string;

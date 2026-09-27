@@ -212,6 +212,48 @@ describe('explicit DeepSeek V4 thinking', () => {
     expect(result).not.toHaveProperty('reasoning_content')
   })
 
+  test('honors a server-owned thinking-disabled transport recovery override', async () => {
+    let sent: Record<string, unknown> = {}
+    const eventBus = new FakeHarnessEventBus()
+    const provider = new DeepSeekProvider(createClient(async body => {
+      sent = body as Record<string, unknown>
+      return createResponse()
+    }), parseDeepSeekThinking('enabled', 'low'))
+
+    await provider.complete({
+      model: 'deepseek-v4-flash',
+      messages: [],
+      temperature: 0.2,
+      maxOutputTokens: 6_000,
+      thinkingOverride: 'disabled',
+      callMetadata: {
+        callReason: 'thinking_fallback',
+        contextMode: 'full',
+        repairScope: ['thinking_disabled'],
+        retryIndex: 1,
+        budgetRemaining: null,
+      },
+      eventBus,
+      stepContext: createStepExecutionContext(createRunContext(), 'thinking-fallback'),
+    })
+
+    expect(sent).toMatchObject({
+      thinking: { type: 'disabled' },
+      temperature: 0.2,
+      max_tokens: 6_000,
+    })
+    expect(sent).not.toHaveProperty('reasoning_effort')
+    expect(eventBus.events.filter(event => event.type.startsWith('provider.'))).toHaveLength(2)
+    for (const event of eventBus.events.filter(event => event.type.startsWith('provider.'))) {
+      expect(event.payload).toMatchObject({
+        thinkingMode: 'disabled',
+        reasoningEffort: null,
+        thinkingOverride: 'disabled',
+        callReason: 'thinking_fallback',
+      })
+    }
+  })
+
   test('reserves a default completion budget when thinking request omits maxOutputTokens', async () => {
     let sent: Record<string, unknown> = {}
     const provider = new DeepSeekProvider(createClient(async body => {

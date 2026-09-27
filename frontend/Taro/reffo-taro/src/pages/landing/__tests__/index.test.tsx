@@ -189,7 +189,10 @@ async function swipeSelectedCardDown(container: HTMLElement) {
 describe('启动封页', () => {
   const restoreSession = jest.fn()
   const loadHistories = jest.fn()
+  const loadHistorySummaries = jest.fn()
+  const loadHistory = jest.fn()
   const loadLatestSourceResume = jest.fn()
+  const loadLatestSourceSummary = jest.fn()
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
@@ -197,7 +200,10 @@ describe('启动封页', () => {
 
     restoreSession.mockResolvedValue(null)
     loadHistories.mockResolvedValue(undefined)
+    loadHistorySummaries.mockResolvedValue(undefined)
+    loadHistory.mockResolvedValue(null)
     loadLatestSourceResume.mockResolvedValue(undefined)
+    loadLatestSourceSummary.mockResolvedValue(undefined)
     mockSetSourceResume.mockReset()
     mockReLaunch.mockResolvedValue(undefined)
     mockStorageGetItem.mockResolvedValue('1')
@@ -205,8 +211,15 @@ describe('启动封页', () => {
     mockSetJSON.mockResolvedValue(undefined)
 
     mockUseAuthStoreGetState.mockReturnValue({restoreSession})
-    mockUseHistoryStoreGetState.mockReturnValue({loadHistories})
-    mockUseSourceResumeStoreGetState.mockReturnValue({loadLatestSourceResume})
+    mockUseHistoryStoreGetState.mockReturnValue({
+      loadHistories,
+      loadHistorySummaries,
+      loadHistory,
+    })
+    mockUseSourceResumeStoreGetState.mockReturnValue({
+      loadLatestSourceResume,
+      loadLatestSourceSummary,
+    })
     mockPickAndParseResumeFile.mockResolvedValue(null)
   })
 
@@ -223,8 +236,8 @@ describe('启动封页', () => {
     })
 
     expect(restoreSession).toHaveBeenCalledTimes(1)
-    expect(loadHistories).toHaveBeenCalledWith({skipIfLoaded: true})
-    expect(loadLatestSourceResume).toHaveBeenCalledWith({skipIfLoaded: true})
+    expect(loadHistorySummaries).toHaveBeenCalledWith({skipIfLoaded: true})
+    expect(loadLatestSourceSummary).toHaveBeenCalledWith({skipIfLoaded: true})
     expect(mockStorageGetItem).toHaveBeenCalledWith('reffo.landing.seen')
     expect(mockReLaunch).not.toHaveBeenCalled()
 

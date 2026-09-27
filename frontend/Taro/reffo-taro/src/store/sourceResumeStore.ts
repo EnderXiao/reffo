@@ -1,6 +1,6 @@
 import {create} from 'zustand';
 import type {LoadOptions, SourceResumeState} from './types';
-import type {SourceResumeSummary} from '@/types';
+import type {SourceResumeSummary, SourceResumeSummaryMeta} from '@/types';
 import {sourceResumeApi} from '@/services/sourceResume';
 import {isLocalRuntimeEnvironment} from '@/services/runtime-config';
 import {useAuthStore} from './authStore';
@@ -10,7 +10,21 @@ import {PENDING_LANDING_SOURCE_RESUME_KEY} from '@/utils/pending-landing-data';
 import {RequestError} from '@/utils/request';
 
 let loadLatestSourceResumePromise: Promise<void> | null = null;
+let loadLatestSourceSummaryPromise: Promise<void> | null = null;
 let sourceResumeStoreEpoch = 0;
+
+function toSourceResumeSummaryMetaFromSummary(
+  summary: SourceResumeSummary,
+): SourceResumeSummaryMeta {
+  return {
+    id: summary.id,
+    title: summary.title,
+    sourceType: summary.sourceType,
+    originalFileName: summary.originalFileName,
+    createdAt: summary.createdAt,
+    updatedAt: summary.updatedAt,
+  };
+}
 
 function getSourceResumeStorageKey() {
   const userId = useAuthStore.getState().session?.user.id;
@@ -30,17 +44,128 @@ async function removeSourceResumeCache(storageKey: string) {
   }
 }
 
+async function readCachedSourceResume(storageKey: string, isGuest: boolean) {
+  const [storedResume, pendingLandingResume] = await Promise.all([
+    getJSON<SourceResumeSummary>(storageKey),
+    isGuest
+      ? getJSON<SourceResumeSummary>(PENDING_LANDING_SOURCE_RESUME_KEY)
+      : Promise.resolve(null),
+  ]);
+
+  return pendingLandingResume || storedResume;
+}
+
 const initialState = {
   latestSourceResume: null,
+  latestSourceResumeSummary: null,
   loading: {
     isLoading: false,
     error: null,
   },
   initialized: false,
+  summaryInitialized: false,
 };
 
 export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
   ...initialState,
+
+  loadLatestSourceSummary: async (options: LoadOptions = {}) => {
+    if (options.skipIfLoaded && get().summaryInitialized && !options.force) {
+      return;
+    }
+
+    if (loadLatestSourceSummaryPromise && !options.force) {
+      return loadLatestSourceSummaryPromise;
+    }
+
+    loadLatestSourceSummaryPromise = (async () => {
+      const operationEpoch = sourceResumeStoreEpoch;
+      const storageKey = getSourceResumeStorageKey();
+      const isGuest = !Boolean(useAuthStore.getState().session);
+      const allowLocalFallback = isGuest || await isLocalRuntimeEnvironment();
+      let cachedSummary: SourceResumeSummaryMeta | null = null;
+
+      set(state => ({
+        loading: {
+          ...state.loading,
+          isLoading: true,
+          error: null,
+        },
+      }));
+
+      if (allowLocalFallback) {
+        try {
+          const cachedResume = await readCachedSourceResume(storageKey, isGuest);
+          if (operationEpoch !== sourceResumeStoreEpoch) {
+            return;
+          }
+
+          cachedSummary = cachedResume
+            ? toSourceResumeSummaryMetaFromSummary(cachedResume)
+            : null;
+          if (cachedSummary) {
+            set({latestSourceResumeSummary: cachedSummary});
+          }
+        } catch (error) {
+          console.warn('[SourceResumeStore] Failed to read cached source summary:', error);
+        }
+      }
+
+      if (isGuest) {
+        if (operationEpoch !== sourceResumeStoreEpoch) {
+          return;
+        }
+
+        set({
+          latestSourceResumeSummary: cachedSummary,
+          loading: {
+            isLoading: false,
+            error: null,
+          },
+          summaryInitialized: true,
+        });
+        return;
+      }
+
+      try {
+        const latestSummary = await sourceResumeApi.getLatestSourceResumeSummary();
+        if (operationEpoch !== sourceResumeStoreEpoch) {
+          return;
+        }
+
+        set({
+          latestSourceResumeSummary: latestSummary || (allowLocalFallback ? cachedSummary : null),
+          loading: {
+            isLoading: false,
+            error: null,
+          },
+          summaryInitialized: true,
+        });
+      } catch (error) {
+        if (operationEpoch !== sourceResumeStoreEpoch) {
+          return;
+        }
+
+        const errorMessage = error instanceof Error ? error.message : '加载源简历摘要失败';
+        set(state => ({
+          latestSourceResumeSummary: allowLocalFallback && cachedSummary
+            ? cachedSummary
+            : state.latestSourceResumeSummary,
+          loading: {
+            ...state.loading,
+            isLoading: false,
+            error: allowLocalFallback && cachedSummary ? null : errorMessage,
+          },
+          summaryInitialized: true,
+        }));
+        console.error('[SourceResumeStore] Failed to load source summary:', error);
+      }
+    })().finally(() => {
+      loadLatestSourceSummaryPromise = null;
+    });
+
+    return loadLatestSourceSummaryPromise;
+  },
 
   loadLatestSourceResume: async (options: LoadOptions = {}) => {
     if (options.skipIfLoaded && get().initialized && !options.force) {
@@ -72,15 +197,9 @@ export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
 
       if (allowLocalFallback) {
         try {
-          const [storedResume, pendingLandingResume] = await Promise.all([
-            getJSON<SourceResumeSummary>(storageKey),
-            isGuest
-              ? getJSON<SourceResumeSummary>(PENDING_LANDING_SOURCE_RESUME_KEY)
-              : Promise.resolve(null),
-          ]);
           // Landing pending resume is latest guest selection and takes priority
           // over an older generic cache.
-          cachedResume = pendingLandingResume || storedResume;
+          cachedResume = await readCachedSourceResume(storageKey, isGuest);
           if (operationEpoch !== sourceResumeStoreEpoch) {
             return;
           }
@@ -99,11 +218,15 @@ export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
 
         set({
           latestSourceResume: cachedResume,
+          latestSourceResumeSummary: cachedResume
+            ? toSourceResumeSummaryMetaFromSummary(cachedResume)
+            : null,
           loading: {
             isLoading: false,
             error: null,
           },
           initialized: true,
+          summaryInitialized: true,
         });
         return;
       }
@@ -129,11 +252,15 @@ export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
 
         set({
           latestSourceResume: latestResume,
+          latestSourceResumeSummary: latestResume
+            ? toSourceResumeSummaryMetaFromSummary(latestResume)
+            : null,
           loading: {
             isLoading: false,
             error: null,
           },
           initialized: true,
+          summaryInitialized: true,
         });
       } catch (error) {
         if (operationEpoch !== sourceResumeStoreEpoch) {
@@ -143,17 +270,24 @@ export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
         const errorMessage =
           error instanceof Error ? error.message : '加载源简历失败';
 
-        set(state => ({
-          latestSourceResume: allowLocalFallback
+        set(state => {
+          const latestSourceResume = allowLocalFallback
             ? cachedResume ?? state.latestSourceResume
-            : null,
-          loading: {
-            ...state.loading,
-            isLoading: false,
-            error: allowLocalFallback && cachedResume ? null : errorMessage,
-          },
-          initialized: true,
-        }));
+            : null;
+          return {
+            latestSourceResume,
+            latestSourceResumeSummary: latestSourceResume
+              ? toSourceResumeSummaryMetaFromSummary(latestSourceResume)
+              : null,
+            loading: {
+              ...state.loading,
+              isLoading: false,
+              error: allowLocalFallback && cachedResume ? null : errorMessage,
+            },
+            initialized: true,
+            summaryInitialized: true,
+          };
+        });
 
         console.error('[SourceResumeStore] Failed to load source resume:', error);
       }
@@ -183,11 +317,15 @@ export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
 
     set({
       latestSourceResume: resume,
+      latestSourceResumeSummary: resume
+        ? toSourceResumeSummaryMetaFromSummary(resume)
+        : null,
       loading: {
         isLoading: false,
         error: null,
       },
       initialized: true,
+      summaryInitialized: true,
     });
   },
 
@@ -217,15 +355,24 @@ export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
       if (deletionEpoch !== sourceResumeStoreEpoch) return;
       if (cached?.id === id) await storage.removeItem(key);
     }
-    if (deletionEpoch !== sourceResumeStoreEpoch
-      || (get().latestSourceResume && get().latestSourceResume?.id !== id)) return;
+    if (deletionEpoch !== sourceResumeStoreEpoch) return;
+    const currentResume = get().latestSourceResume;
+    if (currentResume && currentResume.id !== id) {
+      set({
+        latestSourceResumeSummary: toSourceResumeSummaryMetaFromSummary(currentResume),
+        summaryInitialized: true,
+      });
+      return;
+    }
     set({
       latestSourceResume: null,
+      latestSourceResumeSummary: null,
       loading: {
         isLoading: false,
         error: null,
       },
       initialized: true,
+      summaryInitialized: true,
     });
   },
 
@@ -237,17 +384,20 @@ export const useSourceResumeStore = create<SourceResumeState>((set, get) => ({
     }
     set({
       latestSourceResume: null,
+      latestSourceResumeSummary: null,
       loading: {
         isLoading: false,
         error: null,
       },
       initialized: true,
+      summaryInitialized: true,
     });
   },
 
   reset: () => {
     sourceResumeStoreEpoch += 1;
     loadLatestSourceResumePromise = null;
+    loadLatestSourceSummaryPromise = null;
     set(initialState);
   },
 }));

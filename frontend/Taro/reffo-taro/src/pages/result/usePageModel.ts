@@ -167,9 +167,12 @@ export interface ResultPageViewModel {
   handleBackHome: () => Promise<void>
   handleEditHistory: () => Promise<void>
   handlePendingStage: () => void
+  handleRetryStage: (stage: ResultRetryStageKey) => Promise<void>
   handleOptimizedResumeChange: (markdown: string) => Promise<void>
   canEditHistory: boolean
 }
+
+export type ResultRetryStageKey = 'analysis' | 'resume' | 'interview'
 
 interface ResultPageModelOptions {
   enteredFromLanding?: boolean
@@ -245,14 +248,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
 
   const loadFromHistory = async (id: string) => {
     try {
-      let {histories} = useHistoryStore.getState()
-      let history = histories.find(item => item.id === id)
-
-      if (!history) {
-        await useHistoryStore.getState().loadHistories()
-        histories = useHistoryStore.getState().histories
-        history = histories.find(item => item.id === id)
-      }
+      const history = await useHistoryStore.getState().loadHistory(id)
 
       if (history) {
         setReturnCard(toHistoryCardItem(history))
@@ -378,6 +374,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           ...currentProgress,
           matching: 'generating',
         }
+        currentProgress = generatingProgress
         setProgress(generatingProgress)
 
         const matching = await resumeApi.matchResume(
@@ -385,6 +382,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           enteredFromLanding && currentSession.context.presetJdId
             ? {presetJdId: currentSession.context.presetJdId}
             : currentSession.context.jdContent,
+          {landing: enteredFromLanding},
         )
 
         if (continuationRef.current !== runId) return
@@ -410,6 +408,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           ...currentProgress,
           optimized: 'generating',
         }
+        currentProgress = generatingProgress
         setProgress(generatingProgress)
 
         const optimized = await resumeApi.generateOptimizedResume(
@@ -439,6 +438,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           ...currentProgress,
           interview: 'generating',
         }
+        currentProgress = generatingProgress
         setProgress(generatingProgress)
 
         const interview = await resumeApi.generateInterviewSuggestions(
@@ -618,6 +618,33 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     feedback.message(generationError || '正在生成中，请稍后')
   }
 
+  const handleRetryStage = async (stage: ResultRetryStageKey) => {
+    if (!result) {
+      feedback.message('未找到可重试的生成结果')
+      return
+    }
+
+    const failedStage = stage === 'resume'
+      ? progress.matching === 'failed' || progress.optimized === 'failed'
+      : stage === 'interview' && progress.interview === 'failed'
+
+    if (!failedStage) {
+      handlePendingStage()
+      return
+    }
+
+    if (!resultContext) {
+      feedback.message('缺少简历或岗位信息，无法重试')
+      return
+    }
+
+    await continueLatestSession({
+      context: resultContext,
+      result,
+      progress,
+    })
+  }
+
   const handleOptimizedResumeChange = async (markdown: string) => {
     if (!result) return
 
@@ -664,6 +691,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     handleBackHome,
     handleEditHistory,
     handlePendingStage,
+    handleRetryStage,
     handleOptimizedResumeChange,
   }
 }

@@ -1,6 +1,6 @@
 import {useCallback, useMemo} from 'react'
 import {navigation, type NavigationParams} from '@/utils/navigation'
-import type {RoutePath} from './routePaths'
+import {routePaths, type RoutePath} from './routePaths'
 
 export function useRouteTransition() {
   const navigate = useCallback(async (
@@ -22,7 +22,12 @@ export function useRouteTransition() {
   )
 
   const back = useCallback(async (delta = 1): Promise<void> => {
-    await navigation.navigateBack(delta)
+    if (navigation.canGoBack()) {
+      await navigation.navigateBack(delta)
+      return
+    }
+
+    await navigation.reLaunch(routePaths.home)
   }, [])
 
   const reset = useCallback(async (

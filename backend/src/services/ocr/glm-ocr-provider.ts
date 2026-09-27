@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { env } from '@/config/env'
 import { createDigest } from '@/harness/run-context'
 import { createHarnessEvent } from '@/harness/events'
@@ -65,6 +66,21 @@ function resolveEndpoint() {
 
 function getApiKey() {
   return env.GLM_OCR_API_KEY || env.GLM_API_KEY
+}
+
+function getOcrTlsCa() {
+  const caCertPath = env.OCR_CA_CERT_PATH.trim()
+  if (!caCertPath) return undefined
+
+  try {
+    return readFileSync(caCertPath, 'utf8')
+  } catch {
+    throw new OcrProviderError(
+      'OCR_CONFIG_MISSING',
+      'GLM-OCR CA 证书文件不可读',
+      { status: 503 }
+    )
+  }
 }
 
 function toBase64(buffer: ArrayBuffer) {
@@ -320,6 +336,7 @@ export class GlmOcrProvider implements OcrProvider {
     input.signal?.addEventListener('abort', abortFromStep, { once: true })
 
     try {
+      const tlsCa = getOcrTlsCa()
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -333,6 +350,7 @@ export class GlmOcrProvider implements OcrProvider {
           need_layout_visualization: false,
         }),
         signal: controller.signal,
+        ...(tlsCa ? { tls: { ca: tlsCa } } : {}),
       })
 
       const latencyMs = Date.now() - startedAt

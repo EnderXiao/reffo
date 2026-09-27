@@ -21,9 +21,9 @@ type DocumentWithViewTransition = Document & {
 }
 
 const NAVIGATION_STYLE_ID = 'reffo-navigation-transition-style'
-const ROUTE_FADE_DURATION = 280
+const ROUTE_FADE_DURATION = 180
 const ROUTE_FADE_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
-const VIEW_TRANSITION_DURATION = 420
+const VIEW_TRANSITION_DURATION = 280
 const RESULT_CARD_RETURN_DURATION = 860
 const RESULT_CARD_RETURN_TRANSITION_NAME = 'reffo-result-card-return'
 const RESULT_CARD_RETURN_TARGET_SELECTOR = '.reffo-home__return-card-stage--view-transition'

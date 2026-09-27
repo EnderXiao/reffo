@@ -40,10 +40,10 @@ export default function ProfilePage() {
   const profile = useAuthStore(state => state.profile)
   const loadProfile = useAuthStore(state => state.loadProfile)
   const signOut = useAuthStore(state => state.signOut)
-  const histories = useHistoryStore(state => state.histories)
-  const latestSourceResume = useSourceResumeStore(state => state.latestSourceResume)
-  const loadHistories = useHistoryStore(state => state.loadHistories)
-  const loadLatestSourceResume = useSourceResumeStore(state => state.loadLatestSourceResume)
+  const historyCount = useHistoryStore(state => state.historySummaries.length)
+  const latestSourceResumeSummary = useSourceResumeStore(state => state.latestSourceResumeSummary)
+  const loadHistorySummaries = useHistoryStore(state => state.loadHistorySummaries)
+  const loadLatestSourceSummary = useSourceResumeStore(state => state.loadLatestSourceSummary)
   const [busy, setBusy] = useState(false)
   const [quota, setQuota] = useState<ResumeQuota | null>(null)
 
@@ -54,10 +54,10 @@ export default function ProfilePage() {
       return
     }
     if (!profile) void loadProfile()
-    void loadHistories({skipIfLoaded: true})
-    void loadLatestSourceResume({skipIfLoaded: true})
+    void loadHistorySummaries({skipIfLoaded: true})
+    void loadLatestSourceSummary({skipIfLoaded: true})
     void profileApi.getQuota().then(setQuota).catch(() => setQuota(null))
-  }, [authInitialized, loadHistories, loadLatestSourceResume, loadProfile, profile, route, session])
+  }, [authInitialized, loadHistorySummaries, loadLatestSourceSummary, loadProfile, profile, route, session])
 
   const displayName = useMemo(() => profile?.displayName || session?.user.email?.split('@')[0] || 'Reffo 用户', [profile?.displayName, session?.user.email])
 
@@ -141,7 +141,7 @@ export default function ProfilePage() {
         <Text className='reffo-profile__section-title'>账户</Text>
         <View className='reffo-profile__group'>
           <SettingsRow label='账号详情' onClick={() => void route.navigate(routePaths.profileContent, {view: 'account'})} />
-          <SettingsRow label='我的数据' value={`${histories.length} 份生成简历`} onClick={() => void route.navigate(routePaths.profileContent, {view: 'data'})} />
+          <SettingsRow label='我的数据' value={`${historyCount} 份生成简历`} onClick={() => void route.navigate(routePaths.profileContent, {view: 'data'})} />
           <SettingsRow label='今日生成次数' value={quota?.unlimited ? '不限' : quota ? `${quota.remaining}/${quota.limit}` : '加载中'} onClick={() => undefined} />
         </View>
         <Text className='reffo-profile__section-title'>关于 Reffo</Text>
@@ -154,7 +154,7 @@ export default function ProfilePage() {
         <Text className='reffo-profile__section-title'>数据管理</Text>
         <View className='reffo-profile__group'>
           <SettingsRow label='清除本机缓存' value={busy ? '处理中…' : undefined} onClick={() => void handleClearCache()} />
-          <SettingsRow label='删除简历数据' value={latestSourceResume ? '源简历保留' : undefined} danger onClick={() => void handleDeleteHistories()} />
+          <SettingsRow label='删除简历数据' value={latestSourceResumeSummary ? '源简历保留' : undefined} danger onClick={() => void handleDeleteHistories()} />
         </View>
         <View className='reffo-profile__logout' onClick={() => void handleSignOut()}>退出登录</View>
       </View>

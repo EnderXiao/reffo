@@ -31,7 +31,10 @@ describe('mvpRoutes auth guard', () => {
     const response = await mvpRoutes.handle(new Request('http://localhost/api/v1/mvp/health'))
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({ status: 'ok' })
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'ok',
+      dependencies: {analysisCache: {status: 'ok'}},
+    })
   })
 
   test('rejects malformed authorization headers on protected routes', async () => {

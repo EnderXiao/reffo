@@ -112,7 +112,7 @@
 - [ ] 补齐 RN/小程序发布签名、商店配置和自动构建
 - [ ] 增加产品埋点、转化漏斗和认证失败监控
 - [ ] 增加 AI/OCR 用量、成本和异常告警
-- [ ] 建立数据库 migration 发布流程
+- [x] 建立数据库 migration 发布流程：PR 校验、feature/nonprod、main/master/production CI 门禁已配置；执行前仍需设置对应 GitHub Secret。
 - [ ] 建立正式、nonprod、local 配置校验脚本
 - [ ] 建立定期密钥轮换和权限审计流程
 
@@ -121,7 +121,7 @@
 - 后端测试：44 个通过
 - H5 生产构建：通过，但存在 bundle 体积警告
 - 前端全量测试：仍有 6 个失败项，需要修复
-- 正式 Supabase：存在 2 条待执行 migration
+- 正式 Supabase：production CI 已配置；需设置 `SUPABASE_PROD_DB_URL` 后由首次正式发布统一执行 pending migration
 - 正式 CORS：当前仍为本地地址，不能上线
 - 正式加密私钥：当前未配置
 - RN/小程序：尚未完成真实设备回归

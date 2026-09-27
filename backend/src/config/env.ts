@@ -155,6 +155,7 @@ export const env = {
   GLM_OCR_ENDPOINT: process.env.GLM_OCR_ENDPOINT || '',
   GLM_OCR_BASE_URL: process.env.GLM_OCR_BASE_URL || '',
   GLM_OCR_MODEL: process.env.GLM_OCR_MODEL || 'glm-ocr',
+  OCR_CA_CERT_PATH: process.env.OCR_CA_CERT_PATH || '',
   OCR_TIMEOUT_MS: parseInt(process.env.OCR_TIMEOUT_MS || '150000', 10),
   OCR_MAX_FILE_SIZE_MB: parseInt(process.env.OCR_MAX_FILE_SIZE_MB || '10', 10),
 

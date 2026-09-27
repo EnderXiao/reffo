@@ -6,12 +6,13 @@ import {
   readBrowserTextFile,
 } from '@/utils/web-file'
 
+export {formatResumeFileSize, isResumeFileUploadCancelled} from '@/utils/file-upload'
+
 export const RESUME_FILE_ACCEPT_TYPES = ['.pdf', '.doc', '.docx', '.md', '.txt'] as const
 export const RESUME_FILE_MAX_SIZE_MB = 10
 
 const TEXT_FILE_TYPES = new Set(['.md', '.txt'])
 const SUPPORTED_RESUME_FILE_TYPES = new Set<string>(RESUME_FILE_ACCEPT_TYPES)
-const FILE_PICK_CANCEL_PATTERN = /cancel|取消/i
 
 export interface ParsedResumeUploadFile {
   name: string
@@ -63,23 +64,6 @@ function readTextFile(filePath: string): Promise<string> {
 export function getResumeFileExtension(fileName: string) {
   const dotIndex = fileName.lastIndexOf('.')
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : ''
-}
-
-export function formatResumeFileSize(size: number) {
-  const sizeInMb = size / (1024 * 1024)
-  if (sizeInMb >= 1) {
-    return `${sizeInMb.toFixed(sizeInMb >= 10 ? 0 : 1)} Mb`
-  }
-
-  return `${Math.max(1, Math.round(size / 1024))} Kb`
-}
-
-export function isResumeFileUploadCancelled(error: unknown) {
-  const message = typeof error === 'object' && error !== null
-    ? `${(error as {message?: string}).message || ''}${(error as {errMsg?: string}).errMsg || ''}`
-    : String(error || '')
-
-  return FILE_PICK_CANCEL_PATTERN.test(message)
 }
 
 export async function pickAndParseResumeFile({

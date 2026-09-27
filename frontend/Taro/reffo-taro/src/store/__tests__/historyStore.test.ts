@@ -9,8 +9,13 @@ import {useHistoryStore} from '../historyStore';
 import type {ResumeHistory} from '@/types';
 
 jest.mock('@/services/resumeHistory', () => ({
+  ...jest.requireActual<typeof import('@/services/resumeHistory')>(
+    '@/services/resumeHistory',
+  ),
   resumeHistoryApi: {
     getHistories: jest.fn(),
+    getHistorySummaries: jest.fn(),
+    getHistory: jest.fn(),
     saveHistory: jest.fn(),
     updateHistory: jest.fn(),
     deleteHistory: jest.fn(),
@@ -47,6 +52,7 @@ describe('History Store', () => {
     (storage.getJSON as any).mockResolvedValue(null);
     (storage.setJSON as any).mockResolvedValue(undefined);
     mockedResumeHistoryApi.getHistories.mockResolvedValue([]);
+    mockedResumeHistoryApi.getHistorySummaries.mockResolvedValue([]);
     mockedResumeHistoryApi.saveHistory.mockImplementation(async history => history);
     mockedResumeHistoryApi.updateHistory.mockImplementation(async (id, updates) => ({
       ...useHistoryStore.getState().histories.find(history => history.id === id),
@@ -201,6 +207,93 @@ describe('History Store', () => {
       await loadPromise;
 
       expect(useHistoryStore.getState().loading.isLoading).toBe(false);
+    });
+  });
+
+  describe('loadHistorySummaries', () => {
+    test('首页摘要加载不请求完整历史列表', async () => {
+      useAuthStore.setState({
+        session: {accessToken: 'test-token', user: {id: 'user-1'}},
+        initialized: true,
+      });
+      (isLocalRuntimeEnvironment as jest.Mock).mockResolvedValue(false);
+      mockedResumeHistoryApi.getHistorySummaries.mockResolvedValue([{
+        id: 'history-1',
+        position: '产品经理',
+        company: 'Reffo',
+        name: '候选人',
+        createdAt: '2026-09-23T00:00:00.000Z',
+        updatedAt: '2026-09-23T00:00:00.000Z',
+        qualityScore: 88,
+        matchScore: 84,
+        tags: ['AI'],
+        location: '北京',
+        strategyBody: '突出 AI 产品落地。',
+      }]);
+
+      await useHistoryStore.getState().loadHistorySummaries();
+
+      expect(mockedResumeHistoryApi.getHistories).not.toHaveBeenCalled();
+      expect(useHistoryStore.getState().historySummaries.map(item => item.id)).toEqual([
+        'history-1',
+      ]);
+      expect(useHistoryStore.getState().summaryInitialized).toBe(true);
+    });
+
+    test('本地完整历史可离线转换为摘要', async () => {
+      const history = {
+        id: 'local-1',
+        position: '产品经理',
+        company: 'Reffo',
+        name: '候选人',
+        createdAt: '2026-09-23T00:00:00.000Z',
+        qualityScore: 88,
+        matchScore: 84,
+        tags: ['AI'],
+        resumeContent: '# 简历',
+        jdContent: '工作地点：上海',
+        optimizedContent: '# 优化简历',
+      } as ResumeHistory;
+      (storage.getJSON as jest.Mock).mockResolvedValueOnce([history]);
+
+      await useHistoryStore.getState().loadHistorySummaries();
+
+      expect(mockedResumeHistoryApi.getHistorySummaries).not.toHaveBeenCalled();
+      expect(useHistoryStore.getState().historySummaries[0]).toMatchObject({
+        id: 'local-1',
+        location: '上海',
+      });
+    });
+  });
+
+  describe('loadHistory', () => {
+    test('详情按 ID 加载并回填摘要，不拉取完整列表', async () => {
+      useAuthStore.setState({
+        session: {accessToken: 'test-token', user: {id: 'user-1'}},
+        initialized: true,
+      });
+      (isLocalRuntimeEnvironment as jest.Mock).mockResolvedValue(false);
+      mockedResumeHistoryApi.getHistory.mockResolvedValue({
+        id: 'history-1',
+        position: '产品经理',
+        company: 'Reffo',
+        name: '候选人',
+        createdAt: '2026-09-23T00:00:00.000Z',
+        qualityScore: 88,
+        matchScore: 84,
+        tags: ['AI'],
+        resumeContent: '# 简历',
+        jdContent: '工作地点：北京',
+        optimizedContent: '# 优化简历',
+      });
+
+      const history = await useHistoryStore.getState().loadHistory('history-1');
+
+      expect(mockedResumeHistoryApi.getHistory).toHaveBeenCalledWith('history-1');
+      expect(mockedResumeHistoryApi.getHistories).not.toHaveBeenCalled();
+      expect(history?.id).toBe('history-1');
+      expect(useHistoryStore.getState().historySummaries[0].id).toBe('history-1');
+      expect(useHistoryStore.getState().currentHistory?.id).toBe('history-1');
     });
   });
 

@@ -99,8 +99,12 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
     expect(events.some(event => event.type === 'writer.completed')).toBe(false)
     if (variant === 'foreign_reference') expect(events.some(event => event.type === 'entry.preview')).toBe(false)
   }
-  // Stage runner 既有的长度续写最多两次；结构错误不触发续写或修复。
-  const writerCalls = variant === 'truncated' || variant === 'uncorrected_number' ? 3 : variant === 'corrected_number' ? 2 : 1
+  // Stage runner 既有的长度续写最多两次；空正文按 stop+invalid JSON 触发一次 transport JSON 修复。
+  const writerCalls = variant === 'truncated' || variant === 'uncorrected_number'
+    ? 3
+    : variant === 'corrected_number' || variant === 'empty_body'
+      ? 2
+      : 1
   expect(versions).toHaveLength(3 + writerCalls)
   expect(versions.filter(v => v.includes('-p06c-'))).toHaveLength(writerCalls)
   expect(versions.some(v => /-p0[589]-|-p12-|-p06d-/.test(v))).toBe(false)

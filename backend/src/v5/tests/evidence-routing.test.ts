@@ -312,7 +312,7 @@ describe('v5 deterministic evidence routing', () => {
     expect(reversedPlan.featuredSkillEvidenceIds).toEqual(firstPlan.featuredSkillEvidenceIds)
   })
 
-  test('rejects a non-standalone business atom if a caller bypasses the deterministic builder', () => {
+  test('blocks non-standalone business evidence at planning and surfaces its artifact use', () => {
     const fixture = case3BoundaryFixture()
     const strategy = buildAdaptiveStrategy(fixture)
     const plan = buildDeterministicV5ResumePlan({ ...fixture, policy: strategy.policy, profile: strategy.profile })
@@ -344,8 +344,9 @@ describe('v5 deterministic evidence routing', () => {
     })
     expect(artifactValidation.issues).toContainEqual(expect.objectContaining({
       code: 'BUSINESS_SCOPE_EVIDENCE_MISMATCH',
-      severity: 'error',
+      severity: 'warning',
     }))
+    expect(artifactValidation.passed).toBe(true)
   })
 
   test('requires a continuation to cross exactly one source-block boundary', () => {

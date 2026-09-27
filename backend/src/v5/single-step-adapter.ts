@@ -3,17 +3,57 @@ import { createDigest } from '@/harness/run-context'
 import { env } from '@/config/env'
 import { v5ReleaseWorkflowOptions } from '@/config/v5-release'
 import { V5CheckpointError, V5CheckpointRepository } from '@/repositories/v5-checkpoint-repository'
+import {
+  V5AnalysisCacheRepository,
+  type V5AnalysisCacheResultStatus,
+} from '@/repositories/v5-analysis-cache-repository'
+import { canonicalizeSourceDocument } from '@/v5/canonical-source'
+import { createTrustedResumeExtractionCache } from '@/v5/resume-extraction-cache'
 import { V5ResumeOptimizationWorkflow, type V5MatchingCheckpoint } from '@/v5/main/workflow'
 import { toResumeAnalysis, toMatchAnalysis, toLegacyMvpProcessResponse, toInterviewPreparation } from '@/v5/main/compatibility'
 import { V5_WORKFLOW_VERSION, type V5ResumeExtractionResult, type V5WorkflowResult } from '@/v5/types'
 import type { ResumeAnalysis, InterviewSuggestions } from '@/types'
 import manifest from '@/v5/prompts/manifest.json'
 
+export const V5_ANALYSIS_CACHE_VERSION = 'v5-analysis-result-cache-v1'
+
 // 版本读取真实 Prompt manifest；变更模型、思考模式或 Prompt 后旧检查点不能混用。
 export function singleStepFingerprint() {
   return createDigest({workflow: V5_WORKFLOW_VERSION, manifest, protocol: 'v5-single-step-v2',
     model: env.AI_MODEL, endpoint: env.OPENAI_BASE_URL, thinking: env.DEEPSEEK_THINKING_MODE,
     extractionThinking: env.DEEPSEEK_P01_THINKING_MODE, structuredOutput: env.V5_STRUCTURED_OUTPUT_MODE})
+}
+
+function extractionCacheFingerprints() {
+  return {
+    implementationFingerprint: createDigest({
+      workflow: V5_WORKFLOW_VERSION,
+      manifest,
+      protocol: 'v5-single-step-v2',
+    }),
+    providerConfigFingerprint: createDigest({
+      endpoint: env.OPENAI_BASE_URL,
+      model: env.AI_MODEL,
+      thinking: env.DEEPSEEK_THINKING_MODE,
+      extractionThinking: env.DEEPSEEK_P01_THINKING_MODE,
+      structuredOutput: env.V5_STRUCTURED_OUTPUT_MODE,
+    }),
+  }
+}
+
+const sharedResumeExtractionCache = createTrustedResumeExtractionCache({
+  ...extractionCacheFingerprints(),
+  maxEntries: 16,
+})
+
+export function analysisCacheKeyFor(source: string, owner: string) {
+  const {canonicalDocument} = canonicalizeSourceDocument(source, 'v5-analysis-cache')
+  return createDigest({
+    cacheVersion: V5_ANALYSIS_CACHE_VERSION,
+    owner,
+    resumeSha256: canonicalDocument.sha256,
+    releaseFingerprint: singleStepFingerprint(),
+  })
 }
 
 interface ResumeCheckpoint {
@@ -31,6 +71,20 @@ interface MatchingCheckpoint {
   interview?: {runId: string; data: InterviewSuggestions; steps: StepRunSnapshot[]}
 }
 type Checkpoint = ResumeCheckpoint | MatchingCheckpoint
+
+export interface SingleStepCacheMetadata {
+  status: V5AnalysisCacheResultStatus | 'disabled' | 'not_applicable'
+}
+
+interface AnalyzeComputeResult {
+  runId: string
+  steps: StepRunSnapshot[]
+  checkpoint: ResumeCheckpoint
+}
+
+export interface AnalyzeRequestOptions {
+  onCacheMiss?: () => Promise<void>
+}
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new V5CheckpointError()
@@ -52,15 +106,50 @@ type StageWorkflow = Pick<V5ResumeOptimizationWorkflow, 'extractResume' | 'match
 export class V5SingleStepAdapter {
   constructor(
     private readonly repository = new V5CheckpointRepository(singleStepFingerprint()),
-    private readonly workflow: () => StageWorkflow = () => new V5ResumeOptimizationWorkflow(v5ReleaseWorkflowOptions()),
+    private readonly workflow: () => StageWorkflow = () => new V5ResumeOptimizationWorkflow({
+      ...v5ReleaseWorkflowOptions(),
+      resumeExtractionCache: sharedResumeExtractionCache,
+    }),
+    private readonly analysisCache = new V5AnalysisCacheRepository(),
   ) {}
 
-  async analyze(source: string, owner: string) {
-    const extraction = await this.workflow().extractResume({resumeMarkdown: source, workflowTimeoutMs: 120000})
-    const analysis = toResumeAnalysis(extraction)
-    const token = await this.repository.save(owner, {kind: 'resume', source, extraction, analysis,
-      resumeDigest: resumeDigest(analysis.structured_resume)} satisfies ResumeCheckpoint)
-    return {runId: extraction.runId, steps: extraction.stepStatuses ?? [], data: {...analysis, structured_resume: {...analysis.structured_resume, _v5_context: token}}}
+  async analyze(source: string, owner: string, options: AnalyzeRequestOptions = {}) {
+    const compute = async (): Promise<AnalyzeComputeResult> => {
+      await options.onCacheMiss?.()
+      const extraction = await this.workflow().extractResume({resumeMarkdown: source, workflowTimeoutMs: 120000})
+      const analysis = toResumeAnalysis(extraction)
+      return {
+        runId: extraction.runId,
+        steps: extraction.stepStatuses ?? [],
+        checkpoint: {
+          kind: 'resume',
+          source,
+          extraction,
+          analysis,
+          resumeDigest: resumeDigest(analysis.structured_resume),
+        } satisfies ResumeCheckpoint,
+      }
+    }
+
+    const resolved = owner === 'guest'
+      ? {value: await compute(), cacheStatus: 'disabled' as const}
+      : await this.analysisCache.resolve({
+        cacheKey: analysisCacheKeyFor(source, owner),
+        owner,
+        fingerprint: singleStepFingerprint(),
+        compute,
+      })
+    const {checkpoint} = resolved.value
+    const token = await this.repository.save(owner, checkpoint)
+    return {
+      runId: resolved.value.runId,
+      steps: resolved.value.steps,
+      data: {
+        ...checkpoint.analysis,
+        structured_resume: {...checkpoint.analysis.structured_resume, _v5_context: token},
+      },
+      cache: {status: resolved.cacheStatus} satisfies SingleStepCacheMetadata,
+    }
   }
 
   private async resume(structured: unknown, owner: string) {

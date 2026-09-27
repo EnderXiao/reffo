@@ -4,7 +4,8 @@ import {
   deriveSeedColorFromString,
   normalizeHexColor,
 } from '@/components/business/HomeCardDeck/palette'
-import type {ResumeHistory} from '@/types'
+import type {ResumeHistory, ResumeHistorySummary} from '@/types'
+import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary'
 import {resolveTextInitial} from '@/utils/text-initial'
 
 interface CardSeedInput {
@@ -129,47 +130,6 @@ function formatDateLabel(dateInput: string) {
   return `生成日期 ${year}.${month}.${day}`
 }
 
-function normalizeStrategyLines(lines?: string[]) {
-  return (lines ?? [])
-    .map(line => line.trim())
-    .filter(Boolean)
-}
-
-function buildHistoryStrategyBody(history: ResumeHistory) {
-  const backendSuggestions = normalizeStrategyLines(
-    history.optimizationSuggestions ?? history.processResult?.matching.optimization_suggestions,
-  )
-
-  if (backendSuggestions.length > 0) {
-    return backendSuggestions.slice(0, 2).join('\n\n')
-  }
-
-  const changeSummary = normalizeStrategyLines(
-    history.changesSummary ?? history.processResult?.optimized.changes_summary,
-  )
-
-  if (changeSummary.length > 0) {
-    return changeSummary.slice(0, 2).join('\n\n')
-  }
-
-  const analysisSuggestions = normalizeStrategyLines(history.processResult?.analysis.suggestions)
-
-  if (analysisSuggestions.length > 0) {
-    return analysisSuggestions.slice(0, 2).join('\n\n')
-  }
-
-  return '暂无后端优化策略，请进入详情页查看完整分析。'
-}
-
-function extractLocationFromJd(jdContent: string) {
-  const match = jdContent.match(/(?:工作地点|工作地|办公地点|办公地|地点|城市|Base地|base地|Base|base)[：:]\s*(.+?)(?:\n|\r|$)/i)
-  return match?.[1]?.trim() || ''
-}
-
-function resolveHistoryLocation(history: ResumeHistory) {
-  return history.resultContext?.location?.trim() || extractLocationFromJd(history.jdContent) || '--'
-}
-
 export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map((input, index) =>
   buildCardItem({
     ...input,
@@ -177,22 +137,37 @@ export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map((input, index) =>
   }),
 )
 
-export function toHistoryCardItem(history: ResumeHistory, index = 0): HomeCardItem {
+export function toHistorySummaryCardItem(
+  summary: ResumeHistorySummary,
+  index = 0,
+): HomeCardItem {
   return buildCardItem({
-    id: history.id || `history-${index}`,
-    company: history.company || '--',
-    indexLabel: getIndexLabel(history.company || '', index),
-    location: resolveHistoryLocation(history),
-    role: history.position || '--',
-    dateLabel: formatDateLabel(history.createdAt),
-    score: history.qualityScore,
-    strategyBody: buildHistoryStrategyBody(history),
-    seedColor: history.cardColor,
+    id: summary.id || `history-${index}`,
+    company: summary.company || '--',
+    indexLabel: getIndexLabel(summary.company || '', index),
+    location: summary.location || '--',
+    role: summary.position || '--',
+    dateLabel: formatDateLabel(summary.createdAt),
+    score: summary.qualityScore,
+    strategyBody: summary.strategyBody,
+    seedColor: summary.cardColor,
   })
+}
+
+export function toHistoryCardItem(history: ResumeHistory, index = 0): HomeCardItem {
+  return toHistorySummaryCardItem(toResumeHistorySummaryFromHistory(history), index)
 }
 
 export function toHistoryCardItems(histories: ResumeHistory[]): HomeCardItem[] {
   return histories
     .slice(0, 10)
     .map(toHistoryCardItem)
+}
+
+export function toHistorySummaryCardItems(
+  summaries: ResumeHistorySummary[],
+): HomeCardItem[] {
+  return summaries
+    .slice(0, 10)
+    .map(toHistorySummaryCardItem)
 }

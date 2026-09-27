@@ -54,6 +54,22 @@ const BOUNDARIES = [
   { label: '尚无实际数据', source: /(?:没有|尚无|无)(?:真实用户|实际用户|商业收益|长期运行数据)/u, output: /(?:没有|尚无|无)(?:真实用户|实际用户|商业收益|长期运行数据)|未验证|概念|实验|本地压测/u },
 ] as const
 
+export function findUnsupportedCollaboratorTerms(text: string, atoms: EvidenceAtom[]) {
+  const teams = (value: string) => [
+    // 市场洞察、销售数据等是业务概念；不能只截取其中的部门同名词。
+    ...value.matchAll(/(?:协同|协调|联合|对接|联动|和|与)\s*((?:(?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?!洞察|数据|指标|增长|收入)(?:团队|部门)?[、，,与和及\s]*){1,8})/gu),
+    ...value.matchAll(/(?:^|[、，,；;。\s])((?:(?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?:团队|部门)?[、,与和及\s]*){1,8})(?:协同|协作|沟通|联动|对接)/gu),
+    // Explicit organizations, or an actor followed by a concrete action. A metric
+    // such as 销售增长 / 工艺改善 alone does not establish a collaborator.
+    ...value.matchAll(/(?:^|[，,；;。\s])(?:推动|促成|支持|协助|配合)\s*((?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?:团队|部门))/gu),
+    ...value.matchAll(/(?:^|[，,；;。\s])(?:推动|促成|支持|协助|配合)\s*(研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发)(?=(?:重新)?(?:议价|报价|谈判|排期|评审|修复|交付|上线|制定|调整|完成|执行|开展|处理))/gu),
+  ].flatMap(match => match[1].match(/研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺/gu) ?? [])
+    // Only normalize names inside a collaboration phrase; never rewrite product development.
+    .map(team => team === '开发' ? '研发' : team)
+  const supportedTeams = new Set(atoms.flatMap(atom => teams(writingDisplayText(atom.verbatimText))))
+  return teams(text).filter(team => !supportedTeams.has(team))
+}
+
 export function buildWritingFact(atom: EvidenceAtom): WritingFact | null {
   if (atom.status === 'excluded' || atom.riskFlags.some(flag => (
     ['sensitive_pii', 'prompt_injection_like_text', 'conflicting'].includes(flag)
@@ -147,19 +163,7 @@ export function inspectSupportedWriting(text: string, atoms: EvidenceAtom[], pat
     && /(?:本人|个人|本模块)(?:独立)?(?:支撑|承载)/u.test(text.replace(PLATFORM_NOT_PERSONAL, ''))) {
     report('WRITER_OWNERSHIP_UPGRADE', '平台规模不能转化为本人或个人模块的承载业绩。')
   }
-  const teams = (value: string) => [
-    // 市场洞察、销售数据等是业务概念；不能只截取其中的部门同名词。
-    ...value.matchAll(/(?:协同|协调|联合|对接|联动|和|与)\s*((?:(?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?!洞察|数据|指标|增长|收入)(?:团队|部门)?[、，,与和及\s]*){1,8})/gu),
-    ...value.matchAll(/(?:^|[、，,；;。\s])((?:(?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?:团队|部门)?[、,与和及\s]*){1,8})(?:协同|协作|沟通|联动|对接)/gu),
-    // Explicit organizations, or an actor followed by a concrete action. A metric
-    // such as 销售增长 / 工艺改善 alone does not establish a collaborator.
-    ...value.matchAll(/(?:^|[，,；;。\s])(?:推动|促成|支持|协助|配合)\s*((?:研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺)(?:团队|部门))/gu),
-    ...value.matchAll(/(?:^|[，,；;。\s])(?:推动|促成|支持|协助|配合)\s*(研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发)(?=(?:重新)?(?:议价|报价|谈判|排期|评审|修复|交付|上线|制定|调整|完成|执行|开展|处理))/gu),
-  ].flatMap(match => match[1].match(/研发|开发|设计|市场|运营|测试|销售|业务|商务|宣发|工艺/gu) ?? [])
-    // Only normalize names inside a collaboration phrase; never rewrite product development.
-    .map(team => team === '开发' ? '研发' : team)
-  const supportedTeams = new Set(sources.flatMap(teams))
-  const unsupportedTeams = teams(text).filter(team => !supportedTeams.has(team))
+  const unsupportedTeams = findUnsupportedCollaboratorTerms(text, atoms)
   if (unsupportedTeams.length) {
     report('WRITER_COLLABORATOR_ADDED', `输出新增引用来源未说明的协作部门：${[...new Set(unsupportedTeams)].join('、')}。请删除这些部门的协作表述；其他条目的材料不能作为本段事实依据。`)
   }

@@ -38,8 +38,8 @@ class App extends Component<PropsWithChildren> {
     }
 
     await Promise.all([
-      useHistoryStore.getState().loadHistories({force: true}),
-      useSourceResumeStore.getState().loadLatestSourceResume({force: true}),
+      useHistoryStore.getState().loadHistorySummaries({force: true}),
+      useSourceResumeStore.getState().loadLatestSourceSummary({force: true}),
       useAuthStore.getState().loadProfile(),
     ])
   }

@@ -1,7 +1,7 @@
 import { Elysia, t } from 'elysia'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { sourceResumeRepository } from '@/repositories/source-resume-repository'
-import type { ApiResponse, SourceResumeRecord } from '@/types'
+import type { ApiResponse, SourceResumeRecord, SourceResumeSummaryRecord } from '@/types'
 
 function toAuthErrorResponse(error: RequestAuthError, set: { status?: unknown }) {
   set.status = error.status
@@ -13,6 +13,17 @@ function toAuthErrorResponse(error: RequestAuthError, set: { status?: unknown })
       message: error.message,
     },
   } satisfies ApiResponse<never>
+}
+
+function toSummary(record: SourceResumeRecord): SourceResumeSummaryRecord {
+  return {
+    id: record.id,
+    title: record.title,
+    source_type: record.source_type,
+    original_file_name: record.original_file_name,
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+  }
 }
 
 export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' })
@@ -106,6 +117,42 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
       detail: {
         summary: '获取最新源简历',
         description: '返回最近一次保存的源简历元信息，用于首页左上角状态展示。',
+        tags: ['SourceResume'],
+      },
+    }
+  )
+  .get(
+    '/latest-summary',
+    async ({ headers, set }) => {
+      try {
+        const userContext = await resolveRequestUser(headers)
+        const result = await sourceResumeRepository.getLatest(userContext)
+
+        return {
+          success: true,
+          data: result ? toSummary(result) : null,
+        } satisfies ApiResponse<SourceResumeSummaryRecord | null>
+      } catch (error) {
+        if (error instanceof RequestAuthError) {
+          return toAuthErrorResponse(error, set)
+        }
+
+        console.error('获取源简历摘要失败:', error)
+        set.status = 500
+
+        return {
+          success: false,
+          error: {
+            code: 'SOURCE_RESUME_SUMMARY_FAILED',
+            message: '获取源简历摘要失败，请稍后重试',
+          },
+        } satisfies ApiResponse<never>
+      }
+    },
+    {
+      detail: {
+        summary: '获取最新源简历摘要',
+        description: '只返回首页左上角展示所需的源简历元数据。',
         tags: ['SourceResume'],
       },
     }

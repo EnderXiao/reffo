@@ -344,6 +344,42 @@ test.each([false, true])('business leadership normalization preserves a source a
   expect(paragraph.text).toBe('主导完成团队产品迭代。')
 })
 
+test.each([
+  ['市场', '市场团队'],
+  ['研发', '开发团队'],
+])('deterministically removes invented %s collaborator and records the normalization', (_normalizedTeam, writtenTeam) => {
+  const f = fixture()
+  const brief = f.entryPlan.entries.find(entry => entry.slot.kind === 'business_bullet')!
+  const paragraph = f.output.entries.find(entry => entry.entryId === brief.entryId)!.paragraphs[0]
+  paragraph.text = `协同${writtenTeam}${paragraph.text}`
+  const providerOutput = structuredClone(f.output)
+
+  const compiled = compileEntryWriting({
+    output: f.output,
+    entryPlan: f.entryPlan,
+    resume: f.input.resume,
+    policy: f.input.policy,
+  })
+  const checked = validateGeneratedResumeArtifact({
+    artifact: compiled.artifact,
+    resume: f.input.resume,
+    plan: compiled.renderingPlan,
+    policy: f.input.policy,
+    gateMode: 'relaxed_release',
+    textPolicy: 'supported_writing_v1',
+    skillPolicy: f.base.skillPolicy,
+    entryParagraphPaths: compiled.entryParagraphPaths,
+  })
+
+  expect(compiled.artifact.markdown).not.toContain(writtenTeam)
+  expect(compiled.writingIssues).toContainEqual(expect.objectContaining({
+    code: 'WRITER_COLLABORATOR_REMOVED',
+    severity: 'warning',
+  }))
+  expect(checked.issues.filter(issue => issue.severity === 'error')).toEqual([])
+  expect(f.output).toEqual(providerOutput)
+})
+
 test.each(['missing', 'duplicate', 'unknown', 'foreign_reference', 'invented_number', 'markdown'] as const)('rejects %s without requiring a model judge', mutation => {
   const f = fixture(), entry = f.output.entries[0]
   if (mutation === 'missing') f.output.entries.pop()

@@ -7,7 +7,7 @@ import {
   pickBrowserFile,
   type BrowserPickedFile,
 } from '@/utils/web-file'
-import {formatResumeFileSize} from '@/utils/resume-file-upload'
+import {formatResumeFileSize, getFileExtension} from '@/utils/file-upload'
 import type {UploadedJobDescriptionFile} from '../types'
 import {
   extractJobMetadataFromOcrText,
@@ -28,10 +28,7 @@ const SUPPORTED_JOB_DESCRIPTION_FILE_TYPES = new Set<string>(
   JOB_DESCRIPTION_IMAGE_ACCEPT_TYPES,
 )
 
-export function getFileExtension(fileName: string) {
-  const dotIndex = fileName.lastIndexOf('.')
-  return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : ''
-}
+export {getFileExtension} from '@/utils/file-upload'
 
 export function getJobDescriptionFileValidationMessage(file: BrowserPickedFile) {
   if (!SUPPORTED_JOB_DESCRIPTION_FILE_TYPES.has(getFileExtension(file.name))) {

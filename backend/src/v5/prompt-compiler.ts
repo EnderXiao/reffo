@@ -62,8 +62,11 @@ const TEMPERATURES: Record<V5PromptComponent, number> = {
 const OUTPUT_TOKEN_BASE: Record<V5PromptComponent, number> = {
   P01: 12000,
   P01R: 12000,
-  P02: 6000,
-  P02R: 6000,
+  // Job extraction may include a full targeted success profile. Keep enough
+  // room for the structured payload when DeepSeek thinking is enabled;
+  // truncation is terminal and cannot be repaired after the fact.
+  P02: 12000,
+  P02R: 12000,
   P03: 5000,
   P03R: 5000,
   P04: 1800,

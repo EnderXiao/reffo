@@ -1,9 +1,17 @@
 import { z } from 'zod'
 import type { CompositionBlueprintSlot, CompositionSectionKey } from '@/v5/composition/contract'
-import type { GenerationPolicy, ResumeEvidenceBundle, V5ResumePlan } from '@/v5/types'
+import type { EvidenceAtom, GenerationPolicy, ResumeEvidenceBundle, V5ResumePlan } from '@/v5/types'
 import type { WritingPlan } from '@/v5/writing/plan'
 import { writingPayload } from '@/v5/writing/plan'
-import { buildWritingFact, writingIssue, writingNumbers, TEAM_CONTRIBUTION_PATTERN, type WritingFact } from '@/v5/writing/facts'
+import {
+  buildWritingFact,
+  findUnsupportedCollaboratorTerms,
+  TEAM_CONTRIBUTION_PATTERN,
+  writingDisplayText,
+  writingIssue,
+  writingNumbers,
+  type WritingFact,
+} from '@/v5/writing/facts'
 import { compileWritingArtifact, SupportedWritingError } from '@/v5/writing/compiler'
 import { hasIncompleteMetricValue } from '@/v5/composition/source-display'
 import { hasCanonicalSourceLineSeparator } from '@/v5/composition/source-continuation'
@@ -90,6 +98,46 @@ export interface EntryWritingPlan {
   renderingPlan: V5ResumePlan
   listItemBudget: number
   listItemHardLimit: number
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+/** 删除校验器已确认无来源的协作部门，不补写新的协作对象或个人成果。 */
+function removeUnsupportedCollaboratorMentions(
+  value: string,
+  atoms: EvidenceAtom[],
+) {
+  const teams = findUnsupportedCollaboratorTerms(value, atoms)
+  if (!teams.length) return value
+
+  const sourceSupportsTeamBoundary = atoms.some(atom => (
+    atom.riskFlags.includes('team_attribution')
+    || TEAM_CONTRIBUTION_PATTERN.test(writingDisplayText(atom.verbatimText))
+  ))
+  const safeBoundary = sourceSupportsTeamBoundary ? '团队协作' : ''
+  let normalized = value
+  for (const team of teams) {
+    const teamPattern = team === '研发' ? '(?:研发|开发)' : escapeRegExp(team)
+    const pattern = `${teamPattern}(?:团队|部门)?`
+    normalized = normalized
+      .replace(new RegExp(
+        `(?:推动|促成|支持|协助|配合|与|和|协同|协调|联合|对接|联动)\\s*${pattern}(?=$|[\\u4e00-\\u9fff，、。；;：:！？!?])`,
+        'gu',
+      ), safeBoundary)
+      .replace(new RegExp(`${pattern}(?=\\s*(?:协同|协作|沟通|联动|对接))`, 'gu'), safeBoundary)
+      .replace(new RegExp(
+        `[、，,]\\s*${pattern}(?=$|[\\u4e00-\\u9fff，。；;：:！？!?]|\\s*(?:协同|协作|沟通|联动|对接))`,
+        'gu',
+      ), '')
+  }
+
+  return normalized
+    .replace(/^[、，,]\s*/u, '')
+    .replace(/[ \t]{2,}/gu, ' ')
+    .replace(/\s*([，。；;])/gu, '$1')
+    .trim()
 }
 
 /** Omit a dangling quantity when its unit lives on the following source line.
@@ -375,8 +423,49 @@ export function compileEntryWriting(input: {
       if (['experience', 'internship'].includes(scope.scopeType)) scope.treatment = paragraphs.length > 1 ? 'expand' : 'compress'
     }
   }
-  const result = compileWritingArtifact({ composition: { contractVersion: 'p06-composition-v1', blocks }, writingPlan,
-    resume: input.resume, plan, policy: input.policy })
+  const compileBlocks = (compositionBlocks: typeof blocks) => compileWritingArtifact({
+    composition: {contractVersion: 'p06-composition-v1', blocks: compositionBlocks},
+    writingPlan,
+    resume: input.resume,
+    plan,
+    policy: input.policy,
+  })
+  let result
+  const collaboratorNormalizations: typeof warnings = []
+  try {
+    result = compileBlocks(blocks)
+  } catch (error) {
+    if (!(error instanceof SupportedWritingError)
+      || !error.issues.some(issue => issue.severity === 'error' && issue.code === 'WRITER_COLLABORATOR_ADDED')) {
+      throw error
+    }
+    const slotByOutputPath = new Map(writingPlan.blueprint.slots.map(slot => [slot.outputPath, slot.slotId]))
+    const normalizedBlocks = blocks.map(block => {
+      const issues = error.issues.filter(issue => issue.severity === 'error'
+        && issue.code === 'WRITER_COLLABORATOR_ADDED'
+        && slotByOutputPath.get(issue.outputPath ?? '') === block.slotId)
+      if (!issues.length) return block
+      const atoms = [...new Set(block.evidenceIds.flatMap(id => input.entryPlan.base.expandedEvidenceIds[id] ?? [id]))]
+        .flatMap(id => input.resume.evidenceAtoms.filter(atom => atom.evidenceId === id))
+      const text = removeUnsupportedCollaboratorMentions(block.text, atoms)
+      if (text === block.text) return block
+      collaboratorNormalizations.push(writingIssue(
+        'WRITER_COLLABORATOR_REMOVED',
+        block.slotId,
+        block.evidenceIds,
+        '已删除生成稿中无来源支持的具体协作部门，保留同一引用能够证明的实际动作。',
+        'warning',
+      ))
+      return {...block, text}
+    })
+    if (!collaboratorNormalizations.length) throw error
+    result = compileBlocks(normalizedBlocks)
+  }
   const entryParagraphPaths = new Set(writingPlan.blueprint.slots.filter(s => s.kind === 'business_bullet').map(s => s.outputPath))
-  return { ...result, writingIssues: [...result.writingIssues, ...warnings], renderingPlan: plan, entryParagraphPaths }
+  return {
+    ...result,
+    writingIssues: [...result.writingIssues, ...warnings, ...collaboratorNormalizations],
+    renderingPlan: plan,
+    entryParagraphPaths,
+  }
 }

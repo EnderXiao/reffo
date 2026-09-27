@@ -17,8 +17,13 @@ const ADVICE_BY_CODE: Record<string, HarnessRecoveryAdvice> = {
   },
   V5_OUTPUT_TRUNCATED: {
     retryable: false,
-    action: 'reduce_output_scope',
-    message: '模型输出被截断；减少输出范围或提高结构化输出预算后再试。',
+    action: 'retry_with_thinking_disabled_and_reduced_scope',
+    message: '模型输出被截断；有界 thinking 降级已耗尽，需减少输出范围或提高结构化输出预算后再试。',
+  },
+  V5_JSON_PARSE_FAILED: {
+    retryable: false,
+    action: 'repair_structured_json_output',
+    message: '结构化输出在一次有界 JSON 修复后仍未通过；检查阶段输出契约和 Harness 事件。',
   },
   STEP_TIMEOUT: {
     retryable: true,

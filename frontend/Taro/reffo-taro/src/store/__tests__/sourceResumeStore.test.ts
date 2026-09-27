@@ -2,8 +2,13 @@ import {beforeEach, describe, expect, jest, test} from '@jest/globals'
 import type {SourceResumeSummary} from '@/types'
 
 jest.mock('@/services/sourceResume', () => ({
+  ...jest.requireActual<typeof import('@/services/sourceResume')>(
+    '@/services/sourceResume',
+  ),
   sourceResumeApi: {
+    saveSourceResume: jest.fn(),
     getLatestSourceResume: jest.fn(),
+    getLatestSourceResumeSummary: jest.fn(),
     deleteSourceResume: jest.fn(),
   },
 }))
@@ -49,6 +54,7 @@ describe('SourceResumeStore', () => {
     mockAuthState.session = {user: {id: 'user-1'}}
     ;(isLocalRuntimeEnvironment as jest.Mock).mockResolvedValue(false)
     ;(sourceResumeApi.getLatestSourceResume as jest.Mock).mockResolvedValue(null)
+    ;(sourceResumeApi.getLatestSourceResumeSummary as jest.Mock).mockResolvedValue(null)
     ;(storage.removeItem as jest.Mock).mockResolvedValue(undefined)
     ;(sourceResumeApi.deleteSourceResume as jest.Mock).mockResolvedValue(undefined)
     ;(getJSON as jest.Mock).mockResolvedValue(null)
@@ -73,6 +79,37 @@ describe('SourceResumeStore', () => {
     expect(setJSON).not.toHaveBeenCalled()
     expect(storage.removeItem).toHaveBeenCalledWith('latest_source_resume.user-1')
     expect(useSourceResumeStore.getState().latestSourceResume).toEqual(resume)
+  })
+
+  test('首页摘要加载只请求元数据接口', async () => {
+    ;(sourceResumeApi.getLatestSourceResumeSummary as jest.Mock).mockResolvedValue({
+      id: resume.id,
+      title: resume.title,
+      sourceType: resume.sourceType,
+      originalFileName: resume.originalFileName,
+      createdAt: resume.createdAt,
+      updatedAt: resume.updatedAt,
+    })
+
+    await useSourceResumeStore.getState().loadLatestSourceSummary()
+
+    expect(sourceResumeApi.getLatestSourceResume).not.toHaveBeenCalled()
+    expect(sourceResumeApi.getLatestSourceResumeSummary).toHaveBeenCalledTimes(1)
+    expect(useSourceResumeStore.getState().latestSourceResume).toBeNull()
+    expect(useSourceResumeStore.getState().latestSourceResumeSummary?.id).toBe(resume.id)
+    expect(useSourceResumeStore.getState().summaryInitialized).toBe(true)
+  })
+
+  test('完整源简历加载后同步摘要元数据', async () => {
+    ;(sourceResumeApi.getLatestSourceResume as jest.Mock).mockResolvedValue(resume)
+
+    await useSourceResumeStore.getState().loadLatestSourceResume()
+
+    expect(useSourceResumeStore.getState().latestSourceResumeSummary).toMatchObject({
+      id: resume.id,
+      title: resume.title,
+      originalFileName: resume.originalFileName,
+    })
   })
 
   test('未登录时读取 Landing 待同步简历，不请求受保护接口', async () => {
