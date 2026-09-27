@@ -1,6 +1,6 @@
 import {apiClient} from './api';
 import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis';
-import {normalizeStrategyReview} from '../../../../../shared/resume-strategy';
+import {normalizeStrategyReview} from '@/shared/resume-strategy';
 import type {
   ResumeAnalysis,
   MatchingResult,

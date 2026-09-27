@@ -1,6 +1,6 @@
 import {fireEvent, render, screen, waitFor, within} from '@testing-library/react'
 import type {ProcessResult} from '@/types'
-import {resumeTextFingerprint} from '../../../../../../../shared/resume-strategy'
+import {resumeTextFingerprint} from '@/shared/resume-strategy'
 import PageView from '../PageView.h5'
 import type {ResultPageViewModel} from '../usePageModel'
 import {requirementAnalysisFixture} from '@/utils/__tests__/fixtures/requirement-analysis'

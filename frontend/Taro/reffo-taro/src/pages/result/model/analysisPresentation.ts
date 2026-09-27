@@ -1,4 +1,4 @@
-import {currentStrategyReview, resumeTextFingerprint} from '../../../../../../../shared/resume-strategy'
+import {currentStrategyReview, resumeTextFingerprint} from '@/shared/resume-strategy'
 import type {
   MatchGapPriority,
   ProcessResult,

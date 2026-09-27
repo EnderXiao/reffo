@@ -1,4 +1,4 @@
-import { strategyResultExcerpts } from '../../../../shared/resume-strategy'
+import { strategyResultExcerpts } from '@/shared/resume-strategy'
 
 import type {
   InterviewSuggestions,

@@ -1,5 +1,5 @@
-import type {ResumeStrategyReview} from '../../../../../shared/resume-strategy'
-export type {ResumeStrategyReview, ResumeStrategyOutcome, ResumeStrategyReference} from '../../../../../shared/resume-strategy'
+import type {ResumeStrategyReview} from '@/shared/resume-strategy'
+export type {ResumeStrategyReview, ResumeStrategyOutcome, ResumeStrategyReference} from '@/shared/resume-strategy'
 
 // 类型定义
 

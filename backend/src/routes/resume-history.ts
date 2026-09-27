@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { resumeHistoryRepository } from '@/repositories/resume-history-repository'
 import type { ApiResponse, ResumeHistoryRecord, ResumeHistorySummaryRecord } from '@/types'
-import { buildResumeValueSummary } from '../../../shared/resume-strategy'
+import { buildResumeValueSummary } from '@/shared/resume-strategy'
 
 const resultStepStatusSchema = t.Union([
   t.Literal('pending'),

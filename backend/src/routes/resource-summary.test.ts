@@ -10,7 +10,7 @@ import type {
 } from '@/types'
 import { resumeHistoryRoutes, toSummary } from '@/routes/resume-history'
 import { sourceResumeRoutes } from '@/routes/source-resume'
-import {resumeTextFingerprint, type ResumeStrategyReview} from '../../../shared/resume-strategy'
+import {resumeTextFingerprint, type ResumeStrategyReview} from '@/shared/resume-strategy'
 
 let historyRecords: ResumeHistoryRecord[] = []
 let latestSourceResume: SourceResumeRecord | null = null

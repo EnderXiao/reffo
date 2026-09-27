@@ -1,4 +1,4 @@
-import type { ResumeStrategyReview } from '../../../shared/resume-strategy'
+import type { ResumeStrategyReview } from '@/shared/resume-strategy'
 
 /**
  * TypeScript 类型定义

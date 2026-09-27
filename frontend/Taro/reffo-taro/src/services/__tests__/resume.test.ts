@@ -1,7 +1,7 @@
 import {ResumeApi} from '../resume';
 import {apiClient} from '../api';
 import {RequestError} from '@/utils/request';
-import {resumeTextFingerprint} from '../../../../../../shared/resume-strategy';
+import {resumeTextFingerprint} from '@/shared/resume-strategy';
 import type {ResumeAnalysis, MatchingResult, StructuredResume} from '@/types';
 
 // Mock apiClient

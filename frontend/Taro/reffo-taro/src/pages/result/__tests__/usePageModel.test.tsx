@@ -5,7 +5,7 @@ import {resumeApi} from '@/services/resume'
 import {useResumeWorkspaceStore} from '@/store/resumeWorkspaceStore'
 import {useHistoryStore} from '@/store/historyStore'
 import type {ResumeHistory, ResumeStrategyReview} from '@/types'
-import {resumeTextFingerprint} from '../../../../../../../shared/resume-strategy'
+import {resumeTextFingerprint} from '@/shared/resume-strategy'
 import {
   getLatestResultSession,
   saveLatestResultSession,

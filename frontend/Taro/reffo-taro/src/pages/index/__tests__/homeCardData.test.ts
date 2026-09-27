@@ -1,7 +1,7 @@
 import type {ResumeHistory, ResumeHistorySummary} from '@/types'
 import {resolveResumeGrade} from '@/utils/score-grade'
 import {toHistoryCardItem, toHistorySummaryCardItem} from '../model/homeCardData'
-import {resumeTextFingerprint} from '../../../../../../../shared/resume-strategy'
+import {resumeTextFingerprint} from '@/shared/resume-strategy'
 
 describe('homeCardData', () => {
   test('轻量摘要直接生成首页卡片，不依赖简历正文', () => {

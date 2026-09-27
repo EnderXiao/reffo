@@ -1,5 +1,5 @@
 import type {ProcessResult} from '@/types'
-import {resumeTextFingerprint} from '../../../../../../../shared/resume-strategy'
+import {resumeTextFingerprint} from '@/shared/resume-strategy'
 import {buildInterviewStoryViewItems} from '../model/interviewReferences'
 import {
   buildGapViewItems,
