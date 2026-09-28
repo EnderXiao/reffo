@@ -1,0 +1,25 @@
+backend/src/harness/run-context.test.ts
+  s_071e3a2de1b4d3::t_5ea9a70e3eb20f 1-10
+backend/src/harness/run-context.ts
+  s_071e3a2de1b4d3::t_5f15781602dabe 53-68
+backend/src/v5/single-step-adapter.ts
+  s_071e3a2de1b4d3::t_6ae75d4271086b 2,95,158-159
+backend/src/v5/tests/single-step-adapter.test.ts
+  s_071e3a2de1b4d3::t_fc7343fbe8ec44 10-21,24,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "aa81e0db89c79f5bde49865c0c50fc1fb232cd79",
+  "prompts": {},
+  "sessions": {
+    "s_071e3a2de1b4d3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e8de-109e-7773-933b-d79e1d7e09d3",
+        "model": "unknown"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
