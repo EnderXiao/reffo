@@ -6,6 +6,10 @@ import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import type {ResumeHistory, SourceResumeSummary} from '@/types'
 import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary'
+import {
+  bootstrapHomeData,
+  hasBootstrappedHomeData,
+} from '@/utils/home-data-bootstrap'
 import {usePageModel} from '../model/usePageModel'
 
 jest.mock('@tarojs/taro', () => ({
@@ -22,9 +26,15 @@ jest.mock('@/store/resumeWorkspaceStore', () => ({
   },
 }))
 jest.mock('@/store/sourceResumeStore')
+jest.mock('@/utils/home-data-bootstrap', () => ({
+  bootstrapHomeData: jest.fn(() => Promise.resolve()),
+  hasBootstrappedHomeData: jest.fn(() => true),
+}))
 const mockUseHistoryStore = useHistoryStore as jest.MockedFunction<typeof useHistoryStore>
 const mockResetWorkspace = resumeWorkspaceActions.reset as jest.Mock
 const mockUseRouter = (Taro as any).useRouter as jest.Mock
+const mockBootstrapHomeData = bootstrapHomeData as jest.Mock
+const mockHasBootstrappedHomeData = hasBootstrappedHomeData as jest.Mock
 const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
 >
@@ -121,6 +131,8 @@ describe('usePageModel', () => {
     window.history.replaceState(null, '', '/')
     window.sessionStorage.removeItem(RESULT_RETURN_HOME_STORAGE_KEY)
     latestCardPressResult = null
+    mockHasBootstrappedHomeData.mockReturnValue(true)
+    mockBootstrapHomeData.mockResolvedValue(undefined)
     mockUseRouter.mockReturnValue({params: {}})
     setHistoryState([])
     setSourceResumeState(null)
@@ -161,8 +173,6 @@ describe('usePageModel', () => {
       jest.advanceTimersByTime(1)
     })
     expect((screen.getByTestId('strategy') as any).textContent).toBe('yes')
-    expect(mockLoadHistorySummaries).toHaveBeenCalledTimes(1)
-    expect(mockLoadLatestSourceSummary).toHaveBeenCalledTimes(1)
   })
 
   test('没有历史简历时不展示示例卡片并直接进入新申请创建态', () => {

@@ -1,4 +1,5 @@
-import {fireEvent, render, screen, within} from '@testing-library/react'
+import {act, fireEvent, render, screen, within} from '@testing-library/react'
+import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import type {ProcessResult} from '@/types'
 import PageView from '../PageView.h5'
 import type {ResultPageViewModel} from '../usePageModel'
@@ -82,7 +83,67 @@ const model: ResultPageViewModel = {
   canEditHistory: false,
 }
 
+const returnCard: HomeCardItem = {
+  id: 'JD2026092300001',
+  company: '测试公司',
+  indexLabel: 'T',
+  location: '北京',
+  role: '前端工程师',
+  dateLabel: '生成日期 2026.09.23',
+  score: 88,
+  primaryColor: '#2F7BEF',
+  surfaceColor: '#DCE9F9',
+  stackColor: '#AFC8E8',
+  logoColor: '#FFFFFF',
+  borderColor: '#FFFFFF',
+  tone: 'default',
+  strategyBody: '突出前端架构与交付经验。',
+}
+
 describe('结果页', () => {
+  test('从卡片返回先退场结果内容，再执行页面缩卡', () => {
+    jest.useFakeTimers()
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    })
+    window.sessionStorage.removeItem('reffo.resultReturnHome')
+    document.documentElement.removeAttribute('data-reffo-return-home-pending')
+    const handleBackHome = jest.fn()
+
+    render(
+      <PageView
+        {...model}
+        enteredFromCard
+        returnCard={returnCard}
+        handleBackHome={handleBackHome}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('返回'))
+
+    expect(document.querySelector('.reffo-result__return-surface')).toBeTruthy()
+    expect(document.querySelector('.reffo-result')?.className).toContain(
+      'reffo-result--content-exiting',
+    )
+    expect(handleBackHome).not.toHaveBeenCalled()
+
+    act(() => {
+      jest.advanceTimersByTime(359)
+    })
+    expect(handleBackHome).not.toHaveBeenCalled()
+
+    act(() => {
+      jest.advanceTimersByTime(1)
+    })
+    expect(handleBackHome).toHaveBeenCalledTimes(1)
+
+    window.sessionStorage.removeItem('reffo.resultReturnHome')
+    document.documentElement.removeAttribute('data-reffo-return-home-pending')
+    jest.useRealTimers()
+  })
+
   test('岗位分析显示匹配差距与结构化策略，不能显示简历质量问题', () => {
     const current: ProcessResult = {
       ...result,

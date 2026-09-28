@@ -9,6 +9,7 @@ import {
   suppressNextNavigationTransition,
 } from '@/utils/navigation-transition'
 import {
+  scaleSharedElementSnapshot,
   readSharedElementSnapshot,
   type SharedElementSnapshot,
 } from '@/utils/shared-element-transition'
@@ -46,6 +47,8 @@ const RESULT_STAGE_SWIPE_THRESHOLD = 44
 const RESULT_STAGE_SWITCH_DURATION = 520
 const RESULT_BLOCKED_DRAG_LIMIT = 128
 const RESULT_BLOCKED_DRAG_SETTLE_MS = 340
+const RESULT_CONTENT_EXIT_DURATION = 360
+const RESULT_RETURN_FALLBACK_DURATION = 980
 interface CardOpenRectSnapshot extends SharedElementSnapshot {
   cardId?: string
 }
@@ -130,7 +133,10 @@ function getBlockedStageMessage(
   }
 }
 
-function markReturningHome(cardId?: string | null, transition?: 'view-transition') {
+function markReturningHome(
+  cardId?: string | null,
+  transition?: 'view-transition' | 'direct',
+) {
   if (typeof window === 'undefined') {
     return
   }
@@ -144,6 +150,52 @@ function markReturningHome(cardId?: string | null, transition?: 'view-transition
   } catch (error) {
     console.warn('保存首页返回过渡标记失败:', error)
   }
+}
+
+function resolveResultPageReturnKeyframes(
+  rootRect: DOMRect,
+  snapshot: CardOpenRectSnapshot,
+): Keyframe[] | null {
+  if (rootRect.width <= 0 || rootRect.height <= 0) {
+    return null
+  }
+
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || rootRect.width
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || rootRect.height
+  const fallbackWidth = Math.min(viewportWidth * 0.55, 218)
+  const target = scaleSharedElementSnapshot(snapshot, {
+    left: (viewportWidth - fallbackWidth) / 2,
+    top: Math.max(96, (viewportHeight - fallbackWidth * 1.546) / 2),
+    width: fallbackWidth,
+    height: fallbackWidth * 1.546,
+  })
+  const translateX = target.left - rootRect.left
+  const translateY = target.top - rootRect.top
+  const scaleX = target.width / rootRect.width
+  const scaleY = target.height / rootRect.height
+  const midTranslateX = translateX * 0.72
+  const midTranslateY = translateY * 0.72
+  const midScaleX = 1 + (scaleX - 1) * 0.72
+  const midScaleY = 1 + (scaleY - 1) * 0.72
+
+  return [
+    {
+      transform: 'translate3d(0, 0, 0) scale(1, 1)',
+      clipPath: 'inset(0px round 0px)',
+      opacity: 1,
+    },
+    {
+      transform: `translate3d(${midTranslateX}px, ${midTranslateY}px, 0) scale(${midScaleX}, ${midScaleY})`,
+      clipPath: 'inset(0px round 10px)',
+      opacity: 1,
+      offset: 0.58,
+    },
+    {
+      transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`,
+      clipPath: 'inset(0px round 28px)',
+      opacity: 1,
+    },
+  ]
 }
 
 function getUnmatchedRequirements(items: HardRequirement[] | undefined) {
@@ -729,6 +781,7 @@ export default function PageView({
   const [isFromCardReady, setIsFromCardReady] = useState(!enteredFromCard)
   const [isEdgeEnterReady, setIsEdgeEnterReady] = useState(!enteredFromCard)
   const [isReturningHome, setIsReturningHome] = useState(false)
+  const [isExitingContent, setIsExitingContent] = useState(false)
   const [blockedBubble, setBlockedBubble] = useState<{
     stageKey: ResultStageKey
     message: string
@@ -737,6 +790,8 @@ export default function PageView({
   const [stageTransition, setStageTransition] = useState<StageTransitionState | null>(null)
   const [blockedPreview, setBlockedPreview] = useState<BlockedStagePreviewState | null>(null)
   const rootRef = useRef<HTMLElement | null>(null)
+  const returnSurfaceRef = useRef<HTMLElement | null>(null)
+  const contentExitTimerRef = useRef<number | null>(null)
   const returnTimerRef = useRef<number | null>(null)
   const edgeEnterTimerRef = useRef<number | null>(null)
   const bubbleTimerRef = useRef<number | null>(null)
@@ -835,6 +890,9 @@ export default function PageView({
   }, [enteredFromCard, hasRenderableResult, isFromCardReady, loading])
 
   useEffect(() => () => {
+    if (contentExitTimerRef.current != null) {
+      window.clearTimeout(contentExitTimerRef.current)
+    }
     if (edgeEnterTimerRef.current != null) {
       window.clearTimeout(edgeEnterTimerRef.current)
     }
@@ -1108,8 +1166,7 @@ export default function PageView({
     const cardOpenSnapshot = readCardOpenRect()
     const returningCardId = returnCard?.id ?? cardOpenSnapshot?.cardId ?? null
     const rootElement = rootRef.current
-    const shellElement = rootElement?.querySelector('.reffo-result__shell') as HTMLElement | null
-    const chromeElement = rootElement?.querySelector('.reffo-result__chrome') as HTMLElement | null
+    const returnSurfaceElement = returnSurfaceRef.current
     let finished = false
 
     const finishReturn = () => {
@@ -1118,48 +1175,58 @@ export default function PageView({
       }
 
       finished = true
+      if (contentExitTimerRef.current != null) {
+        window.clearTimeout(contentExitTimerRef.current)
+        contentExitTimerRef.current = null
+      }
       if (returnTimerRef.current != null) {
         window.clearTimeout(returnTimerRef.current)
         returnTimerRef.current = null
       }
+      markReturningHome(returningCardId, 'direct')
       suppressNextNavigationTransition()
       handleBackHome()
     }
 
-    const didStartViewTransition = startResultCardReturnTransition(() => {
-      markReturningHome(returningCardId, 'view-transition')
-      return handleBackHome()
-    }, rootElement)
-
-    if (didStartViewTransition) {
-      setIsReturningHome(true)
+    setIsReturningHome(true)
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (reducedMotion) {
+      finishReturn()
       return
     }
 
-    markReturningHome(returningCardId)
-    setIsReturningHome(true)
+    setIsExitingContent(true)
+    contentExitTimerRef.current = window.setTimeout(() => {
+      contentExitTimerRef.current = null
+      const didStartViewTransition = startResultCardReturnTransition(() => {
+        markReturningHome(returningCardId, 'view-transition')
+        return handleBackHome()
+      }, returnSurfaceElement || rootElement)
 
-    if (returnTimerRef.current != null) {
-      window.clearTimeout(returnTimerRef.current)
-    }
+      if (didStartViewTransition) {
+        return
+      }
 
-    returnTimerRef.current = window.setTimeout(finishReturn, 48)
+      const cardOpenRect = cardOpenSnapshot
+      const keyframes = rootElement && cardOpenRect
+        ? resolveResultPageReturnKeyframes(rootElement.getBoundingClientRect(), cardOpenRect)
+        : null
 
-    const fadingElements = [shellElement, chromeElement]
+      if (!rootElement || !keyframes || typeof rootElement.animate !== 'function') {
+        finishReturn()
+        return
+      }
 
-    fadingElements.forEach(element => {
-      element?.animate?.(
-        [
-          {opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)'},
-          {opacity: 0, transform: 'translate3d(0, -8px, 0) scale(0.98)'},
-        ],
-        {
-          duration: 260,
-          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-          fill: 'forwards',
-        },
-      )
-    })
+      rootElement.style.transformOrigin = '0 0'
+      rootElement.style.willChange = 'transform, clip-path, opacity'
+      rootElement.animate(keyframes, {
+        duration: RESULT_RETURN_FALLBACK_DURATION,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        fill: 'forwards',
+      })
+
+      returnTimerRef.current = window.setTimeout(finishReturn, RESULT_RETURN_FALLBACK_DURATION)
+    }, RESULT_CONTENT_EXIT_DURATION)
   }, [enteredFromCard, handleBackHome, isReturningHome, returnCard])
 
   const handleAction = async () => {
@@ -1187,6 +1254,7 @@ export default function PageView({
           'reffo-result--returning-home': isReturningHome,
         })}
       >
+        <View className='reffo-result__return-surface' aria-hidden='true' />
         {enteredFromLanding && !hideLandingHeader ? (
           <LandingFlowHeader
             className='reffo-create__landing-header--result'
@@ -1216,6 +1284,7 @@ export default function PageView({
         'reffo-result--from-card-ready': enteredFromCard && isFromCardReady,
         'reffo-result--edge-enter-ready': enteredFromCard && isEdgeEnterReady,
         'reffo-result--returning-home': isReturningHome,
+        'reffo-result--content-exiting': isExitingContent,
         'reffo-result--blocked-shake': isBlockedShaking,
         'reffo-result--blocked-preview': Boolean(blockedPreview),
         'reffo-result--blocked-dragging': blockedPreview?.phase === 'dragging',
@@ -1228,6 +1297,11 @@ export default function PageView({
       onTouchEnd={handleStageTouchEnd}
       onTouchCancel={handleStageTouchCancel}
     >
+      <View
+        ref={returnSurfaceRef as any}
+        className='reffo-result__return-surface'
+        aria-hidden='true'
+      />
       {enteredFromLanding ? (
         hideLandingHeader ? null : (
           <LandingFlowHeader

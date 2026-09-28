@@ -6,6 +6,10 @@ import {useHistoryStore} from '@/store/historyStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import type {ResumeHistory} from '@/types'
 import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary'
+import {
+  bootstrapHomeData,
+  hasBootstrappedHomeData,
+} from '@/utils/home-data-bootstrap'
 
 jest.mock('@tarojs/taro', () => ({
   navigateTo: jest.fn(),
@@ -32,11 +36,17 @@ jest.mock('@/components/business/HomeCardDeck', () => ({
 
 jest.mock('@/store/historyStore')
 jest.mock('@/store/sourceResumeStore')
+jest.mock('@/utils/home-data-bootstrap', () => ({
+  bootstrapHomeData: jest.fn(() => Promise.resolve()),
+  hasBootstrappedHomeData: jest.fn(() => true),
+}))
 
 const mockUseHistoryStore = useHistoryStore as jest.MockedFunction<typeof useHistoryStore>
 const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
 >
+const mockBootstrapHomeData = bootstrapHomeData as jest.Mock
+const mockHasBootstrappedHomeData = hasBootstrappedHomeData as jest.Mock
 
 describe('首页组件', () => {
   const mockLoadHistories = jest.fn()
@@ -103,15 +113,40 @@ describe('首页组件', () => {
     mockLoading.error = null
     mockSourceResumeLoading.isLoading = false
     mockSourceResumeLoading.error = null
+    mockHasBootstrappedHomeData.mockReturnValue(true)
+    mockBootstrapHomeData.mockResolvedValue(undefined)
     installStoreMocks()
   })
 
-  test('挂载时应加载历史记录和源简历状态', async () => {
+  test('首页主数据准备完成前只展示品牌加载封面', async () => {
+    let finishBootstrap!: () => void
+    mockHasBootstrappedHomeData.mockReturnValue(false)
+    mockBootstrapHomeData.mockReturnValue(new Promise<void>(resolve => {
+      finishBootstrap = resolve
+    }))
+
+    render(<Index />)
+
+    expect(screen.getByRole('status')).toBeTruthy()
+    expect(screen.queryByText('源简历')).toBeNull()
+    expect(screen.queryByText('新的申请')).toBeNull()
+
+    await act(async () => {
+      finishBootstrap()
+      await Promise.resolve()
+    })
+
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByText('源简历')).toBeTruthy()
+    expect(screen.getByText('新的申请')).toBeTruthy()
+  })
+
+  test('挂载时通过统一 bootstrap 准备首页主数据', async () => {
+    mockHasBootstrappedHomeData.mockReturnValue(false)
     render(<Index />)
 
     await waitFor(() => {
-      expect(mockLoadHistorySummaries).toHaveBeenCalledTimes(1)
-      expect(mockLoadLatestSourceSummary).toHaveBeenCalledTimes(1)
+      expect(mockBootstrapHomeData).toHaveBeenCalledTimes(1)
     })
   })
 

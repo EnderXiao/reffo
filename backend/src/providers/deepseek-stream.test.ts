@@ -26,8 +26,39 @@ test('streams only content, consumes the trailing usage frame, and never retries
   expect(requests).toHaveLength(1)
   expect(requests[0]).toMatchObject({ stream: true, stream_options: { include_usage: true } })
   expect(deltas.join('')).toBe('{"ok":true}')
-  expect(result).toMatchObject({ content: '{"ok":true}', physicalAttempts: 1, inputTokens: 12, outputTokens: 30, reasoningTokens: 20 })
+  expect(result).toMatchObject({
+    content: '{"ok":true}',
+    physicalAttempts: 1,
+    inputTokens: 12,
+    outputTokens: 30,
+    reasoningTokens: 20,
+    transportMode: 'stream',
+    streamChunkCount: 5,
+  })
+  expect(typeof result.timeToFirstChunkMs).toBe('number')
+  expect(typeof result.timeToFirstContentMs).toBe('number')
   expect(JSON.stringify(result)).not.toContain('PRIVATE_THINKING')
+})
+
+test('uses streaming without a content callback and still returns complete JSON', async () => {
+  let request: Record<string, unknown> | undefined
+  const p = provider([
+    content('{"ok":'),
+    content('true}'),
+    stop(),
+    { choices: [], usage: { prompt_tokens: 4, completion_tokens: 6 } },
+  ], body => { request = body as Record<string, unknown> })
+
+  const result = await p.complete({ messages: [], model: 'deepseek-v4-flash', structuredOutput: schema })
+
+  expect(request).toMatchObject({ stream: true, stream_options: { include_usage: true } })
+  expect(result).toMatchObject({
+    content: '{"ok":true}',
+    transportMode: 'stream',
+    streamChunkCount: 4,
+    inputTokens: 4,
+    outputTokens: 6,
+  })
 })
 
 test('clean EOF without a terminal frame is not successful generation', async () => {

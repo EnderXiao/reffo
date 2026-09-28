@@ -72,6 +72,22 @@ describe('FallbackLlmProvider transient retry', () => {
     })
   })
 
+  test('retries an incomplete provider stream as a transient transport failure', async () => {
+    let callCount = 0
+    const provider: LlmProvider = {
+      complete: async input => {
+        callCount += 1
+        if (callCount === 1) throw new Error('PROVIDER_STREAM_INCOMPLETE')
+        return createResult(input.model ?? 'unknown')
+      },
+    }
+
+    const result = await new FallbackLlmProvider(provider).complete(createStepInput(new FakeHarnessEventBus()))
+
+    expect(result.physicalAttempts).toBe(2)
+    expect(callCount).toBe(2)
+  })
+
   test('does not retry permanent provider errors on the same model', async () => {
     const eventBus = new FakeHarnessEventBus()
     let callCount = 0

@@ -73,6 +73,7 @@ export function isProviderTransientError(error: unknown) {
     'econnreset',
     'etimedout',
     'eai_again',
+    'provider_stream_incomplete',
   ].some((pattern) => message.includes(pattern))
 }
 

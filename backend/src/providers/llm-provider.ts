@@ -64,6 +64,10 @@ export interface ChatCompletionResult {
   model: string
   content: string
   latencyMs: number
+  transportMode?: 'stream' | 'non_stream'
+  timeToFirstChunkMs?: number
+  timeToFirstContentMs?: number
+  streamChunkCount?: number
   providerRequestId?: string
   finishReason?: string | null
   inputTokens?: number

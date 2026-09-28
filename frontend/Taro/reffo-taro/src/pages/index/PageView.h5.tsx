@@ -14,6 +14,7 @@ import {
   type SharedElementSnapshot,
 } from '@/utils/shared-element-transition'
 import type {IndexPageViewModel} from './model/usePageModel'
+import HomeLoadingCover from './components/HomeLoadingCover.h5'
 import {HOME_PAGE_CONTENT} from './constants/content'
 import {resolveUserAvatar} from '@/utils/generated-avatar'
 import {useAuthStore} from '@/store/authStore'
@@ -31,7 +32,7 @@ const HOME_CARD_DESIGN_WIDTH = 210
 
 interface ReturningHomePayload {
   cardId: string | null
-  transition?: 'view-transition' | null
+  transition?: 'view-transition' | 'direct' | null
 }
 
 interface CardOpenRectSnapshot extends SharedElementSnapshot {
@@ -96,11 +97,15 @@ function readReturnHomeMarker(): ReturningHomePayload | null {
     }
 
     const parsed = JSON.parse(raw) as {cardId?: unknown; transition?: unknown}
+    const transition = parsed.transition === 'view-transition' || parsed.transition === 'direct'
+      ? parsed.transition
+      : null
+
     return {
       cardId: typeof parsed.cardId === 'string' && parsed.cardId.length > 0
         ? parsed.cardId
         : null,
-      transition: parsed.transition === 'view-transition' ? 'view-transition' : null,
+      transition,
     }
   } catch (error) {
     console.warn('读取首页返回过渡标记失败:', error)
@@ -323,6 +328,7 @@ export default function PageView({
   currentProgress,
   displayTotal,
   isLoading,
+  isHomeBootReady,
   loadingError,
   hasHistories,
   hasSourceResume,
@@ -360,7 +366,7 @@ export default function PageView({
   const isLandingEntryTransition = Boolean(landingLogoSnapshot)
   const isHomeEntryTransition = isReturnHomeTransition || isLandingEntryTransition
   const returningCardId = returnHomePayload?.cardId ?? null
-  const isViewTransitionReturn = returnHomePayload?.transition === 'view-transition'
+  const usesDirectCardTarget = returnHomePayload?.transition != null
 
   const runNavigation = (target: Exclude<PendingNavigation, null>, action: () => Promise<void> | void) => {
     if (pendingNavigation) {
@@ -460,6 +466,18 @@ export default function PageView({
     }
   }, [])
 
+  useLayoutEffect(() => {
+    if (!isHomeBootReady) {
+      return
+    }
+
+    document.getElementById('reffo-home-boot-cover')?.remove()
+  }, [isHomeBootReady])
+
+  if (!isHomeBootReady) {
+    return <HomeLoadingCover logoSource={logoSource} />
+  }
+
   return (
     <View
       className={classNames('reffo-home', {
@@ -480,18 +498,14 @@ export default function PageView({
           />
         </View>
       ) : null}
-      {isReturnHomeTransition && returnCard ? (
+      {isReturnHomeTransition && !usesDirectCardTarget && returnCard ? (
         <View
           key={returnTransitionKey}
-          className={classNames('reffo-home__return-layer', {
-            'reffo-home__return-layer--view-transition': isViewTransitionReturn,
-          })}
+          className='reffo-home__return-layer'
         >
           <View className='reffo-home__return-backdrop' />
           <View
-            className={classNames('reffo-home__return-card-stage', {
-              'reffo-home__return-card-stage--view-transition': isViewTransitionReturn,
-            })}
+            className='reffo-home__return-card-stage'
             style={returnCardStyle}
           >
             <HomeScoreCard

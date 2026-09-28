@@ -273,13 +273,14 @@ describe('navigation-transition', () => {
     document.body.appendChild(sourceElement)
     const nestedAction = jest.fn(async () => {
       const target = document.createElement('div')
-      target.className = 'reffo-home__return-card-stage--view-transition'
+      target.className = 'reffo-home-card--return-target'
       document.body.appendChild(target)
       return 'done'
     })
     const action = jest.fn(() => runWithNavigationTransition(nestedAction, {kind: 'back'}))
 
     expect(startResultCardReturnTransition(action, sourceElement)).toBe(true)
+    const style = document.getElementById('reffo-navigation-transition-style')
 
     expect(startViewTransition).toHaveBeenCalledTimes(1)
     expect(action).toHaveBeenCalledTimes(1)
@@ -287,6 +288,10 @@ describe('navigation-transition', () => {
     expect(sourceElement.style.getPropertyValue('view-transition-name')).toBe('reffo-result-card-return')
     expect(document.documentElement.dataset.reffoCardReturnTransition).toBe('1')
     expect(document.documentElement.dataset.reffoViewTransition).toBeUndefined()
+    expect(style?.textContent).toContain('animation-duration: 980ms')
+    expect(style?.textContent).toContain('object-fit: fill')
+    expect(style?.textContent).toContain('::view-transition-old(reffo-result-card-return)')
+    expect(style?.textContent).toContain('animation: none')
 
     finishTransition()
     await transition.finished
@@ -325,7 +330,7 @@ describe('navigation-transition', () => {
     expect(transition.skipTransition).not.toHaveBeenCalled()
 
     const target = document.createElement('div')
-    target.className = 'reffo-home__return-card-stage--view-transition'
+    target.className = 'reffo-home-card--return-target'
     document.body.appendChild(target)
 
     await jest.advanceTimersByTimeAsync(0)

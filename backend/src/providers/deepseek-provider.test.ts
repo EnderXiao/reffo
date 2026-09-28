@@ -14,22 +14,54 @@ type FakeCompletionOptions = {
 type FakeCompletionCreate = (
   body: unknown,
   options?: FakeCompletionOptions
-) => Promise<unknown>
+) => unknown | Promise<unknown>
 
 function createClient(create: FakeCompletionCreate) {
   return {
     chat: {
-      completions: { create },
+      completions: {
+        create: async (body: unknown, options?: FakeCompletionOptions) => {
+          const value = await create(body, options)
+          if (!Array.isArray(value)) return value
+          return (async function* () {
+            for (const frame of value) yield frame
+          })()
+        },
+      },
     },
   } as unknown as OpenAI
 }
 
+function createFrames(options: {
+  id?: string
+  model?: string
+  content?: string
+  finishReason?: string
+  usage?: Record<string, unknown>
+  reasoningContent?: string
+} = {}) {
+  const {
+    id = 'request-1',
+    model = 'deepseek-v4-flash',
+    content = '{"ok":true}',
+    finishReason = 'stop',
+    usage = { prompt_tokens: 1, completion_tokens: 1 },
+    reasoningContent,
+  } = options
+  return [
+    ...(reasoningContent ? [{
+      id,
+      model,
+      choices: [{ index: 0, delta: { reasoning_content: reasoningContent }, finish_reason: null }],
+    }] : []),
+    { id, model, choices: [{ index: 0, delta: { content }, finish_reason: null }] },
+    { id, model, choices: [{ index: 0, delta: {}, finish_reason: finishReason }] },
+    ...(usage ? [{ id, model, choices: [], usage }] : []),
+  ]
+}
+
 function createResponse() {
-  return {
-    id: 'request-1',
-    choices: [{ message: { content: '{"ok":true}' }, finish_reason: 'stop' }],
-    usage: { prompt_tokens: 1, completion_tokens: 1 },
-  }
+  return createFrames()
 }
 
 function createAbortError() {
@@ -68,6 +100,8 @@ describe('DeepSeekProvider abort signals', () => {
       callReason: 'validation_repair',
       contextMode: 'patch',
       retryIndex: 1,
+      transportMode: 'stream',
+      streamChunkCount: 3,
     })
   })
 
@@ -153,7 +187,7 @@ describe('explicit DeepSeek V4 thinking', () => {
     let calls = 0
     const provider = new DeepSeekProvider(createClient(async () => {
       calls += 1
-      return { ...createResponse(), choices: [{ message: { content: '' }, finish_reason: 'stop' }] }
+      return createFrames({ content: '' })
     }), parseDeepSeekThinking('enabled'), 'disabled')
     await expect(provider.complete({ model: 'deepseek-v4-flash', messages: [],
       promptVersion: '5.0.0-p01-resume-evidence-r17', maxOutputTokens: 14400 })).rejects.toThrow('AI 返回内容为空')
@@ -200,9 +234,9 @@ describe('explicit DeepSeek V4 thinking', () => {
     let sent: Record<string, unknown> = {}
     const provider = new DeepSeekProvider(createClient(async body => {
       sent = body as Record<string, unknown>
-      return { ...createResponse(), model: 'deepseek-v4-flash-0731',
+      return createFrames({ model: 'deepseek-v4-flash-0731',
         usage: { prompt_tokens: 30, completion_tokens: 90, prompt_cache_hit_tokens: 10, prompt_cache_miss_tokens: 20,
-          completion_tokens_details: { reasoning_tokens: 70 } } }
+          completion_tokens_details: { reasoning_tokens: 70 } } })
     }), parseDeepSeekThinking('enabled'))
     const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [], temperature: 0, maxOutputTokens: 100 })
     expect(sent).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'high', max_tokens: 100 })
@@ -271,11 +305,12 @@ describe('explicit DeepSeek V4 thinking', () => {
     const provider = new DeepSeekProvider(createClient(async body => {
       sent.push(body as Record<string, unknown>)
       if (sent.length === 1) {
-        return {
-          id: 'reasoning-only', model: 'deepseek-v4-flash',
-          choices: [{ message: { content: '', reasoning_content: 'omitted' }, finish_reason: 'stop' }],
+        return createFrames({
+          id: 'reasoning-only',
+          content: '',
+          reasoningContent: 'omitted',
           usage: { prompt_tokens: 2, completion_tokens: 20, completion_tokens_details: { reasoning_tokens: 20 } },
-        }
+        })
       }
       return createResponse()
     }), parseDeepSeekThinking('enabled', 'high'))
@@ -310,9 +345,11 @@ describe('explicit DeepSeek V4 thinking', () => {
   })
 
   test('retains actual usage for a reasoning-only structured truncation', async () => {
-    const provider = new DeepSeekProvider(createClient(async () => ({
-      id: 'truncated', model: 'deepseek-v4-flash',
-      choices: [{ message: { content: '', reasoning_content: 'private reasoning is not stored' }, finish_reason: 'length' }],
+    const provider = new DeepSeekProvider(createClient(async () => createFrames({
+      id: 'truncated',
+      content: '',
+      finishReason: 'length',
+      reasoningContent: 'private reasoning is not stored',
       usage: { prompt_tokens: 20, completion_tokens: 100, completion_tokens_details: { reasoning_tokens: 100 } },
     })), parseDeepSeekThinking('enabled'))
     const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [], maxOutputTokens: 100,
