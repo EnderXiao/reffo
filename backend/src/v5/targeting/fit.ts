@@ -20,7 +20,7 @@ export function unprovenSpecialties(targetText: string, sourceTexts: string[]) {
     && !sourceTexts.some(text => signal.pattern.test(text))).map(signal => signal.label)
 }
 
-function sourceBoundedFitPresentation(link: JobFitMap['links'][number], target: JobTarget, atoms: EvidenceAtom[]) {
+function sourceBoundedFitPresentation(link: JobFitMap['links'][number], atoms: EvidenceAtom[]) {
   const unsupportedDenial = ['unknown', 'weak_signal', 'transferable'].includes(link.status)
     && link.difference.split(/[，,。；;！？!?]/u).some(clause => [...clause.matchAll(/不具备|不会|不擅长|无法胜任|不能胜任|不胜任|缺乏|欠缺/gu)].some(match => {
       const prefix = clause.slice(0, match.index), following = clause.slice(match.index! + match[0].length)
@@ -34,7 +34,7 @@ function sourceBoundedFitPresentation(link: JobFitMap['links'][number], target: 
   const unsafeAngle = inspectSupportedWriting(affirmativeAdvice, atoms, 'matching.expressionAngle')
     .some(issue => issue.code === 'WRITER_OWNERSHIP_UPGRADE')
   return {
-    difference: unsupportedDenial ? `当前材料尚未充分证明“${target.text}”相关能力；证据有限不代表候选人不具备该能力。` : link.difference,
+    difference: unsupportedDenial ? '当前材料尚未充分证明该项能力；证据有限不代表候选人不具备该能力。' : link.difference,
     expressionAngle: unsafeAngle ? '' : link.expressionAngle,
   }
 }
@@ -79,7 +79,7 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
       link.difference = `所引材料未明确支持：${missing.join('、')}。局部相关不能认证整项任务。`
       report('JOB_FIT_PARTIAL_COVERAGE_ALIGNED', link.targetId, link.evidenceIds, '具体专项缺乏证据，整体直接匹配改为局部信号；细分任务可保留独立匹配。', 'warning')
     }
-    const presentation = sourceBoundedFitPresentation(link, target, link.evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : []))
+    const presentation = sourceBoundedFitPresentation(link, link.evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : []))
     if (presentation.difference !== link.difference || presentation.expressionAngle !== link.expressionAngle) {
       Object.assign(link, presentation)
       report('JOB_FIT_PRESENTATION_BOUNDARY_ALIGNED', link.targetId, link.evidenceIds, '已将无依据的能力否定限定为材料证据边界，并省略职责升级建议。', 'warning')
@@ -154,7 +154,7 @@ export function projectLegacyMatch(fit: JobFitMap, targets: JobTarget[], resume:
       return atom && (atom.status !== 'excluded' || link?.status === 'conflicted')
         && !atom.riskFlags.some(flag => ['sensitive_pii', 'prompt_injection_like_text'].includes(flag))
     })
-    const presentation = link && sourceBoundedFitPresentation(link, target, evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : []))
+    const presentation = link && sourceBoundedFitPresentation(link, evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : []))
     const requirement = target.kind === 'requirement' ? requirementById.get(target.id) : undefined
     const unprovenQualification = ['unknown', 'weak_signal', 'transferable'].includes(link?.status ?? 'unknown')
     const pureYears = requirement?.category === 'experience'
@@ -178,16 +178,16 @@ export function projectLegacyMatch(fit: JobFitMap, targets: JobTarget[], resume:
     const difference = qualification?.difference ?? (presentation?.difference.trim() || '当前材料未提供足够的相关证据，尚不能判断是否符合。')
     const angle = presentation?.expressionAngle.trim()
     const safeHandling = link?.status === 'conflicted'
-      ? `先核对“${target.text}”相关材料中的冲突，统一职责、时间与结果口径后再写入简历。`
+      ? '先核对相关材料中的冲突，统一职责、时间与结果口径后再写入简历。'
       : link?.status === 'explicit_gap'
-        ? `如实保留“${target.text}”的条件差异，不改写为已满足。${angle || '仅展示已有的相关经历与适用边界。'}`
+        ? `如实保留条件差异，不改写为已满足。${angle || '仅展示已有的相关经历与适用边界。'}`
         : qualification ? qualification.safeHandling : evidenceIds.length && angle
           ? angle
-          : `补充“${target.text}”相关经历中的本人职责、交付物和可核验结果；没有实际经历时保留为待补充，不写成已有能力。`
+          : '补充相关经历中的本人职责、交付物和可核验结果；没有实际经历时保留为待补充，不写成已有能力。'
     gaps.push({ gapId: `target_gap_${target.id}`, requirementIds,
       evidenceType: evidenceIds.length ? 'implicit_evidence' : 'direct_missing',
       priority: target.priority === 'core' ? 'high' : target.priority === 'optional' ? 'low' : 'medium',
-      evidenceIds, impact: `${target.text}：${difference}`, safeHandling })
+      evidenceIds, impact: difference, safeHandling })
   }
   const match: V5MatchAnalysis = {
     schemaVersion: '5.0.0',

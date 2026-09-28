@@ -2,10 +2,10 @@
   "formatVersion": "1.0.0",
   "defaultVersion": "5.0.0",
   "variants": {
-    "P06C_ENTRY": "5.2.0-p06c-entry-writer-r8",
+    "P06C_ENTRY": "5.2.0-p06c-entry-writer-r10",
     "P06C_STRUCTURAL": "5.1.0-p06c-supported-writer-r19",
-    "P03_TARGETED": "5.1.0-p03-job-fit-map-r7",
-    "P03R_TARGETED": "5.1.0-p03r-job-fit-map-repair-r6"
+    "P03_TARGETED": "5.1.0-p03-job-fit-map-r8",
+    "P03R_TARGETED": "5.1.0-p03r-job-fit-map-repair-r7"
   },
   "components": {
     "P01": "5.0.0-p01-resume-evidence-r19", "P01R": "5.0.0-p01r-resume-evidence-repair-r19",

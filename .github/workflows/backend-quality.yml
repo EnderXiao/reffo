@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'shared/**'
       - 'supabase/migrations/**'
       - '.github/scripts/supabase-migrate.sh'
       - '.github/workflows/backend-quality.yml'
@@ -24,6 +25,8 @@ jobs:
         with:
           bun-version: '1.3.14'
       - run: bun install --frozen-lockfile
+      - name: Check shared strategy module
+        run: bun ../shared/sync-resume-strategy.mjs --check
       - name: Validate Supabase migration inventory
         run: bash ../.github/scripts/supabase-migrate.sh --check-only
       - run: bunx --no-install tsc --noEmit

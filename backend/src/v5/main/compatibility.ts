@@ -1,3 +1,5 @@
+import { strategyResultExcerpts } from '@/shared/resume-strategy'
+
 import type {
   InterviewSuggestions,
   JDStructure,
@@ -187,15 +189,32 @@ export function toMatchAnalysis(result: Pick<V5WorkflowResult, 'resumeEvidenceBu
     weakness_details: result.matchAnalysis.gaps.map(gap => ({
       id: gap.gapId,
       priority: gap.priority,
+      is_required: gap.requirementIds.some(id => {
+        const item = requirement.get(id)
+        return item?.importance === 'must_have' && item.explicitness === 'explicit'
+          && ['education', 'experience', 'skill', 'language', 'certification', 'location', 'schedule'].includes(item.category)
+      }),
       weakness: gap.impact,
       evidence_type: gap.evidenceType,
-      jd_requirement: gap.requirementIds.map(id => requirement.get(id)?.normalizedRequirement ?? id).join('；'),
+      jd_requirement: [...new Set(gap.requirementIds.map(id => requirement.get(id)?.verbatimText ?? id))].join('；'),
       evidence: gap.evidenceIds.map(id => evidence.get(id)?.verbatimText ?? id).join('；'),
       impact: gap.impact,
       suggestion: gap.safeHandling,
     })),
     positioning_strategy: result.matchAnalysis.positioning.statement,
     optimization_suggestions: result.matchAnalysis.gaps.map(item => item.safeHandling),
+    optimization_strategy_details: result.matchAnalysis.gaps.map(gap => ({
+      id: `strategy_${gap.gapId}`,
+      related_gap_ids: [gap.gapId],
+      strategy_point: gap.safeHandling,
+      rationale: gap.impact,
+      optimization_example: {
+        source_path: '',
+        source_quote: gap.evidenceIds.flatMap(id => evidence.get(id)?.verbatimText ?? []).join('；'),
+        // Matching proposes an edit; only the final artifact can demonstrate its execution.
+        optimized_content: '',
+      },
+    })),
     context_fit: {
       company_alignment: jd.company_context?.explicit_signals.join('；') || '未使用无来源公司推断',
       location_alignment: jd.location_context?.explicit_signals.join('；') || '未使用无来源地域推断',
@@ -246,6 +265,8 @@ export function toLegacyMvpProcessResponse(result: V5WorkflowResult): MvpProcess
     step1_analysis: toResumeAnalysis(result),
     step2_matching: toMatchAnalysis(result),
     step3_optimized_resume: result.artifact.markdown,
+    step3_strategy_review: result.strategyReview,
+    step3_changes_summary: strategyResultExcerpts(result.strategyReview, result.artifact.markdown),
     step4_interview_suggestions: toInterviewSuggestions(result),
   }
 }

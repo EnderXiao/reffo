@@ -16,6 +16,7 @@ export interface HomeCardItem {
   borderColor: string
   tone: CardTone
   strategyBody: string
+  strategyTitle?: string
   resumeProfile?: {
     name: string
     age: number

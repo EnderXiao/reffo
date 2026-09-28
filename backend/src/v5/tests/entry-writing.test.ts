@@ -156,7 +156,7 @@ test('versioned entry prompt changes only the opt-in schema and preserves old Wr
   expect(old.promptVersion).toBe('5.1.0-p06c-supported-writer-r19')
   expect(next.manifest.promptFilePath).toBe('prompts/P06C-entry.md')
   expect(next.schema).toBe(entryWritingOutputSchema)
-  expect(next.promptVersion).toBe('5.2.0-p06c-entry-writer-r8')
+  expect(next.promptVersion).toBe('5.2.0-p06c-entry-writer-r10')
   expect(next.maxOutputTokens).toBe(old.maxOutputTokens)
   expect(next.messages[0].content).toContain('方案行')
   expect(next.messages[0].content).toContain('不是四项强制填空')

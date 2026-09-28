@@ -1,3 +1,4 @@
+import {strategyResultExcerpts} from '@/shared/resume-strategy'
 import {useEffect, useRef, useState} from 'react'
 import Taro from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
@@ -255,6 +256,11 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         const processResult: ProcessResult = history.processResult
           ? {
             ...history.processResult,
+            optimized: {
+              ...history.processResult.optimized,
+              optimized_resume: history.optimizedContent,
+              changes_summary: strategyResultExcerpts(history.processResult.optimized.strategy_review, history.optimizedContent),
+            },
             interview: normalizeInterviewResult(history.processResult),
           }
           : buildFallbackResultFromHistory(history)
@@ -653,6 +659,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       optimized: {
         ...result.optimized,
         optimized_resume: markdown,
+        changes_summary: strategyResultExcerpts(result.optimized.strategy_review, markdown),
       },
     }
 

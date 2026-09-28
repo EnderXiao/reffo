@@ -1,5 +1,7 @@
 import type {ResumeHistory, ResumeHistorySummary} from '@/types'
+import {resolveResumeGrade} from '@/utils/score-grade'
 import {toHistoryCardItem, toHistorySummaryCardItem} from '../model/homeCardData'
+import {resumeTextFingerprint} from '@/shared/resume-strategy'
 
 describe('homeCardData', () => {
   test('轻量摘要直接生成首页卡片，不依赖简历正文', () => {
@@ -15,6 +17,7 @@ describe('homeCardData', () => {
       tags: ['AI'],
       location: '北京',
       strategyBody: '突出 AI 产品落地经验。',
+      strategyTitle: '这份简历的重点',
     }
 
     const card = toHistorySummaryCardItem(summary)
@@ -24,20 +27,21 @@ describe('homeCardData', () => {
       company: summary.company,
       role: summary.position,
       location: summary.location,
-      score: summary.qualityScore,
+      score: summary.matchScore,
       strategyBody: summary.strategyBody,
+      strategyTitle: summary.strategyTitle,
     })
   })
 
-  test('历史卡片评级使用简历质量分而不是岗位匹配分', () => {
+  test.each([57, 0])('岗位匹配分为 %i 时，历史卡片与详情页均显示 D，不回退到简历质量分', matchScore => {
     const history: ResumeHistory = {
       id: 'JD2026070800001',
       position: '大萝卜种植手',
       company: '大萝卜',
       name: '候选人',
       createdAt: '2026-07-08T12:00:00.000Z',
-      qualityScore: 58,
-      matchScore: 72,
+      qualityScore: 72,
+      matchScore,
       tags: [],
       resumeContent: '# 候选人',
       jdContent: '岗位名称：大萝卜种植手',
@@ -46,7 +50,8 @@ describe('homeCardData', () => {
 
     const card = toHistoryCardItem(history)
 
-    expect(card.score).toBe(58)
+    expect(card.score).toBe(matchScore)
+    expect(resolveResumeGrade(card.score)).toBe('D')
   })
 
   test('历史卡片右侧刻度使用公司中文拼音首字母', () => {
@@ -179,5 +184,31 @@ describe('homeCardData', () => {
 
     expect(card.strategyBody).toBe('优先突出大萝卜特殊种植有限公司相关经验。\n\n补充育苗、施肥、采收环节的具体成果。')
     expect(card.strategyBody).not.toContain('弱化泛化职责描述')
+    expect(card.strategyTitle).toBe('优化建议')
+
+    const quote = '参与育苗试验并记录生长情况，尚未完成采收验证。'
+    const markdown = `# 候选人\n## 项目经历\n- ${quote}`
+    history.optimizedContent = markdown
+    history.optimizationSuggestions = []
+    history.processResult!.optimized = {
+      ...history.processResult!.optimized,
+      optimized_resume: markdown,
+      strategy_review: {
+        version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(markdown),
+        items: [{strategyId: 'strategy_g1', strategy: '呈现已有育苗实践', status: 'linked',
+          explanation: '可查看本次对应正文。', references: [{outputPath: 'project.p1.bullets[0]',
+            location: '项目经历 · 育苗试验 · 第1段', quote}]}],
+      },
+    }
+    const withResult = toHistoryCardItem(history)
+    expect(withResult.strategyTitle).toBe('这份简历的重点')
+    expect(withResult.strategyBody).toContain(quote)
+    expect(withResult.strategyBody).not.toContain('优先突出')
+
+    history.optimizedContent = '# 候选人\n已编辑后的内容'
+    const afterEdit = toHistoryCardItem(history)
+    expect(afterEdit.strategyTitle).toBe('优化建议')
+    expect(afterEdit.strategyBody).toContain('优先突出')
+    expect(afterEdit.strategyBody).not.toContain(quote)
   })
 })

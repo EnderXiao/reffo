@@ -1,3 +1,5 @@
+import type { ResumeStrategyReview } from '@/shared/resume-strategy'
+
 /**
  * TypeScript 类型定义
  */
@@ -116,6 +118,7 @@ export interface RequiredSkillCheck {
 export interface MatchWeaknessDetail {
   id?: string
   priority?: MatchGapPriority
+  is_required?: boolean
   weakness: string
   evidence_type: WeaknessEvidenceType
   jd_requirement?: string
@@ -229,6 +232,8 @@ export interface MvpProcessResponse {
   step1_analysis: ResumeAnalysis
   step2_matching: MatchAnalysis
   step3_optimized_resume: string
+  step3_strategy_review?: ResumeStrategyReview
+  step3_changes_summary?: string[]
   step4_interview_suggestions?: InterviewSuggestions
 }
 
@@ -310,6 +315,7 @@ export interface ResumeHistorySummaryRecord {
   match_score: number
   tags: string[]
   location: string
+  strategy_title?: string
   strategy_body: string
   card_color?: string
   card_pattern?: string

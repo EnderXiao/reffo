@@ -1,14 +1,20 @@
 import {act, renderHook, waitFor} from '@testing-library/react'
-import {beforeEach, describe, expect, jest, test} from '@jest/globals'
+import {afterEach, beforeEach, describe, expect, jest, test} from '@jest/globals'
 import {useRouter} from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
 import {useResumeWorkspaceStore} from '@/store/resumeWorkspaceStore'
+import {useHistoryStore} from '@/store/historyStore'
+import type {ResumeHistory, ResumeStrategyReview} from '@/types'
+import {resumeTextFingerprint} from '@/shared/resume-strategy'
 import {
   getLatestResultSession,
   saveLatestResultSession,
   type LatestResultSession,
 } from '@/utils/result-session'
 import {usePageModel} from '../usePageModel'
+import {hasStaleStrategyReview} from '../model/analysisPresentation'
+
+let mockResultId: string | null = null
 
 jest.mock('@/services/resume', () => ({
   resumeApi: {
@@ -27,7 +33,7 @@ jest.mock('@/shared/routing', () => ({
   usePageRoute: () => ({
     params: {},
     path: '/pages/result/index',
-    readString: (key: string) => key === 'id' ? null : null,
+    readString: (key: string) => key === 'id' ? mockResultId : null,
     readBoolean: () => false,
     readNumber: () => null,
   }),
@@ -118,6 +124,7 @@ function createSession(): LatestResultSession {
 describe('Result usePageModel workspace generation state', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockResultId = null
     useResumeWorkspaceStore.getState().reset()
     jest.mocked(useRouter).mockReturnValue({params: {}} as never)
     jest.mocked(getLatestResultSession).mockResolvedValue(createSession())
@@ -125,6 +132,8 @@ describe('Result usePageModel workspace generation state', () => {
     jest.mocked(resumeApi.generateOptimizedResume).mockResolvedValue(optimized)
     jest.mocked(resumeApi.generateInterviewSuggestions).mockResolvedValue(interview)
   })
+
+  afterEach(() => jest.restoreAllMocks())
 
   test('从优化阶段继续并完成 workspace 状态机', async () => {
     const statuses: string[] = []
@@ -216,5 +225,64 @@ describe('Result usePageModel workspace generation state', () => {
     })
 
     expect(useResumeWorkspaceStore.getState().generationStatus).toBe('idle')
+  })
+
+  test('历史正文优先于旧结果快照，并让原正文对应说明失效', async () => {
+    const quote = '参与需求整理并完成交付跟进。'
+    const original = `# Jeremy Smith\n\n## 工作经历\n${quote}`
+    const edited = '# Jeremy Smith\n\n## 工作经历\n完成用户访谈记录整理。'
+    const review: ResumeStrategyReview = {
+      version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(original),
+      items: [{strategyId: 'strategy_gap_1', strategy: '展开交付实践', status: 'linked',
+        explanation: '正文包含相关材料。', references: [{outputPath: 'experience[0].bullets[0]', location: '工作经历', quote}]}],
+    }
+    const history: ResumeHistory = {
+      id: 'history-edited', name: 'Jeremy Smith', company: '测试公司', position: '产品经理',
+      createdAt: '2026-09-27T10:00:00Z', qualityScore: 88, matchScore: 91, tags: [],
+      resumeContent: '# Resume', jdContent: '岗位职责', optimizedContent: edited,
+      processResult: {analysis, matching, interview, optimized: {
+        ...optimized, optimized_resume: original, strategy_review: review, changes_summary: [`工作经历：${quote}`],
+      }},
+      progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: 'done'},
+    }
+    mockResultId = history.id
+    jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockResolvedValue(history)
+    const {result} = renderHook(() => usePageModel())
+
+    await waitFor(() => expect(result.current.result?.optimized.optimized_resume).toBe(edited))
+    expect(result.current.result?.optimized.changes_summary).toEqual([])
+    expect(result.current.result?.optimized.strategy_review).toEqual(review)
+    expect(hasStaleStrategyReview(result.current.result!)).toBe(true)
+    expect(useResumeWorkspaceStore.getState().optimizedResume).toEqual(result.current.result?.optimized)
+    expect(getLatestResultSession).not.toHaveBeenCalled()
+    expect(resumeApi.generateOptimizedResume).not.toHaveBeenCalled()
+  })
+
+  test('人工删除对应原句后清空成品摘要，并保留旧核验用于失效提示和保存', async () => {
+    const quote = '参与需求整理并完成交付跟进。'
+    const original = `# Jeremy Smith\n\n## 工作经历\n${quote}`
+    const review: ResumeStrategyReview = {
+      version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(original),
+      items: [{strategyId: 'strategy_gap_1', strategy: '展开交付实践', status: 'linked',
+        explanation: '正文包含相关材料。', references: [{outputPath: 'experience[0].bullets[0]', location: '工作经历', quote}]}],
+    }
+    const session = createSession()
+    session.result.optimized = {...optimized, optimized_resume: original, strategy_review: review, changes_summary: [`工作经历：${quote}`]}
+    session.progress = {analysis: 'done', matching: 'done', optimized: 'done', interview: 'done'}
+    jest.mocked(getLatestResultSession).mockResolvedValue(session)
+    const {result} = renderHook(() => usePageModel())
+    await waitFor(() => expect(result.current.result?.optimized.strategy_review).toEqual(review))
+    expect(hasStaleStrategyReview(result.current.result!)).toBe(false)
+    const edited = '# Jeremy Smith\n\n## 工作经历\n完成用户访谈记录整理。'
+
+    await act(async () => { await result.current.handleOptimizedResumeChange(edited) })
+
+    expect(result.current.result?.optimized).toMatchObject({optimized_resume: edited, changes_summary: [], strategy_review: review})
+    expect(hasStaleStrategyReview(result.current.result!)).toBe(true)
+    expect(useResumeWorkspaceStore.getState().optimizedResume).toEqual(result.current.result?.optimized)
+    expect(saveLatestResultSession).toHaveBeenLastCalledWith(expect.objectContaining({
+      result: expect.objectContaining({optimized: expect.objectContaining({optimized_resume: edited, changes_summary: [], strategy_review: review})}),
+    }))
+    expect(resumeApi.generateOptimizedResume).not.toHaveBeenCalled()
   })
 })

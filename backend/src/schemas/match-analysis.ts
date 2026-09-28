@@ -100,6 +100,7 @@ const requiredSkillChecksSchema = z.preprocess((value) => (
 const weaknessDetailSchema = z.object({
   id: z.string().default(''),
   priority: matchGapPrioritySchema.default('medium'),
+  is_required: z.boolean().optional(),
   weakness: z.string(),
   evidence_type: weaknessEvidenceTypeSchema,
   jd_requirement: z.string().default(''),
