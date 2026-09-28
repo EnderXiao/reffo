@@ -7,9 +7,21 @@ import { MemoryAnalysisCacheStorage } from './analysis-cache-storage-fixture'
 import { V5AnalysisCacheRepository } from '@/repositories/v5-analysis-cache-repository'
 import { FIXTURE_RESUME, FIXTURE_JD } from './fixtures'
 
+function reverseObjectKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(reverseObjectKeys)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, reverseObjectKeys(item)]))
+}
+
+class JsonbReorderingAnalysisCacheStorage extends MemoryAnalysisCacheStorage {
+  async complete(input: Parameters<MemoryAnalysisCacheStorage['complete']>[0]) {
+    await super.complete({...input, payload: reverseObjectKeys(input.payload)})
+  }
+}
+
 test('legacy-shaped single requests run V5 only, preserve context across instances and cache successful generation', async () => {
   const storage = new MemoryCheckpointStorage()
-  const analysisCacheStorage = new MemoryAnalysisCacheStorage()
+  const analysisCacheStorage = new JsonbReorderingAnalysisCacheStorage()
   const {createWorkflow, versions} = createSingleStepFixture()
   const adapter = () => new V5SingleStepAdapter(
     new V5CheckpointRepository('fixture', storage),
@@ -34,6 +46,7 @@ test('legacy-shaped single requests run V5 only, preserve context across instanc
   expect(cachedAnalysis.cache.status).toBe('hit')
   expect(cachedAnalysis.data.structured_resume._v5_context).toMatch(/^[a-f0-9]{64}$/)
   expect(cachedAnalysis.data.structured_resume._v5_context).not.toBe(analysis.data.structured_resume._v5_context)
+  expect(JSON.stringify([...analysisCacheStorage.rows.values()][0]?.payload)).not.toContain('_v5_context')
   expect(versions).toHaveLength(1)
 
   const matching = await adapter().match(cachedAnalysis.data.structured_resume, FIXTURE_JD, 'user1')
