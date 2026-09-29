@@ -26,7 +26,15 @@ body:has(.reffo-result) *::-webkit-scrollbar {
   height: 0;
 }
 
-.reffo-result::before {
+.reffo-result__return-surface {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: #ffffff;
+  pointer-events: none;
+}
+
+.reffo-result__return-surface::before {
   position: absolute;
   z-index: 0;
   inset: 0 auto auto 0;
@@ -42,7 +50,7 @@ body:has(.reffo-result) *::-webkit-scrollbar {
   content: '';
 }
 
-.reffo-result::after {
+.reffo-result__return-surface::after {
   position: absolute;
   z-index: 0;
   inset: 0 auto auto 0;
@@ -68,12 +76,12 @@ body:has(.reffo-result) *::-webkit-scrollbar {
   --reffo-result-blend: 0%;
 }
 
-.reffo-result--progress-complete::before {
+.reffo-result--progress-complete .reffo-result__return-surface::before {
   display: none;
   opacity: 0;
 }
 
-.reffo-result--progress-complete::after {
+.reffo-result--progress-complete .reffo-result__return-surface::after {
   width: 100%;
   background:
     radial-gradient(82% 76% at 46% 0%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0.22) 48%, rgba(255, 255, 255, 0) 100%),
@@ -162,13 +170,36 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   pointer-events: none;
 }
 
-.reffo-result--returning-home .reffo-result__shell,
-.reffo-result--returning-home .reffo-result__chrome {
-  opacity: 0;
-  transform: translate3d(0, -8px, 0) scale(0.98);
-  transition:
-    opacity 220ms ease,
-    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+.reffo-result--content-exiting .reffo-result__chrome {
+  --reffo-result-exit-x: 18px;
+  --reffo-result-exit-y: -12px;
+
+  animation: reffo-result-content-exit 300ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.reffo-result--content-exiting .reffo-result__chrome--back {
+  --reffo-result-exit-x: -18px;
+}
+
+.reffo-result--content-exiting .reffo-result__content {
+  --reffo-result-exit-x: -12px;
+  --reffo-result-exit-y: -8px;
+
+  animation: reffo-result-content-exit 340ms cubic-bezier(0.4, 0, 1, 1) 20ms both;
+}
+
+.reffo-result--content-exiting .reffo-result__scroll-shell {
+  --reffo-result-exit-x: 0px;
+  --reffo-result-exit-y: 18px;
+
+  animation: reffo-result-content-exit 360ms cubic-bezier(0.4, 0, 1, 1) 40ms both;
+}
+
+.reffo-result--content-exiting .reffo-result__blocked-underlay {
+  --reffo-result-exit-x: 24px;
+  --reffo-result-exit-y: 0px;
+
+  animation: reffo-result-content-exit 280ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 @keyframes reffo-result-from-card-in {
@@ -180,6 +211,24 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
   100% {
     opacity: 1;
     transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reffo-result-content-exit {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate3d(
+        var(--reffo-result-exit-x, 0px),
+        var(--reffo-result-exit-y, 12px),
+        0
+      )
+      scale(0.985);
   }
 }
 

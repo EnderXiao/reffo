@@ -2,10 +2,8 @@ import {Component, type PropsWithChildren} from 'react'
 import Taro from '@tarojs/taro'
 import {initializeNavigationTransitions} from '@/utils/navigation-transition'
 import {useAuthStore} from '@/store/authStore'
-import {useHistoryStore} from '@/store/historyStore'
-import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {storage} from '@/utils/storage'
-import {syncPendingLandingData} from '@/utils/pending-landing-data'
+import {bootstrapHomeData, refreshHomeData} from '@/utils/home-data-bootstrap'
 import {routePaths} from '@/shared/routing'
 
 import './app.scss'
@@ -24,37 +22,16 @@ async function guardLandingEntry() {
 
 class App extends Component<PropsWithChildren> {
   private unsubscribeAuth?: () => void
-  private authenticatedDataUserId?: string
-
-  private loadAuthenticatedData = async () => {
-    const userId = useAuthStore.getState().session?.user.id
-    if (!userId || this.authenticatedDataUserId === userId) return
-    this.authenticatedDataUserId = userId
-
-    try {
-      await syncPendingLandingData()
-    } catch (error) {
-      console.error('[App] 同步 Landing 本地数据失败:', error)
-    }
-
-    await Promise.all([
-      useHistoryStore.getState().loadHistorySummaries({force: true}),
-      useSourceResumeStore.getState().loadLatestSourceSummary({force: true}),
-      useAuthStore.getState().loadProfile(),
-    ])
-  }
 
   componentDidMount() {
     initializeNavigationTransitions()
     void guardLandingEntry()
-    void useAuthStore.getState().restoreSession().then(session => {
-      if (session) void this.loadAuthenticatedData()
-    })
+    void bootstrapHomeData()
     this.unsubscribeAuth = useAuthStore.subscribe((state, previous) => {
-      if (state.session?.user.id && state.session.user.id !== previous.session?.user.id) {
-        void this.loadAuthenticatedData()
-      } else if (!state.session && previous.session) {
-        this.authenticatedDataUserId = undefined
+      const userId = state.session?.user.id
+      const previousUserId = previous.session?.user.id
+      if (previous.initialized && userId && userId !== previousUserId) {
+        void refreshHomeData()
       }
     })
   }

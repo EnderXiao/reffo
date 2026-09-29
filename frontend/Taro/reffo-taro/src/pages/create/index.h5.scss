@@ -1403,26 +1403,17 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   position: relative;
   view-transition-name: reffo-create-card;
   contain: layout;
-  isolation: isolate;
+  isolation: auto;
 }
 
-.reffo-create-generation__card-stage::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: 10px;
-  pointer-events: none;
-  box-shadow:
-    0 19PX 32PX rgba(178, 101, 68, 0.18),
-    0 6PX 16PX rgba(107, 76, 62, 0.08);
-  animation: reffo-generation-card-shadow 4000ms linear infinite;
-}
-
-.reffo-create-generation__home-card {
+.reffo-create-generation .reffo-home-card.reffo-create-generation__home-card {
   z-index: 1;
   filter: none;
   pointer-events: none;
+  transform: none;
+  transform-origin: 0 0;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .reffo-create-generation__title {
@@ -2399,31 +2390,6 @@ html.reffo-delete-vt-return::view-transition-new(reffo-delete-jd-card) {
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes reffo-generation-card-shadow {
-  0%,
-  7% {
-    opacity: 1;
-  }
-
-  10% {
-    opacity: 0;
-  }
-
-  24%,
-  56% {
-    opacity: 1;
-  }
-
-  60% {
-    opacity: 0;
-  }
-
-  74%,
-  100% {
-    opacity: 1;
   }
 }
 

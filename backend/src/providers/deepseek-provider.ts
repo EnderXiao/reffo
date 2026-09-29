@@ -84,6 +84,7 @@ export class DeepSeekProvider implements LlmProvider {
           payload: {
             provider: 'deepseek',
             model,
+            transportMode: 'stream',
             promptVersion: input.promptVersion,
             inputDigest,
             temperature: settings.mode === 'enabled' ? undefined : input.temperature,
@@ -125,51 +126,41 @@ export class DeepSeekProvider implements LlmProvider {
     }
     const responseThinking = thinking
     const physicalAttempts = 1
+    let timeToFirstChunkMs: number | undefined
+    let timeToFirstContentMs: number | undefined
+    let streamChunkCount = 0
     const response = await (async () => {
       try {
-        if (input.onContentDelta) {
-          const stream = await this.client.chat.completions.create({
-            ...requestBody, stream: true, stream_options: { include_usage: true },
-          } as unknown as OpenAI.ChatCompletionCreateParamsStreaming,
-          { signal: requestSignal.signal, maxRetries: 0 })
-          let content = '', id = '', resolvedModel = model
-          let finishReason: OpenAI.ChatCompletion['choices'][number]['finish_reason'] = 'stop'
-          let finished = false
-          let usage: OpenAI.CompletionUsage | undefined
-          // Bound accumulation even if a faulty provider ignores max_tokens.
-          const maxCharacters = Math.max(65536, (maxOutputTokens ?? 16384) * 32)
-          for await (const chunk of stream) {
-            requestSignal.signal?.throwIfAborted()
-            id = chunk.id || id
-            resolvedModel = chunk.model || resolvedModel
-            if (chunk.usage) usage = chunk.usage
-            const choice = chunk.choices.find(item => item.index === 0)
-            if (choice?.finish_reason) { finishReason = choice.finish_reason; finished = true }
-            const delta = choice?.delta.content
-            if (delta) {
-              content += delta
-              if (content.length > maxCharacters) throw new Error('PROVIDER_STREAM_SIZE_EXCEEDED')
-              input.onContentDelta(delta)
-            }
+        const stream = await this.client.chat.completions.create({
+          ...requestBody, stream: true, stream_options: { include_usage: true },
+        } as unknown as OpenAI.ChatCompletionCreateParamsStreaming,
+        { signal: requestSignal.signal, maxRetries: 0 })
+        let content = '', id = '', resolvedModel = model
+        let finishReason: OpenAI.ChatCompletion['choices'][number]['finish_reason'] = 'stop'
+        let finished = false
+        let usage: OpenAI.CompletionUsage | undefined
+        // Bound accumulation even if a faulty provider ignores max_tokens.
+        const maxCharacters = Math.max(65536, (maxOutputTokens ?? 16384) * 32)
+        for await (const chunk of stream) {
+          requestSignal.signal?.throwIfAborted()
+          streamChunkCount += 1
+          timeToFirstChunkMs ??= Date.now() - startedAt
+          id = chunk.id || id
+          resolvedModel = chunk.model || resolvedModel
+          if (chunk.usage) usage = chunk.usage
+          const choice = chunk.choices.find(item => item.index === 0)
+          if (choice?.finish_reason) { finishReason = choice.finish_reason; finished = true }
+          const delta = choice?.delta.content
+          if (delta) {
+            timeToFirstContentMs ??= Date.now() - startedAt
+            content += delta
+            if (content.length > maxCharacters) throw new Error('PROVIDER_STREAM_SIZE_EXCEEDED')
+            input.onContentDelta?.(delta)
           }
-          // A clean transport EOF without a terminal model frame is incomplete.
-          if (!finished) throw new Error('PROVIDER_STREAM_INCOMPLETE')
-          return { id, model: resolvedModel, choices: [{ message: { content }, finish_reason: finishReason }], usage }
         }
-        const createCompletion = (body: DeepSeekChatBody) => this.client.chat.completions.create(
-          // DeepSeek's documented `max` effort is not in this SDK's OpenAI enum.
-          // Keep that compatibility boundary local; the body is typed above.
-          body as unknown as OpenAI.ChatCompletionCreateParamsNonStreaming,
-          {
-            signal: requestSignal.signal,
-            // Physical retries must stay observable to the outer workflow budget.
-            maxRetries: 0,
-          }
-        )
-
-        // One complete invocation is exactly one physical request. Recovery belongs
-        // to the observable orchestration/budget layer, never an implicit second call.
-        return await createCompletion(requestBody)
+        // A clean transport EOF without a terminal model frame is incomplete.
+        if (!finished) throw new Error('PROVIDER_STREAM_INCOMPLETE')
+        return { id, model: resolvedModel, choices: [{ message: { content }, finish_reason: finishReason }], usage }
       } finally {
         requestSignal.dispose()
       }
@@ -189,6 +180,10 @@ export class DeepSeekProvider implements LlmProvider {
       requestedModel: model,
       content: content ?? '',
       latencyMs,
+      transportMode: 'stream',
+      timeToFirstChunkMs,
+      timeToFirstContentMs,
+      streamChunkCount,
       providerRequestId: response.id,
       finishReason: response.choices[0]?.finish_reason,
       inputTokens: response.usage?.prompt_tokens,
@@ -211,6 +206,10 @@ export class DeepSeekProvider implements LlmProvider {
             provider: result.provider,
             model: result.model,
             latencyMs: result.latencyMs,
+            transportMode: result.transportMode,
+            timeToFirstChunkMs: result.timeToFirstChunkMs,
+            timeToFirstContentMs: result.timeToFirstContentMs,
+            streamChunkCount: result.streamChunkCount,
             providerRequestId: result.providerRequestId,
             finishReason: result.finishReason,
             inputTokens: result.inputTokens,

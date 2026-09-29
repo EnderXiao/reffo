@@ -50,3 +50,19 @@ export function createDigest(value: unknown) {
 
   return createHash('sha256').update(content).digest('hex')
 }
+
+function canonicalDigestValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalDigestValue)
+  if (!value || typeof value !== 'object') return value
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+      .map(([key, item]) => [key, canonicalDigestValue(item)]),
+  )
+}
+
+export function createCanonicalDigest(value: unknown) {
+  return createDigest(canonicalDigestValue(value))
+}

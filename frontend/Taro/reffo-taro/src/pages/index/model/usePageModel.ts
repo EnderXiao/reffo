@@ -13,6 +13,10 @@ import {
 } from '@/shared/routing'
 import {toHistorySummaryCardItems} from './homeCardData'
 import {suppressNextNavigationTransition} from '@/utils/navigation-transition'
+import {
+  bootstrapHomeData,
+  hasBootstrappedHomeData,
+} from '@/utils/home-data-bootstrap'
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const NEW_CARD_ID_QUERY_KEY = 'newCardId'
@@ -82,6 +86,7 @@ export interface IndexPageViewModel {
   currentProgress: number
   displayTotal: number
   isLoading: boolean
+  isHomeBootReady: boolean
   loadingError: string | null
   hasHistories: boolean
   hasSourceResume: boolean
@@ -110,6 +115,11 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   const sourceResumeLoading = useSourceResumeStore(state => state.loading)
   const loadLatestSourceSummary = useSourceResumeStore(state => state.loadLatestSourceSummary)
   const initialReturningHomeState = useMemo(readReturningHomeState, [])
+  const shouldSkipBootCover = initialReturningHomeState.isReturning
+    || Boolean(pageRoute.readString(NEW_CARD_ID_QUERY_KEY))
+  const [isHomeBootReady, setIsHomeBootReady] = useState(
+    () => hasBootstrappedHomeData() || shouldSkipBootCover,
+  )
   const [activeCardIndex, setActiveCardIndex] = useState(0)
   const [isStrategyVisible, setIsStrategyVisible] = useState(initialReturningHomeState.isReturning)
   const [isCreateMode, setIsCreateMode] = useState(false)
@@ -119,17 +129,27 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   const [returningCardId, setReturningCardId] = useState<string | null>(initialReturningHomeState.cardId)
   const consumedEntryCardIdRef = useRef<string | null>(null)
   const hasShownHomeRef = useRef(false)
+  const hasStartedHomeBootRef = useRef(false)
 
   useEffect(() => scheduleCreateRoutePreload(), [])
 
   useEffect(() => {
-    if (initialReturningHomeState.isReturning) {
-      return
+    if (hasStartedHomeBootRef.current) {
+      return undefined
     }
 
-    loadHistorySummaries({skipIfLoaded: true})
-    loadLatestSourceSummary({skipIfLoaded: true})
-  }, [initialReturningHomeState.isReturning, loadHistorySummaries, loadLatestSourceSummary])
+    hasStartedHomeBootRef.current = true
+    let active = true
+    void bootstrapHomeData().finally(() => {
+      if (active && !isHomeBootReady) {
+        setIsHomeBootReady(true)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [isHomeBootReady])
 
   useEffect(() => {
     if (pageRoute.readString(NEW_CARD_ID_QUERY_KEY)) {
@@ -281,6 +301,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     currentProgress,
     displayTotal: cardItems.length,
     isLoading: historyLoading.isLoading || sourceResumeLoading.isLoading,
+    isHomeBootReady,
     loadingError: historyLoading.error || sourceResumeLoading.error,
     hasHistories,
     hasSourceResume: Boolean(latestSourceResumeSummary),

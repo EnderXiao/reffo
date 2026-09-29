@@ -24,9 +24,9 @@ const NAVIGATION_STYLE_ID = 'reffo-navigation-transition-style'
 const ROUTE_FADE_DURATION = 180
 const ROUTE_FADE_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
 const VIEW_TRANSITION_DURATION = 280
-const RESULT_CARD_RETURN_DURATION = 860
+const RESULT_CARD_RETURN_DURATION = 980
 const RESULT_CARD_RETURN_TRANSITION_NAME = 'reffo-result-card-return'
-const RESULT_CARD_RETURN_TARGET_SELECTOR = '.reffo-home__return-card-stage--view-transition'
+const RESULT_CARD_RETURN_TARGET_SELECTOR = '.reffo-home-card--return-target'
 
 let styleInjected = false
 let shouldSuppressNextTransition = false
@@ -144,19 +144,28 @@ function injectNavigationTransitionStyle() {
       animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
+    html[data-reffo-card-return-transition]::view-transition-image-pair(${RESULT_CARD_RETURN_TRANSITION_NAME}) {
+      overflow: clip;
+      animation: none;
+    }
+
     html[data-reffo-card-return-transition]::view-transition-old(${RESULT_CARD_RETURN_TRANSITION_NAME}),
     html[data-reffo-card-return-transition]::view-transition-new(${RESULT_CARD_RETURN_TRANSITION_NAME}) {
       height: 100%;
+      object-fit: fill;
       mix-blend-mode: normal;
       animation-duration: ${RESULT_CARD_RETURN_DURATION}ms;
       animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     html[data-reffo-card-return-transition]::view-transition-old(${RESULT_CARD_RETURN_TRANSITION_NAME}) {
-      animation-name: reffo-result-card-return-old;
+      z-index: 1;
+      opacity: 1;
+      animation: none;
     }
 
     html[data-reffo-card-return-transition]::view-transition-new(${RESULT_CARD_RETURN_TRANSITION_NAME}) {
+      z-index: 2;
       animation-name: reffo-result-card-return-new;
     }
 
@@ -236,38 +245,22 @@ function injectNavigationTransitionStyle() {
       }
     }
 
-    @keyframes reffo-result-card-return-old {
-      0% {
-        opacity: 1;
-        filter: none;
-      }
-
-      58% {
-        opacity: 0.74;
-        filter: none;
-      }
-
-      100% {
-        opacity: 0;
-        filter: blur(5PX);
-      }
-    }
-
     @keyframes reffo-result-card-return-new {
       0%,
       30% {
         opacity: 0;
-        filter: blur(4PX);
       }
 
-      64% {
-        opacity: 0.82;
-        filter: blur(0);
+      62% {
+        opacity: 0.4;
+      }
+
+      84% {
+        opacity: 0.9;
       }
 
       100% {
         opacity: 1;
-        filter: blur(0);
       }
     }
 

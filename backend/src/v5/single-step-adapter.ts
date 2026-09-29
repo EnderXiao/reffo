@@ -1,5 +1,5 @@
 import type { StepRunSnapshot } from '@/harness/run-step'
-import { createDigest } from '@/harness/run-context'
+import { createCanonicalDigest, createDigest } from '@/harness/run-context'
 import { env } from '@/config/env'
 import { v5ReleaseWorkflowOptions } from '@/config/v5-release'
 import { V5CheckpointError, V5CheckpointRepository } from '@/repositories/v5-checkpoint-repository'
@@ -92,7 +92,7 @@ function record(value: unknown): Record<string, unknown> {
 }
 function resumeDigest(value: unknown) {
   const {_v5_context: _token, ...resume} = record(value)
-  return createDigest(resume)
+  return createCanonicalDigest(resume)
 }
 function checkpoint(value: unknown): Checkpoint {
   const row = record(value)
@@ -155,7 +155,8 @@ export class V5SingleStepAdapter {
   private async resume(structured: unknown, owner: string) {
     const token = record(structured)._v5_context
     const stored = checkpoint((await this.repository.load(token, owner)).payload)
-    if (stored.kind !== 'resume' || stored.resumeDigest !== resumeDigest(structured)) throw new V5CheckpointError()
+    if (stored.kind !== 'resume'
+      || resumeDigest(stored.analysis.structured_resume) !== resumeDigest(structured)) throw new V5CheckpointError()
     return {stored, token: token as string}
   }
 
