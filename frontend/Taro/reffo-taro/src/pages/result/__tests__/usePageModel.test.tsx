@@ -11,6 +11,7 @@ import {
   saveLatestResultSession,
   type LatestResultSession,
 } from '@/utils/result-session'
+import {feedback} from '@/utils/feedback'
 import {usePageModel} from '../usePageModel'
 import {hasStaleStrategyReview} from '../model/analysisPresentation'
 
@@ -167,6 +168,68 @@ describe('Result usePageModel workspace generation state', () => {
     })
   })
 
+  test('面试建议失败后不会自动重试，点击重试后才再次请求', async () => {
+    const session = createSession()
+    session.result.optimized = optimized
+    session.progress = {
+      analysis: 'done',
+      matching: 'done',
+      optimized: 'done',
+      interview: 'pending',
+    }
+    jest.mocked(getLatestResultSession).mockResolvedValue(session)
+    jest.mocked(resumeApi.generateInterviewSuggestions)
+      .mockRejectedValueOnce(new Error('面试建议生成失败'))
+    const feedbackError = jest.spyOn(feedback, 'error').mockImplementation(() => undefined)
+
+    const {result} = renderHook(() => usePageModel())
+
+    await waitFor(() => {
+      expect(result.current.progress.interview).toBe('failed')
+    })
+    await waitFor(() => {
+      expect(saveLatestResultSession).toHaveBeenCalledWith(expect.objectContaining({
+        progress: expect.objectContaining({interview: 'failed'}),
+      }))
+    })
+
+    expect(resumeApi.generateInterviewSuggestions).toHaveBeenCalledTimes(1)
+    expect(feedbackError).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await result.current.handleRetryStage('interview')
+    })
+
+    expect(resumeApi.generateInterviewSuggestions).toHaveBeenCalledTimes(2)
+    await waitFor(() => {
+      expect(result.current.progress.interview).toBe('done')
+    })
+  })
+
+  test('恢复已失败的面试建议时保持失败态，不触发自动重试', async () => {
+    const session = createSession()
+    session.result.optimized = optimized
+    session.progress = {
+      analysis: 'done',
+      matching: 'done',
+      optimized: 'done',
+      interview: 'failed',
+    }
+    jest.mocked(getLatestResultSession).mockResolvedValue(session)
+
+    const {result} = renderHook(() => usePageModel())
+
+    await waitFor(() => {
+      expect(result.current.progress.interview).toBe('failed')
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(resumeApi.generateInterviewSuggestions).not.toHaveBeenCalled()
+    expect(useResumeWorkspaceStore.getState().generationStatus).not.toBe('interviewing')
+  })
+
   test('结果页点击失败的简历 tab 会重新调用生成接口', async () => {
     jest.mocked(resumeApi.generateOptimizedResume).mockRejectedValueOnce(new Error('优化失败'))
     const {result} = renderHook(() => usePageModel())
@@ -225,6 +288,54 @@ describe('Result usePageModel workspace generation state', () => {
     })
 
     expect(useResumeWorkspaceStore.getState().generationStatus).toBe('idle')
+  })
+
+  test('面试生成完成不会覆盖生成简历的人工编辑', async () => {
+    const session = createSession()
+    session.result.optimized = optimized
+    session.progress = {
+      analysis: 'done',
+      matching: 'done',
+      optimized: 'done',
+      interview: 'pending',
+    }
+    jest.mocked(getLatestResultSession).mockResolvedValue(session)
+
+    let resolveInterview!: (value: typeof interview) => void
+    jest.mocked(resumeApi.generateInterviewSuggestions).mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveInterview = resolve
+      }),
+    )
+
+    const {result} = renderHook(() => usePageModel())
+    await waitFor(() => {
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('interviewing')
+    })
+
+    const edited = '# Jeremy Smith\n\n## Edited while interview is generating'
+    await act(async () => {
+      await result.current.handleOptimizedResumeChange(edited)
+    })
+    expect(result.current.result?.optimized.optimized_resume).toBe(edited)
+
+    await act(async () => {
+      resolveInterview(interview)
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('completed')
+    })
+
+    expect(result.current.result?.optimized.optimized_resume).toBe(edited)
+    expect(result.current.result?.interview).toEqual(interview)
+    expect(saveLatestResultSession).toHaveBeenLastCalledWith(expect.objectContaining({
+      result: expect.objectContaining({
+        optimized: expect.objectContaining({optimized_resume: edited}),
+        interview,
+      }),
+      progress: expect.objectContaining({interview: 'done'}),
+    }))
   })
 
   test('历史正文优先于旧结果快照，并让原正文对应说明失效', async () => {

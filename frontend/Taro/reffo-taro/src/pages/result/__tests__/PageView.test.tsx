@@ -247,10 +247,29 @@ describe('结果页', () => {
       />,
     )
 
+    expect(screen.getByText('简历生成失败，请稍后重试')).toBeTruthy()
     fireEvent.click(screen.getByLabelText('重试最佳简历'))
 
     expect(handleRetryStage).toHaveBeenCalledWith('resume')
     expect(screen.queryByText('简历生成失败，请稍后重试')).toBeNull()
+  })
+
+  test('面试建议失败后先在节点外提示，点击节点才触发重试', () => {
+    const handleRetryStage = jest.fn()
+    render(
+      <PageView
+        {...model}
+        handleRetryStage={handleRetryStage}
+        progress={{...model.progress, interview: 'failed'}}
+        generationError='面试建议生成失败，请稍后重试'
+      />,
+    )
+
+    expect(screen.getByText('面试建议生成失败，请稍后重试')).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('重试面试建议'))
+
+    expect(handleRetryStage).toHaveBeenCalledWith('interview')
+    expect(screen.queryByText('面试建议生成失败，请稍后重试')).toBeNull()
   })
 
   test('生成中的 tab 仍保持阻塞提示，不触发重试', () => {

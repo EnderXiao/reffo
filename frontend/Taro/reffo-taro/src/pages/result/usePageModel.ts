@@ -82,9 +82,22 @@ function getProgressPercent(progress: LatestResultSessionProgress) {
 function getPendingGenerationStage(
   progress: LatestResultSessionProgress,
 ): ActiveGenerationStatus | null {
+  if (progress.analysis === 'failed') return null
+  if (progress.matching === 'failed') return null
   if (progress.matching !== 'done') return 'matching'
+  if (progress.optimized === 'failed') return null
   if (progress.optimized !== 'done') return 'optimizing'
+  if (progress.interview === 'failed') return null
   if (progress.interview !== 'done') return 'interviewing'
+  return null
+}
+
+function getFailedGenerationStage(
+  progress: LatestResultSessionProgress,
+): ResultRetryStageKey | null {
+  if (progress.analysis === 'failed') return 'analysis'
+  if (progress.matching === 'failed' || progress.optimized === 'failed') return 'resume'
+  if (progress.interview === 'failed') return 'interview'
   return null
 }
 
@@ -202,9 +215,16 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         },
       }
     : null)
-  const [result, setResult] = useState<ProcessResult | null>(
+  const resultRef = useRef<ProcessResult | null>(initialSessionRef.current?.result ?? null)
+  const latestSessionRef = useRef<LatestResultSession | null>(initialSessionRef.current)
+  const sessionWriteQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const [result, setResultState] = useState<ProcessResult | null>(
     () => initialSessionRef.current?.result ?? null,
   )
+  const setResult = (nextResult: ProcessResult | null) => {
+    resultRef.current = nextResult
+    setResultState(nextResult)
+  }
   const [resultContext, setResultContext] =
     useState<LatestResultSessionContext | null>(() => initialSessionRef.current?.context ?? null)
   const [loading, setLoading] = useState(() => !initialSessionRef.current)
@@ -270,6 +290,11 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         }
 
         const context = buildContextFromHistory(history)
+        latestSessionRef.current = {
+          result: processResult,
+          context,
+          progress: historyProgress,
+        }
         setResult(processResult)
         setResultContext(context)
         syncWorkspaceResult(processResult, context)
@@ -303,16 +328,18 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           ...session.result,
           interview: normalizeInterviewResult(session.result),
         }
+        const nextSession = {
+          ...session,
+          result: sessionResult,
+          progress: sessionProgress,
+        }
+        latestSessionRef.current = nextSession
         setResult(sessionResult)
         setResultContext(session.context)
         syncWorkspaceResult(sessionResult, session.context)
         setReturnCard(null)
         setProgress(sessionProgress)
-        void continueLatestSession({
-          ...session,
-          result: sessionResult,
-          progress: sessionProgress,
-        })
+        void continueLatestSession(nextSession)
       } else {
         feedback.message('未找到结果')
         void route.reset(routePaths.home)
@@ -325,18 +352,27 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
   }
 
+  const queueSessionSave = (nextSession: LatestResultSession) => {
+    const write = sessionWriteQueueRef.current
+      .catch(() => undefined)
+      .then(() => saveLatestResultSession(nextSession))
+    sessionWriteQueueRef.current = write.then(() => undefined, () => undefined)
+    return write
+  }
+
   const persistSession = async (
     session: LatestResultSession,
     nextResult: ProcessResult,
     nextProgress: LatestResultSessionProgress,
   ) => {
     const nextSession: LatestResultSession = {
-      ...session,
+      ...(latestSessionRef.current ?? session),
       result: nextResult,
       progress: nextProgress,
     }
 
-    await saveLatestResultSession(nextSession)
+    latestSessionRef.current = nextSession
+    await queueSessionSave(nextSession)
     setResult(nextResult)
     setProgress(nextProgress)
     syncWorkspaceResult(nextResult, nextSession.context)
@@ -351,13 +387,15 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     continuationRef.current = runId
     isContinuingRef.current = true
 
-    let currentSession = session
-    let currentResult = session.result
-    let currentProgress = session.progress || getDefaultProgress(session.result)
+    let currentSession = latestSessionRef.current ?? session
+    let currentResult = currentSession.result
+    let currentProgress = currentSession.progress || getDefaultProgress(currentSession.result)
     const initialStage = getPendingGenerationStage(currentProgress)
 
     if (!initialStage) {
-      resumeWorkspaceActions.markGenerationCompleted()
+      if (!getFailedGenerationStage(currentProgress)) {
+        resumeWorkspaceActions.markGenerationCompleted()
+      }
       isContinuingRef.current = false
       return
     }
@@ -447,6 +485,9 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         currentProgress = generatingProgress
         setProgress(generatingProgress)
 
+        currentResult = resultRef.current ?? currentResult
+        currentSession = {...currentSession, result: currentResult}
+
         const interview = await resumeApi.generateInterviewSuggestions(
           currentResult.analysis,
           currentResult.matching,
@@ -458,15 +499,20 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
 
         if (continuationRef.current !== runId) return
 
+        const latestResult = resultRef.current ?? currentResult
         currentResult = {
-          ...currentResult,
+          ...latestResult,
           interview,
         }
         currentProgress = {
-          ...generatingProgress,
+          ...(latestSessionRef.current?.progress ?? generatingProgress),
           interview: 'done',
         }
-        await persistSession(currentSession, currentResult, currentProgress)
+        await persistSession(
+          {...(latestSessionRef.current ?? currentSession), result: currentResult},
+          currentResult,
+          currentProgress,
+        )
       }
       resumeWorkspaceActions.completeGeneration(workspaceRunId)
     } catch (error) {
@@ -476,13 +522,22 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       resumeWorkspaceActions.failGeneration(workspaceRunId, message)
       console.error('continue result generation failed', error)
       setGenerationError(message)
-      setProgress({
+      const failedProgress: LatestResultSessionProgress = {
         ...currentProgress,
         matching: currentProgress.matching === 'generating' ? 'failed' : currentProgress.matching,
         optimized: currentProgress.optimized === 'generating' ? 'failed' : currentProgress.optimized,
         interview: currentProgress.interview === 'generating' ? 'failed' : currentProgress.interview,
+      }
+      const failedSession: LatestResultSession = {
+        ...(latestSessionRef.current ?? currentSession),
+        result: currentResult,
+        progress: failedProgress,
+      }
+      latestSessionRef.current = failedSession
+      setProgress(failedProgress)
+      void queueSessionSave(failedSession).catch(saveError => {
+        console.warn('failed to persist result generation failure', saveError)
       })
-      feedback.error(message)
     } finally {
       if (continuationRef.current === runId) {
         isContinuingRef.current = false
@@ -630,9 +685,11 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       return
     }
 
-    const failedStage = stage === 'resume'
-      ? progress.matching === 'failed' || progress.optimized === 'failed'
-      : stage === 'interview' && progress.interview === 'failed'
+    const failedStage = stage === 'analysis'
+      ? progress.analysis === 'failed'
+      : stage === 'resume'
+        ? progress.matching === 'failed' || progress.optimized === 'failed'
+        : progress.interview === 'failed'
 
     if (!failedStage) {
       handlePendingStage()
@@ -644,22 +701,36 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       return
     }
 
-    await continueLatestSession({
+    const retryProgress: LatestResultSessionProgress = {...progress}
+    if (stage === 'analysis') {
+      retryProgress.analysis = 'pending'
+    } else if (stage === 'resume') {
+      if (retryProgress.matching === 'failed') retryProgress.matching = 'pending'
+      if (retryProgress.optimized === 'failed') retryProgress.optimized = 'pending'
+    } else {
+      retryProgress.interview = 'pending'
+    }
+
+    const retrySession: LatestResultSession = {
+      ...(latestSessionRef.current ?? {context: resultContext}),
       context: resultContext,
       result,
-      progress,
-    })
+      progress: retryProgress,
+    }
+    latestSessionRef.current = retrySession
+    await continueLatestSession(retrySession)
   }
 
   const handleOptimizedResumeChange = async (markdown: string) => {
-    if (!result) return
+    const currentResult = resultRef.current ?? result
+    if (!currentResult) return
 
     const nextResult: ProcessResult = {
-      ...result,
+      ...currentResult,
       optimized: {
-        ...result.optimized,
+        ...currentResult.optimized,
         optimized_resume: markdown,
-        changes_summary: strategyResultExcerpts(result.optimized.strategy_review, markdown),
+        changes_summary: strategyResultExcerpts(currentResult.optimized.strategy_review, markdown),
       },
     }
 
@@ -667,13 +738,17 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     syncWorkspaceResult(nextResult, resultContext)
     setSaved(false)
 
-    if (!resultContext) return
+    const context = latestSessionRef.current?.context ?? resultContext
+    if (!context) return
 
-    await saveLatestResultSession({
-      context: resultContext,
+    const nextSession: LatestResultSession = {
+      ...(latestSessionRef.current ?? {context, result: nextResult}),
+      context,
       result: nextResult,
-      progress,
-    })
+      progress: latestSessionRef.current?.progress ?? progress,
+    }
+    latestSessionRef.current = nextSession
+    await queueSessionSave(nextSession)
   }
 
   return {
