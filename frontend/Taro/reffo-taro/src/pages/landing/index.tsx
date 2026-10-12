@@ -150,9 +150,18 @@ function createOnboardingCard(
   }
 }
 
-const ONBOARDING_QUEUE_CARDS: HomeCardItem[] = LANDING_RESUME_CARD_CONFIGS.map(({seedKey, ...card}) => (
-  createOnboardingCard(card.id, ONBOARDING_CARD_SEEDS[seedKey], card)
-))
+const ONBOARDING_QUEUE_CARDS: HomeCardItem[] = LANDING_RESUME_CARD_CONFIGS.map(({seedKey, jobDescriptionId, ...card}) => {
+  const job = LANDING_PRESET_JOB_DESCRIPTIONS.find(item => item.id === jobDescriptionId)
+
+  return createOnboardingCard(card.id, ONBOARDING_CARD_SEEDS[seedKey], {
+    ...card,
+    ...(job ? {
+      company: job.company,
+      role: job.title,
+      location: job.location,
+    } : {}),
+  })
+})
 const ONBOARDING_CARDS = ONBOARDING_QUEUE_CARDS.slice(0, 3)
 
 interface QueueTrackFrame {

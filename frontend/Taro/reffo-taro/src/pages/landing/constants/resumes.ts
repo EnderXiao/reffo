@@ -12,6 +12,7 @@ export interface LandingResumeCardConfig extends Pick<
   'id' | 'company' | 'indexLabel' | 'location' | 'role' | 'dateLabel' | 'score' | 'strategyBody' | 'queueCardKind' | 'resumeProfile'
 > {
   seedKey: string
+  jobDescriptionId?: string
 }
 
 // Content lives in JSON so a future config service can replace this data source.

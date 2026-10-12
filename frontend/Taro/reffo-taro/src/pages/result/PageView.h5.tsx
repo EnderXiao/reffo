@@ -126,8 +126,10 @@ function getBlockedStageMessage(
   generationError?: string,
 ) {
   const stageStatus = getVisibleStageStatus(stageKey, progress)
-  const message = generationError ||
-    (stageStatus === 'generating' ? '步骤正在生成中' : '等待前置步骤完成')
+  const message = stageStatus === 'failed'
+    ? generationError || '生成失败，请稍后重试'
+    : generationError ||
+      (stageStatus === 'generating' ? '步骤正在生成中' : '等待前置步骤完成')
 
   return {
     stageStatus,
@@ -1080,6 +1082,22 @@ export default function PageView({
       setIsBlockedShaking(false)
     }, RESULT_BLOCKED_SHAKE_DURATION)
   }, [generationError, progress])
+
+  useEffect(() => {
+    const failedStage = RESULT_STAGES.find(stage => (
+      getVisibleStageStatus(stage.key, progress) === 'failed'
+    ))
+
+    if (failedStage) {
+      showBlockedBubble(failedStage.key)
+    }
+  }, [
+    progress.analysis,
+    progress.interview,
+    progress.matching,
+    progress.optimized,
+    showBlockedBubble,
+  ])
 
   const settleBlockedPreview = useCallback((
     stageKey: ResultStageKey,
