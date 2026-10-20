@@ -1,0 +1,128 @@
+frontend/Taro/reffo-taro/src/pages/create/__tests__/index.test.tsx
+  s_cf5a0b38dfc3af::t_4dfbea3965c0cf 200,212-214,312-316,552,586-594,596,615-624,651-653,656-688,691,696-711,715,725-726,734,753,758,763-809
+  s_cf5a0b38dfc3af::t_6e4d0abdbbad91 7,56-77,123-132,810-811,858-863,928-933,1011-1014,1188-1192,1222-1225
+frontend/Taro/reffo-taro/src/pages/index/index.h5.scss
+  s_cf5a0b38dfc3af::t_55348441475f90 816-818,820-821,1363,1370,1616,1621
+  s_cf5a0b38dfc3af::t_de339cb7bff7ee 819,1359-1362,1364-1369,1371,1611-1615,1617-1620,1622,1651-1653,1672,1760,1768
+frontend/Taro/reffo-taro/src/store/historyStore.ts
+  s_cf5a0b38dfc3af::t_66c0be14747adc 504-505,513
+  s_cf5a0b38dfc3af::t_912aa7e83eb653 291,304,320,322-325,340,425,454
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/HomeScoreCard.h5.tsx
+  s_cf5a0b38dfc3af::t_516ff850a1cbb7 15,35-69,210-276,316-320,326,328,340,353-390,403-404,417-418,428,430,448-450,630
+  s_cf5a0b38dfc3af::t_d5343ff84a5b53 7,14,405-407,439-447,451,618,622-629,631-632
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/UnreadCardFoil.h5.tsx
+  s_cf5a0b38dfc3af::t_516ff850a1cbb7 1-10,12-54
+  s_cf5a0b38dfc3af::t_a94ad86b1ff73a 11
+frontend/Taro/reffo-taro/src/pages/create/usePageModel.ts
+  s_cf5a0b38dfc3af::t_a94ad86b1ff73a 1161-1166
+  s_cf5a0b38dfc3af::t_8f4a8d67fe74d2 1196-1206
+  s_cf5a0b38dfc3af::t_759541ae04a16d 1399
+  s_cf5a0b38dfc3af::t_deb1548aa06f65 1151,1153-1158,1209
+  s_cf5a0b38dfc3af::t_87ddbb983d0443 47-48,77,309,311,346,375-377,437-441,1107,1109-1111,1168-1181,1190,1208,1211,1363-1371,1380-1395,1400-1401,1409-1415,1441-1444
+  s_cf5a0b38dfc3af::t_6104ac83c132bd 1402-1407
+  s_cf5a0b38dfc3af::t_66c285ef57d101 1137,1144-1150,1152,1159-1160,1167,1182-1189,1191-1195,1207,1210,1212,1396-1398,1408,1494
+frontend/Taro/reffo-taro/src/services/backgroundGeneration.ts
+  s_cf5a0b38dfc3af::t_06e38b44c77e2a 18-19,27-28,35,44-45,69,81,152,159
+  s_cf5a0b38dfc3af::t_45bccfa6103f40 1-17,20-26,39-43,151,153-158
+  s_cf5a0b38dfc3af::t_8e1263191f198a 29-34,36-38,46-68,70-80,82-150
+frontend/Taro/reffo-taro/src/store/sessionManager.ts
+  s_cf5a0b38dfc3af::t_45bccfa6103f40 11,16,22
+frontend/Taro/reffo-taro/src/pages/result/PageView.h5.tsx
+  s_cf5a0b38dfc3af::t_b025fd39fcec9e 126
+  s_cf5a0b38dfc3af::t_a278625d964508 889,1477-1484,1502,1506,1514,1517
+frontend/Taro/reffo-taro/src/store/index.ts
+  s_cf5a0b38dfc3af::t_45bccfa6103f40 33
+backend/src/routes/generation-jobs.ts
+  s_cf5a0b38dfc3af::t_b025fd39fcec9e 91,94-96
+  s_cf5a0b38dfc3af::t_8f4a8d67fe74d2 93
+  s_cf5a0b38dfc3af::t_399a39118f7293 1-90,92,97-113
+frontend/Taro/reffo-taro/src/store/__tests__/backgroundGenerationStore.test.ts
+  s_cf5a0b38dfc3af::t_f3515059fc7101 1-66
+frontend/Taro/reffo-taro/src/store/backgroundGenerationStore.ts
+  s_cf5a0b38dfc3af::t_83ce1a458647c0 47-52,54
+  s_cf5a0b38dfc3af::t_45bccfa6103f40 2,4-5,7-8,12-13,26,28-34,40-45,55
+  s_cf5a0b38dfc3af::t_7f57e7c75c67a2 1,3,6,9-11,14,24,27,46,56
+  s_cf5a0b38dfc3af::t_bc16bf65bb1447 15-23,25,35-39,53
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/task-card.h5.scss
+  s_cf5a0b38dfc3af::t_516ff850a1cbb7 1,4,86,90,96-97,104,108,112,115,125,130,135,139,145,152,155-158,163,175,185,187,195,205-206,213,223-224,226-256,258-260,263,265-277,279-285,287-288,291-299,304,308,310,314,317-318,323,327,330-331,333,348,351-352,359-360,363,368,379,383-385,389,394,397,410,416,422,426,430,435,438-439,441,444,447-448,454,458-459,462,466,470-471,476,479-480,485,488-489,491,494,497-498,506,511,518,521,527,533,539,545-601,603-608,610-661,664-665,668-669,672-709
+  s_cf5a0b38dfc3af::t_9e910b3baca973 2-3,5-85,87-89,91-95,98-103,105-107,109-111,113-114,116-124,126-129,131-134,136-138,140-144,146-151,153-154,159-162,164-174,176-184,186,188-194,196-204,207-212,214-222,225,257,261-262,264,278,286,289-290,300-303,305-307,309,311-313,315-316,319-322,324-326,328-329,332,334-347,349-350,353-358,361-362,364-367,369-378,380-382,386-388,390-393,395-396,398-409,411-415,417-421,423-425,427-429,431-434,436-437,440,442-443,445-446,449-453,455-457,460-461,463-465,467-469,472-475,477-478,481-484,486-487,490,492-493,495-496,499-505,507-510,512-517,519-520,522-526,528-532,534-538,540-544,602,609,662-663,666-667,670-671
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/loading-sticker-mask.svg
+  s_cf5a0b38dfc3af::t_b1c3f639afa591 1-16,18-21
+  s_cf5a0b38dfc3af::t_5bc372aab0c7c9 17
+backend/src/index.ts
+  s_cf5a0b38dfc3af::t_e4a0c0a43f324f 15-16,113,122
+backend/src/repositories/generation-job-repository.ts
+  s_cf5a0b38dfc3af::t_dd458cae648aa2 1-118
+backend/src/services/generation-job-events.test.ts
+  s_cf5a0b38dfc3af::t_07be3ad20388f8 1-50
+backend/src/services/generation-job-events.ts
+  s_cf5a0b38dfc3af::t_68d9d0335c376b 1-24
+backend/src/services/generation-jobs.ts
+  s_cf5a0b38dfc3af::t_7584c348f22e6f 1-126
+backend/src/types/generation-job.ts
+  s_cf5a0b38dfc3af::t_ac4872d8464184 1-51
+frontend/Taro/reffo-taro/src/components/Card/index.module.scss
+  s_cf5a0b38dfc3af::t_7ccfd7a1e55371 4
+frontend/Taro/reffo-taro/src/components/business/GenerationStageH5/__tests__/index.test.tsx
+  s_cf5a0b38dfc3af::t_fbd5a68d330034 28-45
+frontend/Taro/reffo-taro/src/components/business/GenerationStageH5/index.tsx
+  s_cf5a0b38dfc3af::t_bcb7380c9484aa 1,6-9,18,25,32,44,46-56,60-66,76-81,84,106-113,128-140
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/HomeScoreCard.h5.test.tsx
+  s_cf5a0b38dfc3af::t_9a6f0eb6a63f04 1-111
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/UnreadCardFoil.h5.test.tsx
+  s_cf5a0b38dfc3af::t_9df075f0847fb3 1-43
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/motion.h5.test.ts
+  s_cf5a0b38dfc3af::t_e19db6b12b913e 1,33-57
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/useHomeCardDeckMotion.h5.test.tsx
+  s_cf5a0b38dfc3af::t_7db40290dd2c38 1-52
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.h5.tsx
+  s_cf5a0b38dfc3af::t_a15ffa35f13c3f 182,192,362
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/motion.h5.ts
+  s_cf5a0b38dfc3af::t_60801335796df7 26-44
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/palette.ts
+  s_cf5a0b38dfc3af::t_c18cfaa18a83aa 38-39
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/shared.ts
+  s_cf5a0b38dfc3af::t_41b3612eafb958 5-9
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/useHomeCardDeckMotion.h5.ts
+  s_cf5a0b38dfc3af::t_68e4e44ae2759e 13,54,58-59,71,269-273,276-278,290-294,306-310,317,366-369,372,432,451-454,458,467,471,487-491,531-574,655-657
+frontend/Taro/reffo-taro/src/pages/complete/usePageModel.ts
+  s_cf5a0b38dfc3af::t_5439b911bb50cb 1,18-21,25,37,41-53
+frontend/Taro/reffo-taro/src/pages/create/PageView.h5.tsx
+  s_cf5a0b38dfc3af::t_598c0e66f4b58c 430,691
+frontend/Taro/reffo-taro/src/pages/create/index.h5.scss
+  s_cf5a0b38dfc3af::t_c40ad8ba64dbb8 1413,1458-1459,1466-1475,1524,1526-1549,2578-2579
+frontend/Taro/reffo-taro/src/pages/create/types.ts
+  s_cf5a0b38dfc3af::t_ecb0a7a5952a8b 64
+frontend/Taro/reffo-taro/src/pages/index/__tests__/homeCardData.test.ts
+  s_cf5a0b38dfc3af::t_f7e075b5d32819 2,4-8,12-113
+frontend/Taro/reffo-taro/src/pages/index/model/homeCardData.ts
+  s_cf5a0b38dfc3af::t_bc1bd86ab1fae1 10,87,106-121,161,173-175,196-218
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  s_cf5a0b38dfc3af::t_d26e9c1cc9b64c 14-22,120-124,133,141,150-263,289-301,394-403,409,411,450
+frontend/Taro/reffo-taro/src/pages/result/usePageModel.ts
+  s_cf5a0b38dfc3af::t_390cea8b969cc1 25-26,189,205-206,310-325,610-612,649-658,665-667,805
+frontend/Taro/reffo-taro/src/services/__tests__/backgroundGeneration.test.ts
+  s_cf5a0b38dfc3af::t_d2c5ffa1b532bd 1-98
+frontend/Taro/reffo-taro/src/services/api.ts
+  s_cf5a0b38dfc3af::t_3b83462c7d5042 229-232
+frontend/Taro/reffo-taro/src/store/__tests__/historyStore.test.ts
+  s_cf5a0b38dfc3af::t_36d7666ccb7a0a 214-287
+supabase/migrations/202610130001_resume_generation_jobs.sql
+  s_cf5a0b38dfc3af::t_a7d5325e6d494d 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b8f557efc6cb288abebd154656e05a09331747e",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
