@@ -1,9 +1,116 @@
 import type {ResumeHistory, ResumeHistorySummary} from '@/types'
+import type {GenerationTask} from '@/services/backgroundGeneration'
 import {resolveResumeGrade} from '@/utils/score-grade'
-import {toHistoryCardItem, toHistorySummaryCardItem} from '../model/homeCardData'
+import {
+  toGenerationTaskCard,
+  toHistoryCardItem,
+  toHistorySummaryCardItem,
+} from '../model/homeCardData'
 import {resumeTextFingerprint} from '@/shared/resume-strategy'
 
 describe('homeCardData', () => {
+  const createTask = (id: string): GenerationTask => ({
+    id,
+    status: 'running',
+    stage: 'analysis',
+    background: true,
+    read_at: null,
+    confirmed_at: null,
+    history_id: null,
+    company: '同一家公司',
+    position: '同一个岗位',
+    location: '上海',
+    score: null,
+    error: null,
+    created_at: '2026-09-23T12:00:00.000Z',
+    updated_at: '2026-09-23T12:00:00.000Z',
+  })
+
+  test('不同生成任务即使公司岗位相同也保持不同的稳定卡片色', () => {
+    const first = toGenerationTaskCard(createTask('task-1'))
+    const second = toGenerationTaskCard(createTask('task-2'))
+    const firstAgain = toGenerationTaskCard(createTask('task-1'))
+
+    expect(first.primaryColor).not.toBe(second.primaryColor)
+    expect(first.surfaceColor).not.toBe(second.surfaceColor)
+    expect(firstAgain).toMatchObject({
+      primaryColor: first.primaryColor,
+      surfaceColor: first.surfaceColor,
+      stackColor: first.stackColor,
+    })
+  })
+
+  test('生成任务获得历史摘要后仍保留任务阶段的卡片色', () => {
+    const task = createTask('task-color')
+    const pendingCard = toGenerationTaskCard(task)
+    const summary: ResumeHistorySummary = {
+      id: 'JD-task-color',
+      position: task.position,
+      company: task.company,
+      name: '候选人',
+      createdAt: task.created_at,
+      updatedAt: task.updated_at,
+      qualityScore: 86,
+      matchScore: 82,
+      tags: [],
+      location: task.location,
+      strategyBody: '突出匹配经验。',
+    }
+
+    const completedCard = toGenerationTaskCard({...task, status: 'completed', history_id: summary.id}, summary)
+
+    expect(completedCard).toMatchObject({
+      primaryColor: pendingCard.primaryColor,
+      surfaceColor: pendingCard.surfaceColor,
+      stackColor: pendingCard.stackColor,
+      logoColor: pendingCard.logoColor,
+    })
+  })
+
+  test('历史摘要持久化卡片色优先于任务派生色', () => {
+    const task = createTask('task-persisted-color')
+    const summary: ResumeHistorySummary = {
+      id: 'JD-task-persisted-color',
+      position: task.position,
+      company: task.company,
+      name: '候选人',
+      createdAt: task.created_at,
+      updatedAt: task.updated_at,
+      qualityScore: 86,
+      matchScore: 82,
+      tags: [],
+      location: task.location,
+      strategyBody: '突出匹配经验。',
+      cardColor: '#123456',
+    }
+
+    const card = toGenerationTaskCard(task, summary)
+
+    expect(card.primaryColor).toBe(toHistorySummaryCardItem(summary).primaryColor)
+  })
+
+  test('历史摘要卡片色格式异常时安全回退到稳定派生色', () => {
+    const summary = {
+      id: 'JD-broken-card-color',
+      position: '产品经理',
+      company: 'Reffo',
+      name: '候选人',
+      createdAt: '2026-09-23T12:00:00.000Z',
+      updatedAt: '2026-09-23T12:00:00.000Z',
+      qualityScore: 88,
+      matchScore: 84,
+      tags: [],
+      location: '北京',
+      strategyBody: '突出产品落地经验。',
+      cardColor: {value: '#123456'},
+    } as unknown as ResumeHistorySummary
+
+    expect(() => toHistorySummaryCardItem(summary)).not.toThrow()
+    expect(toHistorySummaryCardItem(summary).primaryColor).toBe(
+      toHistorySummaryCardItem({...summary, cardColor: undefined}).primaryColor,
+    )
+  })
+
   test('轻量摘要直接生成首页卡片，不依赖简历正文', () => {
     const summary: ResumeHistorySummary = {
       id: 'JD2026092300001',

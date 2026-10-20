@@ -22,6 +22,8 @@ import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@
 import {savePendingLandingHistory} from '@/utils/pending-landing-data'
 import {useAuthStore} from '@/store/authStore'
 import {toHistoryCardItem} from '../index/model/homeCardData'
+import {generationTasksApi} from '@/services/backgroundGeneration'
+import {useBackgroundGenerationStore} from '@/store/backgroundGenerationStore'
 
 const DONE_PROGRESS: LatestResultSessionProgress = {
   analysis: 'done',
@@ -184,6 +186,7 @@ export interface ResultPageViewModel {
   handleRetryStage: (stage: ResultRetryStageKey) => Promise<void>
   handleOptimizedResumeChange: (markdown: string) => Promise<void>
   canEditHistory: boolean
+  needsCompletion?: boolean
 }
 
 export type ResultRetryStageKey = 'analysis' | 'resume' | 'interview'
@@ -199,6 +202,8 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   const {addHistory} = useHistoryStore()
   const enteredFromCard = pageRoute.readBoolean('fromCard')
   const resultId = pageRoute.readString('id')
+  const generationJobId = pageRoute.readString('jobId')
+  const [needsCompletion, setNeedsCompletion] = useState(Boolean(generationJobId))
   const enteredFromLanding = options.enteredFromLanding === true
   const initialSessionRef = useRef<LatestResultSession | null>(options.initialSession
     ? {
@@ -302,6 +307,22 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         setProgress(historyProgress)
         setSaved(true)
         setSavedHistoryId(id)
+        if (generationJobId) {
+          try {
+            const task = await generationTasksApi.get(generationJobId)
+            if (task.history_id === id && task.status === 'completed') {
+              setNeedsCompletion(!task.confirmed_at)
+              if (!task.read_at) {
+                const updated = await generationTasksApi.action(generationJobId, 'read')
+                useBackgroundGenerationStore.getState().upsert(updated)
+              }
+            } else {
+              setNeedsCompletion(false)
+            }
+          } catch {
+            feedback.message('已读状态暂未同步，稍后可重试')
+          }
+        }
       } else {
         feedback.message('未找到结果')
         void route.reset(routePaths.home)
@@ -586,7 +607,9 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         },
         progress,
       }
-      const historyId = enteredFromLanding && !useAuthStore.getState().session
+      const historyId = savedHistoryId
+        ? (await useHistoryStore.getState().updateHistory(savedHistoryId, history), savedHistoryId)
+        : enteredFromLanding && !useAuthStore.getState().session
         ? await savePendingLandingHistory(history)
         : await addHistory(history)
 
@@ -623,13 +646,25 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       if (!historyId) {
         return
       }
+      if (generationJobId && needsCompletion) {
+        try {
+          const task = await generationTasksApi.action(generationJobId, 'confirm')
+          useBackgroundGenerationStore.getState().upsert(task)
+        } catch (confirmError) {
+          console.error('confirm generation task failed:', confirmError)
+          feedback.message('任务状态确认失败，请在首页重新查看')
+          return
+        }
+      }
 
       continuationRef.current += 1
       if (workspaceGenerationRunRef.current != null) {
         resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
         workspaceGenerationRunRef.current = null
       }
-      void route.navigate(appendRouteParams(routePaths.complete, {historyId}))
+      await route.navigate(appendRouteParams(routePaths.complete, {historyId}))
+    } catch (error) {
+      feedback.error(error instanceof Error ? error.message : '完成失败，请重试')
     } finally {
       setIsCompleting(false)
     }
@@ -767,6 +802,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     enteredFromLanding,
     returnCard,
     canEditHistory: Boolean(savedHistoryId),
+    needsCompletion,
     handleSave,
     handleComplete,
     handleShare,

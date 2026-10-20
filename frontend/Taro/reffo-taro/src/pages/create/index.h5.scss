@@ -1410,7 +1410,7 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   z-index: 1;
   filter: none;
   pointer-events: none;
-  transform: none;
+  transform: scale(var(--card-responsive-scale));
   transform-origin: 0 0;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
@@ -1452,26 +1452,27 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   overflow: hidden;
   position: relative;
   color: #666666;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000000 18%, #000000 82%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000000 18%, #000000 82%, transparent 100%);
-}
-
-.reffo-create-generation__title-reel-track {
-  display: flex;
-  flex-direction: column;
-  animation: reffo-generation-title-reel 8000ms linear infinite;
-  will-change: transform;
 }
 
 .reffo-create-generation__title-main {
-  display: block;
-  width: 100%;
+  position: absolute;
+  inset: 0;
   height: 30px;
   color: #666666;
   line-height: 30px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  opacity: 0;
+  transform: translate3d(0, 7px, 0);
+  transition:
+    opacity 280ms ease,
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-create-generation__title-main--active {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 .reffo-create-generation__detail {
@@ -1520,10 +1521,32 @@ taro-image-core.reffo-create-job__upload-file-icon .taro-img,
   animation: reffo-generation-step-pulse 1100ms ease-in-out infinite;
 }
 
-.reffo-create-generation__cancel {
+.reffo-create-generation__actions {
   position: absolute;
-  right: 32px;
-  bottom: 40px;
+  inset: auto 28px max(28px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 18px;
+}
+
+.reffo-create-generation__background-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: #1f1b1a;
+  font-size: 16px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.reffo-create-generation__background-arrow {
+  font-size: 16px;
+}
+
+.reffo-create-generation__cancel {
+  margin-left: auto;
   color: #1f1b1a;
   font-size: 16px;
   line-height: 22px;
@@ -2393,40 +2416,6 @@ html.reffo-delete-vt-return::view-transition-new(reffo-delete-jd-card) {
   }
 }
 
-@keyframes reffo-generation-title-reel {
-  0%,
-  11.5% {
-    transform: translate3d(0, 0, 0);
-    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
-  }
-
-  25%,
-  36.5% {
-    transform: translate3d(0, -30px, 0);
-    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
-  }
-
-  50%,
-  61.5% {
-    transform: translate3d(0, -60px, 0);
-    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
-  }
-
-  75%,
-  86.5% {
-    transform: translate3d(0, -90px, 0);
-    animation-timing-function: cubic-bezier(0.18, 0.92, 0.22, 1);
-  }
-
-  99.999% {
-    transform: translate3d(0, -120px, 0);
-  }
-
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-}
-
 @keyframes reffo-view-root-out {
   0% {
     opacity: 1;
@@ -2586,7 +2575,7 @@ html.reffo-delete-vt-return::view-transition-new(reffo-delete-jd-card) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reffo-create-generation__title-reel-track {
-    animation: none;
+  .reffo-create-generation__title-main {
+    transition: none;
   }
 }

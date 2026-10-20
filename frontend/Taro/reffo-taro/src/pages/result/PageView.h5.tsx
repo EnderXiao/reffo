@@ -123,7 +123,7 @@ function readCardOpenRect(): CardOpenRectSnapshot | null {
 function getBlockedStageMessage(
   stageKey: ResultStageKey,
   progress: LatestResultSessionProgress,
-  generationError?: string,
+  generationError?: string | null,
 ) {
   const stageStatus = getVisibleStageStatus(stageKey, progress)
   const message = stageStatus === 'failed'
@@ -886,6 +886,7 @@ export default function PageView({
   enteredFromLanding,
   returnCard,
   canEditHistory,
+  needsCompletion = false,
   handleComplete,
   handleBackHome,
   handleEditHistory,
@@ -1473,7 +1474,14 @@ export default function PageView({
               <Text>{isReturningHome ? '返回中…' : '返回'}</Text>
             </View>
           </View>
-          {canEditHistory ? (
+          {needsCompletion ? (
+            <View className='reffo-result__chrome'>
+              <View className='reffo-result__action' role='button' aria-disabled={isCompleting}
+                onClick={isCompleting ? undefined : () => void handleComplete()}>
+                <Text>{isCompleting ? '保存中…' : '完成'}</Text>
+              </View>
+            </View>
+          ) : canEditHistory ? (
             <View className='reffo-result__chrome'>
               <View
                 className='reffo-result__action reffo-result__action--edit'
@@ -1491,11 +1499,11 @@ export default function PageView({
         <View className='reffo-result__chrome'>
           <View
             className={classNames('reffo-result__action', {
-              'reffo-result__action--edit': isComplete && canEditHistory,
+              'reffo-result__action--edit': isComplete && canEditHistory && !needsCompletion,
               'reffo-result__action--disabled': isCompleting,
             })}
             aria-disabled={isCompleting}
-            onClick={isCompleting ? undefined : isComplete && canEditHistory
+            onClick={isCompleting ? undefined : isComplete && canEditHistory && !needsCompletion
               ? () => {
                   void handleEditHistory()
                 }
@@ -1503,10 +1511,10 @@ export default function PageView({
           >
             {!isComplete ? (
               <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
-            ) : canEditHistory ? (
+            ) : canEditHistory && !needsCompletion ? (
               <Image src={editIcon} className='reffo-result__action-icon' mode='aspectFit' />
             ) : null}
-            <Text>{isCompleting ? '保存中…' : isComplete && canEditHistory ? '编辑简历' : isComplete ? '完成' : '退出生成'}</Text>
+            <Text>{isCompleting ? '保存中…' : isComplete && canEditHistory && !needsCompletion ? '编辑简历' : isComplete ? '完成' : '退出生成'}</Text>
           </View>
         </View>
       )}

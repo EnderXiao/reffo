@@ -30,6 +30,7 @@ export {useSourceResumeStore} from './sourceResumeStore';
 export {useAuthStore} from './authStore';
 export {useLandingFlowStore} from './landingFlowStore';
 export {resumeWorkspaceActions, useResumeWorkspaceStore} from './resumeWorkspaceStore';
+export {useBackgroundGenerationStore} from './backgroundGenerationStore';
 export type {
   ActiveGenerationStatus,
   ResumeWorkspaceState,

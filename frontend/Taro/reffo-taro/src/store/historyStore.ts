@@ -288,7 +288,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
           cachedSummaries = summariesFromHistories(cachedHistories);
           if (cachedSummaries.length > 0) {
-            set({historySummaries: cachedSummaries});
+            set(state => ({historySummaries: mergeHistorySummaries(cachedSummaries, state.historySummaries)}));
           }
         } catch (error) {
           console.warn('[HistoryStore] Failed to read cached history summaries:', error);
@@ -301,7 +301,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         }
 
         set({
-          historySummaries: cachedSummaries,
+          historySummaries: mergeHistorySummaries(cachedSummaries, get().historySummaries),
           loading: {
             isLoading: false,
             error: null,
@@ -317,10 +317,12 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           return;
         }
 
+        const currentSummaries = get().historySummaries;
         set({
-          historySummaries: allowLocalFallback
-            ? mergeHistorySummaries(remoteSummaries, cachedSummaries)
-            : sortHistorySummaries(remoteSummaries),
+          historySummaries: mergeHistorySummaries(
+            remoteSummaries,
+            mergeHistorySummaries(cachedSummaries, currentSummaries),
+          ),
           loading: {
             isLoading: false,
             error: null,
@@ -335,7 +337,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         const errorMessage = error instanceof Error ? error.message : '加载历史摘要失败';
         set(state => ({
           historySummaries: allowLocalFallback && cachedSummaries.length > 0
-            ? cachedSummaries
+            ? mergeHistorySummaries(cachedSummaries, state.historySummaries)
             : state.historySummaries,
           loading: {
             ...state.loading,
@@ -420,7 +422,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
         set({
           histories: sortHistories(cachedHistories),
-          historySummaries: summariesFromHistories(cachedHistories),
+          historySummaries: mergeHistorySummaries(summariesFromHistories(cachedHistories), get().historySummaries),
           loading: {
             isLoading: false,
             error: null,
@@ -449,7 +451,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
         set({
           histories,
-          historySummaries: summariesFromHistories(histories),
+          historySummaries: mergeHistorySummaries(summariesFromHistories(histories), get().historySummaries),
           loading: {
             isLoading: false,
             error: null,
@@ -499,7 +501,8 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     const operationEpoch = historyStoreEpoch;
     const storageKey = getHistoryStorageKey();
     const isGuest = !hasAuthenticatedSession();
-    const allowLocalFallback = isGuest || await allowsLocalFallback();
+    const isLocalRuntime = await isLocalRuntimeEnvironment();
+    const allowLocalFallback = isGuest || isLocalRuntime;
     let history: ResumeHistory | null = null;
 
     if (allowLocalFallback) {
@@ -507,7 +510,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       history = cachedHistories.find(item => item.id === id) || null;
     }
 
-    if (!history && !isGuest) {
+    if (!history && (!isGuest || isLocalRuntime)) {
       try {
         history = await resumeHistoryApi.getHistory(id);
       } catch (error) {

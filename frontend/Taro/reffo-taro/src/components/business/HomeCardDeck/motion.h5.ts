@@ -23,6 +23,25 @@ export type H5DeckCardSnapshot = {
   transform: string
 }
 
+const H5_DECK_DRAG_STYLE_PROPERTIES = [
+  '--card-highlight-strength',
+  '--card-highlight-angle',
+  '--card-highlight-x',
+  '--card-highlight-y',
+  '--foil-angle',
+  '--foil-spectrum-shift',
+  '--foil-strength',
+  '--foil-glare-opacity',
+  '--foil-sweep-opacity',
+  'transition',
+  'transform',
+  'filter',
+]
+
+export function clearH5DeckDragCardStyles(element: HTMLElement) {
+  H5_DECK_DRAG_STYLE_PROPERTIES.forEach(property => element.style.removeProperty(property))
+}
+
 export function getViewportSize() {
   const viewport = typeof window !== 'undefined' ? window.visualViewport : null
   const documentElement = typeof document !== 'undefined' ? document.documentElement : null
