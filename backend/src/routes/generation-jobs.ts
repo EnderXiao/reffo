@@ -77,7 +77,12 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
       },
     })
 
-    return new Response(stream, {headers: set.headers})
+    const responseHeaders = new Headers()
+    for (const [key, value] of Object.entries(set.headers)) {
+      if (value !== undefined) responseHeaders.set(key, String(value))
+    }
+
+    return new Response(stream, {headers: responseHeaders})
   }, {detail: {summary: '订阅当前用户生成任务实时状态', tags: ['MVP']}})
   .get('/:id', async ({params, jobUser, set}) => {
     const job = await generationJobRepository.get(jobUser.userId, params.id)
