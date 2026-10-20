@@ -61,6 +61,7 @@ export interface CreateGenerationState {
   positionName: string
   baseLocation: string
   monogram: string
+  cardSeed?: string
   detailItems: string[]
   phase: 'analyzing' | 'matching' | 'generating'
 }

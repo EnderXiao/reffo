@@ -35,8 +35,8 @@ function toHex(value: number) {
   return normalizeChannel(value).toString(16).padStart(2, '0').toUpperCase()
 }
 
-export function normalizeHexColor(color?: string, fallback = '#2F7BEF') {
-  const normalized = color?.trim().replace('#', '') ?? ''
+export function normalizeHexColor(color?: unknown, fallback = '#2F7BEF') {
+  const normalized = typeof color === 'string' ? color.trim().replace('#', '') : ''
 
   if (/^[0-9a-fA-F]{6}$/.test(normalized)) {
     return `#${normalized.toUpperCase()}`

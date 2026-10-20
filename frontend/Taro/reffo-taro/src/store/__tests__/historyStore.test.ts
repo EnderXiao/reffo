@@ -211,6 +211,80 @@ describe('History Store', () => {
   });
 
   describe('loadHistorySummaries', () => {
+    test('远端摘要短暂滞后时保留当前已保存的新记录', async () => {
+      useAuthStore.setState({
+        session: {accessToken: 'test-token', user: {id: 'user-1'}},
+        initialized: true,
+      });
+      (isLocalRuntimeEnvironment as jest.Mock).mockResolvedValue(false);
+      mockedResumeHistoryApi.getHistorySummaries.mockResolvedValue([]);
+      useHistoryStore.setState({
+        historySummaries: [{
+          id: 'new-history',
+          position: '产品经理',
+          company: 'Reffo',
+          name: '候选人',
+          createdAt: '2026-09-23T00:00:00.000Z',
+          updatedAt: '2026-09-23T00:00:00.000Z',
+          qualityScore: 88,
+          matchScore: 84,
+          tags: [],
+          location: '北京',
+          strategyBody: '刚保存的新记录。',
+        }],
+      });
+
+      await useHistoryStore.getState().loadHistorySummaries({force: true});
+
+      expect(useHistoryStore.getState().historySummaries.map(item => item.id)).toEqual([
+        'new-history',
+      ]);
+    });
+
+    test('本地部分缓存刷新时保留当前已展示摘要', async () => {
+      useAuthStore.setState({
+        session: {accessToken: 'test-token', user: {id: 'user-1'}},
+        initialized: true,
+      });
+      (isLocalRuntimeEnvironment as jest.Mock).mockResolvedValue(true);
+      (storage.getJSON as jest.Mock).mockResolvedValueOnce([{
+        id: 'cached-history',
+        position: '前端工程师',
+        company: 'Reffo',
+        name: '候选人',
+        createdAt: '2026-09-22T00:00:00.000Z',
+        qualityScore: 80,
+        matchScore: 78,
+        tags: [],
+        resumeContent: '# 简历',
+        jdContent: '工作地点：上海',
+        optimizedContent: '# 优化简历',
+      } as ResumeHistory]);
+      mockedResumeHistoryApi.getHistorySummaries.mockRejectedValueOnce(new Error('接口失败'));
+      useHistoryStore.setState({
+        historySummaries: [{
+          id: 'current-history',
+          position: '产品经理',
+          company: 'Reffo',
+          name: '候选人',
+          createdAt: '2026-09-23T00:00:00.000Z',
+          updatedAt: '2026-09-23T00:00:00.000Z',
+          qualityScore: 88,
+          matchScore: 84,
+          tags: [],
+          location: '北京',
+          strategyBody: '当前已展示的记录。',
+        }],
+      });
+
+      await useHistoryStore.getState().loadHistorySummaries({force: true});
+
+      expect(useHistoryStore.getState().historySummaries.map(item => item.id)).toEqual([
+        'current-history',
+        'cached-history',
+      ]);
+    });
+
     test('首页摘要加载不请求完整历史列表', async () => {
       useAuthStore.setState({
         session: {accessToken: 'test-token', user: {id: 'user-1'}},

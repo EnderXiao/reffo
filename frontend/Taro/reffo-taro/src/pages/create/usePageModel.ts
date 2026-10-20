@@ -44,6 +44,8 @@ import {
   buildSourceResumePayload,
 } from './utils/resumeMarkdown'
 import {useCreateFlowRoute} from './model/useCreateFlowRoute'
+import {generationTasksApi, createGenerationRequestId, type GenerationTask} from '@/services/backgroundGeneration'
+import {useBackgroundGenerationStore} from '@/store/backgroundGenerationStore'
 
 export interface CreatePageViewModel {
   currentStep: CreateStepId
@@ -72,6 +74,7 @@ export interface CreatePageViewModel {
   handleDeleteHistoryResume: () => Promise<boolean>
   handleReturnHome: () => Promise<void>
   handleCancelGeneration: () => void
+  handleContinueInBackground: () => Promise<void>
   handleClose: () => void
   isLandingFlow: boolean
   handleLandingSkip: () => Promise<void>
@@ -303,8 +306,9 @@ function buildGenerationState(args: {
   latestSourceResumeTitle?: string | null
   fallbackResumeFileName?: string | null
   jobDescriptionState: JobDescriptionStepState
+  cardSeed?: string
 }): CreateGenerationState {
-  const {latestSourceResumeTitle, fallbackResumeFileName, jobDescriptionState} = args
+  const {latestSourceResumeTitle, fallbackResumeFileName, jobDescriptionState, cardSeed} = args
   const resumeTitle = truncateText(
     latestSourceResumeTitle?.trim() ||
       fallbackResumeFileName?.trim() ||
@@ -339,6 +343,7 @@ function buildGenerationState(args: {
       jobDescriptionState.companyName,
       jobDescriptionState.positionName,
     ),
+    ...(cardSeed ? {cardSeed} : {}),
     detailItems,
     phase: 'analyzing',
   }
@@ -367,6 +372,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   const jobAttachmentRequestRef = useRef(0)
   const jobAttachmentProgressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const generationRequestRef = useRef(0)
+  const generationTaskRef = useRef<string | null>(null)
+  const generationTaskStatusRef = useRef<GenerationTask['status'] | null>(null)
+  const backgroundNavigationRef = useRef(false)
   const workspaceGenerationRunRef = useRef<number | null>(null)
   const autoGenerateStartedRef = useRef(false)
   const initialSourceResume = useSourceResumeStore.getState().latestSourceResume
@@ -426,6 +434,11 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       uploadRequestRef.current += 1
       jobAttachmentRequestRef.current += 1
       generationRequestRef.current += 1
+      const taskId = generationTaskRef.current
+      const taskStatus = generationTaskStatusRef.current
+      if (taskId && (taskStatus === 'queued' || taskStatus === 'running') && !backgroundNavigationRef.current) {
+        void generationTasksApi.action(taskId, 'cancel').catch(() => undefined)
+      }
       if (workspaceGenerationRunRef.current != null) {
         resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
         workspaceGenerationRunRef.current = null
@@ -1091,7 +1104,11 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
 
     setIsSavingCurrentStep(true)
     const requestId = generationRequestRef.current + 1
+    const generationSeed = createGenerationRequestId()
     generationRequestRef.current = requestId
+    backgroundNavigationRef.current = false
+    generationTaskRef.current = null
+    generationTaskStatusRef.current = null
     const workspaceRunId = resumeWorkspaceActions.startGeneration('analyzing')
     workspaceGenerationRunRef.current = workspaceRunId
 
@@ -1117,11 +1134,81 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
             ? landingResume?.fileName
             : latestSourceResume?.originalFileName,
           jobDescriptionState,
+          cardSeed: generationSeed,
         }),
       )
 
       setWorkspaceSourceResume(resumeMarkdown)
       setWorkspaceJobDescription(jdText)
+
+      if (!isLandingFlow) {
+        let task = await generationTasksApi.create({
+          request_id: generationSeed, resume_markdown: resumeMarkdown, jd_text: jdText,
+          company: jobDescriptionState.companyName.trim(), position: jobDescriptionState.positionName.trim(),
+          location: jobDescriptionState.baseLocation.trim(),
+        })
+        useBackgroundGenerationStore.getState().upsert(task)
+        if (generationRequestRef.current !== requestId) {
+          if (task.status === 'queued' || task.status === 'running') {
+            void generationTasksApi.action(task.id, 'cancel')
+              .then(cancelled => useBackgroundGenerationStore.getState().upsert(cancelled))
+              .catch(() => feedback.error('取消失败，请在首页查看任务'))
+          }
+          return false
+        }
+        generationTaskRef.current = task.id
+        generationTaskStatusRef.current = task.status
+        while (generationRequestRef.current === requestId) {
+          if (backgroundNavigationRef.current) {
+            await wait(200)
+            continue
+          }
+
+          if (task.status === 'completed' && task.history_id) {
+            generationTaskRef.current = null
+            generationTaskStatusRef.current = null
+            await route.navigate(routePaths.result, {id: task.history_id, jobId: task.id})
+            return true
+          }
+          if (task.status === 'failed') {
+            generationTaskStatusRef.current = task.status
+            throw new Error(task.error || '生成失败，请重试')
+          }
+          if (task.status === 'cancelled') {
+            generationTaskRef.current = null
+            generationTaskStatusRef.current = null
+            return false
+          }
+          setGenerationState(previous => previous ? {...previous,
+            phase: task.stage === 'analysis' ? 'analyzing' : task.stage === 'matching' ? 'matching' : 'generating'} : previous)
+          await wait(1800)
+          if (generationRequestRef.current !== requestId) return false
+          if (backgroundNavigationRef.current) continue
+          try {
+            task = await generationTasksApi.get(task.id)
+            if (generationRequestRef.current !== requestId) return false
+            generationTaskStatusRef.current = task.status
+            useBackgroundGenerationStore.getState().upsert(task)
+          } catch {
+            if (generationRequestRef.current !== requestId) return false
+            if (backgroundNavigationRef.current) continue
+            feedback.message('暂时无法获取进度，任务仍在后台继续')
+            backgroundNavigationRef.current = true
+            try {
+              await route.reset(routePaths.home, {backgroundTaskId: task.id})
+            } catch (error) {
+              if (generationRequestRef.current !== requestId) return false
+              backgroundNavigationRef.current = false
+              feedback.error(error instanceof Error ? error.message : '返回首页失败，请重试')
+              continue
+            }
+            generationTaskRef.current = null
+            generationTaskStatusRef.current = null
+            return true
+          }
+        }
+        return false
+      }
 
       const presetJdId = isLandingFlow ? landingJob?.id : undefined
       const [{resumeApi}, jobMetadataUtils] = await Promise.all([
@@ -1272,17 +1359,58 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   ])
 
   const handleCancelGeneration = () => {
-    if (!generationState) {
-      return
-    }
-
     generationRequestRef.current += 1
+    backgroundNavigationRef.current = false
+    const taskId = generationTaskRef.current
+    const taskStatus = generationTaskStatusRef.current
+    if (taskId && (taskStatus === 'queued' || taskStatus === 'running')) {
+      void generationTasksApi.action(taskId, 'cancel').then(task => useBackgroundGenerationStore.getState().upsert(task))
+        .catch(() => feedback.error('取消失败，请在首页查看任务'))
+    }
+    generationTaskRef.current = null
+    generationTaskStatusRef.current = null
     if (workspaceGenerationRunRef.current != null) {
       resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
       workspaceGenerationRunRef.current = null
     }
     setGenerationState(null)
     setIsSavingCurrentStep(false)
+  }
+
+  const handleContinueInBackground = async () => {
+    if (!generationState || backgroundNavigationRef.current) {
+      return
+    }
+    const taskId = generationTaskRef.current
+    if (!taskId) {
+      feedback.message('正在提交生成任务，请稍候')
+      return
+    }
+    const requestId = generationRequestRef.current
+    backgroundNavigationRef.current = true
+    try {
+      const task = await generationTasksApi.action(taskId, 'background')
+      if (generationRequestRef.current !== requestId || !backgroundNavigationRef.current) {
+        return
+      }
+      useBackgroundGenerationStore.getState().upsert(task)
+      await route.reset(routePaths.home, {backgroundTaskId: taskId})
+      if (generationRequestRef.current !== requestId) return
+      generationRequestRef.current += 1
+      generationTaskRef.current = null
+      generationTaskStatusRef.current = null
+      if (workspaceGenerationRunRef.current != null) {
+        resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
+        workspaceGenerationRunRef.current = null
+      }
+      setGenerationState(null)
+      setIsSavingCurrentStep(false)
+    } catch (error) {
+      if (generationRequestRef.current === requestId) {
+        backgroundNavigationRef.current = false
+        feedback.error(error instanceof Error ? error.message : '返回首页失败，请重试')
+      }
+    }
   }
 
   const handleDeleteHistoryResume = async () => {
@@ -1310,6 +1438,10 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   }
 
   const handleClose = () => {
+    if (generationState || (generationTaskRef.current &&
+      (generationTaskStatusRef.current === 'queued' || generationTaskStatusRef.current === 'running'))) {
+      handleCancelGeneration()
+    }
     if (isLandingFlow) {
       useLandingFlowStore.getState().clear()
     }
@@ -1359,6 +1491,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     handleDeleteHistoryResume,
     handleReturnHome,
     handleCancelGeneration,
+    handleContinueInBackground,
     handleClose,
     isLandingFlow,
     handleLandingSkip,

@@ -2,6 +2,11 @@ import type {CardTone} from './palette'
 
 export interface HomeCardItem {
   id: string
+  generationTaskId?: string
+  generationStatus?: 'generating' | 'completed' | 'failed'
+  generationLabel?: string
+  historyId?: string
+  unread?: boolean
   queueCardKind?: 'resume' | 'upload'
   company: string
   indexLabel: string

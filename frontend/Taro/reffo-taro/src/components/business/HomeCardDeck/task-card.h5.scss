@@ -1,0 +1,709 @@
+.reffo-home-card--unread .reffo-home-card__surface {
+  border-color: var(--card-border);
+  clip-path: none;
+  box-shadow:
+    inset 0 0 0 1PX rgba(255, 255, 255, 0.64),
+    -8PX -8PX 30PX rgba(255, 106, 181, 0.36),
+    8PX -8PX 32PX rgba(84, 211, 255, 0.34),
+    8PX 8PX 34PX rgba(154, 118, 255, 0.29),
+    -8PX 8PX 34PX rgba(255, 205, 103, 0.25),
+    0 0 58PX rgba(129, 225, 219, 0.14);
+  animation:
+    reffo-new-card-shadow-enter 720ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    reffo-new-card-shadow-orbit 12s linear 720ms infinite;
+}
+
+.reffo-home-card--task-pending::before,
+.reffo-home-card--unread::before {
+  inset: -28px;
+  border-radius: calc(var(--card-radius) + 28px);
+  display: block;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 116, 183, 0.22) 0 18%, rgba(255, 198, 105, 0.16) 36%, rgba(94, 216, 255, 0.13) 56%, transparent 74%);
+  filter: blur(26PX) saturate(1.1);
+  padding: 0;
+  transform: translateZ(0);
+  transition:
+    opacity 720ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 720ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 720ms cubic-bezier(0.16, 1, 0.3, 1),
+    inset 720ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 720ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-home-card--task-pending::before {
+  opacity: 0;
+  filter: blur(34PX) saturate(0.82);
+}
+
+.reffo-home-card--unread::before {
+  opacity: 0;
+}
+
+.reffo-home-card--task-pending::after,
+.reffo-home-card--unread::after {
+  inset: -3px;
+  border-radius: calc(var(--card-radius) + 3px);
+  background: conic-gradient(
+    from var(--card-highlight-angle, 125deg),
+    rgba(255, 121, 183, 0.82) 0deg,
+    rgba(255, 175, 131, 0.72) 48deg,
+    rgba(255, 226, 130, 0.7) 88deg,
+    rgba(139, 229, 189, 0.72) 126deg,
+    rgba(104, 217, 244, 0.78) 168deg,
+    rgba(127, 157, 255, 0.78) 212deg,
+    rgba(184, 120, 245, 0.76) 258deg,
+    rgba(233, 120, 206, 0.8) 312deg,
+    rgba(255, 120, 184, 0.82)
+  );
+  filter: blur(0.5PX) saturate(1.04);
+  opacity: 0.68;
+  padding: 0;
+  -webkit-mask: radial-gradient(ellipse at center, transparent 0 51%, #000 52%, #000 54%, transparent 55%);
+  mask: radial-gradient(ellipse at center, transparent 0 51%, #000 52%, #000 54%, transparent 55%);
+  transform: translateZ(0);
+  transition:
+    opacity 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-home-card--task-pending::after {
+  opacity: 0;
+  filter: blur(4PX) saturate(0.82);
+  transform: translateZ(0) scale(0.985);
+}
+
+.reffo-home-card--unread::after {
+  opacity: 0;
+  filter: blur(0.5PX) saturate(1.04);
+  transform: translateZ(0) scale(1);
+}
+
+.reffo-home-card--active.reffo-home-card--unread::before {
+  filter: blur(18PX) saturate(1.12);
+  opacity: 0.82;
+}
+
+.reffo-home-card--active.reffo-home-card--unread::after {
+  opacity: 0.82;
+}
+
+.reffo-home-card--sticker-covered.reffo-home-card--unread .reffo-home-card__surface,
+.reffo-home-card--sticker-covered.reffo-home-card--task-pending .reffo-home-card__surface {
+  box-shadow: none;
+  filter: none;
+  animation: none;
+}
+
+.reffo-home-card--sticker-covered.reffo-home-card--unread::before,
+.reffo-home-card--sticker-covered.reffo-home-card--unread::after,
+.reffo-home-card--sticker-covered.reffo-home-card--task-pending::before,
+.reffo-home-card--sticker-covered.reffo-home-card--task-pending::after {
+  opacity: 0;
+}
+
+.reffo-home-card--sticker-covered .reffo-home-card__unread {
+  opacity: 0;
+}
+
+.reffo-home-card--sticker-revealed.reffo-home-card--unread .reffo-home-card__surface {
+  filter: drop-shadow(0 12px 24px rgba(53, 72, 108, 0.16));
+}
+
+.reffo-home-card__reveal-glow {
+  position: absolute;
+  inset: -24px;
+  z-index: 0;
+  border-radius: calc(var(--card-radius) + 24px);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 116, 183, 0.3) 0 16%, rgba(255, 198, 105, 0.22) 32%, rgba(94, 216, 255, 0.18) 52%, rgba(154, 118, 255, 0.12) 68%, transparent 78%);
+  filter: blur(26PX) saturate(1.12);
+  opacity: 0;
+  transform: translateZ(0) scale(0.9);
+  transform-origin: center;
+  pointer-events: none;
+  transition:
+    opacity 760ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 760ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 920ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reffo-home-card--unread .reffo-home-card__reveal-glow {
+  opacity: 0.42;
+  transform: translateZ(0) scale(1);
+}
+
+.reffo-home-card--active.reffo-home-card--unread .reffo-home-card__reveal-glow {
+  opacity: 0.72;
+}
+
+.reffo-home-card--sticker-covered .reffo-home-card__reveal-glow,
+.reffo-home-card--sticker-covered.reffo-home-card--active .reffo-home-card__reveal-glow {
+  opacity: 0;
+  transform: translateZ(0) scale(0.88);
+}
+
+.reffo-home-card--sticker-revealed.reffo-home-card--unread .reffo-home-card__reveal-glow,
+.reffo-home-card--sticker-revealed.reffo-home-card--active.reffo-home-card--unread .reffo-home-card__reveal-glow {
+  opacity: 1;
+  filter: blur(46PX) saturate(1.28);
+  transform: translateZ(0) scale(1.28);
+}
+
+.reffo-card-foil,
+.reffo-card-foil__spectrum,
+.reffo-card-foil__grain,
+.reffo-card-foil__glare,
+.reffo-card-foil__sweep {
+  transition:
+    opacity 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes reffo-new-card-shadow-orbit {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1PX rgba(255, 255, 255, 0.64),
+      -8PX -8PX 30PX rgba(255, 106, 181, 0.36),
+      8PX -8PX 32PX rgba(84, 211, 255, 0.34),
+      8PX 8PX 34PX rgba(154, 118, 255, 0.29),
+      -8PX 8PX 34PX rgba(255, 205, 103, 0.25),
+      0 0 58PX rgba(129, 225, 219, 0.14);
+  }
+
+  25% {
+    box-shadow:
+      inset 0 0 0 1PX rgba(255, 255, 255, 0.64),
+      8PX -8PX 30PX rgba(255, 106, 181, 0.36),
+      8PX 8PX 32PX rgba(84, 211, 255, 0.34),
+      -8PX 8PX 34PX rgba(154, 118, 255, 0.29),
+      -8PX -8PX 34PX rgba(255, 205, 103, 0.25),
+      0 0 58PX rgba(129, 225, 219, 0.14);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 0 0 1PX rgba(255, 255, 255, 0.64),
+      8PX 8PX 30PX rgba(255, 106, 181, 0.36),
+      -8PX 8PX 32PX rgba(84, 211, 255, 0.34),
+      -8PX -8PX 34PX rgba(154, 118, 255, 0.29),
+      8PX -8PX 34PX rgba(255, 205, 103, 0.25),
+      0 0 58PX rgba(129, 225, 219, 0.14);
+  }
+
+  75% {
+    box-shadow:
+      inset 0 0 0 1PX rgba(255, 255, 255, 0.64),
+      -8PX 8PX 30PX rgba(255, 106, 181, 0.36),
+      -8PX -8PX 32PX rgba(84, 211, 255, 0.34),
+      8PX -8PX 34PX rgba(154, 118, 255, 0.29),
+      8PX 8PX 34PX rgba(255, 205, 103, 0.25),
+      0 0 58PX rgba(129, 225, 219, 0.14);
+  }
+}
+
+@keyframes reffo-new-card-shadow-enter {
+  from {
+    box-shadow:
+      inset 0 0 0 1PX rgba(255, 255, 255, 0.46),
+      0 2PX 18PX rgba(42, 88, 114, 0.12);
+  }
+
+  to {
+    box-shadow:
+      inset 0 0 0 1PX rgba(255, 255, 255, 0.64),
+      -8PX -8PX 30PX rgba(255, 106, 181, 0.36),
+      8PX -8PX 32PX rgba(84, 211, 255, 0.34),
+      8PX 8PX 34PX rgba(154, 118, 255, 0.29),
+      -8PX 8PX 34PX rgba(255, 205, 103, 0.25),
+      0 0 58PX rgba(129, 225, 219, 0.14);
+  }
+}
+
+.reffo-card-foil {
+  --foil-x: 50%;
+  --foil-y: 40%;
+  --foil-angle: 125deg;
+  --foil-strength: 0.52;
+  --foil-spectrum-shift: 0%;
+  --foil-spectrum-opacity: 0.82;
+  --foil-glare-opacity: 0.72;
+  --foil-sweep-opacity: 0.42;
+  --foil-resolved-x: var(--card-highlight-x, var(--foil-x));
+  --foil-resolved-y: var(--card-highlight-y, var(--foil-y));
+  --foil-resolved-angle: var(--card-highlight-angle, var(--foil-angle));
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+  opacity: 0.84;
+}
+
+.reffo-card-foil__spectrum,
+.reffo-card-foil__grain,
+.reffo-card-foil__glare,
+.reffo-card-foil__sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.reffo-card-foil__spectrum {
+  background: repeating-linear-gradient(var(--foil-resolved-angle),
+    #edb9d2 0%, #e9d9aa 12%, #a0ead8 23%, #89cbf0 35%, #c4b5e4 46%, #edb9d2 58%);
+  background-size: 230% 230%;
+  background-position:
+    calc(var(--foil-resolved-x) + var(--foil-spectrum-shift))
+    var(--foil-resolved-y);
+  mix-blend-mode: soft-light;
+  opacity: var(--foil-spectrum-opacity);
+}
+
+.reffo-card-foil__grain {
+  background-image:
+    repeating-linear-gradient(35deg, transparent 0 2PX, rgba(244, 255, 255, 0.3) 2.5PX 3PX, transparent 3.5PX 6PX),
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.8) 0 0.5PX, transparent 1PX),
+    radial-gradient(circle at 70% 80%, rgba(250, 231, 207, 0.6) 0 0.5PX, transparent 1PX);
+  background-size: auto, 5PX 7PX, 9PX 11PX;
+  mix-blend-mode: overlay;
+  opacity: 0.45;
+}
+
+.reffo-card-foil__glare {
+  background: radial-gradient(ellipse at var(--foil-resolved-x) var(--foil-resolved-y),
+    rgba(255, 255, 255, 0.85) 0%, rgba(224, 249, 255, 0.23) 23%, transparent 56%);
+  mix-blend-mode: soft-light;
+  opacity: var(--foil-glare-opacity);
+}
+
+.reffo-card-foil__sweep {
+  inset: -60%;
+  background: linear-gradient(var(--foil-resolved-angle), transparent 32%, rgba(183, 229, 245, 0.18) 40%,
+    rgba(255, 255, 255, 0.67) 48%, rgba(254, 221, 210, 0.28) 53%, transparent 65%);
+  mix-blend-mode: soft-light;
+  transform: translate3d(calc(-34% + var(--foil-spectrum-shift)), 0, 0);
+  opacity: var(--foil-sweep-opacity);
+}
+
+.reffo-card-foil--active:not(.reffo-card-foil--basic) .reffo-card-foil__sweep {
+  animation: reffo-foil-sweep 5800ms cubic-bezier(0.36, 0, 0.3, 1) infinite;
+}
+
+.reffo-card-foil--basic {
+  opacity: 0.6;
+}
+
+.reffo-home-card--sticker-covered .reffo-card-foil {
+  opacity: 0.96;
+  filter: saturate(1.18) brightness(1.02);
+}
+
+.reffo-home-card--sticker-covered .reffo-card-foil__spectrum {
+  opacity: 0.94;
+  mix-blend-mode: overlay;
+  filter: saturate(1.45);
+}
+
+.reffo-home-card--sticker-covered .reffo-card-foil__grain {
+  opacity: 0.52;
+}
+
+.reffo-home-card--sticker-covered .reffo-card-foil__glare {
+  opacity: 0.84;
+}
+
+.reffo-home-card--sticker-covered .reffo-card-foil__sweep {
+  --foil-sweep-opacity: 0.62;
+  opacity: 0.72;
+}
+
+.reffo-home-card__loading-sticker {
+  display: contents;
+}
+
+.reffo-home-card__loading-sticker-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  border-radius: var(--card-radius);
+  background: rgba(255, 255, 255, 0.28);
+  -webkit-backdrop-filter: blur(11PX) saturate(0.72) brightness(1.04);
+  backdrop-filter: blur(11PX) saturate(0.72) brightness(1.04);
+  -webkit-mask-image: url("./loading-sticker-mask.svg");
+  mask-image: url("./loading-sticker-mask.svg");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  mix-blend-mode: lighten;
+  pointer-events: none;
+}
+
+.reffo-home-card__loading-sticker-peel {
+  position: absolute;
+  inset: 0;
+  z-index: 21;
+  overflow: visible;
+  perspective: 920PX;
+  -webkit-perspective: 920PX;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.reffo-home-card__loading-sticker-peel-back {
+  position: absolute;
+  top: -50%;
+  left: -100%;
+  width: 250%;
+  height: 250%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.28);
+  -webkit-backdrop-filter: blur(11PX) saturate(0.72) brightness(1.04);
+  backdrop-filter: blur(11PX) saturate(0.72) brightness(1.04);
+  filter:
+    drop-shadow(-2PX 5PX 8PX rgba(38, 43, 50, 0.18))
+    drop-shadow(0 1PX 1PX rgba(255, 255, 255, 0.72));
+  clip-path: polygon(100% 0, 100% 0, 100% 0, 100% 0, 100% 0, 100% 0);
+  opacity: 0;
+  transform: none;
+  will-change: clip-path, background-position, opacity;
+}
+
+.reffo-home-card__loading-sticker-peel-back-grain,
+.reffo-home-card__loading-sticker-peel-back-shadow {
+  position: absolute;
+  pointer-events: none;
+}
+
+.reffo-home-card__loading-sticker-peel-back-grain {
+  inset: -20%;
+  background-image:
+    repeating-linear-gradient(24deg, transparent 0 8px, rgba(84, 89, 96, 0.06) 9px 10px, transparent 11px 20px),
+    radial-gradient(circle at 32% 36%, rgba(84, 89, 96, 0.08) 0 1px, transparent 2px);
+  background-size: auto, 13PX 17PX;
+  opacity: 0.22;
+}
+
+.reffo-home-card__loading-sticker-peel-back-shadow {
+  inset: 0;
+  background:
+    linear-gradient(135deg,
+      transparent 0%,
+      transparent 36%,
+      rgba(34, 39, 46, 0.12) 43%,
+      rgba(255, 255, 255, 0.98) 48%,
+      rgba(255, 255, 255, 0.34) 55%,
+      transparent 64%,
+      transparent 100%);
+  background-position: 100% 0%;
+  background-size: 220% 220%;
+  filter: blur(1PX);
+}
+
+.reffo-home-card__loading-sticker--revealed .reffo-home-card__loading-sticker-sheet {
+  animation:
+    reffo-loading-sticker-front-corner-peel 1080ms linear forwards,
+    reffo-loading-sticker-overlay-exit 1080ms linear forwards;
+}
+
+.reffo-home-card__loading-sticker--revealed .reffo-home-card__loading-sticker-peel-back {
+  animation:
+    reffo-loading-sticker-back-corner-peel 1080ms linear forwards,
+    reffo-loading-sticker-back-gradient 1080ms linear forwards;
+}
+
+.reffo-home-card__loading-sticker--revealed .reffo-home-card__loading-sticker-peel-back-shadow {
+  animation: reffo-loading-sticker-back-gradient 1080ms linear forwards;
+}
+
+.reffo-home-card__loading-sticker--revealed .reffo-home-card__loading-sticker-peel {
+  animation: reffo-loading-sticker-overlay-exit 1080ms linear forwards;
+}
+
+@keyframes reffo-loading-sticker-front-corner-peel {
+  0% {
+    clip-path: polygon(0 0, 100% 0, 100% 0, 100% 100%, 0 100%);
+  }
+  18% {
+    clip-path: polygon(0 0, 64% 0, 100% 36%, 100% 100%, 0 100%);
+  }
+  50% {
+    clip-path: polygon(0 0, 0 0, 100% 100%, 100% 100%, 0 100%);
+  }
+  82% {
+    clip-path: polygon(0 64%, 0 64%, 36% 100%, 36% 100%, 0 100%);
+  }
+  100% {
+    clip-path: polygon(0 100%, 0 100%, 0 100%, 0 100%, 0 100%);
+  }
+}
+
+@keyframes reffo-loading-sticker-back-corner-peel {
+  0% {
+    clip-path: polygon(80% 20%, 80% 20%, 80% 20%, 80% 20%, 80% 20%);
+    opacity: 0;
+  }
+  18% {
+    clip-path: polygon(65.6% 20%, 65.6% 34.4%, 65.6% 34.4%, 80% 34.4%, 65.6% 20%);
+    opacity: 1;
+  }
+  50% {
+    clip-path: polygon(40% 20%, 40% 60%, 40% 60%, 80% 60%, 40% 20%);
+    opacity: 1;
+  }
+  82% {
+    clip-path: polygon(14.4% 45.6%, 14.4% 85.6%, 54.4% 85.6%, 54.4% 60%, 40% 45.6%);
+    opacity: 0.92;
+  }
+  100% {
+    clip-path: polygon(0 60%, 0 100%, 40% 100%, 40% 60%, 40% 60%);
+    opacity: 0;
+  }
+}
+
+@keyframes reffo-loading-sticker-overlay-exit {
+  0%, 82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes reffo-loading-sticker-back-gradient {
+  0% {
+    background-position: 100% 0%;
+  }
+  18% {
+    background-position: 82% 18%;
+  }
+  50% {
+    background-position: 50% 50%;
+  }
+  82% {
+    background-position: 18% 82%;
+  }
+  100% {
+    background-position: 0% 100%;
+  }
+}
+
+.reffo-home-card__score.reffo-home-card__score--transition {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(46px, auto);
+  min-width: 132px;
+  min-height: 46px;
+}
+
+.reffo-home-card__score-waiting,
+.reffo-home-card__score-result {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  transition:
+    opacity 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 440ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 360ms ease;
+}
+
+.reffo-home-card__score-waiting {
+  align-items: center;
+  min-width: 76px;
+  min-height: 46px;
+  opacity: 0;
+  filter: blur(3PX);
+  transform: translate3d(0, -5px, 0);
+}
+
+.reffo-home-card__score-result {
+  opacity: 1;
+  filter: blur(0);
+  transform: translate3d(0, 0, 0);
+}
+
+.reffo-home-card__score--waiting .reffo-home-card__score-waiting {
+  opacity: 1;
+  filter: blur(0);
+  transform: translate3d(0, 0, 0);
+}
+
+.reffo-home-card__score--waiting .reffo-home-card__score-result {
+  opacity: 0;
+  filter: blur(3PX);
+  transform: translate3d(0, 7px, 0);
+}
+
+.reffo-home-card__unread {
+  position: absolute;
+  top: 26px;
+  right: 14px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 20px;
+  background: #f5fbff;
+  color: #284e65;
+  font-size: 9px;
+  line-height: 12px;
+  box-shadow: 0 2PX 8PX rgba(28, 70, 110, 0.1);
+  opacity: 0;
+  transform: translate3d(0, -5px, 0) scale(0.94);
+  transition:
+    opacity 320ms ease 180ms,
+    transform 440ms cubic-bezier(0.16, 1, 0.3, 1) 180ms;
+}
+
+.reffo-home-card__unread--visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.reffo-home-card__unread-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #2b81a6;
+}
+
+.reffo-home-card__task {
+  position: absolute;
+  z-index: 3;
+  inset: 38px 18px 17px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  color: #314958;
+}
+
+.reffo-home-card__task-kicker {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #637c8d;
+}
+
+.reffo-home-card__task-orbit {
+  width: 54px;
+  height: 54px;
+  margin-top: 18px;
+  margin-bottom: 14px;
+  border: 1px solid var(--card-logo);
+  border-top-color: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 18PX rgba(255, 255, 255, 0.8);
+  color: var(--card-accent);
+  font-size: 25px;
+}
+
+.reffo-home-card--active.reffo-home-card--task-pending .reffo-home-card__task-orbit {
+  animation: reffo-task-breathe 2800ms ease-in-out infinite;
+}
+
+.reffo-home-card__task-status {
+  font-size: 21px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.reffo-home-card__task-company {
+  width: 100%;
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.reffo-home-card__task-role {
+  font-size: 11px;
+  line-height: 16px;
+  max-height: 32px;
+  overflow: hidden;
+}
+
+.reffo-home-card__task-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  width: 100%;
+  border-top: 1px solid rgba(97, 132, 153, 0.23);
+  font-size: 9px;
+  line-height: 15px;
+  color: #557184;
+}
+
+.reffo-home-card--task-failed .reffo-home-card__task {
+  color: #944a31;
+}
+
+.reffo-home-card--task-failed .reffo-home-card__task-orbit {
+  animation: none;
+  color: #944a31;
+}
+
+@keyframes reffo-foil-sweep {
+  0%, 12% {
+    transform: translate3d(calc(-34% + var(--foil-spectrum-shift)), -8%, 0);
+    opacity: var(--foil-sweep-opacity, 0.42);
+  }
+  50% {
+    transform: translate3d(calc(6% + var(--foil-spectrum-shift)), 5%, 0);
+    opacity: var(--foil-sweep-opacity, 0.42);
+  }
+  88%, 100% {
+    transform: translate3d(calc(34% + var(--foil-spectrum-shift)), 12%, 0);
+    opacity: var(--foil-sweep-opacity, 0.42);
+  }
+}
+
+@keyframes reffo-task-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reffo-home-card--unread .reffo-home-card__surface,
+  .reffo-home-card--unread::before,
+  .reffo-home-card--unread::after,
+  .reffo-card-foil__sweep,
+  .reffo-home-card--active.reffo-home-card--task-pending .reffo-home-card__task-orbit {
+    animation: none !important;
+  }
+
+  .reffo-home-card__reveal-glow {
+    transition: none !important;
+  }
+
+  .reffo-home-card--task-pending::before,
+  .reffo-home-card--task-pending::after,
+  .reffo-card-foil,
+  .reffo-card-foil__spectrum,
+  .reffo-card-foil__grain,
+  .reffo-card-foil__glare,
+  .reffo-card-foil__sweep,
+  .reffo-home-card__score-waiting,
+  .reffo-home-card__score-result,
+  .reffo-home-card__unread,
+  .reffo-home-card__loading-sticker,
+  .reffo-home-card__loading-sticker-sheet,
+  .reffo-home-card__loading-sticker-peel {
+    transition: none !important;
+    animation: none !important;
+  }
+}

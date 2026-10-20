@@ -226,6 +226,10 @@ export class ApiClient {
     return this.authToken;
   }
 
+  getBaseURL(): string {
+    return this.baseURL;
+  }
+
   /**
    * 执行带重试的请求
    *

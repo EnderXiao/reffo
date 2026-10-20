@@ -12,6 +12,8 @@ import { authRoutes } from '@/routes/auth'
 import { profileRoutes } from '@/routes/profile'
 import { startV5CheckpointCleanup } from '@/repositories/v5-checkpoint-repository'
 import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
+import {generationJobRoutes} from '@/routes/generation-jobs'
+import {generationJobWorker} from '@/services/generation-jobs'
 
 /**
  * 启动应用
@@ -108,6 +110,7 @@ async function bootstrap() {
     .use(parseRoutes)
     .use(sourceResumeRoutes)
     .use(resumeHistoryRoutes)
+    .use(generationJobRoutes)
     // 启动服务
     .listen({
       hostname: env.HOST,
@@ -116,6 +119,7 @@ async function bootstrap() {
 
   startSupabaseHarnessCleanup()
   startV5CheckpointCleanup()
+  generationJobWorker.start()
 
   console.log('\n🚀 Reffo MVP 服务启动成功！')
   console.log('========================================')

@@ -179,7 +179,7 @@ export default function HomeCardDeck({
   }, [])
 
   const playCardOpenTransition = useCallback((card: typeof activeCard) => {
-    if (!card || !onCardPress || isCreateMode || isOpeningCardRef.current) {
+    if (!card || !onCardPress || isCreateMode || isOpeningCardRef.current || card.generationStatus === 'generating') {
       return
     }
 
@@ -189,6 +189,7 @@ export default function HomeCardDeck({
     if (now < suppressClickUntilRef.current || gesture.moved || (gesture.cardId && gesture.cardId !== card.id)) {
       return
     }
+    if (card.generationStatus === 'failed') {void onCardPress(card); return}
 
     const source = findCardElement(stackRef.current, card.id)
 
@@ -358,7 +359,7 @@ export default function HomeCardDeck({
         >
           {orderedCardEntries.map(({card, depth, isRecycling, isTailEntering}) => {
             const isActive = !isRecycling && card.id === activeCard?.id
-            const isPressable = Boolean(onCardPress) && isActive && !isCreateMode && !isRecycling
+            const isPressable = Boolean(onCardPress) && isActive && !isCreateMode && !isRecycling && card.generationStatus !== 'generating'
             return (
               <HomeScoreCard
                 key={card.id}

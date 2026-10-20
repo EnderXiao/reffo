@@ -1,7 +1,7 @@
 @use '../../styles/variables.scss' as *;
 
 .card {
-  background: var(--color-bg-primary);
+  background-color: var(--color-bg-primary);
   border-radius: $radius-xl;
   overflow: hidden;
   transition: all $transition-base;
