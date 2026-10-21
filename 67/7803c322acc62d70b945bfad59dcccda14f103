@@ -1,0 +1,30 @@
+backend/src/routes/generation-jobs.ts
+  s_cf5a0b38dfc3af::t_6b3967886aa78e 18-19,34-40,42-43,93-94,99-100
+.github/workflows/release-tag.yml
+  s_cf5a0b38dfc3af::t_27947d626d918a 93-94,96-98,100-105
+  s_cf5a0b38dfc3af::t_4b15626dbd9f6c 95,99,129
+backend/src/routes/generation-jobs.test.ts
+  s_cf5a0b38dfc3af::t_6b3967886aa78e 1-5,12-22
+  s_cf5a0b38dfc3af::t_15cf73dbb72737 6-11
+backend/.env.example
+  s_cf5a0b38dfc3af::t_27947d626d918a 57,59-60
+  s_cf5a0b38dfc3af::t_2b81ffe0199622 58
+supabase/migrations/README.md
+  s_cf5a0b38dfc3af::t_15484b6772d3f8 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "677803c322acc62d70b945bfad59dcccda14f103",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
