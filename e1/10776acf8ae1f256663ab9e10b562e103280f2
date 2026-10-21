@@ -1,0 +1,23 @@
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/task-card.h5.scss
+  s_cf5a0b38dfc3af::t_97dea43a684e9e 61-69
+frontend/Taro/reffo-taro/src/pages/index/__tests__/usePageModel.test.tsx
+  s_cf5a0b38dfc3af::t_8c84c2b95237fa 5,8,25,32-38,51-53,100-107,149-154,166,206-236
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  s_cf5a0b38dfc3af::t_d8fe71637df684 31,162-167,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e110776acf8ae1f256663ab9e10b562e103280f2",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
