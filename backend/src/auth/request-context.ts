@@ -41,15 +41,16 @@ function readBearerToken(headers: Record<string, string | undefined>) {
 export async function resolveRequestUser(headers: Record<string, string | undefined>): Promise<RequestUserContext> {
   const accessToken = readBearerToken(headers)
 
-  if (!accessToken) {
-    if (env.AUTH_REQUIRED) {
-      throw new RequestAuthError('AUTH_REQUIRED', '请先登录后再继续')
-    }
-
+  // 本地免登录模式固定使用开发用户，避免浏览器残留 token 触发云端鉴权。
+  if (env.APP_ENV === 'local' && !env.AUTH_REQUIRED) {
     return {
       userId: env.DEV_USER_ID,
       useServiceRole: true,
     }
+  }
+
+  if (!accessToken) {
+    throw new RequestAuthError('AUTH_REQUIRED', '请先登录后再继续')
   }
 
   try {

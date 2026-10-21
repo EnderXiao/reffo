@@ -4,9 +4,11 @@ import Taro, {useRouter} from '@tarojs/taro'
 import {parseApi} from '@/services/parse'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
+import {generationTasksApi, type GenerationTask} from '@/services/backgroundGeneration'
 import {useAuthStore, useLandingFlowStore, useResumeWorkspaceStore, useSourceResumeStore} from '@/store'
 import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
+import {RequestError} from '@/utils/request'
 
 const defaultProcessResult = {
   analysis: {
@@ -49,6 +51,28 @@ const defaultProcessResult = {
     story_recommendations: [],
     follow_up_questions: [],
   },
+}
+
+const DEFAULT_GENERATION_TASK_ID = '11111111-1111-4111-8111-111111111111'
+
+function createGenerationTask(overrides: Partial<GenerationTask> = {}): GenerationTask {
+  return {
+    id: DEFAULT_GENERATION_TASK_ID,
+    status: 'completed' as const,
+    stage: 'saving' as const,
+    background: false,
+    read_at: null,
+    confirmed_at: null,
+    history_id: 'JD2026101300001',
+    company: '目标公司',
+    position: '目标岗位',
+    location: '',
+    score: 91,
+    error: null,
+    created_at: '2026-10-13T12:00:00.000Z',
+    updated_at: '2026-10-13T12:00:01.000Z',
+    ...overrides,
+  }
 }
 
 function createDeferredPromise<T>() {
@@ -94,6 +118,16 @@ jest.mock('@/services/resume', () => ({
     analyzeResume: jest.fn(),
     matchResume: jest.fn(),
   },
+}))
+
+jest.mock('@/services/backgroundGeneration', () => ({
+  generationTasksApi: {
+    create: jest.fn(),
+    list: jest.fn(),
+    get: jest.fn(),
+    action: jest.fn(),
+  },
+  createGenerationRequestId: jest.fn(() => '22222222-2222-4222-8222-222222222222'),
 }))
 
 jest.mock('@/services/runtime-config', () => ({
@@ -163,6 +197,7 @@ describe('CreatePage', () => {
   const mockChooseMessageFile = Taro.chooseMessageFile as jest.Mock
   const mockNavigateBack = Taro.navigateBack as jest.Mock
   const mockNavigateTo = Taro.navigateTo as jest.Mock
+  const mockReLaunch = Taro.reLaunch as jest.Mock
   const mockShowToast = Taro.showToast as jest.Mock
   const mockShowModal = Taro.showModal as jest.Mock
   const mockReadFile = jest.fn()
@@ -174,6 +209,9 @@ describe('CreatePage', () => {
   const mockParseResumeFile = parseApi.parseResumeFile as jest.Mock
   const mockAnalyzeResume = resumeApi.analyzeResume as jest.Mock
   const mockMatchResume = resumeApi.matchResume as jest.Mock
+  const mockCreateGenerationTask = generationTasksApi.create as jest.Mock
+  const mockGetGenerationTask = generationTasksApi.get as jest.Mock
+  const mockGenerationTaskAction = generationTasksApi.action as jest.Mock
   const mockSaveLatestResultSession = saveLatestResultSession as jest.Mock
   const mockExpoImagePicker = jest.requireMock('expo-image-picker') as {
     requestMediaLibraryPermissionsAsync: jest.Mock
@@ -189,9 +227,6 @@ describe('CreatePage', () => {
       await Promise.resolve()
     })
   }
-
-  const getLastSavedResultSession = () =>
-    mockSaveLatestResultSession.mock.calls.at(-1)?.[0]
 
   const expectJobDescriptionInputValue = (value: string) => {
     expect((screen.getByTestId('job-description-input') as HTMLTextAreaElement).value)
@@ -274,6 +309,11 @@ describe('CreatePage', () => {
     })
     mockAnalyzeResume.mockResolvedValue(defaultProcessResult.analysis)
     mockMatchResume.mockResolvedValue(defaultProcessResult.matching)
+    mockCreateGenerationTask.mockResolvedValue(createGenerationTask())
+    mockGetGenerationTask.mockResolvedValue(createGenerationTask())
+    mockGenerationTaskAction.mockImplementation(async (id: string, action: string) =>
+      createGenerationTask({id, background: action === 'background', status: action === 'cancel' ? 'cancelled' : 'completed'}),
+    )
     mockSaveLatestResultSession.mockResolvedValue(undefined)
   })
 
@@ -449,7 +489,8 @@ describe('CreatePage', () => {
     })
   })
 
-  test('源简历卡片删除后直接进入空白上传编辑页', async () => {
+  test.each(['success', 'missing'])('源简历删除 %s 后直接进入空白上传编辑页', async status => {
+    if (status === 'missing') mockDeleteSourceResume.mockRejectedValue(new RequestError('源简历不存在或已删除', 'SOURCE_RESUME_NOT_FOUND', 404))
     const existingSourceResume = {
       id: 'source-resume-1',
       title: 'Jeremy Smith',
@@ -508,7 +549,7 @@ describe('CreatePage', () => {
     })
   })
 
-  test('第二步提交会调用分析接口并跳转到结果页', async () => {
+  test('第二步提交创建后台任务并通过历史记录进入结果页', async () => {
     const existingSourceResume = {
       id: 'source-resume-1',
       title: 'Jeremy Smith',
@@ -542,30 +583,17 @@ describe('CreatePage', () => {
     })
 
     await waitFor(() => {
-      expect(mockAnalyzeResume).toHaveBeenCalledWith(
-        '# Jeremy Smith\n\n## Experience\n- Built growth platform',
-      )
-      expect(getLastSavedResultSession()).toEqual(
-        expect.objectContaining({
-          context: expect.objectContaining({
-            company: 'OpenAI',
-            position: '前端工程师',
-            jdContent:
-              '公司名称：OpenAI\n\n岗位名称：前端工程师\n\n负责复杂前端应用开发与架构设计，推动高质量交付并优化体验。',
-          }),
-          progress: {
-            analysis: 'done',
-            matching: 'done',
-            optimized: 'pending',
-            interview: 'pending',
-          },
-        }),
-      )
-    })
-
-    await waitFor(() => {
+      expect(mockCreateGenerationTask).toHaveBeenCalledWith(expect.objectContaining({
+        resume_markdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+        jd_text:
+          '公司名称：OpenAI\n\n岗位名称：前端工程师\n\n负责复杂前端应用开发与架构设计，推动高质量交付并优化体验。',
+        company: 'OpenAI',
+        position: '前端工程师',
+      }))
+      expect(mockAnalyzeResume).not.toHaveBeenCalled()
+      expect(mockSaveLatestResultSession).not.toHaveBeenCalled()
       expect(mockNavigateTo).toHaveBeenCalledWith({
-        url: '/pages/result/index',
+        url: `/pages/result/index?id=JD2026101300001&jobId=${DEFAULT_GENERATION_TASK_ID}`,
       })
     })
 
@@ -584,8 +612,16 @@ describe('CreatePage', () => {
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
     }
-    const deferred = createDeferredPromise<typeof defaultProcessResult.analysis>()
-    mockAnalyzeResume.mockReturnValue(deferred.promise)
+    mockCreateGenerationTask.mockResolvedValueOnce(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+    }))
+    mockGetGenerationTask.mockResolvedValue(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+    }))
     mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
     await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
     mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
@@ -612,24 +648,14 @@ describe('CreatePage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
       expect(screen.getByText('正在分析')).toBeTruthy()
-      expect(mockAnalyzeResume).toHaveBeenCalledWith(existingSourceResume.resumeMarkdown)
+      expect(mockCreateGenerationTask).toHaveBeenCalledWith(expect.objectContaining({
+        resume_markdown: existingSourceResume.resumeMarkdown,
+      }))
       expect(useResumeWorkspaceStore.getState().generationStatus).toBe('analyzing')
-    })
-
-    await act(async () => {
-      deferred.resolve(defaultProcessResult.analysis)
-      await Promise.resolve()
-    })
-
-    await waitFor(() => {
-      expect(mockNavigateTo).toHaveBeenCalledWith({
-        url: '/pages/result/index',
-      })
-      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('matching')
     })
   })
 
-  test('分析态取消后应忽略晚到的生成结果', async () => {
+  test('分析态取消后应取消任务且不跳转结果页', async () => {
     const existingSourceResume = {
       id: 'source-resume-1',
       title: 'Jeremy Smith',
@@ -639,8 +665,16 @@ describe('CreatePage', () => {
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
     }
-    const deferred = createDeferredPromise<typeof defaultProcessResult.analysis>()
-    mockAnalyzeResume.mockReturnValue(deferred.promise)
+    mockCreateGenerationTask.mockResolvedValueOnce(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+    }))
+    mockGetGenerationTask.mockResolvedValue(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+    }))
     mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
     await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
     mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
@@ -660,7 +694,9 @@ describe('CreatePage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
-      expect(mockAnalyzeResume).toHaveBeenCalledWith(existingSourceResume.resumeMarkdown)
+      expect(mockCreateGenerationTask).toHaveBeenCalledWith(expect.objectContaining({
+        resume_markdown: existingSourceResume.resumeMarkdown,
+      }))
     })
 
     fireEvent.click(screen.getByTestId('analysis-cancel-action'))
@@ -670,13 +706,106 @@ describe('CreatePage', () => {
       expect(useResumeWorkspaceStore.getState().generationStatus).toBe('idle')
     })
 
+    await waitFor(() => {
+      expect(mockGenerationTaskAction).toHaveBeenCalledWith(DEFAULT_GENERATION_TASK_ID, 'cancel')
+      expect(mockNavigateTo).not.toHaveBeenCalled()
+    })
+  })
+
+  test('后台任务创建尚未返回时取消也会取消任务', async () => {
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    const deferredTask = createDeferredPromise<ReturnType<typeof createGenerationTask>>()
+    mockCreateGenerationTask.mockReturnValueOnce(deferredTask.promise)
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
+
+    await renderPage()
+
+    fireEvent.change(screen.getByTestId('job-description-input'), {
+      target: {value: '负责复杂前端应用开发与架构设计，推动高质量交付并优化体验。'},
+    })
+
     await act(async () => {
-      deferred.resolve(defaultProcessResult.analysis)
+      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
       await Promise.resolve()
     })
 
     await waitFor(() => {
+      expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('analysis-cancel-action'))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('create-analysis-stage')).toBeNull()
+      expect(useResumeWorkspaceStore.getState().generationStatus).toBe('idle')
+    })
+
+    await act(async () => {
+      deferredTask.resolve(createGenerationTask({status: 'queued', stage: 'analysis', history_id: null}))
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(mockGenerationTaskAction).toHaveBeenCalledWith(DEFAULT_GENERATION_TASK_ID, 'cancel')
       expect(mockNavigateTo).not.toHaveBeenCalled()
+    })
+  })
+
+  test('生成态可交接后台并返回首页', async () => {
+    mockCreateGenerationTask.mockResolvedValueOnce(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+    }))
+    mockGetGenerationTask.mockResolvedValue(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+    }))
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
+
+    await renderPage()
+    fireEvent.change(screen.getByTestId('job-description-input'), {
+      target: {value: '负责复杂前端应用开发与架构设计，推动高质量交付并优化体验。'},
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('analysis-background-action')).toBeTruthy()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('analysis-background-action'))
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(mockGenerationTaskAction).toHaveBeenCalledWith(DEFAULT_GENERATION_TASK_ID, 'background')
+      expect(mockReLaunch).toHaveBeenCalledWith({
+        url: `/pages/index/index?backgroundTaskId=${DEFAULT_GENERATION_TASK_ID}`,
+      })
     })
   })
 
@@ -726,17 +855,13 @@ describe('CreatePage', () => {
     })
 
     await waitFor(() => {
-      expect(mockAnalyzeResume).toHaveBeenCalledWith(
-        '# Jeremy Smith\n\n## Experience\n- Built growth platform',
-      )
+      expect(mockCreateGenerationTask).toHaveBeenCalledWith(expect.objectContaining({
+        resume_markdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+        company: '小米集团有限公司',
+      }))
+      expect(mockCreateGenerationTask.mock.calls.at(-1)?.[0].jd_text).toContain('岗位职责：负责增长平台体验优化')
+      expect(mockCreateGenerationTask.mock.calls.at(-1)?.[0].jd_text).toContain('公司名称：小米集团有限公司')
     })
-
-    expect(getLastSavedResultSession()?.context.jdContent).toContain(
-      '岗位职责：负责增长平台体验优化',
-    )
-    expect(getLastSavedResultSession()?.context.jdContent).toContain(
-      '公司名称：小米集团有限公司',
-    )
 
     await waitFor(() => {
       expect(screen.getByText('开始生成最佳简历')).toBeTruthy()
@@ -800,16 +925,12 @@ describe('CreatePage', () => {
     })
 
     await waitFor(() => {
-      expect(getLastSavedResultSession()).toEqual(
-        expect.objectContaining({
-          context: expect.objectContaining({
-            company: '芒果 TV',
-            position: 'AI创新产品经理',
-            location: '长沙',
-            jdContent: expect.stringContaining('公司名称：芒果 TV'),
-          }),
-        }),
-      )
+      expect(mockCreateGenerationTask).toHaveBeenCalledWith(expect.objectContaining({
+        company: '芒果 TV',
+        position: 'AI创新产品经理',
+        location: '长沙',
+        jd_text: expect.stringContaining('公司名称：芒果 TV'),
+      }))
     })
   })
 
@@ -887,12 +1008,10 @@ describe('CreatePage', () => {
     })
 
     await waitFor(() => {
-      expect(getLastSavedResultSession()?.context).toEqual(
-        expect.objectContaining({
-          company: '用户编辑的公司',
-          location: '用户编辑的城市',
-        }),
-      )
+      expect(mockCreateGenerationTask).toHaveBeenCalledWith(expect.objectContaining({
+        company: '用户编辑的公司',
+        location: '用户编辑的城市',
+      }))
     })
   })
 
@@ -1066,14 +1185,12 @@ describe('CreatePage', () => {
     })
 
     await waitFor(() => {
-      expect(mockAnalyzeResume).toHaveBeenCalled()
+      expect(mockCreateGenerationTask).toHaveBeenCalledWith(expect.objectContaining({
+        jd_text: expect.stringContaining('负责 AI 产品设计与跨团队协作，推动复杂功能落地。'),
+      }))
+      expect(mockCreateGenerationTask.mock.calls.at(-1)?.[0].jd_text).toContain('岗位描述附件：jd-shot.png')
+      expect(mockCreateGenerationTask.mock.calls.at(-1)?.[0].jd_text).not.toContain('岗位职责：负责增长平台体验优化')
     })
-
-    expect(getLastSavedResultSession()?.context.jdContent).toContain(
-      '负责 AI 产品设计与跨团队协作，推动复杂功能落地。',
-    )
-    expect(getLastSavedResultSession()?.context.jdContent).toContain('岗位描述附件：jd-shot.png')
-    expect(getLastSavedResultSession()?.context.jdContent).not.toContain('岗位职责：负责增长平台体验优化')
   })
 
   test('第二步可只输入岗位描述提交，无需上传截图', async () => {
@@ -1102,13 +1219,11 @@ describe('CreatePage', () => {
     fireEvent.click(screen.getByTestId('create-flow-primary-action'))
 
     await waitFor(() => {
-      expect(mockAnalyzeResume).toHaveBeenCalled()
+      expect(mockCreateGenerationTask).toHaveBeenCalledWith(expect.objectContaining({
+        jd_text: expect.stringContaining('负责复杂前端体验工程，推进组件库、性能优化和跨端交付。'),
+      }))
+      expect(mockCreateGenerationTask.mock.calls.at(-1)?.[0].jd_text).not.toContain('岗位描述附件')
     })
-
-    expect(getLastSavedResultSession()?.context.jdContent).toContain(
-      '负责复杂前端体验工程，推进组件库、性能优化和跨端交付。',
-    )
-    expect(getLastSavedResultSession()?.context.jdContent).not.toContain('岗位描述附件')
     expect(mockParseJobDescriptionImage).not.toHaveBeenCalled()
   })
 
@@ -1213,6 +1328,10 @@ describe('CreatePage', () => {
   })
 
   test('点击关闭按钮会返回上一页', async () => {
+    jest.spyOn(Taro, 'getCurrentPages').mockReturnValue([
+      {route: 'pages/index/index'},
+      {route: 'pages/create/index'},
+    ] as ReturnType<typeof Taro.getCurrentPages>)
     await renderPage()
 
     fireEvent.click(screen.getByTestId('create-flow-close'))

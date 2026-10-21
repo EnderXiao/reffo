@@ -69,7 +69,7 @@
   position: absolute;
   z-index: 30;
   top: max(24px, env(safe-area-inset-top));
-  left: 32px;
-  right: 32px;
+  left: max(32px, calc((100vw - var(--reffo-wide-frame-width, 430px)) / 2 + 32px));
+  right: max(32px, calc((100vw - var(--reffo-wide-frame-width, 430px)) / 2 + 32px));
   width: auto;
 }

@@ -349,6 +349,49 @@ describe('ApiClient', () => {
         }
       }
     });
+
+    test('开启日志时业务错误保留后端诊断详情', async () => {
+      const details = {
+        run_id: 'run-123',
+        error_code: 'V5_SUPPORTED_WRITING_BLOCKED',
+        issue_codes: ['WRITER_COLLABORATOR_ADDED'],
+      }
+      const errorLog = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+      mockRequest.mockResolvedValueOnce({
+        data: {
+          success: false,
+          error: {
+            code: 'GENERATE_FAILED',
+            message: '简历生成失败，请稍后重试',
+            details,
+          },
+        },
+        statusCode: 422,
+        header: {},
+        cookies: [],
+        errMsg: '',
+      })
+      const client = new ApiClient({
+        baseURL: 'http://localhost:3000/api/v1',
+        enableLog: true,
+        retry: false,
+      })
+
+      try {
+        await expect(client.post('/generate', {})).rejects.toMatchObject({
+          code: 'GENERATE_FAILED',
+          statusCode: 422,
+          response: details,
+        })
+        expect(errorLog).toHaveBeenCalledWith('[API Error]', expect.objectContaining({
+          code: 'GENERATE_FAILED',
+          statusCode: 422,
+          details,
+        }))
+      } finally {
+        errorLog.mockRestore()
+      }
+    });
   });
 
   describe('响应格式处理', () => {

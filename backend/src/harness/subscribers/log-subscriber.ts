@@ -20,6 +20,7 @@ const LOGGABLE_EVENTS = new Set<HarnessEvent['type']>([
   'provider.responded',
   'output.parsed',
   'output.validated',
+  'writing.validation.observed',
   'evaluation.completed',
 ])
 

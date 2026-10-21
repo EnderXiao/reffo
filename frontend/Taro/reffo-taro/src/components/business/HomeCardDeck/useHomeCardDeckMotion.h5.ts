@@ -10,6 +10,7 @@ import {
   H5_RAIL_ITEM_HEIGHT,
   buildH5DeckDragVars,
   clamp,
+  clearH5DeckDragCardStyles,
   modulo,
   resolveH5DeckDragPresentation,
   shouldAdvanceH5Deck,
@@ -50,9 +51,12 @@ export default function useHomeCardDeckMotion({
   const deckFlipSnapshotRef = useRef<Map<string, H5DeckCardSnapshot> | null>(null)
   const deckFlipAnimationsRef = useRef<Map<string, Animation>>(new Map())
   const firstInteractionTimerRef = useRef<number | null>(null)
+  const deckResetTimerRef = useRef<number | null>(null)
   const railAnimatingRef = useRef(false)
   const touchStartYRef = useRef<number | null>(null)
   const hasInteractedRef = useRef(false)
+  const draggedCardIdRef = useRef<string | null>(null)
+  const finishDeckDragRef = useRef<(isCancel?: boolean) => void>(() => undefined)
   const dragStartRef = useRef({
     pointerId: null as number | null,
     x: 0,
@@ -64,7 +68,7 @@ export default function useHomeCardDeckMotion({
   const dragStateRef = useRef(dragState)
   const resolvedActiveIndex = cards.length > 0 ? modulo(activeRailIndex, cards.length) : 0
   const activeCard = cards[resolvedActiveIndex]
-  const isDeckInteractive = !isCreateMode && cards.length > 1
+  const isDeckInteractive = !isCreateMode && cards.length > 0
   const railCenterOffset = H5_RAIL_HEIGHT / 2
   const railTranslateY = railCenterOffset - H5_RAIL_BUFFER_COUNT * H5_RAIL_ITEM_HEIGHT + railMotionY
   const dragVars = buildH5DeckDragVars(dragState)
@@ -262,9 +266,16 @@ export default function useHomeCardDeckMotion({
     stackElement.classList.toggle('reffo-home-deck__stack--settling', state.phase === 'settling')
     stackElement.classList.toggle('reffo-home-deck__stack--exiting', state.phase === 'exiting')
 
-    const activeCardElement = stackElement.querySelector('.reffo-home-card--draggable') as HTMLElement | null
+    const cardElements = Array.from(stackElement.querySelectorAll<HTMLElement>('[data-home-card-id]'))
+    const draggedCardId = draggedCardIdRef.current
+    const activeCardElement = (draggedCardId
+      ? cardElements.find(element => element.dataset.homeCardId === draggedCardId)
+      : cardElements.find(element => element.classList.contains('reffo-home-card--draggable'))) ?? null
 
     if (!activeCardElement) {
+      if (state.phase !== 'dragging') {
+        cardElements.forEach(clearH5DeckDragCardStyles)
+      }
       return
     }
 
@@ -276,6 +287,11 @@ export default function useHomeCardDeckMotion({
       activeCardElement.style.setProperty('--card-highlight-angle', presentation.activeCard.highlightAngle)
       activeCardElement.style.setProperty('--card-highlight-x', presentation.activeCard.highlightX)
       activeCardElement.style.setProperty('--card-highlight-y', presentation.activeCard.highlightY)
+      activeCardElement.style.setProperty('--foil-angle', presentation.activeCard.highlightAngle)
+      activeCardElement.style.setProperty('--foil-spectrum-shift', `${(state.x / H5_CARD_DRAG_MAX * 18).toFixed(1)}%`)
+      activeCardElement.style.setProperty('--foil-strength', String(Math.min(1, presentation.activeCard.highlightStrength)))
+      activeCardElement.style.setProperty('--foil-glare-opacity', String(Math.min(0.96, 0.58 + presentation.activeCard.highlightStrength * 0.28)))
+      activeCardElement.style.setProperty('--foil-sweep-opacity', String(Math.min(0.92, 0.32 + presentation.activeCard.highlightStrength * 0.42)))
       activeCardElement.style.transition = 'none'
       activeCardElement.style.filter = presentation.activeCard.filter
       activeCardElement.style.transform = presentation.activeCard.transform(cardLeft, cardTop)
@@ -287,19 +303,18 @@ export default function useHomeCardDeckMotion({
       activeCardElement.style.removeProperty('--card-highlight-angle')
       activeCardElement.style.removeProperty('--card-highlight-x')
       activeCardElement.style.removeProperty('--card-highlight-y')
+      activeCardElement.style.removeProperty('--foil-angle')
+      activeCardElement.style.removeProperty('--foil-spectrum-shift')
+      activeCardElement.style.removeProperty('--foil-strength')
+      activeCardElement.style.removeProperty('--foil-glare-opacity')
+      activeCardElement.style.removeProperty('--foil-sweep-opacity')
       activeCardElement.style.transition = 'transform 260ms cubic-bezier(0.2, 0.92, 0.28, 1)'
       activeCardElement.style.removeProperty('filter')
       activeCardElement.style.removeProperty('transform')
       return
     }
 
-    activeCardElement.style.removeProperty('--card-highlight-strength')
-    activeCardElement.style.removeProperty('--card-highlight-angle')
-    activeCardElement.style.removeProperty('--card-highlight-x')
-    activeCardElement.style.removeProperty('--card-highlight-y')
-    activeCardElement.style.removeProperty('transition')
-    activeCardElement.style.removeProperty('transform')
-    activeCardElement.style.removeProperty('filter')
+    cardElements.forEach(clearH5DeckDragCardStyles)
   }
 
   const stepRail = (delta: number) => {
@@ -348,9 +363,13 @@ export default function useHomeCardDeckMotion({
     const now = performance.now()
 
     if (pointerId != null) {
-      stackRef.current?.setPointerCapture?.(pointerId)
+      try {
+        stackRef.current?.setPointerCapture?.(pointerId)
+      } catch {
+      }
     }
 
+    draggedCardIdRef.current = activeCard?.id ?? null
     dragStartRef.current = {
       pointerId,
       x: clientX,
@@ -410,6 +429,7 @@ export default function useHomeCardDeckMotion({
       const idleState: H5DeckDragState = {x: 0, y: 0, phase: 'idle'}
 
       dragStateRef.current = idleState
+      draggedCardIdRef.current = null
       applyDeckDragVisuals(idleState)
       setDragState(idleState)
       setRecyclingCardId(null)
@@ -428,10 +448,14 @@ export default function useHomeCardDeckMotion({
       window.clearTimeout(deckSettleTimerRef.current)
       deckSettleTimerRef.current = null
     }
+    if (deckResetTimerRef.current != null) {
+      window.clearTimeout(deckResetTimerRef.current)
+      deckResetTimerRef.current = null
+    }
 
     setRecyclingCardId(null)
 
-    window.setTimeout(() => {
+    deckResetTimerRef.current = window.setTimeout(() => {
       setDragState(current => {
         if (current.phase !== 'settling') {
           return current
@@ -440,9 +464,11 @@ export default function useHomeCardDeckMotion({
         const idleState: H5DeckDragState = {x: 0, y: 0, phase: 'idle'}
 
         dragStateRef.current = idleState
+        draggedCardIdRef.current = null
         applyDeckDragVisuals(idleState)
         return idleState
       })
+      deckResetTimerRef.current = null
     }, 260)
   }
 
@@ -458,7 +484,11 @@ export default function useHomeCardDeckMotion({
     const velocityX = currentDrag.x / elapsed
 
     if (start.pointerId != null) {
-      stackRef.current?.releasePointerCapture?.(start.pointerId)
+      try {
+        stackRef.current?.releasePointerCapture?.(start.pointerId)
+      } catch {
+      }
+      dragStartRef.current = {...start, pointerId: null}
     }
 
     if (isCancel) {
@@ -497,6 +527,50 @@ export default function useHomeCardDeckMotion({
 
     finishDeckDrag(nativeEvent.type === 'pointercancel')
   }
+
+  useEffect(() => {
+    finishDeckDragRef.current = finishDeckDrag
+  }, [finishDeckDrag])
+
+  useEffect(() => {
+    const finishMatchingPointer = (event: PointerEvent) => {
+      if (dragStateRef.current.phase !== 'dragging') {
+        return
+      }
+
+      const pointerId = dragStartRef.current.pointerId
+
+      if (pointerId != null && event.pointerId != null && pointerId !== event.pointerId) {
+        return
+      }
+
+      finishDeckDragRef.current(event.type === 'pointercancel')
+    }
+    const cancelDeckDrag = () => {
+      if (dragStateRef.current.phase === 'dragging') {
+        finishDeckDragRef.current(true)
+      }
+    }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        cancelDeckDrag()
+      }
+    }
+
+    window.addEventListener('pointerup', finishMatchingPointer, true)
+    window.addEventListener('pointercancel', finishMatchingPointer, true)
+    window.addEventListener('lostpointercapture', cancelDeckDrag, true)
+    window.addEventListener('blur', cancelDeckDrag)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('pointerup', finishMatchingPointer, true)
+      window.removeEventListener('pointercancel', finishMatchingPointer, true)
+      window.removeEventListener('lostpointercapture', cancelDeckDrag, true)
+      window.removeEventListener('blur', cancelDeckDrag)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   useEffect(() => {
     if (!cards.length) {
@@ -577,6 +651,9 @@ export default function useHomeCardDeckMotion({
 
       if (deckSettleTimerRef.current != null) {
         window.clearTimeout(deckSettleTimerRef.current)
+      }
+      if (deckResetTimerRef.current != null) {
+        window.clearTimeout(deckResetTimerRef.current)
       }
 
       deckFlipAnimationsRef.current.forEach(animation => animation.cancel())

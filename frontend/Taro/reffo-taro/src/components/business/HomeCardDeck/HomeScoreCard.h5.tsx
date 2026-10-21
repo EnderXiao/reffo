@@ -4,12 +4,15 @@ import {resolveResumeGrade} from '@/utils/score-grade'
 import type {HomeCardItem} from './shared'
 import {deriveCardPalette} from './palette'
 import classNames from 'classnames'
-import {lazy, Suspense, useEffect, useMemo, useState} from 'react'
+import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {HOME_PAGE_CONTENT} from '@/pages/index/constants/content'
 import ResumeUploadIcon, {
   type ResumeUploadIconStatus,
 } from '@/components/business/ResumeUploadIcon/index.h5'
 import {CardGlass, CardTexture} from './CardMaterial.h5'
+import {scheduleIdle} from '@/utils/schedule-idle'
+import {storage} from '@/utils/storage'
+import UnreadCardFoil from './UnreadCardFoil.h5'
 
 const PremiumCardEffect = lazy(() => import('./PremiumCardEffect.h5'))
 const CREATE_CARD_PALETTE = deriveCardPalette('#1C77EB')
@@ -28,6 +31,41 @@ const CREATE_CARD_ITEM: HomeCardItem = {
   borderColor: '#1c77eb',
   tone: CREATE_CARD_PALETTE.tone,
   strategyBody: '',
+}
+const startedStickerReveals = new Set<string>()
+
+function stickerRevealStorageKey(taskId: string) {
+  return `reffo.home-sticker-revealed.${taskId}`
+}
+
+function hasStartedStickerReveal(taskId: string) {
+  return Boolean(taskId) && startedStickerReveals.has(taskId)
+}
+
+function markStickerRevealStarted(taskId: string) {
+  if (!taskId) {
+    return
+  }
+
+  startedStickerReveals.add(taskId)
+  void storage.setItem(stickerRevealStorageKey(taskId), '1').catch(() => undefined)
+}
+
+async function restoreStickerRevealStarted(taskId: string) {
+  if (!taskId || hasStartedStickerReveal(taskId)) {
+    return true
+  }
+
+  try {
+    const started = await storage.getItem(stickerRevealStorageKey(taskId))
+    if (started === '1') {
+      startedStickerReveals.add(taskId)
+      return true
+    }
+  } catch {
+  }
+
+  return false
 }
 
 interface HomeScoreCardProps {
@@ -167,7 +205,75 @@ export default function HomeScoreCard({
   onUploadRemove,
 }: HomeScoreCardProps) {
   const [isValueMarqueeReady, setIsValueMarqueeReady] = useState(false)
+  const [isPremiumReady, setIsPremiumReady] = useState(false)
   const card = variant === 'create' ? CREATE_CARD_ITEM : inputCard
+  const stickerTaskId = card?.generationTaskId || card?.id || ''
+  const [isStickerRevealed, setIsStickerRevealed] = useState(false)
+  const [isStickerDismissed, setIsStickerDismissed] = useState(() => hasStartedStickerReveal(stickerTaskId))
+  const stickerRevealTimerRef = useRef<number>()
+  const startStickerReveal = useCallback((taskId: string) => {
+    if (!taskId || stickerRevealTimerRef.current) {
+      return
+    }
+
+    markStickerRevealStarted(taskId)
+    setIsStickerRevealed(true)
+    setIsStickerDismissed(false)
+    stickerRevealTimerRef.current = window.setTimeout(() => {
+      stickerRevealTimerRef.current = undefined
+      setIsStickerRevealed(false)
+      setIsStickerDismissed(true)
+    }, 1080)
+  }, [])
+
+  useEffect(() => () => {
+    if (stickerRevealTimerRef.current) {
+      window.clearTimeout(stickerRevealTimerRef.current)
+      stickerRevealTimerRef.current = undefined
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    void restoreStickerRevealStarted(stickerTaskId).then(started => {
+      if (active && started && !stickerRevealTimerRef.current) {
+        setIsStickerRevealed(false)
+        setIsStickerDismissed(true)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [stickerTaskId])
+
+  useEffect(() => {
+    const status = card?.generationStatus
+
+    if (status === 'generating' || status === 'failed') {
+      if (stickerRevealTimerRef.current) {
+        window.clearTimeout(stickerRevealTimerRef.current)
+        stickerRevealTimerRef.current = undefined
+      }
+      setIsStickerRevealed(false)
+      setIsStickerDismissed(false)
+      return
+    }
+
+    if (status !== 'completed' || !card?.unread || !active || depth !== 0) {
+      return
+    }
+
+    if (hasStartedStickerReveal(stickerTaskId)) {
+      if (!stickerRevealTimerRef.current) {
+        setIsStickerRevealed(false)
+        setIsStickerDismissed(true)
+      }
+      return
+    }
+
+    startStickerReveal(stickerTaskId)
+  }, [active, card?.generationStatus, card?.unread, depth, startStickerReveal, stickerTaskId])
 
   useEffect(() => {
     setIsValueMarqueeReady(false)
@@ -185,6 +291,21 @@ export default function HomeScoreCard({
     }
   }, [active, depth, variant, card?.id])
 
+  useEffect(() => {
+    const shouldDeferPremium = visualTier === 'premium'
+      && active
+      && depth === 0
+      && variant !== 'generating'
+
+    if (!shouldDeferPremium) {
+      setIsPremiumReady(false)
+      return undefined
+    }
+
+    setIsPremiumReady(false)
+    return scheduleIdle(() => setIsPremiumReady(true), 1800)
+  }, [active, depth, variant, visualTier])
+
   if (!card) {
     return null
   }
@@ -192,13 +313,19 @@ export default function HomeScoreCard({
   const isDark = card.tone === 'dark'
   const isCreate = variant === 'create'
   const isGenerating = variant === 'generating'
+  const isTaskPending = card.generationStatus === 'generating' || card.generationStatus === 'failed'
+  const isStickerCovered = !isGenerating && (isTaskPending
+    || (card.generationStatus === 'completed' && card.unread && !isStickerRevealed && !isStickerDismissed))
+  const shouldRenderSticker = !isGenerating && (isTaskPending
+    || (card.generationStatus === 'completed' && card.unread && !isStickerDismissed))
   const isQueue3d = presentation === 'queue3d'
   const isQueueUpload = isQueue3d && card.queueCardKind === 'upload'
   const isQueueUploadComplete = isQueueUpload && uploadStatus === 'success' && Boolean(uploadFile)
   const normalizedUploadProgress = Math.max(0, Math.min(100, uploadProgress))
   const isQueueResume = isQueue3d && card.queueCardKind === 'resume' && card.resumeProfile
+  const hasFoil = Boolean(card.unread || isTaskPending)
   const hasWrappedCompanyName = !isCreate && !isGenerating && isLikelyWrappedCompanyName(card.company)
-  const scoreGrade = resolveResumeGrade(card.score)
+  const scoreGrade = resolveResumeGrade(card.score || (isTaskPending ? 88 : 0))
   const scoreGradeClass = scoreGrade === 'A+' ? 'a' : scoreGrade.toLowerCase()
   const generatingMark = isGenerating ? resolveGeneratingMark(card) : ''
   const queueAvatarSrc = useMemo(() => buildQueueAvatarSrc(card), [card])
@@ -210,6 +337,7 @@ export default function HomeScoreCard({
     '--card-bg': card.surfaceColor,
     '--card-accent': card.primaryColor,
     '--card-logo': card.logoColor,
+    '--card-stack': card.stackColor,
     '--card-border': card.borderColor,
     '--card-opacity': String(1 - depth * 0.035),
     zIndex: 20 - depth,
@@ -221,6 +349,44 @@ export default function HomeScoreCard({
       color={card.logoColor}
       className='reffo-home-card__resume-glass-texture'
     />
+  )
+  const renderDefaultCardFace = () => (
+    <>
+      <View className={classNames('reffo-home-card__score', {
+        'reffo-home-card__score--transition': isTaskPending || card.unread,
+        'reffo-home-card__score--waiting': isTaskPending && !isStickerCovered,
+      })}>
+        {isTaskPending || card.unread ? (
+          <View className='reffo-home-card__score-waiting'>
+            <Text className='reffo-home-card__waiting-label'>
+              {card.generationStatus === 'failed' ? '生成失败' : '等待中'}
+            </Text>
+          </View>
+        ) : null}
+        <View className='reffo-home-card__score-result'>
+          <Text className='reffo-home-card__grade-letter'>{scoreGrade}</Text>
+          <Text className='reffo-home-card__grade-meta'>岗位匹配度</Text>
+        </View>
+      </View>
+      <CardGlass>
+        <View className='reffo-home-card__field'>
+          <Text className='reffo-home-card__label'>公司</Text>
+          <Text className='reffo-home-card__value reffo-home-card__company'>{card.company}</Text>
+        </View>
+        <View className='reffo-home-card__field'>
+          <Text className='reffo-home-card__label'>岗位</Text>
+          {renderCardValue(card.role, 'reffo-home-card__role', isValueMarqueeReady)}
+        </View>
+        <View className='reffo-home-card__field'>
+          <Text className='reffo-home-card__label'>工作地</Text>
+          {renderCardValue(card.location, 'reffo-home-card__location', isValueMarqueeReady)}
+        </View>
+        <View className='reffo-home-card__date-row'>
+          <Text className='reffo-home-card__date-label'>生成日期</Text>
+          <Text className='reffo-home-card__date'>{card.dateLabel}</Text>
+        </View>
+      </CardGlass>
+    </>
   )
 
   return (
@@ -234,6 +400,11 @@ export default function HomeScoreCard({
           'reffo-home-card--active': active,
           'reffo-home-card--create': isCreate,
           'reffo-home-card--generating': isGenerating,
+          'reffo-home-card--task-pending': isTaskPending,
+          'reffo-home-card--task-failed': card.generationStatus === 'failed',
+          'reffo-home-card--unread': card.unread || isStickerCovered,
+          'reffo-home-card--sticker-covered': isStickerCovered,
+          'reffo-home-card--sticker-revealed': isStickerRevealed,
           'reffo-home-card--queue3d': isQueue3d,
           'reffo-home-card--queue-upload': isQueueUpload,
           'reffo-home-card--queue-resume': isQueueResume,
@@ -243,6 +414,8 @@ export default function HomeScoreCard({
       )}
       style={cssVars}
       onClick={onClick}
+      aria-disabled={card.generationStatus === 'generating' || undefined}
+      aria-busy={card.generationStatus === 'generating' || undefined}
     >
       {isQueue3d ? (
         <View className='reffo-home-card__thickness' aria-hidden='true'>
@@ -252,8 +425,9 @@ export default function HomeScoreCard({
           <View className='reffo-home-card__thickness-surface-shadow' />
         </View>
       ) : null}
+      {!isGenerating ? <View className='reffo-home-card__reveal-glow' aria-hidden='true' /> : null}
       <View className='reffo-home-card__surface'>
-        {visualTier === 'premium' ? (
+        {visualTier === 'premium' && isPremiumReady && !card.unread && !isTaskPending ? (
           <Suspense fallback={null}>
             <PremiumCardEffect
               tone={isDark ? 'dark' : 'light'}
@@ -262,8 +436,19 @@ export default function HomeScoreCard({
             />
           </Suspense>
         ) : null}
-        <View className='reffo-home-card__handle' />
-        <CardTexture source={card} color={card.logoColor} />
+        {!isGenerating ? <>
+          <View className='reffo-home-card__handle' />
+          <CardTexture source={card} color={card.logoColor} />
+        </> : null}
+        {hasFoil ? <UnreadCardFoil active={active && depth === 0} tier={visualTier} /> : null}
+        {isTaskPending || card.unread ? (
+          <View className={classNames('reffo-home-card__unread', {
+            'reffo-home-card__unread--visible': card.unread || isStickerCovered,
+          })}>
+            <View className='reffo-home-card__unread-dot' />
+            <Text>新简历 · 未读</Text>
+          </View>
+        ) : null}
         {isQueueUpload ? (
           <View className='reffo-home-card__queue-face-stack'>
             <View className='reffo-home-card__queue-face reffo-home-card__queue-face--front reffo-home-card__upload-front'>
@@ -430,35 +615,21 @@ export default function HomeScoreCard({
                   </CardGlass>
                 </View>
               </View>
-            ) : (
-              <>
-                <View className='reffo-home-card__score'>
-                  <Text className='reffo-home-card__grade-letter'>{scoreGrade}</Text>
-                  <Text className='reffo-home-card__grade-meta'>评级</Text>
-                </View>
-                <CardGlass>
-                  <View className='reffo-home-card__field'>
-                    <Text className='reffo-home-card__label'>公司</Text>
-                    <Text className='reffo-home-card__value reffo-home-card__company'>{card.company}</Text>
-                  </View>
-                  <View className='reffo-home-card__field'>
-                    <Text className='reffo-home-card__label'>岗位</Text>
-                    {renderCardValue(card.role, 'reffo-home-card__role', isValueMarqueeReady)}
-                  </View>
-                  <View className='reffo-home-card__field'>
-                    <Text className='reffo-home-card__label'>工作地</Text>
-                    {renderCardValue(card.location, 'reffo-home-card__location', isValueMarqueeReady)}
-                  </View>
-                  <View className='reffo-home-card__date-row'>
-                    <Text className='reffo-home-card__date-label'>生成日期</Text>
-                    <Text className='reffo-home-card__date'>{card.dateLabel}</Text>
-                  </View>
-                </CardGlass>
-              </>
-            )}
+            ) : renderDefaultCardFace()}
           </>
         )}
       </View>
+      {shouldRenderSticker ? (
+        <View className={`reffo-home-card__loading-sticker ${isStickerRevealed ? 'reffo-home-card__loading-sticker--revealed' : ''}`} aria-hidden='true'>
+          <View className='reffo-home-card__loading-sticker-sheet' />
+          <View className='reffo-home-card__loading-sticker-peel'>
+            <View className='reffo-home-card__loading-sticker-peel-back'>
+              <View className='reffo-home-card__loading-sticker-peel-back-grain' />
+              <View className='reffo-home-card__loading-sticker-peel-back-shadow' />
+            </View>
+          </View>
+        </View>
+      ) : null}
     </View>
   )
 }

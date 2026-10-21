@@ -25,5 +25,6 @@ export function buildPendingGenerationState({
     baseLocation,
     monogram,
     detailItems: [],
+    phase: 'analyzing',
   }
 }

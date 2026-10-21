@@ -20,7 +20,7 @@ export default {
     navigationBarTextStyle: 'black',
   },
   animation: {
-    duration: 280,
-    delay: 30,
+    duration: 180,
+    delay: 0,
   },
 }

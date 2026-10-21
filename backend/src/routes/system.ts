@@ -5,6 +5,7 @@ import type { ApiResponse } from '@/types'
 interface PublicConfig {
   appEnv: typeof env.APP_ENV
   databaseProvider: typeof env.DATABASE_PROVIDER
+  authRequired: boolean
   supabase: {
     url: string
     publishableKey: string
@@ -21,6 +22,7 @@ export const systemRoutes = new Elysia({ prefix: '/api/v1/system' })
       data: {
         appEnv: env.APP_ENV,
         databaseProvider: env.DATABASE_PROVIDER,
+        authRequired: env.APP_ENV !== 'local' || env.AUTH_REQUIRED,
         supabase: {
           url: env.SUPABASE_URL,
           publishableKey: env.SUPABASE_PUBLISHABLE_KEY,

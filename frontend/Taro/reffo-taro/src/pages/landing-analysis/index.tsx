@@ -78,7 +78,7 @@ export default function LandingAnalysisPage({
       {phase.kind === 'result' ? (
         <LandingInlineResult
           session={phase.session}
-          hideLandingHeader={useSharedHeader}
+          hideLandingHeader={false}
           onCompleteReady={onResultCompleteReady}
           onCompletionChange={onResultCompletionChange}
         />

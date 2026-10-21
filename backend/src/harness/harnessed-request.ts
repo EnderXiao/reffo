@@ -10,6 +10,7 @@ import { HarnessRunRepository } from '@/repositories/harness-run-repository'
 
 export interface HarnessResponseMeta {
   run_id: string
+  workflow_version?: string
   workflow_status: WorkflowStatus
   step_statuses: StepRunSnapshot[]
   duration_ms: number
@@ -125,7 +126,7 @@ export async function runHarnessedRequest<TResult>(
     )
 
     try {
-      new HarnessRunRepository().createFailureSampleIfAbsent(
+      await new HarnessRunRepository().createFailureSampleIfAbsent(
         runContext.runId,
         buildBusinessFailureSampleReason(
           error instanceof StepRunError ? error.cause : error,

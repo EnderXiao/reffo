@@ -2,10 +2,14 @@
 
 ## Default paths
 
-- Repository root: `/Users/mi/code/reffo`
-- RN project root: `/Users/mi/code/reffo/frontend/Taro/reffo-taro`
-- Skill root: `/Users/mi/code/reffo/.codex/skills/reffo-taro-rn-android-compare`
-- Suggested artifact root: `/Users/mi/code/reffo/.artifacts/reffo-rn-android`
+Paths are relative to the repository root unless marked as Skill-relative.
+
+- Repository root: `.`
+- RN project root: `frontend/Taro/reffo-taro`
+- Skill root: `.codex/skills/reffo-taro-rn-android-compare`
+- Suggested artifact root: `.artifacts/reffo-rn-android`
+- Skill script entry points: Skill-relative `scripts/`
+- Skill references: Skill-relative `references/`
 
 ## Runtime defaults
 

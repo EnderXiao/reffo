@@ -58,8 +58,8 @@ export default function ProfileContentPage() {
   const session = useAuthStore(state => state.session)
   const authInitialized = useAuthStore(state => state.initialized)
   const profile = useAuthStore(state => state.profile)
-  const historyCount = useHistoryStore(state => state.histories.length)
-  const sourceResume = useSourceResumeStore(state => state.latestSourceResume)
+  const historyCount = useHistoryStore(state => state.historySummaries.length)
+  const sourceResume = useSourceResumeStore(state => state.latestSourceResumeSummary)
   const [view, setView] = useState<ContentView>('account')
 
   useLoad(query => {

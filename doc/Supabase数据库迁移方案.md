@@ -202,14 +202,14 @@ on public.user_files(user_id, created_at desc);
 Harness 运行记录不建议进入 Supabase 第一阶段迁移。推荐继续使用 SQLite，但从原产品数据 SQLite 中拆出独立运行时数据库：
 
 ```text
-/app/data/harness.sqlite
+data/harness.sqlite
 ```
 
 建议新增配置：
 
 ```text
 HARNESS_DATABASE_PROVIDER=sqlite
-HARNESS_DATABASE_PATH=/app/data/harness.sqlite
+HARNESS_DATABASE_PATH=data/harness.sqlite
 HARNESS_RETENTION_DAYS=7
 HARNESS_MAX_RUNS=1000
 ```
@@ -224,7 +224,7 @@ HARNESS_MAX_RUNS=1000
 
 生产部署要求：
 
-- 如果后端部署在 Railway / Render，应挂载持久化 Volume 到 `/app/data`。
+- 如果后端部署在 Railway / Render，应将持久化 Volume 挂载到服务工作目录下的 `data/`。
 - 如果后端部署在无持久化磁盘的平台，Harness 数据只能作为临时 trace，不应依赖其长期保留。
 - Harness SQLite 不应和生产业务数据库混用同一个文件。
 
@@ -476,7 +476,7 @@ users/{user_id}/exports/{history_id}.pdf
 
 - Harness 表不进入 Supabase 主迁移。
 - Harness 数据写入独立 `harness.sqlite`。
-- Railway / Render 部署时 `/app/data` 有持久化 Volume。
+- Railway / Render 部署时服务工作目录下的 `data/` 有持久化 Volume。
 - 建立 run 保留策略，避免 SQLite 无限增长。
 - Dashboard 继续从 Harness SQLite 查询。
 - 事件 payload 保持脱敏。

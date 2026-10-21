@@ -1,6 +1,7 @@
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
 import { createHarnessEvent, type StepStatus } from '@/harness/events'
 import { createStepExecutionContext, type RunContext, type StepExecutionContext } from '@/harness/run-context'
+import { recoveryAdviceForErrorCode, type HarnessRecoveryAdvice } from '@/harness/recovery-advice'
 
 export interface StepRunSnapshot {
   stepRunId: string
@@ -10,6 +11,7 @@ export interface StepRunSnapshot {
   finishedAt?: string
   errorCode?: string
   errorMessage?: string
+  recoveryAdvice?: HarnessRecoveryAdvice
 }
 
 export interface RunStepInput<TResult> {
@@ -120,20 +122,21 @@ export async function runStep<TResult>(input: RunStepInput<TResult>): Promise<Ru
     const finishedAt = new Date().toISOString()
     const errorCode = toErrorCode(error)
     const errorMessage = toErrorMessage(error)
+    const recoveryAdvice = recoveryAdviceForErrorCode(errorCode)
 
     await eventBus.publish(
       createHarnessEvent({
         ...stepBase,
         attemptId,
         type: 'attempt.failed',
-        payload: { stepName: input.stepName, attemptNumber: 1, errorCode, errorMessage, finishedAt },
+        payload: { stepName: input.stepName, attemptNumber: 1, errorCode, errorMessage, recoveryAdvice, finishedAt },
       })
     )
     await eventBus.publish(
       createHarnessEvent({
         ...stepBase,
         type: 'step.failed',
-        payload: { stepName: input.stepName, errorCode, errorMessage, finishedAt },
+        payload: { stepName: input.stepName, errorCode, errorMessage, recoveryAdvice, finishedAt },
       })
     )
 
@@ -145,6 +148,7 @@ export async function runStep<TResult>(input: RunStepInput<TResult>): Promise<Ru
       finishedAt,
       errorCode,
       errorMessage,
+      recoveryAdvice,
     }, error)
   } finally {
     if (timeout) {

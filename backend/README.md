@@ -15,7 +15,6 @@
 ```text
 backend/
 ├── src/
-│   ├── agents/           # AI Agents：简历分析、JD 解析、匹配、生成、修订、面试建议
 │   ├── harness/          # Agent Harness：事件、step、attempt、评估、持久化订阅
 │   ├── providers/        # LLM provider 与 fallback
 │   ├── repositories/     # SQLite 仓储：Harness、源简历、生成历史
@@ -24,6 +23,11 @@ backend/
 │   ├── workflows/        # 简历优化与 OCR 工作流
 │   ├── config/           # 环境变量配置
 │   ├── types/            # TypeScript 类型定义
+│   ├── v5/               # v5.0.0 正式链路
+│   │   ├── main/         # 主流程编排、旧响应兼容
+│   │   ├── plugins/      # Plugin contract、registry
+│   │   ├── prompts/      # Prompt Markdown、manifest.json
+│   │   └── tests/        # V5 测试和 fixture
 │   ├── index.ts          # 应用入口
 │   └── test.ts           # 联调测试脚本
 ├── package.json
@@ -50,6 +54,8 @@ bun run dev
 - `.env.prod`: 正式 Supabase，仅在正式迁移或正式后端启动时使用。
 - `.env.example`: 变量模板，不保存真实 key。
 
+`bun run dev` / `bun run dev:local` 固定使用本地 SQLite 和免登录开发用户，源简历以 Base64 直传后端，不依赖 Supabase 登录或云存储。浏览器缓存的登录态不会参与本地免登录请求。需要在本地验证真实登录时，可在 `.env.local` 设置 `AUTH_REQUIRED=true` 并配置 Supabase，再使用 `bun run start:local`；非生产和生产环境始终要求登录。
+
 常用命令：
 
 ```bash
@@ -66,24 +72,56 @@ bun run migrate:sqlite-to-supabase:prod
 
 ## 核心 API
 
-### `POST /api/v1/mvp/process`
+### `POST /api/v1/mvp/process`（多步统一测试入口）
 
-完整简历优化流程：
+该接口仅用于多步工作流测试和回归验证，前端生产流程不调用；前端继续按顺序调用 `/analyze`、`/match`、`/generate`、`/interview`。
 
-1. 简历分析。
-2. JD 解析。
-3. 岗位匹配。
-4. 最佳简历生成。
-5. Markdown 质量门禁。
-6. 最多 2 次自愈修订。
-7. 面试建议生成。
+完整简历优化流程固定执行 V5：代码先生成并预检源简历 scope 计划，P01 按稳定 scope 有界分片抽取且通过后才执行 P02，随后执行 P03 匹配、P04 条件策略、本地代码构建 P05 形状的计划，再经 Blueprint 零调用预检、单次 P06D 受控 DSL、服务端编译和本地代码门禁生成成品。产物完成交付判定后立即转换为旧 MVP 响应；正式 `/process` 链路不再注册或调用 P05/P05R、P07、P09、P10/P10R 或 P11 模型。`legacy` kill switch 仍保留旧 P06/P08 路径。
 
-### 单步 Agent 接口
+完整流程固定执行 V5，不再提供 V4、shadow 或请求级版本切换。响应保留旧步骤字段，同时增加 Agent 状态、release status 和安全回退标识；架构、调用成本与发布门槛见 [`src/v5/README.md`](src/v5/README.md)。2026-09-08 起按产品负责人授权准备 entry r5 生产发布；部署状态、切换与回滚见 [`docs/v5-entry-r5-production-rollout.md`](docs/v5-entry-r5-production-rollout.md)。
+
+正式接口固定使用 V5 entry-r5 配置：`AI_MODEL=deepseek-v4-flash`、`OPENAI_BASE_URL=https://api.deepseek.com`、`DEEPSEEK_THINKING_MODE=disabled`、`DEEPSEEK_P01_THINKING_MODE=disabled`。配置不匹配时启动失败，不静默切换其他模型。单步接口通过服务端适配器复用同一 V5 阶段与检查点，前端无需切换调用方式。
+
+经历写作 P06C r8 遇到可定位的数字、贡献边界等事实错误时，最多定向纠正两次；只提交出错条目，保留其他条目，再对完整成品执行相同的事实和结构校验。未知引用、条目缺失及结构异常仍阻断；纠正后不合格也不交付。正常写作一次模型调用，触发纠正时最多三次逻辑调用（原有长度续写上限仍适用），评测预算同步预留。
+
+### V5 插件清单
+
+P01/P01R r19 使用可选 `temporalRiskQuote`（完整源句）定位独立证据单元：有限的“当前职责＋末句状态”即使被误标未来，也可隔离状态句，避免连带封锁职责；不清除被引用句的风险、不把已批准升级为已任职。条件依赖/其他风险/未知表达仍保守处理，不提高 Token/事实容量。根结构不变，新指纹使旧抽取缓存失效。当前已通过真实失败响应本地回放、840 项后端测试与 Case3 零外呼预检，尚非新模型或成品质量通过；见 [r19 测试就绪记录](docs/v5-p01-r19-readiness.md)。
+
+P01/P01R 支持独立 `DEEPSEEK_P01_THINKING_MODE=inherit|enabled|disabled`，默认 `inherit` 不改变现有部署。非生产 Flash 对照建议显式设置 `DEEPSEEK_P01_THINKING_MODE=disabled`，同时保留全局 `DEEPSEEK_THINKING_MODE=enabled` 与原思考强度供 P02/P03/Writer 使用。按编译后的阶段 metadata 分流，不检查用户正文关键词；独立配置进入运行和抽取缓存指纹及逐次调用诊断，不复用其他模式旧缓存。仅增加配置能力，不自动修改环境文件或切换生产默认。
+
+P01/P01R r17 保持 9 字段契约，区分上下文不足与真实冲突，保留自述、指标碎片和限定；不把材料抽取当成外部真实性审查。`qualityAssessment` 仍为兼容保留的本片评价，不是整份招聘评分。`extraction.validation.observed` 新增可选 `retention` 数值观察：原始事实/未映射/遗漏、代码补记、最终排除/限定及业务分类数量；不会因为覆盖率好看就证明成品可用。旧缓存没有该观察时不补造数字，也不新增质量阻断或模型调用。
+
+非生产单案例验证可显式使用 `AI_MODEL=deepseek-v4-flash DEEPSEEK_THINKING_MODE=enabled DEEPSEEK_REASONING_EFFORT=low`。思考模式通过请求体显式指定，禁用无效 temperature；`completion_tokens` 已包含思考 Token，预算不能再次相加。只记录思考 Token 数，不保存或回传推理正文。模型、模式和强度进入运行及抽取缓存指纹，不提升旧缓存。调用方未传 `maxOutputTokens` 时，Provider 使用 `DEEPSEEK_THINKING_MAX_TOKENS`（默认 12000）为思考与最终输出预留共享预算；V5 阶段显式上限仍以阶段配置为准。结构化阶段只有在 `finish_reason=length` 且正文为空，或 reasoning token 占总输出至少 80% 时，才执行一次服务端 `thinking=disabled` 同 Schema 重试；重试仍截断则失败即停。普通正文截断仍最多续写两次；`finish_reason=stop` 但 JSON 无法解析时只做一次有界 JSON 重生成，不递归调用业务修复器。默认环境与生产模型不因此变更。
+
+主流程通过 `V5WorkflowPluginRegistry` 调度以下插件：
+
+- `canonical-source`：简历/JD 规范化、空输入门禁。
+- `resume-extraction`：代码确定经历 scope 与时间线锚点并做零调用预检；P01/P01R 只负责分片证据抽取、缓存和有序合并校验。
+- `job-extraction`：P02/P02R JD 原子需求抽取。
+- `matching`：P03/P03R 证据与需求匹配、服务端评分输入。
+- `adaptive-policy`：确定性策略和低置信 P04 裁决。
+- `resume-planning`：由本地确定性代码构建 P05 形状的 ResumePlan 并执行计划门禁，不调用 P05/P05R。
+- `artifact-generation`：默认由 Blueprint 零调用预检、单次 P06D 受控 DSL 和服务端编译生成；Schema、DSL 或 Composition 错误只形成内部确定性安全渲染稿，不调用模型修复。只有显式 `legacy` kill switch 才可能走旧 P06/P08。
+- `fact-judge`：保留的历史/离线扩展 ID；正式链路不注册也不调用 P09。
+- `interview-preparation`：P10/P10R 组件仅为历史数据与未来可信上下文按需能力保留；正式 `/process` 不注册也不调用，当前也未新增 V5 公共按需接口。
+- `quality-judge`：保留的离线扩展 ID；正式链路不注册也不调用 P11。
+- `response-compatibility`：转换为 `step1_analysis` 等旧 MVP 字段；`step4_interview_suggestions` 继续保留兼容字段，但当前 `/process` 返回为空。
+
+插件可通过 `pluginOverrides` 替换；只有标记为 `optional` 的插件允许禁用。插件版本、状态、耗时和错误会写入 workflow manifest。当前内置插件的注册定义仍集中在 `src/v5/main/workflow.ts`，`src/v5/plugins/` 先承载通用 contract/registry；后续可将单个插件实现继续拆成独立文件。
+
+### V5 单步接口
 
 - `POST /api/v1/mvp/analyze`: 单独分析简历。
 - `POST /api/v1/mvp/match`: 单独解析 JD 并做匹配分析。
 - `POST /api/v1/mvp/generate`: 单独生成最佳简历，并执行质量门禁和修订。
 - `POST /api/v1/mvp/interview`: 单独生成面试建议。
+
+四个接口统一使用 `src/v5/single-step-adapter.ts` 和 V5 插件运行时，Prompt 版本从 `src/v5/prompts/manifest.json` 读取。V4 Agent、Prompt、版本选择器及离线模拟脚本已移除，历史实现可从 `main` 查阅。原始输入与阶段检查点仅保存在服务端；前端按原顺序传递响应对象即可。Supabase 部署需要执行 `supabase/migrations/202609090001_v5_checkpoints.sql`，本地 SQLite 自动建表。
+
+认证用户的 analyze 成功结果会按“用户 + 规范化简历摘要 + 模型/Prompt/thinking 发布指纹”缓存 24 小时；相同输入的并发请求通过持久化租约收敛为一次模型调用，缓存命中会重新签发后续接口所需的 checkpoint。Landing guest 不写持久分析缓存。响应 `meta.cache.status` 为 `miss`、`hit`、`coalesced` 或 `disabled`，`miss` 与缓存基础设施故障后直接分析的 `disabled` 会消耗认证用户分析配额。缓存读写或租约存储不可用时 analyze 会降级为直接执行分析，服务日志记录 `V5_ANALYSIS_CACHE_UNAVAILABLE`，健康检查的 `dependencies.analysisCache` 返回 `degraded`；此时业务可用，但缓存与跨实例幂等不生效。
+
+Supabase schema 统一由 `supabase/migrations/` 管理。PR 会校验 migration 已纳入 Git；feature push 使用 `SUPABASE_NONPROD_DB_URL` 先同步 nonprod，`main`、`master` 和正式版本 tag 使用 production environment 中的 `SUPABASE_PROD_DB_URL`，migration 成功后才允许触发 Render 部署。完整流程与 secret 配置见 [`../supabase/migrations/README.md`](../supabase/migrations/README.md)。
 
 ### Harness 接口
 
@@ -118,8 +156,18 @@ OCR 会优先读取 `GLM_OCR_API_KEY`，缺省时回退到 `GLM_API_KEY`。接�
 
 服务启动时也会输出 OCR 配置状态，便于本地联调提前发现配置缺失。
 
+若内网网关使用企业 CA，Bun 可能返回 `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`。本地配置 CA PEM 文件的相对路径后重启服务：
+
+```bash
+OCR_CA_CERT_PATH=config/certs/enterprise-root-ca.pem
+```
+
+OCR provider 会把该文件作为 Bun `fetch` 的 `tls.ca` 传入。不要通过关闭 TLS 校验绕过证书错误。
+
 ## 测试
 
 ```bash
+bunx tsc --noEmit
+bun test ./src/v5/tests
 bun test ./src
 ```

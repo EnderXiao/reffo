@@ -1,14 +1,12 @@
-import {useCallback, useEffect, useMemo, useRef} from 'react'
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {useHistoryStore} from '@/store/historyStore'
-import type {ResumeHistory} from '@/types'
 import {routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
-import {toHistoryCardItem} from '../index/model/homeCardData'
+import {toHistorySummaryCardItem} from '../index/model/homeCardData'
 
 const COMPLETE_AUTO_RETURN_DELAY_MS = 10000
 
 export interface CompletePageViewModel {
-  history: ResumeHistory | null
   card: HomeCardItem | null
   loading: boolean
   handleContinue: () => void
@@ -17,27 +15,42 @@ export interface CompletePageViewModel {
 export function usePageModel(): CompletePageViewModel {
   const pageRoute = usePageRoute()
   const route = useRouteTransition()
-  const {histories, loading, loadHistories} = useHistoryStore()
+  const historySummaries = useHistoryStore(state => state.historySummaries)
+  const loading = useHistoryStore(state => state.loading)
+  const loadHistory = useHistoryStore(state => state.loadHistory)
+  const loadHistorySummaries = useHistoryStore(state => state.loadHistorySummaries)
   const hasNavigatedRef = useRef(false)
   const autoReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const historyId = pageRoute.readString('historyId')
-  const history = useMemo(() => {
+  const [isResolvingHistory, setIsResolvingHistory] = useState(Boolean(historyId))
+  const historySummary = useMemo(() => {
     if (historyId) {
-      return histories.find(item => item.id === historyId) ?? null
+      return historySummaries.find(item => item.id === historyId) ?? null
     }
 
-    return histories[0] ?? null
-  }, [histories, historyId])
+    return historySummaries[0] ?? null
+  }, [historySummaries, historyId])
   const card = useMemo(
-    () => history ? toHistoryCardItem(history) : null,
-    [history],
+    () => historySummary ? toHistorySummaryCardItem(historySummary) : null,
+    [historySummary],
   )
-  const loadingPage = loading.isLoading && !history
-  const enteringCardId = history?.id ?? historyId
+  const loadingPage = (loading.isLoading || isResolvingHistory) && !historySummary
+  const enteringCardId = historySummary?.id ?? historyId
 
   useEffect(() => {
-    void loadHistories()
-  }, [loadHistories])
+    if (!historyId) {
+      void loadHistorySummaries()
+      return
+    }
+
+    if (historySummary) {
+      setIsResolvingHistory(false)
+      return
+    }
+
+    setIsResolvingHistory(true)
+    void loadHistory(historyId).finally(() => setIsResolvingHistory(false))
+  }, [historyId, historySummary, loadHistory, loadHistorySummaries])
 
   const clearAutoReturnTimer = useCallback(() => {
     if (autoReturnTimerRef.current == null) {
@@ -77,7 +90,6 @@ export function usePageModel(): CompletePageViewModel {
   }, [clearAutoReturnTimer, handleContinue, loadingPage])
 
   return {
-    history,
     card,
     loading: loadingPage,
     handleContinue,

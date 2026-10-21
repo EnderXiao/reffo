@@ -39,7 +39,8 @@ export default function PageView({card, loading, handleContinue}: CompletePageVi
   const visualCapability = useVisualTier({benchmark: true})
 
   return (
-    <View className='reffo-complete' onClick={handleContinue}>
+    <View className='reffo-complete reffo-responsive-page' onClick={handleContinue}>
+      <View className='reffo-responsive-page__frame reffo-complete__frame'>
       <View className='reffo-complete__screen-fold'>
         <View className='reffo-complete__fold-orb' />
         <View className='reffo-complete__fold-header'>
@@ -83,6 +84,7 @@ export default function PageView({card, loading, handleContinue}: CompletePageVi
         <Text className='reffo-complete__title'>{loading ? '正在准备...' : '恭喜你！'}</Text>
         <Text className='reffo-complete__subtitle'>新申请目标岗位的简历已经准备就绪！</Text>
         <Text className='reffo-complete__hint'>轻触屏幕进入首页</Text>
+      </View>
       </View>
     </View>
   )

@@ -45,7 +45,7 @@ const SHARD_DIRECTIONS = [
   45,
 ].map(angle => angle * Math.PI / 180)
 
-interface DeleteBreakCardProps {
+export interface DeleteBreakCardProps {
   card: HomeCardItem
   phase: DeleteBreakCardPhase
   visualTier: VisualTier

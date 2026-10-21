@@ -4,8 +4,10 @@ import {
   deriveSeedColorFromString,
   normalizeHexColor,
 } from '@/components/business/HomeCardDeck/palette'
-import type {ResumeHistory} from '@/types'
+import type {ResumeHistory, ResumeHistorySummary} from '@/types'
+import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary'
 import {resolveTextInitial} from '@/utils/text-initial'
+import type {GenerationTask} from '@/services/backgroundGeneration'
 
 interface CardSeedInput {
   id: string
@@ -16,6 +18,7 @@ interface CardSeedInput {
   dateLabel: string
   score: number
   strategyBody: string
+  strategyTitle?: string
   seedColor?: string
 }
 
@@ -81,7 +84,7 @@ const DEMO_CARD_INPUTS: CardSeedInput[] = [
 ]
 
 function resolveCompanySeedColor(company: string, seedColor?: string) {
-  if (seedColor) {
+  if (typeof seedColor === 'string' && seedColor.trim()) {
     return normalizeHexColor(seedColor)
   }
 
@@ -98,6 +101,22 @@ function resolveCardSeedColor(seed: string, company: string, seedColor?: string)
     resolveCompanySeedColor(company, seedColor) ??
     deriveSeedColorFromString(`${seed}:${company}`)
   )
+}
+
+function resolveHistorySeed(summary: ResumeHistorySummary) {
+  const generationJobId = summary.id.startsWith('JD-') ? summary.id.slice(3) : summary.id
+  return `${generationJobId}:${summary.company}:${summary.position}`
+}
+
+function readPersistedCardColor(value: unknown) {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.trim()
+  return /^#?(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalized)
+    ? normalizeHexColor(normalized)
+    : null
 }
 
 function buildCardItem(input: CardSeedInput): HomeCardItem {
@@ -129,47 +148,6 @@ function formatDateLabel(dateInput: string) {
   return `生成日期 ${year}.${month}.${day}`
 }
 
-function normalizeStrategyLines(lines?: string[]) {
-  return (lines ?? [])
-    .map(line => line.trim())
-    .filter(Boolean)
-}
-
-function buildHistoryStrategyBody(history: ResumeHistory) {
-  const backendSuggestions = normalizeStrategyLines(
-    history.optimizationSuggestions ?? history.processResult?.matching.optimization_suggestions,
-  )
-
-  if (backendSuggestions.length > 0) {
-    return backendSuggestions.slice(0, 2).join('\n\n')
-  }
-
-  const changeSummary = normalizeStrategyLines(
-    history.changesSummary ?? history.processResult?.optimized.changes_summary,
-  )
-
-  if (changeSummary.length > 0) {
-    return changeSummary.slice(0, 2).join('\n\n')
-  }
-
-  const analysisSuggestions = normalizeStrategyLines(history.processResult?.analysis.suggestions)
-
-  if (analysisSuggestions.length > 0) {
-    return analysisSuggestions.slice(0, 2).join('\n\n')
-  }
-
-  return '暂无后端优化策略，请进入详情页查看完整分析。'
-}
-
-function extractLocationFromJd(jdContent: string) {
-  const match = jdContent.match(/(?:工作地点|工作地|办公地点|办公地|地点|城市|Base地|base地|Base|base)[：:]\s*(.+?)(?:\n|\r|$)/i)
-  return match?.[1]?.trim() || ''
-}
-
-function resolveHistoryLocation(history: ResumeHistory) {
-  return history.resultContext?.location?.trim() || extractLocationFromJd(history.jdContent) || '--'
-}
-
 export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map((input, index) =>
   buildCardItem({
     ...input,
@@ -177,22 +155,64 @@ export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map((input, index) =>
   }),
 )
 
-export function toHistoryCardItem(history: ResumeHistory, index = 0): HomeCardItem {
+export function toHistorySummaryCardItem(
+  summary: ResumeHistorySummary,
+  index = 0,
+  seedColor?: string,
+): HomeCardItem {
   return buildCardItem({
-    id: history.id || `history-${index}`,
-    company: history.company || '--',
-    indexLabel: getIndexLabel(history.company || '', index),
-    location: resolveHistoryLocation(history),
-    role: history.position || '--',
-    dateLabel: formatDateLabel(history.createdAt),
-    score: history.qualityScore,
-    strategyBody: buildHistoryStrategyBody(history),
-    seedColor: history.cardColor,
+    id: summary.id || `history-${index}`,
+    company: summary.company || '--',
+    indexLabel: getIndexLabel(summary.company || '', index),
+    location: summary.location || '--',
+    role: summary.position || '--',
+    dateLabel: formatDateLabel(summary.createdAt),
+    score: summary.matchScore,
+    strategyBody: summary.strategyBody,
+    strategyTitle: summary.strategyTitle || '优化建议',
+    seedColor: readPersistedCardColor(seedColor)
+      || readPersistedCardColor(summary.cardColor)
+      || deriveSeedColorFromString(resolveHistorySeed(summary)),
   })
+}
+
+export function toHistoryCardItem(history: ResumeHistory, index = 0): HomeCardItem {
+  return toHistorySummaryCardItem(toResumeHistorySummaryFromHistory(history), index)
 }
 
 export function toHistoryCardItems(histories: ResumeHistory[]): HomeCardItem[] {
   return histories
     .slice(0, 10)
     .map(toHistoryCardItem)
+}
+
+export function toHistorySummaryCardItems(
+  summaries: ResumeHistorySummary[],
+): HomeCardItem[] {
+  return summaries
+    .slice(0, 10)
+    .map(toHistorySummaryCardItem)
+}
+
+export function toGenerationTaskCard(task: GenerationTask, summary?: ResumeHistorySummary): HomeCardItem {
+  const stageLabels = {analysis: '正在理解你的经历', matching: '正在匹配目标岗位', optimized: '正在生成相契简历',
+    interview: '正在准备面试建议', saving: '正在保存生成结果'}
+  const status = task.status === 'completed' ? 'completed' : task.status === 'failed' ? 'failed' : 'generating'
+  const taskSeedColor = readPersistedCardColor(summary?.cardColor) || deriveSeedColorFromString(
+    `${task.id}:${task.company}:${task.position}`,
+  )
+  const card = summary ? toHistorySummaryCardItem(summary, 0, taskSeedColor) : buildCardItem({
+    id: task.id, company: task.company, role: task.position, location: task.location || '--',
+    dateLabel: formatDateLabel(task.created_at), score: task.score ?? 0,
+    seedColor: taskSeedColor, strategyBody: '',
+  })
+  return {...card, id: task.id, historyId: task.history_id || undefined, generationTaskId: task.id,
+    generationStatus: status, unread: status === 'completed' && !task.read_at,
+    generationLabel: task.status === 'queued' ? '正在排队，即将开始' : stageLabels[task.stage],
+    ...(status === 'generating' ? {strategyTitle: '你的新申请，正在准备',
+      strategyBody: `${task.company} · ${task.position}\n可以先看看其他申请，准备好后会在这里提醒你。`} : {}),
+    ...(status === 'failed' ? {strategyTitle: '生成暂未完成', strategyBody: task.error || '轻触工卡重新尝试。'} : {}),
+    ...(status === 'completed' && !summary ? {strategyTitle: '你的新简历已就绪',
+      strategyBody: '岗位分析、相契简历和面试建议已准备好。\n轻触闪卡，查看这份新申请。'} : {}),
+  }
 }

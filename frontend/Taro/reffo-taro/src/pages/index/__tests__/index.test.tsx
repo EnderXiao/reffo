@@ -5,6 +5,11 @@ import Index from '../index'
 import {useHistoryStore} from '@/store/historyStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import type {ResumeHistory} from '@/types'
+import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary'
+import {
+  bootstrapHomeData,
+  hasBootstrappedHomeData,
+} from '@/utils/home-data-bootstrap'
 
 jest.mock('@tarojs/taro', () => ({
   navigateTo: jest.fn(),
@@ -31,15 +36,24 @@ jest.mock('@/components/business/HomeCardDeck', () => ({
 
 jest.mock('@/store/historyStore')
 jest.mock('@/store/sourceResumeStore')
+jest.mock('@/utils/home-data-bootstrap', () => ({
+  bootstrapHomeData: jest.fn(() => Promise.resolve()),
+  hasBootstrappedHomeData: jest.fn(() => true),
+}))
 
 const mockUseHistoryStore = useHistoryStore as jest.MockedFunction<typeof useHistoryStore>
 const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
 >
+const mockBootstrapHomeData = bootstrapHomeData as jest.Mock
+const mockHasBootstrappedHomeData = hasBootstrappedHomeData as jest.Mock
 
 describe('首页组件', () => {
   const mockLoadHistories = jest.fn()
+  const mockLoadHistorySummaries = jest.fn()
+  const mockLoadHistory = jest.fn()
   const mockLoadLatestSourceResume = jest.fn()
+  const mockLoadLatestSourceSummary = jest.fn()
   const mockLoading: {isLoading: boolean; error: string | null} = {
     isLoading: false,
     error: null,
@@ -51,6 +65,41 @@ describe('首页组件', () => {
   let mockHistories: ResumeHistory[] = []
   let mockLatestSourceResume: any = null
   let didShowCallbacks: Array<() => void> = []
+
+  const installStoreMocks = () => {
+    ;(mockUseHistoryStore as any).mockImplementation((selector: any) => selector({
+      histories: mockHistories,
+      historySummaries: mockHistories.map(toResumeHistorySummaryFromHistory),
+      currentHistory: null,
+      loading: mockLoading,
+      initialized: true,
+      summaryInitialized: true,
+      loadHistories: mockLoadHistories,
+      loadHistorySummaries: mockLoadHistorySummaries,
+      loadHistory: mockLoadHistory,
+    }))
+    ;(mockUseSourceResumeStore as any).mockImplementation((selector: any) => selector({
+      latestSourceResume: mockLatestSourceResume,
+      latestSourceResumeSummary: mockLatestSourceResume
+        ? {
+            id: mockLatestSourceResume.id,
+            title: mockLatestSourceResume.title,
+            sourceType: mockLatestSourceResume.sourceType,
+            originalFileName: mockLatestSourceResume.originalFileName,
+            createdAt: mockLatestSourceResume.createdAt,
+            updatedAt: mockLatestSourceResume.updatedAt,
+          }
+        : null,
+      loading: mockSourceResumeLoading,
+      initialized: true,
+      summaryInitialized: true,
+      loadLatestSourceResume: mockLoadLatestSourceResume,
+      loadLatestSourceSummary: mockLoadLatestSourceSummary,
+      setLatestSourceResume: jest.fn(),
+      clearLatestSourceResume: jest.fn(),
+      reset: jest.fn(),
+    }))
+  }
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -64,35 +113,40 @@ describe('首页组件', () => {
     mockLoading.error = null
     mockSourceResumeLoading.isLoading = false
     mockSourceResumeLoading.error = null
-
-    mockUseHistoryStore.mockReturnValue({
-      histories: mockHistories,
-      currentHistory: null,
-      loading: mockLoading,
-      loadHistories: mockLoadHistories,
-      addHistory: jest.fn(),
-      updateHistory: jest.fn(),
-      deleteHistory: jest.fn(),
-      clearHistories: jest.fn(),
-      setCurrentHistory: jest.fn(),
-      reset: jest.fn(),
-    })
-    mockUseSourceResumeStore.mockReturnValue({
-      latestSourceResume: mockLatestSourceResume,
-      loading: mockSourceResumeLoading,
-      loadLatestSourceResume: mockLoadLatestSourceResume,
-      setLatestSourceResume: jest.fn(),
-      clearLatestSourceResume: jest.fn(),
-      reset: jest.fn(),
-    })
+    mockHasBootstrappedHomeData.mockReturnValue(true)
+    mockBootstrapHomeData.mockResolvedValue(undefined)
+    installStoreMocks()
   })
 
-  test('挂载时应加载历史记录和源简历状态', async () => {
+  test('首页主数据准备完成前只展示品牌加载封面', async () => {
+    let finishBootstrap!: () => void
+    mockHasBootstrappedHomeData.mockReturnValue(false)
+    mockBootstrapHomeData.mockReturnValue(new Promise<void>(resolve => {
+      finishBootstrap = resolve
+    }))
+
+    render(<Index />)
+
+    expect(screen.getByRole('status')).toBeTruthy()
+    expect(screen.queryByText('源简历')).toBeNull()
+    expect(screen.queryByText('新的申请')).toBeNull()
+
+    await act(async () => {
+      finishBootstrap()
+      await Promise.resolve()
+    })
+
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByText('源简历')).toBeTruthy()
+    expect(screen.getByText('新的申请')).toBeTruthy()
+  })
+
+  test('挂载时通过统一 bootstrap 准备首页主数据', async () => {
+    mockHasBootstrappedHomeData.mockReturnValue(false)
     render(<Index />)
 
     await waitFor(() => {
-      expect(mockLoadHistories).toHaveBeenCalledTimes(1)
-      expect(mockLoadLatestSourceResume).toHaveBeenCalledTimes(1)
+      expect(mockBootstrapHomeData).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -115,15 +169,6 @@ describe('首页组件', () => {
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
     }
-    mockUseSourceResumeStore.mockReturnValue({
-      latestSourceResume: mockLatestSourceResume,
-      loading: mockSourceResumeLoading,
-      loadLatestSourceResume: mockLoadLatestSourceResume,
-      setLatestSourceResume: jest.fn(),
-      clearLatestSourceResume: jest.fn(),
-      reset: jest.fn(),
-    })
-
     render(<Index />)
 
     expect(screen.getByText('CV-Jeremy Smith')).toBeTruthy()
@@ -149,15 +194,6 @@ describe('首页组件', () => {
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
     }
-    mockUseSourceResumeStore.mockReturnValue({
-      latestSourceResume: mockLatestSourceResume,
-      loading: mockSourceResumeLoading,
-      loadLatestSourceResume: mockLoadLatestSourceResume,
-      setLatestSourceResume: jest.fn(),
-      clearLatestSourceResume: jest.fn(),
-      reset: jest.fn(),
-    })
-
     render(<Index />)
 
     fireEvent.click(screen.getByText('CV-Jeremy Smith'))
@@ -198,24 +234,11 @@ describe('首页组件', () => {
         cardColor: '#3b82f6',
       },
     ]
-    mockUseHistoryStore.mockReturnValue({
-      histories: mockHistories,
-      currentHistory: null,
-      loading: mockLoading,
-      loadHistories: mockLoadHistories,
-      addHistory: jest.fn(),
-      updateHistory: jest.fn(),
-      deleteHistory: jest.fn(),
-      clearHistories: jest.fn(),
-      setCurrentHistory: jest.fn(),
-      reset: jest.fn(),
-    })
-
     render(<Index />)
 
     expect(screen.getByText('前端工程师')).toBeTruthy()
     expect(screen.getByText('后端工程师')).toBeTruthy()
-    expect(screen.getByText('85')).toBeTruthy()
+    expect(screen.getByText('90')).toBeTruthy()
     expect(screen.getByText(/当前简历/)).toBeTruthy()
     expect(screen.queryByText('编辑')).toBeNull()
     expect(screen.queryByText('删除')).toBeNull()
@@ -245,13 +268,13 @@ describe('首页组件', () => {
     expect(document.querySelector('.reffo-home')?.getAttribute('data-loading-error')).toBe('加载失败')
   })
 
-  test('返回首页时应清理上一次导航的即时反馈', () => {
+  test('返回首页时应清理上一次导航的即时反馈', async () => {
     render(<Index />)
 
     fireEvent.click(screen.getByText('登录'))
     expect(screen.getByText('打开中…')).toBeTruthy()
 
-    act(() => {
+    await act(async () => {
       didShowCallbacks.forEach(callback => callback())
     })
 

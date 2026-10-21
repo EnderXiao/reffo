@@ -74,7 +74,9 @@ jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
   __esModule: true,
   default: ({card, onClick, uploadFile, uploadStatus, onUploadRemove}: {
     card?: {
+      company?: string
       role?: string
+      location?: string
       queueCardKind?: 'resume' | 'upload'
       resumeProfile?: {name?: string; tags?: string[]}
     }
@@ -84,6 +86,9 @@ jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
     onUploadRemove?: () => void
   }) => (
     <div className='mock-home-score-card' onClick={onClick}>
+      <span>{card?.company}</span>
+      <span>{card?.role}</span>
+      <span>{card?.location}</span>
       {card?.resumeProfile?.name ?? card?.role}
       {card?.resumeProfile?.tags?.join('')}
       {card?.resumeProfile ? <div className='reffo-home-card__queue-face--resume-back' /> : null}
@@ -189,7 +194,10 @@ async function swipeSelectedCardDown(container: HTMLElement) {
 describe('启动封页', () => {
   const restoreSession = jest.fn()
   const loadHistories = jest.fn()
+  const loadHistorySummaries = jest.fn()
+  const loadHistory = jest.fn()
   const loadLatestSourceResume = jest.fn()
+  const loadLatestSourceSummary = jest.fn()
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
@@ -197,7 +205,10 @@ describe('启动封页', () => {
 
     restoreSession.mockResolvedValue(null)
     loadHistories.mockResolvedValue(undefined)
+    loadHistorySummaries.mockResolvedValue(undefined)
+    loadHistory.mockResolvedValue(null)
     loadLatestSourceResume.mockResolvedValue(undefined)
+    loadLatestSourceSummary.mockResolvedValue(undefined)
     mockSetSourceResume.mockReset()
     mockReLaunch.mockResolvedValue(undefined)
     mockStorageGetItem.mockResolvedValue('1')
@@ -205,8 +216,15 @@ describe('启动封页', () => {
     mockSetJSON.mockResolvedValue(undefined)
 
     mockUseAuthStoreGetState.mockReturnValue({restoreSession})
-    mockUseHistoryStoreGetState.mockReturnValue({loadHistories})
-    mockUseSourceResumeStoreGetState.mockReturnValue({loadLatestSourceResume})
+    mockUseHistoryStoreGetState.mockReturnValue({
+      loadHistories,
+      loadHistorySummaries,
+      loadHistory,
+    })
+    mockUseSourceResumeStoreGetState.mockReturnValue({
+      loadLatestSourceResume,
+      loadLatestSourceSummary,
+    })
     mockPickAndParseResumeFile.mockResolvedValue(null)
   })
 
@@ -223,8 +241,8 @@ describe('启动封页', () => {
     })
 
     expect(restoreSession).toHaveBeenCalledTimes(1)
-    expect(loadHistories).toHaveBeenCalledWith({skipIfLoaded: true})
-    expect(loadLatestSourceResume).toHaveBeenCalledWith({skipIfLoaded: true})
+    expect(loadHistorySummaries).toHaveBeenCalledWith({skipIfLoaded: true})
+    expect(loadLatestSourceSummary).toHaveBeenCalledWith({skipIfLoaded: true})
     expect(mockStorageGetItem).toHaveBeenCalledWith('reffo.landing.seen')
     expect(mockReLaunch).not.toHaveBeenCalled()
 
@@ -266,8 +284,10 @@ describe('启动封页', () => {
 
     expect(screen.getByText('岗位')).not.toBeNull()
     expect(screen.getByText('简历')).not.toBeNull()
-    expect(screen.getByText(/视觉传达设计/)).not.toBeNull()
-    expect(screen.getByText(/临床医学/)).not.toBeNull()
+    expect(screen.getByText(/UX 设计师/)).not.toBeNull()
+    expect(screen.getByText(/软件工程师/)).not.toBeNull()
+    expect(screen.getByText(/用户运营经理/)).not.toBeNull()
+    expect(screen.getByText(/上海 · 可远程/)).not.toBeNull()
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
 
@@ -287,8 +307,10 @@ describe('启动封页', () => {
 
     expect(screen.getByText('岗位')).not.toBeNull()
     expect(screen.getByText('简历')).not.toBeNull()
-    expect(screen.getByText(/视觉传达设计/)).not.toBeNull()
-    expect(screen.getByText(/临床医学/)).not.toBeNull()
+    expect(screen.getByText(/UX 设计师/)).not.toBeNull()
+    expect(screen.getByText(/软件工程师/)).not.toBeNull()
+    expect(screen.getByText(/用户运营经理/)).not.toBeNull()
+    expect(screen.getByText(/北京 · 广州/)).not.toBeNull()
     expect(mockStorageGetItem).not.toHaveBeenCalled()
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
@@ -820,11 +842,14 @@ describe('启动封页', () => {
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-folder')
     expect(screen.getByText('目标岗位')).not.toBeNull()
     expect(screen.getByText(/重新匹配简历与岗位的价值/)).not.toBeNull()
-    expect(screen.getByText('软件工程师')).not.toBeNull()
-    expect(screen.getByText('互联网产品经理')).not.toBeNull()
-    expect(screen.getByText('数据分析师')).not.toBeNull()
-    expect(screen.getByText('UX 设计师')).not.toBeNull()
-    expect(screen.getByText('用户运营经理')).not.toBeNull()
+    expect(Array.from(container.querySelectorAll('.reffo-landing-onboarding__target-file-title'))
+      .map(node => node.textContent)).toEqual([
+        '软件工程师',
+        '互联网产品经理',
+        '数据分析师',
+        'UX 设计师',
+        '用户运营经理',
+      ])
     expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(5)
     const collapsedJobNodes = Array.from(container.querySelectorAll('[data-job-index]')) as HTMLElement[]
     expect(collapsedJobNodes.slice(0, 3).every(node => node.style.getPropertyValue('--job-folder-opacity') === '1')).toBe(true)

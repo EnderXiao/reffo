@@ -25,7 +25,24 @@ describe('GenerationStageH5', () => {
     expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
     expect(screen.getByTestId('generation-card')).toBeTruthy()
     expect(screen.getByText('正在为你的目标岗位量身定做相契简历……')).toBeTruthy()
-    expect(screen.getAllByText('我的简历')).toHaveLength(2)
+    expect(screen.getAllByText('我的简历')).toHaveLength(1)
+  })
+
+  test('标题轮播去重相同文案', () => {
+    render(
+      <GenerationStageH5
+        state={{
+          resumeTitle: 'web 前端',
+          companyName: 'web 前端',
+          positionName: 'web 前端',
+          baseLocation: 'web 前端',
+          monogram: 'W',
+        }}
+        onCancelGeneration={jest.fn()}
+      />,
+    )
+
+    expect(screen.getAllByText('web 前端')).toHaveLength(1)
   })
 
   test('通过 header 插槽承载页面私有头部', () => {

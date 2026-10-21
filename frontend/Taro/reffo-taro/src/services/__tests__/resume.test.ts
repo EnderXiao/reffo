@@ -1,6 +1,7 @@
 import {ResumeApi} from '../resume';
 import {apiClient} from '../api';
 import {RequestError} from '@/utils/request';
+import {resumeTextFingerprint} from '@/shared/resume-strategy';
 import type {ResumeAnalysis, MatchingResult, StructuredResume} from '@/types';
 
 // Mock apiClient
@@ -71,7 +72,7 @@ describe('ResumeApi', () => {
       expect(mockPost).toHaveBeenCalledTimes(1);
       expect(mockPost).toHaveBeenCalledWith('/mvp/analyze', {
         resume_markdown: sampleResume,
-      });
+      }, {timeout: 120000});
 
       // 验证返回结果
       expect(result).toEqual(mockAnalysisResponse);
@@ -146,7 +147,7 @@ describe('ResumeApi', () => {
       // 验证 API 被调用
       expect(mockPost).toHaveBeenCalledWith('/mvp/analyze', {
         resume_markdown: minResume,
-      });
+      }, {timeout: 120000});
     });
   });
 
@@ -187,6 +188,30 @@ describe('ResumeApi', () => {
       },
     };
 
+    test('保留每个故事的完整讲述方案，不截掉第 4、5 条建议', async () => {
+      const stories = [{
+        title: '用户调研', background: '用户反馈审批链路复杂', result: '完成流程方案',
+        storytelling_approach: ['从审批痛点切入', '说明访谈对象的选择', '解释优先级取舍', '展示流程方案', '准备异常场景追问'],
+      }, {
+        title: '交付协作', background: '多个团队共同交付', result: '按计划完成联调',
+        storytelling_approach: ['先说明接口依赖', '交代本人负责的范围', '解释冲突处理', '展示联调验收结果'],
+      }];
+      mockPost.mockResolvedValue({questions: [], story_recommendations: stories, follow_up_questions: []});
+      const matching: MatchingResult = {
+        match_score: 80,
+        hard_requirements_match: [],
+        skill_match: {matched_skills: [], missing_skills: [], match_percentage: 80},
+        experience_match: {years_required: 0, years_actual: 0, relevant_experience: [], match_percentage: 80},
+        optimization_suggestions: [],
+      };
+
+      const result = await resumeApi.generateInterviewSuggestions(analysis, matching, {
+        optimized_resume: '# 张三\n负责用户调研和跨团队产品交付', changes_summary: [], improvement_score: 5,
+      });
+
+      expect(result.story_recommendations).toEqual(stories);
+    });
+
     test('normalizes final-v3 matching fields for the result pages', async () => {
       mockPost.mockResolvedValue({
         match_score: 82,
@@ -197,13 +222,29 @@ describe('ResumeApi', () => {
         strengths: ['用户调研经验'],
         weaknesses: ['跨团队协作证据不足'],
         weakness_details: [{
+          id: 'G1',
+          priority: 'high',
+          is_required: false,
           weakness: '跨团队协作证据不足',
           evidence_type: 'wording_gap',
+          jd_requirement: '跨团队协作推进需求落地',
           evidence: '源简历未显式描述协作对象',
+          impact: '岗位关键协作能力不够醒目',
           suggestion: '仅在有真实证据时补充协作对象',
         }],
         positioning_strategy: '突出用户调研到产品落地的链路',
-        optimization_suggestions: ['前置用户调研证据'],
+        optimization_suggestions: ['旧版摘要应被结构化策略覆盖'],
+        optimization_strategy_details: [{
+          id: 'S1',
+          related_gap_ids: ['G1'],
+          strategy_point: '前置用户调研证据',
+          rationale: '直接回应岗位的调研优先级',
+          optimization_example: {
+            source_path: 'experience[0].responsibilities[0]',
+            source_quote: '负责用户调研',
+            optimized_content: '围绕用户调研推进需求落地',
+          },
+        }],
         context_fit: {
           company_alignment: '客户洞察方向相关',
           location_alignment: '待面试确认',
@@ -219,6 +260,22 @@ describe('ResumeApi', () => {
 
       expect(result.positioning_strategy).toBe('突出用户调研到产品落地的链路');
       expect(result.optimization_suggestions).toEqual(['前置用户调研证据']);
+      expect(result.weakness_details?.[0]).toMatchObject({
+        id: 'G1',
+        priority: 'high',
+        is_required: false,
+        jd_requirement: '跨团队协作推进需求落地',
+        impact: '岗位关键协作能力不够醒目',
+      });
+      expect(result.optimization_strategy_details?.[0]).toMatchObject({
+        id: 'S1',
+        related_gap_ids: ['G1'],
+        strategy_point: '前置用户调研证据',
+        optimization_example: {
+          source_quote: '负责用户调研',
+          optimized_content: '围绕用户调研推进需求落地',
+        },
+      });
       expect(result.context_fit?.hypotheses_used).toEqual(['重视客户洞察']);
       expect(result.jd_structure?.company_context?.confidence).toBe('medium');
     });
@@ -239,16 +296,37 @@ describe('ResumeApi', () => {
           match_percentage: 82,
         },
         optimization_suggestions: ['前置用户调研证据'],
+        optimization_strategy_details: [{
+          id: 'S1',
+          related_gap_ids: ['G1'],
+          strategy_point: '前置用户调研证据',
+          rationale: '回应岗位调研优先级',
+          optimization_example: {
+            source_path: 'experience[0].responsibilities[0]',
+            source_quote: '负责用户调研',
+            optimized_content: '围绕用户调研推进需求落地',
+          },
+        }],
         positioning_strategy: '突出用户调研到产品落地的链路',
         jd_structure: jdStructure,
       };
+      const markdown = '# 张三\n\n## 工作经历\n负责用户调研，形成需求清单';
+      const review = {
+        version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(markdown),
+        items: [{strategyId: 'S1', strategy: '前置用户调研证据', status: 'linked',
+          explanation: '相关材料对应到以下正文。', references: [{outputPath: 'experience.1',
+            location: '工作经历', quote: '负责用户调研，形成需求清单'}]}],
+      };
       mockPost.mockResolvedValue({
-        optimized_resume: '# 张三\n\n## 工作经历\n...',
+        optimized_resume: markdown,
         changes_summary: [],
+        strategy_review: review,
         improvement_score: 7,
       });
 
-      await resumeApi.generateOptimizedResume(analysis, matching);
+      const generated = await resumeApi.generateOptimizedResume(analysis, matching);
+      expect(generated.strategy_review).toEqual(review);
+      expect(generated.changes_summary).toEqual([]);
 
       expect(mockPost).toHaveBeenCalledWith(
         '/mvp/generate',
@@ -259,6 +337,7 @@ describe('ResumeApi', () => {
             skill_match: {matched: ['用户调研'], missing: []},
             experience_match: '具备用户调研经验',
             positioning_strategy: '突出用户调研到产品落地的链路',
+            optimization_strategy_details: matching.optimization_strategy_details,
             jd_structure: jdStructure,
           }),
         },
@@ -358,9 +437,7 @@ describe('ResumeApi', () => {
 
       // 验证优化结果
       expect(result.optimized.optimized_resume).toContain('高级软件工程师');
-      expect(result.optimized.changes_summary).toEqual(
-        mockProcessResponse.step2_matching.optimization_suggestions,
-      );
+      expect(result.optimized.changes_summary).toEqual([]);
       expect(result.optimized.improvement_score).toBe(5); // 80 - 75
     });
 

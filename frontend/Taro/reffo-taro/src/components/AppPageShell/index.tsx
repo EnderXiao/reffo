@@ -1,10 +1,8 @@
 import {PropsWithChildren, ReactNode} from 'react'
 import {Text, View} from '@tarojs/components'
-import Taro from '@tarojs/taro'
 import {StatusBar, StyleProp, StyleSheet, ViewStyle} from 'react-native'
 import {getStatusBarHeight} from '@/utils'
 import {navigation} from '@/utils/navigation'
-import {routePaths} from '@/shared/routing'
 
 interface AppPageShellProps extends PropsWithChildren {
   title?: string
@@ -103,12 +101,7 @@ export default function AppPageShell({
       return
     }
 
-    if (Taro.getCurrentPages().length > 1) {
-      void navigation.navigateBack()
-      return
-    }
-
-    void navigation.reLaunch(routePaths.home)
+    void navigation.returnHome()
   }
 
   return (

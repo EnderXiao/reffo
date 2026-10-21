@@ -63,15 +63,17 @@
 - [x] `P1` 统一版本来源：构建时注入 tag 名，移除 Profile 版本硬编码冲突；展示格式统一为 `V1.0.0`。
 - [x] `P1` 无 tag、本地开发和异常 tag 名场景提供稳定降级值，不阻断构建。
 
-### 7. Tag 驱动 CI 与 Render 发布
+### 7. 分支与 Tag 驱动 CI 与 Render 发布
 
-- [x] `P1` 新增 GitHub Actions，仅监听 main 分支版本 tag（`v*.*.*`）并校验 tag 指向 main。
+- [x] `P1` GitHub Actions 同时监听 `main`、`master` push 与版本 tag（`v*.*.*`）；tag 必须指向 main 或 master 已包含的 commit。
 - [x] `P1` CI 从 tag 名解析版本号，从 annotated tag description 解析版本描述，注入前端构建变量。
+- [x] `P1` main/master 合入触发正式发布时，版本使用前端基础版本、分支、run number 和 commit SHA 组合为合法 SemVer 后缀，保留可追踪的构建标识。
 - [x] `P1` CI 执行依赖安装、测试、H5/后端构建和必要的产物检查；失败时不触发 Render 发布。
-- [ ] `P1` 配置 Render 仅由 tag 成功工作流触发，关闭 main 普通 commit 自动发布或隔离为预览环境。
+- [x] `P1` feature 推送同步 nonprod Supabase 后部署 Feature；main/master 与 tag 在 production migration 成功后触发正式 Render deploy hook。
+- [ ] `P1` 在 GitHub 配置 `SUPABASE_NONPROD_DB_URL`、production environment 中的 `SUPABASE_PROD_DB_URL`，并确认 `RENDER_DEPLOY_HOOK_URL` 指向正式服务。
 - [ ] `P1` 明确 Render webhook/API 密钥、环境变量、缓存、构建命令、健康检查和部署超时配置。
 - [ ] `P1` 增加 tag 发布、重复 tag、非 main tag、构建失败和回滚验证；记录人工回滚步骤。
-- [ ] `P1` 更新 README/部署文档，说明版本 tag、tag 描述、CI 状态和 Render 发布流程。
+- [x] `P1` 更新 README/部署文档，说明 main/master、版本 tag、Supabase migration、CI 状态和 Render 发布流程。
 
 ### 8. 测试与验收
 

@@ -1,9 +1,13 @@
+import type { ResumeStrategyReview } from '@/shared/resume-strategy'
+
 /**
  * TypeScript 类型定义
  */
 
 import type { RecoverySummary } from '@/harness/runtime-state'
 import type { HarnessResponseMeta } from '@/harness/harnessed-request'
+import type { ResumeAgentState, V5ReleaseStatus } from '@/v5/types'
+import type { RequirementAnalysis } from '@/job-analysis/requirements'
 
 /**
  * 简历结构化数据
@@ -62,6 +66,7 @@ export interface ResumeAnalysis {
 export type ContextConfidence = 'high' | 'medium' | 'low' | 'unknown'
 
 export interface JDStructure {
+  requirement_analysis?: RequirementAnalysis
   basic_info: {
     title: string
     company?: string
@@ -100,6 +105,7 @@ export interface JDStructure {
  * 匹配分析结果
  */
 export type WeaknessEvidenceType = 'direct_missing' | 'implicit_evidence' | 'wording_gap'
+export type MatchGapPriority = 'high' | 'medium' | 'low'
 
 export type RequiredSkillCheckStatus = 'matched' | 'missing' | 'unclear'
 
@@ -110,13 +116,33 @@ export interface RequiredSkillCheck {
 }
 
 export interface MatchWeaknessDetail {
+  id?: string
+  priority?: MatchGapPriority
+  is_required?: boolean
   weakness: string
   evidence_type: WeaknessEvidenceType
+  jd_requirement?: string
   evidence: string
+  impact?: string
   suggestion: string
 }
 
+export interface MatchOptimizationExample {
+  source_path: string
+  source_quote: string
+  optimized_content: string
+}
+
+export interface MatchOptimizationStrategyDetail {
+  id: string
+  related_gap_ids: string[]
+  strategy_point: string
+  rationale: string
+  optimization_example: MatchOptimizationExample
+}
+
 export interface MatchAnalysis {
+  requirement_analysis?: RequirementAnalysis
   match_score: number
   hard_requirements_match: Record<string, boolean>
   skill_match: {
@@ -131,6 +157,7 @@ export interface MatchAnalysis {
   weakness_details?: MatchWeaknessDetail[]
   positioning_strategy?: string
   optimization_suggestions?: string[]
+  optimization_strategy_details?: MatchOptimizationStrategyDetail[]
   context_fit?: {
     company_alignment: string
     location_alignment: string
@@ -159,6 +186,9 @@ export interface ApiResponse<T> {
   success: boolean
   data?: T
   meta?: {
+    cache?: {
+      status: 'miss' | 'hit' | 'coalesced' | 'disabled' | 'not_applicable'
+    }
     harness?: HarnessResponseMeta
   }
   error?: {
@@ -195,9 +225,15 @@ export interface MvpProcessResponse {
   step_statuses?: MvpStepStatus[]
   recoverable_errors?: MvpRecoverableError[]
   recovery_summary?: RecoverySummary[]
+  agent_version?: '5.0.0' | '6.0.0'
+  agent_state?: ResumeAgentState
+  release_status?: V5ReleaseStatus
+  used_safe_fallback?: boolean
   step1_analysis: ResumeAnalysis
   step2_matching: MatchAnalysis
   step3_optimized_resume: string
+  step3_strategy_review?: ResumeStrategyReview
+  step3_changes_summary?: string[]
   step4_interview_suggestions?: InterviewSuggestions
 }
 
@@ -207,6 +243,15 @@ export interface SourceResumeRecord {
   id: string
   title: string
   resume_markdown: string
+  source_type: SourceResumeSourceType
+  original_file_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SourceResumeSummaryRecord {
+  id: string
+  title: string
   source_type: SourceResumeSourceType
   original_file_name: string | null
   created_at: string
@@ -255,6 +300,23 @@ export interface ResumeHistoryRecord {
   process_result?: unknown
   result_context?: ResultSessionContextRecord
   progress?: ResultSessionProgressRecord
+  card_color?: string
+  card_pattern?: string
+}
+
+export interface ResumeHistorySummaryRecord {
+  id: string
+  position: string
+  company: string
+  name: string
+  created_at: string
+  updated_at: string
+  quality_score: number
+  match_score: number
+  tags: string[]
+  location: string
+  strategy_title?: string
+  strategy_body: string
   card_color?: string
   card_pattern?: string
 }

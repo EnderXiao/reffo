@@ -1,14 +1,5 @@
 import type {ProcessResult} from '@/types'
 
-function normalizeItems(value: unknown, limit = 4): string[] {
-  if (!Array.isArray(value)) return []
-
-  return value
-    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    .map(item => item.trim())
-    .slice(0, limit)
-}
-
 function normalizeReferenceLine(line: string) {
   return line
     .replace(/^#{1,6}\s*/, '')
@@ -80,31 +71,12 @@ export function buildInterviewStoryViewItems(
   resumeContent: string,
   jdContent: string,
 ) {
-  const strengths = normalizeItems(result.analysis.strengths, 3)
   const stories = result.interview?.story_recommendations ?? []
-  const fallbackStories = [
-    {
-      title: strengths[0] || '高匹配项目经历',
-      background: strengths[1] || result.analysis.capability_summary || '围绕目标岗位要求，选择最能证明能力迁移的项目经历展开。',
-      result: result.optimized.changes_summary[0] || '用量化结果和职责边界说明你的贡献，避免只描述过程。',
-      storytelling_approach: [],
-    },
-    {
-      title: '补齐短板的备选故事',
-      background: '选择一段能回应岗位关键短板的经历，说明你如何快速学习、协作推进或补齐经验。',
-      result: '强调可验证的交付结果、复盘沉淀或能力迁移，避免只描述主观态度。',
-      storytelling_approach: [],
-    },
-  ]
-  const viewStories = [
-    stories[0] ?? fallbackStories[0],
-    stories[1] ?? fallbackStories[1],
-  ]
 
-  return viewStories.map((story, index) => {
-    const title = story.title || fallbackStories[index].title
-    const background = story.background || fallbackStories[index].background
-    const storyResult = story.result || fallbackStories[index].result
+  return stories.map(story => {
+    const title = story.title || '未命名故事'
+    const background = story.background || ''
+    const storyResult = story.result || ''
     const storytellingApproach = Array.isArray(story.storytelling_approach)
       ? story.storytelling_approach.filter(point => typeof point === 'string' && point.trim()).map(point => point.trim())
       : []

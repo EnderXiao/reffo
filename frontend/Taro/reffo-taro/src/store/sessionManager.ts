@@ -8,16 +8,18 @@ let defaultHandlersRegistered = false
 async function registerDefaultResetHandlers() {
   if (defaultHandlersRegistered) return
   defaultHandlersRegistered = true
-  const [history, sourceResume, workspace, landing] = await Promise.all([
+  const [history, sourceResume, workspace, landing, generation] = await Promise.all([
     import('./historyStore'),
     import('./sourceResumeStore'),
     import('./resumeWorkspaceStore'),
     import('./landingFlowStore'),
+    import('./backgroundGenerationStore'),
   ])
   registerSessionResetHandler(() => history.useHistoryStore.getState().reset())
   registerSessionResetHandler(() => sourceResume.useSourceResumeStore.getState().reset())
   registerSessionResetHandler(() => workspace.useResumeWorkspaceStore.getState().reset())
   registerSessionResetHandler(() => landing.useLandingFlowStore.getState().clear())
+  registerSessionResetHandler(() => generation.useBackgroundGenerationStore.getState().reset())
 }
 
 export function registerSessionResetHandler(handler: ResetHandler) {

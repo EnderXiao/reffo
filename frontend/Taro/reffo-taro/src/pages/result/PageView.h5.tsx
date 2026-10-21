@@ -1,21 +1,26 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import type {CSSProperties, TouchEvent} from 'react'
+import {useCallback, useEffect, useId, useMemo, useRef, useState} from 'react'
+import type {CSSProperties, ReactNode, TouchEvent} from 'react'
 import {Image, ScrollView, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
-import type {HardRequirement, ProcessResult} from '@/types'
+import type {HardRequirement, ProcessResult, ResumeStrategyReference} from '@/types'
 import {FeedbackBubble} from '@/components/common/FeedbackBubble'
 import {
   startResultCardReturnTransition,
   suppressNextNavigationTransition,
 } from '@/utils/navigation-transition'
 import {
+  scaleSharedElementSnapshot,
   readSharedElementSnapshot,
   type SharedElementSnapshot,
 } from '@/utils/shared-element-transition'
 import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
-import type {ResultPageViewModel} from './usePageModel'
+import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis'
+import {RequirementAnalysisPanel} from './components/RequirementAnalysis.h5'
+import type {ResultPageViewModel, ResultRetryStageKey} from './usePageModel'
 import {buildInterviewStoryViewItems} from './model/interviewReferences'
+import {buildGapViewItems, buildOptimizationStrategyViewItems, findResumeReferenceLines,
+  hasStaleStrategyReview, representativeStrategyReference, selectGapPreview} from './model/analysisPresentation'
 import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
@@ -31,7 +36,7 @@ import exitIcon from '@/assets/result/exit.svg'
 import './index.h5.scss'
 
 type ResultStageKey = 'analysis' | 'resume' | 'interview'
-type VisibleStageStatus = 'ready' | 'generating' | 'pending'
+type VisibleStageStatus = 'ready' | 'generating' | 'pending' | 'failed'
 type StageMotionDirection = 'left' | 'right'
 
 const CARD_OPEN_RECT_STORAGE_KEY = 'reffo.homeCardOpenRect'
@@ -44,6 +49,8 @@ const RESULT_STAGE_SWIPE_THRESHOLD = 44
 const RESULT_STAGE_SWITCH_DURATION = 520
 const RESULT_BLOCKED_DRAG_LIMIT = 128
 const RESULT_BLOCKED_DRAG_SETTLE_MS = 340
+const RESULT_CONTENT_EXIT_DURATION = 360
+const RESULT_RETURN_FALLBACK_DURATION = 980
 interface CardOpenRectSnapshot extends SharedElementSnapshot {
   cardId?: string
 }
@@ -86,8 +93,8 @@ const RESULT_STAGES: ResultStage[] = [
     key: 'resume',
     title: '相契简历',
     accent: '相契',
-    label: '相契简历',
-    subtitle: '基于岗位分析生成人岗相契的简历，确保简历与目标岗位高度匹配！',
+    label: '最佳简历',
+    subtitle: '依据岗位要求，突出你已有的相关经历与优势，保留真实的岗位差距。',
     icon: textIcon,
   },
   {
@@ -116,11 +123,13 @@ function readCardOpenRect(): CardOpenRectSnapshot | null {
 function getBlockedStageMessage(
   stageKey: ResultStageKey,
   progress: LatestResultSessionProgress,
-  generationError?: string,
+  generationError?: string | null,
 ) {
   const stageStatus = getVisibleStageStatus(stageKey, progress)
-  const message = generationError ||
-    (stageStatus === 'generating' ? '步骤正在生成中' : '等待前置步骤完成')
+  const message = stageStatus === 'failed'
+    ? generationError || '生成失败，请稍后重试'
+    : generationError ||
+      (stageStatus === 'generating' ? '步骤正在生成中' : '等待前置步骤完成')
 
   return {
     stageStatus,
@@ -128,7 +137,10 @@ function getBlockedStageMessage(
   }
 }
 
-function markReturningHome(cardId?: string | null, transition?: 'view-transition') {
+function markReturningHome(
+  cardId?: string | null,
+  transition?: 'view-transition' | 'direct',
+) {
   if (typeof window === 'undefined') {
     return
   }
@@ -142,6 +154,52 @@ function markReturningHome(cardId?: string | null, transition?: 'view-transition
   } catch (error) {
     console.warn('保存首页返回过渡标记失败:', error)
   }
+}
+
+function resolveResultPageReturnKeyframes(
+  rootRect: DOMRect,
+  snapshot: CardOpenRectSnapshot,
+): Keyframe[] | null {
+  if (rootRect.width <= 0 || rootRect.height <= 0) {
+    return null
+  }
+
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || rootRect.width
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || rootRect.height
+  const fallbackWidth = Math.min(viewportWidth * 0.55, 218)
+  const target = scaleSharedElementSnapshot(snapshot, {
+    left: (viewportWidth - fallbackWidth) / 2,
+    top: Math.max(96, (viewportHeight - fallbackWidth * 1.546) / 2),
+    width: fallbackWidth,
+    height: fallbackWidth * 1.546,
+  })
+  const translateX = target.left - rootRect.left
+  const translateY = target.top - rootRect.top
+  const scaleX = target.width / rootRect.width
+  const scaleY = target.height / rootRect.height
+  const midTranslateX = translateX * 0.72
+  const midTranslateY = translateY * 0.72
+  const midScaleX = 1 + (scaleX - 1) * 0.72
+  const midScaleY = 1 + (scaleY - 1) * 0.72
+
+  return [
+    {
+      transform: 'translate3d(0, 0, 0) scale(1, 1)',
+      clipPath: 'inset(0px round 0px)',
+      opacity: 1,
+    },
+    {
+      transform: `translate3d(${midTranslateX}px, ${midTranslateY}px, 0) scale(${midScaleX}, ${midScaleY})`,
+      clipPath: 'inset(0px round 10px)',
+      opacity: 1,
+      offset: 0.58,
+    },
+    {
+      transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`,
+      clipPath: 'inset(0px round 28px)',
+      opacity: 1,
+    },
+  ]
 }
 
 function getUnmatchedRequirements(items: HardRequirement[] | undefined) {
@@ -249,11 +307,13 @@ function getVisibleStageStatus(
   progress: ResultPageViewModel['progress'],
 ): VisibleStageStatus {
   if (stage === 'analysis') {
-    return progress.analysis === 'done' ? 'ready' : 'generating'
+    if (progress.analysis === 'done') return 'ready'
+    return progress.analysis === 'failed' ? 'failed' : 'generating'
   }
 
   if (stage === 'resume') {
     if (progress.optimized === 'done') return 'ready'
+    if (progress.matching === 'failed' || progress.optimized === 'failed') return 'failed'
     if (progress.matching === 'generating' || progress.optimized === 'generating') {
       return 'generating'
     }
@@ -262,6 +322,7 @@ function getVisibleStageStatus(
   }
 
   if (progress.interview === 'done') return 'ready'
+  if (progress.interview === 'failed') return 'failed'
   if (progress.interview === 'generating') return 'generating'
 
   return 'pending'
@@ -316,6 +377,14 @@ function SectionTitle({children, icon}: {children: string; icon?: string}) {
   )
 }
 
+function SourceReference({value}: {value?: string}) {
+  return (
+    <Text className='reffo-result__story-reference'>
+      {value?.trim() || '暂无可引用原文'}
+    </Text>
+  )
+}
+
 function ResultStageTitle({stage}: {stage: ResultStage}) {
   const accentIndex = stage.title.indexOf(stage.accent)
   const titleBeforeAccent = accentIndex >= 0 ? stage.title.slice(0, accentIndex) : ''
@@ -362,28 +431,52 @@ function EmptyText() {
   return <Text className='reffo-result__empty'>暂无内容</Text>
 }
 
-function SourceReference({value}: {value: string}) {
+function AnalysisDisclosure({label, children}: {label: string; children: ReactNode}) {
+  const [expanded, setExpanded] = useState(false)
+  const contentId = useId()
   return (
-    <Text className='reffo-result__story-reference'>
-      {value || '暂无可引用原文'}
-    </Text>
+    <div className='reffo-result__analysis-disclosure'>
+      <button type='button' className='reffo-result__analysis-toggle' aria-expanded={expanded}
+        aria-controls={contentId} onClick={() => setExpanded(value => !value)}>
+        {expanded ? '收起详情' : label}<span aria-hidden='true'>{expanded ? '−' : '+'}</span>
+      </button>
+      {expanded && <div id={contentId} className='reffo-result__analysis-expanded'>{children}</div>}
+    </div>
   )
 }
 
-function AnalysisPanel({result}: {result: ProcessResult}) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const grade = resolveResumeGrade(result.analysis.quality_score)
-  const weaknesses = normalizeItems(result.analysis.weaknesses, 3)
-  const strategies = normalizeItems(result.matching.optimization_suggestions, 5)
-  const visibleWeaknesses = isExpanded ? weaknesses : weaknesses.slice(0, 2)
-  const visibleStrategies = isExpanded ? strategies : strategies.slice(0, 3)
-  const hasHiddenItems = visibleWeaknesses.length < weaknesses.length || visibleStrategies.length < strategies.length
+function AnalysisDetail({label, value, quote = false}: {label: string; value: string; quote?: boolean}) {
+  if (!value) return null
+  return (
+    <div className='reffo-result__analysis-detail-row'>
+      <span className='reffo-result__analysis-detail-label'>{label}</span>
+      {quote
+        ? <blockquote className='reffo-result__analysis-detail-value reffo-result__analysis-source'>{value}</blockquote>
+        : <p className='reffo-result__analysis-detail-value reffo-result__analysis-copy'>{value}</p>}
+    </div>
+  )
+}
+
+function AnalysisPanel({result, onLocateReference}: {
+  result: ProcessResult
+  onLocateReference: (reference: ResumeStrategyReference) => void
+}) {
+  const [allGaps, setAllGaps] = useState(false)
+  const [allStrategies, setAllStrategies] = useState(false)
+  const grade = resolveResumeGrade(result.matching.match_score)
+  const weaknesses = buildGapViewItems(result, Infinity)
+  const previewGaps = selectGapPreview(weaknesses)
+  const visibleGaps = allGaps ? selectGapPreview(weaknesses, Infinity) : previewGaps
+  const strategies = buildOptimizationStrategyViewItems(result, Infinity)
+  const visibleStrategies = allStrategies ? strategies : strategies.slice(0, 3)
+  const staleReview = hasStaleStrategyReview(result)
+  const hasPortrait = Boolean(normalizeRequirementAnalysis(result.matching.requirement_analysis)?.portrait?.text)
 
   return (
     <View className='reffo-result__panel'>
       <View className='reffo-result__score-row'>
         <Text className='reffo-result__grade'>{grade}</Text>
-        <Text className='reffo-result__grade-label'>评级</Text>
+        <Text className='reffo-result__grade-label'>岗位匹配度</Text>
       </View>
 
       <View className='reffo-result__alert reffo-result__alert--danger'>
@@ -391,15 +484,30 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
           <Image className='reffo-result__alert-icon' src={alertIcon} mode='aspectFit' />
           <Text>差距分析</Text>
         </View>
-        {visibleWeaknesses.length > 0 ? (
-          visibleWeaknesses.map((item, index) => (
-            <Text key={`${item}-${index}`} className='reffo-result__paragraph'>
-              {item}
-            </Text>
-          ))
-        ) : (
-          <EmptyText />
-        )}
+        {weaknesses.length > 0 ? (
+          <>
+            <ul className='reffo-result__analysis-list'>
+              {visibleGaps.map(item => (
+                <li key={item.id} className='reffo-result__analysis-list-item'>
+                  {item.isRequired && <span className='reffo-result__analysis-item-tag'>必要条件</span>}
+                  <p className='reffo-result__analysis-judgment'>{item.title}</p>
+                  {(item.jdRequirement || item.evidence || item.impact || item.suggestion) && (
+                    <AnalysisDisclosure label='查看依据与建议'>
+                      <AnalysisDetail label='岗位要求' value={item.jdRequirement} quote />
+                      <AnalysisDetail label='已有依据' value={item.evidence} quote />
+                      <AnalysisDetail label='影响与边界' value={item.impact} />
+                      <AnalysisDetail label='建议方向' value={item.suggestion} />
+                    </AnalysisDisclosure>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {weaknesses.length > previewGaps.length && <button type='button' className='reffo-result__analysis-more'
+              aria-expanded={allGaps} onClick={() => setAllGaps(value => !value)}>
+              {allGaps ? '收起其他差距' : `查看全部 ${weaknesses.length} 项差距`}
+            </button>}
+          </>
+        ) : <EmptyText />}
       </View>
 
       <View className='reffo-result__alert reffo-result__alert--success'>
@@ -407,25 +515,60 @@ function AnalysisPanel({result}: {result: ProcessResult}) {
           <Image className='reffo-result__alert-icon' src={confirmIcon} mode='aspectFit' />
           <Text>优化策略</Text>
         </View>
-        {visibleStrategies.length > 0 ? (
-          visibleStrategies.map((item, index) => (
-            <Text key={`${item}-${index}`} className='reffo-result__paragraph'>
-              {item}
-            </Text>
-          ))
-        ) : (
-          <EmptyText />
-        )}
+        {staleReview && <p className='reffo-result__analysis-caption'>简历已编辑，以下为生成时的建议，原正文对应说明已隐藏。</p>}
+        {strategies.length > 0 ? (
+          <>
+            <ul className='reffo-result__analysis-list'>
+              {visibleStrategies.map(item => {
+                const related = weaknesses.filter(gap => item.relatedGapIds.includes(gap.id))
+                const reference = representativeStrategyReference(item.outcome, result.optimized.optimized_resume)
+                const canLocate = reference && findResumeReferenceLines(result.optimized.optimized_resume, reference.quote)
+                const outcomeLabel = item.outcome?.status === 'linked' && reference ? '正文对应内容'
+                  : item.outcome?.status === 'needs_material' ? '需补充材料'
+                    : item.outcome?.status === 'not_selected' ? '本次未选入' : '暂未定位到正文'
+                return (
+                  <li key={item.id} className='reffo-result__analysis-list-item'>
+                    <p className='reffo-result__analysis-judgment'>{item.strategyPoint}</p>
+                    {item.outcome && <span className='reffo-result__analysis-outcome-label'>{outcomeLabel}</span>}
+                    {(item.outcome || item.rationale || item.sourceQuote || item.optimizedContent || related.length > 0) && (
+                      <AnalysisDisclosure label={item.outcome ? '查看说明与正文' : '查看策略依据'}>
+                        {item.outcome && <div className='reffo-result__strategy-outcome'>
+                          <AnalysisDetail label='本次处理' value={item.outcome.explanation} />
+                          {reference && <>
+                            <AnalysisDetail label='简历位置' value={reference.location} />
+                            <AnalysisDetail label='正文原句' value={reference.quote} quote />
+                            {canLocate && <button type='button' className='reffo-result__analysis-toggle reffo-result__strategy-locate'
+                              onClick={() => onLocateReference(reference)}>在相契简历中查看</button>}
+                          </>}
+                        </div>}
+                        <AnalysisDetail label='为什么调整' value={item.rationale} />
+                        {related.map(gap => <div key={gap.id}>
+                          <AnalysisDetail label='相关要求' value={gap.jdRequirement} quote />
+                          <AnalysisDetail label='已有依据' value={gap.evidence} quote />
+                          <AnalysisDetail label='建议方向' value={gap.suggestion} />
+                        </div>)}
+                        <AnalysisDetail label='源简历原句' value={item.sourceQuote} quote />
+                        <AnalysisDetail label='表达示例' value={item.optimizedContent} />
+                        {item.optimizedContent && <p className='reffo-result__analysis-caption'>此处为表达建议，实际内容请查看相契简历。</p>}
+                      </AnalysisDisclosure>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+            {strategies.length > 3 && <button type='button' className='reffo-result__analysis-more'
+              aria-expanded={allStrategies} onClick={() => setAllStrategies(value => !value)}>
+              {allStrategies ? '收起其他策略' : `查看全部 ${strategies.length} 条策略`}
+            </button>}
+          </>
+        ) : <EmptyText />}
       </View>
-      {(hasHiddenItems || isExpanded) ? (
-        <View
-          className='reffo-result__analysis-toggle'
-          role='button'
-          onClick={() => setIsExpanded(previous => !previous)}
-        >
-          <Text>{isExpanded ? '收起分析' : '查看完整分析'}</Text>
-        </View>
-      ) : null}
+
+      {hasPortrait && <div className='reffo-result__portrait-secondary'>
+        <AnalysisDisclosure label='了解岗位画像'>
+          <RequirementAnalysisPanel value={result.matching.requirement_analysis} />
+        </AnalysisDisclosure>
+      </div>}
     </View>
   )
 }
@@ -435,18 +578,33 @@ function ResumePanel({
   companyName,
   positionName,
   onOptimizedResumeChange,
+  reference,
 }: {
   result: ProcessResult
   companyName: string
   positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
+  reference?: ResumeStrategyReference
 }) {
   const [lines, setLines] = useState(() => parseMarkdown(result.optimized.optimized_resume))
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editingDraft, setEditingDraft] = useState('')
   const editorRef = useRef<HTMLTextAreaElement | null>(null)
+  const referenceRef = useRef<HTMLDivElement | null>(null)
   const markdown = useMemo(() => lines.map(line => line.raw).join('\n'), [lines])
   const isEditing = editingIndex !== null
+  const referenceLines = !isEditing && markdown === result.optimized.optimized_resume
+    && result.optimized.strategy_review && !hasStaleStrategyReview(result) && reference
+    ? findResumeReferenceLines(markdown, reference.quote) : undefined
+
+  useEffect(() => {
+    if (!referenceLines) return
+    const frame = window.requestAnimationFrame(() => {
+      referenceRef.current?.scrollIntoView?.({block: 'center', behavior: 'auto'})
+      referenceRef.current?.focus({preventScroll: true})
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [reference?.quote, referenceLines?.start, referenceLines?.end])
 
   const resizeEditor = (element: HTMLTextAreaElement | null) => {
     if (!element) return
@@ -519,13 +677,17 @@ function ResumePanel({
           <Text>下载</Text>
         </View>
 
+        {referenceLines && <p className='reffo-result__analysis-caption' role='status'>已定位：{reference?.location}</p>}
         <View className='reffo-result__markdown'>
           {lines.map((line, index) => (
-            <View
+            <div
               key={`line-${index}`}
+              ref={index === referenceLines?.start ? referenceRef : undefined}
+              tabIndex={index === referenceLines?.start ? -1 : undefined}
               className={classNames(
                 'reffo-result__markdown-line',
                 `reffo-result__markdown-line--${line.kind}`,
+                {'reffo-result__markdown-line--located': referenceLines && index >= referenceLines.start && index <= referenceLines.end},
               )}
             >
               {editingIndex === index ? (
@@ -586,7 +748,7 @@ function ResumePanel({
                   )}
                 </>
               )}
-            </View>
+            </div>
           ))}
         </View>
       </View>
@@ -630,35 +792,36 @@ function InterviewPanel({
 
       <SectionTitle>明星故事推荐</SectionTitle>
       <View className='reffo-result__story-list'>
+        {storyItems.length === 0 && (
+          <Text className='reffo-result__story-bullet'>尚未生成故事推荐，请重新生成面试建议。</Text>
+        )}
         {storyItems.map((item, index) => (
           <View key={`${item.title}-${index}`} className='reffo-result__story-block'>
             <Text className='reffo-result__story-title'>{item.title}</Text>
             <Text className='reffo-result__story-source'>
-              来自源简历
-              <Text className='reffo-result__story-reference'>{item.resumeQuote || '暂无可引用原文'}</Text>
-              和岗位描述
-              <Text className='reffo-result__story-reference'>{item.jdQuote || '暂无可引用原文'}</Text>
+              参考源简历
+              <SourceReference value={item.resumeQuote} />
+              ；参考岗位描述
+              <SourceReference value={item.jdQuote} />
               。
             </Text>
 
             <Text className='reffo-result__story-label'>故事回顾：</Text>
             <View className='reffo-result__story-bullets'>
-              <Text className='reffo-result__story-bullet'>• {item.background}</Text>
-              <Text className='reffo-result__story-bullet'>• {item.result}</Text>
+              {item.background && <Text className='reffo-result__story-bullet'>• {item.background}</Text>}
+              {item.result && <Text className='reffo-result__story-bullet'>• {item.result}</Text>}
             </View>
 
-            {item.storytellingApproach.length > 0 && (
-              <>
-                <Text className='reffo-result__story-label'>讲述思路：</Text>
-                <View className='reffo-result__story-bullets'>
-                  {item.storytellingApproach.map((point, pointIndex) => (
-                    <Text key={`${item.title}-approach-${pointIndex}`} className='reffo-result__story-bullet'>
-                      • {point}
-                    </Text>
-                  ))}
-                </View>
-              </>
-            )}
+            <Text className='reffo-result__story-label'>讲述思路：</Text>
+            <View className='reffo-result__story-bullets'>
+              {item.storytellingApproach.length > 0 ? item.storytellingApproach.map((point, pointIndex) => (
+                <Text key={`${item.title}-approach-${pointIndex}`} className='reffo-result__story-bullet'>
+                  • {point}
+                </Text>
+              )) : (
+                <Text className='reffo-result__story-bullet'>此故事尚未生成讲述思路，请重新生成面试建议。</Text>
+              )}
+            </View>
           </View>
         ))}
       </View>
@@ -677,6 +840,8 @@ function ResultContent({
   companyName,
   positionName,
   onOptimizedResumeChange,
+  onLocateReference,
+  reference,
 }: {
   stage: ResultStageKey
   result: ProcessResult
@@ -685,8 +850,10 @@ function ResultContent({
   companyName: string
   positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
+  onLocateReference: (reference: ResumeStrategyReference) => void
+  reference?: ResumeStrategyReference
 }) {
-  if (stage === 'analysis') return <AnalysisPanel result={result} />
+  if (stage === 'analysis') return <AnalysisPanel result={result} onLocateReference={onLocateReference} />
   if (stage === 'resume') {
     return (
       <ResumePanel
@@ -694,6 +861,7 @@ function ResultContent({
         companyName={companyName}
         positionName={positionName}
         onOptimizedResumeChange={onOptimizedResumeChange}
+        reference={reference}
       />
     )
   }
@@ -718,17 +886,23 @@ export default function PageView({
   enteredFromLanding,
   returnCard,
   canEditHistory,
+  needsCompletion = false,
   handleComplete,
   handleBackHome,
   handleEditHistory,
+  handleRetryStage,
   handleOptimizedResumeChange,
   isCompleting,
   hideLandingHeader = false,
 }: ResultPageViewProps) {
   const [stageIndex, setStageIndex] = useState(0)
+  const [resumeReference, setResumeReference] = useState<ResumeStrategyReference>()
+
+  useEffect(() => setResumeReference(undefined), [result?.optimized.optimized_resume])
   const [isFromCardReady, setIsFromCardReady] = useState(!enteredFromCard)
   const [isEdgeEnterReady, setIsEdgeEnterReady] = useState(!enteredFromCard)
   const [isReturningHome, setIsReturningHome] = useState(false)
+  const [isExitingContent, setIsExitingContent] = useState(false)
   const [blockedBubble, setBlockedBubble] = useState<{
     stageKey: ResultStageKey
     message: string
@@ -737,6 +911,8 @@ export default function PageView({
   const [stageTransition, setStageTransition] = useState<StageTransitionState | null>(null)
   const [blockedPreview, setBlockedPreview] = useState<BlockedStagePreviewState | null>(null)
   const rootRef = useRef<HTMLElement | null>(null)
+  const returnSurfaceRef = useRef<HTMLElement | null>(null)
+  const contentExitTimerRef = useRef<number | null>(null)
   const returnTimerRef = useRef<number | null>(null)
   const edgeEnterTimerRef = useRef<number | null>(null)
   const bubbleTimerRef = useRef<number | null>(null)
@@ -835,6 +1011,9 @@ export default function PageView({
   }, [enteredFromCard, hasRenderableResult, isFromCardReady, loading])
 
   useEffect(() => () => {
+    if (contentExitTimerRef.current != null) {
+      window.clearTimeout(contentExitTimerRef.current)
+    }
     if (edgeEnterTimerRef.current != null) {
       window.clearTimeout(edgeEnterTimerRef.current)
     }
@@ -905,6 +1084,22 @@ export default function PageView({
     }, RESULT_BLOCKED_SHAKE_DURATION)
   }, [generationError, progress])
 
+  useEffect(() => {
+    const failedStage = RESULT_STAGES.find(stage => (
+      getVisibleStageStatus(stage.key, progress) === 'failed'
+    ))
+
+    if (failedStage) {
+      showBlockedBubble(failedStage.key)
+    }
+  }, [
+    progress.analysis,
+    progress.interview,
+    progress.matching,
+    progress.optimized,
+    showBlockedBubble,
+  ])
+
   const settleBlockedPreview = useCallback((
     stageKey: ResultStageKey,
     direction: StageMotionDirection,
@@ -944,6 +1139,12 @@ export default function PageView({
     }
 
     if (!stageAvailability[nextStage.key]) {
+      const stageStatus = getVisibleStageStatus(nextStage.key, progress)
+      if (stageStatus === 'failed') {
+        setBlockedBubble(null)
+        void handleRetryStage(nextStage.key satisfies ResultRetryStageKey)
+        return
+      }
       if (options.showBubble !== false) {
         showBlockedBubble(nextStage.key, options)
       }
@@ -968,7 +1169,14 @@ export default function PageView({
       stageTransitionTimerRef.current = null
       setStageTransition(current => current?.toIndex === nextIndex ? null : current)
     }, RESULT_STAGE_SWITCH_DURATION)
-  }, [showBlockedBubble, stageAvailability, stageIndex])
+  }, [handleRetryStage, progress, showBlockedBubble, stageAvailability, stageIndex])
+
+  const handleLocateReference = (reference: ResumeStrategyReference) => {
+    if (!result || hasStaleStrategyReview(result)
+      || !findResumeReferenceLines(result.optimized.optimized_resume, reference.quote)) return
+    setResumeReference(reference)
+    requestStageSwitch(1)
+  }
 
   const handleStageTouchStart = useCallback((event: TouchEvent) => {
     const touch = event.touches[0] ?? event.changedTouches[0]
@@ -1102,8 +1310,7 @@ export default function PageView({
     const cardOpenSnapshot = readCardOpenRect()
     const returningCardId = returnCard?.id ?? cardOpenSnapshot?.cardId ?? null
     const rootElement = rootRef.current
-    const shellElement = rootElement?.querySelector('.reffo-result__shell') as HTMLElement | null
-    const chromeElement = rootElement?.querySelector('.reffo-result__chrome') as HTMLElement | null
+    const returnSurfaceElement = returnSurfaceRef.current
     let finished = false
 
     const finishReturn = () => {
@@ -1112,48 +1319,58 @@ export default function PageView({
       }
 
       finished = true
+      if (contentExitTimerRef.current != null) {
+        window.clearTimeout(contentExitTimerRef.current)
+        contentExitTimerRef.current = null
+      }
       if (returnTimerRef.current != null) {
         window.clearTimeout(returnTimerRef.current)
         returnTimerRef.current = null
       }
+      markReturningHome(returningCardId, 'direct')
       suppressNextNavigationTransition()
       handleBackHome()
     }
 
-    const didStartViewTransition = startResultCardReturnTransition(() => {
-      markReturningHome(returningCardId, 'view-transition')
-      return handleBackHome()
-    }, rootElement)
-
-    if (didStartViewTransition) {
-      setIsReturningHome(true)
+    setIsReturningHome(true)
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (reducedMotion) {
+      finishReturn()
       return
     }
 
-    markReturningHome(returningCardId)
-    setIsReturningHome(true)
+    setIsExitingContent(true)
+    contentExitTimerRef.current = window.setTimeout(() => {
+      contentExitTimerRef.current = null
+      const didStartViewTransition = startResultCardReturnTransition(() => {
+        markReturningHome(returningCardId, 'view-transition')
+        return handleBackHome()
+      }, returnSurfaceElement || rootElement)
 
-    if (returnTimerRef.current != null) {
-      window.clearTimeout(returnTimerRef.current)
-    }
+      if (didStartViewTransition) {
+        return
+      }
 
-    returnTimerRef.current = window.setTimeout(finishReturn, 48)
+      const cardOpenRect = cardOpenSnapshot
+      const keyframes = rootElement && cardOpenRect
+        ? resolveResultPageReturnKeyframes(rootElement.getBoundingClientRect(), cardOpenRect)
+        : null
 
-    const fadingElements = [shellElement, chromeElement]
+      if (!rootElement || !keyframes || typeof rootElement.animate !== 'function') {
+        finishReturn()
+        return
+      }
 
-    fadingElements.forEach(element => {
-      element?.animate?.(
-        [
-          {opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)'},
-          {opacity: 0, transform: 'translate3d(0, -8px, 0) scale(0.98)'},
-        ],
-        {
-          duration: 260,
-          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-          fill: 'forwards',
-        },
-      )
-    })
+      rootElement.style.transformOrigin = '0 0'
+      rootElement.style.willChange = 'transform, clip-path, opacity'
+      rootElement.animate(keyframes, {
+        duration: RESULT_RETURN_FALLBACK_DURATION,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        fill: 'forwards',
+      })
+
+      returnTimerRef.current = window.setTimeout(finishReturn, RESULT_RETURN_FALLBACK_DURATION)
+    }, RESULT_CONTENT_EXIT_DURATION)
   }, [enteredFromCard, handleBackHome, isReturningHome, returnCard])
 
   const handleAction = async () => {
@@ -1181,6 +1398,7 @@ export default function PageView({
           'reffo-result--returning-home': isReturningHome,
         })}
       >
+        <View className='reffo-result__return-surface' aria-hidden='true' />
         {enteredFromLanding && !hideLandingHeader ? (
           <LandingFlowHeader
             className='reffo-create__landing-header--result'
@@ -1210,6 +1428,7 @@ export default function PageView({
         'reffo-result--from-card-ready': enteredFromCard && isFromCardReady,
         'reffo-result--edge-enter-ready': enteredFromCard && isEdgeEnterReady,
         'reffo-result--returning-home': isReturningHome,
+        'reffo-result--content-exiting': isExitingContent,
         'reffo-result--blocked-shake': isBlockedShaking,
         'reffo-result--blocked-preview': Boolean(blockedPreview),
         'reffo-result--blocked-dragging': blockedPreview?.phase === 'dragging',
@@ -1222,6 +1441,11 @@ export default function PageView({
       onTouchEnd={handleStageTouchEnd}
       onTouchCancel={handleStageTouchCancel}
     >
+      <View
+        ref={returnSurfaceRef as any}
+        className='reffo-result__return-surface'
+        aria-hidden='true'
+      />
       {enteredFromLanding ? (
         hideLandingHeader ? null : (
           <LandingFlowHeader
@@ -1250,7 +1474,14 @@ export default function PageView({
               <Text>{isReturningHome ? '返回中…' : '返回'}</Text>
             </View>
           </View>
-          {canEditHistory ? (
+          {needsCompletion ? (
+            <View className='reffo-result__chrome'>
+              <View className='reffo-result__action' role='button' aria-disabled={isCompleting}
+                onClick={isCompleting ? undefined : () => void handleComplete()}>
+                <Text>{isCompleting ? '保存中…' : '完成'}</Text>
+              </View>
+            </View>
+          ) : canEditHistory ? (
             <View className='reffo-result__chrome'>
               <View
                 className='reffo-result__action reffo-result__action--edit'
@@ -1268,11 +1499,11 @@ export default function PageView({
         <View className='reffo-result__chrome'>
           <View
             className={classNames('reffo-result__action', {
-              'reffo-result__action--edit': isComplete && canEditHistory,
+              'reffo-result__action--edit': isComplete && canEditHistory && !needsCompletion,
               'reffo-result__action--disabled': isCompleting,
             })}
             aria-disabled={isCompleting}
-            onClick={isCompleting ? undefined : isComplete && canEditHistory
+            onClick={isCompleting ? undefined : isComplete && canEditHistory && !needsCompletion
               ? () => {
                   void handleEditHistory()
                 }
@@ -1280,10 +1511,10 @@ export default function PageView({
           >
             {!isComplete ? (
               <Image src={exitIcon} className='reffo-result__action-icon' mode='aspectFit' />
-            ) : canEditHistory ? (
+            ) : canEditHistory && !needsCompletion ? (
               <Image src={editIcon} className='reffo-result__action-icon' mode='aspectFit' />
             ) : null}
-            <Text>{isCompleting ? '保存中…' : isComplete && canEditHistory ? '编辑简历' : isComplete ? '完成' : '退出生成'}</Text>
+            <Text>{isCompleting ? '保存中…' : isComplete && canEditHistory && !needsCompletion ? '编辑简历' : isComplete ? '完成' : '退出生成'}</Text>
           </View>
         </View>
       )}
@@ -1302,7 +1533,7 @@ export default function PageView({
         </View>
       </View>
 
-      <View className='reffo-result__shell'>
+      <View className='reffo-result__shell reffo-responsive-page__frame'>
         <View className='reffo-result__content'>
           <View className='reffo-result__header'>
             <View className='reffo-result__title-viewport'>
@@ -1360,9 +1591,14 @@ export default function PageView({
                           [`reffo-result__tab--${stage.key}`]: true,
                           'reffo-result__tab--active': index === stageIndex,
                           'reffo-result__tab--ready': stageStatus === 'ready' && index !== stageIndex,
+                          'reffo-result__tab--failed': stageStatus === 'failed',
                         })}
                         onClick={() => requestStageSwitch(index)}
-                        aria-label={stage.label}
+                        aria-label={stageStatus === 'failed' && stage.key === 'resume'
+                          ? '重试最佳简历'
+                          : stageStatus === 'failed' && stage.key === 'interview'
+                            ? '重试面试建议'
+                            : stage.label}
                       >
                         <Image
                           className='reffo-result__tab-icon'
@@ -1386,10 +1622,15 @@ export default function PageView({
                       [`reffo-result__tab--${stage.key}`]: true,
                       'reffo-result__tab--generating': stageStatus === 'generating',
                       'reffo-result__tab--pending': stageStatus === 'pending',
+                      'reffo-result__tab--failed': stageStatus === 'failed',
                       'reffo-result__tab--blocked-bubble': blockedBubble?.stageKey === stage.key,
                     })}
                     onClick={() => requestStageSwitch(index)}
-                    aria-label={stage.label}
+                    aria-label={stageStatus === 'failed' && stage.key === 'resume'
+                      ? '重试最佳简历'
+                      : stageStatus === 'failed' && stage.key === 'interview'
+                        ? '重试面试建议'
+                        : stage.label}
                   >
                     <Image
                       className='reffo-result__tab-icon'
@@ -1479,6 +1720,7 @@ export default function PageView({
                         companyName={companyName}
                         positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
+                        onLocateReference={handleLocateReference}
                       />
                     </View>
                     <View
@@ -1497,6 +1739,7 @@ export default function PageView({
                         companyName={companyName}
                         positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
+                        onLocateReference={handleLocateReference}
                       />
                     </View>
                   </>
@@ -1513,6 +1756,8 @@ export default function PageView({
                       companyName={companyName}
                       positionName={positionName}
                       onOptimizedResumeChange={handleOptimizedResumeChange}
+                      onLocateReference={handleLocateReference}
+                      reference={resumeReference}
                     />
                   </View>
                 )}

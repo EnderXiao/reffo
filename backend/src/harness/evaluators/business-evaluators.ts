@@ -64,6 +64,31 @@ function includesAny(values: string[], candidates: string[]) {
 }
 
 const weaknessEvidenceTypes = new Set(['direct_missing', 'implicit_evidence', 'wording_gap'])
+const matchGapPriorities = new Set(['high', 'medium', 'low'])
+
+function resolveSourcePathValue(sourceResume: ResumeStructure, sourcePath: string) {
+  const normalizedPath = sourcePath
+    .trim()
+    .replace(/^(?:structured_source_resume|structured_resume)\./, '')
+  const segments = normalizedPath.match(/[^.[\]]+/g) ?? []
+  let current: unknown = sourceResume
+
+  for (const segment of segments) {
+    if (Array.isArray(current) && /^\d+$/.test(segment)) {
+      current = current[Number(segment)]
+      continue
+    }
+
+    if (current && typeof current === 'object' && segment in current) {
+      current = (current as Record<string, unknown>)[segment]
+      continue
+    }
+
+    return undefined
+  }
+
+  return typeof current === 'string' ? current : undefined
+}
 
 export function evaluateResumeAnalysisBusiness(analysis: ResumeAnalysis): EvaluationResult {
   const issues: EvaluationIssue[] = []
@@ -126,10 +151,14 @@ export function evaluateResumeAnalysisBusiness(analysis: ResumeAnalysis): Evalua
   return buildResult({ evaluatorName: 'resume-analysis-business-rules', issues })
 }
 
-export function evaluateMatchAnalysisBusiness(matchAnalysis: MatchAnalysis): EvaluationResult {
+export function evaluateMatchAnalysisBusiness(
+  matchAnalysis: MatchAnalysis,
+  sourceResume?: ResumeStructure
+): EvaluationResult {
   const issues: EvaluationIssue[] = []
   const requiredSkills = getRequiredSkills(matchAnalysis.jd_structure)
   const weaknessDetails = matchAnalysis.weakness_details ?? []
+  const strategyDetails = matchAnalysis.optimization_strategy_details ?? []
 
   if (matchAnalysis.match_score < 0 || matchAnalysis.match_score > 100) {
     issues.push({
@@ -186,6 +215,97 @@ export function evaluateMatchAnalysisBusiness(matchAnalysis: MatchAnalysis): Eva
           path: `weakness_details.${index}`,
         })
       }
+
+      if (
+        detail.id !== `G${index + 1}` ||
+        !detail.priority ||
+        !matchGapPriorities.has(detail.priority) ||
+        !hasText(detail.jd_requirement) ||
+        !hasText(detail.impact)
+      ) {
+        issues.push({
+          severity: 'error',
+          code: 'INCOMPLETE_STRUCTURED_GAP',
+          message: '每条岗位差距都必须包含连续 G 编号、优先级、JD 要求、判断依据、投递影响和应对方向。',
+          path: `weakness_details.${index}`,
+        })
+      }
+    })
+  }
+
+  const gapIds = new Set(weaknessDetails.map((detail) => detail.id).filter(hasText))
+  const actionableGapIds = weaknessDetails
+    .filter((detail) => detail.evidence_type !== 'direct_missing')
+    .map((detail) => detail.id)
+    .filter((id): id is string => hasText(id))
+
+  if (actionableGapIds.length > 0 && strategyDetails.length === 0) {
+    issues.push({
+      severity: 'error',
+      code: 'MISSING_OPTIMIZATION_STRATEGY_DETAILS',
+      message: '可由现有证据解决的岗位差距必须提供结构化优化策略和改写实例。',
+      path: 'optimization_strategy_details',
+    })
+  }
+
+  if (hasItems(matchAnalysis.optimization_suggestions) && strategyDetails.length === 0) {
+    issues.push({
+      severity: 'error',
+      code: 'UNSTRUCTURED_OPTIMIZATION_SUGGESTIONS',
+      message: '优化建议必须提供策略说明以及可回溯的优化前后实例，不能只返回字符串摘要。',
+      path: 'optimization_strategy_details',
+    })
+  }
+
+  const coveredGapIds = new Set<string>()
+  strategyDetails.forEach((detail, index) => {
+    const example = detail.optimization_example
+    const relatedGapIds = detail.related_gap_ids ?? []
+    const hasInvalidGapReference = relatedGapIds.length === 0 || relatedGapIds.some((gapId) => {
+      const referencedGap = weaknessDetails.find((gap) => gap.id === gapId)
+      return !gapIds.has(gapId) || referencedGap?.evidence_type === 'direct_missing'
+    })
+
+    relatedGapIds.forEach((gapId) => coveredGapIds.add(gapId))
+
+    if (
+      detail.id !== `S${index + 1}` ||
+      !hasText(detail.strategy_point) ||
+      !hasText(detail.rationale) ||
+      hasInvalidGapReference ||
+      !hasText(example?.source_path) ||
+      !hasText(example?.source_quote) ||
+      !hasText(example?.optimized_content)
+    ) {
+      issues.push({
+        severity: 'error',
+        code: 'INCOMPLETE_OPTIMIZATION_STRATEGY_DETAIL',
+        message: '每条优化策略都必须包含连续 S 编号、可行动差距关联、策略点、说明以及完整的优化前后实例。',
+        path: `optimization_strategy_details.${index}`,
+      })
+      return
+    }
+
+    if (sourceResume) {
+      const originalValue = resolveSourcePathValue(sourceResume, example.source_path)
+      if (!originalValue || originalValue.trim() !== example.source_quote.trim()) {
+        issues.push({
+          severity: 'error',
+          code: 'INVALID_OPTIMIZATION_SOURCE_QUOTE',
+          message: '优化前原文必须逐字来自 source_path 指向的单个源简历字段。',
+          path: `optimization_strategy_details.${index}.optimization_example`,
+        })
+      }
+    }
+  })
+
+  const uncoveredGapIds = actionableGapIds.filter((gapId) => !coveredGapIds.has(gapId))
+  if (uncoveredGapIds.length > 0) {
+    issues.push({
+      severity: 'error',
+      code: 'ACTIONABLE_GAP_WITHOUT_STRATEGY',
+      message: `以下可行动差距没有对应优化策略：${uncoveredGapIds.join('、')}。`,
+      path: 'optimization_strategy_details',
     })
   }
 

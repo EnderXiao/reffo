@@ -61,8 +61,9 @@ function base64UrlDecode(value: string) {
 function getKeyMaterial(): KeyMaterial {
   const configuredPrivateKey = env.AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY.trim()
   if (configuredPrivateKey) {
-    const privateKey = createPrivateKey(configuredPrivateKey.replace(/\\n/g, '\n'))
-    const publicKey = createPublicKey(privateKey)
+    const privateKeyPem = configuredPrivateKey.replace(/\\n/g, '\n')
+    const privateKey = createPrivateKey(privateKeyPem)
+    const publicKey = createPublicKey(privateKeyPem)
     const publicKeyDer = publicKey.export({type: 'spki', format: 'der'})
     const keyId = createHash('sha256').update(publicKeyDer).digest('hex').slice(0, 16)
 
@@ -80,7 +81,7 @@ function getKeyMaterial(): KeyMaterial {
       privateKeyEncoding: {type: 'pkcs8', format: 'pem'},
     })
     const privateKey = createPrivateKey(keyPair.privateKey)
-    const publicKey = createPublicKey(privateKey)
+    const publicKey = createPublicKey(keyPair.privateKey)
     const publicKeyDer = publicKey.export({type: 'spki', format: 'der'})
 
     generatedKeyMaterial = {

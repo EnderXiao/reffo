@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'frontend/Taro/reffo-taro/**'
+      - 'shared/**'
       - '.github/workflows/taro-quality.yml'
   workflow_dispatch:
 
@@ -38,6 +39,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check shared strategy module
+        run: node ../../../shared/sync-resume-strategy.mjs --check
 
       - name: Jest
         run: pnpm exec jest --runInBand --no-watchman

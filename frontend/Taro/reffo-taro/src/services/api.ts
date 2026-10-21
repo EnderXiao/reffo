@@ -195,6 +195,7 @@ export class ApiClient {
           code: requestError.code,
           message: requestError.message,
           statusCode: requestError.statusCode,
+          details: requestError.response,
           timestamp: new Date().toISOString(),
         })
       }
@@ -223,6 +224,10 @@ export class ApiClient {
    */
   getAuthToken(): string | null {
     return this.authToken;
+  }
+
+  getBaseURL(): string {
+    return this.baseURL;
   }
 
   /**

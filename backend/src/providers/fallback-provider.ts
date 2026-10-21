@@ -2,10 +2,11 @@ import { env } from '@/config/env'
 import { createHarnessEvent } from '@/harness/events'
 import { deepSeekProvider } from '@/providers/deepseek-provider'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
+import { APIConnectionError, APIUserAbortError } from 'openai'
 
 const DEFAULT_MAX_PROVIDER_ATTEMPTS = 2
 
-function getErrorStatus(error: unknown) {
+export function getErrorStatus(error: unknown) {
   if (typeof error !== 'object' || error === null) {
     return undefined
   }
@@ -18,8 +19,8 @@ function getErrorStatus(error: unknown) {
 }
 
 function getErrorCode(error: unknown) {
-  if (typeof error === 'object' && error !== null && 'code' in error) {
-    return String((error as { code?: unknown }).code)
+  if (typeof error === 'object' && error !== null && 'code' in error && error.code != null) {
+    return String(error.code)
   }
 
   const status = getErrorStatus(error)
@@ -31,13 +32,25 @@ function getErrorMessage(error: unknown) {
 }
 
 function isAbortError(error: unknown) {
-  return error instanceof Error && error.name === 'AbortError'
+  if (error instanceof APIUserAbortError) {
+    return true
+  }
+
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  return error.name === 'AbortError'
+    || error.name === 'APIUserAbortError'
+    || (error as Error & { code?: unknown }).code === 'ABORT_ERR'
 }
 
-function isProviderTransientError(error: unknown) {
+export function isProviderTransientError(error: unknown) {
   if (isAbortError(error)) {
     return false
   }
+  // SDK 的连接异常通常只有“Connection error.”，不能依赖底层错误字符串。
+  if (error instanceof APIConnectionError) return true
 
   const status = getErrorStatus(error)
   if (status && [408, 409, 429].includes(status)) {
@@ -60,6 +73,7 @@ function isProviderTransientError(error: unknown) {
     'econnreset',
     'etimedout',
     'eai_again',
+    'provider_stream_incomplete',
   ].some((pattern) => message.includes(pattern))
 }
 
@@ -69,12 +83,16 @@ export class FallbackLlmProvider implements LlmProvider {
   async complete(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     const models = [input.model ?? env.AI_MODEL, ...env.AI_FALLBACK_MODELS]
     const uniqueModels = [...new Set(models.filter(Boolean))]
+    const maxProviderModels = Math.max(1, input.maxProviderModels ?? uniqueModels.length)
+    const selectedModels = uniqueModels.slice(0, maxProviderModels)
     const maxProviderAttempts = Math.max(1, input.maxProviderAttempts ?? DEFAULT_MAX_PROVIDER_ATTEMPTS)
     let lastError: unknown
 
-    for (const model of uniqueModels) {
-      const modelIndex = uniqueModels.indexOf(model)
+    let physicalAttempts = 0
+    for (const model of selectedModels) {
+      const modelIndex = selectedModels.indexOf(model)
       for (let attemptNumber = 1; attemptNumber <= maxProviderAttempts; attemptNumber += 1) {
+        physicalAttempts += 1
         try {
           const result = await this.primary.complete({ ...input, model })
 
@@ -88,9 +106,13 @@ export class FallbackLlmProvider implements LlmProvider {
             })
           }
 
-          return result
+          return { ...result, physicalAttempts: result.physicalAttempts ?? physicalAttempts }
         } catch (error) {
           lastError = error
+          if (isAbortError(error) || input.signal?.aborted || input.stepContext?.signal?.aborted) {
+            throw error
+          }
+
           const transient = isProviderTransientError(error)
           const errorCode = getErrorCode(error)
           const errorMessage = getErrorMessage(error)

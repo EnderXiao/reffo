@@ -16,6 +16,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "scripts/run-v5-nonprod-nine-case-blind-eval.ts", "scripts/preview-v5-entry-writing.ts"],
   "exclude": ["node_modules"]
 }

@@ -4,7 +4,12 @@ import Taro from '@tarojs/taro'
 import {useHistoryStore} from '@/store/historyStore'
 import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
-import type {ResumeHistory} from '@/types'
+import type {ResumeHistory, SourceResumeSummary} from '@/types'
+import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary'
+import {
+  bootstrapHomeData,
+  hasBootstrappedHomeData,
+} from '@/utils/home-data-bootstrap'
 import {usePageModel} from '../model/usePageModel'
 
 jest.mock('@tarojs/taro', () => ({
@@ -21,9 +26,15 @@ jest.mock('@/store/resumeWorkspaceStore', () => ({
   },
 }))
 jest.mock('@/store/sourceResumeStore')
+jest.mock('@/utils/home-data-bootstrap', () => ({
+  bootstrapHomeData: jest.fn(() => Promise.resolve()),
+  hasBootstrappedHomeData: jest.fn(() => true),
+}))
 const mockUseHistoryStore = useHistoryStore as jest.MockedFunction<typeof useHistoryStore>
 const mockResetWorkspace = resumeWorkspaceActions.reset as jest.Mock
 const mockUseRouter = (Taro as any).useRouter as jest.Mock
+const mockBootstrapHomeData = bootstrapHomeData as jest.Mock
+const mockHasBootstrappedHomeData = hasBootstrappedHomeData as jest.Mock
 const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
 >
@@ -69,27 +80,62 @@ function HookProbe() {
 
 describe('usePageModel', () => {
   const mockLoadHistories = jest.fn()
+  const mockLoadHistorySummaries = jest.fn()
+  const mockLoadHistory = jest.fn()
   const mockLoadLatestSourceResume = jest.fn()
+  const mockLoadLatestSourceSummary = jest.fn()
+
+  const setHistoryState = (histories: ResumeHistory[]) => {
+    const state = {
+      histories,
+      historySummaries: histories.map(toResumeHistorySummaryFromHistory),
+      currentHistory: null,
+      loading: {isLoading: false, error: null},
+      initialized: true,
+      summaryInitialized: true,
+      loadHistories: mockLoadHistories,
+      loadHistorySummaries: mockLoadHistorySummaries,
+      loadHistory: mockLoadHistory,
+    }
+    ;(mockUseHistoryStore as any).mockImplementation((selector: any) => selector(state))
+  }
+
+  const setSourceResumeState = (latestSourceResume: SourceResumeSummary | null) => {
+    const state = {
+      latestSourceResume,
+      latestSourceResumeSummary: latestSourceResume
+        ? {
+            id: latestSourceResume.id,
+            title: latestSourceResume.title,
+            sourceType: latestSourceResume.sourceType,
+            originalFileName: latestSourceResume.originalFileName,
+            createdAt: latestSourceResume.createdAt,
+            updatedAt: latestSourceResume.updatedAt,
+          }
+        : null,
+      loading: {isLoading: false, error: null},
+      initialized: true,
+      summaryInitialized: true,
+      loadLatestSourceResume: mockLoadLatestSourceResume,
+      loadLatestSourceSummary: mockLoadLatestSourceSummary,
+      setLatestSourceResume: jest.fn(),
+      clearLatestSourceResume: jest.fn(),
+      reset: jest.fn(),
+    }
+    ;(mockUseSourceResumeStore as any).mockImplementation((selector: any) => selector(state))
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
     window.history.replaceState(null, '', '/')
     window.sessionStorage.removeItem(RESULT_RETURN_HOME_STORAGE_KEY)
     latestCardPressResult = null
+    mockHasBootstrappedHomeData.mockReturnValue(true)
+    mockBootstrapHomeData.mockResolvedValue(undefined)
     mockUseRouter.mockReturnValue({params: {}})
-    mockUseHistoryStore.mockReturnValue({
-      histories: [],
-      loading: {isLoading: false, error: null},
-      loadHistories: mockLoadHistories,
-    } as ReturnType<typeof useHistoryStore>)
-    mockUseSourceResumeStore.mockReturnValue({
-      latestSourceResume: null,
-      loading: {isLoading: false, error: null},
-      loadLatestSourceResume: mockLoadLatestSourceResume,
-      setLatestSourceResume: jest.fn(),
-      clearLatestSourceResume: jest.fn(),
-      reset: jest.fn(),
-    } as ReturnType<typeof useSourceResumeStore>)
+    setHistoryState([])
+    setSourceResumeState(null)
   })
 
   afterEach(() => {
@@ -111,11 +157,7 @@ describe('usePageModel', () => {
       optimizedContent: '# 张三（优化版）',
     }
 
-    mockUseHistoryStore.mockReturnValue({
-      histories: [history],
-      loading: {isLoading: false, error: null},
-      loadHistories: mockLoadHistories,
-    } as ReturnType<typeof useHistoryStore>)
+    setHistoryState([history])
 
     render(<HookProbe />)
 
@@ -131,8 +173,6 @@ describe('usePageModel', () => {
       jest.advanceTimersByTime(1)
     })
     expect((screen.getByTestId('strategy') as any).textContent).toBe('yes')
-    expect(mockLoadHistories).toHaveBeenCalledTimes(1)
-    expect(mockLoadLatestSourceResume).toHaveBeenCalledTimes(1)
   })
 
   test('没有历史简历时不展示示例卡片并直接进入新申请创建态', () => {
@@ -166,11 +206,7 @@ describe('usePageModel', () => {
       optimizedContent: '# 张三（优化版）',
     }
 
-    mockUseHistoryStore.mockReturnValue({
-      histories: [history],
-      loading: {isLoading: false, error: null},
-      loadHistories: mockLoadHistories,
-    } as ReturnType<typeof useHistoryStore>)
+    setHistoryState([history])
 
     render(<HookProbe />)
 
@@ -199,11 +235,7 @@ describe('usePageModel', () => {
       optimizedContent: '# 张三（优化版）',
     }
 
-    mockUseHistoryStore.mockReturnValue({
-      histories: [history],
-      loading: {isLoading: false, error: null},
-      loadHistories: mockLoadHistories,
-    } as ReturnType<typeof useHistoryStore>)
+    setHistoryState([history])
 
     render(<HookProbe />)
 
@@ -234,22 +266,15 @@ describe('usePageModel', () => {
   })
 
   test('已有源简历时确认创建导航到 JD 步骤', () => {
-    mockUseSourceResumeStore.mockReturnValue({
-      latestSourceResume: {
-        id: 'source-resume-1',
-        title: 'Jeremy Smith',
-        resumeMarkdown: '# Jeremy Smith',
-        sourceType: 'manual',
-        originalFileName: 'Jeremy Smith.md',
-        createdAt: '2026-03-25T12:00:00.000Z',
-        updatedAt: '2026-03-25T12:00:00.000Z',
-      },
-      loading: {isLoading: false, error: null},
-      loadLatestSourceResume: mockLoadLatestSourceResume,
-      setLatestSourceResume: jest.fn(),
-      clearLatestSourceResume: jest.fn(),
-      reset: jest.fn(),
-    } as ReturnType<typeof useSourceResumeStore>)
+    setSourceResumeState({
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith',
+      sourceType: 'manual',
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    })
 
     render(<HookProbe />)
 
@@ -262,22 +287,15 @@ describe('usePageModel', () => {
   })
 
   test('已有源简历时点击源简历按钮导航到完成页', () => {
-    mockUseSourceResumeStore.mockReturnValue({
-      latestSourceResume: {
-        id: 'source-resume-1',
-        title: 'Jeremy Smith',
-        resumeMarkdown: '# Jeremy Smith',
-        sourceType: 'manual',
-        originalFileName: 'Jeremy Smith.md',
-        createdAt: '2026-03-25T12:00:00.000Z',
-        updatedAt: '2026-03-25T12:00:00.000Z',
-      },
-      loading: {isLoading: false, error: null},
-      loadLatestSourceResume: mockLoadLatestSourceResume,
-      setLatestSourceResume: jest.fn(),
-      clearLatestSourceResume: jest.fn(),
-      reset: jest.fn(),
-    } as ReturnType<typeof useSourceResumeStore>)
+    setSourceResumeState({
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith',
+      sourceType: 'manual',
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    })
 
     render(<HookProbe />)
 
@@ -313,11 +331,7 @@ describe('usePageModel', () => {
       optimizedContent: '# 张三（优化版）',
     }
 
-    mockUseHistoryStore.mockReturnValue({
-      histories: [history],
-      loading: {isLoading: false, error: null},
-      loadHistories: mockLoadHistories,
-    } as ReturnType<typeof useHistoryStore>)
+    setHistoryState([history])
 
     render(<HookProbe />)
 
@@ -363,18 +377,14 @@ describe('usePageModel', () => {
       RESULT_RETURN_HOME_STORAGE_KEY,
       JSON.stringify({cardId: 'JD2026070700002'}),
     )
-    mockUseHistoryStore.mockReturnValue({
-      histories,
-      loading: {isLoading: false, error: null},
-      loadHistories: mockLoadHistories,
-    } as ReturnType<typeof useHistoryStore>)
+    setHistoryState(histories)
 
     render(<HookProbe />)
 
     expect((screen.getByTestId('strategy') as any).textContent).toBe('yes')
     expect((screen.getByTestId('card-id') as any).textContent).toBe('JD2026070700002')
-    expect(mockLoadHistories).not.toHaveBeenCalled()
-    expect(mockLoadLatestSourceResume).not.toHaveBeenCalled()
+    expect(mockLoadHistorySummaries).not.toHaveBeenCalled()
+    expect(mockLoadLatestSourceSummary).not.toHaveBeenCalled()
   })
 
   test('从完成页回首页时消费 newCardId 并清理 URL 参数', () => {
@@ -409,11 +419,7 @@ describe('usePageModel', () => {
 
     window.history.replaceState(null, '', '/#/pages/index/index?newCardId=JD2026070700002')
     mockUseRouter.mockReturnValue({params: {newCardId: 'JD2026070700002'}})
-    mockUseHistoryStore.mockReturnValue({
-      histories,
-      loading: {isLoading: false, error: null},
-      loadHistories: mockLoadHistories,
-    } as ReturnType<typeof useHistoryStore>)
+    setHistoryState(histories)
 
     render(<HookProbe />)
 

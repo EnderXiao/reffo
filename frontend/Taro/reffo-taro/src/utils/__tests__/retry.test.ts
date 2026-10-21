@@ -64,18 +64,16 @@ describe('retry', () => {
         .mockRejectedValueOnce(createNetworkError())
         .mockRejectedValueOnce(createNetworkError())
         .mockResolvedValue('success');
+      const retryDelays: number[] = [];
 
-      const startTime = Date.now();
       await retry(fn, {
         maxRetries: 2,
         delay: 100,
         backoff: 'fixed',
+        onRetry: (_error, _attempt, delay) => retryDelays.push(delay),
       });
-      const duration = Date.now() - startTime;
 
-      // 应该有 2 次延迟，每次 100ms
-      expect(duration).toBeGreaterThanOrEqual(200);
-      expect(duration).toBeLessThan(300);
+      expect(retryDelays).toEqual([100, 100]);
     });
 
     test('线性延迟策略', async () => {
@@ -84,18 +82,16 @@ describe('retry', () => {
         .mockRejectedValueOnce(createNetworkError())
         .mockRejectedValueOnce(createNetworkError())
         .mockResolvedValue('success');
+      const retryDelays: number[] = [];
 
-      const startTime = Date.now();
       await retry(fn, {
         maxRetries: 2,
         delay: 100,
         backoff: 'linear',
+        onRetry: (_error, _attempt, delay) => retryDelays.push(delay),
       });
-      const duration = Date.now() - startTime;
 
-      // 第 1 次重试: 100ms, 第 2 次重试: 200ms
-      expect(duration).toBeGreaterThanOrEqual(300);
-      expect(duration).toBeLessThan(400);
+      expect(retryDelays).toEqual([100, 200]);
     });
 
     test('指数延迟策略', async () => {
@@ -104,18 +100,16 @@ describe('retry', () => {
         .mockRejectedValueOnce(createNetworkError())
         .mockRejectedValueOnce(createNetworkError())
         .mockResolvedValue('success');
+      const retryDelays: number[] = [];
 
-      const startTime = Date.now();
       await retry(fn, {
         maxRetries: 2,
         delay: 100,
         backoff: 'exponential',
+        onRetry: (_error, _attempt, delay) => retryDelays.push(delay),
       });
-      const duration = Date.now() - startTime;
 
-      // 第 1 次重试: 100ms, 第 2 次重试: 200ms
-      expect(duration).toBeGreaterThanOrEqual(300);
-      expect(duration).toBeLessThan(400);
+      expect(retryDelays).toEqual([100, 200]);
     });
 
     test('最大延迟限制', async () => {
@@ -124,19 +118,17 @@ describe('retry', () => {
         .mockRejectedValueOnce(createNetworkError())
         .mockRejectedValueOnce(createNetworkError())
         .mockResolvedValue('success');
+      const retryDelays: number[] = [];
 
-      const startTime = Date.now();
       await retry(fn, {
         maxRetries: 2,
         delay: 1000,
         backoff: 'exponential',
         maxDelay: 500, // 限制最大延迟为 500ms
+        onRetry: (_error, _attempt, delay) => retryDelays.push(delay),
       });
-      const duration = Date.now() - startTime;
 
-      // 两次延迟都应该被限制在 500ms
-      expect(duration).toBeGreaterThanOrEqual(1000);
-      expect(duration).toBeLessThan(1200);
+      expect(retryDelays).toEqual([500, 500]);
     });
   });
 
@@ -422,25 +414,20 @@ describe('retry', () => {
         .mockResolvedValue('success');
 
       const delay = 100;
-      const startTime = Date.now();
+      const retryDelays: number[] = [];
 
       await retry(fn, {
         maxRetries: 1,
         delay,
         backoff: 'fixed',
+        onRetry: (_error, _attempt, retryDelay) => retryDelays.push(retryDelay),
       });
 
-      const duration = Date.now() - startTime;
-
-      // 允许 ±20ms 的误差
-      expect(duration).toBeGreaterThanOrEqual(delay - 20);
-      expect(duration).toBeLessThan(delay + 50);
+      expect(retryDelays).toEqual([delay]);
     });
 
     test('不会无限重试', async () => {
       const fn = jest.fn().mockRejectedValue(createNetworkError());
-
-      const startTime = Date.now();
 
       await expect(
         retry(fn, {
@@ -449,10 +436,7 @@ describe('retry', () => {
         }),
       ).rejects.toThrow();
 
-      const duration = Date.now() - startTime;
-
-      // 应该在合理时间内完成（不超过 1 秒）
-      expect(duration).toBeLessThan(1000);
+      expect(fn).toHaveBeenCalledTimes(4);
     });
   });
 });

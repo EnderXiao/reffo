@@ -1,3 +1,6 @@
+import type {ResumeStrategyReview} from '@/shared/resume-strategy'
+export type {ResumeStrategyReview, ResumeStrategyOutcome, ResumeStrategyReference} from '@/shared/resume-strategy'
+
 // 类型定义
 
 // ============ 历史记录 ============
@@ -26,6 +29,7 @@ export interface ResumeHistory {
   company: string; // 公司名称
   name: string; // 姓名
   createdAt: string; // 创建时间（主成就日期）
+  updatedAt?: string; // 后端更新时间，旧的本地快照可能没有
   qualityScore: number; // 质量评分 0-100
   matchScore: number; // 匹配度 0-100
   tags: string[]; // 标签（技能、领域等）
@@ -39,6 +43,23 @@ export interface ResumeHistory {
   progress?: ResultSessionProgress; // 结果生成进度快照
   cardColor?: string; // 卡片背景色
   cardPattern?: string; // 卡片图案类型
+}
+
+export interface ResumeHistorySummary {
+  id: string;
+  position: string;
+  company: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  qualityScore: number;
+  matchScore: number;
+  tags: string[];
+  location: string;
+  strategyBody: string;
+  strategyTitle?: string;
+  cardColor?: string;
+  cardPattern?: string;
 }
 
 // ============ API 响应 ============
@@ -159,15 +180,36 @@ export interface JobDescriptionStructure {
 }
 
 export type WeaknessEvidenceType = 'direct_missing' | 'implicit_evidence' | 'wording_gap';
+export type MatchGapPriority = 'high' | 'medium' | 'low';
 
 export interface MatchWeaknessDetail {
+  id?: string;
+  priority?: MatchGapPriority;
+  is_required?: boolean;
   weakness: string;
   evidence_type: WeaknessEvidenceType;
+  jd_requirement?: string;
   evidence: string;
+  impact?: string;
   suggestion: string;
 }
 
+export interface MatchOptimizationExample {
+  source_path: string;
+  source_quote: string;
+  optimized_content: string;
+}
+
+export interface MatchOptimizationStrategyDetail {
+  id: string;
+  related_gap_ids: string[];
+  strategy_point: string;
+  rationale: string;
+  optimization_example: MatchOptimizationExample;
+}
+
 export interface MatchingResult {
+  requirement_analysis?: import('./requirement-analysis').RequirementAnalysis;
   match_score: number;
   hard_requirements_match: HardRequirement[];
   skill_match: SkillMatch;
@@ -176,6 +218,7 @@ export interface MatchingResult {
   strengths?: string[];
   weaknesses?: string[];
   weakness_details?: MatchWeaknessDetail[];
+  optimization_strategy_details?: MatchOptimizationStrategyDetail[];
   soft_skills_match?: string;
   positioning_strategy?: string;
   context_fit?: {
@@ -217,6 +260,7 @@ export interface OptimizedResume {
   optimized_resume: string;
   changes_summary: string[];
   improvement_score: number;
+  strategy_review?: ResumeStrategyReview;
 }
 
 export interface InterviewStoryRecommendation {
@@ -247,6 +291,15 @@ export interface SourceResumeSummary {
   id: string;
   title: string;
   resumeMarkdown: string;
+  sourceType: SourceResumeSourceType;
+  originalFileName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SourceResumeSummaryMeta {
+  id: string;
+  title: string;
   sourceType: SourceResumeSourceType;
   originalFileName: string | null;
   createdAt: string;

@@ -6,7 +6,7 @@ import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import type {CSSProperties} from 'react'
 import {useDidShow} from '@tarojs/taro'
 import {useVisualTier} from '@/utils'
-import {routePaths, useRouteTransition} from '@/shared/routing'
+import {preloadCreateRoute, routePaths, useRouteTransition} from '@/shared/routing'
 import {
   clearSharedElementSnapshot,
   readSharedElementSnapshot,
@@ -14,6 +14,7 @@ import {
   type SharedElementSnapshot,
 } from '@/utils/shared-element-transition'
 import type {IndexPageViewModel} from './model/usePageModel'
+import HomeLoadingCover from './components/HomeLoadingCover.h5'
 import {HOME_PAGE_CONTENT} from './constants/content'
 import {resolveUserAvatar} from '@/utils/generated-avatar'
 import {useAuthStore} from '@/store/authStore'
@@ -31,7 +32,7 @@ const HOME_CARD_DESIGN_WIDTH = 210
 
 interface ReturningHomePayload {
   cardId: string | null
-  transition?: 'view-transition' | null
+  transition?: 'view-transition' | 'direct' | null
 }
 
 interface CardOpenRectSnapshot extends SharedElementSnapshot {
@@ -96,11 +97,15 @@ function readReturnHomeMarker(): ReturningHomePayload | null {
     }
 
     const parsed = JSON.parse(raw) as {cardId?: unknown; transition?: unknown}
+    const transition = parsed.transition === 'view-transition' || parsed.transition === 'direct'
+      ? parsed.transition
+      : null
+
     return {
       cardId: typeof parsed.cardId === 'string' && parsed.cardId.length > 0
         ? parsed.cardId
         : null,
-      transition: parsed.transition === 'view-transition' ? 'view-transition' : null,
+      transition,
     }
   } catch (error) {
     console.warn('读取首页返回过渡标记失败:', error)
@@ -171,7 +176,7 @@ function resolveHeroMode(isCreateMode: boolean, isStrategyVisible: boolean): Her
   return isStrategyVisible ? 'strategy' : 'brand'
 }
 
-function HomeHeroH5({
+export function HomeHeroH5({
   currentCard,
   isCreateMode,
   isStrategyVisible,
@@ -187,25 +192,26 @@ function HomeHeroH5({
   logoSource: string
 }) {
   const [renderMode, setRenderMode] = useState<HeroMode>(() => resolveHeroMode(isCreateMode, isStrategyVisible))
-  const [renderStrategyBody, setRenderStrategyBody] = useState(currentCard?.strategyBody || '')
+  const [renderStrategy, setRenderStrategy] = useState(() => ({body: currentCard?.strategyBody || '', title: currentCard?.strategyTitle || HOME_PAGE_CONTENT.hero.strategyLabel}))
   const [isSwitching, setIsSwitching] = useState(false)
   const switchTimerRef = useRef<number | null>(null)
   const nextMode = resolveHeroMode(isCreateMode, isStrategyVisible)
   const nextStrategyBody = currentCard?.strategyBody || ''
+  const nextStrategyTitle = currentCard?.strategyTitle || HOME_PAGE_CONTENT.hero.strategyLabel
   const strategyParagraphs = useMemo(
     () =>
-      renderStrategyBody
+      renderStrategy.body
         .split(/\n+/)
         .map(paragraph => paragraph.replace(/[ \t]+/g, ' ').trim())
         .filter(Boolean)
         .slice(0, 2),
-    [renderStrategyBody],
+    [renderStrategy.body],
   )
 
   useEffect(() => {
     const shouldUpdate =
       renderMode !== nextMode ||
-      (nextMode === 'strategy' && renderStrategyBody !== nextStrategyBody)
+      (nextMode === 'strategy' && (renderStrategy.body !== nextStrategyBody || renderStrategy.title !== nextStrategyTitle))
 
     if (!shouldUpdate) {
       setIsSwitching(false)
@@ -218,7 +224,7 @@ function HomeHeroH5({
         switchTimerRef.current = null
       }
       setRenderMode(nextMode)
-      setRenderStrategyBody(nextStrategyBody)
+      setRenderStrategy({body: nextStrategyBody, title: nextStrategyTitle})
       setIsSwitching(false)
       return undefined
     }
@@ -231,7 +237,7 @@ function HomeHeroH5({
 
     switchTimerRef.current = window.setTimeout(() => {
       setRenderMode(nextMode)
-      setRenderStrategyBody(nextStrategyBody)
+      setRenderStrategy({body: nextStrategyBody, title: nextStrategyTitle})
       setIsSwitching(false)
       switchTimerRef.current = null
     }, 160)
@@ -242,7 +248,7 @@ function HomeHeroH5({
         switchTimerRef.current = null
       }
     }
-  }, [immediateStrategy, nextMode, nextStrategyBody, renderMode, renderStrategyBody])
+  }, [immediateStrategy, nextMode, nextStrategyBody, nextStrategyTitle, renderMode, renderStrategy])
 
   return (
     <View className='reffo-home__hero'>
@@ -285,9 +291,9 @@ function HomeHeroH5({
               className='reffo-home__hero-label-row'
               onClick={onStrategyClick}
               role={onStrategyClick ? 'button' : undefined}
-              aria-label={onStrategyClick ? '查看完整优化策略' : undefined}
+              aria-label={onStrategyClick ? (renderStrategy.title === '这份简历的重点' ? '查看简历重点与对应正文' : '查看完整优化建议') : undefined}
             >
-              <Text className='reffo-home__hero-label'>{HOME_PAGE_CONTENT.hero.strategyLabel}</Text>
+              <Text className='reffo-home__hero-label'>{renderStrategy.title}</Text>
               <View className='reffo-home__hero-label-spark' aria-hidden='true'>
                 <Text className='reffo-home__hero-label-spark-main'>✦</Text>
                 <Text className='reffo-home__hero-label-spark-small'>✦</Text>
@@ -297,7 +303,7 @@ function HomeHeroH5({
               className='reffo-home__hero-strategy-body'
               onClick={onStrategyClick}
               role={onStrategyClick ? 'button' : undefined}
-              aria-label={onStrategyClick ? '查看完整优化策略' : undefined}
+              aria-label={onStrategyClick ? (renderStrategy.title === '这份简历的重点' ? '查看简历重点与对应正文' : '查看完整优化建议') : undefined}
             >
               {strategyParagraphs.map((paragraph, index) => (
                 <Text
@@ -323,6 +329,7 @@ export default function PageView({
   currentProgress,
   displayTotal,
   isLoading,
+  isHomeBootReady,
   loadingError,
   hasHistories,
   hasSourceResume,
@@ -360,7 +367,7 @@ export default function PageView({
   const isLandingEntryTransition = Boolean(landingLogoSnapshot)
   const isHomeEntryTransition = isReturnHomeTransition || isLandingEntryTransition
   const returningCardId = returnHomePayload?.cardId ?? null
-  const isViewTransitionReturn = returnHomePayload?.transition === 'view-transition'
+  const usesDirectCardTarget = returnHomePayload?.transition != null
 
   const runNavigation = (target: Exclude<PendingNavigation, null>, action: () => Promise<void> | void) => {
     if (pendingNavigation) {
@@ -460,6 +467,18 @@ export default function PageView({
     }
   }, [])
 
+  useLayoutEffect(() => {
+    if (!isHomeBootReady) {
+      return
+    }
+
+    document.getElementById('reffo-home-boot-cover')?.remove()
+  }, [isHomeBootReady])
+
+  if (!isHomeBootReady) {
+    return <HomeLoadingCover logoSource={logoSource} />
+  }
+
   return (
     <View
       className={classNames('reffo-home', {
@@ -480,18 +499,14 @@ export default function PageView({
           />
         </View>
       ) : null}
-      {isReturnHomeTransition && returnCard ? (
+      {isReturnHomeTransition && !usesDirectCardTarget && returnCard ? (
         <View
           key={returnTransitionKey}
-          className={classNames('reffo-home__return-layer', {
-            'reffo-home__return-layer--view-transition': isViewTransitionReturn,
-          })}
+          className='reffo-home__return-layer'
         >
           <View className='reffo-home__return-backdrop' />
           <View
-            className={classNames('reffo-home__return-card-stage', {
-              'reffo-home__return-card-stage--view-transition': isViewTransitionReturn,
-            })}
+            className='reffo-home__return-card-stage'
             style={returnCardStyle}
           >
             <HomeScoreCard
@@ -505,13 +520,14 @@ export default function PageView({
         </View>
       ) : null}
       <View className='reffo-home__backdrop' />
-      <View className='reffo-home__frame'>
+      <View className='reffo-home__frame reffo-responsive-page__frame'>
         <View className='reffo-home__header'>
           <View
             className={classNames('reffo-home__source-button', {
               'reffo-home__source-button--active': hasSourceResume,
             })}
             onClick={() => runNavigation('source', handleViewHistory)}
+            onTouchStart={() => void preloadCreateRoute()}
             aria-busy={pendingNavigation === 'source'}
           >
             {!hasSourceResume ? <Text className='reffo-home__source-plus'>+</Text> : null}

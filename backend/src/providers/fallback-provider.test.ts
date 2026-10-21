@@ -3,6 +3,7 @@ import { createRunContext, createStepExecutionContext } from '@/harness/run-cont
 import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
 import { FallbackLlmProvider } from '@/providers/fallback-provider'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
+import { APIConnectionError, APIUserAbortError } from 'openai'
 
 function createStepInput(eventBus: FakeHarnessEventBus): ChatCompletionInput {
   const runContext = createRunContext()
@@ -24,6 +25,21 @@ function createResult(model: string): ChatCompletionResult {
 }
 
 describe('FallbackLlmProvider transient retry', () => {
+  test.each(['recover', 'exhaust', 'abort'] as const)('SDK connection handling remains bounded: %s', async variant => {
+    const eventBus = new FakeHarnessEventBus()
+    let calls = 0
+    const provider = new FallbackLlmProvider({ complete: async input => {
+      calls++
+      if (variant === 'abort') throw new APIUserAbortError()
+      if (calls === 1 || variant === 'exhaust') throw new APIConnectionError({})
+      return createResult(input.model!)
+    } })
+    const pending = provider.complete({...createStepInput(eventBus), maxProviderAttempts: 2, maxProviderModels: 1})
+    if (variant === 'recover') expect((await pending).physicalAttempts).toBe(2)
+    else await expect(pending).rejects.toThrow()
+    expect(calls).toBe(variant === 'abort' ? 1 : 2)
+    expect(eventBus.events.some(event => event.payload.errorCode === 'undefined')).toBe(false)
+  })
   test('retries the same model for transient provider errors', async () => {
     const eventBus = new FakeHarnessEventBus()
     let callCount = 0
@@ -56,6 +72,22 @@ describe('FallbackLlmProvider transient retry', () => {
     })
   })
 
+  test('retries an incomplete provider stream as a transient transport failure', async () => {
+    let callCount = 0
+    const provider: LlmProvider = {
+      complete: async input => {
+        callCount += 1
+        if (callCount === 1) throw new Error('PROVIDER_STREAM_INCOMPLETE')
+        return createResult(input.model ?? 'unknown')
+      },
+    }
+
+    const result = await new FallbackLlmProvider(provider).complete(createStepInput(new FakeHarnessEventBus()))
+
+    expect(result.physicalAttempts).toBe(2)
+    expect(callCount).toBe(2)
+  })
+
   test('does not retry permanent provider errors on the same model', async () => {
     const eventBus = new FakeHarnessEventBus()
     let callCount = 0
@@ -77,5 +109,45 @@ describe('FallbackLlmProvider transient retry', () => {
       model: 'test-model',
       attempts: 1,
     })
+  })
+
+  test('limits fallback model attempts when the caller supplies a physical model bound', async () => {
+    let callCount = 0
+    const provider: LlmProvider = {
+      complete: async () => {
+        callCount += 1
+        throw new Error('invalid api key')
+      },
+    }
+    const fallback = new FallbackLlmProvider(provider)
+    const input = createStepInput(new FakeHarnessEventBus())
+    input.model = 'primary'
+    input.maxProviderModels = 1
+    await expect(fallback.complete(input)).rejects.toThrow('invalid api key')
+    expect(callCount).toBe(1)
+  })
+
+  test('stops immediately when the caller signal aborts during a provider failure', async () => {
+    const eventBus = new FakeHarnessEventBus()
+    const controller = new AbortController()
+    let callCount = 0
+    const provider: LlmProvider = {
+      complete: async () => {
+        callCount += 1
+        controller.abort('evaluation budget exceeded')
+        const error = new Error('temporary upstream timeout') as Error & { status: number }
+        error.status = 503
+        throw error
+      },
+    }
+    const fallback = new FallbackLlmProvider(provider)
+    const input = createStepInput(eventBus)
+    input.signal = controller.signal
+    input.maxProviderAttempts = 3
+
+    await expect(fallback.complete(input)).rejects.toThrow('temporary upstream timeout')
+
+    expect(callCount).toBe(1)
+    expect(eventBus.events.filter((event) => event.type.startsWith('recovery.'))).toHaveLength(0)
   })
 })

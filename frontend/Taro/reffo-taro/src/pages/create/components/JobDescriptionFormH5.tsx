@@ -4,7 +4,7 @@ import {Card} from '@/components/Card'
 import type {JobDescriptionStepState} from '../types'
 import '../index.h5.scss'
 
-interface JobDescriptionFormH5Props {
+export interface JobDescriptionFormH5Props {
   state: Pick<JobDescriptionStepState, 'content' | 'companyName' | 'positionName' | 'baseLocation' | 'attachmentStatus' | 'attachmentProgress' | 'attachment' | 'attachmentErrorMessage'>
   onCompanyNameChange?: (value: string) => void
   onPositionNameChange?: (value: string) => void
@@ -27,8 +27,10 @@ export default function JobDescriptionFormH5({
   isDescriptionReadOnly = false,
   isFormReadOnly = false,
 }: JobDescriptionFormH5Props) {
-  const getInputValue = (event: {detail?: {value?: string}; target?: {value?: string}}) =>
-    event.detail?.value ?? event.target?.value ?? ''
+  const getInputValue = (event: {detail?: {value?: string}; target?: unknown}) => {
+    const targetValue = (event.target as {value?: string} | null)?.value
+    return event.detail?.value ?? targetValue ?? ''
+  }
   const isUploadingAttachment = state.attachmentStatus === 'uploading'
   const hasAttachment = state.attachmentStatus === 'success' && Boolean(state.attachment)
   const hasError = state.attachmentStatus === 'error'

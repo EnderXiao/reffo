@@ -56,6 +56,7 @@ describe('parseRoutes storage upload flow', () => {
   const originalPublishableKey = env.SUPABASE_PUBLISHABLE_KEY
   const originalStorageBucket = env.SUPABASE_STORAGE_BUCKET
   const originalAuthRequired = env.AUTH_REQUIRED
+  const originalAppEnv = env.APP_ENV
 
   beforeEach(() => {
     restRequests.length = 0
@@ -79,6 +80,7 @@ describe('parseRoutes storage upload flow', () => {
     env.SUPABASE_PUBLISHABLE_KEY = originalPublishableKey
     env.SUPABASE_STORAGE_BUCKET = originalStorageBucket
     env.AUTH_REQUIRED = originalAuthRequired
+    env.APP_ENV = originalAppEnv
   })
 
   test('downloads private storage object with user token and records user_files metadata', async () => {
@@ -155,5 +157,32 @@ describe('parseRoutes storage upload flow', () => {
 
     expect(response.status).not.toBe(401)
     expect(workflowInputs).toHaveLength(1)
+  })
+
+  test.each([undefined, 'Bearer stale-token'])('parses local inline resumes without cloud auth (%s)', async authorization => {
+    env.APP_ENV = 'local'
+    env.AUTH_REQUIRED = false
+    const response = await parseRoutes.handle(new Request('http://localhost/api/v1/parse/resume-file', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', ...(authorization ? {Authorization: authorization} : {})},
+      body: JSON.stringify({file_name: 'resume.pdf', mime_type: 'application/pdf', content_base64: 'JVBERg=='}),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(workflowInputs).toHaveLength(1)
+    expect(authTokens).toHaveLength(0)
+    expect(restRequests).toHaveLength(0)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+  })
+
+  test('rejects non-Landing anonymous uploads when login is required', async () => {
+    const response = await parseRoutes.handle(new Request('http://localhost/api/v1/parse/resume-file', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({file_name: 'resume.pdf', mime_type: 'application/pdf', content_base64: 'JVBERg=='}),
+    }))
+
+    expect(response.status).toBe(401)
+    expect(workflowInputs).toHaveLength(0)
   })
 })

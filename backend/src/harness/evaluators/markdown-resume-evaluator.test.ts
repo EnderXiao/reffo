@@ -43,4 +43,169 @@ describe('markdown resume evaluator', () => {
 
     expect(evaluation.issues.some((issue) => issue.code === 'MISSING_EXPERIENCE_SECTION')).toBe(true)
   })
+
+  test('rejects work and project headings that contain only metadata', () => {
+    const evaluation = evaluateMarkdownResume(`${baseMarkdown}
+
+## 实习经历
+
+### 示例公司｜前端开发
+
+2023-至今
+
+## 项目经历
+
+### Web 管理后台
+
+角色：前端开发`, sourceResume)
+
+    expect(evaluation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'EMPTY_WORK_ENTRY', severity: 'error' }),
+      expect.objectContaining({ code: 'EMPTY_PROJECT_ENTRY', severity: 'error' }),
+    ]))
+    expect(evaluation.passed).toBe(false)
+  })
+
+  test('applies empty-entry checks to project aliases and unlabeled tech stacks', () => {
+    const evaluation = evaluateMarkdownResume(`${baseMarkdown}
+
+## 核心项目经历
+
+### Web 管理后台
+
+React / TypeScript`, sourceResume)
+
+    expect(evaluation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'EMPTY_PROJECT_ENTRY', severity: 'error' }),
+    ]))
+    expect(evaluation.issues.some((issue) => issue.code === 'MISSING_EXPERIENCE_SECTION')).toBe(false)
+
+    const headinglessEvaluation = evaluateMarkdownResume(`${baseMarkdown}
+
+## 核心项目经历
+
+React / TypeScript`, sourceResume)
+    expect(headinglessEvaluation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'EMPTY_PROJECT_ENTRY', severity: 'error' }),
+    ]))
+  })
+
+  test('does not let skill bullets hide insufficient work and project evidence', () => {
+    const richSource: ResumeStructure = {
+      ...sourceResume,
+      experience: [{
+        company: '示例公司',
+        position: '前端开发',
+        time_range: '2022-2024',
+        responsibilities: ['负责页面开发', '负责组件抽象', '参与接口联调'],
+        achievements: ['提升交付效率', '减少重复开发', '优化页面性能'],
+      }],
+    }
+    const evaluation = evaluateMarkdownResume(`${baseMarkdown}
+
+## 工作经历
+
+### 示例公司｜前端开发
+
+- 负责页面开发。
+
+## 专业技能
+
+- React
+- TypeScript
+- 状态管理
+- 性能优化`, richSource)
+
+    expect(evaluation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'INSUFFICIENT_BUSINESS_EVIDENCE', severity: 'warning' }),
+    ]))
+  })
+
+  test('accepts substantive bullet and paragraph entries', () => {
+    const evaluation = evaluateMarkdownResume(`${baseMarkdown}
+
+## 项目经历
+
+### Web 管理后台｜前端开发
+
+- 负责核心业务页面开发和组件抽象。
+
+### 工程效率优化
+
+沉淀通用组件，减少重复开发并提升页面交付效率。`, sourceResume)
+
+    expect(evaluation.issues.some((issue) => issue.code === 'EMPTY_PROJECT_ENTRY')).toBe(false)
+    expect(evaluation.issues.some((issue) => issue.code === 'INSUFFICIENT_BUSINESS_EVIDENCE')).toBe(false)
+  })
+
+  test('accepts a compact timeline when all source business claims are ineligible', () => {
+    const riskySource: ResumeStructure = {
+      ...sourceResume,
+      experience: [{
+        company: '示例公司',
+        position: '前端开发',
+        time_range: '2023-至今',
+        responsibilities: ['核心职责需核验'],
+        achievements: ['交付结果存在口径冲突'],
+      }],
+      projects: [],
+    }
+    const evaluation = evaluateMarkdownResume(`${baseMarkdown}
+
+## 其他经历
+
+示例公司｜前端开发｜2023-至今`, riskySource)
+
+    expect(evaluation.issues.some((issue) => issue.code === 'MISSING_EXPERIENCE_SECTION')).toBe(false)
+    expect(evaluation.issues.some((issue) => issue.code === 'INSUFFICIENT_BUSINESS_EVIDENCE')).toBe(false)
+  })
+
+  test('rejects an empty compact timeline section', () => {
+    const evaluation = evaluateMarkdownResume(`${baseMarkdown}
+
+## 其他经历`, {
+      ...sourceResume,
+      experience: [{
+        company: '示例公司',
+        position: '前端开发',
+        time_range: '2023-至今',
+        responsibilities: [],
+        achievements: [],
+      }],
+    })
+
+    expect(evaluation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'EMPTY_WORK_ENTRY', severity: 'error' }),
+    ]))
+  })
+
+  test('requires every source work item to remain visible in the career timeline', () => {
+    const timelineSource: ResumeStructure = {
+      ...sourceResume,
+      experience: [{
+        company: '甲公司',
+        position: '产品经理',
+        time_range: '2021-2023',
+        responsibilities: ['负责产品方案'],
+        achievements: [],
+      }, {
+        company: '乙公司',
+        position: '高级产品经理',
+        time_range: '2023-至今',
+        responsibilities: ['负责用户研究'],
+        achievements: [],
+      }],
+    }
+    const evaluation = evaluateMarkdownResume(`${baseMarkdown}
+
+## 工作经历
+
+### 乙公司｜高级产品经理｜2023 - 至今
+
+- 负责用户研究。`, timelineSource)
+
+    expect(evaluation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'MISSING_TIMELINE_ENTRY', path: '甲公司', severity: 'error' }),
+    ]))
+  })
 })
