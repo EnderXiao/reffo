@@ -404,13 +404,18 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
       return Promise.resolve()
     }
 
+    const targetHistoryId = card.historyId || card.id
+    if (!historySummaries.some(summary => summary.id === targetHistoryId)) {
+      return Promise.resolve()
+    }
+
     suppressNextNavigationTransition()
     return route.navigate(appendRouteParams(routePaths.result, {
-      id: card.historyId || card.id,
+      id: targetHistoryId,
       fromCard: 1,
       ...(card.generationTaskId ? {jobId: card.generationTaskId} : {}),
     }))
-  }, [resolvedCreateMode, route])
+  }, [historySummaries, resolvedCreateMode, route])
 
   const handleCardChange = useCallback((_: HomeCardItem, index: number) => {
     setActiveCardIndex(previousIndex =>
