@@ -2095,20 +2095,20 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
   --rail-hot: #ff9f0a;
   --rail-ink: #7f8795;
   position: absolute;
-  right: auto;
-  bottom: max(18px, env(safe-area-inset-bottom));
-  top: auto;
-  left: 50%;
-  width: min(560px, calc(100vw - 48px));
-  height: 92px;
+  right: calc((var(--page-width) - var(--deck-width)) / -2 + 14px);
+  bottom: auto;
+  top: 50%;
+  left: auto;
+  width: 62px;
+  height: min(406px, calc(100dvh - 190px));
   overflow: visible;
   z-index: 60;
-  cursor: ew-resize;
+  cursor: ns-resize;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  transform: translateX(-50%);
+  transform: translateY(-50%);
 }
 
 .reffo-dictionary-rail::before,
@@ -2119,58 +2119,57 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
 }
 
 .reffo-dictionary-rail::before {
-  inset: -18px -22px;
+  inset: -32px -18px;
 }
 
 .reffo-dictionary-rail::after {
-  inset: -12px -50vw -12px -50vw;
+  inset: -12px -50vw -12px -24px;
 }
 
 .reffo-dictionary-rail__track {
   position: absolute;
   inset: 0;
-  transform: translate3d(0, var(--rail-pull-y, 0px), 0);
+  transform: translate3d(var(--rail-pull-x, 0px), 0, 0);
 }
 
 .reffo-dictionary-rail__stop {
   position: absolute;
   top: 0;
   left: 0;
-  width: 0;
-  height: 92px;
+  width: 62px;
+  height: 0;
   pointer-events: none;
   will-change: transform, opacity;
 }
 
 .reffo-dictionary-rail__tick {
   position: absolute;
-  top: 50%;
-  left: 0;
+  top: 0;
+  right: 10px;
   width: 2px;
   height: 2px;
   border-radius: 999px;
   background: var(--rail-ink);
-  transform: translate(-50%, -50%);
+  transform: translateY(-50%);
   will-change: width, height, opacity, background;
 }
 
 .reffo-dictionary-rail__label {
   position: absolute;
-  top: 22px;
-  left: 0;
+  top: 0;
+  right: 24px;
   color: var(--rail-ink);
   font-size: 10px;
   font-weight: 600;
   line-height: 12px;
   white-space: nowrap;
   opacity: 0.42;
-  transform: translate3d(-50%, -50%, 0);
-  transform-origin: center center;
+  transform: translate3d(0, -50%, 0);
+  transform-origin: right center;
   will-change: opacity, transform;
 }
 
 .reffo-dictionary-rail__label--minor {
-  top: 58px;
   color: color-mix(in srgb, var(--rail-ink) 72%, transparent);
   font-size: 8px;
   font-weight: 500;
@@ -2182,12 +2181,11 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
 
 .reffo-dictionary-rail__marker {
   position: absolute;
-  top: 50%;
-  left: 0;
-  width: 30px;
-  height: 8px;
-  margin-top: -4px;
-  margin-left: -15px;
+  top: 0;
+  right: 7px;
+  width: 8px;
+  height: 30px;
+  margin-top: -15px;
   pointer-events: none;
   transform-origin: center center;
   will-change: transform, opacity;
@@ -2196,16 +2194,16 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
 .reffo-dictionary-rail__cap {
   position: absolute;
   top: 0;
-  left: 0;
-  width: 10px;
-  height: 5px;
+  right: 0;
+  width: 5px;
+  height: 10px;
   border-radius: 999px;
   background: var(--rail-hot);
 }
 
 .reffo-dictionary-rail__cap--bottom {
-  right: 0;
-  left: auto;
+  top: auto;
+  bottom: 0;
 }
 
 .reffo-dictionary-rail.held {
@@ -2223,8 +2221,9 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
 
 @media (max-width: 40rem) {
   .reffo-dictionary-rail {
-    width: calc(100vw - 32px);
-    height: 84px;
+    right: 12px;
+    width: 54px;
+    height: min(360px, calc(100dvh - 190px));
   }
 }
 

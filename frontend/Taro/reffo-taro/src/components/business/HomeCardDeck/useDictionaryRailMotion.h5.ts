@@ -128,7 +128,7 @@ export default function useDictionaryRailMotion({
     let hoverTarget = 0
     let fineAmount = 0
     let fineTarget = 0
-    let pointerY: number | null = null
+    let pointerX: number | null = null
     let lastFrameAt = performance.now()
     let idleUntil = 0
     let drag: PointerDragState | null = null
@@ -150,21 +150,21 @@ export default function useDictionaryRailMotion({
         return
       }
 
-      const markerX = positionToX(position)
+      const markerY = positionToY(position)
       const hoverEase = smoothstep(hover)
       const fineEase = smoothstep(fineAmount)
       const edgePull = rubberBand(position, 0, (items.length - 1) * (minorSteps + 1), 1.2) - position
-      const pointerLean = pointerY == null
+      const pointerLean = pointerX == null
         ? 0
-        : clamp((pointerY - railTop - railHeight / 2) / Math.max(1, railHeight), -1, 1)
+        : clamp((pointerX - railLeft - railWidth / 2) / Math.max(1, railWidth), -1, 1)
       root.classList.toggle('held', hoverTarget > 0 || drag != null)
       root.classList.toggle('fine', fineEase > 0.02)
       root.style.setProperty('--rail-hover', hoverEase.toFixed(3))
       root.style.setProperty('--rail-fine', fineEase.toFixed(3))
-      root.style.setProperty('--rail-pull-y', `${(edgePull * 5 + pointerLean * 4).toFixed(2)}px`)
+      root.style.setProperty('--rail-pull-x', `${(edgePull * 5 + pointerLean * 4).toFixed(2)}px`)
 
       if (markerRef.current) {
-        markerRef.current.style.transform = `translate3d(${markerX.toFixed(2)}px, ${(edgePull * 5 + pointerLean * 3).toFixed(2)}px, 0) scale(${(1 + hoverEase * 0.08 + fineEase * 0.12).toFixed(3)})`
+        markerRef.current.style.transform = `translate3d(${(edgePull * 5 + pointerLean * 3).toFixed(2)}px, ${markerY.toFixed(2)}px, 0) scale(${(1 + hoverEase * 0.08 + fineEase * 0.12).toFixed(3)})`
         markerRef.current.style.opacity = String(0.48 + hoverEase * 0.52)
       }
 
@@ -191,27 +191,27 @@ export default function useDictionaryRailMotion({
           : fineEase * Math.max(proximity * 0.88, Math.abs(distance) < 0.45 ? 1 : 0)
         const labelScale = 0.9 + activeStrength * 0.18 + fineEase * 0.08
         const pull = Math.sin(distance * 0.72) * hoverEase * 4.2 + pointerLean * 3
-        stopRoot.style.transform = `translate3d(${positionToX(stop.position).toFixed(2)}px, ${pull.toFixed(2)}px, 0)`
-        tick.style.width = `${tickLength.toFixed(2)}px`
-        tick.style.height = `${tickThickness.toFixed(2)}px`
+        stopRoot.style.transform = `translate3d(${pull.toFixed(2)}px, ${positionToY(stop.position).toFixed(2)}px, 0)`
+        tick.style.width = `${tickThickness.toFixed(2)}px`
+        tick.style.height = `${tickLength.toFixed(2)}px`
         tick.style.opacity = String(Math.max(isMajor ? 0.32 : 0.16, (isMajor ? 0.32 : 0.16) + proximity * (isMajor ? 0.68 : 0.72)))
         tick.style.background = activeStrength > 0.72
           ? 'var(--rail-hot, #ff9f0a)'
           : 'var(--rail-ink, #7f8795)'
         label.style.opacity = labelOpacity.toFixed(3)
-        label.style.transform = `translate3d(-50%, -50%, 0) scale(${labelScale.toFixed(3)})`
+        label.style.transform = `translate3d(0, -50%, 0) scale(${labelScale.toFixed(3)})`
         label.classList.toggle('is-current', Math.abs(distance) < 0.45)
       })
     }
 
-    function positionToX(value: number) {
-      const usableWidth = Math.max(1, railWidth - EDGE_PADDING * 2)
-      return EDGE_PADDING + ratioFromPosition(value, items.length, minorSteps) * usableWidth
+    function positionToY(value: number) {
+      const usableHeight = Math.max(1, railHeight - EDGE_PADDING * 2)
+      return EDGE_PADDING + ratioFromPosition(value, items.length, minorSteps) * usableHeight
     }
 
-    function clientXToPosition(clientX: number) {
-      const usableWidth = Math.max(1, railWidth - EDGE_PADDING * 2)
-      return positionFromRatio((clientX - railLeft - EDGE_PADDING) / usableWidth, items.length, minorSteps)
+    function clientYToPosition(clientY: number) {
+      const usableHeight = Math.max(1, railHeight - EDGE_PADDING * 2)
+      return positionFromRatio((clientY - railTop - EDGE_PADDING) / usableHeight, items.length, minorSteps)
     }
 
     const measure = () => {
@@ -315,9 +315,8 @@ export default function useDictionaryRailMotion({
       if (!drag) {
         return
       }
-      const deltaX = clientX - drag.startX
       const deltaY = clientY - drag.startY
-      if (Math.hypot(deltaX, deltaY) > 6) {
+      if (Math.hypot(clientX - drag.startX, deltaY) > 6) {
         drag.moved = true
         clearLongPress()
       }
@@ -325,14 +324,14 @@ export default function useDictionaryRailMotion({
         return
       }
 
-      pointerY = clientY
+      pointerX = clientX
       if (isFineModeRef.current) {
-        const finePixels = clamp(railWidth / Math.max(1, (items.length - 1) * (minorSteps + 1)), FINE_STEP_PIXELS_MIN, FINE_STEP_PIXELS_MAX)
-        targetPosition = rubberBand(drag.startPosition + deltaX / finePixels, 0, (items.length - 1) * (minorSteps + 1), 1.8)
+        const finePixels = clamp(railHeight / Math.max(1, (items.length - 1) * (minorSteps + 1)), FINE_STEP_PIXELS_MIN, FINE_STEP_PIXELS_MAX)
+        targetPosition = rubberBand(drag.startPosition + deltaY / finePixels, 0, (items.length - 1) * (minorSteps + 1), 1.8)
         playStopSound(targetPosition, 'fine')
       } else {
-        const majorPixels = Math.max(36, railWidth / Math.max(1, items.length))
-        const nextIndex = majorIndexFromPosition(drag.startPosition + deltaX / majorPixels * (minorSteps + 1), items.length, minorSteps)
+        const majorPixels = Math.max(36, railHeight / Math.max(1, items.length))
+        const nextIndex = majorIndexFromPosition(drag.startPosition + deltaY / majorPixels * (minorSteps + 1), items.length, minorSteps)
         targetPosition = majorPosition(nextIndex, minorSteps)
         playStopSound(targetPosition, 'step')
         commitIndex(nextIndex)
@@ -342,12 +341,12 @@ export default function useDictionaryRailMotion({
 
     const handlePointerEnter = (event: PointerEvent) => {
       hoverTarget = 1
-      pointerY = event.clientY
+      pointerX = event.clientX
       ensureFrame()
     }
 
     const handlePointerMove = (event: PointerEvent) => {
-      pointerY = event.clientY
+      pointerX = event.clientX
       if (drag && drag.pointerId === event.pointerId) {
         updateDragPosition(event.clientX, event.clientY)
       } else {
@@ -359,7 +358,7 @@ export default function useDictionaryRailMotion({
     const handlePointerLeave = () => {
       if (!drag) {
         hoverTarget = 0
-        pointerY = null
+        pointerX = null
         ensureFrame()
       }
     }
@@ -372,7 +371,7 @@ export default function useDictionaryRailMotion({
       notifyFirstInteraction()
       feedbackRef.current?.unlock()
       hoverTarget = 1
-      pointerY = event.clientY
+      pointerX = event.clientX
       drag = {
         pointerId: event.pointerId,
         startX: event.clientX,
@@ -401,7 +400,7 @@ export default function useDictionaryRailMotion({
       setFineMode(false)
       targetPosition = drag.moved
         ? majorPosition(majorIndexFromPosition(targetPosition, items.length, minorSteps), minorSteps)
-        : majorPosition(majorIndexFromPosition(clientXToPosition(event.clientX), items.length, minorSteps), minorSteps)
+        : majorPosition(majorIndexFromPosition(clientYToPosition(event.clientY), items.length, minorSteps), minorSteps)
       commitIndex(majorIndexFromPosition(targetPosition, items.length, minorSteps))
       try {
         root.releasePointerCapture?.(event.pointerId)
@@ -413,7 +412,7 @@ export default function useDictionaryRailMotion({
     }
 
     const handleWheel = (event: WheelEvent) => {
-      const wheelDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+      const wheelDelta = event.deltaY
       if (disabled || Math.abs(wheelDelta) < 4) {
         return
       }

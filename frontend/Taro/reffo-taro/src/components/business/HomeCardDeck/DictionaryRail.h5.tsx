@@ -60,7 +60,7 @@ export default function DictionaryRail({
         'reffo-dictionary-rail--fine': isFineMode,
       })}
       role='slider'
-      aria-orientation='horizontal'
+      aria-orientation='vertical'
       aria-valuemin={1}
       aria-valuemax={Math.max(1, railItems.length)}
       aria-valuenow={Math.min(Math.max(activeIndex + 1, 1), Math.max(1, railItems.length))}
