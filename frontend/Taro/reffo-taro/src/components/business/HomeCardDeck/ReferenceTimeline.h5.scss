@@ -1,0 +1,174 @@
+.tl-zone {
+  --tl-hot: #ff9500;
+  --tl-glow: var(--tl-hot);
+  --tl-reach: 32px;
+  --tl-field-x: 22px;
+  position: absolute;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  width: min(34rem, 100vw - 6rem);
+  height: 6.5rem;
+  z-index: 1;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 0.15s;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  will-change: opacity;
+}
+
+.tl-zone.is-ready {
+  opacity: 1;
+  transition: opacity 0.25s;
+}
+
+.tl-zone::before,
+.tl-zone::after {
+  position: absolute;
+  content: '';
+  pointer-events: none;
+}
+
+.tl-zone::before {
+  inset: calc(-1 * var(--tl-reach)) 0;
+}
+
+.tl-zone::after {
+  inset: 0 calc(-1 * var(--tl-field-x));
+}
+
+.tl-zone.held {
+  cursor: none;
+}
+
+.tl-tick,
+.tl-sep,
+.tl-fine-label,
+.tl-num-cap,
+.tl-date {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.tl-tick {
+  width: 3px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-text, #111);
+  opacity: 0;
+  will-change: transform, width, height, opacity;
+}
+
+.tl-sep {
+  width: 3px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--color-text, #111);
+  opacity: 0.28;
+  will-change: transform, opacity;
+}
+
+.tl-fine-label {
+  color: var(--color-text, #111);
+  font-variant-numeric: tabular-nums;
+  font-synthesis-weight: none;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  translate: -50% -50%;
+  will-change: transform, opacity;
+}
+
+.tl-fine-label.is-current {
+  color: var(--tl-hot);
+}
+
+.tl-fine-label.is-month {
+  color: var(--color-secondary, #6b7280);
+  letter-spacing: 0.04em;
+  padding-left: 0.04em;
+}
+
+.tl-num-cap {
+  z-index: 2;
+  width: 5px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--tl-hot);
+  opacity: 0;
+  will-change: transform, width, height, opacity;
+}
+
+.tl-date {
+  color: var(--color-text, #111);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: pre;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.tl-reel {
+  position: relative;
+  display: inline-block;
+  height: 1.3em;
+  vertical-align: top;
+  transition: width 0.52s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
+}
+
+.tl-reel > span {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.tl-flight {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tl-flyer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform, width, height, opacity;
+}
+
+.tl-flyer > div {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-text, #111);
+}
+
+.tl-ghost {
+  pointer-events: none;
+}
+
+.tl-roll-blur {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-fine-label,
+  .tl-reel {
+    transition: none;
+  }
+}

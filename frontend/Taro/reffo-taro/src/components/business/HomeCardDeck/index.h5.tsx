@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import {View} from '@tarojs/components'
 import classNames from 'classnames'
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {useCallback, useEffect, useRef, useState} from 'react'
 import {
   createSharedElementSnapshot,
   writeSharedElementSnapshot,
@@ -131,7 +131,6 @@ export default function HomeCardDeck({
   const suppressClickUntilRef = useRef(0)
   const {
     activeCard,
-    activeRailIndex,
     dragState,
     dragVars,
     handleDeckPointerDown,
@@ -139,8 +138,6 @@ export default function HomeCardDeck({
     handleDeckPointerMove,
     isDeckInteractive,
     orderedCardEntries,
-    notifyFirstInteraction,
-    selectRailIndex,
     stackRef,
     visualCapability,
   } = useHomeCardDeckMotion({
@@ -151,25 +148,6 @@ export default function HomeCardDeck({
     onCardChange,
     onFirstInteraction,
   })
-  const railItems = useMemo(
-    () => cards
-      .map((card, sourceIndex) => ({
-        id: card.id,
-        label: card.indexLabel,
-        secondaryLabel: card.indexSecondaryLabel || card.indexLabel,
-        sourceIndex,
-      }))
-      .sort((left, right) => (
-        left.label.localeCompare(right.label)
-        || left.secondaryLabel.localeCompare(right.secondaryLabel)
-        || left.sourceIndex - right.sourceIndex
-      )),
-    [cards],
-  )
-  const railActiveIndex = Math.max(0, railItems.findIndex(item => item.sourceIndex === activeRailIndex))
-  const handleRailActiveIndexChange = useCallback((railIndex: number) => {
-    selectRailIndex(railItems[railIndex]?.sourceIndex ?? railIndex)
-  }, [railItems, selectRailIndex])
   const cleanupOpenTransition = useCallback(() => {
     const transition = openTransitionRef.current
 
@@ -407,13 +385,7 @@ export default function HomeCardDeck({
             />
           ) : null}
         </View>
-        <DictionaryRail
-          items={railItems}
-          activeIndex={railActiveIndex}
-          disabled={!isDeckInteractive}
-          onActiveIndexChange={handleRailActiveIndexChange}
-          onFirstInteraction={notifyFirstInteraction}
-        />
+        <DictionaryRail />
       </View>
     </View>
   )

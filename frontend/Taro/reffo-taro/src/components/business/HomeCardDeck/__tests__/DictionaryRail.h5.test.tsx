@@ -1,6 +1,7 @@
 import React from 'react'
 import {act, fireEvent, render} from '@testing-library/react'
-import DictionaryRail from '../DictionaryRail.h5'
+import ReferenceTimeline from '../ReferenceTimeline.h5'
+import {REFERENCE_TIMELINE_ITEMS} from '../referenceTimelineData'
 
 jest.mock('@tarojs/components', () => {
   const ReactModule = jest.requireActual<typeof import('react')>('react')
@@ -17,42 +18,34 @@ jest.mock('@tarojs/components', () => {
 describe('DictionaryRail H5', () => {
   test('渲染主次刻度并暴露滑块语义', () => {
     const {container} = render(
-      <DictionaryRail
-        items={[
-          {id: 'a', label: 'A'},
-          {id: 'b', label: 'B'},
-          {id: 'c', label: 'C'},
-        ]}
+      <ReferenceTimeline
+        items={REFERENCE_TIMELINE_ITEMS.slice(0, 3)}
         activeIndex={1}
         onActiveIndexChange={jest.fn()}
       />,
     )
-    const rail = container.querySelector('.reffo-dictionary-rail')!
+    const rail = container.querySelector('.tl-zone')!
 
     expect(rail.getAttribute('role')).toBe('slider')
     expect(rail.getAttribute('aria-valuemin')).toBe('1')
     expect(rail.getAttribute('aria-valuemax')).toBe('3')
     expect(rail.getAttribute('aria-valuenow')).toBe('2')
-    expect(rail.getAttribute('aria-valuetext')).toBe('B')
-    expect(rail.querySelectorAll('[data-rail-stop]')).toHaveLength(13)
+    expect(rail.getAttribute('aria-valuetext')).toBe('1月 9日')
+    expect(rail.querySelectorAll('[data-timeline-tick]')).toHaveLength(3)
   })
 
   test('方向键切换主刻度', () => {
     const onActiveIndexChange = jest.fn()
     const {container} = render(
-      <DictionaryRail
-        items={[
-          {id: 'a', label: 'A'},
-          {id: 'b', label: 'B'},
-          {id: 'c', label: 'C'},
-        ]}
+      <ReferenceTimeline
+        items={REFERENCE_TIMELINE_ITEMS.slice(0, 3)}
         activeIndex={0}
         onActiveIndexChange={onActiveIndexChange}
       />,
     )
-    const rail = container.querySelector('.reffo-dictionary-rail')!
+    const rail = container.querySelector('.tl-zone')!
 
-    fireEvent.keyDown(rail, {key: 'ArrowDown'})
+    fireEvent.keyDown(rail, {key: 'ArrowRight'})
     fireEvent.keyDown(rail, {key: 'End'})
 
     expect(onActiveIndexChange).toHaveBeenNthCalledWith(1, 1)
@@ -62,17 +55,13 @@ describe('DictionaryRail H5', () => {
   test('触摸长按进入细分模式', () => {
     jest.useFakeTimers()
     const {container} = render(
-      <DictionaryRail
-        items={[
-          {id: 'a', label: 'A'},
-          {id: 'b', label: 'B'},
-          {id: 'c', label: 'C'},
-        ]}
+      <ReferenceTimeline
+        items={REFERENCE_TIMELINE_ITEMS.slice(0, 3)}
         activeIndex={0}
         onActiveIndexChange={jest.fn()}
       />,
     )
-    const rail = container.querySelector('.reffo-dictionary-rail')!
+    const rail = container.querySelector('.tl-zone')!
 
     fireEvent.pointerDown(rail, {
       button: 0,
@@ -84,28 +73,43 @@ describe('DictionaryRail H5', () => {
       jest.advanceTimersByTime(900)
     })
 
-    expect(rail.classList.contains('reffo-dictionary-rail--fine')).toBe(true)
+    expect(rail.classList.contains('fine')).toBe(true)
     jest.useRealTimers()
   })
 
-  test('二级刻度使用名称标签并禁用右键菜单', () => {
+  test('二级刻度使用月份与日期标签并禁用右键菜单', () => {
     const {container} = render(
-      <DictionaryRail
+      <ReferenceTimeline
         items={[
-          {id: 'pin', label: 'P', secondaryLabel: 'Pi'},
-          {id: 'test', label: 'C', secondaryLabel: 'Ci'},
+          {id: 'january', timestamp: new Date(2026, 0, 1).getTime(), label: '1月', fineLabel: '3', group: '1'},
+          {id: 'february', timestamp: new Date(2026, 1, 1).getTime(), label: '2月', fineLabel: '9', group: '2'},
         ]}
         activeIndex={0}
         onActiveIndexChange={jest.fn()}
       />,
     )
-    const rail = container.querySelector('.reffo-dictionary-rail')!
-    const labels = [...rail.querySelectorAll('[data-rail-label]')].map(element => element.textContent)
+    const rail = container.querySelector('.tl-zone')!
+    const labels = [...rail.querySelectorAll('[data-timeline-label]')].map(element => element.textContent)
     const contextMenu = new Event('contextmenu', {bubbles: true, cancelable: true})
 
     rail.dispatchEvent(contextMenu)
 
-    expect(labels).toContain('Pi')
+    expect(labels).toContain('3')
     expect(contextMenu.defaultPrevented).toBe(true)
+  })
+
+  test('内置数据覆盖一月至十二月', () => {
+    const {container} = render(
+      <ReferenceTimeline
+        items={REFERENCE_TIMELINE_ITEMS}
+        activeIndex={0}
+      />,
+    )
+    const rail = container.querySelector('.tl-zone')!
+
+    expect(rail.querySelectorAll('[data-timeline-tick]')).toHaveLength(60)
+    expect(rail.querySelectorAll('[data-timeline-month-label]')).toHaveLength(12)
+    expect(rail.querySelector('[data-timeline-date]')?.textContent).toContain('1月')
+    expect(rail.querySelector('[data-timeline-date]')?.textContent).toContain('3')
   })
 })
