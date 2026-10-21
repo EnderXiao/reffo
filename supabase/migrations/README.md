@@ -13,8 +13,8 @@
 
 | Secret | 使用范围 | 说明 |
 | --- | --- | --- |
-| `SUPABASE_NONPROD_DB_URL` | feature CI | nonprod Supabase Postgres 连接串，必须 URL encode 密码并允许 CI 执行 DDL |
-| `SUPABASE_PROD_DB_URL` | production environment | prod Supabase Postgres 连接串，建议配置在受保护的 GitHub Environment 中 |
+| `SUPABASE_NONPROD_DB_URL` | feature CI | 当前 feature 与 production 暂共用该 Supabase project；必须 URL encode 密码并允许 CI 执行 DDL |
+| `SUPABASE_PROD_DB_URL` | production environment | prod Supabase Postgres 连接串，优先使用；未配置时 production workflow 会兼容回退到 `SUPABASE_NONPROD_DB_URL` |
 | `RENDER_DEPLOY_HOOK_URL` | production release | production Render deploy hook，仅在 migration 成功后调用 |
 
 连接串属于密钥，只能保存在 GitHub Secrets 中，不得写入本目录、`.env` 示例、日志或 PR 描述。
