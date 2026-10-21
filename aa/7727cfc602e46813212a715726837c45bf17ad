@@ -1,0 +1,37 @@
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/DictionaryRail.h5.tsx
+  s_cf5a0b38dfc3af::t_8595ff6a5c7b2c 1-88
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/DictionaryRail.h5.test.tsx
+  s_cf5a0b38dfc3af::t_d6719affcd710d 1-90
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/dictionaryRailMath.test.ts
+  s_cf5a0b38dfc3af::t_41bea6f051411d 1-46
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/index.h5.test.tsx
+  s_cf5a0b38dfc3af::t_689db8fc5404c4 27-30,77-78,86
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/dictionaryRailMath.ts
+  s_cf5a0b38dfc3af::t_058b95bf4cee64 1-114
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.h5.tsx
+  s_cf5a0b38dfc3af::t_be2d2a8b9d0e79 2,4,9,11,142-143,154-157,395-401
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/railFeedback.h5.ts
+  s_cf5a0b38dfc3af::t_14e9d0f315cdc0 1-141
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/useDictionaryRailMotion.h5.ts
+  s_cf5a0b38dfc3af::t_ff2f5472293cf1 1-511
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/useHomeCardDeckMotion.h5.ts
+  s_cf5a0b38dfc3af::t_9f2e2c4416fca8 122-132,576,584-585
+frontend/Taro/reffo-taro/src/pages/index/index.h5.scss
+  s_cf5a0b38dfc3af::t_bf19ba7adefd29 2094-2230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa7727cfc602e46813212a715726837c45bf17ad",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
