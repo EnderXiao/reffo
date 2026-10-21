@@ -1,0 +1,23 @@
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/DictionaryRail.h5.tsx
+  s_cf5a0b38dfc3af::t_38a697184526fe 63
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/useDictionaryRailMotion.h5.ts
+  s_cf5a0b38dfc3af::t_212d61891b314c 131,153,157,159,164,167,194-196,202,207-209,212-214,319,327,329-330,333-334,344,349,361,374,403,415
+frontend/Taro/reffo-taro/src/pages/index/index.h5.scss
+  s_cf5a0b38dfc3af::t_d9759e7c235f3f 2098-2103,2106,2111,2122,2126,2132,2139-2140,2147-2148,2153,2159-2160,2167-2168,2184-2188,2197-2199,2205-2206,2224-2226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "98d2beaf27f19d4ea56a8b93a038a3e2b6b4005a",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
