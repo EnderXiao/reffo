@@ -1,0 +1,41 @@
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/ReferenceTimeline.h5.tsx
+  s_cf5a0b38dfc3af::t_6cfb34a2612646 14-108,110,115
+  s_cf5a0b38dfc3af::t_34a90486184b6f 1-13,109,111-114,116-129
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/DictionaryRail.h5.tsx
+  s_cf5a0b38dfc3af::t_e53071821fa8ef 1,6,9
+  s_cf5a0b38dfc3af::t_6cfb34a2612646 2,4,7-8
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/ReferenceTimeline.h5.scss
+  s_cf5a0b38dfc3af::t_50c7cf6b24a042 1-174
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/DictionaryRail.h5.test.tsx
+  s_cf5a0b38dfc3af::t_f878bb408d5735 3-4,21-22,27,33-34,40-41,46,48,58-59,64,76,80,82,84-85,91-92,97,100-114
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/referenceTimelineMath.test.ts
+  s_cf5a0b38dfc3af::t_87716a8e205278 1-30
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.h5.tsx
+  s_cf5a0b38dfc3af::t_4d1ce9cdcb06dc 4,388
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/referenceTimelineAudio.h5.ts
+  s_cf5a0b38dfc3af::t_27e08eb9a89e4b 1-206
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/referenceTimelineData.ts
+  s_cf5a0b38dfc3af::t_d9491e0aa0256f 1-14
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/referenceTimelineMath.ts
+  s_cf5a0b38dfc3af::t_d1a2bb901e3636 1-107
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/referenceTimelineReel.h5.ts
+  s_cf5a0b38dfc3af::t_6ade0a1f0dba13 1-71
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/useReferenceTimeline.h5.ts
+  s_cf5a0b38dfc3af::t_4506bc218cff3e 1-665
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4bb3733ce19d509043bd77484074f0deeeb1dd2b",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
