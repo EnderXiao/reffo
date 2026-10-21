@@ -9,14 +9,14 @@ import {publishGenerationJobUpdate, subscribeGenerationJobUpdates} from '@/servi
 
 const jobParams = t.Object({id: t.String({pattern: '^[a-f0-9-]{36}$'})})
 export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'})
-  .derive(async ({headers}) => ({jobUser: await resolveRequestUser(headers)}))
   .onError(({error, set}) => {
     if (error instanceof RequestAuthError || error instanceof ResumeQuotaError) {
       set.status = error.status
       return {success: false, error: {code: error.code, message: error.message}}
     }
   })
-  .post('/', async ({body, jobUser, set}) => {
+  .post('/', async ({body, headers, set}) => {
+    const jobUser = await resolveRequestUser(headers)
     const existing = await generationJobRepository.get(jobUser.userId, body.request_id)
     if (existing) return {success: true, data: summarizeGenerationJob(existing)}
     await ensureResumeQuotaAvailable(jobUser)
@@ -31,10 +31,16 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
     resume_markdown: t.String({minLength: 10, maxLength: 200000}), jd_text: t.String({minLength: 10, maxLength: 100000}),
     company: t.Optional(t.String({maxLength: 200})), position: t.Optional(t.String({maxLength: 200})), location: t.Optional(t.String({maxLength: 200}))}),
     detail: {summary: '创建可后台执行的简历生成任务', tags: ['MVP']}})
-  .get('/', async ({jobUser}) => ({success: true,
-    data: (await generationJobRepository.list(jobUser.userId)).map(summarizeGenerationJob)}),
+  .get('/', async ({headers}) => {
+    const jobUser = await resolveRequestUser(headers)
+    return {
+      success: true,
+      data: (await generationJobRepository.list(jobUser.userId)).map(summarizeGenerationJob),
+    }
+  },
   {detail: {summary: '获取当前用户生成任务与未读状态', tags: ['MVP']}})
-  .get('/events', ({jobUser, request, set}) => {
+  .get('/events', async ({headers, request, set}) => {
+    const jobUser = await resolveRequestUser(headers)
     set.headers['content-type'] = 'text/event-stream; charset=utf-8'
     set.headers['cache-control'] = 'no-cache, no-transform'
     set.headers['connection'] = 'keep-alive'
@@ -84,12 +90,14 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
 
     return new Response(stream, {headers: responseHeaders})
   }, {detail: {summary: '订阅当前用户生成任务实时状态', tags: ['MVP']}})
-  .get('/:id', async ({params, jobUser, set}) => {
+  .get('/:id', async ({params, headers, set}) => {
+    const jobUser = await resolveRequestUser(headers)
     const job = await generationJobRepository.get(jobUser.userId, params.id)
     if (!job) {set.status = 404; return {success: false, error: {code: 'JOB_NOT_FOUND', message: '未找到生成任务'}}}
     return {success: true, data: summarizeGenerationJob(job)}
   }, {params: jobParams, detail: {summary: '查询生成进度', tags: ['MVP']}})
-  .post('/:id/:action', async ({params, jobUser, set}) => {
+  .post('/:id/:action', async ({params, headers, set}) => {
+    const jobUser = await resolveRequestUser(headers)
     const job = await generationJobRepository.get(jobUser.userId, params.id)
     if (!job) {set.status = 404; return {success: false, error: {code: 'JOB_NOT_FOUND', message: '未找到生成任务'}}}
     const action = params.action
