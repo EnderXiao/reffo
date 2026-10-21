@@ -2091,6 +2091,143 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
   }
 }
 
+.reffo-dictionary-rail {
+  --rail-hot: #ff9f0a;
+  --rail-ink: #aeb2bf;
+  position: absolute;
+  right: calc((var(--page-width) - var(--deck-width)) / -2 + 14px);
+  top: 50%;
+  width: 62px;
+  height: min(406px, calc(100dvh - 190px));
+  overflow: visible;
+  z-index: 60;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+  transform: translateY(-50%);
+}
+
+.reffo-dictionary-rail::before,
+.reffo-dictionary-rail::after {
+  position: absolute;
+  content: '';
+  pointer-events: none;
+}
+
+.reffo-dictionary-rail::before {
+  inset: -32px -18px;
+}
+
+.reffo-dictionary-rail::after {
+  inset: -12px -50vw -12px -24px;
+}
+
+.reffo-dictionary-rail__track {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(var(--rail-pull-x, 0px), 0, 0);
+}
+
+.reffo-dictionary-rail__stop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 62px;
+  height: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.reffo-dictionary-rail__tick {
+  position: absolute;
+  top: 0;
+  right: 10px;
+  width: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--rail-ink);
+  transform: translateY(-50%);
+  will-change: width, height, opacity, background;
+}
+
+.reffo-dictionary-rail__label {
+  position: absolute;
+  top: 0;
+  right: 24px;
+  color: var(--rail-ink);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  transform-origin: right center;
+  will-change: opacity, transform;
+}
+
+.reffo-dictionary-rail__label--minor {
+  color: color-mix(in srgb, var(--rail-ink) 72%, transparent);
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.reffo-dictionary-rail__label.is-current {
+  color: var(--rail-hot);
+}
+
+.reffo-dictionary-rail__marker {
+  position: absolute;
+  top: 0;
+  right: 7px;
+  width: 8px;
+  height: 30px;
+  margin-top: -15px;
+  pointer-events: none;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.reffo-dictionary-rail__cap {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 5px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--rail-hot);
+}
+
+.reffo-dictionary-rail__cap--bottom {
+  top: auto;
+  bottom: 0;
+}
+
+.reffo-dictionary-rail.held {
+  cursor: none;
+}
+
+.reffo-dictionary-rail--fine .reffo-dictionary-rail__label--minor {
+  color: var(--rail-ink);
+}
+
+.reffo-dictionary-rail--disabled {
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+@media (max-width: 40rem) {
+  .reffo-dictionary-rail {
+    right: 12px;
+    width: 54px;
+    height: min(360px, calc(100dvh - 190px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reffo-dictionary-rail__label {
+    transition: none;
+  }
+}
+
 .reffo-home__footer {
   flex: 0 0 auto;
   width: 100%;

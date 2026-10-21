@@ -24,6 +24,10 @@ jest.mock('../HomeScoreCard.h5', () => ({
     </div>
   ),
 }))
+jest.mock('../DictionaryRail.h5', () => ({
+  __esModule: true,
+  default: () => <div data-testid='dictionary-rail' />,
+}))
 
 const mockUseHomeCardDeckMotion = useHomeCardDeckMotion as jest.MockedFunction<
   typeof useHomeCardDeckMotion
@@ -63,18 +67,15 @@ describe('HomeCardDeck H5', () => {
       handleDeckPointerDown: jest.fn(),
       handleDeckPointerEnd: jest.fn(),
       handleDeckPointerMove: jest.fn(),
-      handleRailTouchStart: jest.fn(),
       isDeckInteractive: false,
-      isRailAnimating: false,
       orderedCardEntries: [{
         card,
         depth: 0,
         isRecycling: false,
         isTailEntering: false,
       }],
-      railItems: [{card, virtualIndex: 0}],
-      railRef: {current: null},
-      railTranslateY: 0,
+      notifyFirstInteraction: jest.fn(),
+      selectRailIndex: jest.fn(),
       stackRef: {current: null},
       visualCapability: {
         tier: 'basic',
@@ -82,7 +83,7 @@ describe('HomeCardDeck H5', () => {
         supportsWebGL: false,
         prefersReducedMotion: false,
       },
-    } as ReturnType<typeof useHomeCardDeckMotion>)
+    } as unknown as ReturnType<typeof useHomeCardDeckMotion>)
   })
 
   afterEach(() => {

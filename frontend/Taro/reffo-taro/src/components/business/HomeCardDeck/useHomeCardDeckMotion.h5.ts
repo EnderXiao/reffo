@@ -4,10 +4,6 @@ import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import {
   H5_CARD_DRAG_MAX,
   H5_CARD_EXIT_DURATION_MS,
-  H5_RAIL_ANIMATION_MS,
-  H5_RAIL_BUFFER_COUNT,
-  H5_RAIL_HEIGHT,
-  H5_RAIL_ITEM_HEIGHT,
   buildH5DeckDragVars,
   clamp,
   clearH5DeckDragCardStyles,
@@ -40,20 +36,14 @@ export default function useHomeCardDeckMotion({
 }: UseHomeCardDeckMotionOptions) {
   const visualCapability = useVisualTier({benchmark: true})
   const [activeRailIndex, setActiveRailIndex] = useState(() => initialIndex ?? Math.max(0, cards.length - 1))
-  const [railMotionY, setRailMotionY] = useState(0)
-  const [isRailAnimating, setIsRailAnimating] = useState(false)
   const [dragState, setDragState] = useState<H5DeckDragState>({x: 0, y: 0, phase: 'idle'})
   const [recyclingCardId, setRecyclingCardId] = useState<string | null>(null)
-  const railRef = useRef<HTMLDivElement | null>(null)
   const stackRef = useRef<HTMLDivElement | null>(null)
-  const railAnimationTimerRef = useRef<number | null>(null)
   const deckSettleTimerRef = useRef<number | null>(null)
   const deckFlipSnapshotRef = useRef<Map<string, H5DeckCardSnapshot> | null>(null)
   const deckFlipAnimationsRef = useRef<Map<string, Animation>>(new Map())
   const firstInteractionTimerRef = useRef<number | null>(null)
   const deckResetTimerRef = useRef<number | null>(null)
-  const railAnimatingRef = useRef(false)
-  const touchStartYRef = useRef<number | null>(null)
   const hasInteractedRef = useRef(false)
   const draggedCardIdRef = useRef<string | null>(null)
   const finishDeckDragRef = useRef<(isCancel?: boolean) => void>(() => undefined)
@@ -69,8 +59,6 @@ export default function useHomeCardDeckMotion({
   const resolvedActiveIndex = cards.length > 0 ? modulo(activeRailIndex, cards.length) : 0
   const activeCard = cards[resolvedActiveIndex]
   const isDeckInteractive = !isCreateMode && cards.length > 0
-  const railCenterOffset = H5_RAIL_HEIGHT / 2
-  const railTranslateY = railCenterOffset - H5_RAIL_BUFFER_COUNT * H5_RAIL_ITEM_HEIGHT + railMotionY
   const dragVars = buildH5DeckDragVars(dragState)
 
   const orderedCardEntries = useMemo(() => {
@@ -119,21 +107,6 @@ export default function useHomeCardDeckMotion({
     })
   }, [cards, recyclingCardId, resolvedActiveIndex])
 
-  const railItems = useMemo(() => {
-    if (!cards.length) {
-      return []
-    }
-
-    return Array.from({length: H5_RAIL_BUFFER_COUNT * 2 + 1}, (_, offset) => {
-      const virtualIndex = activeRailIndex - H5_RAIL_BUFFER_COUNT + offset
-      const sourceIndex = modulo(virtualIndex, cards.length)
-      return {
-        card: cards[sourceIndex],
-        virtualIndex,
-      }
-    })
-  }, [activeRailIndex, cards])
-
   const notifyFirstInteraction = () => {
     if (hasInteractedRef.current) {
       return
@@ -144,6 +117,17 @@ export default function useHomeCardDeckMotion({
       firstInteractionTimerRef.current = null
       onFirstInteraction?.()
     }, 0)
+  }
+
+  const selectRailIndex = (index: number) => {
+    if (!cards.length) {
+      return
+    }
+
+    const normalizedIndex = modulo(Math.round(index), cards.length)
+    setActiveRailIndex(currentIndex => (
+      modulo(currentIndex, cards.length) === normalizedIndex ? currentIndex : normalizedIndex
+    ))
   }
 
   useEffect(() => {
@@ -315,39 +299,6 @@ export default function useHomeCardDeckMotion({
     }
 
     cardElements.forEach(clearH5DeckDragCardStyles)
-  }
-
-  const stepRail = (delta: number) => {
-    if (!cards.length || railAnimatingRef.current) {
-      return
-    }
-
-    notifyFirstInteraction()
-    const direction = delta > 0 ? 1 : -1
-    railAnimatingRef.current = true
-    setIsRailAnimating(true)
-    setRailMotionY(-direction * H5_RAIL_ITEM_HEIGHT)
-
-    if (railAnimationTimerRef.current != null) {
-      window.clearTimeout(railAnimationTimerRef.current)
-    }
-
-    railAnimationTimerRef.current = window.setTimeout(() => {
-      setIsRailAnimating(false)
-      setActiveRailIndex(current => current + direction)
-      setRailMotionY(0)
-      railAnimatingRef.current = false
-      railAnimationTimerRef.current = null
-    }, H5_RAIL_ANIMATION_MS)
-  }
-
-  const consumeScrollEvent = (event: WheelEvent | TouchEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
-  }
-
-  const handleRailTouchStart = (event: any) => {
-    touchStartYRef.current = event?.touches?.[0]?.clientY ?? null
   }
 
   const beginDeckDrag = (clientX: number, clientY: number, pointerId: number | null = null) => {
@@ -599,56 +550,7 @@ export default function useHomeCardDeckMotion({
   }, [dragState.phase, orderedCardEntries])
 
   useEffect(() => {
-    const railElement = railRef.current
-
-    if (!railElement) {
-      return undefined
-    }
-
-    const handleNativeWheel = (event: WheelEvent) => {
-      consumeScrollEvent(event)
-
-      if (Math.abs(event.deltaY) < 4) {
-        return
-      }
-
-      stepRail(event.deltaY > 0 ? 1 : -1)
-    }
-    const handleNativeTouchMove = (event: TouchEvent) => {
-      const startY = touchStartYRef.current
-      const nextY = event.touches?.[0]?.clientY
-
-      consumeScrollEvent(event)
-
-      if (startY == null || nextY == null) {
-        return
-      }
-
-      const deltaY = nextY - startY
-
-      if (Math.abs(deltaY) < 18) {
-        return
-      }
-
-      stepRail(deltaY > 0 ? -1 : 1)
-      touchStartYRef.current = nextY
-    }
-
-    railElement.addEventListener('wheel', handleNativeWheel, {passive: false})
-    railElement.addEventListener('touchmove', handleNativeTouchMove, {passive: false})
-
     return () => {
-      railElement.removeEventListener('wheel', handleNativeWheel)
-      railElement.removeEventListener('touchmove', handleNativeTouchMove)
-    }
-  }, [cards.length])
-
-  useEffect(() => {
-    return () => {
-      if (railAnimationTimerRef.current != null) {
-        window.clearTimeout(railAnimationTimerRef.current)
-      }
-
       if (deckSettleTimerRef.current != null) {
         window.clearTimeout(deckSettleTimerRef.current)
       }
@@ -671,19 +573,16 @@ export default function useHomeCardDeckMotion({
 
   return {
     activeCard,
-    activeRailIndex,
+    activeRailIndex: resolvedActiveIndex,
     dragState,
     dragVars,
     handleDeckPointerDown,
     handleDeckPointerEnd,
     handleDeckPointerMove,
-    handleRailTouchStart,
     isDeckInteractive,
-    isRailAnimating,
     orderedCardEntries,
-    railItems,
-    railRef,
-    railTranslateY,
+    notifyFirstInteraction,
+    selectRailIndex,
     stackRef,
     visualCapability,
   }

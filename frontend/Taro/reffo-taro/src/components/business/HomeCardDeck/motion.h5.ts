@@ -1,9 +1,4 @@
 /// <reference lib="dom" />
-export const H5_RAIL_ITEM_HEIGHT = 58
-export const H5_RAIL_HEIGHT = 406
-export const H5_RAIL_BUFFER_COUNT = 8
-export const H5_RAIL_ANIMATION_MS = 180
-export const H5_RAIL_MINOR_MARK_COUNT = 5
 export const H5_CARD_DESIGN_WIDTH = 210
 export const H5_CARD_DESIGN_HEIGHT = 332
 export const H5_CARD_SWIPE_DISTANCE = 44
