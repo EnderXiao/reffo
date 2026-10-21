@@ -1,0 +1,40 @@
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/useDictionaryRailMotion.h5.ts
+  s_cf5a0b38dfc3af::t_2d41e376095253 20-21,43,50,72-77,83-87,104,121-123,153,159,164,167-168,187-188,190-197,200,202,207-225,269-296,314,318,320,328,330-331,334-335,352,378,398,404,416-417,425,438-439,455-459,492,517
+  s_cf5a0b38dfc3af::t_28df308891e953 80-82
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/DictionaryRail.h5.tsx
+  s_cf5a0b38dfc3af::t_50a42062b4b54d 25-30,47-51,63
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/DictionaryRail.h5.test.tsx
+  s_cf5a0b38dfc3af::t_9be51ca8acddff 90-110
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/dictionaryRailMath.test.ts
+  s_cf5a0b38dfc3af::t_7a83cb6cc216d0 12,16-20,22-26,32-37
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/dictionaryRailMath.ts
+  s_cf5a0b38dfc3af::t_f70f8e1a3b1eaf 42-46,58
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.h5.tsx
+  s_cf5a0b38dfc3af::t_10fd2de5d9f7f3 155-166,169-172,412,414
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/shared.ts
+  s_cf5a0b38dfc3af::t_43c9768f8d2a78 13
+frontend/Taro/reffo-taro/src/pages/index/index.h5.scss
+  s_cf5a0b38dfc3af::t_f860f4c4b3763e 2096,2098-2103,2106,2109-2111,2122,2126,2132,2139-2140,2147-2148,2153,2159-2160,2166-2168,2173,2185-2190,2199-2201,2207-2208,2226-2227
+frontend/Taro/reffo-taro/src/pages/index/model/homeCardData.ts
+  s_cf5a0b38dfc3af::t_acb886e3106210 9,16,130,157,170,198
+frontend/Taro/reffo-taro/src/utils/__tests__/text-initial.test.ts
+  s_cf5a0b38dfc3af::t_552c54c251b433 1,23-29
+frontend/Taro/reffo-taro/src/utils/text-initial.ts
+  s_cf5a0b38dfc3af::t_64549edacbacbe 34-116,166-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f62ecc9f42e3f6b9dd967b838b58f1ba3b0688c",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
