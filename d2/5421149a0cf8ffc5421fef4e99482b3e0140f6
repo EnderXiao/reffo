@@ -1,0 +1,19 @@
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  s_cf5a0b38dfc3af::t_3b5b6772dc456a 407-411,414,418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d25421149a0cf8ffc5421fef4e99482b3e0140f6",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
