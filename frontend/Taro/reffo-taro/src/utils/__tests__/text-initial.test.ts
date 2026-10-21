@@ -1,4 +1,4 @@
-import {resolveTextInitial} from '@/utils/text-initial'
+import {resolveTextInitial, resolveTextSecondary} from '@/utils/text-initial'
 
 describe('resolveTextInitial', () => {
   test('returns uppercase Latin initials', () => {
@@ -18,6 +18,13 @@ describe('resolveTextInitial', () => {
     expect(resolveTextInitial('饿了么')).toBe('E')
     expect(resolveTextInitial('华为技术有限公司')).toBe('H')
     expect(resolveTextInitial('中兴通讯')).toBe('Z')
+  })
+
+  test('resolves second-level labels from pinyin or the first Latin word', () => {
+    expect(resolveTextSecondary('拼')).toBe('Pi')
+    expect(resolveTextSecondary('飞书科技')).toBe('Fe')
+    expect(resolveTextSecondary('OpenAI')).toBe('Op')
+    expect(resolveTextSecondary('2026 小米集团')).toBe('Xi')
   })
 
   test('returns null when no meaningful initial exists', () => {

@@ -39,7 +39,11 @@ export function rubberBand(value: number, min: number, max: number, limit = 1.2)
   return value
 }
 
-export function buildDictionaryRailStops(labels: string[], minorSteps = DICTIONARY_RAIL_MINOR_STEPS) {
+export function buildDictionaryRailStops(
+  labels: string[],
+  minorSteps = DICTIONARY_RAIL_MINOR_STEPS,
+  secondaryLabels: string[] = [],
+) {
   if (labels.length === 0) {
     return []
   }
@@ -51,7 +55,7 @@ export function buildDictionaryRailStops(labels: string[], minorSteps = DICTIONA
       for (let minorIndex = 1; minorIndex <= minorSteps; minorIndex += 1) {
         stops.push({
           kind: 'minor',
-          label: `${labels[majorIndex - 1]}·${minorIndex}`,
+          label: secondaryLabels[majorIndex - 1] || labels[majorIndex - 1],
           majorIndex: majorIndex - 1,
           minorIndex,
           position: majorIndex * (minorSteps + 1) - minorSteps + minorIndex - 1,

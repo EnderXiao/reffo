@@ -87,4 +87,25 @@ describe('DictionaryRail H5', () => {
     expect(rail.classList.contains('reffo-dictionary-rail--fine')).toBe(true)
     jest.useRealTimers()
   })
+
+  test('二级刻度使用名称标签并禁用右键菜单', () => {
+    const {container} = render(
+      <DictionaryRail
+        items={[
+          {id: 'pin', label: 'P', secondaryLabel: 'Pi'},
+          {id: 'test', label: 'C', secondaryLabel: 'Ci'},
+        ]}
+        activeIndex={0}
+        onActiveIndexChange={jest.fn()}
+      />,
+    )
+    const rail = container.querySelector('.reffo-dictionary-rail')!
+    const labels = [...rail.querySelectorAll('[data-rail-label]')].map(element => element.textContent)
+    const contextMenu = new Event('contextmenu', {bubbles: true, cancelable: true})
+
+    rail.dispatchEvent(contextMenu)
+
+    expect(labels).toContain('Pi')
+    expect(contextMenu.defaultPrevented).toBe(true)
+  })
 })

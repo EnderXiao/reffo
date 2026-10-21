@@ -10,6 +10,7 @@ export interface HomeCardItem {
   queueCardKind?: 'resume' | 'upload'
   company: string
   indexLabel: string
+  indexSecondaryLabel?: string
   location: string
   role: string
   dateLabel: string

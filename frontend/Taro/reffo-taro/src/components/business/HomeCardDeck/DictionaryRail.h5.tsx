@@ -22,7 +22,12 @@ export default function DictionaryRail({
   onFirstInteraction,
 }: DictionaryRailProps) {
   const railItems = useMemo(
-    () => items.map(item => ({id: item.id, label: item.label})),
+    () => items.map(item => ({
+      id: item.id,
+      label: item.label,
+      secondaryLabel: item.secondaryLabel,
+      sourceIndex: item.sourceIndex,
+    })),
     [items],
   )
   const {
@@ -39,7 +44,11 @@ export default function DictionaryRail({
     onFirstInteraction,
   })
   const stops = useMemo(
-    () => buildDictionaryRailStops(railItems.map(item => item.label)),
+    () => buildDictionaryRailStops(
+      railItems.map(item => item.label),
+      5,
+      railItems.map(item => item.secondaryLabel || item.label),
+    ),
     [railItems],
   )
 
@@ -51,7 +60,7 @@ export default function DictionaryRail({
         'reffo-dictionary-rail--fine': isFineMode,
       })}
       role='slider'
-      aria-orientation='vertical'
+      aria-orientation='horizontal'
       aria-valuemin={1}
       aria-valuemax={Math.max(1, railItems.length)}
       aria-valuenow={Math.min(Math.max(activeIndex + 1, 1), Math.max(1, railItems.length))}
