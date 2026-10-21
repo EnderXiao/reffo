@@ -28,6 +28,7 @@ import {
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const NEW_CARD_ID_QUERY_KEY = 'newCardId'
+const GENERATION_TASK_RECONCILIATION_INTERVAL_MS = 15000
 
 interface ReturningHomeState {
   isReturning: boolean
@@ -158,6 +159,12 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     const hasActiveTasks = () => useBackgroundGenerationStore.getState().tasks.some(task => (
       task.status === 'queued' || task.status === 'running'
     ))
+    const reconcileTimer = setInterval(() => {
+      if (!active || !hasActiveTasks() || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) {
+        return
+      }
+      void refreshTasks()
+    }, GENERATION_TASK_RECONCILIATION_INTERVAL_MS)
     const clearFallbackTimer = () => {
       if (fallbackTimer) clearTimeout(fallbackTimer)
       fallbackTimer = undefined
@@ -244,6 +251,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
       active = false
       unsubscribe?.()
       clearFallbackTimer()
+      clearInterval(reconcileTimer)
       if (staleTimer) clearTimeout(staleTimer)
       if (typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', handleVisibilityChange)

@@ -2,8 +2,10 @@ import React from 'react'
 import {act, fireEvent, render, screen} from '@testing-library/react'
 import Taro from '@tarojs/taro'
 import {useHistoryStore} from '@/store/historyStore'
+import {useBackgroundGenerationStore} from '@/store/backgroundGenerationStore'
 import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
+import type {GenerationTask} from '@/services/backgroundGeneration'
 import type {ResumeHistory, SourceResumeSummary} from '@/types'
 import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary'
 import {
@@ -20,12 +22,20 @@ jest.mock('@tarojs/taro', () => ({
 }))
 
 jest.mock('@/store/historyStore')
+jest.mock('@/store/backgroundGenerationStore')
 jest.mock('@/store/resumeWorkspaceStore', () => ({
   resumeWorkspaceActions: {
     reset: jest.fn(),
   },
 }))
 jest.mock('@/store/sourceResumeStore')
+jest.mock('@/services/backgroundGeneration', () => ({
+  generationTasksApi: {action: jest.fn()},
+  subscribeGenerationTaskEvents: jest.fn(() => jest.fn()),
+}))
+jest.mock('@/services/runtime-config', () => ({
+  isLocalRuntimeEnvironment: jest.fn(() => Promise.resolve(false)),
+}))
 jest.mock('@/utils/home-data-bootstrap', () => ({
   bootstrapHomeData: jest.fn(() => Promise.resolve()),
   hasBootstrappedHomeData: jest.fn(() => true),
@@ -37,6 +47,9 @@ const mockBootstrapHomeData = bootstrapHomeData as jest.Mock
 const mockHasBootstrappedHomeData = hasBootstrappedHomeData as jest.Mock
 const mockUseSourceResumeStore = useSourceResumeStore as jest.MockedFunction<
   typeof useSourceResumeStore
+>
+const mockUseBackgroundGenerationStore = useBackgroundGenerationStore as jest.MockedFunction<
+  typeof useBackgroundGenerationStore
 >
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 let latestCardPressResult: Promise<void> | null = null
@@ -84,6 +97,14 @@ describe('usePageModel', () => {
   const mockLoadHistory = jest.fn()
   const mockLoadLatestSourceResume = jest.fn()
   const mockLoadLatestSourceSummary = jest.fn()
+  const mockRefreshGenerationTasks = jest.fn(() => Promise.resolve())
+  const generationState = {
+    tasks: [] as GenerationTask[],
+    error: null,
+    refresh: mockRefreshGenerationTasks,
+    upsert: jest.fn(),
+    reset: jest.fn(),
+  }
 
   const setHistoryState = (histories: ResumeHistory[]) => {
     const state = {
@@ -125,6 +146,12 @@ describe('usePageModel', () => {
     ;(mockUseSourceResumeStore as any).mockImplementation((selector: any) => selector(state))
   }
 
+  const setGenerationTaskState = (tasks: GenerationTask[]) => {
+    generationState.tasks = tasks
+    ;(mockUseBackgroundGenerationStore as any).mockImplementation((selector: any) => selector(generationState))
+    ;(mockUseBackgroundGenerationStore as any).getState = jest.fn(() => generationState)
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
@@ -136,6 +163,7 @@ describe('usePageModel', () => {
     mockUseRouter.mockReturnValue({params: {}})
     setHistoryState([])
     setSourceResumeState(null)
+    setGenerationTaskState([])
   })
 
   afterEach(() => {
@@ -173,6 +201,37 @@ describe('usePageModel', () => {
       jest.advanceTimersByTime(1)
     })
     expect((screen.getByTestId('strategy') as any).textContent).toBe('yes')
+  })
+
+  test('后台任务每 15 秒主动对账，不依赖 SSE 事件', () => {
+    setGenerationTaskState([{
+      id: 'task-1',
+      status: 'running',
+      stage: 'optimized',
+      background: true,
+      read_at: null,
+      confirmed_at: null,
+      history_id: null,
+      company: '测试公司',
+      position: '前端工程师',
+      location: '北京',
+      score: null,
+      error: null,
+      created_at: '2026-10-21T00:00:00.000Z',
+      updated_at: '2026-10-21T00:00:00.000Z',
+    }])
+    mockRefreshGenerationTasks.mockClear()
+    render(<HookProbe />)
+
+    act(() => {
+      jest.advanceTimersByTime(14999)
+    })
+    expect(mockRefreshGenerationTasks).not.toHaveBeenCalled()
+
+    act(() => {
+      jest.advanceTimersByTime(1)
+    })
+    expect(mockRefreshGenerationTasks).toHaveBeenCalledTimes(1)
   })
 
   test('没有历史简历时不展示示例卡片并直接进入新申请创建态', () => {
