@@ -1,0 +1,19 @@
+doc/pengzhe-timeline-source-analysis.md
+  s_cf5a0b38dfc3af::t_bec5c0a3720719 1-808
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef4d02c09ad05c63b7ecb7e2fadffee35310ea30",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
