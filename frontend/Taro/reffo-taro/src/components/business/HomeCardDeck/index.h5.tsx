@@ -1,14 +1,17 @@
 /// <reference lib="dom" />
-import {View} from '@tarojs/components'
+import {Text, View} from '@tarojs/components'
 import classNames from 'classnames'
 import {useCallback, useEffect, useRef, useState} from 'react'
+import {
+  H5_RAIL_ITEM_HEIGHT,
+  H5_RAIL_MINOR_MARK_COUNT,
+  resolveH5CardScale,
+} from './motion.h5'
 import {
   createSharedElementSnapshot,
   writeSharedElementSnapshot,
 } from '@/utils/shared-element-transition'
-import {resolveH5CardScale} from './motion.h5'
 import HomeScoreCard from './HomeScoreCard.h5'
-import DictionaryRail from './DictionaryRail.h5'
 import type {HomeCardDeckProps} from './shared'
 import useHomeCardDeckMotion from './useHomeCardDeckMotion.h5'
 
@@ -131,13 +134,19 @@ export default function HomeCardDeck({
   const suppressClickUntilRef = useRef(0)
   const {
     activeCard,
+    activeRailIndex,
     dragState,
     dragVars,
     handleDeckPointerDown,
     handleDeckPointerEnd,
     handleDeckPointerMove,
+    handleRailTouchStart,
     isDeckInteractive,
+    isRailAnimating,
     orderedCardEntries,
+    railItems,
+    railRef,
+    railTranslateY,
     stackRef,
     visualCapability,
   } = useHomeCardDeckMotion({
@@ -385,7 +394,50 @@ export default function HomeCardDeck({
             />
           ) : null}
         </View>
-        <DictionaryRail />
+        <View
+          ref={railRef as any}
+          className='reffo-home-deck__rail'
+          onTouchStart={handleRailTouchStart}
+        >
+          <View
+            className={classNames('reffo-home-deck__rail-wheel', {
+              'reffo-home-deck__rail-wheel--animating': isRailAnimating,
+            })}
+            style={{transform: `translateY(${railTranslateY}px)`} as any}
+          >
+            {railItems.map(({card, virtualIndex}) => {
+              const distance = Math.min(4, Math.abs(virtualIndex - activeRailIndex))
+              const isActive = virtualIndex === activeRailIndex
+
+              return (
+                <View
+                  key={`${card.id}-${virtualIndex}`}
+                  className={classNames(
+                    'reffo-home-deck__rail-item',
+                    `reffo-home-deck__rail-item--d${distance}`,
+                    {
+                      'reffo-home-deck__rail-item--active': isActive,
+                    },
+                  )}
+                >
+                  <View className='reffo-home-deck__rail-major'>
+                    <Text className='reffo-home-deck__rail-label'>{card.indexLabel}</Text>
+                    <View className='reffo-home-deck__rail-tick reffo-home-deck__rail-tick--major' />
+                  </View>
+                  {Array.from({length: H5_RAIL_MINOR_MARK_COUNT}, (_, tickIndex) => (
+                    <View
+                      key={tickIndex}
+                      className='reffo-home-deck__rail-minor'
+                      style={{top: `${(tickIndex + 1) * (H5_RAIL_ITEM_HEIGHT / (H5_RAIL_MINOR_MARK_COUNT + 1))}px`} as any}
+                    >
+                      <View className='reffo-home-deck__rail-tick reffo-home-deck__rail-tick--minor' />
+                    </View>
+                  ))}
+                </View>
+              )
+            })}
+          </View>
+        </View>
       </View>
     </View>
   )

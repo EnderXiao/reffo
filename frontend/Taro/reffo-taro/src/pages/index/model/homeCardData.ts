@@ -6,14 +6,13 @@ import {
 } from '@/components/business/HomeCardDeck/palette'
 import type {ResumeHistory, ResumeHistorySummary} from '@/types'
 import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary'
-import {resolveTextInitial, resolveTextSecondary} from '@/utils/text-initial'
+import {resolveTextInitial} from '@/utils/text-initial'
 import type {GenerationTask} from '@/services/backgroundGeneration'
 
 interface CardSeedInput {
   id: string
   company: string
   indexLabel?: string
-  indexSecondaryLabel?: string
   location: string
   role: string
   dateLabel: string
@@ -127,7 +126,6 @@ function buildCardItem(input: CardSeedInput): HomeCardItem {
   return {
     ...input,
     indexLabel: input.indexLabel ?? getIndexLabel(input.company, 0),
-    indexSecondaryLabel: input.indexSecondaryLabel ?? resolveTextSecondary(input.company) ?? input.indexLabel ?? 'A',
     primaryColor: palette.primaryColor,
     surfaceColor: palette.surfaceColor,
     stackColor: palette.stackColor,
@@ -154,7 +152,6 @@ export const DEMO_CARDS: HomeCardItem[] = DEMO_CARD_INPUTS.map((input, index) =>
   buildCardItem({
     ...input,
     indexLabel: getIndexLabel(input.company, index),
-    indexSecondaryLabel: resolveTextSecondary(input.company) ?? getIndexLabel(input.company, index),
   }),
 )
 
@@ -167,7 +164,6 @@ export function toHistorySummaryCardItem(
     id: summary.id || `history-${index}`,
     company: summary.company || '--',
     indexLabel: getIndexLabel(summary.company || '', index),
-    indexSecondaryLabel: resolveTextSecondary(summary.company || '') ?? getIndexLabel(summary.company || '', index),
     location: summary.location || '--',
     role: summary.position || '--',
     dateLabel: formatDateLabel(summary.createdAt),
@@ -195,7 +191,7 @@ export function toHistorySummaryCardItems(
 ): HomeCardItem[] {
   return summaries
     .slice(0, 10)
-    .map((summary, index) => toHistorySummaryCardItem(summary, index))
+    .map(toHistorySummaryCardItem)
 }
 
 export function toGenerationTaskCard(task: GenerationTask, summary?: ResumeHistorySummary): HomeCardItem {
