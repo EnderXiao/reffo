@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react'
-import type {CSSProperties} from 'react'
+import type {ComponentProps, CSSProperties} from 'react'
 import {Image, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
 import REFFO_LOGO from '@/assets/branding/reffo-logo.png'
@@ -180,6 +180,20 @@ interface QueueCardStyleOptions {
   clearanceSourceOffset?: number | null
   isSelectedExpanded?: boolean
   isSelectedDetail?: boolean
+}
+
+interface InteractionPoint {
+  clientX: number
+  clientY: number
+}
+
+interface InteractionEvent {
+  touches?: InteractionPoint[]
+  changedTouches?: InteractionPoint[]
+  clientX?: number
+  clientY?: number
+  preventDefault?: () => void
+  stopPropagation?: () => void
 }
 
 const ONBOARDING_QUEUE_ENTRY_SLOTS: QueueSlot[] = [
@@ -662,6 +676,16 @@ export default function LandingPage() {
   const [isQueueUploading, setIsQueueUploading] = useState(false)
   const [queueUploadProgress, setQueueUploadProgress] = useState(0)
   const [queueUploadedFile, setQueueUploadedFile] = useState<LandingQueueUploadFile | null>(null)
+  const isQueueDetailVisible = selectedQueueDetailMode != null
+    && (isQueueSelectionDetail || isQueueDetailLeaving)
+  const isQueueDetailInteractive = selectedQueueDetailMode != null
+    && !isQueueDetailLeaving
+    && isQueueSelectionDetail
+    && (queueMotionPhase === 'detail' || queueMotionPhase === 'selected')
+  const isQueueDetailGestureActive = selectedQueueDetailMode != null
+    && !isQueueDetailLeaving
+    && (queueMotionPhase === 'detail'
+      || (queueMotionPhase === 'selected' && isQueueSelectionDetail))
   const [selectedJobIndex, setSelectedJobIndex] = useState(0)
   const [jobDragOffset, setJobDragOffset] = useState(0)
   const [isJobDragging, setIsJobDragging] = useState(false)
@@ -1108,7 +1132,7 @@ export default function LandingPage() {
 
   const handleQueueResumeUpload = async () => {
     if (
-      queueMotionPhase !== 'detail'
+      !isQueueDetailInteractive
       || selectedQueueDetailMode !== 'upload'
       || isQueueUploadComplete
       || isQueueUploadRemoving
@@ -1615,9 +1639,14 @@ export default function LandingPage() {
     void completeOnboarding()
   }
 
-  const getInteractionPoint = (event: any) => event.touches?.[0] ?? event.changedTouches?.[0] ?? event
+  const getInteractionPoint = (event: InteractionEvent): InteractionPoint | null => {
+    const point = event.touches?.[0] ?? event.changedTouches?.[0] ?? event
+    return typeof point?.clientX === 'number' && typeof point?.clientY === 'number'
+      ? {clientX: point.clientX, clientY: point.clientY}
+      : null
+  }
 
-  const handleTouchStart = (event: any) => {
+  const handleTouchStart = (event: InteractionEvent) => {
     if (phase !== 'onboarding') {
       return
     }
@@ -1668,7 +1697,7 @@ export default function LandingPage() {
       : null
   }
 
-  const handleTouchMove = (event: any) => {
+  const handleTouchMove = (event: InteractionEvent) => {
     if (phase !== 'onboarding' || onboardingStep !== 'queue') {
       return
     }
@@ -1698,6 +1727,7 @@ export default function LandingPage() {
 
     if (
       queueMotionPhase === 'detail'
+      || isQueueSelectionDetail
       || queueMotionPhase === 'folder'
       || queueMotionPhase === 'folder-opening'
       || queueMotionPhase === 'folder-closing'
@@ -1766,7 +1796,7 @@ export default function LandingPage() {
     applyQueueProgress(nextProgress)
   }
 
-  const handleTouchEnd = (event: any) => {
+  const handleTouchEnd = (event: InteractionEvent) => {
     if (phase !== 'onboarding') {
       return
     }
@@ -1823,7 +1853,7 @@ export default function LandingPage() {
         return
       }
 
-      if ((queueMotionPhase === 'detail' || isQueueDetailLeaving) && start && touch) {
+      if (isQueueDetailGestureActive && start && touch) {
         const deltaX = touch.clientX - start.x
         const deltaY = touch.clientY - start.y
         const isHorizontalBackSwipe = Math.abs(deltaX) >= ONBOARDING_QUEUE_SELECT_SWIPE_THRESHOLD
@@ -1886,7 +1916,7 @@ export default function LandingPage() {
         if (
           isDownSelectSwipe
           && selectedQueueCardIndex != null
-          && !isQueueSelectionDetail
+          && (!isQueueSelectionDetail || selectedQueueDetailMode == null)
           && !isQueueDetailLeaving
         ) {
           event.preventDefault?.()
@@ -1943,7 +1973,7 @@ export default function LandingPage() {
     const isQueueUploadPending = selectedQueueDetailMode === 'upload'
       && !isQueueUploadComplete
       && !isQueueUploadRemoving
-    const canActivateQueueUpload = queueMotionPhase === 'detail'
+    const canActivateQueueUpload = isQueueDetailInteractive
       && isQueueUploadPending
       && !isQueueUploading
     const shouldShowDetailProgress = selectedQueueDetailMode === 'resume' || isQueueUploadComplete
@@ -2044,13 +2074,15 @@ export default function LandingPage() {
           setJobDragOffset(0)
           setIsJobDragging(false)
         }}
-        onMouseDown={event => handleTouchStart(event as unknown as Parameters<typeof handleTouchStart>[0])}
-        onMouseMove={event => {
-          if (touchStartRef.current) {
-            handleTouchMove(event as unknown as Parameters<typeof handleTouchMove>[0])
-          }
-        }}
-        onMouseUp={event => handleTouchEnd(event as unknown as Parameters<typeof handleTouchEnd>[0])}
+        {...({
+          onMouseDown: handleTouchStart,
+          onMouseMove: (event: InteractionEvent) => {
+            if (touchStartRef.current) {
+              handleTouchMove(event)
+            }
+          },
+          onMouseUp: handleTouchEnd,
+        } as unknown as ComponentProps<typeof View>)}
       >
         <View className='reffo-responsive-page__frame reffo-landing-onboarding__frame'>
         <img src={REFFO_LOGO} className='reffo-landing-onboarding__logo' alt='Reffo' />
@@ -2074,7 +2106,7 @@ export default function LandingPage() {
                 && selectedQueueCardIndex === cardIndex
                 && selectedQueueCard != null
               const isDetailSourceCard = isSelectedSourceCard
-                && (isQueueSelectionDetail || isQueueDetailLeaving)
+                && isQueueDetailVisible
               const queueCardFaceStyle = {
                 '--card-responsive-scale': 1,
                 '--card-left': '0px',
@@ -2133,15 +2165,10 @@ export default function LandingPage() {
                         presentation='queue3d'
                         className='reffo-landing-onboarding__home-card'
                         style={queueCardFaceStyle}
-                        uploadStatus={isQueueUploadComplete
-                          ? 'success'
-                          : isQueueUploading
-                            ? 'uploading'
-                            : 'idle'}
-                        uploadFile={queueUploadedFile}
-                        uploadProgress={queueUploadProgress}
-                        uploadRemoving={isQueueUploadRemoving}
-                        onUploadRemove={handleRemoveQueueResumeUpload}
+                        uploadStatus='idle'
+                        uploadFile={null}
+                        uploadProgress={0}
+                        uploadRemoving={false}
                       />
                     </View>
                     {isDetailSourceCard ? (
@@ -2151,7 +2178,8 @@ export default function LandingPage() {
                         })}
                         role={canActivateQueueUpload ? 'button' : undefined}
                         aria-label={canActivateQueueUpload ? '上传简历文件' : undefined}
-                        onClick={canActivateQueueUpload ? () => {
+                        onClick={canActivateQueueUpload ? event => {
+                          event.stopPropagation?.()
                           void handleQueueResumeUpload()
                         } : undefined}
                       >
@@ -2171,6 +2199,7 @@ export default function LandingPage() {
                           uploadFile={queueUploadedFile}
                           uploadProgress={queueUploadProgress}
                           uploadRemoving={isQueueUploadRemoving}
+                          uploadRemoveDisabled={!isQueueDetailInteractive}
                           onUploadRemove={handleRemoveQueueResumeUpload}
                         />
                       </View>
@@ -2466,8 +2495,7 @@ export default function LandingPage() {
           </View>
         ) : null}
 
-        {selectedQueueDetailMode
-        && (isQueueSelectionDetail || isQueueDetailLeaving) ? (
+        {selectedQueueDetailMode && isQueueDetailVisible ? (
           <View className='reffo-landing-onboarding__queue-detail-guidance'>
             <Text>
               {selectedQueueDetailMode === 'upload'
@@ -2517,7 +2545,7 @@ export default function LandingPage() {
 
         {selectedQueueDetailMode === 'upload'
         && isQueueUploadPending
-        && (isQueueSelectionDetail || isQueueDetailLeaving) ? (
+        && isQueueDetailVisible ? (
           <View className='reffo-landing-onboarding__queue-upload-instruction' aria-busy={isQueueUploading}>
             <Text>{isQueueUploading ? '正在读取简历...' : '上传文件以下一步'}</Text>
           </View>

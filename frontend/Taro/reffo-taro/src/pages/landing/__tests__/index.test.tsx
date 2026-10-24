@@ -1,5 +1,5 @@
 import React from 'react'
-import {act, fireEvent, render, screen} from '@testing-library/react'
+import {act, fireEvent, render, screen, within} from '@testing-library/react'
 import LandingPage from '../index'
 import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
@@ -104,6 +104,10 @@ jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
               <button
                 type='button'
                 aria-label='删除已上传简历'
+                onTouchStart={event => event.stopPropagation()}
+                onTouchEnd={event => event.stopPropagation()}
+                onMouseDown={event => event.stopPropagation()}
+                onMouseUp={event => event.stopPropagation()}
                 onClick={event => {
                   event.stopPropagation()
                   onUploadRemove?.()
@@ -189,6 +193,17 @@ async function swipeSelectedCardDown(container: HTMLElement) {
     })
     await Promise.resolve()
   })
+}
+
+function getQueueDetailButton(container: HTMLElement, name: string) {
+  const detailCard = container.querySelector<HTMLElement>('.reffo-landing-onboarding__card--queue-detail-source')
+  if (!detailCard) {
+    throw new Error('Queue detail source card was not rendered')
+  }
+  const detailButton = within(detailCard).getByRole('button', {name})
+  expect(screen.getAllByRole('button', {name})).toHaveLength(1)
+  expect(detailCard.contains(detailButton)).toBe(true)
+  return detailButton
 }
 
 describe('启动封页', () => {
@@ -1062,6 +1077,8 @@ describe('启动封页', () => {
     const {container} = render(<LandingPage />)
     await selectUploadQueueCard(container)
     await swipeSelectedCardDown(container)
+    expect((container.firstElementChild as HTMLElement).classList)
+      .toContain('reffo-landing-onboarding--queue-detail')
 
     expect(container.firstElementChild?.className)
       .toContain('reffo-landing-onboarding--queue-detail-upload')
@@ -1079,7 +1096,7 @@ describe('启动封页', () => {
       .not.toContain('reffo-landing-onboarding--queue-folder')
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', {name: '上传简历文件'}))
+      fireEvent.click(getQueueDetailButton(container, '上传简历文件'))
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -1134,9 +1151,11 @@ describe('启动封页', () => {
     expect(mockPickAndParseResumeFile).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', {name: '删除已上传简历'})[0])
+      fireEvent.click(getQueueDetailButton(container, '删除已上传简历'))
       await Promise.resolve()
     })
+    expect((container.firstElementChild as HTMLElement).classList)
+      .toContain('reffo-landing-onboarding--queue-detail')
 
     expect(mockSetSourceResume).toHaveBeenLastCalledWith('')
     expect(container.firstElementChild?.className)
@@ -1153,11 +1172,17 @@ describe('启动封页', () => {
     expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).toBeNull()
     expect(screen.getByText('上传文件以下一步')).not.toBeNull()
-
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', {name: '上传简历文件'}))
+      fireEvent.click(getQueueDetailButton(container, '上传简历文件'))
+      await Promise.resolve()
       await Promise.resolve()
     })
+
+    expect(mockPickAndParseResumeFile).toHaveBeenCalledTimes(2)
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-detail-uploaded')
+    expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).not.toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
 
     await swipeSelectedCardDown(container)
 

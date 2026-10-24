@@ -1248,6 +1248,12 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   cursor: pointer;
 }
 
+.reffo-landing-onboarding--step-queue .reffo-home-card__upload-complete-remove--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: default;
+}
+
 @keyframes reffo-home-card-upload-color-spin {
   from {
     transform: rotate(0deg) scale(0.96);

@@ -5,6 +5,7 @@ import type {HomeCardItem} from './shared'
 import {deriveCardPalette} from './palette'
 import classNames from 'classnames'
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import type {ComponentProps, CSSProperties} from 'react'
 import {HOME_PAGE_CONTENT} from '@/pages/index/constants/content'
 import ResumeUploadIcon, {
   type ResumeUploadIconStatus,
@@ -33,6 +34,10 @@ const CREATE_CARD_ITEM: HomeCardItem = {
   strategyBody: '',
 }
 const startedStickerReveals = new Set<string>()
+
+const stopPointerEvent = (event: {stopPropagation?: () => void}) => {
+  event.stopPropagation?.()
+}
 
 function stickerRevealStorageKey(taskId: string) {
   return `reffo.home-sticker-revealed.${taskId}`
@@ -76,7 +81,7 @@ interface HomeScoreCardProps {
   variant?: 'score' | 'create' | 'generating'
   presentation?: 'default' | 'queue3d'
   className?: string
-  style?: Record<string, string | number>
+  style?: CSSProperties | Record<string, string | number>
   onClick?: () => void
   uploadStatus?: ResumeUploadIconStatus
   uploadFile?: {
@@ -86,6 +91,7 @@ interface HomeScoreCardProps {
   } | null
   uploadProgress?: number
   uploadRemoving?: boolean
+  uploadRemoveDisabled?: boolean
   onUploadRemove?: () => void
 }
 
@@ -202,6 +208,7 @@ export default function HomeScoreCard({
   uploadFile,
   uploadProgress = 0,
   uploadRemoving = false,
+  uploadRemoveDisabled = false,
   onUploadRemove,
 }: HomeScoreCardProps) {
   const [isValueMarqueeReady, setIsValueMarqueeReady] = useState(false)
@@ -523,14 +530,21 @@ export default function HomeScoreCard({
                     <Text className='reffo-home-card__upload-complete-size'>{uploadFile.sizeLabel}</Text>
                   </View>
                   <View
-                    className='reffo-home-card__upload-complete-remove'
-                    role='button'
-                    aria-label='删除已上传简历'
+                    className={classNames('reffo-home-card__upload-complete-remove', {
+                      'reffo-home-card__upload-complete-remove--disabled': uploadRemoveDisabled,
+                    })}
+                    {...({
+                      onMouseDown: stopPointerEvent,
+                      onMouseUp: stopPointerEvent,
+                    } as unknown as ComponentProps<typeof View>)}
+                    role={uploadRemoveDisabled ? undefined : 'button'}
+                    aria-label={uploadRemoveDisabled ? undefined : '删除已上传简历'}
+                    aria-disabled={uploadRemoveDisabled || undefined}
                     onTouchStart={event => event.stopPropagation?.()}
                     onTouchEnd={event => event.stopPropagation?.()}
                     onClick={event => {
                       event.stopPropagation?.()
-                      if (!uploadRemoving) {
+                      if (!uploadRemoving && !uploadRemoveDisabled) {
                         onUploadRemove?.()
                       }
                     }}
@@ -612,13 +626,15 @@ export default function HomeScoreCard({
                       className='reffo-home-card__resume-detail-copy'
                       role='region'
                       aria-label={`${card.resumeProfile.name}的详细说明`}
-                      tabIndex={0}
+                      {...({tabIndex: 0} as unknown as ComponentProps<typeof View>)}
+                      {...({
+                        onMouseDown: stopPointerEvent,
+                        onMouseUp: stopPointerEvent,
+                      } as unknown as ComponentProps<typeof View>)}
                       onTouchStart={event => event.stopPropagation?.()}
                       onTouchMove={event => event.stopPropagation?.()}
                       onTouchEnd={event => event.stopPropagation?.()}
                       onTouchCancel={event => event.stopPropagation?.()}
-                      onMouseDown={event => event.stopPropagation?.()}
-                      onMouseUp={event => event.stopPropagation?.()}
                       onClick={event => event.stopPropagation?.()}
                     >
                       <Text className='reffo-home-card__resume-detail-summary'>
