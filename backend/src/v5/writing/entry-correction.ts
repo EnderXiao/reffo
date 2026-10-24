@@ -12,7 +12,14 @@ export type EntryCorrectionPayload = ReturnType<typeof entryWritingPayload> & {
   correction?: {
     attempt: number
     rejectedEntries: ReturnType<typeof entryWritingOutputSchema.parse>['entries']
-    issues: Array<{ entryId: string; code: string; message: string }>
+    issues: Array<{
+      entryId: string
+      outputPath: string | null
+      paragraphIndex: number | null
+      paragraphIndices: readonly number[]
+      code: string
+      message: string
+    }>
   }
 }
 
@@ -51,7 +58,12 @@ export async function writeValidatedEntries<T>(input: {
         ...entryWritingPayload({ ...input.plan, entries }),
         correction: { attempt: attempt + 1,
           rejectedEntries: output.entries.filter(entry => ids.has(entry.entryId)),
-          issues: mapped.map(({ issue, entries }) => ({ entryId: entries[0].entryId, code: issue.code, message: issue.message })),
+          issues: mapped.map(({ issue, entries }) => {
+            const paragraphIndices = error.sourceParagraphIndicesByPath.get(issue.outputPath ?? '') ?? []
+            return { entryId: entries[0].entryId, outputPath: issue.outputPath ?? null,
+              paragraphIndex: paragraphIndices.length === 1 ? paragraphIndices[0] : null,
+              paragraphIndices, code: issue.code, message: issue.message }
+          }),
         },
       }
       previous = output

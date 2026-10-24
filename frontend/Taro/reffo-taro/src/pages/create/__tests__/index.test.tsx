@@ -8,6 +8,8 @@ import {generationTasksApi, type GenerationTask} from '@/services/backgroundGene
 import {useAuthStore, useLandingFlowStore, useResumeWorkspaceStore, useSourceResumeStore} from '@/store'
 import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
+import {usePageModel} from '../usePageModel'
+import LandingAnalysisPageView from '@/pages/landing-analysis/PageView.h5'
 import {RequestError} from '@/utils/request'
 
 const defaultProcessResult = {
@@ -384,6 +386,125 @@ describe('CreatePage', () => {
         url: '/pages/landing-result/index',
       })
     })
+  })
+
+  test('教程分析网络失败后保留选择并仅在点击重新生成时重试', async () => {
+    const selectedResume = {
+      source: 'preset' as const,
+      id: 'landing-resume-engineer',
+      title: '小林的体验简历',
+      markdown: '# 小林\n\n## 实习经历\n- 使用 React 开发后台页面',
+    }
+    const selectedJob = {
+      id: 'software',
+      content: '岗位职责：使用 React 和 TypeScript 开发页面',
+      companyName: '示例协作软件公司',
+      positionName: '初级前端工程师',
+      baseLocation: '上海',
+    }
+    const firstAnalysis = createDeferredPromise<typeof defaultProcessResult.analysis>()
+    const retryAnalysis = createDeferredPromise<typeof defaultProcessResult.analysis>()
+    const onComplete = jest.fn()
+    const networkError = new RequestError('网络连接失败，请稍后重试', 'NETWORK_ERROR')
+    const logError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockAnalyzeResume
+      .mockReturnValueOnce(firstAnalysis.promise)
+      .mockReturnValueOnce(retryAnalysis.promise)
+    useLandingFlowStore.getState().selectResume(selectedResume)
+    useLandingFlowStore.getState().startJobDescription(selectedJob)
+
+    function LandingAnalysisHarness() {
+      const model = usePageModel({
+        autoGenerateLanding: true,
+        onLandingGenerationComplete: onComplete,
+      })
+      return <LandingAnalysisPageView {...model} embedded showLandingHeader={false} />
+    }
+
+    try {
+      const {rerender} = render(<LandingAnalysisHarness />)
+
+      await waitFor(() => {
+        expect(mockAnalyzeResume).toHaveBeenCalledTimes(1)
+      })
+      expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
+
+      await act(async () => {
+        firstAnalysis.reject(networkError)
+        await Promise.resolve()
+      })
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeTruthy()
+        expect(screen.getByText('生成暂时中断')).toBeTruthy()
+        expect(screen.getByText('重新生成')).toBeTruthy()
+        expect(screen.queryByTestId('create-analysis-stage')).toBeNull()
+      })
+      expect(screen.getByText(networkError.message)).toBeTruthy()
+      expect(useLandingFlowStore.getState().selectedResume).toEqual(selectedResume)
+      expect(useLandingFlowStore.getState().selectedJob).toEqual(selectedJob)
+
+      await act(async () => {
+        rerender(<LandingAnalysisHarness />)
+        await Promise.resolve()
+      })
+
+      expect(mockAnalyzeResume).toHaveBeenCalledTimes(1)
+      expect(mockMatchResume).not.toHaveBeenCalled()
+      expect(onComplete).not.toHaveBeenCalled()
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('重新生成'))
+        await Promise.resolve()
+      })
+
+      await waitFor(() => {
+        expect(mockAnalyzeResume).toHaveBeenCalledTimes(2)
+        expect(screen.queryByRole('alert')).toBeNull()
+        expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
+      })
+      expect(mockAnalyzeResume).toHaveBeenNthCalledWith(2, selectedResume.markdown, {landing: true})
+
+      await act(async () => {
+        retryAnalysis.resolve(defaultProcessResult.analysis)
+        await Promise.resolve()
+      })
+
+      await waitFor(() => {
+        expect(onComplete).toHaveBeenCalledTimes(1)
+      })
+      expect(mockAnalyzeResume).toHaveBeenCalledTimes(2)
+      expect(mockMatchResume).toHaveBeenCalledTimes(1)
+      expect(mockMatchResume).toHaveBeenCalledWith(
+        defaultProcessResult.analysis,
+        {presetJdId: 'software'},
+        {landing: true},
+      )
+      expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
+        result: expect.objectContaining({
+          analysis: defaultProcessResult.analysis,
+          matching: defaultProcessResult.matching,
+        }),
+        context: expect.objectContaining({
+          company: selectedJob.companyName,
+          position: selectedJob.positionName,
+          location: selectedJob.baseLocation,
+          resumeContent: selectedResume.markdown,
+          jdContent: expect.stringContaining(selectedJob.content),
+          presetJdId: 'software',
+        }),
+        progress: {
+          analysis: 'done',
+          matching: 'done',
+          optimized: 'pending',
+          interview: 'pending',
+        },
+      }))
+      expect(mockSaveLatestResultSession).toHaveBeenCalledWith(onComplete.mock.calls[0][0])
+      expect(mockCreateGenerationTask).not.toHaveBeenCalled()
+    } finally {
+      logError.mockRestore()
+    }
   })
 
   test('应该渲染新的单页流程容器', async () => {

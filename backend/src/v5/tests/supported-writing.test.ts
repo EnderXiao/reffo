@@ -106,6 +106,20 @@ describe('supported writing facts and contract', () => {
     expect(inspectSupportedWriting('协同团队平均每两周发布一个版本。', [source], 'summary[0]').map(i => i.code)).not.toContain('WRITER_BOUNDARY_LOST')
   })
 
+  test('recognizes explicit work with a colleague while preserving team and ownership checks', () => {
+    const source = atom('整理30条课程使用反馈，按问题类型归类，补充复现步骤，与产品经理一起确认优先级。')
+    source.riskFlags = ['team_attribution']
+    const codes = (text: string) => inspectSupportedWriting(text, [source], 'project.feedback.bullets[1]').map(issue => issue.code)
+    for (const phrase of ['与产品经理一起', '和产品经理共同', '同产品经理一起']) {
+      expect(codes(`整理30条课程使用反馈，补充复现步骤；随后${phrase}确认优先级。`)).not.toContain('WRITER_BOUNDARY_LOST')
+    }
+    for (const text of ['整理30条课程使用反馈并确认优先级。', '将问题与复现步骤一起整理，确认优先级。', '与产品经理沟通后，独自确认优先级。']) {
+      expect(codes(text)).toContain('WRITER_BOUNDARY_LOST')
+    }
+    expect(codes('与产品经理一起确认优先级，独立完成产品方案。')).toContain('WRITER_OWNERSHIP_UPGRADE')
+    expect(codes('与产品经理一起确认优先级，协同市场制定方案。')).toContain('WRITER_COLLABORATOR_ADDED')
+  })
+
   test('rejects an unfinished metric even when its evidence references are valid', () => {
     const input = context()
     const block = input.composition.blocks.find(b => input.writingPlan.blueprint.slots.find(s => s.slotId === b.slotId)?.kind !== 'summary')!

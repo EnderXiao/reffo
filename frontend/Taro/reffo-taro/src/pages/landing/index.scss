@@ -176,6 +176,10 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   touch-action: none;
 }
 
+.reffo-landing-onboarding--step-queue.reffo-landing-onboarding--queue-detail {
+  touch-action: pan-y;
+}
+
 .reffo-landing-onboarding__logo {
   position: absolute;
   z-index: 5;
@@ -697,8 +701,9 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   margin-top: 10px;
   color: #111111;
   font-size: 16px;
-  line-height: 30px;
-  font-weight: 600;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
 .reffo-landing-onboarding--step-queue.reffo-landing-onboarding--queue-folder .reffo-landing-onboarding__headline--queue {
@@ -813,6 +818,7 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
 
 .reffo-landing-onboarding--step-queue .reffo-home-card--queue-resume .reffo-home-card__resume-score {
   left: 23px;
+  right: 23px;
   top: 84px;
   align-items: center;
   gap: 10px;
@@ -860,10 +866,25 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   justify-content: flex-start;
 }
 
-.reffo-landing-onboarding--step-queue .reffo-home-card__resume-glass--detail {
+.reffo-landing-onboarding--step-queue .reffo-home-card--queue-resume .reffo-home-card__queue-face--resume-back .reffo-home-card__resume-score {
+  top: 44px;
+  gap: 9px;
+}
+
+.reffo-landing-onboarding--step-queue .reffo-home-card__queue-face--resume-back .reffo-home-card__resume-avatar {
+  width: 36px;
+  height: 36px;
+}
+
+.reffo-landing-onboarding--step-queue .reffo-home-card--queue-resume .reffo-home-card__resume-glass--detail {
   align-items: flex-start;
-  padding-top: 19px;
-  padding-bottom: 17px;
+  height: 220px;
+  flex-shrink: 0;
+  padding: 16px 18px 14px;
+}
+
+.reffo-landing-onboarding--step-queue .reffo-home-card__resume-glass--detail .reffo-home-card__resume-glass-texture {
+  top: -112px;
 }
 
 .reffo-landing-onboarding--step-queue .reffo-home-card__resume-detail-copy {
@@ -873,10 +894,27 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   flex-direction: column;
   gap: 9px;
   width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(17, 24, 39, 0.2) transparent;
+}
+
+.reffo-landing-onboarding--queue-detail .reffo-landing-onboarding__queue-detail-back .reffo-home-card__resume-detail-copy {
+  pointer-events: auto;
 }
 
 .reffo-landing-onboarding--step-queue .reffo-home-card__resume-detail-summary,
 .reffo-landing-onboarding--step-queue .reffo-home-card__resume-detail-experience {
+  display: block;
+  flex-shrink: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   color: rgba(17, 24, 39, 0.78);
   font-size: 11px;
   line-height: 16px;
@@ -944,6 +982,8 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   font-size: 11px;
   line-height: 15px;
   font-weight: 500;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .reffo-landing-onboarding--step-queue .reffo-home-card__resume-tags {
@@ -1206,6 +1246,12 @@ html[data-reffo-view-transition='landing-analysis']::view-transition-new(reffo-c
   font-weight: 600;
   pointer-events: auto;
   cursor: pointer;
+}
+
+.reffo-landing-onboarding--step-queue .reffo-home-card__upload-complete-remove--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: default;
 }
 
 @keyframes reffo-home-card-upload-color-spin {

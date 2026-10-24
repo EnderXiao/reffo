@@ -22,7 +22,7 @@ function fixture(withSummary = false) {
     editorialPolicy: 'document-editorial-v1' as const }
   const base = buildWritingPlan(input)
   const entryPlan = buildEntryWritingPlan({ ...input, base })
-  const output = { contractVersion: ENTRY_WRITING_POLICY, entries: entryPlan.entries.map(entry => {
+  const output: ReturnType<typeof entryWritingOutputSchema.parse> = { contractVersion: ENTRY_WRITING_POLICY, entries: entryPlan.entries.map(entry => {
     const fact = entry.facts.find(f => entry.coreEvidenceIds.includes(f.evidenceId)) ?? entry.facts[0]
     return { entryId: entry.entryId, paragraphs: [{ role: 'detail' as const, text: fact.text, evidenceIds: [fact.evidenceId] }] }
   }) }
@@ -156,7 +156,7 @@ test('versioned entry prompt changes only the opt-in schema and preserves old Wr
   expect(old.promptVersion).toBe('5.1.0-p06c-supported-writer-r19')
   expect(next.manifest.promptFilePath).toBe('prompts/P06C-entry.md')
   expect(next.schema).toBe(entryWritingOutputSchema)
-  expect(next.promptVersion).toBe('5.2.0-p06c-entry-writer-r10')
+  expect(next.promptVersion).toBe('5.2.0-p06c-entry-writer-r12')
   expect(next.maxOutputTokens).toBe(old.maxOutputTokens)
   expect(next.messages[0].content).toContain('方案行')
   expect(next.messages[0].content).toContain('不是四项强制填空')
@@ -422,6 +422,80 @@ test('entry writer CLI requires targeted mode and stays dry-run by default', () 
 })
 
 // 通过真实编译器验证纠正，未涉及条目不得被模型顺带改写。
+test.each([[false, true], [false, false], [true, true], [true, false]])(
+  'boundary correction identifies the original paragraph, compacted=%s corrected=%s', async (compacted, corrected) => {
+  const f = fixture(true)
+  const target = f.entryPlan.entries.find(entry => entry.slot.kind === 'business_bullet')!
+  const entry = f.output.entries.find(item => item.entryId === target.entryId)!
+  const evidenceIds = entry.paragraphs[0].evidenceIds
+  entry.paragraphs = [
+    {role: 'detail', text: '参与团队产品迭代。', evidenceIds},
+    ...(compacted ? [{role: 'detail' as const, text: '参与团队产品整理。', evidenceIds}] : []),
+    {role: 'outcome', text: '交付3个功能。', evidenceIds},
+  ]
+  const originalIndex = compacted ? 2 : 1
+  if (compacted) f.entryPlan.listItemHardLimit = f.entryPlan.entries.filter(item => item.slot.kind !== 'summary').length + 1
+  let calls = 0
+  const promise = writeValidatedEntries({ plan: f.entryPlan,
+    write: async (payload, attempt) => {
+      calls++
+      if (attempt) expect(payload.correction?.issues).toEqual([expect.objectContaining({
+        entryId: target.entryId, code: 'WRITER_BOUNDARY_LOST', paragraphIndex: originalIndex,
+        paragraphIndices: [originalIndex],
+        outputPath: `${target.section}.${target.scopeId}.bullets[1]`,
+      })])
+      const output = structuredClone(f.output)
+      if (attempt) {
+        output.entries = output.entries.filter(item => item.entryId === target.entryId)
+        output.entries[0].paragraphs[corrected ? originalIndex : 0].text = '参与团队交付3个功能。'
+      }
+      return output
+    },
+    validate: output => compileEntryWriting({output, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy}),
+  })
+  if (corrected) expect((await promise).repairAttempts).toBe(1)
+  else await expect(promise).rejects.toThrow()
+  expect(calls).toBe(corrected ? 2 : 3)
+})
+
+test.each(['number', 'incomplete_metric'] as const)('correction retains every source paragraph after repeated compaction: %s', async variant => {
+  const f = fixture(true)
+  const target = f.entryPlan.entries.find(entry => entry.slot.kind === 'business_bullet')!
+  const entry = f.output.entries.find(item => item.entryId === target.entryId)!
+  const evidenceIds = entry.paragraphs[0].evidenceIds
+  entry.paragraphs = [
+    {role: 'detail', text: '参与团队产品迭代。', evidenceIds},
+    {role: 'detail', text: '支持团队完成需求梳理。', evidenceIds},
+    {role: 'detail', text: variant === 'number' ? '团队交付999个功能。' : '团队交付3个功能，覆盖率提升至', evidenceIds},
+  ]
+  f.entryPlan.listItemHardLimit = f.entryPlan.entries.filter(item => item.slot.kind !== 'summary').length
+  let calls = 0
+  const result = await writeValidatedEntries({ plan: f.entryPlan,
+    write: async (payload, attempt) => {
+      calls++
+      if (attempt) {
+        expect(payload.correction?.issues).toEqual([expect.objectContaining({
+          entryId: target.entryId,
+          code: variant === 'number' ? 'WRITER_NUMBER_CHANGED' : 'WRITER_INCOMPLETE_METRIC',
+          outputPath: variant === 'number' ? `${target.section}.${target.scopeId}.bullets[0]` : `${target.entryId}:p0`,
+          paragraphIndex: null, paragraphIndices: [0, 1, 2],
+        })])
+        expect(payload.correction?.rejectedEntries[0].paragraphs).toEqual(entry.paragraphs)
+      }
+      const output = structuredClone(f.output)
+      if (attempt) {
+        output.entries = output.entries.filter(item => item.entryId === target.entryId)
+        output.entries[0].paragraphs[2].text = '团队交付3个功能。'
+      }
+      return output
+    },
+    validate: output => compileEntryWriting({output, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy}),
+  })
+  expect(calls).toBe(2)
+  expect(result.repairAttempts).toBe(1)
+  expect(result.result.artifact.markdown).toContain('参与团队产品迭代。 支持团队完成需求梳理。 团队交付3个功能。')
+})
+
 test.each(['corrected', 'still_invalid', 'extra_entry'] as const)('bounded fact correction: %s', async variant => {
   const f = fixture(true)
   const target = f.entryPlan.entries.find(entry => entry.slot.kind === 'business_bullet')!

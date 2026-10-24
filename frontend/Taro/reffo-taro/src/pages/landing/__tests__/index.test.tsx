@@ -1,8 +1,9 @@
 import React from 'react'
-import {act, fireEvent, render, screen} from '@testing-library/react'
+import {act, fireEvent, render, screen, within} from '@testing-library/react'
 import LandingPage from '../index'
 import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
+import {useLandingFlowStore} from '@/store/landingFlowStore'
 import {resumeWorkspaceActions} from '@/store/resumeWorkspaceStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {feedback} from '@/utils/feedback'
@@ -10,6 +11,7 @@ import {navigation} from '@/utils/navigation'
 import {setJSON, storage} from '@/utils/storage'
 import {pickAndParseResumeFile} from '@/utils/resume-file-upload'
 import {routePaths} from '@/shared/routing'
+import {formatLandingJobDescription, LANDING_PRESET_JOB_DESCRIPTIONS} from '../constants/job-descriptions'
 
 jest.mock('@/store/authStore', () => ({
   useAuthStore: {
@@ -102,6 +104,10 @@ jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
               <button
                 type='button'
                 aria-label='删除已上传简历'
+                onTouchStart={event => event.stopPropagation()}
+                onTouchEnd={event => event.stopPropagation()}
+                onMouseDown={event => event.stopPropagation()}
+                onMouseUp={event => event.stopPropagation()}
                 onClick={event => {
                   event.stopPropagation()
                   onUploadRemove?.()
@@ -159,22 +165,20 @@ async function enterQueueStep(container: HTMLElement) {
 
 async function selectUploadQueueCard(container: HTMLElement) {
   await enterQueueStep(container)
+  await swipeSelectedCardDown(container)
 
   await act(async () => {
-    fireEvent.touchStart(container.firstElementChild as Element, {
-      touches: [{clientX: 100, clientY: 520}],
-    })
-    fireEvent.touchMove(container.firstElementChild as Element, {
-      touches: [{clientX: 572, clientY: 520}],
-    })
+    jest.advanceTimersByTime(700)
+    await Promise.resolve()
+  })
+}
+
+async function selectPresetQueueCard(container: HTMLElement) {
+  await enterQueueStep(container)
+
+  await act(async () => {
+    fireEvent.click(container.querySelector('[data-queue-card-index="2"]') as HTMLElement)
     jest.advanceTimersByTime(100)
-    fireEvent.touchMove(container.firstElementChild as Element, {
-      touches: [{clientX: 572, clientY: 520}],
-    })
-    fireEvent.touchEnd(container.firstElementChild as Element, {
-      changedTouches: [{clientX: 572, clientY: 520}],
-    })
-    jest.advanceTimersByTime(1200)
     await Promise.resolve()
   })
 }
@@ -191,6 +195,17 @@ async function swipeSelectedCardDown(container: HTMLElement) {
   })
 }
 
+function getQueueDetailButton(container: HTMLElement, name: string) {
+  const detailCard = container.querySelector<HTMLElement>('.reffo-landing-onboarding__card--queue-detail-source')
+  if (!detailCard) {
+    throw new Error('Queue detail source card was not rendered')
+  }
+  const detailButton = within(detailCard).getByRole('button', {name})
+  expect(screen.getAllByRole('button', {name})).toHaveLength(1)
+  expect(detailCard.contains(detailButton)).toBe(true)
+  return detailButton
+}
+
 describe('启动封页', () => {
   const restoreSession = jest.fn()
   const loadHistories = jest.fn()
@@ -201,6 +216,7 @@ describe('启动封页', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
+    useLandingFlowStore.getState().clear()
     window.history.pushState({}, '', '/')
 
     restoreSession.mockResolvedValue(null)
@@ -284,10 +300,10 @@ describe('启动封页', () => {
 
     expect(screen.getByText('岗位')).not.toBeNull()
     expect(screen.getByText('简历')).not.toBeNull()
-    expect(screen.getByText(/UX 设计师/)).not.toBeNull()
-    expect(screen.getByText(/软件工程师/)).not.toBeNull()
-    expect(screen.getByText(/用户运营经理/)).not.toBeNull()
-    expect(screen.getByText(/上海 · 可远程/)).not.toBeNull()
+    expect(screen.getByText(/业务数据分析师/)).not.toBeNull()
+    expect(screen.getByText(/初级前端工程师/)).not.toBeNull()
+    expect(screen.getByText(/用户运营专员/)).not.toBeNull()
+    expect(screen.getByText(/上海/)).not.toBeNull()
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
 
@@ -307,10 +323,10 @@ describe('启动封页', () => {
 
     expect(screen.getByText('岗位')).not.toBeNull()
     expect(screen.getByText('简历')).not.toBeNull()
-    expect(screen.getByText(/UX 设计师/)).not.toBeNull()
-    expect(screen.getByText(/软件工程师/)).not.toBeNull()
-    expect(screen.getByText(/用户运营经理/)).not.toBeNull()
-    expect(screen.getByText(/北京 · 广州/)).not.toBeNull()
+    expect(screen.getByText(/业务数据分析师/)).not.toBeNull()
+    expect(screen.getByText(/初级前端工程师/)).not.toBeNull()
+    expect(screen.getByText(/用户运营专员/)).not.toBeNull()
+    expect(screen.getByText(/广州/)).not.toBeNull()
     expect(mockStorageGetItem).not.toHaveBeenCalled()
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
@@ -384,8 +400,9 @@ describe('启动封页', () => {
     expect(screen.getByText('谁是')).not.toBeNull()
     expect(screen.getByText('求职者')).not.toBeNull()
     expect(screen.getByText('跳过教程')).not.toBeNull()
-    expect(screen.getByText(/生物统计/)).not.toBeNull()
-    expect(screen.getByText(/汉语言文学/)).not.toBeNull()
+    expect(screen.getByText(/6 个月前端实习/)).not.toBeNull()
+    expect(screen.getByText(/SQL 指标看板/)).not.toBeNull()
+    expect(screen.getByText(/3 个用户社群/)).not.toBeNull()
     expect(mockStorageSetItem).not.toHaveBeenCalled()
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
@@ -457,22 +474,73 @@ describe('启动封页', () => {
     expect(mockReLaunch).not.toHaveBeenCalled()
   })
 
-  test('第三步入场先保持首屏卡片，首轮滚动后再补齐队列', async () => {
+  test('队列循环覆盖全部轨道位置且重复预设卡映射到原卡', async () => {
     mockStorageGetItem.mockResolvedValue(null)
 
     const {container} = render(<LandingPage />)
     await enterQueueStep(container)
 
-    expect(container.querySelectorAll('[data-queue-card-index]')).toHaveLength(5)
+    expect(container.querySelectorAll('[data-queue-card-index]')).toHaveLength(4)
+
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 230, clientY: 420}],
+      })
+      await Promise.resolve()
+    })
+
+    const queueCards = Array.from(container.querySelectorAll<HTMLElement>('[data-queue-card-index]'))
+    const laneOffsets = () => Array.from(container.querySelectorAll<HTMLElement>('[data-queue-offset]'))
+      .map(card => Number(card.dataset.queueOffset))
+      .sort((left, right) => left - right)
+
+    expect(queueCards).toHaveLength(8)
+    expect(queueCards.map(card => Number(card.dataset.queueCardIndex))).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+    expect(queueCards.map(card => Number(card.dataset.queueSourceIndex))).toEqual([0, 1, 2, 3, 0, 1, 2, 3])
+    expect(queueCards.map(card => card.dataset.queueCardKind)).toEqual([
+      'resume', 'resume', 'resume', 'upload',
+      'resume', 'resume', 'resume', 'upload',
+    ])
+    expect(laneOffsets()).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+
+    await act(async () => {
+      fireEvent.touchMove(container.firstElementChild as Element, {
+        touches: [{clientX: 82, clientY: 420}],
+      })
+      fireEvent.touchMove(container.firstElementChild as Element, {
+        touches: [{clientX: -740, clientY: 420}],
+      })
+      await Promise.resolve()
+    })
+
+    expect(laneOffsets()).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+  })
+
+  test('循环中的重复简历卡仍选择对应的预设简历', async () => {
+    mockStorageGetItem.mockResolvedValue(null)
+
+    const {container} = render(<LandingPage />)
+    await enterQueueStep(container)
 
     await act(async () => {
       fireEvent.touchStart(container.firstElementChild as Element, {
         touches: [{clientX: 196, clientY: 420}],
       })
+      fireEvent.touchCancel(container.firstElementChild as Element)
       await Promise.resolve()
     })
 
-    expect(container.querySelectorAll('[data-queue-card-index]')).toHaveLength(8)
+    await act(async () => {
+      fireEvent.click(container.querySelector('[data-queue-card-index="6"]') as HTMLElement)
+      jest.advanceTimersByTime(100)
+      await Promise.resolve()
+    })
+
+    expect(useLandingFlowStore.getState().selectedResume).toEqual(expect.objectContaining({
+      source: 'preset',
+      id: 'landing-resume-writing',
+      title: '小陈的体验简历',
+    }))
   })
 
   test('第三步下滑队列后吸附并展开选中卡片', async () => {
@@ -707,50 +775,7 @@ describe('启动封页', () => {
 
     const {container} = render(<LandingPage />)
 
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    await act(async () => {
-      jest.advanceTimersByTime(880)
-      await Promise.resolve()
-    })
-
-    await act(async () => {
-      fireEvent.touchStart(container.firstElementChild as Element, {
-        touches: [{clientX: 80, clientY: 620}],
-      })
-      fireEvent.touchEnd(container.firstElementChild as Element, {
-        changedTouches: [{clientX: 168, clientY: 626}],
-      })
-      await Promise.resolve()
-    })
-
-    await act(async () => {
-      fireEvent.touchStart(container.firstElementChild as Element, {
-        touches: [{clientX: 80, clientY: 620}],
-      })
-      fireEvent.touchEnd(container.firstElementChild as Element, {
-        changedTouches: [{clientX: 168, clientY: 626}],
-      })
-      await Promise.resolve()
-    })
-
-    await act(async () => {
-      jest.advanceTimersByTime(980)
-      await Promise.resolve()
-    })
-
-    await act(async () => {
-      fireEvent.touchStart(container.firstElementChild as Element, {
-        touches: [{clientX: 196, clientY: 420}],
-      })
-      fireEvent.touchEnd(container.firstElementChild as Element, {
-        changedTouches: [{clientX: 198, clientY: 492}],
-      })
-      jest.advanceTimersByTime(700)
-      await Promise.resolve()
-    })
+    await selectPresetQueueCard(container)
 
     expect(screen.getByText('简历还没准备好？可以选择一位虚构的求职者以开始。')).not.toBeNull()
 
@@ -777,7 +802,13 @@ describe('启动封页', () => {
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).not.toBeNull()
     expect(screen.getByText('选中求职者后，恭喜你现在已经准备好进入下一步！')).not.toBeNull()
-    expect(screen.queryByText('小D的体验简历')).toBeNull()
+    expect(useLandingFlowStore.getState().selectedResume).toEqual(expect.objectContaining({
+      source: 'preset',
+      id: 'landing-resume-writing',
+      title: '小陈的体验简历',
+      markdown: expect.stringContaining('累计约 900 名用户'),
+    }))
+    expect(useLandingFlowStore.getState().selectedResume?.markdown).not.toMatch(/预期可展示的变化|不可生成的内容|卡片说明/)
 
     await act(async () => {
       fireEvent.touchStart(container.firstElementChild as Element, {
@@ -844,13 +875,13 @@ describe('启动封页', () => {
     expect(screen.getByText(/重新匹配简历与岗位的价值/)).not.toBeNull()
     expect(Array.from(container.querySelectorAll('.reffo-landing-onboarding__target-file-title'))
       .map(node => node.textContent)).toEqual([
-        '软件工程师',
-        '互联网产品经理',
-        '数据分析师',
-        'UX 设计师',
-        '用户运营经理',
+        '初级前端工程师',
+        '业务数据分析师',
+        '用户运营专员',
       ])
-    expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(5)
+    expect(container.querySelectorAll('.reffo-landing-onboarding__target-file')).toHaveLength(3)
+    expect(container.querySelector('.reffo-landing-onboarding__target-folder-owner')?.textContent).toBe('小陈')
+    expect(container.querySelector('.reffo-landing-onboarding__target-folder-count-value')?.textContent).toBe('3')
     const collapsedJobNodes = Array.from(container.querySelectorAll('[data-job-index]')) as HTMLElement[]
     expect(collapsedJobNodes.slice(0, 3).every(node => node.style.getPropertyValue('--job-folder-opacity') === '1')).toBe(true)
     expect(collapsedJobNodes.slice(3).every(node => node.style.getPropertyValue('--job-folder-opacity') === '0')).toBe(true)
@@ -882,8 +913,8 @@ describe('启动封页', () => {
     Array.from(container.querySelectorAll('[data-job-id]')).forEach((node, index) => {
       expect(node).toBe(targetFileNodes[index])
     })
-    expect(screen.getByText(/25-40K/)).not.toBeNull()
-    expect(screen.getByText(/面向用户的 Web 产品/)).not.toBeNull()
+    expect(screen.queryByText(/25-40K|30-45K/)).toBeNull()
+    expect(screen.getByText(/实现页面、完成联调、处理异常/)).not.toBeNull()
 
     await act(async () => {
       fireEvent.touchStart(container.firstElementChild as Element, {
@@ -898,24 +929,22 @@ describe('启动封页', () => {
       await Promise.resolve()
     })
 
-    expect(screen.getByText(/30-45K/)).not.toBeNull()
-    expect(container.querySelector('[data-job-id="product"]')?.className)
+    expect(screen.getByText(/从数据中定位问题，并跟进建议落地/)).not.toBeNull()
+    expect(container.querySelector('[data-job-id="data"]')?.className)
       .toContain('reffo-landing-onboarding__target-file--selected')
 
-    for (let swipe = 0; swipe < 3; swipe += 1) {
-      await act(async () => {
-        fireEvent.touchStart(container.firstElementChild as Element, {
-          touches: [{clientX: 280, clientY: 430}],
-        })
-        fireEvent.touchMove(container.firstElementChild as Element, {
-          touches: [{clientX: 180, clientY: 430}],
-        })
-        fireEvent.touchEnd(container.firstElementChild as Element, {
-          changedTouches: [{clientX: 180, clientY: 430}],
-        })
-        await Promise.resolve()
+    await act(async () => {
+      fireEvent.touchStart(container.firstElementChild as Element, {
+        touches: [{clientX: 280, clientY: 430}],
       })
-    }
+      fireEvent.touchMove(container.firstElementChild as Element, {
+        touches: [{clientX: 180, clientY: 430}],
+      })
+      fireEvent.touchEnd(container.firstElementChild as Element, {
+        changedTouches: [{clientX: 180, clientY: 430}],
+      })
+      await Promise.resolve()
+    })
 
     expect(container.querySelector('[data-job-id="operations"]')?.className)
       .toContain('reffo-landing-onboarding__target-file--selected')
@@ -979,7 +1008,7 @@ describe('启动封页', () => {
 
     expect(container.firstElementChild?.className).toContain('reffo-landing-onboarding--queue-folder-returning')
     expect(container.firstElementChild?.className).not.toContain('reffo-landing-onboarding--job-folder-restored')
-    expect(container.querySelectorAll('[data-job-id]')).toHaveLength(5)
+    expect(container.querySelectorAll('[data-job-id]')).toHaveLength(3)
     expect(container.querySelectorAll('.reffo-landing-onboarding__pager-dot')[0]?.className)
       .toContain('reffo-landing-onboarding__pager-dot--active')
 
@@ -996,6 +1025,21 @@ describe('启动封页', () => {
       .toBe(detailTransformBeforeFolder)
     expect(mockStorageSetItem).not.toHaveBeenCalled()
     expect(mockReLaunch).not.toHaveBeenCalled()
+  })
+
+  test('保留产品岗位描述的基本要求与加分项格式', () => {
+    const productJob = LANDING_PRESET_JOB_DESCRIPTIONS.find(job => job.id === 'product')
+    expect(productJob).toBeDefined()
+    if (!productJob) return
+
+    const content = formatLandingJobDescription(productJob)
+    expect(content).toContain('岗位目标：在资深产品经理指导下')
+    expect(content).toContain('岗位职责：')
+    expect(content).toContain('基本要求：')
+    expect(content).toContain('有使用用户反馈或数据发现问题的案例')
+    expect(content).toContain('加分项：有独立完成的小功能需求、原型或上线案例。')
+    expect(content).toContain('仅有分析和运营经历也可讨论，但应说明尚需补足的产品交付能力。')
+    expect(content).not.toMatch(/轻松转岗|25-40K|30-45K/)
   })
 
   test('上传卡片停顿后展示上传说明且不显示额外删除按钮', async () => {
@@ -1033,6 +1077,8 @@ describe('启动封页', () => {
     const {container} = render(<LandingPage />)
     await selectUploadQueueCard(container)
     await swipeSelectedCardDown(container)
+    expect((container.firstElementChild as HTMLElement).classList)
+      .toContain('reffo-landing-onboarding--queue-detail')
 
     expect(container.firstElementChild?.className)
       .toContain('reffo-landing-onboarding--queue-detail-upload')
@@ -1050,7 +1096,7 @@ describe('启动封页', () => {
       .not.toContain('reffo-landing-onboarding--queue-folder')
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', {name: '上传简历文件'}))
+      fireEvent.click(getQueueDetailButton(container, '上传简历文件'))
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -1078,7 +1124,16 @@ describe('启动封页', () => {
 
     await act(async () => {
       fireEvent.click(screen.getByText('返回'))
-      jest.advanceTimersByTime(830)
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(430)
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(410)
       await Promise.resolve()
     })
 
@@ -1088,15 +1143,19 @@ describe('启动封页', () => {
     await swipeSelectedCardDown(container)
 
     expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-detail-upload')
+    expect(container.firstElementChild?.className)
       .toContain('reffo-landing-onboarding--queue-detail-uploaded')
     expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).not.toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
     expect(mockPickAndParseResumeFile).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', {name: '删除已上传简历'})[0])
+      fireEvent.click(getQueueDetailButton(container, '删除已上传简历'))
       await Promise.resolve()
     })
+    expect((container.firstElementChild as HTMLElement).classList)
+      .toContain('reffo-landing-onboarding--queue-detail')
 
     expect(mockSetSourceResume).toHaveBeenLastCalledWith('')
     expect(container.firstElementChild?.className)
@@ -1113,11 +1172,17 @@ describe('启动封页', () => {
     expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).toBeNull()
     expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).toBeNull()
     expect(screen.getByText('上传文件以下一步')).not.toBeNull()
-
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', {name: '上传简历文件'}))
+      fireEvent.click(getQueueDetailButton(container, '上传简历文件'))
+      await Promise.resolve()
       await Promise.resolve()
     })
+
+    expect(mockPickAndParseResumeFile).toHaveBeenCalledTimes(2)
+    expect(container.firstElementChild?.className)
+      .toContain('reffo-landing-onboarding--queue-detail-uploaded')
+    expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).not.toBeNull()
+    expect(container.querySelector('.reffo-landing-onboarding__detail-folder')).not.toBeNull()
 
     await swipeSelectedCardDown(container)
 
