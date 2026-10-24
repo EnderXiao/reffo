@@ -1,0 +1,30 @@
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/motion.h5.ts
+  s_cf5a0b38dfc3af::t_29655b0940801d 2-6
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/__tests__/index.h5.test.tsx
+  s_cf5a0b38dfc3af::t_29655b0940801d 66,68,75-77,85
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/useHomeCardDeckMotion.h5.ts
+  s_cf5a0b38dfc3af::t_29655b0940801d 7-10,43-44,47,49,55-56,72-73,122-136,320-352,602-639,641-651,674,680,682,684-686
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/index.h5.tsx
+  s_cf5a0b38dfc3af::t_29655b0940801d 2,5-9,137,143,145,147-149,397-439
+  s_cf5a0b38dfc3af::t_7f0632634bc8aa 440
+frontend/Taro/reffo-taro/src/pages/index/model/homeCardData.ts
+  s_cf5a0b38dfc3af::t_29655b0940801d 9,194
+frontend/Taro/reffo-taro/src/utils/__tests__/text-initial.test.ts
+  s_cf5a0b38dfc3af::t_29655b0940801d 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a5cfc3f93caf302c24398ef0fb87353c42c7a93",
+  "prompts": {},
+  "sessions": {
+    "s_cf5a0b38dfc3af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ec0-8b9d-7863-b6e5-ff368bb24440",
+        "model": "pa/gpt-6-astra"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
