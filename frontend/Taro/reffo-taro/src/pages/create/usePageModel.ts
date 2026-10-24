@@ -46,6 +46,8 @@ import {
 import {useCreateFlowRoute} from './model/useCreateFlowRoute'
 import {generationTasksApi, createGenerationRequestId, type GenerationTask} from '@/services/backgroundGeneration'
 import {useBackgroundGenerationStore} from '@/store/backgroundGenerationStore'
+import {resumeApi} from '@/services/resume'
+import * as jobMetadataUtils from './utils/jobMetadata'
 
 export interface CreatePageViewModel {
   currentStep: CreateStepId
@@ -54,6 +56,7 @@ export interface CreatePageViewModel {
   resumeSummaryState: ResumeSummaryStepState | null
   jobDescriptionState: JobDescriptionStepState
   generationState: CreateGenerationState | null
+  generationError: string | null
   isHistoryEditMode: boolean
   editingHistoryCard: HomeCardItem | null
   canSaveCurrentStep: boolean
@@ -390,7 +393,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     currentStep,
     transitionToStep,
     replaceStep,
-  } = useCreateFlowRoute(initialCreateStep)
+  } = useCreateFlowRoute(initialCreateStep, {preloadInitialStep: !shouldAutoGenerateLanding})
   const [editingHistory, setEditingHistory] = useState<ResumeHistory | null>(null)
   const [hasLoadedEditingHistory, setHasLoadedEditingHistory] = useState(!isHistoryEditMode)
   const [hasResolvedLatestSourceResume, setHasResolvedLatestSourceResume] =
@@ -422,6 +425,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   const [generationState, setGenerationState] = useState<CreateGenerationState | null>(
     null,
   )
+  const [generationError, setGenerationError] = useState<string | null>(null)
   const [isSavingCurrentStep, setIsSavingCurrentStep] = useState(false)
   const latestSourceResume = useSourceResumeStore(state => state.latestSourceResume)
   const latestSourceResumeSummary =
@@ -1111,6 +1115,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     generationTaskStatusRef.current = null
     const workspaceRunId = resumeWorkspaceActions.startGeneration('analyzing')
     workspaceGenerationRunRef.current = workspaceRunId
+    setGenerationError(null)
 
     try {
       // Landing must analyze the resume explicitly selected in the onboarding deck.
@@ -1211,10 +1216,6 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
 
       const presetJdId = isLandingFlow ? landingJob?.id : undefined
-      const [{resumeApi}, jobMetadataUtils] = await Promise.all([
-        import('@/services/resume'),
-        import('./utils/jobMetadata'),
-      ])
       const analysis = isLandingFlow
         ? await resumeApi.analyzeResume(resumeMarkdown, {landing: true})
         : await resumeApi.analyzeResume(resumeMarkdown)
@@ -1313,6 +1314,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
       const message = error instanceof Error ? error.message : '生成失败，请重试'
       resumeWorkspaceActions.failGeneration(workspaceRunId, message)
+      setGenerationError(/ChunkLoadError|Loading (?:CSS )?chunk|Failed to fetch dynamically imported module/i.test(message)
+        ? '页面资源加载失败，请检查连接后重试；如仍失败，请刷新页面。'
+        : message)
       console.error('process resume failed', error)
       feedback.error(message)
       return false
@@ -1374,6 +1378,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       workspaceGenerationRunRef.current = null
     }
     setGenerationState(null)
+    setGenerationError(null)
     setIsSavingCurrentStep(false)
   }
 
@@ -1472,6 +1477,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     resumeSummaryState,
     jobDescriptionState,
     generationState,
+    generationError,
     isHistoryEditMode,
     editingHistoryCard,
     canSaveCurrentStep,

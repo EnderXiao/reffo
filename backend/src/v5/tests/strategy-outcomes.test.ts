@@ -241,6 +241,13 @@ test('adopting the practice without its completed boundary uses only the existin
   const validate = (output: unknown) => compileEntryWriting({output, entryPlan: plan, resume: f.result.resumeEvidenceBundle, policy: f.result.generationPolicy})
   const delivered = await writeValidatedEntries({plan, write: async payload => {
     calls.push(payload)
+    if (calls.length > 1) {
+      const issues = payload.correction!.issues
+      expect(issues.length).toBeGreaterThan(0)
+      expect(issues.every(issue => issue.entryId === actionEntry.entryId
+        && issue.outputPath === actionEntry.slot.outputPath
+        && issue.paragraphIndex === null && issue.paragraphIndices.length === 0)).toBe(true)
+    }
     return {...f.output, entries: f.output.entries.filter(entry => payload.requiredEntryIds.includes(entry.entryId)).map(entry => {
       if (calls.length === 1 || entry.entryId !== actionEntry.entryId) return entry
       return {...entry, paragraphs: [...entry.paragraphs, {role: 'detail' as const,

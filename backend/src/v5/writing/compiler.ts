@@ -16,7 +16,10 @@ export const WRITING_QUALITY_CODES = new Set(['WRITER_CORE_RESULT_OMITTED', 'WRI
 
 export class SupportedWritingError extends Error {
   readonly code = 'SUPPORTED_WRITING_VALIDATION_FAILED' as const
-  constructor(readonly issues: ValidationIssue[]) {
+  constructor(
+    readonly issues: ValidationIssue[],
+    readonly sourceParagraphIndicesByPath: ReadonlyMap<string, readonly number[]> = new Map(),
+  ) {
     super('正文未通过受控写作校验；不发起模型互审或自动重写。')
     this.name = 'SupportedWritingError'
   }

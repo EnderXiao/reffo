@@ -39,7 +39,8 @@ import {
   writeSharedElementSnapshot,
 } from '@/utils/shared-element-transition'
 import {
-  LANDING_PRESET_JOB_DESCRIPTIONS,
+  formatLandingJobDescription,
+  LANDING_ONBOARDING_JOB_DESCRIPTIONS,
   type LandingJobDescription,
 } from './constants/job-descriptions'
 import {
@@ -151,7 +152,7 @@ function createOnboardingCard(
 }
 
 const ONBOARDING_QUEUE_CARDS: HomeCardItem[] = LANDING_RESUME_CARD_CONFIGS.map(({seedKey, jobDescriptionId, ...card}) => {
-  const job = LANDING_PRESET_JOB_DESCRIPTIONS.find(item => item.id === jobDescriptionId)
+  const job = LANDING_ONBOARDING_JOB_DESCRIPTIONS.find(item => item.id === jobDescriptionId)
 
   return createOnboardingCard(card.id, ONBOARDING_CARD_SEEDS[seedKey], {
     ...card,
@@ -187,11 +188,7 @@ const ONBOARDING_QUEUE_ENTRY_SLOTS: QueueSlot[] = [
   {kind: 'slot-2', offset: 2, cardIndex: 2},
   {kind: 'slot-3', offset: 3, cardIndex: 3},
   {kind: 'slot-4', offset: 4, cardIndex: 4},
-]
-const ONBOARDING_QUEUE_FLOW_SLOTS: QueueSlot[] = [
-  ...ONBOARDING_QUEUE_ENTRY_SLOTS,
-  {kind: 'slot-5', offset: 5},
-]
+].filter(slot => slot.cardIndex < ONBOARDING_QUEUE_CARDS.length) as QueueSlot[]
 const ONBOARDING_QUEUE_TRACK: QueueTrackFrame[] = [
   {phase: 0, x: 238, y: -156, z: -150, scale: 0.868, opacity: 1, zIndex: 5},
   {phase: 0.166667, x: 136, y: -118, z: -110, scale: 0.858, opacity: 1, zIndex: 5},
@@ -203,6 +200,8 @@ const ONBOARDING_QUEUE_TRACK: QueueTrackFrame[] = [
   {phase: 1.166667, x: -476, y: 110, z: 220, scale: 0.692, opacity: 0, zIndex: 1},
   {phase: 1.333333, x: 320, y: -184, z: -190, scale: 0.884, opacity: 0, zIndex: 1},
 ]
+// Keep the hidden return lanes when there are fewer presets than track positions.
+const ONBOARDING_QUEUE_CYCLE_LENGTH = Math.max(ONBOARDING_QUEUE_CARDS.length, ONBOARDING_QUEUE_TRACK.length - 1)
 
 function wait(ms: number) {
   return new Promise(resolve => {
@@ -211,12 +210,12 @@ function wait(ms: number) {
 }
 
 function wrapJobIndex(index: number) {
-  const count = LANDING_PRESET_JOB_DESCRIPTIONS.length
+  const count = LANDING_ONBOARDING_JOB_DESCRIPTIONS.length
   return ((index % count) + count) % count
 }
 
 function resolveCircularJobPosition(index: number, selectedIndex: number) {
-  const count = LANDING_PRESET_JOB_DESCRIPTIONS.length
+  const count = LANDING_ONBOARDING_JOB_DESCRIPTIONS.length
   const forwardDistance = wrapJobIndex(index - selectedIndex)
   return forwardDistance > count / 2 ? forwardDistance - count : forwardDistance
 }
@@ -441,11 +440,15 @@ function positiveModulo(value: number, divisor: number) {
 }
 
 function resolveQueueFlowCardIndex(cursor: number, offset: number) {
-  return positiveModulo(offset - cursor, ONBOARDING_QUEUE_CARDS.length)
+  return positiveModulo(offset - cursor, ONBOARDING_QUEUE_CYCLE_LENGTH)
+}
+
+function resolveQueueSourceCardIndex(queueCardIndex: number) {
+  return positiveModulo(queueCardIndex, ONBOARDING_QUEUE_CARDS.length)
 }
 
 function resolveQueueFlowCardPosition(cardIndex: number, progress: number) {
-  const lanePosition = positiveModulo(cardIndex + progress, ONBOARDING_QUEUE_CARDS.length)
+  const lanePosition = positiveModulo(cardIndex + progress, ONBOARDING_QUEUE_CYCLE_LENGTH)
   const offset = Math.floor(lanePosition)
 
   return {
@@ -477,22 +480,22 @@ function easeInOutQueueValue(progress: number) {
     : 1 - Math.pow(-2 * progress + 2, 3) / 2
 }
 
-function resolveClosestQueueOffset(progress: number) {
-  const laneProgress = progress - Math.floor(progress)
-
-  return ONBOARDING_QUEUE_FLOW_SLOTS.reduce((closestOffset, slot) => {
-    const currentDistance = Math.abs((slot.offset + laneProgress) - ONBOARDING_QUEUE_SNAP_LANE_INDEX)
-    const closestDistance = Math.abs((closestOffset + laneProgress) - ONBOARDING_QUEUE_SNAP_LANE_INDEX)
-
-    return currentDistance < closestDistance ? slot.offset : closestOffset
-  }, ONBOARDING_QUEUE_FLOW_SLOTS[0].offset)
+function resolveQueueCardSelectionProgress(cardIndex: number, progress: number) {
+  const position = resolveQueueFlowCardPosition(cardIndex, progress)
+  return Math.round(progress + ONBOARDING_QUEUE_SNAP_LANE_INDEX - position.offset - position.progress)
 }
 
 function resolveQueueSnapTargetProgress(progress: number) {
-  const cursor = Math.floor(progress)
-  const closestOffset = resolveClosestQueueOffset(progress)
+  const candidates = Array.from(
+    {length: ONBOARDING_QUEUE_CYCLE_LENGTH},
+    (_, cardIndex) => resolveQueueCardSelectionProgress(cardIndex, progress),
+  )
 
-  return cursor + ONBOARDING_QUEUE_SNAP_LANE_INDEX - closestOffset
+  return candidates.reduce((closestProgress, targetProgress) => (
+    Math.abs(targetProgress - progress) < Math.abs(closestProgress - progress)
+      ? targetProgress
+      : closestProgress
+  ), candidates[0])
 }
 
 async function hasSeenLanding() {
@@ -866,7 +869,7 @@ export default function LandingPage() {
       return
     }
 
-    const selectedCard = ONBOARDING_QUEUE_CARDS[selectedQueueCardIndex]
+    const selectedCard = ONBOARDING_QUEUE_CARDS[resolveQueueSourceCardIndex(selectedQueueCardIndex)]
     if (selectedCard && selectedCard.queueCardKind !== 'upload') {
       selectLandingResumeCard(selectedCard)
     }
@@ -952,7 +955,7 @@ export default function LandingPage() {
 
   const enterLandingJobDescription = (job: LandingJobDescription, sourceElement?: HTMLElement | null) => {
     const draft: JobDescriptionStepState = {
-      content: [job.summary, ...job.responsibilities.map(item => `- ${item}`)].join('\n'),
+      content: formatLandingJobDescription(job),
       companyName: job.company,
       positionName: job.title,
       baseLocation: job.location,
@@ -1014,7 +1017,7 @@ export default function LandingPage() {
 
     useLandingFlowStore.getState().startJobDescription({
       ...creatingJobDraft,
-      id: LANDING_PRESET_JOB_DESCRIPTIONS[selectedJobIndex]?.id,
+      id: LANDING_ONBOARDING_JOB_DESCRIPTIONS[selectedJobIndex]?.id,
     })
     setIsLandingResultComplete(false)
     void runViewTransition('forward', () => {
@@ -1314,7 +1317,7 @@ export default function LandingPage() {
   const selectQueueCardAtProgress = (progress: number) => {
     const cursor = Math.floor(progress)
     const selectedCardIndex = resolveQueueFlowCardIndex(cursor, ONBOARDING_QUEUE_SNAP_LANE_INDEX)
-    const selectedCard = ONBOARDING_QUEUE_CARDS[selectedCardIndex]
+    const selectedCard = ONBOARDING_QUEUE_CARDS[resolveQueueSourceCardIndex(selectedCardIndex)]
 
     if (selectedCard) {
       selectLandingResumeCard(selectedCard)
@@ -1887,7 +1890,7 @@ export default function LandingPage() {
           && !isQueueDetailLeaving
         ) {
           event.preventDefault?.()
-          const selectedCard = ONBOARDING_QUEUE_CARDS[selectedQueueCardIndex]
+          const selectedCard = ONBOARDING_QUEUE_CARDS[resolveQueueSourceCardIndex(selectedQueueCardIndex)]
           enterSelectedQueueDetail(
             selectedCard?.queueCardKind === 'upload' ? 'upload' : 'resume',
           )
@@ -1928,7 +1931,9 @@ export default function LandingPage() {
       || queueMotionPhase === 'folder-returning'
       || queueMotionPhase === 'creating'
       || queueMotionPhase === 'dismissing'
-    const selectedQueueCard = selectedQueueCardIndex == null ? null : ONBOARDING_QUEUE_CARDS[selectedQueueCardIndex]
+    const selectedQueueCard = selectedQueueCardIndex == null
+      ? null
+      : ONBOARDING_QUEUE_CARDS[resolveQueueSourceCardIndex(selectedQueueCardIndex)]
     const isQueueFolderStep = queueMotionPhase === 'folder'
       || queueMotionPhase === 'folder-opening'
       || queueMotionPhase === 'job-selecting'
@@ -1962,22 +1967,34 @@ export default function LandingPage() {
       } as CSSProperties)
       : undefined
     const queueCards = isQueueFlow
-      ? ONBOARDING_QUEUE_CARDS
-        .slice(0, isQueueFlowPopulated ? undefined : ONBOARDING_QUEUE_ENTRY_SLOTS.length)
-        .map((card, cardIndex) => ({
-          key: `queue-${card.id}`,
+      ? Array.from({
+        length: isQueueFlowPopulated ? ONBOARDING_QUEUE_CYCLE_LENGTH : ONBOARDING_QUEUE_ENTRY_SLOTS.length,
+      }, (_, cardIndex) => {
+        const sourceCardIndex = resolveQueueSourceCardIndex(cardIndex)
+        const card = ONBOARDING_QUEUE_CARDS[sourceCardIndex]
+
+        return {
+          key: `queue-${card.id}-${cardIndex}`,
           card,
           cardIndex,
+          sourceCardIndex,
           kind: null,
           position: resolveQueueFlowCardPosition(cardIndex, queueProgressRef.current),
-        }))
-      : ONBOARDING_QUEUE_ENTRY_SLOTS.map(({kind, offset, cardIndex}) => ({
-        key: `queue-${ONBOARDING_QUEUE_CARDS[cardIndex ?? offset].id}`,
-        card: ONBOARDING_QUEUE_CARDS[cardIndex ?? offset],
-        cardIndex: cardIndex ?? offset,
-        kind,
-        position: null,
-      }))
+        }
+      })
+      : ONBOARDING_QUEUE_ENTRY_SLOTS.map(({kind, offset, cardIndex}) => {
+        const sourceCardIndex = cardIndex ?? offset
+        const card = ONBOARDING_QUEUE_CARDS[sourceCardIndex]
+
+        return {
+          key: `queue-${card.id}`,
+          card,
+          cardIndex: sourceCardIndex,
+          sourceCardIndex,
+          kind,
+          position: null,
+        }
+      })
 
     return (
       <View
@@ -2052,7 +2069,7 @@ export default function LandingPage() {
         >
         <View className='reffo-landing-onboarding__cards reffo-home-deck-wrap--enhanced'>
           {isQueueStep ? (
-            queueCards.map(({key, card, cardIndex, kind, position}) => {
+            queueCards.map(({key, card, cardIndex, sourceCardIndex, kind, position}) => {
               const isSelectedSourceCard = isQueueFlow
                 && selectedQueueCardIndex === cardIndex
                 && selectedQueueCard != null
@@ -2072,6 +2089,7 @@ export default function LandingPage() {
                   key={key}
                   data-queue-offset={isQueueFlow ? position?.offset : undefined}
                   data-queue-card-index={isQueueFlow ? cardIndex : undefined}
+                  data-queue-source-index={isQueueFlow ? sourceCardIndex : undefined}
                   data-queue-card-kind={isQueueFlow ? card.queueCardKind : undefined}
                   className={classNames(
                     'reffo-landing-onboarding__card',
@@ -2101,7 +2119,7 @@ export default function LandingPage() {
                   onClick={() => {
                     if (isQueueFlow && !queueSuppressClickUntilRef.current && position) {
                       stopQueueAutoMotion()
-                      selectQueueCardAtProgress(position.progress)
+                      selectQueueCardAtProgress(resolveQueueCardSelectionProgress(cardIndex, queueProgressRef.current))
                     }
                   }}
                 >
@@ -2233,7 +2251,7 @@ export default function LandingPage() {
                 </View>
                 <View className='reffo-landing-onboarding__target-folder-back' />
                 <View className='reffo-landing-onboarding__target-files'>
-                  {LANDING_PRESET_JOB_DESCRIPTIONS.map((file, index) => {
+                  {LANDING_ONBOARDING_JOB_DESCRIPTIONS.map((file, index) => {
                     const isSelectedJob = index === selectedJobIndex
                     const jobCardStyle = resolveJobCardStyle(file, index, selectedJobIndex, jobDragOffset)
 
@@ -2271,9 +2289,12 @@ export default function LandingPage() {
                           <View className='reffo-landing-onboarding__job-meta'>
                             <Text>{file.company}</Text>
                             <Text>{file.location}</Text>
-                            <Text>{file.experience} · {file.salary}</Text>
+                            <Text>{[file.experience, file.salary].filter(Boolean).join(' · ')}</Text>
                           </View>
-                          <Text className='reffo-landing-onboarding__job-summary'>{file.summary}</Text>
+                          <Text className='reffo-landing-onboarding__job-summary'>
+                            {file.cardSummary ?? file.summary}
+                            {file.keywords?.length ? `\n关键词：${file.keywords.join(' / ')}` : ''}
+                          </Text>
                           <Text className='reffo-landing-onboarding__job-section-title'>岗位职责</Text>
                           <View className='reffo-landing-onboarding__job-responsibilities'>
                             {file.responsibilities.map(responsibility => (
@@ -2304,10 +2325,14 @@ export default function LandingPage() {
                   })}
                 </View>
                 <View className='reffo-landing-onboarding__target-folder-copy'>
-                  <Text className='reffo-landing-onboarding__target-folder-owner'>我</Text>
+                  <Text className='reffo-landing-onboarding__target-folder-owner'>
+                    {selectedQueueCard?.resumeProfile?.name ?? '我'}
+                  </Text>
                   <Text className='reffo-landing-onboarding__target-folder-label'>可投递的岗位</Text>
                   <View className='reffo-landing-onboarding__target-folder-count'>
-                    <Text className='reffo-landing-onboarding__target-folder-count-value'>{LANDING_PRESET_JOB_DESCRIPTIONS.length}</Text>
+                    <Text className='reffo-landing-onboarding__target-folder-count-value'>
+                      {LANDING_ONBOARDING_JOB_DESCRIPTIONS.length}
+                    </Text>
                     <Text className='reffo-landing-onboarding__target-folder-count-label'>份岗位描述</Text>
                   </View>
                 </View>

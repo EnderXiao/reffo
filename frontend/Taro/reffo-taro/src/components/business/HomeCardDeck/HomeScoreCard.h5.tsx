@@ -323,6 +323,10 @@ export default function HomeScoreCard({
   const isQueueUploadComplete = isQueueUpload && uploadStatus === 'success' && Boolean(uploadFile)
   const normalizedUploadProgress = Math.max(0, Math.min(100, uploadProgress))
   const isQueueResume = isQueue3d && card.queueCardKind === 'resume' && card.resumeProfile
+  const resumeProfileMeta = card.resumeProfile?.headline?.trim() || [
+    card.resumeProfile?.age != null ? `${card.resumeProfile.age}岁` : '',
+    card.resumeProfile?.gender,
+  ].filter(Boolean).join(' · ')
   const hasFoil = Boolean(card.unread || isTaskPending)
   const hasWrappedCompanyName = !isCreate && !isGenerating && isLikelyWrappedCompanyName(card.company)
   const scoreGrade = resolveResumeGrade(card.score || (isTaskPending ? 88 : 0))
@@ -579,7 +583,7 @@ export default function HomeScoreCard({
                     <View className='reffo-home-card__resume-person'>
                       <Text className='reffo-home-card__resume-name'>{card.resumeProfile.name}</Text>
                       <Text className='reffo-home-card__resume-meta'>
-                        {card.resumeProfile.age}岁 · {card.resumeProfile.gender}
+                        {resumeProfileMeta}
                       </Text>
                     </View>
                   </View>
@@ -598,13 +602,25 @@ export default function HomeScoreCard({
                     <View className='reffo-home-card__resume-person'>
                       <Text className='reffo-home-card__resume-name'>{card.resumeProfile.name}</Text>
                       <Text className='reffo-home-card__resume-meta'>
-                        {card.resumeProfile.age}岁 · {card.resumeProfile.gender}
+                        {resumeProfileMeta}
                       </Text>
                     </View>
                   </View>
                   <CardGlass className='reffo-home-card__resume-glass reffo-home-card__resume-glass--detail'>
                     {renderQueueResumeGlassTexture()}
-                    <View className='reffo-home-card__resume-detail-copy'>
+                    <View
+                      className='reffo-home-card__resume-detail-copy'
+                      role='region'
+                      aria-label={`${card.resumeProfile.name}的详细说明`}
+                      tabIndex={0}
+                      onTouchStart={event => event.stopPropagation?.()}
+                      onTouchMove={event => event.stopPropagation?.()}
+                      onTouchEnd={event => event.stopPropagation?.()}
+                      onTouchCancel={event => event.stopPropagation?.()}
+                      onMouseDown={event => event.stopPropagation?.()}
+                      onMouseUp={event => event.stopPropagation?.()}
+                      onClick={event => event.stopPropagation?.()}
+                    >
                       <Text className='reffo-home-card__resume-detail-summary'>
                         {card.resumeProfile.summary}
                       </Text>

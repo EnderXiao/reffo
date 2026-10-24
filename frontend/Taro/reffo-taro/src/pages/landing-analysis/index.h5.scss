@@ -14,6 +14,47 @@
   animation: none;
 }
 
+.reffo-landing-analysis__failure {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: linear-gradient(180deg, #ffddd3, #fff9f6 38%, #ffffff 65%);
+}
+
+.reffo-landing-analysis__failure-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+}
+
+.reffo-landing-analysis__failure-title {
+  color: #111111;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+}
+
+.reffo-landing-analysis__failure-message {
+  color: #666666;
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.reffo-landing-analysis__failure-back {
+  color: #666666;
+  font-size: 15px;
+  line-height: 24px;
+  cursor: pointer;
+}
+
 @keyframes reffo-landing-analysis-source-out {
   from {
     opacity: 1;

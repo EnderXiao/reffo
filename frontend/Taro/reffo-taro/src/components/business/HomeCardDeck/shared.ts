@@ -24,8 +24,9 @@ export interface HomeCardItem {
   strategyTitle?: string
   resumeProfile?: {
     name: string
-    age: number
-    gender: '男' | '女'
+    headline?: string
+    age?: number
+    gender?: '男' | '女'
     avatarPrimary: string
     avatarAccent: string
     avatarVariant: number

@@ -339,9 +339,12 @@ export function compileEntryWriting(input: {
   writingPlan.coreEvidenceIdsBySlot = {}
   writingPlan.editorial = undefined
   const blocks: Array<{ slotId: string; evidenceIds: string[]; text: string }> = []
+  const sourceParagraphIndicesByPath = new Map<string, readonly number[]>()
   const entryParagraphReferences: EntryParagraphReference[] = []
   const warnings = []
-  const paragraphsById = new Map(entries.map(entry => [entry.entryId, byId.get(entry.entryId)!.paragraphs.map(paragraph => {
+  const paragraphsById = new Map(entries.map(entry => [entry.entryId, byId.get(entry.entryId)!.paragraphs
+    .map((paragraph, index) => ({ ...paragraph, sourceParagraphIndices: [index] }))
+    .map(paragraph => {
     if (entry.slot.kind !== 'business_bullet' || /(?:未|不|没有|非).{0,3}主导/u.test(paragraph.text)) return paragraph
     const sources = paragraph.evidenceIds.flatMap(id => input.entryPlan.base.expandedEvidenceIds[id] ?? [id])
       .flatMap(id => input.resume.evidenceAtoms.filter(atom => atom.evidenceId === id))
@@ -371,7 +374,8 @@ export function compileEntryWriting(input: {
     const paragraphs = paragraphsById.get(pair.entryId)!
     const [left, right] = paragraphs.slice(pair.index, pair.index + 2)
     paragraphs.splice(pair.index, 2, {role:left.role, text:`${left.text} ${right.text}`,
-      evidenceIds:[...new Set([...left.evidenceIds, ...right.evidenceIds])]})
+      evidenceIds:[...new Set([...left.evidenceIds, ...right.evidenceIds])],
+      sourceParagraphIndices:[...left.sourceParagraphIndices, ...right.sourceParagraphIndices]})
     merges++
   }
   if (merges) warnings.push(writingIssue('WRITER_LAYOUT_COMPACTED', 'entries', [],
@@ -385,7 +389,8 @@ export function compileEntryWriting(input: {
     // when a model splits a single summary/skill/education slot into paragraphs.
     let paragraphs = entry.slot.kind !== 'business_bullet' && written.paragraphs.length > 1
       ? [{ role: written.paragraphs[0].role, text: written.paragraphs.map(p => p.text).join(' '),
-        evidenceIds: [...new Set(written.paragraphs.flatMap(p => p.evidenceIds))] }]
+        evidenceIds: [...new Set(written.paragraphs.flatMap(p => p.evidenceIds))],
+        sourceParagraphIndices: written.paragraphs.map((_, index) => index) }]
       : paragraphsById.get(entry.entryId)!
     if (entry.slot.kind !== 'business_bullet' && written.paragraphs.length > 1) warnings.push(writingIssue('WRITER_ANCILLARY_PARAGRAPHS_JOINED', entry.entryId,
       paragraphs[0].evidenceIds, '辅助板块多段已按单槽布局合并，未删正文或引用。', 'warning'))
@@ -435,6 +440,8 @@ export function compileEntryWriting(input: {
     for (const [index, paragraph] of paragraphs.entries()) {
       const slotId = `${entry.entryId}:p${index}`
       const path = entry.slot.kind === 'business_bullet' ? `${entry.section}.${entry.scopeId}.bullets[${index}]` : entry.slot.outputPath
+      sourceParagraphIndicesByPath.set(path, paragraph.sourceParagraphIndices)
+      sourceParagraphIndicesByPath.set(slotId, paragraph.sourceParagraphIndices)
       writingPlan.blueprint.slots.push({ ...entry.slot, slotId, outputPath: path, order: order++, allowedEvidenceIds: allowed })
       writingPlan.coreEvidenceIdsBySlot[slotId] = []
       writingPlan.entryParagraphGroups[slotId] = entry.entryId
@@ -452,13 +459,21 @@ export function compileEntryWriting(input: {
       if (['experience', 'internship'].includes(scope.scopeType)) scope.treatment = paragraphs.length > 1 ? 'expand' : 'compress'
     }
   }
-  const compileBlocks = (compositionBlocks: typeof blocks) => compileWritingArtifact({
-    composition: {contractVersion: 'p06-composition-v1', blocks: compositionBlocks},
-    writingPlan,
-    resume: input.resume,
-    plan,
-    policy: input.policy,
-  })
+  const compileBlocks = (compositionBlocks: typeof blocks) => {
+    try {
+      return compileWritingArtifact({
+        composition: {contractVersion: 'p06-composition-v1', blocks: compositionBlocks},
+        writingPlan,
+        resume: input.resume,
+        plan,
+        policy: input.policy,
+      })
+    } catch (error) {
+      if (!(error instanceof SupportedWritingError)) throw error
+      // 渲染段落可由多段草稿合并；纠正始终定位 rejectedEntries 中的原始段落。
+      throw new SupportedWritingError(error.issues, sourceParagraphIndicesByPath)
+    }
+  }
   let result
   const collaboratorNormalizations: typeof warnings = []
   try {

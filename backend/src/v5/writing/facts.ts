@@ -42,7 +42,8 @@ export function writingNumbers(text: string) {
     .map(match => match[0].replace(/\s/g, '').replace(/(\d)到(?=\d)/gu, '$1-').toLowerCase())]
 }
 
-export const TEAM_CONTRIBUTION_PATTERN = /团队|参与|协助|支持|配合|协同|跨(?:部门|团队|职能)(?:交付|协作|协同|合作|推进)|team|contribut|assist|support/iu
+// 明确的人物协作表达也保留参与边界；“将问题与步骤一起整理”等对象并列不算协作。
+export const TEAM_CONTRIBUTION_PATTERN = /团队|参与|协助|支持|配合|协同|跨(?:部门|团队|职能)(?:交付|协作|协同|合作|推进)|(?:与|和|同)[^，,。；;！？!?\n]{0,12}(?:经理|负责人|同事|成员|伙伴|讲师)(?:一起|共同)|team|contribut|assist|support/iu
 
 const PLATFORM_NOT_PERSONAL = /(?:整个平台|平台整体)(?:的)?规模[^。；;]{0,20}(?:并非|不是|不代表)本人(?:模块)?独立承载/u
 

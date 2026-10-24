@@ -2,7 +2,7 @@
   "formatVersion": "1.0.0",
   "defaultVersion": "5.0.0",
   "variants": {
-    "P06C_ENTRY": "5.2.0-p06c-entry-writer-r10",
+    "P06C_ENTRY": "5.2.0-p06c-entry-writer-r12",
     "P06C_STRUCTURAL": "5.1.0-p06c-supported-writer-r19",
     "P03_TARGETED": "5.1.0-p03-job-fit-map-r8",
     "P03R_TARGETED": "5.1.0-p03r-job-fit-map-repair-r7"

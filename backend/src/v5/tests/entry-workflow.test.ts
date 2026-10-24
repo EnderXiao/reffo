@@ -36,7 +36,7 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
         targetId: target.id, status: 'transferable', evidenceIds: [fact.evidenceId],
         similarity: '具有相邻产品实践。', difference: '尚不等于完整岗位经验。', expressionAngle: '突出已有交付。',
       })), narratives: [], questions: [] }
-    } else if (version === '5.2.0-p06c-entry-writer-r10') {
+    } else if (version === '5.2.0-p06c-entry-writer-r12') {
       if (versions.filter(v => v.includes('-p06c-')).length === 1) expect(input.onContentDelta).toBeFunction()
       expect(input.maxOutputTokens).toBe(4320)
       expect(input.maxProviderAttempts).toBe(1)
