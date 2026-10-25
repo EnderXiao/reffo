@@ -1,0 +1,133 @@
+backend/src/shared/share-link-snapshot.test.ts
+  s_caf654128d7116::t_66a5745b4d0b98 1-79
+frontend/Taro/reffo-taro/src/pages/share/PhysicsBadge.h5.tsx
+  s_caf654128d7116::t_65f2dfb267cd3c 109,114-134,199-201
+  s_caf654128d7116::t_3e1bd497952dff 7-12,190,213
+  s_caf654128d7116::t_db8bc6502fae64 1-6,13-108,110-113,135-189,191-198,202-212,214-216
+doc/分享流程技术方案.md
+  s_caf654128d7116::t_911eaf720732a5 296,319-320
+  s_caf654128d7116::t_6ce17ad470a4b3 3
+  s_caf654128d7116::t_c848eee57f1693 33-35,70-79,95,102-109,113,115-116,118-119,184-192,212,221-224,472,484,552-554,567-578,598,602-603,625
+frontend/Taro/reffo-taro/src/pages/share/index.h5.scss
+  s_caf654128d7116::t_02efa721cb3365 195-196
+  s_caf654128d7116::t_8398b6e23d5bad 1-194,197-455
+frontend/Taro/reffo-taro/src/pages/share/PageView.h5.tsx
+  s_caf654128d7116::t_3e1bd497952dff 1-154
+  s_caf654128d7116::t_62bc7aa7ad6401 155-156
+frontend/Taro/reffo-taro/package.json
+  s_caf654128d7116::t_7fec6372c58ae0 45
+backend/src/services/share-link-service.test.ts
+  s_caf654128d7116::t_66a5745b4d0b98 1-136
+frontend/Taro/reffo-taro/src/pages/share-landing/usePageModel.ts
+  s_caf654128d7116::t_b2769749e631a7 31-35
+  s_caf654128d7116::t_3f32a2a9cb2c18 1-30,36-140
+backend/src/services/share-link-service.ts
+  s_caf654128d7116::t_6ce17ad470a4b3 83-101,113
+  s_caf654128d7116::t_06a8186e3f4bb8 1-82,102-112,114-128
+frontend/Taro/reffo-taro/src/shared/routing/usePageRoute.ts
+  s_caf654128d7116::t_b2769749e631a7 21-27
+  s_caf654128d7116::t_dc6c5ad6a74743 5-18,28
+frontend/Taro/reffo-taro/src/pages/share/usePageModel.ts
+  s_caf654128d7116::t_b2769749e631a7 6-75
+  s_caf654128d7116::t_cd558fa7be4cf4 1-5,76-94
+frontend/Taro/reffo-taro/src/utils/share/share-platform.h5.ts
+  s_caf654128d7116::t_6ce17ad470a4b3 25,34,41,64-68,73,85
+  s_caf654128d7116::t_0248bf5120c831 1-24,26-33,35-40,42-63,69-72,74-84,86-89
+backend/src/shared/share-link-token.test.ts
+  s_caf654128d7116::t_66a5745b4d0b98 1-27
+backend/src/routes/share-links.ts
+  s_caf654128d7116::t_66a5745b4d0b98 6-68
+  s_caf654128d7116::t_6243256cd9a90d 1-5,69-180
+backend/src/index.ts
+  s_caf654128d7116::t_887e80320509e4 61
+  s_caf654128d7116::t_4bf1341ca7be9e 10,49,115
+backend/src/config/env.ts
+  s_caf654128d7116::t_911eaf720732a5 248-263
+  s_caf654128d7116::t_09553289c9fbee 166-170
+backend/.env.example
+  s_caf654128d7116::t_20c32497f3a840 126-132
+backend/src/repositories/share-link-repository.factory.ts
+  s_caf654128d7116::t_e8191d0f3b56d6 1-21
+backend/src/repositories/share-link-repository.sqlite.ts
+  s_caf654128d7116::t_e828da80d8ae79 1-171
+backend/src/repositories/share-link-repository.supabase.ts
+  s_caf654128d7116::t_50f4af06da70fe 1-147
+backend/src/repositories/share-link-repository.ts
+  s_caf654128d7116::t_e2a296f2e38f3a 1-21
+backend/src/shared/share-link-snapshot.ts
+  s_caf654128d7116::t_c86e0a0c32dd31 1-124
+backend/src/shared/share-link-token.ts
+  s_caf654128d7116::t_20aaee5d75b486 1-22
+backend/src/types/share-link.ts
+  s_caf654128d7116::t_a0d6c648097015 1-90
+frontend/Taro/reffo-taro/pnpm-lock.yaml
+  s_caf654128d7116::t_fadaee33a05d8a 41-43,7487-7489,18564-18565
+frontend/Taro/reffo-taro/src/app.config.ts
+  s_caf654128d7116::t_e47c918712366b 11-12
+frontend/Taro/reffo-taro/src/components/business/HomeCardDeck/shared.ts
+  s_caf654128d7116::t_8df11000ef3a9e 12
+frontend/Taro/reffo-taro/src/components/business/share/ShareEntryButton.h5.scss
+  s_caf654128d7116::t_958b5265956bcb 1-71
+frontend/Taro/reffo-taro/src/components/business/share/ShareEntryButton.h5.tsx
+  s_caf654128d7116::t_4d009f83c3024d 1-28
+frontend/Taro/reffo-taro/src/index.html
+  s_caf654128d7116::t_469f4f39055a3e 12-16
+frontend/Taro/reffo-taro/src/pages/complete/PageView.h5.tsx
+  s_caf654128d7116::t_8f1b212f2f2897 3,39-45,49-56,81,97,103-114
+frontend/Taro/reffo-taro/src/pages/complete/index.h5.scss
+  s_caf654128d7116::t_0c607e9accf1d6 201-323
+frontend/Taro/reffo-taro/src/pages/complete/usePageModel.ts
+  s_caf654128d7116::t_0fe3a1d0618518 11,13-14,29,68-80,97,107,111,113-114
+frontend/Taro/reffo-taro/src/pages/index/model/homeCardData.ts
+  s_caf654128d7116::t_09bc3292a496ce 15,167
+frontend/Taro/reffo-taro/src/pages/share-landing/PageView.h5.tsx
+  s_caf654128d7116::t_cd6f7ddd13c60c 1-82
+frontend/Taro/reffo-taro/src/pages/share-landing/ShareLandingCard.h5.tsx
+  s_caf654128d7116::t_3a52adcc2e224b 1-45
+frontend/Taro/reffo-taro/src/pages/share-landing/__tests__/usePageModel.test.tsx
+  s_caf654128d7116::t_ace516518827e5 1-118
+frontend/Taro/reffo-taro/src/pages/share-landing/index.config.ts
+  s_caf654128d7116::t_2c8e7c4a94778a 1-8
+frontend/Taro/reffo-taro/src/pages/share-landing/index.h5.scss
+  s_caf654128d7116::t_aa45912f0f9cb2 1-440
+frontend/Taro/reffo-taro/src/pages/share-landing/index.tsx
+  s_caf654128d7116::t_b98a95dc8811af 1-7
+frontend/Taro/reffo-taro/src/pages/share/ShareBlankCard.h5.tsx
+  s_caf654128d7116::t_69d9377a01ab40 1-14
+frontend/Taro/reffo-taro/src/pages/share/index.config.ts
+  s_caf654128d7116::t_20b78e749377d9 1-8
+frontend/Taro/reffo-taro/src/pages/share/index.tsx
+  s_caf654128d7116::t_1ab7b74e242692 1-7
+frontend/Taro/reffo-taro/src/pages/share/useShareAction.h5.ts
+  s_caf654128d7116::t_87b624cf624b55 1-104
+frontend/Taro/reffo-taro/src/services/share.ts
+  s_caf654128d7116::t_fc32d1ddbc8b42 1-26
+frontend/Taro/reffo-taro/src/shared/routing/routePaths.ts
+  s_caf654128d7116::t_553ee2bdaaa33c 9-10
+frontend/Taro/reffo-taro/src/types/share.ts
+  s_caf654128d7116::t_e850e82ae3981c 1-57
+frontend/Taro/reffo-taro/src/utils/share/__tests__/share-image-spec.test.ts
+  s_caf654128d7116::t_cf5a3426820f04 1-51
+frontend/Taro/reffo-taro/src/utils/share/share-image-renderer.h5.ts
+  s_caf654128d7116::t_419cd1cb865e66 1-334
+frontend/Taro/reffo-taro/src/utils/share/share-image-spec.ts
+  s_caf654128d7116::t_58d0e23715705e 1-49
+supabase/migrations/202610250001_resume_share_links.sql
+  s_caf654128d7116::t_8b81dacbe986c2 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c03d14a783ba3d568c266b3e5ec7b9fb78a62a0",
+  "prompts": {},
+  "sessions": {
+    "s_caf654128d7116": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17134-f752-7923-82ad-243f210bfb1e",
+        "model": "mimo-v2.6-pro-ultraspeed"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
