@@ -1,0 +1,21 @@
+doc/分享流程技术方案.md
+  s_caf654128d7116::t_0dbe53b853e824 1-2,5-295,297-333,335-347,350-620
+  s_caf654128d7116::t_b81e7a74e13ad6 296,334,348-349
+  s_caf654128d7116::t_51be3dab41b1fe 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "753469cc04295417dcd8511c6aa0ec4bbc5fb117",
+  "prompts": {},
+  "sessions": {
+    "s_caf654128d7116": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17134-f752-7923-82ad-243f210bfb1e",
+        "model": "mimo-v2.6-pro-ultraspeed"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
