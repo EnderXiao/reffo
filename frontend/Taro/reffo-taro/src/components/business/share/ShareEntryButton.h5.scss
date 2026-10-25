@@ -1,0 +1,71 @@
+.reffo-share-entry {
+  position: absolute;
+  right: 28px;
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 42px;
+  padding: 0 17px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  color: #183c2a;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10PX 24PX rgba(19, 117, 70, 0.18);
+  backdrop-filter: blur(12PX);
+  cursor: pointer;
+}
+
+.reffo-share-entry__icon {
+  position: relative;
+  width: 17px;
+  height: 17px;
+}
+
+.reffo-share-entry__dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #14c972;
+}
+
+.reffo-share-entry__dot--top {
+  top: 0;
+  left: 6px;
+}
+
+.reffo-share-entry__dot--left {
+  bottom: 0;
+  left: 0;
+}
+
+.reffo-share-entry__dot--right {
+  right: 0;
+  bottom: 0;
+}
+
+.reffo-share-entry__line {
+  position: absolute;
+  top: 7px;
+  width: 8px;
+  height: 1.5px;
+  background: #14c972;
+}
+
+.reffo-share-entry__line--left {
+  left: 2px;
+  transform: rotate(-29deg);
+}
+
+.reffo-share-entry__line--right {
+  right: 2px;
+  transform: rotate(29deg);
+}
+
+.reffo-share-entry__label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}

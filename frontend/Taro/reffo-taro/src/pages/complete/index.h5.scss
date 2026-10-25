@@ -198,6 +198,129 @@ body:has(.reffo-complete) {
   animation: reffo-complete-copy-in 540ms cubic-bezier(0.16, 1, 0.3, 1) 900ms both;
 }
 
+.reffo-complete__capture-rig {
+  position: absolute;
+  top: var(--complete-card-top);
+  left: 50%;
+  z-index: 18;
+  width: var(--card-stage-width);
+  height: 110px;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.reffo-complete__capture-strap {
+  position: absolute;
+  top: -180px;
+  left: 50%;
+  width: 24px;
+  height: 180px;
+  border-radius: 0 0 9px 9px;
+  background: linear-gradient(90deg, #e7ecee, #ffffff 52%, #c6ced4);
+  transform: translateX(-50%);
+  transform-origin: top;
+  animation: reffo-complete-share-strap-drop 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-complete__capture-clip {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  width: 62px;
+  height: 62px;
+  transform: translateX(-50%);
+  animation: reffo-complete-share-clip-drop 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reffo-complete__capture-hook {
+  position: absolute;
+  inset: 0 12px 17px;
+  border: 7px solid #747d83;
+  border-bottom-width: 10px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #dfe3e5, #7d858a 52%, #edf0f1);
+  box-shadow: 0 5PX 10PX rgba(31, 41, 55, 0.24);
+}
+
+.reffo-complete__capture-slot {
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  left: 2px;
+  height: 18px;
+  border-radius: 8px;
+  background: #9ca4a9;
+}
+
+.reffo-complete--sharing-exit {
+  cursor: default;
+}
+
+.reffo-complete__card-stage--sharing-exit {
+  z-index: 12;
+  animation: reffo-complete-share-card-lift 640ms cubic-bezier(0.16, 1, 0.3, 1) 210ms both !important;
+}
+
+.reffo-complete__copy--sharing-exit {
+  animation: reffo-complete-share-copy-exit 460ms cubic-bezier(0.4, 0, 1, 1) both !important;
+}
+
+@keyframes reffo-complete-share-strap-drop {
+  0% {
+    transform: translateX(-50%) scaleY(0);
+  }
+
+  72% {
+    transform: translateX(-50%) scaleY(1.05);
+  }
+
+  100% {
+    transform: translateX(-50%) scaleY(1);
+  }
+}
+
+@keyframes reffo-complete-share-clip-drop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-170px) rotate(-8deg);
+  }
+
+  76% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(8px) rotate(2deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) rotate(0);
+  }
+}
+
+@keyframes reffo-complete-share-card-lift {
+  0%,
+  36% {
+    opacity: 1;
+    transform: translate3d(0, 24px, 0) scale(0.94) rotate(-1deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, -88px, 0) scale(1.02) rotate(0deg);
+  }
+}
+
+@keyframes reffo-complete-share-copy-exit {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -54px, 0);
+  }
+}
+
 .reffo-complete__title {
   color: #14c972;
   font-size: 26px;

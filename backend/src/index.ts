@@ -7,6 +7,7 @@ import { mvpRoutes } from '@/routes/mvp'
 import { parseRoutes } from '@/routes/parse'
 import { sourceResumeRoutes } from '@/routes/source-resume'
 import { resumeHistoryRoutes } from '@/routes/resume-history'
+import { shareLinkRoutes } from '@/routes/share-links'
 import { systemRoutes } from '@/routes/system'
 import { authRoutes } from '@/routes/auth'
 import { profileRoutes } from '@/routes/profile'
@@ -45,6 +46,7 @@ async function bootstrap() {
             { name: 'Parse', description: '文件和 OCR 解析接口' },
             { name: 'SourceResume', description: '源简历存储与查询接口' },
             { name: 'ResumeHistory', description: '生成卡片历史接口' },
+            { name: 'ShareLink', description: '公开分享链接接口' },
             { name: 'System', description: '系统接口' },
             { name: 'Auth', description: '账号认证辅助接口' },
           ],
@@ -56,7 +58,7 @@ async function bootstrap() {
       cors({
         origin: env.CORS_ORIGIN,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
         credentials: true,
       })
     )
@@ -110,6 +112,7 @@ async function bootstrap() {
     .use(parseRoutes)
     .use(sourceResumeRoutes)
     .use(resumeHistoryRoutes)
+    .use(shareLinkRoutes)
     .use(generationJobRoutes)
     // 启动服务
     .listen({

@@ -8,7 +8,10 @@ const COMPLETE_AUTO_RETURN_DELAY_MS = 10000
 
 export interface CompletePageViewModel {
   card: HomeCardItem | null
+  historyId: string | null
   loading: boolean
+  isSharingTransition: boolean
+  handleShare: () => void
   handleContinue: () => void
 }
 
@@ -23,6 +26,7 @@ export function usePageModel(): CompletePageViewModel {
   const autoReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const historyId = pageRoute.readString('historyId')
   const [isResolvingHistory, setIsResolvingHistory] = useState(Boolean(historyId))
+  const [isSharingTransition, setIsSharingTransition] = useState(false)
   const historySummary = useMemo(() => {
     if (historyId) {
       return historySummaries.find(item => item.id === historyId) ?? null
@@ -61,6 +65,19 @@ export function usePageModel(): CompletePageViewModel {
     autoReturnTimerRef.current = null
   }, [])
 
+  const handleShare = useCallback(() => {
+    if (!historySummary?.id || hasNavigatedRef.current) {
+      return
+    }
+
+    clearAutoReturnTimer()
+    hasNavigatedRef.current = true
+    setIsSharingTransition(true)
+    setTimeout(() => {
+      void route.navigate(routePaths.share, {historyId: historySummary.id})
+    }, 640)
+  }, [clearAutoReturnTimer, historySummary?.id, route])
+
   const handleContinue = useCallback(() => {
     if (hasNavigatedRef.current) {
       return
@@ -77,7 +94,7 @@ export function usePageModel(): CompletePageViewModel {
   useEffect(() => {
     clearAutoReturnTimer()
 
-    if (loadingPage) {
+    if (loadingPage || isSharingTransition) {
       return clearAutoReturnTimer
     }
 
@@ -87,11 +104,14 @@ export function usePageModel(): CompletePageViewModel {
     )
 
     return clearAutoReturnTimer
-  }, [clearAutoReturnTimer, handleContinue, loadingPage])
+  }, [clearAutoReturnTimer, handleContinue, isSharingTransition, loadingPage])
 
   return {
     card,
+    historyId: historySummary?.id || historyId || null,
     loading: loadingPage,
+    isSharingTransition,
+    handleShare,
     handleContinue,
   }
 }

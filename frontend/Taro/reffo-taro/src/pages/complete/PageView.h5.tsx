@@ -1,5 +1,6 @@
 import {Text, View} from '@tarojs/components'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
+import ShareEntryButton from '@/components/business/share/ShareEntryButton.h5'
 import {useVisualTier} from '@/utils'
 import type {CompletePageViewModel} from './usePageModel'
 import '@/pages/index/index.h5.scss'
@@ -35,11 +36,24 @@ const CONFETTI_PIECES = Array.from({length: 52}, (_, index) => {
   }
 })
 
-export default function PageView({card, loading, handleContinue}: CompletePageViewModel) {
+export default function PageView({
+  card,
+  loading,
+  isSharingTransition,
+  handleShare,
+  handleContinue,
+}: CompletePageViewModel) {
   const visualCapability = useVisualTier({benchmark: true})
 
   return (
-    <View className='reffo-complete reffo-responsive-page' onClick={handleContinue}>
+    <View
+      className={`reffo-complete reffo-responsive-page ${isSharingTransition ? 'reffo-complete--sharing-exit' : ''}`}
+      onClick={event => {
+        const target = event.target as unknown as (EventTarget & {closest?: (selector: string) => unknown}) | null
+        if (target?.closest?.('[data-share-surface]')) return
+        handleContinue()
+      }}
+    >
       <View className='reffo-responsive-page__frame reffo-complete__frame'>
       <View className='reffo-complete__screen-fold'>
         <View className='reffo-complete__fold-orb' />
@@ -64,7 +78,7 @@ export default function PageView({card, loading, handleContinue}: CompletePageVi
         ))}
       </View>
 
-      <View className='reffo-complete__card-stage'>
+      <View className={`reffo-complete__card-stage ${isSharingTransition ? 'reffo-complete__card-stage--sharing-exit' : ''}`}>
         {card ? (
           <HomeScoreCard
             card={card}
@@ -80,12 +94,24 @@ export default function PageView({card, loading, handleContinue}: CompletePageVi
         )}
       </View>
 
-      <View className='reffo-complete__copy'>
+      <View className={`reffo-complete__copy ${isSharingTransition ? 'reffo-complete__copy--sharing-exit' : ''}`}>
         <Text className='reffo-complete__title'>{loading ? '正在准备...' : '恭喜你！'}</Text>
         <Text className='reffo-complete__subtitle'>新申请目标岗位的简历已经准备就绪！</Text>
         <Text className='reffo-complete__hint'>轻触屏幕进入首页</Text>
       </View>
       </View>
+      {isSharingTransition ? (
+        <View className='reffo-complete__capture-rig' aria-hidden='true'>
+          <View className='reffo-complete__capture-strap' />
+          <View className='reffo-complete__capture-clip'>
+            <View className='reffo-complete__capture-hook' />
+            <View className='reffo-complete__capture-slot' />
+          </View>
+        </View>
+      ) : null}
+      {card && !loading ? (
+        <ShareEntryButton onClick={handleShare} />
+      ) : null}
     </View>
   )
 }

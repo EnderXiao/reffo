@@ -12,6 +12,7 @@ import type {GenerationTask} from '@/services/backgroundGeneration'
 interface CardSeedInput {
   id: string
   company: string
+  personName?: string
   indexLabel?: string
   location: string
   role: string
@@ -163,6 +164,7 @@ export function toHistorySummaryCardItem(
   return buildCardItem({
     id: summary.id || `history-${index}`,
     company: summary.company || '--',
+    personName: summary.name || undefined,
     indexLabel: getIndexLabel(summary.company || '', index),
     location: summary.location || '--',
     role: summary.position || '--',
