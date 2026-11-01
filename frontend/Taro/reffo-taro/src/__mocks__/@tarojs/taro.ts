@@ -48,6 +48,7 @@ const Taro = {
 }
 
 export const useDidShow = jest.fn()
+export const useDidHide = jest.fn()
 export const useRouter = jest.fn(() => ({
   params: {},
 }))

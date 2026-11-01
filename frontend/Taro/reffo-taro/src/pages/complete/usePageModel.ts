@@ -1,15 +1,25 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {useDidHide, useDidShow} from '@tarojs/taro'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {useHistoryStore} from '@/store/historyStore'
 import {routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
+import {
+  consumeCompleteInitialEntry,
+  consumeShareReturnEntry,
+  runShareHandoffTransition,
+} from '@/utils/navigation-transition'
 import {toHistorySummaryCardItem} from '../index/model/homeCardData'
 
 const COMPLETE_AUTO_RETURN_DELAY_MS = 10000
+const COMPLETE_ENTRY_ANIMATION_DURATION_MS = 1500
+const SHARE_EXIT_DURATION_MS = 720
 
 export interface CompletePageViewModel {
   card: HomeCardItem | null
   historyId: string | null
   loading: boolean
+  hasInitialEntryAnimation: boolean
+  isShareReturnEntry: boolean
   isSharingTransition: boolean
   handleShare: () => void
   handleContinue: () => void
@@ -27,6 +37,14 @@ export function usePageModel(): CompletePageViewModel {
   const historyId = pageRoute.readString('historyId')
   const [isResolvingHistory, setIsResolvingHistory] = useState(Boolean(historyId))
   const [isSharingTransition, setIsSharingTransition] = useState(false)
+  const [entryMode, setEntryMode] = useState<'initial' | 'share-return' | 'steady'>(() => {
+    const isCompleteInitialEntry = consumeCompleteInitialEntry()
+    const isShareReturnEntry = consumeShareReturnEntry()
+    if (isShareReturnEntry) return 'share-return'
+    return isCompleteInitialEntry ? 'initial' : 'steady'
+  })
+  const hasInitialEntryAnimation = entryMode === 'initial'
+  const isShareReturnEntry = entryMode === 'share-return'
   const historySummary = useMemo(() => {
     if (historyId) {
       return historySummaries.find(item => item.id === historyId) ?? null
@@ -65,6 +83,30 @@ export function usePageModel(): CompletePageViewModel {
     autoReturnTimerRef.current = null
   }, [])
 
+  useEffect(() => {
+    if (!hasInitialEntryAnimation) return
+
+    const timer = setTimeout(
+      () => setEntryMode('steady'),
+      COMPLETE_ENTRY_ANIMATION_DURATION_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [entryMode])
+
+  const resetTransitionState = useCallback(() => {
+    clearAutoReturnTimer()
+    hasNavigatedRef.current = false
+    setEntryMode('steady')
+    setIsSharingTransition(false)
+  }, [clearAutoReturnTimer])
+
+  useDidHide(resetTransitionState)
+  useDidShow(() => {
+    if (consumeShareReturnEntry()) {
+      setEntryMode('share-return')
+    }
+  })
+
   const handleShare = useCallback(() => {
     if (!historySummary?.id || hasNavigatedRef.current) {
       return
@@ -74,9 +116,11 @@ export function usePageModel(): CompletePageViewModel {
     hasNavigatedRef.current = true
     setIsSharingTransition(true)
     setTimeout(() => {
-      void route.navigate(routePaths.share, {historyId: historySummary.id})
-    }, 640)
-  }, [clearAutoReturnTimer, historySummary?.id, route])
+      void runShareHandoffTransition(
+        () => route.navigate(routePaths.share, {historyId: historySummary.id}),
+      ).finally(resetTransitionState)
+    }, SHARE_EXIT_DURATION_MS)
+  }, [clearAutoReturnTimer, historySummary?.id, resetTransitionState, route])
 
   const handleContinue = useCallback(() => {
     if (hasNavigatedRef.current) {
@@ -110,6 +154,8 @@ export function usePageModel(): CompletePageViewModel {
     card,
     historyId: historySummary?.id || historyId || null,
     loading: loadingPage,
+    hasInitialEntryAnimation,
+    isShareReturnEntry,
     isSharingTransition,
     handleShare,
     handleContinue,

@@ -327,6 +327,7 @@ export default function HomeScoreCard({
   const hasWrappedCompanyName = !isCreate && !isGenerating && isLikelyWrappedCompanyName(card.company)
   const scoreGrade = resolveResumeGrade(card.score || (isTaskPending ? 88 : 0))
   const scoreGradeClass = scoreGrade === 'A+' ? 'a' : scoreGrade.toLowerCase()
+  const displayDateLabel = card.dateLabel.replace(/^生成日期\s*/, '')
   const generatingMark = isGenerating ? resolveGeneratingMark(card) : ''
   const queueAvatarSrc = useMemo(() => buildQueueAvatarSrc(card), [card])
   const cssVars = {
@@ -383,7 +384,7 @@ export default function HomeScoreCard({
         </View>
         <View className='reffo-home-card__date-row'>
           <Text className='reffo-home-card__date-label'>生成日期</Text>
-          <Text className='reffo-home-card__date'>{card.dateLabel}</Text>
+          <Text className='reffo-home-card__date'>{displayDateLabel}</Text>
         </View>
       </CardGlass>
     </>
@@ -436,10 +437,7 @@ export default function HomeScoreCard({
             />
           </Suspense>
         ) : null}
-        {!isGenerating ? <>
-          <View className='reffo-home-card__handle' />
-          <CardTexture source={card} color={card.logoColor} />
-        </> : null}
+        {!isGenerating ? <CardTexture source={card} color={card.logoColor} /> : null}
         {hasFoil ? <UnreadCardFoil active={active && depth === 0} tier={visualTier} /> : null}
         {isTaskPending || card.unread ? (
           <View className={classNames('reffo-home-card__unread', {

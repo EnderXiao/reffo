@@ -1,6 +1,10 @@
 import Taro from '@tarojs/taro'
 import {
+  consumeCompleteInitialEntry,
+  consumeShareReturnEntry,
   initializeNavigationTransitions,
+  markCompleteInitialEntry,
+  runShareReturnTransition,
   runWithNavigationTransition,
   startResultCardReturnTransition,
 } from '../navigation-transition'
@@ -174,6 +178,198 @@ describe('navigation-transition', () => {
     initializeNavigationTransitions()
 
     expect(document.querySelectorAll('#reffo-navigation-transition-style')).toHaveLength(1)
+  })
+
+  test('describes the share return as a reverse shared-element transition', () => {
+    initializeNavigationTransitions()
+
+    const style = document.getElementById('reffo-navigation-transition-style')
+    expect(style?.textContent).toContain('animation-duration: 720ms')
+    expect(style?.textContent).toContain('view-transition-name: reffo-share-lanyard')
+    expect(style?.textContent).toContain('view-transition-name: reffo-share-copy')
+    expect(style?.textContent).toContain('view-transition-name: reffo-share-entry')
+    expect(style?.textContent).not.toContain('animation-name: reffo-share-return-lanyard-old')
+    expect(style?.textContent).toContain('animation-name: reffo-share-return-entry-new')
+    expect(style?.textContent).toContain('transform: translate3d(0, 96px, 0)')
+  })
+
+  test('plays complete entry animation only for an explicit result entry', () => {
+    expect(consumeCompleteInitialEntry()).toBe(false)
+
+    markCompleteInitialEntry()
+
+    expect(consumeCompleteInitialEntry()).toBe(true)
+    expect(consumeCompleteInitialEntry()).toBe(false)
+  })
+
+  test('finishes the returning lanyard retraction before capturing the route', async () => {
+    const calls: string[] = []
+    document.body.innerHTML = `
+      <div class="share-page--returning">
+        <canvas class="share-physics__lanyard-canvas"></canvas>
+      </div>
+    `
+    const canvas = document.querySelector('.share-physics__lanyard-canvas')!
+    Object.defineProperty(canvas, 'getAnimations', {
+      configurable: true,
+      value: jest.fn(() => [{
+        playState: 'running',
+        finished: Promise.resolve().then(() => calls.push('animation-finished')),
+      }]),
+    })
+    const startViewTransition = jest.fn(callback => {
+      calls.push('capture')
+      const updateCallbackDone = Promise.resolve().then(callback)
+      return {
+        ready: updateCallbackDone,
+        finished: updateCallbackDone,
+        updateCallbackDone,
+        skipTransition: jest.fn(),
+      }
+    })
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: startViewTransition,
+    })
+    const action = jest.fn(async () => {
+      calls.push('navigate')
+      const target = document.createElement('div')
+      target.className = 'reffo-complete--share-return-entry'
+      target.innerHTML = `
+        <div class="reffo-complete__card-slot">
+          <div data-share-transition-role="card"></div>
+        </div>
+      `
+      document.body.appendChild(target)
+    })
+
+    await runShareReturnTransition(action)
+
+    expect(action).toHaveBeenCalledTimes(1)
+    expect(consumeShareReturnEntry()).toBe(true)
+    expect(calls).toEqual(['animation-finished', 'capture', 'navigate'])
+    expect(document.documentElement.dataset.reffoShareReturnTransition).toBeUndefined()
+  })
+
+  test('waits for the returning lanyard fallback without View Transition support', async () => {
+    const calls: string[] = []
+    document.body.innerHTML = `
+      <div class="share-page--returning">
+        <canvas class="share-physics__lanyard-canvas"></canvas>
+      </div>
+    `
+    const canvas = document.querySelector('.share-physics__lanyard-canvas')!
+    Object.defineProperty(canvas, 'getAnimations', {
+      configurable: true,
+      value: jest.fn(() => [{
+        playState: 'running',
+        finished: Promise.resolve().then(() => calls.push('animation-finished')),
+      }]),
+    })
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    })
+    const action = jest.fn(async () => {
+      calls.push('navigate')
+    })
+
+    await runShareReturnTransition(action)
+
+    expect(calls).toEqual(['animation-finished', 'navigate'])
+  })
+
+  test('does not block the back action on a non-settling lanyard animation', async () => {
+    document.body.innerHTML = `
+      <div class="share-page--returning">
+        <canvas class="share-physics__lanyard-canvas"></canvas>
+      </div>
+    `
+    const canvas = document.querySelector('.share-physics__lanyard-canvas')!
+    Object.defineProperty(canvas, 'getAnimations', {
+      configurable: true,
+      value: jest.fn(() => [{
+        playState: 'running',
+        finished: new Promise<void>(() => undefined),
+      }]),
+    })
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    })
+    const action = jest.fn(async () => undefined)
+
+    const navigation = runShareReturnTransition(action)
+    await jest.advanceTimersByTimeAsync(360)
+    await navigation
+
+    expect(action).toHaveBeenCalledTimes(1)
+  })
+
+  test('waits for the complete page to become visible before capturing share return', async () => {
+    document.body.innerHTML = `
+      <div class="taro_router">
+        <div id="share" class="taro_page taro_page_show"></div>
+      </div>
+      <div class="share-page--returning">
+        <canvas class="share-physics__lanyard-canvas"></canvas>
+      </div>
+    `
+    const canvas = document.querySelector('.share-physics__lanyard-canvas')!
+    Object.defineProperty(canvas, 'getAnimations', {
+      configurable: true,
+      value: jest.fn(() => [{
+        playState: 'running',
+        finished: Promise.resolve(),
+      }]),
+    })
+    let pages = [{path: 'share'}]
+    jest.spyOn(Taro, 'getCurrentPages').mockImplementation(() => pages as ReturnType<typeof Taro.getCurrentPages>)
+    let updated = false
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      writable: true,
+      value: jest.fn(callback => {
+        const updateCallbackDone = Promise.resolve().then(callback).then(() => {
+          updated = true
+        })
+        return {
+          ready: updateCallbackDone,
+          finished: updateCallbackDone,
+          updateCallbackDone,
+          skipTransition: jest.fn(),
+        }
+      }),
+    })
+    const target = document.createElement('div')
+    target.id = 'complete'
+    target.className = 'taro_page taro_page_shade'
+    target.innerHTML = `
+      <div class="reffo-complete--share-return-entry">
+        <div class="reffo-complete__card-slot">
+          <div data-share-transition-role="card"></div>
+        </div>
+      </div>
+    `
+
+    const navigation = runShareReturnTransition(async () => {
+      window.history.pushState({}, '', '#/pages/complete/index')
+      pages = [{path: 'complete'}]
+      document.querySelector('.taro_router')?.appendChild(target)
+    })
+
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(updated).toBe(false)
+
+    target.className = 'taro_page taro_page_show'
+    await navigation
+
+    expect(updated).toBe(true)
+    expect(document.documentElement.dataset.reffoShareReturnTransition).toBeUndefined()
   })
 
   test.each(['forward', 'back'] as const)('waits for the %s page to be visible, not just the URL', async kind => {

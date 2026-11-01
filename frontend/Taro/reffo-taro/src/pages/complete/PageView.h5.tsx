@@ -2,8 +2,10 @@ import {Text, View} from '@tarojs/components'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
 import ShareEntryButton from '@/components/business/share/ShareEntryButton.h5'
 import {useVisualTier} from '@/utils'
-import type {CompletePageViewModel} from './usePageModel'
 import '@/pages/index/index.h5.scss'
+import '@/pages/share/index.h5.scss'
+import PhysicsBadge from '../share/PhysicsBadge.h5'
+import type {CompletePageViewModel} from './usePageModel'
 import './index.h5.scss'
 
 const CONFETTI_COLORS = ['#14c972', '#007aff', '#ff4f5e', '#f9b400', '#ef4b9a', '#9b59b6']
@@ -39,6 +41,8 @@ const CONFETTI_PIECES = Array.from({length: 52}, (_, index) => {
 export default function PageView({
   card,
   loading,
+  hasInitialEntryAnimation,
+  isShareReturnEntry,
   isSharingTransition,
   handleShare,
   handleContinue,
@@ -47,7 +51,7 @@ export default function PageView({
 
   return (
     <View
-      className={`reffo-complete reffo-responsive-page ${isSharingTransition ? 'reffo-complete--sharing-exit' : ''}`}
+      className={`reffo-complete reffo-responsive-page ${hasInitialEntryAnimation ? 'reffo-complete--initial-entry' : 'reffo-complete--steady-entry'} ${isShareReturnEntry ? 'reffo-complete--share-return-entry' : ''} ${isSharingTransition ? 'reffo-complete--sharing-exit' : ''}`}
       onClick={event => {
         const target = event.target as unknown as (EventTarget & {closest?: (selector: string) => unknown}) | null
         if (target?.closest?.('[data-share-surface]')) return
@@ -78,20 +82,37 @@ export default function PageView({
         ))}
       </View>
 
-      <View className={`reffo-complete__card-stage ${isSharingTransition ? 'reffo-complete__card-stage--sharing-exit' : ''}`}>
-        {card ? (
-          <HomeScoreCard
-            card={card}
-            depth={0}
-            active
-            visualTier={visualCapability.tier}
-            className='reffo-complete__card'
-          />
-        ) : (
-          <View className='reffo-complete__card-placeholder'>
-            <Text className='reffo-complete__card-placeholder-text'>Reffo</Text>
+      <View className='reffo-complete__card-slot'>
+        <View className={`reffo-complete__badge-stage ${isSharingTransition ? 'reffo-complete__badge-stage--sharing-exit' : ''}`}>
+          <View className='reffo-complete__badge-reveal'>
+            <PhysicsBadge
+              strapColor='#dff9ea'
+              strapWidth={1}
+              gravity={1.2}
+              damping={0.78}
+              elasticity={0.08}
+              breeze={0.08}
+              interactive={false}
+              captureOnMount={false}
+            >
+              {card ? (
+                <View className='share-badge__card-frame' data-share-card-source='job' data-share-transition-role='card'>
+                  <HomeScoreCard
+                    card={card}
+                    depth={0}
+                    active
+                    visualTier={visualCapability.tier}
+                    className='share-badge__home-card reffo-complete__card'
+                  />
+                </View>
+              ) : (
+                <View className='share-badge__card-frame reffo-complete__card-placeholder' data-share-transition-role='card'>
+                  <Text className='reffo-complete__card-placeholder-text'>Reffo</Text>
+                </View>
+              )}
+            </PhysicsBadge>
           </View>
-        )}
+        </View>
       </View>
 
       <View className={`reffo-complete__copy ${isSharingTransition ? 'reffo-complete__copy--sharing-exit' : ''}`}>
@@ -100,17 +121,8 @@ export default function PageView({
         <Text className='reffo-complete__hint'>轻触屏幕进入首页</Text>
       </View>
       </View>
-      {isSharingTransition ? (
-        <View className='reffo-complete__capture-rig' aria-hidden='true'>
-          <View className='reffo-complete__capture-strap' />
-          <View className='reffo-complete__capture-clip'>
-            <View className='reffo-complete__capture-hook' />
-            <View className='reffo-complete__capture-slot' />
-          </View>
-        </View>
-      ) : null}
       {card && !loading ? (
-        <ShareEntryButton onClick={handleShare} />
+        <ShareEntryButton onClick={handleShare} exiting={isSharingTransition} />
       ) : null}
     </View>
   )

@@ -2,6 +2,10 @@ import {useCallback, useEffect, useMemo, useState} from 'react'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {useHistoryStore} from '@/store/historyStore'
 import {usePageRoute, useRouteTransition} from '@/shared/routing'
+import {
+  consumeShareHandoffEntry,
+  runShareReturnTransition,
+} from '@/utils/navigation-transition'
 import type {ShareContentMode} from '@/types/share'
 import {
   toHistoryCardItem,
@@ -14,6 +18,8 @@ export interface SharePageViewModel {
   loading: boolean
   mode: ShareContentMode
   jobAvailable: boolean
+  captureOnMount: boolean
+  isReturning: boolean
   handleModeChange: (mode: ShareContentMode) => void
   handleBack: () => void
 }
@@ -32,6 +38,8 @@ export function usePageModel(): SharePageViewModel {
   const loadHistory = useHistoryStore(state => state.loadHistory)
   const [isResolvingHistory, setIsResolvingHistory] = useState(Boolean(routeHistoryId))
   const [mode, setMode] = useState<ShareContentMode>('job')
+  const [captureOnMount] = useState(() => !consumeShareHandoffEntry())
+  const [isReturning, setIsReturning] = useState(false)
 
   const historySummary = useMemo(() => {
     if (!routeHistoryId) return null
@@ -79,8 +87,10 @@ export function usePageModel(): SharePageViewModel {
   }, [jobAvailable])
 
   const handleBack = useCallback(() => {
-    void route.back()
-  }, [route])
+    if (isReturning) return
+    setIsReturning(true)
+    void runShareReturnTransition(() => route.back())
+  }, [isReturning, route])
 
   return {
     card,
@@ -88,6 +98,8 @@ export function usePageModel(): SharePageViewModel {
     loading: loadingPage,
     mode,
     jobAvailable,
+    captureOnMount,
+    isReturning,
     handleModeChange: setMode,
     handleBack,
   }

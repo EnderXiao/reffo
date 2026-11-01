@@ -27,6 +27,15 @@ const VIEW_TRANSITION_DURATION = 280
 const RESULT_CARD_RETURN_DURATION = 980
 const RESULT_CARD_RETURN_TRANSITION_NAME = 'reffo-result-card-return'
 const RESULT_CARD_RETURN_TARGET_SELECTOR = '.reffo-home-card--return-target'
+const SHARE_HANDOFF_DURATION = 720
+const SHARE_HANDOFF_ENTRY_STORAGE_KEY = 'reffo.share-handoff-entry'
+const SHARE_HANDOFF_TARGET_SELECTOR = '.share-page__badge-stage .share-physics__badge'
+const SHARE_RETURN_DURATION = 720
+const SHARE_RETURN_LANYARD_DURATION = 360
+const SHARE_RETURN_LANYARD_SELECTOR = '.share-page--returning .share-physics__lanyard-canvas'
+const SHARE_RETURN_TARGET_SELECTOR = '.reffo-complete--share-return-entry .reffo-complete__card-slot [data-share-transition-role="card"]'
+const COMPLETE_INITIAL_ENTRY_STORAGE_KEY = 'reffo.complete-initial-entry'
+const SHARE_RETURN_ENTRY_STORAGE_KEY = 'reffo.share-return-entry'
 
 let styleInjected = false
 let shouldSuppressNextTransition = false
@@ -124,6 +133,232 @@ function injectNavigationTransitionStyle() {
     html[data-reffo-view-transition]::view-transition-group(root) {
       animation-duration: ${VIEW_TRANSITION_DURATION}ms;
       animation-timing-function: ${ROUTE_FADE_EASING};
+    }
+
+    html[data-reffo-share-handoff-transition] .reffo-complete--sharing-exit [data-share-transition-role='card'],
+    html[data-reffo-share-handoff-transition] .share-page--handoff-entry [data-share-transition-role='card'] {
+      view-transition-name: reffo-share-card;
+    }
+
+    html[data-reffo-share-handoff-transition] .reffo-complete--sharing-exit [data-share-transition-role='lanyard'],
+    html[data-reffo-share-handoff-transition] .share-page--handoff-entry [data-share-transition-role='lanyard'] {
+      view-transition-name: reffo-share-lanyard;
+    }
+
+    html[data-reffo-share-handoff-transition] .share-page--handoff-entry .share-page__watermark {
+      view-transition-name: reffo-share-watermark;
+    }
+
+    html[data-reffo-share-handoff-transition] .reffo-complete--sharing-exit .reffo-complete__copy,
+    html[data-reffo-share-handoff-transition] .share-page--handoff-entry .share-page__copy {
+      view-transition-name: reffo-share-copy;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-group(root),
+    html[data-reffo-share-handoff-transition]::view-transition-group(reffo-share-card),
+    html[data-reffo-share-handoff-transition]::view-transition-group(reffo-share-lanyard),
+    html[data-reffo-share-handoff-transition]::view-transition-group(reffo-share-watermark),
+    html[data-reffo-share-handoff-transition]::view-transition-group(reffo-share-copy) {
+      animation-duration: ${SHARE_HANDOFF_DURATION}ms;
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-group(reffo-share-card) {
+      z-index: 1;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-group(reffo-share-lanyard) {
+      z-index: 4;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-image-pair(reffo-share-watermark),
+    html[data-reffo-share-handoff-transition]::view-transition-image-pair(reffo-share-copy) {
+      overflow: visible;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-image-pair(reffo-share-card) {
+      z-index: 1;
+      overflow: visible;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-image-pair(reffo-share-lanyard) {
+      z-index: 4;
+      overflow: visible;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-old(reffo-share-card),
+    html[data-reffo-share-handoff-transition]::view-transition-new(reffo-share-card) {
+      z-index: 1;
+      height: 100%;
+      object-fit: fill;
+      mix-blend-mode: normal;
+      animation: none;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-old(reffo-share-lanyard) {
+      z-index: 4;
+      opacity: 1;
+      animation: none;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-new(reffo-share-lanyard) {
+      z-index: 4;
+      opacity: 1;
+      animation: none;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-old(reffo-share-copy) {
+      z-index: 1;
+      animation-name: reffo-share-copy-old;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-new(reffo-share-copy) {
+      z-index: 2;
+      animation-name: reffo-share-copy-new;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-old(reffo-share-watermark) {
+      opacity: 0;
+      animation: none;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-new(reffo-share-watermark) {
+      z-index: 2;
+      animation-name: reffo-share-content-new;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-old(root) {
+      animation-name: reffo-share-handoff-old;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-new(root) {
+      animation-name: reffo-share-handoff-new;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-old(root),
+    html[data-reffo-share-handoff-transition]::view-transition-new(root) {
+      animation: none;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-old(root) {
+      opacity: 0;
+    }
+
+    html[data-reffo-share-handoff-transition]::view-transition-new(root) {
+      opacity: 1;
+    }
+
+    html[data-reffo-share-return-transition] .share-page--returning [data-share-transition-role='card'],
+    html[data-reffo-share-return-transition] .reffo-complete--share-return-entry [data-share-transition-role='card'] {
+      view-transition-name: reffo-share-card;
+    }
+
+    html[data-reffo-share-return-transition] .share-page--returning .share-page__watermark {
+      view-transition-name: reffo-share-watermark;
+    }
+
+    html[data-reffo-share-return-transition] .share-page--returning .share-page__side-stage {
+      view-transition-name: reffo-share-side-stage;
+    }
+
+    html[data-reffo-share-return-transition] .reffo-complete--share-return-entry .reffo-complete__copy,
+    html[data-reffo-share-return-transition] .share-page--returning .share-page__copy {
+      view-transition-name: reffo-share-copy;
+    }
+
+    html[data-reffo-share-return-transition] .reffo-complete--share-return-entry .reffo-share-entry {
+      view-transition-name: reffo-share-entry;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-group(root),
+    html[data-reffo-share-return-transition]::view-transition-group(reffo-share-card),
+    html[data-reffo-share-return-transition]::view-transition-group(reffo-share-watermark),
+    html[data-reffo-share-return-transition]::view-transition-group(reffo-share-copy),
+    html[data-reffo-share-return-transition]::view-transition-group(reffo-share-side-stage),
+    html[data-reffo-share-return-transition]::view-transition-group(reffo-share-entry) {
+      animation-duration: ${SHARE_RETURN_DURATION}ms;
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-group(reffo-share-card) {
+      z-index: 1;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-group(reffo-share-copy) {
+      z-index: 2;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-group(reffo-share-entry) {
+      z-index: 5;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-group(reffo-share-side-stage) {
+      z-index: 0;
+      animation-duration: 420ms;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-image-pair(reffo-share-card),
+    html[data-reffo-share-return-transition]::view-transition-image-pair(reffo-share-watermark),
+    html[data-reffo-share-return-transition]::view-transition-image-pair(reffo-share-copy),
+    html[data-reffo-share-return-transition]::view-transition-image-pair(reffo-share-side-stage),
+    html[data-reffo-share-return-transition]::view-transition-image-pair(reffo-share-entry) {
+      overflow: visible;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-old(reffo-share-card),
+    html[data-reffo-share-return-transition]::view-transition-new(reffo-share-card) {
+      height: 100%;
+      object-fit: fill;
+      mix-blend-mode: normal;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-old(reffo-share-copy) {
+      z-index: 1;
+      animation-name: reffo-share-return-copy-old;
+      animation-duration: 520ms;
+      animation-fill-mode: both;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-new(reffo-share-copy) {
+      z-index: 2;
+      animation-name: reffo-share-return-copy-new;
+      animation-duration: 520ms;
+      animation-delay: 180ms;
+      animation-fill-mode: both;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-old(reffo-share-watermark) {
+      animation-name: reffo-share-return-content-old;
+      animation-duration: 420ms;
+      animation-fill-mode: both;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-old(reffo-share-side-stage) {
+      animation-name: reffo-share-return-side-stage-old;
+      animation-duration: 420ms;
+      animation-fill-mode: both;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-new(reffo-share-entry) {
+      z-index: 5;
+      animation-name: reffo-share-return-entry-new;
+      animation-duration: 520ms;
+      animation-delay: 220ms;
+      animation-fill-mode: both;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-old(root) {
+      animation-name: reffo-share-return-old;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-new(root) {
+      animation-name: reffo-share-return-new;
+    }
+
+    html[data-reffo-share-return-transition]::view-transition-old(root),
+    html[data-reffo-share-return-transition]::view-transition-new(root) {
+      animation-duration: ${SHARE_RETURN_DURATION}ms;
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     html[data-reffo-card-return-transition]::view-transition-old(root) {
@@ -245,6 +480,152 @@ function injectNavigationTransitionStyle() {
       }
     }
 
+    @keyframes reffo-share-handoff-old {
+      0%,
+      32% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate3d(0, -28px, 0);
+      }
+    }
+
+    @keyframes reffo-share-handoff-new {
+      0%,
+      32% {
+        opacity: 0;
+        transform: translate3d(0, 28px, 0);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes reffo-share-copy-old {
+      0% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate3d(0, -64px, 0);
+      }
+    }
+
+    @keyframes reffo-share-copy-new {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 64px, 0);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes reffo-share-content-new {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 64px, 0);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes reffo-share-return-old {
+      0% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate3d(0, 28px, 0) scale(0.992);
+      }
+    }
+
+    @keyframes reffo-share-return-new {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, -28px, 0) scale(1.006);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes reffo-share-return-copy-old {
+      0% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate3d(0, 64px, 0);
+      }
+    }
+
+    @keyframes reffo-share-return-copy-new {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, -64px, 0);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes reffo-share-return-content-old {
+      0% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate3d(0, 64px, 0);
+      }
+    }
+
+    @keyframes reffo-share-return-side-stage-old {
+      0% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate3d(0, 24px, 0) scale(0.98);
+      }
+    }
+
+    @keyframes reffo-share-return-entry-new {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 96px, 0);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
     @keyframes reffo-result-card-return-new {
       0%,
       30% {
@@ -349,9 +730,47 @@ function waitForElement(selector: string, onTimeout?: () => void) {
       onTimeout?.()
       cleanup()
     }, 1200)
-    observer.observe(document.documentElement, {childList: true, subtree: true})
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class'],
+    })
     check()
   })
+}
+
+function delay(duration: number) {
+  return new Promise<void>(resolve => {
+    if (typeof window === 'undefined') {
+      resolve()
+      return
+    }
+    window.setTimeout(resolve, duration)
+  })
+}
+
+async function waitForShareReturnLanyard() {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    return
+  }
+
+  await waitForElement(SHARE_RETURN_LANYARD_SELECTOR)
+
+  const element = document.querySelector(SHARE_RETURN_LANYARD_SELECTOR)
+  const getAnimations = (element as (Element & {getAnimations?: () => Animation[]}) | null)?.getAnimations
+  const animations = typeof getAnimations === 'function' ? getAnimations.call(element) : []
+  const activeAnimations = animations.filter(animation => animation.playState === 'running')
+
+  if (activeAnimations.length > 0) {
+    await Promise.race([
+      Promise.allSettled(activeAnimations.map(animation => animation.finished)),
+      delay(SHARE_RETURN_LANYARD_DURATION),
+    ])
+    return
+  }
+
+  await delay(SHARE_RETURN_LANYARD_DURATION)
 }
 
 export function initializeNavigationTransitions() {
@@ -364,6 +783,206 @@ export function initializeNavigationTransitions() {
 
 export function suppressNextNavigationTransition() {
   shouldSuppressNextTransition = true
+}
+
+export function markCompleteInitialEntry() {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage?.setItem(COMPLETE_INITIAL_ENTRY_STORAGE_KEY, '1')
+  } catch {
+    return
+  }
+}
+
+export function consumeCompleteInitialEntry() {
+  if (typeof window === 'undefined') return false
+  try {
+    const isInitialEntry = window.sessionStorage?.getItem(COMPLETE_INITIAL_ENTRY_STORAGE_KEY) === '1'
+    if (isInitialEntry) window.sessionStorage?.removeItem(COMPLETE_INITIAL_ENTRY_STORAGE_KEY)
+    return isInitialEntry
+  } catch {
+    return false
+  }
+}
+
+function markShareReturnEntry() {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage?.setItem(SHARE_RETURN_ENTRY_STORAGE_KEY, '1')
+  } catch {
+    return
+  }
+}
+
+export function consumeShareReturnEntry() {
+  if (typeof window === 'undefined') return false
+  try {
+    const isShareReturnEntry = window.sessionStorage?.getItem(SHARE_RETURN_ENTRY_STORAGE_KEY) === '1'
+    if (isShareReturnEntry) window.sessionStorage?.removeItem(SHARE_RETURN_ENTRY_STORAGE_KEY)
+    return isShareReturnEntry
+  } catch {
+    return false
+  }
+}
+
+function markShareHandoffEntry() {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage?.setItem(SHARE_HANDOFF_ENTRY_STORAGE_KEY, '1')
+  } catch {
+    return
+  }
+}
+
+function clearShareHandoffEntry() {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage?.removeItem(SHARE_HANDOFF_ENTRY_STORAGE_KEY)
+  } catch {
+    return
+  }
+}
+
+export function consumeShareHandoffEntry() {
+  if (typeof window === 'undefined') return false
+  try {
+    const isHandoffEntry = window.sessionStorage?.getItem(SHARE_HANDOFF_ENTRY_STORAGE_KEY) === '1'
+    if (isHandoffEntry) window.sessionStorage?.removeItem(SHARE_HANDOFF_ENTRY_STORAGE_KEY)
+    return isHandoffEntry
+  } catch {
+    return false
+  }
+}
+
+export async function runShareHandoffTransition(action: NavigationAction) {
+  if (!isH5NavigationEnvironment() || !supportsViewTransition()) {
+    return action()
+  }
+
+  injectNavigationTransitionStyle()
+
+  const root = document.documentElement
+  const startViewTransition = (document as DocumentWithViewTransition).startViewTransition
+  if (!startViewTransition) {
+    return action()
+  }
+
+  activeRouteTransition?.skipTransition()
+  root.dataset.reffoShareHandoffTransition = '1'
+  markShareHandoffEntry()
+
+  let actionStarted = false
+  let actionPromise: Promise<unknown> | null = null
+  let transition: ViewTransitionLike | undefined
+
+  try {
+    transition = startViewTransition.call(document, async () => {
+      actionStarted = true
+      shouldSuppressNextTransition = true
+      actionPromise = Promise.resolve(navigateUntilPageVisible(
+        action,
+        () => transition?.skipTransition(),
+      ))
+      await actionPromise
+      await waitForElement(SHARE_HANDOFF_TARGET_SELECTOR, () => transition?.skipTransition())
+    })
+    activeRouteTransition = transition
+
+    void transition.ready.catch(() => undefined)
+    void transition.updateCallbackDone.catch(() => undefined)
+    await transition.updateCallbackDone
+
+    if (!actionStarted) {
+      return action()
+    }
+
+    await actionPromise
+    await transition.finished.catch(() => undefined)
+    return undefined
+  } catch (error) {
+    if (actionStarted) {
+      if (actionPromise) {
+        await actionPromise
+        return undefined
+      }
+      throw error
+    }
+
+    return action()
+  } finally {
+    if (activeRouteTransition === transition) {
+      activeRouteTransition = undefined
+    }
+    clearShareHandoffEntry()
+    shouldSuppressNextTransition = false
+    delete root.dataset.reffoShareHandoffTransition
+  }
+}
+
+export async function runShareReturnTransition(action: NavigationAction) {
+  markShareReturnEntry()
+  if (!isH5NavigationEnvironment()) {
+    return action()
+  }
+
+  await waitForShareReturnLanyard()
+
+  if (!supportsViewTransition()) {
+    return action()
+  }
+
+  injectNavigationTransitionStyle()
+
+  const startViewTransition = (document as DocumentWithViewTransition).startViewTransition
+  if (!startViewTransition) {
+    return action()
+  }
+
+  const root = document.documentElement
+  activeRouteTransition?.skipTransition()
+  root.dataset.reffoShareReturnTransition = '1'
+
+  let actionStarted = false
+  let actionPromise: Promise<unknown> | null = null
+  let transition: ViewTransitionLike | undefined
+
+  try {
+    transition = startViewTransition.call(document, async () => {
+      actionStarted = true
+      shouldSuppressNextTransition = true
+      actionPromise = Promise.resolve(navigateUntilPageVisible(
+        action,
+        () => transition?.skipTransition(),
+      ))
+      await actionPromise
+      await waitForElement(SHARE_RETURN_TARGET_SELECTOR, () => transition?.skipTransition())
+    })
+    activeRouteTransition = transition
+
+    void transition.ready.catch(() => undefined)
+    void transition.updateCallbackDone.catch(() => undefined)
+    await transition.updateCallbackDone
+
+    if (!actionStarted) {
+      return action()
+    }
+
+    await actionPromise
+    await transition.finished.catch(() => undefined)
+    return undefined
+  } catch (error) {
+    if (actionStarted && actionPromise) {
+      await actionPromise
+      return undefined
+    }
+    throw error
+  } finally {
+    if (activeRouteTransition === transition) {
+      activeRouteTransition = undefined
+    }
+    shouldSuppressNextTransition = false
+    delete root.dataset.reffoShareReturnTransition
+  }
 }
 
 export async function runWithNavigationTransition(

@@ -788,6 +788,7 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
   --card-queue-outline-x: 0px;
   --card-queue-outline-y: 0px;
   --card-queue-background-radius: calc(var(--card-radius) + var(--card-queue-outline-grow));
+  --card-cutout-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 210 332'%3E%3Cpath fill='white' fill-rule='evenodd' d='M10 0H200Q210 0 210 10V322Q210 332 200 332H10Q0 332 0 322V10Q0 0 10 0ZM71 8H139A3 3 0 0 1 139 14H71A3 3 0 0 1 71 8Z'/%3E%3C/svg%3E");
   position: absolute;
   left: 0;
   top: 0;
@@ -800,7 +801,7 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
   opacity: var(--card-opacity);
   transform-origin: 0 0;
   border-radius: var(--card-radius);
-  filter: drop-shadow(0 12px 18px rgba(21, 30, 46, 0.16));
+  filter: drop-shadow(0 12PX 18PX rgba(21, 30, 46, 0.16));
   will-change: transform, opacity;
   transition:
     transform 280ms cubic-bezier(0.2, 0.92, 0.28, 1),
@@ -1187,8 +1188,7 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
 .reffo-home-card--opening-clone .reffo-home-card__texture,
 .reffo-home-card--opening-clone .reffo-home-card__premium-canvas,
 .reffo-home-card--opening-clone .reffo-home-card__score,
-.reffo-home-card--opening-clone .reffo-home-card__glass,
-.reffo-home-card--opening-clone .reffo-home-card__handle {
+.reffo-home-card--opening-clone .reffo-home-card__glass {
   transition:
     opacity 300ms ease,
     transform 460ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -1202,8 +1202,7 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
 .reffo-home-card--opening-active .reffo-home-card__texture,
 .reffo-home-card--opening-active .reffo-home-card__premium-canvas,
 .reffo-home-card--opening-active .reffo-home-card__score,
-.reffo-home-card--opening-active .reffo-home-card__glass,
-.reffo-home-card--opening-active .reffo-home-card__handle {
+.reffo-home-card--opening-active .reffo-home-card__glass {
   opacity: 0;
   filter: blur(4PX);
   transform: translate3d(0, -8px, 0) scale(0.98);
@@ -1287,6 +1286,14 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
   clip-path: inset(0 round var(--card-radius));
+  -webkit-mask-image: var(--card-cutout-mask);
+  mask-image: var(--card-cutout-mask);
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
   isolation: isolate;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
@@ -1329,18 +1336,6 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
   inset: 0;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.14) 100%);
   z-index: 1;
-}
-
-.reffo-home-card__handle {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  width: 74px;
-  height: 6px;
-  margin-left: -37px;
-  border-radius: 999px;
-  background: #4e4e4e;
-  z-index: 4;
 }
 
 .reffo-home-card__score {
@@ -1583,6 +1578,8 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
   perspective: none;
   transform: none;
   transform-style: flat;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .reffo-home-card--generating .reffo-home-card__surface::before,
@@ -1591,10 +1588,6 @@ html[data-reffo-card-return-transition] .reffo-home-card--return-target {
 }
 
 .reffo-home-card--generating .reffo-home-card__texture {
-  opacity: 0;
-}
-
-.reffo-home-card--generating > .reffo-home-card__surface > .reffo-home-card__handle {
   opacity: 0;
 }
 
