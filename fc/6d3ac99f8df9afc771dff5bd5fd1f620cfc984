@@ -1,0 +1,23 @@
+frontend/Taro/reffo-taro/src/pages/share/useShareAction.h5.ts
+  s_10900a1842dcc9::t_1e61e84d928add 11,43-44,71,73,82
+frontend/Taro/reffo-taro/src/utils/share/__tests__/share-url.h5.test.ts
+  s_10900a1842dcc9::t_ce3447be568325 1-21
+frontend/Taro/reffo-taro/src/utils/share/share-url.h5.ts
+  s_10900a1842dcc9::t_68225c453d67fc 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc6d3ac99f8df9afc771dff5bd5fd1f620cfc984",
+  "prompts": {},
+  "sessions": {
+    "s_10900a1842dcc9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ff1-09a4-73a3-a569-da5eee4268d0",
+        "model": "mimo-v2.6-pro-ultraspeed"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
