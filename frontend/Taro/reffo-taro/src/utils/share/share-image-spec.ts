@@ -1,7 +1,9 @@
 import type {PublicShareLink} from '@/types/share'
 
 export const SHARE_IMAGE_WIDTH = 1080
-export const SHARE_IMAGE_HEIGHT = 2400
+export const SHARE_PAGE_IMAGE_HEIGHT = 2400
+export const SHARE_IMAGE_FOOTER_HEIGHT = 440
+export const SHARE_IMAGE_HEIGHT = SHARE_PAGE_IMAGE_HEIGHT + SHARE_IMAGE_FOOTER_HEIGHT
 export const SHARE_LANDING_REVEAL_DELAY_MS = 2500
 
 function sanitizeFilenamePart(value: string) {

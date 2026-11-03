@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useMemo,
   type ComponentType,
   type ReactNode,
 } from 'react'
@@ -13,6 +14,7 @@ const GestureMotionView = View as unknown as ComponentType<any>
 
 export interface PhysicsBadgeProps {
   children: ReactNode
+  strapGradient?: readonly [string, string]
   strapColor?: string
   strapWidth?: number
   gravity?: number
@@ -21,10 +23,12 @@ export interface PhysicsBadgeProps {
   breeze?: number
   interactive?: boolean
   captureOnMount?: boolean
+  releaseActive?: boolean
+  onDragStateChange?: (dragging: boolean) => void
 }
 
 interface PhysicsSettings {
-  strapColor: string
+  strapGradient: readonly [string, string]
   strapWidth: number
   gravity: number
   damping: number
@@ -113,6 +117,8 @@ const RETURN_SETTLE_DURATION = 0.18
 const RETURN_POSITION_EPSILON = 0.004
 const RETURN_ROTATION_EPSILON = 0.0035
 const MAX_DRAG_ANGLE = 0
+const STRAP_COLOR_TRANSITION_MS = 640
+const DEFAULT_STRAP_GRADIENT: readonly [string, string] = ['#b8efd3', '#f2fff9']
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value))
@@ -142,9 +148,37 @@ function seeded(seed: number) {
   }
 }
 
+function parseHexColor(value: string) {
+  const normalized = value.replace('#', '')
+  const fullValue = normalized.length === 3
+    ? normalized.split('').map(part => `${part}${part}`).join('')
+    : normalized
+  if (!/^[0-9a-f]{6}$/i.test(fullValue)) return null
+  return [
+    Number.parseInt(fullValue.slice(0, 2), 16),
+    Number.parseInt(fullValue.slice(2, 4), 16),
+    Number.parseInt(fullValue.slice(4, 6), 16),
+  ] as const
+}
+
+function mixHexColor(start: string, end: string, amount: number) {
+  const startRGB = parseHexColor(start)
+  const endRGB = parseHexColor(end)
+  if (!startRGB || !endRGB) return amount < 0.5 ? start : end
+  const channels = startRGB.map((channel, index) =>
+    Math.round(channel + (endRGB[index] - channel) * amount),
+  )
+  return `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}`
+}
+
+function easeOutQuint(amount: number) {
+  return 1 - Math.pow(1 - amount, 5)
+}
+
 export default function PhysicsBadge({
   children,
-  strapColor = '#dff9ea',
+  strapGradient,
+  strapColor,
   strapWidth = 1,
   gravity = 1.2,
   damping = 0.82,
@@ -152,7 +186,15 @@ export default function PhysicsBadge({
   breeze = 0.08,
   interactive = true,
   captureOnMount = true,
+  releaseActive = false,
+  onDragStateChange,
 }: PhysicsBadgeProps) {
+  const resolvedStrapGradient = useMemo(
+    () => strapGradient || (strapColor
+      ? [strapColor, mixHexColor(strapColor, '#FFFFFF', 0.52)] as const
+      : DEFAULT_STRAP_GRADIENT),
+    [strapColor, strapGradient],
+  )
   const [isDragging, setIsDragging] = useState(false)
   const [isCapturing, setIsCapturing] = useState(captureOnMount)
   const [webglFailed, setWebglFailed] = useState(false)
@@ -162,17 +204,30 @@ export default function PhysicsBadge({
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const dragApiRef = useRef<DragApi | null>(null)
   const activePointerIdRef = useRef<number | null>(null)
+  const strapGradientCurrentRef = useRef(resolvedStrapGradient)
+  const updateStrapColorsRef = useRef<(gradient: readonly [string, string]) => void>(() => undefined)
+  const onDragStateChangeRef = useRef(onDragStateChange)
+  onDragStateChangeRef.current = onDragStateChange
+  const releaseActiveRef = useRef(releaseActive)
+  releaseActiveRef.current = releaseActive
   const followsDomPoseRef = useRef(!interactive || isCapturing)
   followsDomPoseRef.current = !interactive || isCapturing
   const physicsSettingsRef = useRef<PhysicsSettings>({
-    strapColor,
+    strapGradient: strapGradientCurrentRef.current,
     strapWidth,
     gravity,
     damping,
     elasticity,
     breeze,
   })
-  physicsSettingsRef.current = {strapColor, strapWidth, gravity, damping, elasticity, breeze}
+  physicsSettingsRef.current = {
+    strapGradient: strapGradientCurrentRef.current,
+    strapWidth,
+    gravity,
+    damping,
+    elasticity,
+    breeze,
+  }
 
   const applyPose = useCallback((pose: BadgePose) => {
     const motion = motionRef.current
@@ -188,6 +243,7 @@ export default function PhysicsBadge({
     const pointer = getEventPoint(event)
     dragApiRef.current?.start(pointer.x, pointer.y)
     setIsDragging(true)
+    onDragStateChangeRef.current?.(true)
     if (event.pointerId != null) {
       motionRef.current?.setPointerCapture?.(event.pointerId)
     }
@@ -216,8 +272,41 @@ export default function PhysicsBadge({
     }
     dragApiRef.current?.end()
     setIsDragging(false)
+    onDragStateChangeRef.current?.(false)
     event?.stopPropagation?.()
   }, [])
+
+  useEffect(() => {
+    if (!interactive) endDrag()
+  }, [endDrag, interactive])
+
+  useEffect(() => {
+    const startGradient = strapGradientCurrentRef.current
+    const applyGradient = (gradient: readonly [string, string]) => {
+      strapGradientCurrentRef.current = gradient
+      physicsSettingsRef.current.strapGradient = gradient
+      updateStrapColorsRef.current(gradient)
+    }
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (prefersReducedMotion) {
+      applyGradient(resolvedStrapGradient)
+      return
+    }
+
+    const startedAt = performance.now()
+    let animationFrame = 0
+    const update = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / STRAP_COLOR_TRANSITION_MS)
+      const easedProgress = easeOutQuint(progress)
+      applyGradient([
+        mixHexColor(startGradient[0], resolvedStrapGradient[0], easedProgress),
+        mixHexColor(startGradient[1], resolvedStrapGradient[1], easedProgress),
+      ])
+      if (progress < 1) animationFrame = requestAnimationFrame(update)
+    }
+    animationFrame = requestAnimationFrame(update)
+    return () => cancelAnimationFrame(animationFrame)
+  }, [resolvedStrapGradient])
 
   useEffect(() => {
     if (!isCapturing) return
@@ -324,6 +413,7 @@ export default function PhysicsBadge({
           alpha: true,
           antialias: true,
           powerPreference: 'high-performance',
+          preserveDrawingBuffer: true,
         })
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
         renderer.setSize(RENDER_WIDTH, STAGE_HEIGHT, false)
@@ -407,6 +497,14 @@ export default function PhysicsBadge({
           geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * columns * 3), 3))
           geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(count * columns * 3), 3))
           geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(count * columns * 2), 2))
+          geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(count * columns * 3).fill(1), 3))
+          const strapProgress = new Float32Array(count * columns)
+          for (let index = 0; index < count; index += 1) {
+            for (let column = 0; column < columns; column += 1) {
+              strapProgress[index * columns + column] = index / Math.max(1, count - 1)
+            }
+          }
+          geometry.setAttribute('strapProgress', new THREE.BufferAttribute(strapProgress, 1))
           const indices: number[] = []
           for (let i = 0; i < count - 1; i += 1) {
             for (let c = 0; c < columns - 1; c += 1) {
@@ -438,7 +536,7 @@ export default function PhysicsBadge({
           if (!strapContext) return
           const {width, height} = strapCanvas
           strapContext.clearRect(0, 0, width, height)
-          strapContext.fillStyle = physicsSettingsRef.current.strapColor
+          strapContext.fillStyle = '#ffffff'
           strapContext.fillRect(0, 0, width, height)
           strapContext.fillStyle = 'rgba(255, 255, 255, 0.18)'
           for (let y = 2; y < height; y += 4) strapContext.fillRect(0, y, width, 1)
@@ -468,16 +566,34 @@ export default function PhysicsBadge({
           emissiveIntensity: 0.62,
           normalMap: weaveTexture,
           normalScale: new THREE.Vector2(0.92, 0.92),
+          vertexColors: true,
           roughness: 0.72,
           sheen: 0.9,
           sheenRoughness: 0.52,
-          sheenColor: new THREE.Color(physicsSettingsRef.current.strapColor).lerp(new THREE.Color(1, 1, 1), 0.32),
+          sheenColor: new THREE.Color(strapGradientCurrentRef.current[0]).lerp(new THREE.Color(1, 1, 1), 0.32),
           side: THREE.DoubleSide,
         })
         const band = new THREE.Mesh(bandGeometry, bandMaterial)
         band.frustumCulled = false
         band.renderOrder = 1
         scene.add(band)
+        const updateStrapColors = (gradient: readonly [string, string]) => {
+          const topColor = new THREE.Color(gradient[0])
+          const bottomColor = new THREE.Color(gradient[1])
+          const mixedColor = new THREE.Color()
+          const colors = bandGeometry.getAttribute('color')
+          const strapProgress = bandGeometry.getAttribute('strapProgress')
+          for (let index = 0; index < colors.count; index += 1) {
+            const amount = strapProgress.getX(index)
+            mixedColor.copy(topColor).lerp(bottomColor, amount)
+            colors.setXYZ(index, mixedColor.r, mixedColor.g, mixedColor.b)
+          }
+          colors.needsUpdate = true
+          bandMaterial.sheenColor.copy(topColor).lerp(new THREE.Color(1, 1, 1), 0.32)
+          bandMaterial.emissive.copy(topColor).lerp(bottomColor, 0.52)
+        }
+        updateStrapColorsRef.current = updateStrapColors
+        updateStrapColors(strapGradientCurrentRef.current)
 
         const buildLanyardClampGeometry = (width: number) => {
           const shapeWidth = width * 1.16 - 0.028
@@ -546,14 +662,15 @@ export default function PhysicsBadge({
         const clampGroup = new THREE.Group()
         const clampGeometry = buildLanyardClampGeometry(CLAMP_WIDTH / 1.16)
         lanyardClampGeometry = clampGeometry.body
+        const clampPivotOffsetY = (CLAMP_BODY - 0.028) / 2
         const clampMesh = new THREE.Mesh(clampGeometry.body, lanyardMetalMaterial)
         lanyardClampFaceGeometry = clampGeometry.face
         lanyardClampFaceMaterial = lanyardMetalMaterial.clone()
         lanyardClampFaceMaterial.normalMap = metalNormalTexture
         lanyardClampFaceMaterial.normalScale = new THREE.Vector2(0.58, 0.12)
         const clampFace = new THREE.Mesh(lanyardClampFaceGeometry, lanyardClampFaceMaterial)
-        clampMesh.position.z = 0.035
-        clampFace.position.z = 0.055
+        clampMesh.position.set(0, -clampPivotOffsetY, 0.035)
+        clampFace.position.set(0, -clampPivotOffsetY, 0.055)
         clampMesh.renderOrder = 30
         clampFace.renderOrder = 31
         clampGroup.renderOrder = 10
@@ -923,6 +1040,7 @@ export default function PhysicsBadge({
           uv.needsUpdate = true
           clampGroup.quaternion.copy(sim.body.quaternion)
           clampGroup.position.copy(hang)
+          clampGroup.position.y += clampPivotOffsetY
         }
 
         const emitPose = () => {
@@ -935,9 +1053,12 @@ export default function PhysicsBadge({
           })
         }
 
+        let releaseAmount = 0
         const render = () => {
           emitPose()
           updateBand()
+          clampGroup.quaternion.copy(sim.body.quaternion)
+          clampGroup.rotateX(-0.38 * releaseAmount)
           renderer.render(scene, camera)
         }
 
@@ -997,6 +1118,7 @@ export default function PhysicsBadge({
           const delta = clamp((now - lastTime) / 1000, 1 / 240, 1 / 30)
           lastTime = now
           time += delta
+          releaseAmount = mix(releaseAmount, releaseActiveRef.current ? 1 : 0, clamp(delta * 10, 0, 1))
           if (sim.grab || sim.returning || sim.calm < RETURN_SETTLE_DURATION) {
             stepSimulation(delta, time)
           } else if (!sim.grab && sim.returning) {
@@ -1033,6 +1155,7 @@ export default function PhysicsBadge({
     return () => {
       disposed = true
       dragApiRef.current = null
+      updateStrapColorsRef.current = () => undefined
       if (animationFrame) cancelAnimationFrame(animationFrame)
       observer?.disconnect()
       bandGeometry?.dispose?.()
@@ -1047,12 +1170,12 @@ export default function PhysicsBadge({
       environment?.dispose?.()
       renderer?.dispose?.()
     }
-  }, [applyPose, strapColor, strapWidth])
+  }, [applyPose])
 
   return (
     <View
       ref={stageRef}
-      className={`share-physics ${isDragging ? 'share-physics--dragging' : ''} ${isCapturing ? 'share-physics--capturing' : ''} ${interactive ? '' : 'share-physics--static'}`}
+      className={`share-physics ${isDragging ? 'share-physics--dragging' : ''} ${isCapturing ? 'share-physics--capturing' : ''} ${releaseActive ? 'share-physics--releasing' : ''} ${interactive ? '' : 'share-physics--static'}`}
     >
       <canvas
         ref={canvasRef}

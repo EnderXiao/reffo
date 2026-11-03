@@ -1,6 +1,8 @@
 import {
   buildShareImageFilename,
+  SHARE_IMAGE_FOOTER_HEIGHT,
   SHARE_IMAGE_HEIGHT,
+  SHARE_PAGE_IMAGE_HEIGHT,
   SHARE_IMAGE_WIDTH,
   wrapShareText,
 } from '@/utils/share/share-image-spec'
@@ -35,7 +37,9 @@ const share: PublicShareLink = {
 describe('share image spec', () => {
   test('keeps a stable high-resolution canvas ratio', () => {
     expect(SHARE_IMAGE_WIDTH).toBe(1080)
-    expect(SHARE_IMAGE_HEIGHT).toBe(2400)
+    expect(SHARE_PAGE_IMAGE_HEIGHT).toBe(2400)
+    expect(SHARE_IMAGE_FOOTER_HEIGHT).toBe(440)
+    expect(SHARE_IMAGE_HEIGHT).toBe(2840)
   })
 
   test('builds filesystem-safe filenames', () => {

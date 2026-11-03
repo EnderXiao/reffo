@@ -1,22 +1,72 @@
 .share-page {
   --share-accent: #14c972;
   --share-background: linear-gradient(180deg, #dff9ea 0%, #f8fffb 44%, #ffffff 100%);
-  --share-strap-color: #dff9ea;
+  --share-background-job: linear-gradient(180deg, #dff9ea 0%, #f8fffb 44%, #ffffff 100%);
+  --share-background-blank: linear-gradient(180deg, #e2edff 0%, #f5f9ff 44%, #ffffff 100%);
+  --share-strap-gradient: linear-gradient(180deg, #b8efd3 0%, #f2fff9 100%);
   position: relative;
   min-height: 100dvh;
   overflow-x: hidden;
   overflow-y: auto;
   color: #183024;
-  background: var(--share-background);
-  transition: background 420ms ease, color 420ms ease;
+  background: #ffffff;
+  transition: color 420ms ease;
   user-select: none;
 }
 
 .share-page--blank {
   --share-accent: #1677ff;
-  --share-background: linear-gradient(180deg, #e2edff 0%, #f5f9ff 44%, #ffffff 100%);
-  --share-strap-color: #e2edff;
+  --share-strap-gradient: linear-gradient(180deg, #bdd8fc 0%, #f2f8ff 100%);
   color: #18324f;
+}
+
+.share-image-export-page {
+  width: 450px;
+  height: 1000px;
+  min-height: 1000px;
+  overflow: hidden;
+}
+
+.share-image-export-page .share-page__content-shell {
+  grid-template-rows: 600px auto;
+  min-height: 1000px;
+}
+
+.share-image-export-page .share-page__badge-stage {
+  height: 600px;
+}
+
+.share-image-export-page .share-page__copy {
+  min-height: 370px;
+  transform: none !important;
+}
+
+.share-image-export-page *,
+.share-image-export-page *::before,
+.share-image-export-page *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+.share-page__mode-backdrop {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 640ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.share-page__mode-backdrop--job {
+  background: var(--share-background-job);
+}
+
+.share-page__mode-backdrop--blank {
+  background: var(--share-background-blank);
+}
+
+.share-page__mode-backdrop.is-active {
+  opacity: 1;
 }
 
 .share-page__atmosphere {
@@ -83,6 +133,8 @@
   align-items: center;
   align-content: start;
   min-height: 100dvh;
+  pointer-events: none;
+  touch-action: pan-y;
   transition: transform 180ms ease-out;
   will-change: transform;
 }
@@ -96,6 +148,12 @@
   height: 350px;
   transform: translateX(-50%);
   pointer-events: none;
+  transition: opacity 240ms ease;
+}
+
+.share-page--mode-switching .share-page__side-stage {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .share-page__side-preview {
@@ -105,6 +163,8 @@
   height: 332px;
   opacity: 0.18;
   filter: saturate(0.78);
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .share-page__side-preview--left {
@@ -161,6 +221,10 @@
   cursor: default;
 }
 
+.share-physics--static .share-physics__motion {
+  pointer-events: none;
+}
+
 .share-physics__lanyard-canvas {
   position: absolute;
   top: 0;
@@ -180,8 +244,9 @@
   width: 34px;
   height: 145px;
   transform: translateX(-50%);
-  background: var(--share-strap-color);
+  background: var(--share-strap-gradient);
   box-shadow: 0 2PX 5PX rgba(35, 48, 43, 0.18);
+  transition: background 640ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .share-physics__fallback-clip {
@@ -195,6 +260,12 @@
   transform: translateX(-50%);
   background: linear-gradient(135deg, #596467 0%, #101617 38%, #3b4548 62%, #080b0c 100%);
   box-shadow: 0 3PX 6PX rgba(18, 28, 30, 0.26);
+  transform-origin: 50% 20%;
+  transition: transform 260ms cubic-bezier(0.22, 0.8, 0.24, 1);
+}
+
+.share-physics--releasing .share-physics__fallback-clip {
+  transform: translateX(-50%) perspective(120px) rotateX(-34deg) rotateY(12deg);
 }
 
 .share-physics__rope {
@@ -221,6 +292,7 @@
   backface-visibility: hidden;
   transition: filter 180ms ease;
   will-change: transform;
+  pointer-events: auto;
 }
 
 .share-physics__clamp-anchor {
@@ -295,6 +367,25 @@
 .share-physics__badge .reffo-home-card {
   filter: drop-shadow(0 18PX 26PX rgba(21, 30, 46, 0.2)) !important;
   transition: filter 140ms ease-out !important;
+}
+
+.share-mode-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 210px;
+  height: 332px;
+  transform: translate3d(0, 0, 0);
+}
+
+.share-mode-card--exit {
+  z-index: 2;
+  animation: share-mode-card-previous 360ms cubic-bezier(0.22, 0.8, 0.24, 1) both;
+}
+
+.share-mode-card--enter {
+  z-index: 1;
+  animation: share-mode-card-current 360ms cubic-bezier(0.22, 0.8, 0.24, 1) both;
 }
 
 .share-physics--dragging .share-physics__badge .reffo-home-card {
@@ -401,6 +492,9 @@
   align-self: stretch;
   display: flex;
   flex-direction: column;
+  pointer-events: auto;
+  touch-action: pan-y;
+  user-select: none;
 }
 
 .share-page__copy-content {
@@ -579,6 +673,50 @@
   100% {
     opacity: 0;
     transform: translate3d(0, -115%, 0);
+  }
+}
+
+@keyframes share-mode-card-previous {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  22% {
+    opacity: 1;
+    transform: translate3d(0, 28px, 0);
+  }
+
+  62% {
+    opacity: 0.52;
+    transform: translate3d(var(--mode-switch-exit-x), 28px, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--mode-switch-exit-x), 28px, 0);
+  }
+}
+
+@keyframes share-mode-card-current {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--mode-switch-enter-x), 28px, 0);
+  }
+
+  38% {
+    opacity: 1;
+    transform: translate3d(0, 28px, 0);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translate3d(0, 28px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
   }
 }
 

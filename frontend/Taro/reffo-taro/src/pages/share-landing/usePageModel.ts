@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react'
 import {shareApi} from '@/services/share'
+import {useAuthStore} from '@/store/authStore'
 import {routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import type {PublicShareLink} from '@/types/share'
 import {SHARE_LANDING_REVEAL_DELAY_MS} from '@/utils/share/share-image-spec'
@@ -11,7 +12,7 @@ export interface ShareLandingViewModel {
   status: ShareLandingStatus
   errorMessage: string
   retry: () => void
-  handleExperience: () => void
+  handleExperience: () => Promise<void>
 }
 
 function getErrorMessage(error: unknown) {
@@ -122,13 +123,10 @@ export function usePageModel(): ShareLandingViewModel {
     }
   }, [status])
 
-  const handleExperience = useCallback(() => {
-    void route.navigate(routePaths.create, {
-      source: 'share_link',
-      shareId: share?.share_id || '',
-      shareMode: share?.mode || 'blank',
-    })
-  }, [route, share])
+  const handleExperience = useCallback(async () => {
+    const session = await useAuthStore.getState().restoreSession()
+    await route.reset(session ? routePaths.home : routePaths.landing)
+  }, [route])
 
   return {
     share,

@@ -2,7 +2,9 @@ import {act, renderHook} from '@testing-library/react'
 import type {PublicShareLink} from '@/types/share'
 
 const mockNavigate = jest.fn()
+const mockReset = jest.fn()
 const mockGetPublicLink = jest.fn()
+const mockRestoreSession = jest.fn()
 
 jest.mock('@/services/share', () => ({
   shareApi: {
@@ -10,15 +12,26 @@ jest.mock('@/services/share', () => ({
   },
 }))
 
+jest.mock('@/store/authStore', () => ({
+  useAuthStore: {
+    getState: () => ({
+      restoreSession: mockRestoreSession,
+    }),
+  },
+}))
+
 jest.mock('@/shared/routing', () => ({
   routePaths: {
     create: '/pages/create/index',
+    home: '/pages/index/index',
+    landing: '/pages/landing/index',
   },
   usePageRoute: () => ({
     readString: () => 'public-token',
   }),
   useRouteTransition: () => ({
     navigate: mockNavigate,
+    reset: mockReset,
   }),
 }))
 
@@ -62,7 +75,9 @@ describe('share landing model', () => {
   beforeEach(() => {
     jest.useFakeTimers()
     mockNavigate.mockReset()
+    mockReset.mockReset()
     mockGetPublicLink.mockReset()
+    mockRestoreSession.mockReset()
   })
 
   afterEach(() => {
@@ -70,8 +85,9 @@ describe('share landing model', () => {
     jest.useRealTimers()
   })
 
-  test('reveals the CTA after the configured delay and preserves attribution', async () => {
+  test('reveals the CTA and sends signed-in users to the home page', async () => {
     mockGetPublicLink.mockResolvedValue(share)
+    mockRestoreSession.mockResolvedValue({accessToken: 'token'})
     const {result} = renderHook(() => usePageModel())
 
     await flushPromises()
@@ -87,14 +103,27 @@ describe('share landing model', () => {
     })
     expect(result.current.status).toBe('revealed')
 
-    act(() => {
-      result.current.handleExperience()
+    await act(async () => {
+      await result.current.handleExperience()
     })
-    expect(mockNavigate).toHaveBeenCalledWith('/pages/create/index', {
-      source: 'share_link',
-      shareId: 'share-1',
-      shareMode: 'job',
+    expect(mockRestoreSession).toHaveBeenCalledTimes(1)
+    expect(mockReset).toHaveBeenCalledWith('/pages/index/index')
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  test('sends signed-out users to the landing page', async () => {
+    mockGetPublicLink.mockResolvedValue(share)
+    mockRestoreSession.mockResolvedValue(null)
+    const {result} = renderHook(() => usePageModel())
+
+    await flushPromises()
+
+    await act(async () => {
+      await result.current.handleExperience()
     })
+    expect(mockRestoreSession).toHaveBeenCalledTimes(1)
+    expect(mockReset).toHaveBeenCalledWith('/pages/landing/index')
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 
   test('shows a retryable error for invalid shares', async () => {
