@@ -163,6 +163,11 @@ export const env = {
   PORT: parseInt(process.env.PORT || '3000', 10),
   HOST: process.env.HOST || '0.0.0.0',
 
+  // Public share links
+  PUBLIC_WEB_BASE_URL: process.env.PUBLIC_WEB_BASE_URL || 'http://localhost:4173',
+  SHARE_LINK_TTL_DAYS: parsePositiveInteger(process.env.SHARE_LINK_TTL_DAYS, 30),
+  SHARE_LINK_TOKEN_SECRET: process.env.SHARE_LINK_TOKEN_SECRET || 'local-only-share-link-token-secret',
+
   // CORS Configuration
   CORS_ORIGIN: parseCorsOrigin(process.env.CORS_ORIGIN, parseAppEnv(process.env.APP_ENV)),
 }
@@ -240,6 +245,22 @@ export function validateEnv() {
     if (!env.AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY) {
       console.warn('⚠️ AUTH_PASSWORD_ENCRYPTION_PRIVATE_KEY 未配置，当前实例将使用临时密钥；多实例部署前必须配置稳定私钥')
     }
+
+    if (
+      env.SHARE_LINK_TOKEN_SECRET === 'local-only-share-link-token-secret'
+      || env.SHARE_LINK_TOKEN_SECRET.length < 32
+    ) {
+      throw new Error('SHARE_LINK_TOKEN_SECRET must be a stable random secret with at least 32 characters')
+    }
+  }
+
+  try {
+    const publicWebBaseUrl = new URL(env.PUBLIC_WEB_BASE_URL)
+    if (!['http:', 'https:'].includes(publicWebBaseUrl.protocol)) {
+      throw new Error('unsupported protocol')
+    }
+  } catch {
+    throw new Error('PUBLIC_WEB_BASE_URL must be a valid HTTP(S) URL')
   }
 
   if (env.APP_ENV === 'prod') {
