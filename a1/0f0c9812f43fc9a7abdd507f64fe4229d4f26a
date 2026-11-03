@@ -1,0 +1,47 @@
+frontend/Taro/reffo-taro/src/utils/share/share-image-renderer.h5.ts
+  s_10900a1842dcc9::t_39b71bb5764a3c 16-33,57,70-72,76,84-85,165-175
+  s_10900a1842dcc9::t_27edd019b4975a 2,5,8,11-12,99,127,133-135,143,147-151,156,162,176,209
+  s_10900a1842dcc9::t_73365214d7f75b 9-10,13-15,93-98,100-101,103-109,112,114,116-124,129-130,132,136-142,144-146,152-155,157-161,163-164,177-178,194-197,201-203,205-208
+frontend/Taro/reffo-taro/src/pages/share-landing/ShareLandingCard.h5.tsx
+  s_10900a1842dcc9::t_208494f1d34fcf 1-9,11,15,18-51,53,58-62,67-74
+frontend/Taro/reffo-taro/src/pages/share-landing/index.h5.scss
+  s_10900a1842dcc9::t_ded54b967d440f 1,100-104,126,131-134,137-152,154-161,173,195
+  s_10900a1842dcc9::t_c20cf91ba2d53a 2-5,8,10-11,13-16,19-20,23,25-29,32,34,38,40,42-43,47-48,54-55,59,63,67-99,105,113-115,118,120-123
+frontend/Taro/reffo-taro/src/pages/share-landing/PageView.h5.tsx
+  s_10900a1842dcc9::t_0173cb7f178d1d 3-4,6-9,12-15,23-25,27-28,31-33,35-40,42-46,48-80,84-85,87-105,107-112,114-115,117,122,125,135-156,161,163-165
+  s_10900a1842dcc9::t_be10f3ae22edf3 1,81-82,86,118-121,123-124,126,129-134,157-160
+frontend/Taro/reffo-taro/src/pages/share-landing/__tests__/usePageModel.test.tsx
+  s_10900a1842dcc9::t_570534d81db926 5,7,15-22,26-27,34,78,80,88,90,106-107,109-122,124-126
+frontend/Taro/reffo-taro/src/pages/share-landing/usePageModel.ts
+  s_10900a1842dcc9::t_fdd5954ecd5cf9 3,15,126-129
+frontend/Taro/reffo-taro/src/pages/share/PageView.h5.tsx
+  s_10900a1842dcc9::t_b909fdbdb4fca2 1,12,17-27,50-58,61,63-83,86-94,101,107,111-112,118-119,123-132,134,138,144,149,151-174,178-179,183-184,186,190-195,208-212,220,227-229,231-239,244,277,288
+frontend/Taro/reffo-taro/src/pages/share/PhysicsBadge.h5.tsx
+  s_10900a1842dcc9::t_b52b70499b042b 8,17,26-27,31,120-121,151-177,180-181,189-190,192-197,207-212,216,223-230,246,275,279-310,416,500-507,539,569,573,580-596,665,672-673,1043,1056,1060-1061,1121,1158,1173,1178
+frontend/Taro/reffo-taro/src/pages/share/ShareBlankCard.h5.tsx
+  s_10900a1842dcc9::t_6b3913fe51fde9 3-13,17,19-20
+frontend/Taro/reffo-taro/src/pages/share/index.h5.scss
+  s_10900a1842dcc9::t_586c21cd5cff86 4-6,12-13,19,23-71,136-137,151-156,166-167,224-227,247,249,263-268,295,372-390,495-497,679-722
+frontend/Taro/reffo-taro/src/utils/share/__tests__/share-image-spec.test.ts
+  s_10900a1842dcc9::t_cca729a58f326a 3,5,40-42
+frontend/Taro/reffo-taro/src/utils/share/share-image-dom-renderer.h5.ts
+  s_10900a1842dcc9::t_d2b89b8b88774e 1-377
+frontend/Taro/reffo-taro/src/utils/share/share-image-spec.ts
+  s_10900a1842dcc9::t_c21201ee5d28d4 4-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a10f0c9812f43fc9a7abdd507f64fe4229d4f26a",
+  "prompts": {},
+  "sessions": {
+    "s_10900a1842dcc9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18ff1-09a4-73a3-a569-da5eee4268d0",
+        "model": "mimo-v2.6-pro-ultraspeed"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
