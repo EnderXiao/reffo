@@ -8,6 +8,7 @@ import {
   saveShareImage,
   shareOrCopyUrl,
 } from '@/utils/share/share-platform.h5'
+import {buildShareLandingUrl} from '@/utils/share/share-url.h5'
 
 interface UseShareActionOptions {
   historyId: string | null
@@ -39,7 +40,8 @@ export function useShareAction({historyId, mode}: UseShareActionOptions) {
     try {
       const createdLink = await createLink('image')
       const share = await shareApi.getPublicLink(createdLink.token)
-      const blob = await renderShareImage(share, createdLink.share_url)
+      const shareUrl = buildShareLandingUrl(createdLink.token)
+      const blob = await renderShareImage(share, shareUrl)
       const result = await saveShareImage(
         blob,
         buildShareImageFilename(share),
@@ -66,8 +68,9 @@ export function useShareAction({historyId, mode}: UseShareActionOptions) {
     setBusyChannel('link')
     try {
       const link = await createLink('link')
+      const shareUrl = buildShareLandingUrl(link.token)
       const result = await shareOrCopyUrl(
-        link.share_url,
+        shareUrl,
         '一个岗位，一份专门准备的简历',
         mode === 'job'
           ? '看看我用 Reffo 准备的新简历。'
@@ -76,7 +79,7 @@ export function useShareAction({historyId, mode}: UseShareActionOptions) {
       if (result === 'manual') {
         feedback.modal({
           title: '复制分享链接',
-          content: link.share_url,
+          content: shareUrl,
           confirmText: '知道了',
           showCancel: false,
         })
