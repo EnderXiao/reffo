@@ -1,53 +1,66 @@
 import Taro from '@tarojs/taro'
 import {Image, Text, View} from '@tarojs/components'
-import {useEffect, useMemo, useState} from 'react'
+import {useEffect, useState} from 'react'
+import BACK_ICON from '@/assets/common/refo-back.svg'
+import LOGOUT_ICON from '@/assets/profile/logout.svg'
 import {useAuthStore} from '@/store/authStore'
 import {useHistoryStore} from '@/store/historyStore'
 import {useSourceResumeStore} from '@/store/sourceResumeStore'
-import {clearBusinessCache} from '@/utils/storage'
 import {profileApi, type ResumeQuota} from '@/services/profile'
 import {feedback} from '@/utils/feedback'
-import {resolveUserAvatar} from '@/utils/generated-avatar'
 import {routePaths, useRouteTransition} from '@/shared/routing'
-import {appVersion} from '@/config/version'
+import ProfileAvatar from './components/ProfileAvatar'
 import './index.scss'
 
-const GITHUB_URL = 'https://github.com/EnderXiao/reffo'
+const MOCK_SESSION = {
+  accessToken: 'mock-token',
+  user: {id: 'mock-user', email: 'haishaoyan2020@163.com'},
+}
+const MOCK_QUOTA: ResumeQuota = {unlimited: false, limit: 3, used: 1, remaining: 2}
 
 interface SettingsRowProps {
   label: string
-  value?: string
-  danger?: boolean
   onClick: () => void
 }
 
-function SettingsRow({label, value, danger, onClick}: SettingsRowProps) {
+function SettingsRow({label, onClick}: SettingsRowProps) {
   return (
-    <View className={`reffo-profile__row${danger ? ' reffo-profile__row--danger' : ''}`} onClick={onClick}>
+    <View className='reffo-profile__row' onClick={onClick}>
       <Text>{label}</Text>
-      <View className='reffo-profile__row-tail'>
-        {value ? <Text className='reffo-profile__row-value'>{value}</Text> : null}
-        <Text className='reffo-profile__chevron'>›</Text>
-      </View>
+      <Text className='reffo-profile__chevron'>›</Text>
+    </View>
+  )
+}
+
+function QuotaValue({quota}: {quota: ResumeQuota | null}) {
+  if (quota?.unlimited) return <Text className='reffo-profile__stat-value reffo-profile__stat-value--text'>不限</Text>
+  return (
+    <View className='reffo-profile__stat-value-line'>
+      <Text className='reffo-profile__stat-value'>{quota?.remaining ?? '—'}</Text>
+      <Text className='reffo-profile__stat-unit'>次</Text>
     </View>
   )
 }
 
 export default function ProfilePage() {
   const route = useRouteTransition()
-  const session = useAuthStore(state => state.session)
+  const authSession = useAuthStore(state => state.session)
   const authInitialized = useAuthStore(state => state.initialized)
   const profile = useAuthStore(state => state.profile)
   const loadProfile = useAuthStore(state => state.loadProfile)
   const signOut = useAuthStore(state => state.signOut)
-  const historyCount = useHistoryStore(state => state.historySummaries.length)
-  const latestSourceResumeSummary = useSourceResumeStore(state => state.latestSourceResumeSummary)
+  const storedHistoryCount = useHistoryStore(state => state.historySummaries.length)
   const loadHistorySummaries = useHistoryStore(state => state.loadHistorySummaries)
+  const latestSourceResumeSummary = useSourceResumeStore(state => state.latestSourceResumeSummary)
   const loadLatestSourceSummary = useSourceResumeStore(state => state.loadLatestSourceSummary)
-  const [busy, setBusy] = useState(false)
-  const [quota, setQuota] = useState<ResumeQuota | null>(null)
+  const isMockMode = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && window.location.href.includes('mock=1')
+  const session = isMockMode ? MOCK_SESSION : authSession
+  const historyCount = isMockMode ? 5 : storedHistoryCount
+  const [quota, setQuota] = useState<ResumeQuota | null>(isMockMode ? MOCK_QUOTA : null)
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
+    if (isMockMode) return
     if (!authInitialized) return
     if (!session) {
       void route.replace(routePaths.auth)
@@ -57,106 +70,86 @@ export default function ProfilePage() {
     void loadHistorySummaries({skipIfLoaded: true})
     void loadLatestSourceSummary({skipIfLoaded: true})
     void profileApi.getQuota().then(setQuota).catch(() => setQuota(null))
-  }, [authInitialized, loadHistorySummaries, loadLatestSourceSummary, loadProfile, profile, route, session])
-
-  const displayName = useMemo(() => profile?.displayName || session?.user.email?.split('@')[0] || 'Reffo 用户', [profile?.displayName, session?.user.email])
-
-  const handleClearCache = async () => {
-    const modal = await Taro.showModal({
-      title: '清除本机缓存',
-      content: '将清除本机页面缓存和历史快照，保留登录态与首次引导状态。',
-      confirmText: '清除',
-      cancelText: '取消',
-    })
-    if (!modal.confirm || busy) return
-    setBusy(true)
-    try {
-      const count = await clearBusinessCache()
-      feedback.success(`已清除 ${count} 项本机缓存`)
-    } catch (error) {
-      feedback.error(error instanceof Error ? error.message : '清除缓存失败')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleDeleteHistories = async () => {
-    const modal = await Taro.showModal({
-      title: '删除简历数据',
-      content: '仅删除已生成的简历和历史结果，源简历不会被删除。此操作不可恢复。',
-      confirmText: '删除',
-      cancelText: '取消',
-    })
-    if (!modal.confirm || busy) return
-    setBusy(true)
-    try {
-      await useHistoryStore.getState().clearHistories()
-      feedback.success('已删除生成简历数据')
-    } catch (error) {
-      feedback.error(error instanceof Error ? error.message : '删除简历数据失败')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleGithub = () => {
-    if (typeof window !== 'undefined' && typeof window.open === 'function') {
-      window.open(GITHUB_URL, '_blank', 'noopener,noreferrer')
-      return
-    }
-    void Taro.setClipboardData({data: GITHUB_URL})
-    feedback.success('GitHub 链接已复制')
-  }
+  }, [authInitialized, isMockMode, loadHistorySummaries, loadLatestSourceSummary, loadProfile, profile, route, session])
 
   const handleSignOut = async () => {
-    if (busy) return
-    setBusy(true)
+    if (signingOut) return
+    setSigningOut(true)
     try {
       await signOut()
       feedback.success('已退出登录', {duration: 1000})
       void route.reset(routePaths.home)
     } finally {
-      setBusy(false)
+      setSigningOut(false)
     }
   }
 
-  if (!authInitialized || !session) return null
+  const openContent = (view: 'account' | 'data' | 'privacy' | 'terms' | 'github' | 'version') => {
+    void route.navigate(routePaths.profileContent, isMockMode ? {view, mock: '1'} : {view})
+  }
+
+  if (!session || (!isMockMode && !authInitialized)) return null
 
   return (
     <View className='reffo-profile'>
       <View className='reffo-profile__topbar'>
-        <View className='reffo-profile__back' onClick={() => void route.back()} aria-label='返回'>‹</View>
-        <Text className='reffo-profile__heading'>个人资料</Text>
-        <View className='reffo-profile__topbar-spacer' />
+        <View className='reffo-profile__back' onClick={() => void route.back()} aria-label='返回'>
+          <Image className='reffo-profile__back-icon' src={BACK_ICON} mode='aspectFit' />
+        </View>
       </View>
       <View className='reffo-profile__content'>
-        <View className='reffo-profile__account-card' onClick={() => void route.navigate(routePaths.profileContent, {view: 'account'})}>
-          <Image src={resolveUserAvatar(session.user.id, profile?.avatarUrl)} className='reffo-profile__avatar' mode='aspectFill' />
-          <View className='reffo-profile__account-copy'>
-            <Text className='reffo-profile__account-name'>{displayName}</Text>
-            <Text className='reffo-profile__account-email'>{session.user.email || '未设置邮箱'}</Text>
+        <Text className='reffo-profile__title'>设置</Text>
+
+        <View className='reffo-profile__user'>
+          <ProfileAvatar email={session.user.email || ''} />
+          <Text className='reffo-profile__email'>{session.user.email || '未设置邮箱'}</Text>
+        </View>
+
+        <View className='reffo-profile__stats'>
+          <View className='reffo-profile__stat'>
+            <View className='reffo-profile__stat-value-line'>
+              <Text className='reffo-profile__stat-value'>{isMockMode || latestSourceResumeSummary ? 1 : 0}</Text>
+              <Text className='reffo-profile__stat-unit'>份</Text>
+            </View>
+            <Text className='reffo-profile__stat-label'>源简历</Text>
           </View>
-          <Text className='reffo-profile__chevron'>›</Text>
+          <View className='reffo-profile__stat'>
+            <View className='reffo-profile__stat-value-line'>
+              <Text className='reffo-profile__stat-value'>{historyCount}</Text>
+              <Text className='reffo-profile__stat-unit'>份</Text>
+              <Text className='reffo-profile__stat-star'>*</Text>
+            </View>
+            <Text className='reffo-profile__stat-label'>相契简历</Text>
+          </View>
+          <View className='reffo-profile__stat'>
+            <QuotaValue quota={quota} />
+            <Text className='reffo-profile__stat-label'>剩余可用</Text>
+          </View>
         </View>
-        <Text className='reffo-profile__section-title'>账户</Text>
+
         <View className='reffo-profile__group'>
-          <SettingsRow label='账号详情' onClick={() => void route.navigate(routePaths.profileContent, {view: 'account'})} />
-          <SettingsRow label='我的数据' value={`${historyCount} 份生成简历`} onClick={() => void route.navigate(routePaths.profileContent, {view: 'data'})} />
-          <SettingsRow label='今日生成次数' value={quota?.unlimited ? '不限' : quota ? `${quota.remaining}/${quota.limit}` : '加载中'} onClick={() => undefined} />
+          <SettingsRow label='账号详情' onClick={() => openContent('account')} />
         </View>
-        <Text className='reffo-profile__section-title'>关于 Reffo</Text>
+
+        <Text className='reffo-profile__section-title'>隐私与数据</Text>
         <View className='reffo-profile__group'>
-          <SettingsRow label='隐私政策' onClick={() => void route.navigate(routePaths.profileContent, {view: 'privacy'})} />
-          <SettingsRow label='用户协议' onClick={() => void route.navigate(routePaths.profileContent, {view: 'terms'})} />
-          <SettingsRow label='GitHub 项目' onClick={handleGithub} />
-          <SettingsRow label='版本信息' value={appVersion} onClick={() => void route.navigate(routePaths.profileContent, {view: 'version'})} />
+          <SettingsRow label='我的数据' onClick={() => openContent('data')} />
         </View>
-        <Text className='reffo-profile__section-title'>数据管理</Text>
+
+        <Text className='reffo-profile__section-title'>帮助与关于</Text>
         <View className='reffo-profile__group'>
-          <SettingsRow label='清除本机缓存' value={busy ? '处理中…' : undefined} onClick={() => void handleClearCache()} />
-          <SettingsRow label='删除简历数据' value={latestSourceResumeSummary ? '源简历保留' : undefined} danger onClick={() => void handleDeleteHistories()} />
+          <SettingsRow label='隐私政策' onClick={() => openContent('privacy')} />
+          <SettingsRow label='用户协议' onClick={() => openContent('terms')} />
+          <SettingsRow label='GitHub' onClick={() => openContent('github')} />
+          <SettingsRow label='版本信息' onClick={() => openContent('version')} />
         </View>
-        <View className='reffo-profile__logout' onClick={() => void handleSignOut()}>退出登录</View>
+
+        <View className='reffo-profile__group reffo-profile__group--logout'>
+          <View className='reffo-profile__row reffo-profile__row--logout' onClick={() => void handleSignOut()}>
+            <Text>{signingOut ? '退出中…' : '退出登录'}</Text>
+            <Image className='reffo-profile__logout-icon' src={LOGOUT_ICON} mode='aspectFit' />
+          </View>
+        </View>
       </View>
     </View>
   )

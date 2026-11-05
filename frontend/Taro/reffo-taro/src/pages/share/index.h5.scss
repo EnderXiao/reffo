@@ -50,7 +50,7 @@
 
 .share-page__mode-backdrop {
   position: absolute;
-  z-index: 0;
+  z-index: -3;
   inset: 0;
   opacity: 0;
   transition: opacity 640ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -71,7 +71,7 @@
 
 .share-page__atmosphere {
   position: absolute;
-  z-index: 0;
+  z-index: -2;
   top: -12%;
   left: -18%;
   width: 136%;
@@ -86,7 +86,7 @@
   position: absolute;
   top: calc(18px + env(safe-area-inset-top, 0px));
   left: 22px;
-  z-index: 30;
+  z-index: 300;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -97,13 +97,17 @@
   color: #34424a;
   background: rgba(255, 255, 255, 0.58);
   backdrop-filter: blur(12PX);
-  font-size: 30px;
-  line-height: 30px;
+}
+
+.share-page__back-icon {
+  display: block;
+  width: 9px;
+  height: 14px;
 }
 
 .share-page__watermark {
   position: absolute;
-  z-index: 0;
+  z-index: -1;
   top: calc(5px + env(safe-area-inset-top, 0px));
   left: 5px;
   width: calc(100% - 10px);
@@ -127,7 +131,7 @@
 
 .share-page__content-shell {
   position: relative;
-  z-index: 40;
+  z-index: 200;
   display: grid;
   grid-template-rows: 60dvh auto;
   align-items: center;
@@ -143,7 +147,7 @@
   position: absolute;
   top: 150px;
   left: 50%;
-  z-index: 1;
+  z-index: 200;
   width: min(100%, 520px);
   height: 350px;
   transform: translateX(-50%);
