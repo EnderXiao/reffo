@@ -347,19 +347,42 @@ export async function getAllKeys(): Promise<string[]> {
   }
 }
 
+function getBusinessCacheKeys(keys: string[]) {
+  const landingSeenKey = 'reffo.landing.seen'
+  return keys.filter(key => (
+    key !== landingSeenKey && !key.startsWith('reffo.auth.session.')
+  ))
+}
+
+function getUtf8ByteLength(value: string) {
+  return Array.from(value).reduce((bytes, character) => {
+    const codePoint = character.codePointAt(0) || 0
+    if (codePoint <= 0x7f) return bytes + 1
+    if (codePoint <= 0x7ff) return bytes + 2
+    if (codePoint <= 0xffff) return bytes + 3
+    return bytes + 4
+  }, 0)
+}
+
 /**
  * 清理业务缓存，保留引导完成标志和登录会话。
  * 登录态不是业务缓存，清理缓存不应意外退出当前账号。
  */
 export async function clearBusinessCache(): Promise<number> {
-  const landingSeenKey = 'reffo.landing.seen'
   const keys = await getAllKeys()
-  const cacheKeys = keys.filter(key => (
-    key !== landingSeenKey && !key.startsWith('reffo.auth.session.')
-  ))
+  const cacheKeys = getBusinessCacheKeys(keys)
 
   await Promise.all(cacheKeys.map(key => storage.removeItem(key)))
   return cacheKeys.length
+}
+
+export async function getBusinessCacheSize(): Promise<number> {
+  const keys = await getAllKeys()
+  const cacheKeys = getBusinessCacheKeys(keys)
+  const values = await Promise.all(cacheKeys.map(key => storage.getItem(key)))
+  return cacheKeys.reduce((bytes, key, index) => (
+    bytes + getUtf8ByteLength(key) + getUtf8ByteLength(values[index] || '')
+  ), 0)
 }
 
 /**

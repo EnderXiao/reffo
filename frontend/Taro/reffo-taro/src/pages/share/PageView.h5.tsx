@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useRef, useState, type ComponentType} from 'react'
 import {Image, Text, View} from '@tarojs/components'
+import BACK_ICON from '@/assets/common/refo-back.svg'
 import DOWN_ARROW_ICON from '@/assets/share/down_arrow.svg'
 import SHARE_ICON from '@/assets/share/share.svg'
 import HomeScoreCard from '@/components/business/HomeCardDeck/HomeScoreCard.h5'
@@ -184,7 +185,7 @@ export default function PageView({
       <View className={`share-page__mode-backdrop share-page__mode-backdrop--blank ${mode === 'blank' ? 'is-active' : ''}`} aria-hidden='true' />
       <View className='share-page__atmosphere' aria-hidden='true' />
       <View className='share-page__back' data-share-no-swipe='true' onClick={handleBack}>
-        <Text>‹</Text>
+        <Image className='share-page__back-icon' src={BACK_ICON} mode='aspectFit' />
       </View>
       <Text className='share-page__watermark'>新工牌</Text>
       <View className='share-page__side-stage' data-share-card-surface='true' aria-hidden='true'>

@@ -6,3 +6,4 @@ export const appVersion = rawVersion && /^v?\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$/
   : 'V1.0.0'
 
 export const appReleaseNotes = rawDescription?.trim() || '首次公开版本'
+export const appReleaseDate = '2026年8月31日'

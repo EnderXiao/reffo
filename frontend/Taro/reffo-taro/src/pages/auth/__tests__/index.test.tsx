@@ -123,6 +123,15 @@ describe('AuthPage', () => {
     })
   })
 
+  test('暂时隐藏第三方账号登录入口', () => {
+    render(<AuthPage />)
+
+    expect(screen.queryByText('或使用其他账号')).toBeNull()
+    expect(screen.queryByRole('button', {name: '使用 GitHub 登录'})).toBeNull()
+    expect(screen.queryByRole('button', {name: '使用 Google 登录'})).toBeNull()
+    expect(screen.queryByRole('button', {name: '使用 Apple 登录'})).toBeNull()
+  })
+
   test('only offers registration after login email is not found', async () => {
     render(<AuthPage />)
 
@@ -145,7 +154,7 @@ describe('AuthPage', () => {
     })
 
     expect(screen.getByText('初次见面')).not.toBeNull()
-    expect(screen.getByText('返回')).not.toBeNull()
+    expect(screen.getByRole('button', {name: '返回'})).not.toBeNull()
     expect(screen.getByDisplayValue('user@example.com')).not.toBeNull()
     expect(screen.getByDisplayValue('password123')).not.toBeNull()
     expect((screen.getByPlaceholderText('再次输入密码') as HTMLInputElement).value).toBe('')
