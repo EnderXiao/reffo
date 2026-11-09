@@ -8,6 +8,8 @@ export default {
     'pages/result/index',
     'pages/landing-result/index',
     'pages/complete/index',
+    'pages/share/index',
+    'pages/share-landing/index',
     'pages/auth/index',
     'pages/profile/index',
     'pages/profile/content',

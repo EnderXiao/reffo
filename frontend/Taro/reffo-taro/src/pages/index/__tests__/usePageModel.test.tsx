@@ -402,6 +402,34 @@ describe('usePageModel', () => {
     expect(latestCardPressResult).toBeInstanceOf(Promise)
   })
 
+  test('未读任务历史摘要未加载时仍可打开结果页', () => {
+    setGenerationTaskState([{
+      id: 'task-unread-1',
+      status: 'completed',
+      stage: 'saving',
+      background: true,
+      read_at: null,
+      confirmed_at: null,
+      history_id: 'JD2026102500001',
+      company: '小米',
+      position: '软件研发工程师',
+      location: '武汉',
+      score: 64,
+      error: null,
+      created_at: '2026-10-25T12:00:00.000Z',
+      updated_at: '2026-10-25T12:00:00.000Z',
+    }])
+
+    render(<HookProbe />)
+
+    fireEvent.click(screen.getByRole('button', {name: 'open-card'}))
+
+    expect(Taro.navigateTo).toHaveBeenCalledWith({
+      url: '/pages/result/index?id=JD2026102500001&fromCard=1&jobId=task-unread-1',
+    })
+    expect(latestCardPressResult).toBeInstanceOf(Promise)
+  })
+
   test('从结果页返回首页时直接展示原卡片策略文案', () => {
     const histories: ResumeHistory[] = [
       {

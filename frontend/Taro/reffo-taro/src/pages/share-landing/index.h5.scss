@@ -1,0 +1,225 @@
+.share-landing__copy {
+  height: calc(40dvh - 12px);
+  max-height: calc(40dvh - 12px);
+  min-height: 0;
+  margin-top: 2px;
+}
+
+.share-landing__copy-content {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  padding-bottom: 24px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.share-landing__copy-content::-webkit-scrollbar {
+  display: none;
+}
+
+.share-landing__teaser-title {
+  display: block;
+  color: var(--share-accent);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 34px;
+  text-align: center;
+}
+
+.share-landing__teaser {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 420ms ease,
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.share-landing__teaser.is-visible,
+.share-landing__revealed.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.share-landing__teaser-title + .share-landing__teaser-title {
+  margin-top: 5px;
+}
+
+.share-landing__teaser-hint {
+  margin-top: 5px;
+  color: #737a80;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.share-landing__revealed {
+  --share-content-fade-top: 0px;
+  --share-content-fade-bottom: 24px;
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 420ms ease,
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000000 var(--share-content-fade-top),
+    #000000 calc(100% - var(--share-content-fade-bottom)),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000000 var(--share-content-fade-top),
+    #000000 calc(100% - var(--share-content-fade-bottom)),
+    transparent 100%
+  );
+}
+
+.share-landing__revealed::-webkit-scrollbar {
+  display: none;
+}
+
+.share-landing__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.share-landing__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  height: auto;
+  padding: 11px 35px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: linear-gradient(90deg, var(--share-accent) 0%, #ffffff 100%);
+  box-shadow: 0 12PX 26PX rgba(20, 201, 114, 0.28);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 750;
+  text-shadow: 0 1PX 2PX rgba(24, 63, 43, 0.12);
+}
+
+.share-page--blank .share-landing__cta {
+  box-shadow: 0 12PX 26PX rgba(22, 119, 255, 0.28);
+}
+
+.share-landing__cta-spark {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.share-landing__cta-spark-main,
+.share-landing__cta-spark-small {
+  position: absolute;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.share-landing__cta-spark-main {
+  top: 1px;
+  left: 1px;
+  font-size: 17px;
+}
+
+.share-landing__cta-spark-small {
+  top: 0;
+  right: 0;
+  font-size: 8px;
+  opacity: 0.86;
+}
+
+.share-landing__reward-note {
+  color: #8d8d8d;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: right;
+}
+
+.share-landing__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.share-landing__loading-line {
+  height: 13px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--share-accent-soft, #bdeed0) 62%, white);
+}
+
+.share-landing__loading-line--wide {
+  width: 68%;
+  margin-top: 40px;
+}
+
+.share-landing__loading-line--short {
+  width: 43%;
+  margin-top: 15px;
+}
+
+.share-landing__loading-copy {
+  margin-top: 22px;
+  color: #8c959c;
+  font-size: 12px;
+}
+
+.share-landing__error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.share-landing__error-title {
+  color: #4c555e;
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 25px;
+}
+
+.share-landing__retry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 112px;
+  height: 40px;
+  margin-top: 22px;
+  border-radius: 999px;
+  color: var(--share-accent);
+  background: #ffffff;
+  box-shadow: 0 8PX 20PX rgba(31, 55, 74, 0.12);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-landing__teaser,
+  .share-landing__revealed {
+    transition: none;
+  }
+}

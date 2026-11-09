@@ -1,6 +1,7 @@
 import {PropsWithChildren, ReactNode} from 'react'
-import {Text, View} from '@tarojs/components'
+import {Image, Text, View} from '@tarojs/components'
 import {StatusBar, StyleProp, StyleSheet, ViewStyle} from 'react-native'
+import BACK_ICON from '@/assets/common/refo-back.svg'
 import {getStatusBarHeight} from '@/utils'
 import {navigation} from '@/utils/navigation'
 
@@ -68,10 +69,8 @@ const styles = StyleSheet.create({
     borderColor: '#dbe4ee',
   },
   backIcon: {
-    color: '#111827',
-    fontSize: 20,
-    lineHeight: 20,
-    fontWeight: '700',
+    width: 9,
+    height: 14,
   },
   body: {
     flex: 1,
@@ -125,7 +124,7 @@ export default function AppPageShell({
           <View style={styles.side as any}>
             {showBack ? (
               <View style={styles.backButton as any} onClick={handleBack}>
-                <Text style={styles.backIcon as any}>←</Text>
+                <Image style={styles.backIcon as any} src={BACK_ICON} mode='aspectFit' />
               </View>
             ) : null}
           </View>

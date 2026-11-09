@@ -10,7 +10,14 @@ import './app.scss'
 
 const LANDING_SEEN_STORAGE_KEY = 'reffo.landing.seen'
 
+function isProfileMockUrl() {
+  return process.env.NODE_ENV === 'development'
+    && typeof window !== 'undefined'
+    && window.location.href.includes('mock=1')
+}
+
 async function guardLandingEntry() {
+  if (isProfileMockUrl()) return
   const pages = Taro.getCurrentPages()
   if (pages.length === 0) return
   const route = pages[pages.length - 1]?.route || ''
@@ -26,7 +33,7 @@ class App extends Component<PropsWithChildren> {
   componentDidMount() {
     initializeNavigationTransitions()
     void guardLandingEntry()
-    void bootstrapHomeData()
+    if (!isProfileMockUrl()) void bootstrapHomeData()
     this.unsubscribeAuth = useAuthStore.subscribe((state, previous) => {
       const userId = state.session?.user.id
       const previousUserId = previous.session?.user.id

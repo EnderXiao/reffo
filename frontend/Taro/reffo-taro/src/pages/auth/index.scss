@@ -77,6 +77,12 @@ taro-page-core:has(.reffo-auth)::-webkit-scrollbar,
   cursor: pointer;
 }
 
+.reffo-auth__back-icon {
+  display: block;
+  width: 9px;
+  height: 14px;
+}
+
 .reffo-auth__back:active,
 .reffo-auth__oauth:active,
 .reffo-auth__primary:active {

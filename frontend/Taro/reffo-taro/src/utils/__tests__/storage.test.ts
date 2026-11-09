@@ -9,6 +9,7 @@ import {
   getAllKeys,
   getStorageInfo,
   clearBusinessCache,
+  getBusinessCacheSize,
 } from '../storage';
 
 // Mock Taro API
@@ -133,6 +134,21 @@ describe('clearBusinessCache', () => {
     expect(Taro.removeStorage).toHaveBeenCalledWith({key: 'reffo.visualTier'});
     expect(Taro.removeStorage).not.toHaveBeenCalledWith({key: 'reffo.landing.seen'});
     expect(Taro.removeStorage).not.toHaveBeenCalledWith({key: 'reffo.auth.session.local'});
+  });
+});
+
+describe('getBusinessCacheSize', () => {
+  test('只统计业务缓存的键和值占用', async () => {
+    (Taro.getStorageInfo as jest.Mock).mockResolvedValue({
+      keys: ['reffo.landing.seen', 'reffo.auth.session.local', 'resume_histories'],
+    });
+    (Taro.getStorage as jest.Mock).mockImplementation(({key}: {key: string}) => Promise.resolve({
+      data: key === 'resume_histories' ? '数据' : 'ignored',
+    }));
+
+    await expect(getBusinessCacheSize()).resolves.toBe(
+      'resume_histories'.length + '数据'.length * 3,
+    );
   });
 });
 

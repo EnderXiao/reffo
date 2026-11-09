@@ -18,6 +18,7 @@ import {
 } from '@/utils/result-session'
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
+import {markCompleteInitialEntry} from '@/utils/navigation-transition'
 import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import {savePendingLandingHistory} from '@/utils/pending-landing-data'
 import {useAuthStore} from '@/store/authStore'
@@ -662,6 +663,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
         workspaceGenerationRunRef.current = null
       }
+      markCompleteInitialEntry()
       await route.navigate(appendRouteParams(routePaths.complete, {historyId}))
     } catch (error) {
       feedback.error(error instanceof Error ? error.message : '完成失败，请重试')

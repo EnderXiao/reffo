@@ -6,6 +6,8 @@ export const routePaths = {
   landingResult: '/pages/landing-result/index',
   result: '/pages/result/index',
   complete: '/pages/complete/index',
+  share: '/pages/share/index',
+  shareLanding: '/pages/share-landing/index',
   auth: '/pages/auth/index',
   profile: '/pages/profile/index',
   profileContent: '/pages/profile/content',

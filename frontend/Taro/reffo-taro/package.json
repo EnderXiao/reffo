@@ -42,6 +42,7 @@
     "@tarojs/shared": "4.1.9",
     "@tarojs/taro": "4.1.9",
     "classnames": "^2.5.1",
+    "qrcode-generator": "1.4.4",
     "react": "^18",
     "react-dom": "^18.2.0",
     "three": "^0.185.0",

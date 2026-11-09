@@ -9,6 +9,7 @@ export interface HomeCardItem {
   unread?: boolean
   queueCardKind?: 'resume' | 'upload'
   company: string
+  personName?: string
   indexLabel: string
   location: string
   role: string

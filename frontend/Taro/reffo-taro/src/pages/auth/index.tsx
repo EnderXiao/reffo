@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from 'react'
 import Taro from '@tarojs/taro'
 import {Image, Input, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
-import githubIcon from '@/assets/home/github.svg'
+import BACK_ICON from '@/assets/common/refo-back.svg'
 import {CardGlass, CardTexture} from '@/components/business/HomeCardDeck/CardMaterial.h5'
 import ReffoGlyph from '@/components/business/HomeCardDeck/ReffoGlyph.h5'
 import {type EmailOtpConfig, type OAuthProvider} from '@/services/auth'
@@ -542,22 +542,6 @@ export default function AuthPage() {
       >
         <Text>{loading ? '正在登录...' : '登录'}</Text>
       </View>
-      <View className='reffo-auth__oauth-divider'>
-        <View className='reffo-auth__oauth-divider-line' />
-        <Text>或使用其他账号</Text>
-        <View className='reffo-auth__oauth-divider-line' />
-      </View>
-      <View className='reffo-auth__oauth-list'>
-        <View className='reffo-auth__oauth' role='button' aria-label='使用 GitHub 登录' onClick={() => void handleOAuth('github')}>
-          <Image src={githubIcon} className='reffo-auth__oauth-image' mode='aspectFit' />
-        </View>
-        <View className='reffo-auth__oauth reffo-auth__oauth--google' role='button' aria-label='使用 Google 登录' onClick={() => void handleOAuth('google')}>
-          <Text>G</Text>
-        </View>
-        <View className='reffo-auth__oauth reffo-auth__oauth--apple' role='button' aria-label='使用 Apple 登录' onClick={() => void handleOAuth('apple')}>
-          <Text>A</Text>
-        </View>
-      </View>
     </View>
   )
 
@@ -691,7 +675,7 @@ export default function AuthPage() {
       />
       <View className='reffo-auth__wash' aria-hidden='true' />
       <View className='reffo-auth__back' role='button' aria-label='返回' onClick={handleBack}>
-        <Text>返回</Text>
+        <Image className='reffo-auth__back-icon' src={BACK_ICON} mode='aspectFit' />
       </View>
 
       <View className='reffo-auth__brand'>

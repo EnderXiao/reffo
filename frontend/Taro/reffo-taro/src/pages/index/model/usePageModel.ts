@@ -413,7 +413,9 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
     }
 
     const targetHistoryId = card.historyId || card.id
-    if (!historySummaries.some(summary => summary.id === targetHistoryId)) {
+    const hasResolvedHistory = historySummaries.some(summary => summary.id === targetHistoryId)
+    const canLoadCompletedTaskHistory = card.generationStatus === 'completed' && Boolean(card.historyId)
+    if (!hasResolvedHistory && !canLoadCompletedTaskHistory) {
       return Promise.resolve()
     }
 
