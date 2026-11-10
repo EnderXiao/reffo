@@ -1,0 +1,19 @@
+backend/src/services/generation-jobs.test.ts
+  s_4cb15deaca5902::t_d6bd737eff1708 1-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a898ec2b19a59c00fabc13fa74b126595b07a3ed",
+  "prompts": {},
+  "sessions": {
+    "s_4cb15deaca5902": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1bf24-9ead-7cf0-868e-5246ecb4f514",
+        "model": "mimo-v2.6-pro-ultraspeed"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
