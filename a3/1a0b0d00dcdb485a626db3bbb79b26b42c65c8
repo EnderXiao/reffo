@@ -1,0 +1,21 @@
+backend/src/providers/deepseek-provider.test.ts
+  s_4cb15deaca5902::t_c9ac1595b650af 147
+backend/src/v5/stage-runtime.ts
+  s_4cb15deaca5902::t_c1fe6f301c6683 3,10,21,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a31a0b0d00dcdb485a626db3bbb79b26b42c65c8",
+  "prompts": {},
+  "sessions": {
+    "s_4cb15deaca5902": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1bf24-9ead-7cf0-868e-5246ecb4f514",
+        "model": "mimo-v2.6-pro-ultraspeed"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
