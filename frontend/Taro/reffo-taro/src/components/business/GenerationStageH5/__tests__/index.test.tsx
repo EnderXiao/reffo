@@ -1,4 +1,5 @@
-import {fireEvent, render, screen} from '@testing-library/react'
+import {act, fireEvent, render, screen} from '@testing-library/react'
+import {GENERATION_PRESENTATION_STEP_DURATION_MS} from '@/pages/create/constants/generationPresentation'
 import GenerationStageH5 from '../index'
 
 jest.mock('@/components/business/HomeCardDeck/HomeScoreCard.h5', () => ({
@@ -17,6 +18,7 @@ describe('GenerationStageH5', () => {
     positionName: '前端工程师',
     baseLocation: '上海',
     monogram: '我',
+    phase: 'analyzing' as const,
   }
 
   test('只接收展示状态并渲染生成态内容', () => {
@@ -26,6 +28,7 @@ describe('GenerationStageH5', () => {
     expect(screen.getByTestId('generation-card')).toBeTruthy()
     expect(screen.getByText('正在为你的目标岗位量身定做相契简历……')).toBeTruthy()
     expect(screen.getAllByText('我的简历')).toHaveLength(1)
+    expect(screen.getByTestId('generation-title-reel-track').getAttribute('data-reel-count')).toBe('4')
   })
 
   test('标题轮播去重相同文案', () => {
@@ -43,6 +46,53 @@ describe('GenerationStageH5', () => {
     )
 
     expect(screen.getAllByText('web 前端')).toHaveLength(1)
+  })
+
+  test('标题轮播运行时不产生反向复位状态', () => {
+    jest.useFakeTimers()
+    try {
+      render(<GenerationStageH5 state={state} onCancelGeneration={jest.fn()} />)
+      const track = screen.getByTestId('generation-title-reel-track')
+
+      act(() => { jest.advanceTimersByTime(2400 * 4) })
+      expect(track.className).toBe('reffo-create-generation__title-reel-track')
+
+      act(() => { jest.advanceTimersByTime(2400) })
+      expect(track.className).toBe('reffo-create-generation__title-reel-track')
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  test('loading 三阶段独立依次激活并完整播放', () => {
+    jest.useFakeTimers()
+    try {
+      const onPresentationComplete = jest.fn()
+      render(
+        <GenerationStageH5
+          state={{...state, phase: 'generating'}}
+          onCancelGeneration={jest.fn()}
+          onPresentationComplete={onPresentationComplete}
+        />,
+      )
+
+      expect(screen.getByTestId('generation-presentation-analyzing').getAttribute('data-status')).toBe('active')
+      expect(screen.getByTestId('generation-presentation-matching').getAttribute('data-status')).toBe('pending')
+
+      act(() => { jest.advanceTimersByTime(GENERATION_PRESENTATION_STEP_DURATION_MS) })
+      expect(screen.getByTestId('generation-presentation-analyzing').getAttribute('data-status')).toBe('done')
+      expect(screen.getByTestId('generation-presentation-matching').getAttribute('data-status')).toBe('active')
+
+      act(() => { jest.advanceTimersByTime(GENERATION_PRESENTATION_STEP_DURATION_MS) })
+      expect(screen.getByTestId('generation-presentation-matching').getAttribute('data-status')).toBe('done')
+      expect(screen.getByTestId('generation-presentation-generating').getAttribute('data-status')).toBe('active')
+      expect(onPresentationComplete).not.toHaveBeenCalled()
+
+      act(() => { jest.advanceTimersByTime(GENERATION_PRESENTATION_STEP_DURATION_MS) })
+      expect(onPresentationComplete).toHaveBeenCalledTimes(1)
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   test('通过 header 插槽承载页面私有头部', () => {

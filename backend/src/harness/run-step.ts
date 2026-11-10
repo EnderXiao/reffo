@@ -58,7 +58,7 @@ function toErrorCode(error: unknown) {
 export async function runStep<TResult>(input: RunStepInput<TResult>): Promise<RunStepResult<TResult>> {
   const eventBus = input.eventBus ?? createHarnessEventBus()
   const controller = new AbortController()
-  const stepContext = createStepExecutionContext(input.runContext, input.stepName, 1, controller.signal)
+  const stepContext = createStepExecutionContext(input.runContext, input.stepName, controller.signal)
   const { stepRunId, attemptId } = stepContext
   const startedAt = new Date().toISOString()
   const stepBase = {

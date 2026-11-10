@@ -11,7 +11,7 @@ import { isLandingPresetJobId, resolveLandingPresetJob } from '@/config/landing-
 import { ResumeOptimizationWorkflow } from '@/workflows/resume-optimization-workflow'
 import { V5CheckpointError } from '@/repositories/v5-checkpoint-repository'
 import { getV5AnalysisCacheHealth } from '@/repositories/v5-analysis-cache-repository'
-import { v5SingleStepAdapter, type SingleStepCacheMetadata } from '@/v5/single-step-adapter'
+import { v5SingleStepAdapter, V5SessionBudgetError, type SingleStepCacheMetadata } from '@/v5/single-step-adapter'
 import { V5_WORKFLOW_VERSION } from '@/v5/types'
 import { V5WorkflowBlockedError } from '@/v5/errors'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
@@ -80,7 +80,8 @@ function singleStepFailure(error: unknown, code: string, message: string) {
     code = 'GENERATED_ENTRIES_INCOMPLETE'
     message = '生成内容不完整，部分经历未正确生成，请重新生成'
   }
-  if (error instanceof RequestAuthError || error instanceof ResumeQuotaError || error instanceof V5CheckpointError) {
+  if (error instanceof RequestAuthError || error instanceof ResumeQuotaError
+    || error instanceof V5CheckpointError || error instanceof V5SessionBudgetError) {
     return {status: error.status, response: {success: false, error: {
       code: error.code, message: error.message,
       ...(error instanceof ResumeQuotaError ? {details: {limit: error.limit, used: error.used}} : {}),
@@ -95,11 +96,15 @@ function singleStepSuccess<T>(result: {
   data: T
   steps: StepRunSnapshot[]
   cache?: SingleStepCacheMetadata
+  parentRunId?: string
+  remainingBudgetMs?: number
 }, startedAt: number) {
   return {success: true, data: result.data, meta: {
     cache: result.cache ?? {status: 'not_applicable'},
     harness: {
     run_id: result.runId, workflow_version: V5_WORKFLOW_VERSION, workflow_status: 'succeeded', step_statuses: result.steps, duration_ms: Date.now() - startedAt,
+    ...(result.parentRunId ? {parent_run_id: result.parentRunId} : {}),
+    ...(result.remainingBudgetMs !== undefined ? {remaining_budget_ms: Math.max(0, result.remainingBudgetMs)} : {}),
   }}} satisfies ApiResponse<T>
 }
 

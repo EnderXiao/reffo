@@ -8,6 +8,12 @@ import {
   deriveSeedColorFromString,
 } from '@/components/business/HomeCardDeck/palette'
 import {useVisualTier} from '@/utils'
+import {
+  GENERATION_PRESENTATION_PHASES,
+  GENERATION_PRESENTATION_STEP_DURATION_MS,
+  type GenerationPresentationPhase,
+} from '@/pages/create/constants/generationPresentation'
+import './index.h5.scss'
 
 export interface GenerationStageState {
   resumeTitle: string
@@ -23,6 +29,7 @@ export interface GenerationStageH5Props {
   state: GenerationStageState
   onCancelGeneration: () => void
   onContinueInBackground?: () => void | Promise<void>
+  onPresentationComplete?: () => void
   header?: ReactNode
 }
 
@@ -30,9 +37,11 @@ export default function GenerationStageH5({
   state,
   onCancelGeneration,
   onContinueInBackground,
+  onPresentationComplete,
   header,
 }: GenerationStageH5Props) {
   const {tier: visualTier} = useVisualTier({benchmark: false})
+  const [presentationPhase, setPresentationPhase] = useState<GenerationPresentationPhase>('analyzing')
   const titleReelItems = useMemo(() => {
     const items = [
       state.resumeTitle.trim() || '源简历',
@@ -43,17 +52,6 @@ export default function GenerationStageH5({
 
     return Array.from(new Set(items))
   }, [state.baseLocation, state.companyName, state.positionName, state.resumeTitle])
-  const [titleReelIndex, setTitleReelIndex] = useState(0)
-  useEffect(() => {
-    if (titleReelItems.length < 2) {
-      setTitleReelIndex(0)
-      return undefined
-    }
-    const timer = window.setInterval(() => {
-      setTitleReelIndex(index => (index + 1) % titleReelItems.length)
-    }, 2400)
-    return () => window.clearInterval(timer)
-  }, [titleReelItems.length])
   const card = useMemo<HomeCardItem>(() => {
     const company = state.companyName.trim() || state.resumeTitle || 'Reffo'
     const role = state.positionName.trim() || '相契简历'
@@ -83,6 +81,18 @@ export default function GenerationStageH5({
     }
   }, [state.baseLocation, state.cardSeed, state.companyName, state.monogram, state.positionName, state.resumeTitle])
 
+  useEffect(() => {
+    const timers = GENERATION_PRESENTATION_PHASES.slice(1).map((phase, index) => (
+      setTimeout(() => setPresentationPhase(phase), GENERATION_PRESENTATION_STEP_DURATION_MS * (index + 1))
+    ))
+    const completionTimer = setTimeout(() => onPresentationComplete?.(), GENERATION_PRESENTATION_STEP_DURATION_MS * GENERATION_PRESENTATION_PHASES.length)
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer))
+      clearTimeout(completionTimer)
+    }
+  }, [onPresentationComplete])
+
   return (
     <View className='reffo-create-generation' data-testid='create-analysis-stage' aria-busy='true' aria-live='polite'>
       <View className='reffo-create-generation__backdrop' />
@@ -101,25 +111,34 @@ export default function GenerationStageH5({
           </View>
           <View className='reffo-create-generation__copy'>
             <View className='reffo-create-generation__title'>
-              <Text className='reffo-create-generation__title-accent'>正在分析 </Text>
+              <Text className='reffo-create-generation__title-accent'>正在分析</Text>
               <View className='reffo-create-generation__title-reel' aria-hidden='true'>
-                {titleReelItems.map((item, index) => (
-                  <Text
-                    key={`${item}-${index}`}
-                    className={`reffo-create-generation__title-main ${index === titleReelIndex ? 'reffo-create-generation__title-main--active' : ''}`}
-                  >
-                    {item}
-                  </Text>
-                ))}
+                <View
+                  className='reffo-create-generation__title-reel-track'
+                  data-testid='generation-title-reel-track'
+                  data-reel-count={titleReelItems.length}
+                  data-first-title={titleReelItems[0]}
+                >
+                  {titleReelItems.map((item, index) => (
+                    <Text key={`${item}-${index}`} className='reffo-create-generation__title-main'>
+                      {item}
+                    </Text>
+                  ))}
+                </View>
               </View>
             </View>
             <Text className='reffo-create-generation__detail'>
               正在为你的目标岗位量身定做相契简历……
             </Text>
             <View className='reffo-create-generation__steps' aria-hidden='true'>
-              {(['analyzing', 'matching', 'generating'] as const).map((phase, index) => (
-                <View key={phase} className={`reffo-create-generation__step ${state.phase === phase ? 'reffo-create-generation__step--active' : ''} ${index < ['analyzing', 'matching', 'generating'].indexOf(state.phase) ? 'reffo-create-generation__step--done' : ''}`}>
-                  <View className='reffo-create-generation__step-dot' /><Text>{['分析源简历', '匹配目标岗位', '生成相契简历'][index]}</Text>
+              {GENERATION_PRESENTATION_PHASES.map((phase, index) => (
+                <View
+                  key={phase}
+                  className={`reffo-create-generation__step ${presentationPhase === phase ? 'reffo-create-generation__step--active' : ''} ${index < GENERATION_PRESENTATION_PHASES.indexOf(presentationPhase) ? 'reffo-create-generation__step--done' : ''}`}
+                  data-testid={`generation-presentation-${phase}`}
+                  data-status={presentationPhase === phase ? 'active' : index < GENERATION_PRESENTATION_PHASES.indexOf(presentationPhase) ? 'done' : 'pending'}
+                >
+                  <View className='reffo-create-generation__step-dot' /><Text>{['分析源简历', '分析目标岗位', '匹配人岗差异'][index]}</Text>
                 </View>
               ))}
             </View>

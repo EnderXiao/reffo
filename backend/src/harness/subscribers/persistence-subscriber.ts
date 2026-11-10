@@ -350,7 +350,7 @@ export class PersistenceSubscriber {
 
   handle = (event: HarnessEvent) => {
     if (env.DATABASE_PROVIDER === 'supabase') {
-      return enqueueHarnessWrite(async () => {
+      const write = enqueueHarnessWrite(async () => {
         try {
           await supabaseHarnessRepository.persistEvent(event)
         } catch (error) {
@@ -361,7 +361,11 @@ export class PersistenceSubscriber {
             message: error instanceof Error ? error.message : String(error),
           })
         }
-      })
+      }, event.runId)
+
+      if (TERMINAL_WORKFLOW_EVENT_TYPES.has(event.type)) return write
+      void write
+      return
     }
     try {
       const db = this.getDb()

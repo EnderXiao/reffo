@@ -105,6 +105,14 @@ async function publishBusinessRecoveryStatus<TOutput>(
   )
 }
 
+/**
+ * 评估并（最多）修复一次业务输出。
+ *
+ * 语义注意：maxAttempts 只作为是否允许修复的开关（0 表示禁止），
+ * 当前实现不会循环多轮——一次修复后再评估即返回。
+ * 生产主流程（v5 workflow）使用自建的 runRepairableStage 修复路径，
+ * 本函数当前仅供旧 MVP 链路与测试使用。
+ */
 export async function evaluateWithBusinessRecovery<TOutput>(
   input: BusinessRecoveryInput<TOutput>
 ): Promise<{ output: TOutput; evaluation: EvaluationResult }> {

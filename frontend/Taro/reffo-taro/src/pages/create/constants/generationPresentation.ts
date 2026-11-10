@@ -1,0 +1,8 @@
+export const GENERATION_PRESENTATION_PHASES = ['analyzing', 'matching', 'generating'] as const
+
+export type GenerationPresentationPhase = typeof GENERATION_PRESENTATION_PHASES[number]
+
+export const GENERATION_PRESENTATION_STEP_DURATION_MS = 720
+
+export const GENERATION_PRESENTATION_DURATION_MS =
+  GENERATION_PRESENTATION_STEP_DURATION_MS * GENERATION_PRESENTATION_PHASES.length
