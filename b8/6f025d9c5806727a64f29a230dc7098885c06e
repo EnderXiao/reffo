@@ -1,0 +1,42 @@
+backend/src/harness/run-step.ts
+  s_4cb15deaca5902::t_c9ac1595b650af 61
+backend/src/types/index.ts
+  s_4cb15deaca5902::t_c9ac1595b650af 7
+backend/src/harness/subscribers/trace-subscriber.ts
+  s_4cb15deaca5902::t_c9ac1595b650af 9-11,16-20
+backend/src/harness/business-recovery.ts
+  s_4cb15deaca5902::t_c9ac1595b650af 108-115
+backend/src/harness/recovery-summary.ts
+  s_4cb15deaca5902::t_c9ac1595b650af 1-26
+backend/src/harness/business-recovery.test.ts
+  s_4cb15deaca5902::t_c9ac1595b650af 74,119
+backend/src/harness/harnessed-request.ts
+  s_4cb15deaca5902::t_c9ac1595b650af 108
+  s_4cb15deaca5902::t_5b0ed4a107c09f 28,31-35,60-62,67,70,76-77,81-102,123-139,141
+backend/src/harness/run-context.ts
+  s_4cb15deaca5902::t_c9ac1595b650af 37-39,45
+backend/src/harness/harnessed-request.test.ts
+  s_4cb15deaca5902::t_d4f0823292c48d 2-6,8-32,36-39,42-53,55
+backend/src/harness/subscribers/persistence-subscriber.ts
+  s_4cb15deaca5902::t_a43e778f117a04 353,364-368
+backend/src/harness/subscribers/write-queue.test.ts
+  s_4cb15deaca5902::t_d7d9c1320a8396 5,13,16,25-44
+backend/src/harness/subscribers/write-queue.ts
+  s_4cb15deaca5902::t_10ba33f672d181 1,3-7,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b86f025d9c5806727a64f29a230dc7098885c06e",
+  "prompts": {},
+  "sessions": {
+    "s_4cb15deaca5902": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1bf24-9ead-7cf0-868e-5246ecb4f514",
+        "model": "mimo-v2.6-pro-ultraspeed"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
