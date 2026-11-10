@@ -6,6 +6,8 @@ import BACK_ICON from '@/assets/common/refo-back.svg'
 import {CardGlass, CardTexture} from '@/components/business/HomeCardDeck/CardMaterial.h5'
 import ReffoGlyph from '@/components/business/HomeCardDeck/ReffoGlyph.h5'
 import {type EmailOtpConfig, type OAuthProvider} from '@/services/auth'
+import {shareApi} from '@/services/share'
+import {clearShareInviteToken, readShareInviteToken} from '@/utils/share-invite'
 import {useAuthStore} from '@/store/authStore'
 import {feedback} from '@/utils/feedback'
 import {storage} from '@/utils/storage'
@@ -362,6 +364,21 @@ export default function AuthPage() {
     }
   }
 
+  // 注册完成后凭分享落地页暂存的邀请 token 领取双方奖励；失败静默，不阻塞注册。
+  const claimReferralRewardIfPresent = async (claimEmail: string) => {
+    const inviteToken = await readShareInviteToken()
+    if (!inviteToken) return
+    await clearShareInviteToken()
+    try {
+      const result = await shareApi.claimReferralReward(inviteToken, claimEmail)
+      if (result.claimed && result.bonus_count > 0) {
+        feedback.success(`邀请奖励已到账：你和邀请人各得 ${result.bonus_count} 次生成额度`, {duration: 2600})
+      }
+    } catch {
+      // 领取失败不提示、不阻塞注册主流程。
+    }
+  }
+
   const verifyCode = async (code: string) => {
     if (verificationRequestRef.current || code.length !== otpConfig.otpLength) {
       return
@@ -374,6 +391,7 @@ export default function AuthPage() {
         completeAuth()
       } else if (otpPurpose === 'signup') {
         await verifySignupOtp({email, token: code})
+        await claimReferralRewardIfPresent(email)
         completeAuth()
       } else {
         const recoverySession = await verifyPasswordResetOtp({email, token: code})
