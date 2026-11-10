@@ -2,6 +2,10 @@
 
 ## 经历级 Writer 发布入口（2026-09-08）
 
+2026-11-10：Entry Writer 使用 `entry-writing-v3`，五要素缺失通过独立 gapDecisions 决定省略或补充，全文服务器最多选择三处，允许零空位。只读 gapContextFacts 用于同经历查缺，不扩大正文证据白名单。最终 renderer 分段直接生成 `resume-completion-v1` 编辑文档，与 Markdown 同步交付并持久化。历史 v1/v2 仅供回放，新生成只接受 v3。
+
+2026-11-09：Entry Writer 引入 `entry-writing-v2`。单次 P06C 输出五要素覆盖图与事实/可选留白分段；服务器从同一结构生成事实 Artifact 和可选 `deliveryMarkdown`。公开 `optimized_resume` 展示内嵌说明的待完善稿；策略摘要、证据校验和面试仍使用已确认事实。历史结果缺少该字段时回退到原 Artifact，不迁移历史表或增加页面。切换 Prompt 版本前须排空在途生成任务；旧 checkpoint 不跨版本恢复。
+
 非生产 runner 使用 `--artifact-mode writer_v1 --job-targeted --entry-writer`。正式接口固定使用 entry-r5，启用 JD 定向分析及经历 Writer；运行配置由服务端统一管理。产品负责人已授权推进发布，不将这项授权写成黄金集全面通过。部署核对及当前状态见 [生产发布记录](../../docs/v5-entry-r5-production-rollout.md)。
 
 ## r2 岗位定向升级（非生产显式选项）

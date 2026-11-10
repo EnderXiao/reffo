@@ -1,5 +1,6 @@
 import type {
   ProcessResult,
+  OptimizedResume,
   ResultSessionContext,
   ResultSessionProgress,
   ResultStepStatus,
@@ -16,14 +17,21 @@ export interface LatestResultSession {
   result: ProcessResult
   context: LatestResultSessionContext
   progress?: LatestResultSessionProgress
+  sessionSequence?: number
+  originHistoryId?: string
+  baseHistorySnapshot?: {
+    optimizedContent: string
+    completionDocument?: OptimizedResume['completion_document']
+    updatedAt?: string
+  }
 }
 
-function getResultSessionStorageKey() {
+export function getResultSessionStorageKey() {
   return getUserStorageKey(LATEST_RESULT_SESSION_KEY, useAuthStore.getState().session?.user.id)
 }
 
-export async function saveLatestResultSession(session: LatestResultSession) {
-  await setJSON(getResultSessionStorageKey(), session)
+export async function saveLatestResultSession(session: LatestResultSession, storageKey = getResultSessionStorageKey()) {
+  await setJSON(storageKey, session)
 }
 
 export async function getLatestResultSession() {

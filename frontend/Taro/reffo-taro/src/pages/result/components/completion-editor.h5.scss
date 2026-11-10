@@ -1,0 +1,232 @@
+.reffo-result__resume-paper {
+  --completion-ink: #74531a;
+  --completion-fill: #fff7df;
+  --completion-border: #dfb658;
+  --completion-focus: #a3650d;
+}
+
+.reffo-result__download {
+  border: 0;
+  font-family: inherit;
+}
+
+.reffo-completion__remaining {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  max-width: calc(100% - 104px);
+  padding: 3px 2px;
+  border: 0;
+  color: var(--completion-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reffo-completion__gap {
+  display: inline;
+  max-width: 100%;
+  padding: 2px 3px;
+  border: 1px solid var(--completion-border);
+  border-radius: 4px;
+  color: var(--completion-ink);
+  background: var(--completion-fill);
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-decoration-break: clone;
+  cursor: pointer;
+}
+
+.reffo-completion__gap--filled {
+  padding: 0 1px;
+  border: 0;
+  border-bottom: 1px dotted #b9a57a;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+}
+
+.reffo-completion__gap:focus-visible,
+.reffo-completion__remaining:focus-visible,
+.reffo-completion__row-edit:focus-visible,
+.reffo-completion__action:focus-visible,
+.reffo-completion__candidate:focus-visible {
+  outline: 2px solid var(--completion-focus, #a3650d);
+  outline-offset: 3px;
+}
+
+.reffo-completion__editor {
+  display: inline-flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  gap: 8px;
+  margin: 5px 0;
+  padding: 12px;
+  border: 1px solid var(--completion-border);
+  border-radius: 7px;
+  background: var(--completion-fill);
+  white-space: normal;
+  vertical-align: middle;
+  scroll-margin-block: 100px;
+}
+
+.reffo-completion__label {
+  color: var(--completion-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.reffo-completion__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px solid #c8ae79;
+  border-radius: 4px;
+  color: #202020;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.reffo-completion__input:focus {
+  border-color: var(--completion-focus);
+  outline: 2px solid rgba(163, 101, 13, 0.16);
+}
+
+.reffo-completion__help {
+  display: block;
+  width: 100%;
+  color: #756448;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.reffo-completion__candidates,
+.reffo-completion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.reffo-completion__candidate,
+.reffo-completion__action {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #cfba8b;
+  border-radius: 5px;
+  color: #60471d;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 18px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.reffo-completion__action--primary {
+  border-color: #73551f;
+  color: #ffffff;
+  background: #73551f;
+}
+
+.reffo-completion__actions .reffo-completion__omit {
+  margin-left: auto;
+  padding-right: 0;
+  padding-left: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.reffo-completion__action:disabled,
+.reffo-completion__candidate:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.reffo-completion__row-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  margin: -3px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.reffo-completion__row-edit .reffo-result__markdown-edit-icon {
+  margin-left: 0;
+}
+
+.reffo-completion__row-editor {
+  padding: 10px;
+}
+
+.reffo-completion__row-editor .reffo-completion__actions {
+  margin-top: 10px;
+}
+
+.reffo-completion__error,
+.reffo-completion__notice {
+  display: block;
+  margin: 7px 0 0;
+  color: #98501d;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 18px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.reffo-completion__notice {
+  color: #736b5c;
+}
+
+.reffo-completion__action--undo {
+  margin-left: 7px;
+}
+
+.reffo-completion__recovery {
+  margin-bottom: 14px;
+  padding: 10px;
+  border: 1px solid #dfb658;
+  border-radius: 5px;
+  color: #74531a;
+  background: #fff7df;
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.reffo-completion__recovery-text {
+  margin: 0 0 6px;
+}
+
+.reffo-completion__action--recovery + .reffo-completion__action--recovery {
+  margin-left: 7px;
+}
+
+.reffo-completion__line--repair {
+  border-left: 2px solid #dfb658;
+  padding-left: 6px;
+}

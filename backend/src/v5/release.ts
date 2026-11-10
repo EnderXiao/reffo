@@ -12,5 +12,7 @@ export function getV5ReleaseDescriptor() {
     reasoningEffort: env.DEEPSEEK_REASONING_EFFORT,
     ...v5ReleaseWorkflowOptions(),
     writerPromptVersion: writerVersion,
+    deliveryPolicy: 'five-element-cloze-v2',
+    completionDocumentVersion: 'resume-completion-v1',
     layoutVersion: ENTRY_LAYOUT_VERSION }
 }

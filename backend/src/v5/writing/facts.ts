@@ -32,7 +32,8 @@ export function writingDisplayText(value: string) {
 export function writingNumbers(text: string) {
   const protectedExpressions: string[] = []
   // 优先级与数量绑定；空格或冒号仅为排版，不能拆成两个独立数字。
-  const normalized = text.normalize('NFKC').replace(/\bP([0-2])\s*(?::\s*)?(\d+)\s*(条|项|个)/giu, (_, priority: string, count: string, unit: string) => {
+  // 中文逗号分隔并列事实；NFKC 会将它变成数字可吞入的 ASCII 千位逗号。
+  const normalized = text.replace(/，/gu, '；').normalize('NFKC').replace(/\bP([0-2])\s*(?::\s*)?(\d+)\s*(条|项|个)/giu, (_, priority: string, count: string, unit: string) => {
     protectedExpressions.push(`p${priority}:${count}${unit}`)
     return ' '
   })

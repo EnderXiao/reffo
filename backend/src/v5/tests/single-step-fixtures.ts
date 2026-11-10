@@ -1,3 +1,4 @@
+import { v3FixtureEntry } from './entry-skeleton-fixtures'
 import { expect } from 'bun:test'
 import type { LlmProvider } from '@/providers/llm-provider'
 import { createResumeFixture, FIXTURE_RESUME, FIXTURE_JD } from '@/v5/tests/fixtures'
@@ -13,8 +14,9 @@ type Payload = Partial<ReturnType<typeof entryWritingPayload>> & {
   resumeContext: { facts: Array<{ evidenceId: string; claimType: string }> }
 }
 
-export function createSingleStepFixture() {
+export function createSingleStepFixture(options: { inlineGap?: boolean } = {}) {
   const versions: string[] = []
+  const interviewInputs: unknown[] = []
   const provider: LlmProvider = { complete: async input => {
     const version = input.promptVersion!
     versions.push(version)
@@ -29,9 +31,9 @@ export function createSingleStepFixture() {
         targetId: target.id, status: 'transferable', evidenceIds: [fact.evidenceId],
         similarity: '具有相邻产品实践。', difference: '尚不等于完整岗位经验。', expressionAngle: '突出已有交付。',
       })), narratives: [], questions: [] }
-    } else if (version === '5.2.0-p06c-entry-writer-r12') {
+    } else if (version === '5.4.0-p06c-entry-completion-r3') {
       expect(input.onContentDelta).toBeFunction()
-      expect(input.maxOutputTokens).toBe(4320)
+      expect(input.maxOutputTokens).toBe(7200)
       expect(input.maxProviderAttempts).toBe(1)
       expect(input.maxProviderModels).toBe(1)
       expect(payload.entries).toBeDefined()
@@ -41,13 +43,27 @@ export function createSingleStepFixture() {
           ? [{ role: 'contribution', text: '参与团队产品迭代。', evidenceIds: [fact.evidenceId] },
             { role: 'outcome', text: '团队交付3个功能。', evidenceIds: [fact.evidenceId] }]
           : [{ role: 'detail', text: fact.text, evidenceIds: [fact.evidenceId] }]
-        return { entryId: entry.entryId, paragraphs }
+        const written = v3FixtureEntry({ entryId: entry.entryId, paragraphs }, entry)
+        if (options.inlineGap && entry.section === 'experience') {
+          return {...written,
+            gapDecisions: [{element: 'problem', action: 'supplement', purpose: 'explain_key_action', contextEvidenceIds: [fact.evidenceId], targetTaskIds: []}],
+            coverage: written.coverage.map(item => item.element === 'problem'
+              ? {...item, status: 'missing' as const, evidenceIds: []} : item),
+            paragraphs: written.paragraphs.map((paragraph, index) => index ? paragraph : {...paragraph, segments: [
+              {kind: 'fact', text: '参与团队产品迭代', evidenceIds: [fact.evidenceId]},
+              {kind: 'optional_gap_clause', template: 'problem', candidates: []},
+              {kind: 'fact', text: '。', evidenceIds: [fact.evidenceId]},
+            ]}),
+          }
+        }
+        return written
       }) }
       let content = JSON.stringify(value)
       for (let i = 0; i < content.length; i += 9) input.onContentDelta!(content.slice(i, i + 9))
       return { provider: 'fake', model: 'fixture', content, latencyMs: 1, physicalAttempts: 1,
         inputTokens: 30, outputTokens: 50, finishReason: 'stop' }
     } else if (version.includes('-p10-')) {
+      interviewInputs.push(payload)
       const bundle = payload.resumeEvidenceBundle!
       const fact = bundle.evidenceAtoms.find(f => f.claimType === 'deliverable')!
       const requirement = payload.jobRequirementBundle!.requirementAtoms[0].requirementId
@@ -70,5 +86,5 @@ export function createSingleStepFixture() {
 
   const createWorkflow = () => new V5ResumeOptimizationWorkflow({ provider, enableDefaultSubscribers: false,
     artifactGenerationMode: 'writer_v1', jobTargetingPolicy: 'job-targeted-v1', entryWritingPolicy: ENTRY_WRITING_POLICY })
-  return {createWorkflow, versions}
+  return {createWorkflow, versions, interviewInputs}
 }

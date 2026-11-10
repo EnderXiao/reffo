@@ -3,6 +3,7 @@ import {env} from '@/config/env'
 import { getDatabase, resetDatabaseConnection } from '@/repositories/database'
 import type { ResumeHistoryRepositoryContract } from '@/repositories/interfaces'
 import type { ResumeHistoryRecord, SaveResumeHistoryInput, UpdateResumeHistoryInput } from '@/types'
+import {assertResumeCompletionSnapshot} from '@/services/resume-completion-snapshot'
 
 const HISTORY_ID_PREFIX = 'JD'
 const HISTORY_ID_SEQUENCE_LENGTH = 5
@@ -176,10 +177,12 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
   }
 
   save(context: RequestUserContext, input: SaveResumeHistoryInput): ResumeHistoryRecord {
+    assertResumeCompletionSnapshot(input)
+    const requestedId = input.id?.trim()
+    if (requestedId) assertResumeCompletionSnapshot(input, this.findById(context, requestedId))
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
       const now = new Date().toISOString()
-      const requestedId = input.id?.trim()
       const owner = requestedId
         ? db.query('SELECT user_id FROM resume_histories WHERE id = ?').get(requestedId) as {user_id: string} | null
         : null

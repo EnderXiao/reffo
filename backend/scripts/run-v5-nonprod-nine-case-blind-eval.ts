@@ -180,7 +180,7 @@ interface RunManifest {
     agentQualityJudgeEnabled: false
     artifactGenerationMode: 'dsl_v1' | 'writer_v1'
     jobTargetingPolicy?: 'job-targeted-v1'
-    entryWritingPolicy?: 'entry-writing-v1'
+    entryWritingPolicy?: 'entry-writing-v3'
     artifactRepairMax: 0 | 2
     interviewMode: 'deferred'
     componentQuotaPolicy: typeof V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION
@@ -201,7 +201,7 @@ export function providerComponentQuotasForRun(input: {
   stage: EvaluationRunStage
   validatedShardIndexes: readonly number[]
   artifactGenerationMode?: 'dsl_v1' | 'writer_v1'
-  entryWritingPolicy?: 'entry-writing-v1'
+  entryWritingPolicy?: 'entry-writing-v3'
 }) {
   // Historical usage is cumulative. Only new runs can shrink extraction
   // quotas to the missing shards without invalidating an existing journal.

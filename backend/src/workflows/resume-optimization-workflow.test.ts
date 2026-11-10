@@ -52,7 +52,7 @@ describe('ResumeOptimizationWorkflow v5-only entry', () => {
     env.APP_ENV = 'prod'
     const run = spyOn(V5ResumeOptimizationWorkflow.prototype, 'run').mockImplementation(async function(this: V5ResumeOptimizationWorkflow, input) {
       expect(Reflect.get(this,'artifactGenerationMode')).toBe('writer_v1')
-      expect(Reflect.get(this,'entryWritingPolicy')).toBe('entry-writing-v1')
+      expect(Reflect.get(this,'entryWritingPolicy')).toBe('entry-writing-v3')
       expect(Reflect.get(this,'jobTargetingPolicy')).toBe('job-targeted-v1')
       expect(input.enableQualityJudge).toBe(false)
       return createV5ResultFixture()
@@ -64,7 +64,7 @@ describe('ResumeOptimizationWorkflow v5-only entry', () => {
       expect(getV5ReleaseDescriptor()).toMatchObject({
         profile: 'entry-r5',
         reasoningEffort: env.DEEPSEEK_REASONING_EFFORT,
-        writerPromptVersion: '5.2.0-p06c-entry-writer-r12',
+        writerPromptVersion: '5.4.0-p06c-entry-completion-r3',
       })
     } finally {
       run.mockRestore()

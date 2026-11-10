@@ -149,6 +149,7 @@ export function renderValidatedCompositionArtifact(input: {
 
   const claims: GeneratedResumeArtifact['claims'] = []
   const lines: string[] = []
+  const outputPathByLine = new Map<number, string>()
   let claimIndex = 0
 
   const atomsFor = (ids: string[]) => ids
@@ -174,6 +175,7 @@ export function renderValidatedCompositionArtifact(input: {
   const appendClaim = (claim: PendingClaim) => {
     if (!claim.outputText.trim() || claim.atoms.length === 0) return
     claimIndex += 1
+    outputPathByLine.set(lines.length, claim.outputPath)
     lines.push(claim.outputText)
     claims.push({
       claimId: `composition_claim_${String(claimIndex).padStart(4, '0')}`,
@@ -310,10 +312,18 @@ export function renderValidatedCompositionArtifact(input: {
     renderSection(section, items)
   }
 
-  const markdown = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  const renderedBlocks = lines.flatMap((raw, index) => raw === '' && (index === 0 || lines[index - 1] === '')
+    ? [] : [{raw, ...(outputPathByLine.has(index) ? {outputPath: outputPathByLine.get(index)!} : {})}])
+  while (renderedBlocks.at(-1)?.raw === '') renderedBlocks.pop()
+  if (renderedBlocks.length) {
+    renderedBlocks[0].raw = renderedBlocks[0].raw.trimStart()
+    renderedBlocks[renderedBlocks.length - 1].raw = renderedBlocks[renderedBlocks.length - 1].raw.trimEnd()
+  }
+  const markdown = renderedBlocks.map(block => block.raw).join('\n')
   const usedEvidenceIds = [...new Set(claims.flatMap(claim => claim.evidenceIds))]
   const plannedEvidenceIds = [...plannedContentEvidenceIds(input.resume, input.plan)]
   return {
+    renderedBlocks,
     artifact: {
       schemaVersion: V5_SCHEMA_VERSION,
       markdown,

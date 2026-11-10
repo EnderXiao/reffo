@@ -1,4 +1,5 @@
 import type {ResumeStrategyReview} from '@/shared/resume-strategy'
+import type {ResumeCompletionDocument} from '@/shared/resume-completion'
 export type {ResumeStrategyReview, ResumeStrategyOutcome, ResumeStrategyReference} from '@/shared/resume-strategy'
 
 // 类型定义
@@ -258,6 +259,7 @@ export interface ExperienceMatch {
 
 export interface OptimizedResume {
   optimized_resume: string;
+  completion_document?: ResumeCompletionDocument;
   changes_summary: string[];
   improvement_score: number;
   strategy_review?: ResumeStrategyReview;

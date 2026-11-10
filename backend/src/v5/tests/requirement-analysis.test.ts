@@ -83,9 +83,9 @@ describe('JD-only requirement analysis', () => {
     otherCandidate.matchScore.score = 0
     expect(toMatchAnalysis(otherCandidate).requirement_analysis).toEqual(expected)
   })
-  test('material-conditional instructions keep existing output allowances', () => {
+  test('job extraction receives bounded structured capacity without changing judge allowance', () => {
     const p02 = compileV5Prompt({ component: 'P02', envelope: {payload: { jobTargetingPolicy: 'job-targeted-v1' }} })
-    expect(p02.maxOutputTokens).toBe(7200)
+    expect(p02.maxOutputTokens).toBe(9600)
     const p12 = compileV5Prompt({component: 'P12', envelope: {}})
     expect(p12.maxOutputTokens).toBe(6000)
     expect(p12.messages.map(message => message.content).join('\n')).toContain('material-conditional-quality-r1')

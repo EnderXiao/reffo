@@ -43,6 +43,9 @@ jobs:
       - name: Check shared strategy module
         run: node ../../../shared/sync-resume-strategy.mjs --check
 
+      - name: Check shared completion module
+        run: node ../../../shared/sync-resume-completion.mjs --check
+
       - name: Jest
         run: pnpm exec jest --runInBand --no-watchman
 

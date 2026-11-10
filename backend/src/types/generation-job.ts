@@ -11,6 +11,7 @@ export interface GenerationJobInput {
 }
 export interface GenerationJobPayload {
   input: GenerationJobInput
+  releaseFingerprint?: string
   analysis?: Awaited<ReturnType<typeof v5SingleStepAdapter.analyze>>['data']
   matching?: Awaited<ReturnType<typeof v5SingleStepAdapter.match>>['data']
   optimized?: Awaited<ReturnType<typeof v5SingleStepAdapter.generate>>['data']

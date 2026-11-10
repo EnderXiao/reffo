@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { EVALUATION_BUDGET_JOURNAL_VERSION } from '@/v5/evaluation-budget'
 import { loadValidatedJudgeSourceRun } from '@/v5/evaluation-judge-source'
+import { deliveredResumeMarkdown } from '@/v5/delivery-markdown'
 import {
   V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION,
   V5_EVALUATION_RUNNER_PROTOCOL_VERSION,
@@ -85,7 +86,7 @@ async function createSourceRun(input: {
     fingerprints: { ...sourceFingerprints, inputDigest: caseInputDigest },
     payload: result,
   })
-  await writeFile(resolve(sourceRun, 'cases', `${prefix}-v5.md`), result.artifact.markdown)
+  await writeFile(resolve(sourceRun, 'cases', `${prefix}-v5.md`), deliveredResumeMarkdown(result))
 
   const p12Usage = input.p12Usage ?? []
   const usageRows: EvaluationUsageEntry[] = [{
@@ -185,6 +186,25 @@ describe('judge-only source-run validation', () => {
       sourceManifestFingerprints: loaded.provenance.sourceManifestFingerprints,
       cases: loaded.provenance.cases,
     }))
+  })
+
+  test('accepts the checkpoint delivery snapshot while keeping its fact artifact unchanged', async () => {
+    const source = await createSourceRun({ mutateResult: result => {
+      result.deliveryMarkdown = `${result.artifact.markdown}\n- 【待完善：填实际交付名称；补明工作产出；无则删去分句】`
+    } })
+    const loaded = await loadValidatedJudgeSourceRun(sourceRequest(source))
+    expect(loaded.cases[0].v5Result.deliveryMarkdown).toBe(source.result.deliveryMarkdown)
+    expect(loaded.cases[0].v5Result.artifact.markdown).not.toContain('【待完善')
+  })
+
+  test('rejects changed public Markdown even when the fact artifact still matches the checkpoint', async () => {
+    const source = await createSourceRun({ mutateResult: result => {
+      result.deliveryMarkdown = `${result.artifact.markdown}\n- 【待完善：填实际交付名称；补明工作产出；无则删去分句】`
+    } })
+    await writeFile(resolve(source.sourceRun, 'cases', `${source.prefix}-v5.md`), source.result.artifact.markdown)
+    await expect(loadValidatedJudgeSourceRun(sourceRequest(source))).rejects.toMatchObject({
+      code: 'JUDGE_SOURCE_MARKDOWN_MISMATCH',
+    })
   })
 
   test('rejects historical results that fail any current product delivery invariant', async () => {

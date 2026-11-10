@@ -49,6 +49,7 @@ export interface ProcessResumeResponse {
   step2_matching: MatchingApiResult;
   /** 步骤 3: 优化后的简历 */
   step3_optimized_resume: string;
+  step3_completion_document?: OptimizedResume['completion_document'];
   step3_strategy_review?: OptimizedResume['strategy_review'];
   step3_changes_summary?: string[];
   /** 步骤 4: 面试建议 */
@@ -98,6 +99,11 @@ function toStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     : [];
+}
+
+function hasV5Checkpoint(value: object | undefined): boolean {
+  return Boolean(value && '_v5_context' in value
+    && typeof value._v5_context === 'string' && value._v5_context.trim());
 }
 
 function normalizeHardRequirements(value: unknown): MatchingResult['hard_requirements_match'] {
@@ -520,6 +526,7 @@ export class ResumeApi {
 
     return {
       optimized_resume: response?.optimized_resume || '',
+      ...(response?.completion_document ? {completion_document: response.completion_document} : {}),
       changes_summary: toStringArray(response?.changes_summary),
       strategy_review: normalizeStrategyReview(response?.strategy_review, response?.optimized_resume || ''),
       improvement_score: response?.improvement_score ?? Math.max(0, matching.match_score - analysis.quality_score),
@@ -544,12 +551,22 @@ export class ResumeApi {
       throw new Error('最佳简历结果不存在');
     }
 
+    let interviewMarkdown = optimized.optimized_resume;
+    if (hasV5Checkpoint(analysis.structured_resume) && hasV5Checkpoint(matching.jd_structure)) {
+      // 服务端按原生成快照核对面试请求；回取只用于面试，不覆盖人工编辑。
+      const generated = await this.generateOptimizedResume(analysis, matching, options);
+      if (generated.optimized_resume.trim().length < 10) {
+        throw new Error('原生成简历结果不存在');
+      }
+      interviewMarkdown = generated.optimized_resume;
+    }
+
     const response = await apiClient.post<InterviewSuggestions>(
       '/mvp/interview',
       {
         analysis,
         matching,
-        optimized_resume: optimized.optimized_resume,
+        optimized_resume: interviewMarkdown,
         ...(options.landing ? {landing: true} : {}),
         ...(options.presetJdId ? {preset_jd_id: options.presetJdId} : {}),
       } satisfies GenerateInterviewSuggestionsRequest,
@@ -651,6 +668,7 @@ export class ResumeApi {
       matching,
       optimized: {
         optimized_resume: optimizedResume,
+        ...(response.step3_completion_document ? {completion_document: response.step3_completion_document} : {}),
         changes_summary: toStringArray(response.step3_changes_summary),
         strategy_review: normalizeStrategyReview(response.step3_strategy_review, optimizedResume),
         improvement_score:

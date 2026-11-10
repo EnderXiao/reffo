@@ -327,3 +327,20 @@ test('a pure other boundary cannot become executable practice by itself', () => 
   expect(plan.entries.flatMap(entry => entry.facts.map(fact => fact.evidenceId))).not.toContain(f.boundary.evidenceId)
   expect(buildStrategyActionPlan({match: f.match, resume: f.result.resumeEvidenceBundle, entryPlan: plan}).items[0].state).not.toBe('scheduled')
 })
+
+test('skeleton references fingerprint delivered text and never quote a fact projection absent from delivery', () => {
+  const f = fixture()
+  const compiled = compileEntryWriting({output: f.output, entryPlan: f.entryPlan,
+    resume: f.result.resumeEvidenceBundle, policy: f.result.generationPolicy})
+  const assignment = f.actions.items[0].assignment!
+  const paths = compiled.entryParagraphReferences.filter(item => item.entryId === assignment.entryId).map(item => item.outputPath)
+  const claim = compiled.artifact.claims.find(item => paths.includes(item.outputPath))!
+  const deliveryMarkdown = compiled.artifact.markdown.replace(claim.outputText,
+    `${claim.outputText}【待完善：填实际问题；补明背景；无则删去该短语】`)
+  const review = buildStrategyReview({plan: f.actions, artifact: compiled.artifact,
+    paragraphs: compiled.entryParagraphReferences, deliveryMarkdown, gapOutputPaths: new Set(paths)})
+  expect(review.resumeFingerprint).toBe(resumeTextFingerprint(deliveryMarkdown))
+  expect(review.items[0]).toMatchObject({status: 'needs_material', references: []})
+  expect(currentStrategyReview(review, deliveryMarkdown)).toBeDefined()
+  expect(currentStrategyReview(review, compiled.artifact.markdown)).toBeUndefined()
+})

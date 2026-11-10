@@ -1,4 +1,5 @@
 import {strategyResultExcerpts} from '@/shared/resume-strategy'
+import {normalizeCompletionDocument, serializeDraft, validateCompletionDocument, type ResumeCompletionDocument} from '@/shared/resume-completion'
 import {useEffect, useRef, useState} from 'react'
 import Taro from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
@@ -11,6 +12,7 @@ import type {ProcessResult, ResumeHistory} from '@/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {
   getLatestResultSession,
+  getResultSessionStorageKey,
   saveLatestResultSession,
   type LatestResultSession,
   type LatestResultSessionContext,
@@ -25,6 +27,7 @@ import {useAuthStore} from '@/store/authStore'
 import {toHistoryCardItem} from '../index/model/homeCardData'
 import {generationTasksApi} from '@/services/backgroundGeneration'
 import {useBackgroundGenerationStore} from '@/store/backgroundGenerationStore'
+import {historyCompletionBaseline, resolveHistorySession, resultSnapshotKey, sameCompletionState} from './model/completionSession'
 
 const DONE_PROGRESS: LatestResultSessionProgress = {
   analysis: 'done',
@@ -186,6 +189,10 @@ export interface ResultPageViewModel {
   handlePendingStage: () => void
   handleRetryStage: (stage: ResultRetryStageKey) => Promise<void>
   handleOptimizedResumeChange: (markdown: string) => Promise<void>
+  handleCompletionDocumentChange?: (document: ResumeCompletionDocument, baseRevision: number, baseMarkdown: string) => Promise<void>
+  completionSaveStatus?: 'idle' | 'saving' | 'failed'
+  recoveryConflict?: boolean
+  handleResolveRecovery?: (choice: 'history' | 'session') => Promise<void>
   canEditHistory: boolean
   needsCompletion?: boolean
 }
@@ -224,6 +231,19 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   const resultRef = useRef<ProcessResult | null>(initialSessionRef.current?.result ?? null)
   const latestSessionRef = useRef<LatestResultSession | null>(initialSessionRef.current)
   const sessionWriteQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const sessionSequenceRef = useRef(initialSessionRef.current?.sessionSequence ?? 0)
+  const pageEpochRef = useRef(0)
+  const ownerId = useAuthStore(state => state.session?.user.id)
+  const ownerRef = useRef(ownerId)
+  ownerRef.current = ownerId
+  const savedSnapshotRef = useRef<string | null>(null)
+  const historySaveRef = useRef<Promise<string | null> | null>(null)
+  const completionWriteSequenceRef = useRef(0)
+  const acknowledgedCompletionRef = useRef<{documentId: string; revision: number} | null>(null)
+  const appliedCompletionRef = useRef(new Map<string, string>())
+  const recoveryRef = useRef<{history: LatestResultSession; session: LatestResultSession} | null>(null)
+  const [recoveryConflict, setRecoveryConflict] = useState(false)
+  const [completionSaveStatus, setCompletionSaveStatus] = useState<'idle' | 'saving' | 'failed'>('idle')
   const [result, setResultState] = useState<ProcessResult | null>(
     () => initialSessionRef.current?.result ?? null,
   )
@@ -249,6 +269,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   const isContinuingRef = useRef(false)
 
   useEffect(() => () => {
+    pageEpochRef.current += 1
     continuationRef.current += 1
     if (workspaceGenerationRunRef.current != null) {
       resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
@@ -257,6 +278,14 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   }, [])
 
   useEffect(() => {
+    continuationRef.current += 1
+    isContinuingRef.current = false
+    recoveryRef.current = null
+    setRecoveryConflict(false)
+    setCompletionSaveStatus('idle')
+    acknowledgedCompletionRef.current = null
+    appliedCompletionRef.current.clear()
+    savedSnapshotRef.current = null
     const initialSession = initialSessionRef.current
 
     if (initialSession) {
@@ -265,17 +294,23 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       return
     }
 
+    pageEpochRef.current += 1
     if (resultId) {
       void loadFromHistory(resultId)
       return
     }
 
     void loadFromLatestSession()
-  }, [resultId])
+  }, [resultId, ownerId])
 
   const loadFromHistory = async (id: string) => {
+    const epoch = pageEpochRef.current
     try {
-      const history = await useHistoryStore.getState().loadHistory(id)
+      const [history, localSession] = await Promise.all([
+        useHistoryStore.getState().loadHistory(id),
+        getLatestResultSession().catch(() => null),
+      ])
+      if (epoch !== pageEpochRef.current) return
 
       if (history) {
         setReturnCard(toHistoryCardItem(history))
@@ -296,17 +331,27 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         }
 
         const context = buildContextFromHistory(history)
-        latestSessionRef.current = {
+        const historySession: LatestResultSession = {
           result: processResult,
           context,
           progress: historyProgress,
+          originHistoryId: id,
+          baseHistorySnapshot: historyCompletionBaseline(history),
         }
-        setResult(processResult)
-        setResultContext(context)
-        syncWorkspaceResult(processResult, context)
+        const resolution = resolveHistorySession(history, processResult, localSession)
+        const resolvedSession = resolution === 'session' && localSession ? localSession : historySession
+        recoveryRef.current = resolution === 'conflict' && localSession
+          ? {history: historySession, session: localSession} : null
+        setRecoveryConflict(resolution === 'conflict')
+        latestSessionRef.current = resolvedSession
+        sessionSequenceRef.current = resolvedSession.sessionSequence ?? 0
+        setResult(resolvedSession.result)
+        setResultContext(resolvedSession.context)
+        syncWorkspaceResult(resolvedSession.result, resolvedSession.context)
         resumeWorkspaceActions.markGenerationCompleted()
-        setProgress(historyProgress)
-        setSaved(true)
+        setProgress(resolvedSession.progress ?? historyProgress)
+        savedSnapshotRef.current = resultSnapshotKey(processResult)
+        setSaved(resolution === 'history')
         setSavedHistoryId(id)
         if (generationJobId) {
           try {
@@ -337,8 +382,10 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   }
 
   const loadFromLatestSession = async () => {
+    const epoch = pageEpochRef.current
     try {
       const session = await getLatestResultSession()
+      if (epoch !== pageEpochRef.current) return
 
       if (session) {
         const sessionProgress = {
@@ -356,6 +403,15 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           progress: sessionProgress,
         }
         latestSessionRef.current = nextSession
+        sessionSequenceRef.current = session.sessionSequence ?? 0
+        setSavedHistoryId(session.originHistoryId ?? null)
+        const baseline = session.baseHistorySnapshot
+        const matchesHistory = Boolean(session.originHistoryId && baseline && sameCompletionState(session.result.optimized, {
+          optimized_resume: baseline.optimizedContent,
+          completion_document: baseline.completionDocument,
+        }))
+        savedSnapshotRef.current = matchesHistory ? resultSnapshotKey(sessionResult) : null
+        setSaved(matchesHistory)
         setResult(sessionResult)
         setResultContext(session.context)
         syncWorkspaceResult(sessionResult, session.context)
@@ -375,9 +431,24 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   }
 
   const queueSessionSave = (nextSession: LatestResultSession) => {
+    const storageKey = getResultSessionStorageKey()
+    const owner = ownerRef.current
+    const epoch = pageEpochRef.current
     const write = sessionWriteQueueRef.current
       .catch(() => undefined)
-      .then(() => saveLatestResultSession(nextSession))
+      .then(() => {
+        if (ownerRef.current !== owner || useAuthStore.getState().session?.user.id !== owner || pageEpochRef.current !== epoch) {
+          throw new Error('当前简历已切换，请重新打开后保存')
+        }
+        return saveLatestResultSession(nextSession, storageKey).then(() => {
+          if (pageEpochRef.current !== epoch || ownerRef.current !== owner) return
+          const document = nextSession.result.optimized.completion_document
+          const previous = acknowledgedCompletionRef.current
+          if (document && (!previous || previous.documentId !== document.documentId || previous.revision < document.revision)) {
+            acknowledgedCompletionRef.current = {documentId: document.documentId, revision: document.revision}
+          }
+        })
+      })
     sessionWriteQueueRef.current = write.then(() => undefined, () => undefined)
     return write
   }
@@ -391,13 +462,15 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       ...(latestSessionRef.current ?? session),
       result: nextResult,
       progress: nextProgress,
+      sessionSequence: ++sessionSequenceRef.current,
     }
 
     latestSessionRef.current = nextSession
-    await queueSessionSave(nextSession)
     setResult(nextResult)
     setProgress(nextProgress)
     syncWorkspaceResult(nextResult, nextSession.context)
+    setSaved(savedSnapshotRef.current === resultSnapshotKey(nextResult))
+    await queueSessionSave(nextSession)
 
     return nextSession
   }
@@ -405,6 +478,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   const continueLatestSession = async (session: LatestResultSession) => {
     if (isContinuingRef.current) return
 
+    const owner = ownerRef.current
     const runId = continuationRef.current + 1
     continuationRef.current = runId
     isContinuingRef.current = true
@@ -451,7 +525,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           {landing: enteredFromLanding},
         )
 
-        if (continuationRef.current !== runId) return
+        if (continuationRef.current !== runId || ownerRef.current !== owner || useAuthStore.getState().session?.user.id !== owner) return
 
         currentResult = {
           ...currentResult,
@@ -485,7 +559,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
             : []),
         )
 
-        if (continuationRef.current !== runId) return
+        if (continuationRef.current !== runId || ownerRef.current !== owner || useAuthStore.getState().session?.user.id !== owner) return
 
         currentResult = {
           ...currentResult,
@@ -519,7 +593,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
             : []),
         )
 
-        if (continuationRef.current !== runId) return
+        if (continuationRef.current !== runId || ownerRef.current !== owner || useAuthStore.getState().session?.user.id !== owner) return
 
         const latestResult = resultRef.current ?? currentResult
         currentResult = {
@@ -538,22 +612,23 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       }
       resumeWorkspaceActions.completeGeneration(workspaceRunId)
     } catch (error) {
-      if (continuationRef.current !== runId) return
+      if (continuationRef.current !== runId || ownerRef.current !== owner || useAuthStore.getState().session?.user.id !== owner) return
 
       const message = error instanceof Error ? error.message : '生成失败，请重试'
       resumeWorkspaceActions.failGeneration(workspaceRunId, message)
       console.error('continue result generation failed', error)
       setGenerationError(message)
       const failedProgress: LatestResultSessionProgress = {
-        ...currentProgress,
+        ...(latestSessionRef.current?.progress ?? currentProgress),
         matching: currentProgress.matching === 'generating' ? 'failed' : currentProgress.matching,
         optimized: currentProgress.optimized === 'generating' ? 'failed' : currentProgress.optimized,
         interview: currentProgress.interview === 'generating' ? 'failed' : currentProgress.interview,
       }
       const failedSession: LatestResultSession = {
         ...(latestSessionRef.current ?? currentSession),
-        result: currentResult,
+        result: resultRef.current ?? currentResult,
         progress: failedProgress,
+        sessionSequence: ++sessionSequenceRef.current,
       }
       latestSessionRef.current = failedSession
       setProgress(failedProgress)
@@ -570,10 +645,20 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
   }
 
-  const saveCurrentResult = async (showFeedback = true) => {
-    if (!result) return savedHistoryId
+  const writeCurrentHistory = async (showFeedback = true) => {
+    const currentResult = resultRef.current
+    if (!currentResult) return savedHistoryId
 
-    if (saved) return savedHistoryId
+    if (recoveryRef.current) {
+      feedback.message('请先选择要恢复的简历版本')
+      return null
+    }
+    if (completionSaveStatus !== 'idle') {
+      feedback.message('请先完成当前填写的保存')
+      return null
+    }
+    const snapshotKey = resultSnapshotKey(currentResult)
+    if (savedSnapshotRef.current === snapshotKey) return savedHistoryId
 
     if (progress.interview !== 'done') {
       feedback.message('正在生成中，请稍后')
@@ -581,8 +666,10 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
 
     try {
+      const epoch = pageEpochRef.current
+      const currentSession = latestSessionRef.current
       const baseHistory = createHistoryFromResult(
-        result,
+        currentResult,
         resultContext?.resumeContent || '',
         resultContext?.jdContent || '',
       )
@@ -597,7 +684,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         ...baseHistory,
         position: resolvedPosition,
         company: resolvedCompany,
-        processResult: result,
+        processResult: currentResult,
         resultContext: {
           company: resolvedCompany,
           position: resolvedPosition,
@@ -614,8 +701,24 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         ? await savePendingLandingHistory(history)
         : await addHistory(history)
 
-      setSaved(true)
+      if (epoch !== pageEpochRef.current) return historyId
+      savedSnapshotRef.current = snapshotKey
+      setSaved(resultRef.current != null && resultSnapshotKey(resultRef.current) === snapshotKey)
       setSavedHistoryId(historyId)
+      const latest = latestSessionRef.current ?? currentSession
+      if (latest) {
+        const nextSession: LatestResultSession = {
+          ...latest,
+          originHistoryId: historyId,
+          baseHistorySnapshot: historyCompletionBaseline({...history, id: historyId}),
+          sessionSequence: ++sessionSequenceRef.current,
+        }
+        latestSessionRef.current = nextSession
+        // 历史已保存时不把随后发生的新编辑覆盖成请求发出时的正文。
+        await queueSessionSave(nextSession).catch(() => {
+          feedback.message('历史已保存，当前会话同步暂未完成')
+        })
+      }
       if (showFeedback) {
         feedback.success('保存成功')
       }
@@ -626,6 +729,15 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       feedback.error('保存失败')
       return null
     }
+  }
+
+  const saveCurrentResult = (showFeedback = true) => {
+    if (historySaveRef.current) return historySaveRef.current
+    const write = writeCurrentHistory(showFeedback).finally(() => {
+      if (historySaveRef.current === write) historySaveRef.current = null
+    })
+    historySaveRef.current = write
+    return write
   }
 
   const handleSave = async () => saveCurrentResult(true)
@@ -645,6 +757,10 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       const historyId = await saveCurrentResult(false)
 
       if (!historyId) {
+        return
+      }
+      if (resultRef.current && savedSnapshotRef.current !== resultSnapshotKey(resultRef.current)) {
+        feedback.message('简历有新的修改，请再次完成保存')
         return
       }
       if (generationJobId && needsCompletion) {
@@ -758,15 +874,22 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     await continueLatestSession(retrySession)
   }
 
-  const handleOptimizedResumeChange = async (markdown: string) => {
+  const commitOptimizedResult = async (
+    markdown: string,
+    document?: ResumeCompletionDocument,
+  ) => {
     const currentResult = resultRef.current ?? result
     if (!currentResult) return
+    if (recoveryRef.current) throw new Error('请先选择要恢复的简历版本')
+    const epoch = pageEpochRef.current
+    const writeSequence = ++completionWriteSequenceRef.current
 
     const nextResult: ProcessResult = {
       ...currentResult,
       optimized: {
         ...currentResult.optimized,
         optimized_resume: markdown,
+        completion_document: document,
         changes_summary: strategyResultExcerpts(currentResult.optimized.strategy_review, markdown),
       },
     }
@@ -774,18 +897,82 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     setResult(nextResult)
     syncWorkspaceResult(nextResult, resultContext)
     setSaved(false)
+    setCompletionSaveStatus('saving')
 
     const context = latestSessionRef.current?.context ?? resultContext
-    if (!context) return
+    if (!context) {
+      setCompletionSaveStatus('failed')
+      throw new Error('缺少当前会话，填写内容尚未保存')
+    }
 
     const nextSession: LatestResultSession = {
       ...(latestSessionRef.current ?? {context, result: nextResult}),
       context,
       result: nextResult,
       progress: latestSessionRef.current?.progress ?? progress,
+      sessionSequence: ++sessionSequenceRef.current,
     }
     latestSessionRef.current = nextSession
+    try {
+      await queueSessionSave(nextSession)
+      if (epoch === pageEpochRef.current && writeSequence === completionWriteSequenceRef.current) setCompletionSaveStatus('idle')
+    } catch (error) {
+      if (epoch === pageEpochRef.current && writeSequence === completionWriteSequenceRef.current) setCompletionSaveStatus('failed')
+      throw error
+    }
+  }
+
+  const handleOptimizedResumeChange = (markdown: string) => commitOptimizedResult(markdown)
+
+  const handleCompletionDocumentChange = async (
+    document: ResumeCompletionDocument,
+    baseRevision: number,
+    baseMarkdown: string,
+  ) => {
+    const current = resultRef.current?.optimized
+    if (!current) throw new Error('未找到当前简历')
+    const markdown = serializeDraft(document)
+    const operationKey = `${document.documentId}:${document.revision}`
+    const previousSubmission = appliedCompletionRef.current.get(operationKey)
+    if (previousSubmission === JSON.stringify(document) && current.completion_document?.documentId === document.documentId
+      && current.completion_document.revision > document.revision) {
+      const acknowledged = acknowledgedCompletionRef.current
+      if (acknowledged?.documentId === document.documentId && acknowledged.revision >= document.revision) return
+      // 新稿已包含这个提交；只持久化当前稿，绝不把旧失败快照重新发布。
+      await commitOptimizedResult(current.optimized_resume, current.completion_document)
+      return
+    }
+    const retry = sameCompletionState(current, {optimized_resume: markdown, completion_document: document})
+    const currentState = normalizeCompletionDocument(current.optimized_resume, current.completion_document)
+    if (!retry && (current.optimized_resume !== baseMarkdown
+      || (currentState.status === 'ready' && current.completion_document && (current.completion_document.documentId !== document.documentId
+        || current.completion_document.revision !== baseRevision)))) {
+      throw new Error('这份简历已更新，请取消后重新打开此处编辑')
+    }
+    const validation = validateCompletionDocument(document)
+    if (!validation.ok) throw new Error(validation.issues[0]?.message || '简历结构需要修复')
+    appliedCompletionRef.current.set(operationKey, JSON.stringify(document))
+    // 重试仅重新保存当前完整会话，不重新应用命令或增加文档版本。
+    await commitOptimizedResult(markdown, document)
+  }
+
+  const handleResolveRecovery = async (choice: 'history' | 'session') => {
+    const conflict = recoveryRef.current
+    if (!conflict) return
+    const selected = choice === 'history' ? conflict.history : {
+      ...conflict.session,
+      baseHistorySnapshot: conflict.history.baseHistorySnapshot,
+    }
+    const nextSession = {...selected, sessionSequence: ++sessionSequenceRef.current}
     await queueSessionSave(nextSession)
+    latestSessionRef.current = nextSession
+    recoveryRef.current = null
+    setRecoveryConflict(false)
+    setResult(nextSession.result)
+    setResultContext(nextSession.context)
+    setProgress(nextSession.progress ?? DONE_PROGRESS)
+    syncWorkspaceResult(nextSession.result, nextSession.context)
+    setSaved(choice === 'history')
   }
 
   return {
@@ -813,5 +1000,9 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     handlePendingStage,
     handleRetryStage,
     handleOptimizedResumeChange,
+    handleCompletionDocumentChange,
+    completionSaveStatus,
+    recoveryConflict,
+    handleResolveRecovery,
   }
 }

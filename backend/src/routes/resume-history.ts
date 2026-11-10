@@ -3,6 +3,7 @@ import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { resumeHistoryRepository } from '@/repositories/resume-history-repository'
 import type { ApiResponse, ResumeHistoryRecord, ResumeHistorySummaryRecord } from '@/types'
 import { buildResumeValueSummary } from '@/shared/resume-strategy'
+import {ResumeCompletionSnapshotError} from '@/services/resume-completion-snapshot'
 
 const resultStepStatusSchema = t.Union([
   t.Literal('pending'),
@@ -77,6 +78,11 @@ function toAuthErrorResponse(error: RequestAuthError, set: { status?: unknown })
       message: error.message,
     },
   } satisfies ApiResponse<never>
+}
+
+function toCompletionErrorResponse(error: ResumeCompletionSnapshotError, set: {status?: unknown}) {
+  set.status = error.status
+  return {success: false, error: {code: error.code, message: error.message}} satisfies ApiResponse<never>
 }
 
 function extractLocation(record: ResumeHistoryRecord) {
@@ -211,6 +217,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           return toAuthErrorResponse(error, set)
         }
 
+        if (error instanceof ResumeCompletionSnapshotError) return toCompletionErrorResponse(error, set)
         console.error('保存生成卡片历史失败:', error)
         set.status = 500
 
@@ -311,6 +318,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           return toAuthErrorResponse(error, set)
         }
 
+        if (error instanceof ResumeCompletionSnapshotError) return toCompletionErrorResponse(error, set)
         console.error('更新生成卡片历史失败:', error)
         set.status = 500
 

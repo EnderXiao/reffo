@@ -2151,7 +2151,8 @@ export default function LandingPage() {
                         })}
                         role={canActivateQueueUpload ? 'button' : undefined}
                         aria-label={canActivateQueueUpload ? '上传简历文件' : undefined}
-                        onClick={canActivateQueueUpload ? () => {
+                        onClick={canActivateQueueUpload ? event => {
+                          event.stopPropagation?.()
                           void handleQueueResumeUpload()
                         } : undefined}
                       >

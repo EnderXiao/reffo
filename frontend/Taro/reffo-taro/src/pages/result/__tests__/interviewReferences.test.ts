@@ -24,4 +24,19 @@ describe('interview references', () => {
 
     expect(findBestOriginalQuote(jd, '完全无关的查询')).toBe('岗位职责：负责业务系统前端开发。')
   })
+
+  test('待完善行即使匹配更高也不能成为事实引用', () => {
+    const completed = '负责门店调研，形成需求清单。'
+    const pending = '负责 AI 辅导，具体完成【待完善：本人设计；如原型设计/规则梳理，仅选实际做过的项】。'
+    const source = `## 工作经历\n- ${pending}\n- ${completed}`
+
+    expect(findBestOriginalQuote(source, 'AI 辅导 原型设计 规则梳理')).toBe(completed)
+    expect(findBestOriginalQuote(pending, 'AI 辅导')).toBe('')
+  })
+
+  test('不会删除括号后把未完成的残句当成引用', () => {
+    const source = '将审核耗时降至【待完善：实际耗时；无记录则删除整句】。'
+
+    expect(findBestOriginalQuote(source, '审核耗时')).toBe('')
+  })
 })

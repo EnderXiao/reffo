@@ -58,7 +58,7 @@ describe('v5 prompt compiler and strict schemas', () => {
     const compiled = compileV5Prompt({ component: 'P03', envelope: { payload: {} } })
     const system = compiled.messages[0].content
     expect(compiled.promptVersion).toBe('5.1.0-p03-job-fit-map-r5')
-    expect(compiled.maxOutputTokens).toBe(6_000)
+    expect(compiled.maxOutputTokens).toBe(9_600)
     expect(system).toContain('以岗位任务和成功条件为锚点')
     expect(system).toContain('材料简略时挖掘已知行动的职业含义')
     expect(system).toContain('不要求每条都有商业结果或完整 STAR')
@@ -72,7 +72,7 @@ describe('v5 prompt compiler and strict schemas', () => {
     const compiled = compileV5Prompt({ component: 'P03R', envelope: { payload: {} } })
     expect(compiled.promptVersion).toBe('5.1.0-p03r-job-fit-map-repair-r4')
     expect(compiled.schema).toBe(schemaForV5Component('P03'))
-    expect(compiled.maxOutputTokens).toBe(6_000)
+    expect(compiled.maxOutputTokens).toBe(9_600)
     expect(compiled.messages[0].content).toContain('材料简略或没有数字，不等于没有能力')
     expect(compiled.messages[0].content).toContain('行业惯例不能变成本人经历')
     expect(compiled.messages[0].content).toContain('不新增字段、不阻断流程')
@@ -266,6 +266,49 @@ describe('v5 prompt compiler and strict schemas', () => {
     expect(systemPrompt).toContain('禁止输出任何自由文本或候选正文')
     expect(systemPrompt).toContain('禁止输出 `claim`、`claimId`、`outputPath`、`path`')
     expect(systemPrompt).toContain('`stats`、`renderStats`')
+  })
+
+  test('short and repair matching inputs share bounded complete-structure capacity', () => {
+    const previousWindow = env.V5_CONTEXT_WINDOW_TOKENS
+    try {
+      env.V5_CONTEXT_WINDOW_TOKENS = 64000
+      const originalEnvelope = {payload: {jobTargetingPolicy: 'job-targeted-v1'}}
+      const repairEnvelope = {payload: {originalEnvelope,
+        currentOutput: {notes: '修复草稿'.repeat(4000), maxOutputTokens: 999999},
+        validationIssues: [{message: '结构问题'.repeat(1000)}]}}
+      for (const component of ['P02', 'P02R', 'P03', 'P03R'] as const) {
+        const primary = compileV5Prompt({component, envelope: originalEnvelope})
+        const repair = compileV5Prompt({component, envelope: repairEnvelope, repairAttempt: 1})
+        expect(primary.maxOutputTokens).toBe(9600)
+        expect(repair.maxOutputTokens).toBe(9600)
+        expect(V5_PROMPT_MAX_OUTPUT_TOKENS[component]).toBe(9600)
+        expect(repair.estimatedInputTokens).toBeGreaterThan(primary.estimatedInputTokens)
+        expect(repair.estimatedInputTokens + repair.maxOutputTokens + 2048).toBeLessThanOrEqual(repair.contextWindowTokens)
+      }
+    } finally { env.V5_CONTEXT_WINDOW_TOKENS = previousWindow }
+  })
+
+  test('matching and repair budgets still shrink or reject against actual available context', () => {
+    const previousWindow = env.V5_CONTEXT_WINDOW_TOKENS
+    const originalEnvelope = {payload: {jobTargetingPolicy: 'job-targeted-v1'}}
+    const envelopes = [originalEnvelope, {payload: {originalEnvelope, currentOutput: {notes: '修复草稿'.repeat(1000)}}}]
+    try {
+      for (const component of ['P02', 'P02R', 'P03', 'P03R'] as const) {
+        for (const envelope of envelopes) {
+          env.V5_CONTEXT_WINDOW_TOKENS = 64000
+          const compiled = compileV5Prompt({component, envelope})
+          const minimum = component.startsWith('P02') ? 9600 : 5000
+          env.V5_CONTEXT_WINDOW_TOKENS = compiled.estimatedInputTokens + 2048 + minimum - 1
+          expect(() => compileV5Prompt({component, envelope})).toThrow(V5PromptBudgetError)
+          env.V5_CONTEXT_WINDOW_TOKENS += 1
+          expect(compileV5Prompt({component, envelope}).maxOutputTokens).toBe(minimum)
+          if (component.startsWith('P03')) {
+            env.V5_CONTEXT_WINDOW_TOKENS = compiled.estimatedInputTokens + 2048 + 8500
+            expect(compileV5Prompt({component, envelope}).maxOutputTokens).toBe(8500)
+          }
+        }
+      }
+    } finally { env.V5_CONTEXT_WINDOW_TOKENS = previousWindow }
   })
 
   test('reserves enough structured output capacity for dense P01 chunks', () => {

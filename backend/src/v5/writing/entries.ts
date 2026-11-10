@@ -23,21 +23,77 @@ import { canCompactEntryParagraphs, entryLayoutItemLimit, ENTRY_LAYOUT_VERSION }
 import { explicitEducationDegree } from '@/v5/writing/education'
 import type { EntryStrategyAction } from './intents'
 import type { EntryParagraphReference } from './strategy-outcomes'
+import { selectCompletionGaps, type GapSelectionCandidate } from './gap-selection'
+import { buildCompletionDocument } from './completion-document'
+import { serializeDraft } from '@/shared/resume-completion'
+import { entryCoverageSchema, entrySegmentSchema, gapDecisionsSchema, GAP_GUIDANCE, GAP_TEMPLATES, deliveryLength, inspectEntrySkeleton, projectFactSegments, renderEntrySegments, segmentEvidenceIds, validateDeliveryBudget, type EntrySegment } from './entry-skeleton'
 
-export const ENTRY_WRITING_POLICY = 'entry-writing-v1' as const
+export const ENTRY_WRITING_POLICY = 'entry-writing-v3' as const
+export const SKELETON_POLICY_VERSION = 'five-element-cloze-v2' as const
+
+/** A delivery snapshot is compiled from this exact fact text before final validation. */
+export function assertEntryDeliveryProjection(
+  compiled: { markdown: string }, validated: { markdown: string } | undefined,
+): void {
+  if (validated && validated.markdown !== compiled.markdown) throw new SupportedWritingError([
+    writingIssue('WRITER_PROJECTION_MISMATCH', 'artifact.markdown', [],
+      '最终事实正文与留白展示稿的编译基准不一致，不能交付过期展示稿。'),
+  ])
+}
+
+const paragraphRoleSchema = z.enum(['positioning', 'scope', 'problem', 'approach', 'contribution', 'outcome', 'method', 'education', 'credential', 'detail'])
 export const entryParagraphSchema = z.object({
-  role: z.enum(['positioning', 'scope', 'problem', 'approach', 'contribution', 'outcome', 'method', 'education', 'credential', 'detail']),
+  role: paragraphRoleSchema,
   text: z.string().trim().min(1).max(6000),
   evidenceIds: z.array(z.string().min(1)).min(1).max(80),
+  segments: z.array(entrySegmentSchema).min(1).max(9).optional(),
 }).strict()
 export const writtenEntrySchema = z.object({
-  entryId: z.string().min(1), paragraphs: z.array(entryParagraphSchema).min(1).max(12),
+  entryId: z.string().min(1), coverage: entryCoverageSchema.optional(), gapDecisions: gapDecisionsSchema.optional(),
+  paragraphs: z.array(entryParagraphSchema).min(1).max(12),
 }).strict()
-export const entryWritingOutputSchema = z.object({
-  // 空数组交给集合校验诊断为经历缺失；发给模型的 Schema 仍要求本次计划的准确数量。
-  contractVersion: z.literal(ENTRY_WRITING_POLICY), entries: z.array(writtenEntrySchema).max(100),
+export const writtenEntryV2Schema = z.object({
+  entryId: z.string().min(1), coverage: entryCoverageSchema,
+  paragraphs: z.array(z.object({role: paragraphRoleSchema,
+    segments: z.array(entrySegmentSchema).min(1).max(9)}).strict()).min(1).max(12),
 }).strict()
+export const entryWritingV2OutputSchema = z.object({
+  contractVersion: z.literal('entry-writing-v2'), entries: z.array(writtenEntryV2Schema).max(100),
+}).strict()
+export const writtenEntryV3Schema = writtenEntryV2Schema.extend({gapDecisions: gapDecisionsSchema})
+export const entryWritingV3OutputSchema = z.object({
+  contractVersion: z.literal(ENTRY_WRITING_POLICY), entries: z.array(writtenEntryV3Schema).max(100),
+}).strict()
+const compatibleEntryOutputSchema = z.object({
+  contractVersion: z.enum(['entry-writing-v1', 'entry-writing-v2', ENTRY_WRITING_POLICY]), entries: z.array(writtenEntrySchema).max(100),
+}).strict()
+export function materializeWrittenEntry(entry: z.infer<typeof writtenEntryV2Schema> & {
+  gapDecisions?: z.infer<typeof gapDecisionsSchema>
+}): z.infer<typeof writtenEntrySchema> {
+  return {...entry, paragraphs: entry.paragraphs.map(paragraph => ({...paragraph,
+    text: projectFactSegments(paragraph.segments), evidenceIds: segmentEvidenceIds(paragraph.segments)}))}
+}
+// This parser is for compilation/replay only. Structured-stage acceptance uses
+// entryWritingV3OutputSchema so a new provider cannot return legacy free text.
+export const entryWritingOutputSchema = z.union([entryWritingV3OutputSchema, entryWritingV2OutputSchema, compatibleEntryOutputSchema])
+  .transform(output => ({...output, entries: output.entries.map(entry =>
+    'text' in entry.paragraphs[0] ? writtenEntrySchema.parse(entry) : materializeWrittenEntry(entry as z.infer<typeof writtenEntryV2Schema>))}))
 export type WrittenEntry = z.infer<typeof writtenEntrySchema>
+
+function rewriteFactParagraph<T extends {text: string; evidenceIds: string[]; segments?: EntrySegment[]}>(paragraph: T, rewrite: (text: string) => string): T {
+  if (!paragraph.segments) return {...paragraph, text: rewrite(paragraph.text)}
+  const segments = paragraph.segments.map(segment => segment.kind === 'fact' ? {...segment, text: rewrite(segment.text)} : segment)
+  return {...paragraph, segments, text: projectFactSegments(segments), evidenceIds: segmentEvidenceIds(segments)}
+}
+function joinFactParagraphs<T extends {role: WrittenEntry['paragraphs'][number]['role']; text: string; evidenceIds: string[]; segments?: EntrySegment[]; sourceParagraphIndices: number[]}>(left: T, right: T): T {
+  const segments = left.segments || right.segments ? [
+    ...(left.segments ?? [{kind: 'fact' as const, text: left.text, evidenceIds: left.evidenceIds}]),
+    {kind: 'fact' as const, text: ' ', evidenceIds: left.evidenceIds},
+    ...(right.segments ?? [{kind: 'fact' as const, text: right.text, evidenceIds: right.evidenceIds}]),
+  ] : undefined
+  return {...left, text: `${left.text} ${right.text}`, evidenceIds: [...new Set([...left.evidenceIds, ...right.evidenceIds])],
+    ...(segments ? {segments} : {}), sourceParagraphIndices: [...left.sourceParagraphIndices, ...right.sourceParagraphIndices]}
+}
 
 /** 兼容模型附加的空注释，不接受有内容的额外字段或改动正文。 */
 export function normalizeWrittenEntry(value: unknown): unknown {
@@ -67,8 +123,8 @@ export function entryWritingTransportSchema(envelope: unknown) {
   const ids = payload.entries.map(entry => entry.entryId)
   const diagnostics = inspectEntrySet(ids, ids)
   if (!diagnostics.passed) throw new EntrySetValidationError(diagnostics, 'ENTRY_PLAN_INVALID')
-  return entryWritingOutputSchema.extend({
-    entries: z.array(writtenEntrySchema.extend({entryId: z.enum(ids as [string, ...string[]])})).length(ids.length),
+  return entryWritingV3OutputSchema.extend({
+    entries: z.array(writtenEntryV3Schema.extend({entryId: z.enum(ids as [string, ...string[]])})).length(ids.length),
   })
 }
 
@@ -90,8 +146,11 @@ export interface EntryBrief {
   order: number
   slot: CompositionBlueprintSlot
   facts: WritingFact[]
+  gapContextFacts: Array<{evidenceId: string; scopeId: string; text: string}>
+  gapContextComplete: boolean
   coreEvidenceIds: string[]
   taskIds: string[]
+  projectIdentity?: {text: string; evidenceIds: string[]}
   strategyActions?: EntryStrategyAction[]
   /** Newly admitted action material whose explicit boundary must survive in this entry. */
   strategyBoundaryEvidenceIds?: string[]
@@ -219,7 +278,7 @@ export function buildEntryWritingPlan(input: {
     let entry = business(slot) ? entries.find(item => item.scopeId === slot.scopeId && item.section === slot.sectionKey) : undefined
     if (!entry) {
       entry = { entryId: `entry:${entries.length}`, section: slot.sectionKey, scopeId: slot.scopeId,
-        order: slot.order, slot: structuredClone(slot), facts: [], coreEvidenceIds: [], taskIds: [],
+        order: slot.order, slot: structuredClone(slot), facts: [], gapContextFacts: [], gapContextComplete: true, coreEvidenceIds: [], taskIds: [],
         lengthHint: { unit: base.outputLength.unit, target: 0 } }
       entries.push(entry)
     }
@@ -250,9 +309,27 @@ export function buildEntryWritingPlan(input: {
       // Context is optional material, never a new required achievement.
       scopePlan.selectedEvidenceIds = [...new Set([...scopePlan.selectedEvidenceIds, ...entry.facts.map(f => f.evidenceId)])]
     }
+    if (business(entry.slot) && entry.scopeId) {
+      const context = input.resume.evidenceAtoms.filter(atom => atom.sourceScopeId === entry.scopeId
+        && atom.status !== 'excluded' && !atom.riskFlags.some(flag => ['sensitive_pii', 'prompt_injection_like_text'].includes(flag)))
+        .sort((a, b) => a.sourceSpan.start - b.sourceSpan.start)
+      const facts = context.flatMap(atom => {
+        const fact = buildWritingFact(atom)
+        return fact ? [{evidenceId: fact.evidenceId, scopeId: fact.scopeId, text: fact.text}] : []
+      })
+      let characters = 0
+      for (const fact of facts) {
+        if (characters + fact.text.length > 20000 || entry.gapContextFacts.length >= 100) break
+        characters += fact.text.length
+        entry.gapContextFacts.push(fact)
+      }
+      entry.gapContextComplete = entry.gapContextFacts.length === facts.length
+    }
     entry.facts.sort((a, b) => (atoms.get(a.evidenceId)?.sourceSpan.start ?? 0) - (atoms.get(b.evidenceId)?.sourceSpan.start ?? 0))
     entry.coreEvidenceIds = [...new Set(entry.coreEvidenceIds)]
     entry.taskIds = [...new Set(entry.taskIds)]
+    const identity = input.resume.timeline.find(item => item.scopeId === entry.scopeId)
+    if (identity) entry.projectIdentity = {text: [identity.organization, identity.title].filter(Boolean).join('｜'), evidenceIds: identity.evidenceIds}
   }
   for (const entry of entries) entry.facts = entry.facts.map(fact => {
     // Surface a verified attribution constraint in the prose material as well
@@ -303,6 +380,7 @@ export function entryWritingPayload(plan: EntryWritingPlan) {
   return {
     writingPolicy: plan.base.version, entryWritingPolicy: plan.version,
     guidance: plan.base.guidance, outputLength: plan.base.outputLength,
+    skeletonPolicy: {version: SKELETON_POLICY_VERSION, templates: GAP_GUIDANCE, maxGapsPerEntry: 2, maxGapsPerDocument: 3},
     listItemBudget: plan.listItemBudget,
     layoutPolicy: ENTRY_LAYOUT_VERSION, listItemHardLimit: plan.listItemHardLimit,
     requiredEntryIds: ids, requiredEntryCount: ids.length,
@@ -313,7 +391,8 @@ export function entryWritingPayload(plan: EntryWritingPlan) {
         paragraphLimit: entry.slot.kind === 'business_bullet'
           ? plan.renderingPlan.scopePlans.find(scope => scope.scopeId === entry.scopeId)?.treatment === 'compress' ? 2 : 4 : 1,
         purpose: SECTION_WRITING_ROLES[entry.section] ?? '准确呈现与岗位相关的源材料。',
-        facts: entry.facts, coreEvidenceIds: entry.coreEvidenceIds, targetTaskIds: entry.taskIds,
+        facts: entry.facts, gapContextFacts: entry.gapContextFacts, gapContextComplete: entry.gapContextComplete, coreEvidenceIds: entry.coreEvidenceIds, targetTaskIds: entry.taskIds,
+        projectIdentity: entry.projectIdentity ?? null,
         ...(entry.strategyActions?.length ? { strategyActions: entry.strategyActions } : {}),
         lengthHint: entry.lengthHint })),
   }
@@ -323,6 +402,7 @@ export function entryWritingPayload(plan: EntryWritingPlan) {
 export function compileEntryWriting(input: {
   output: unknown; entryPlan: EntryWritingPlan; resume: ResumeEvidenceBundle; policy: GenerationPolicy
   previewEntryId?: string
+  documentId?: string
 }) {
   const output = entryWritingOutputSchema.parse(input.output)
   const entries = input.previewEntryId ? input.entryPlan.entries.filter(e => e.entryId === input.previewEntryId) : input.entryPlan.entries
@@ -330,6 +410,15 @@ export function compileEntryWriting(input: {
   const fail = (code: string) => { throw new SupportedWritingError([writingIssue(code, 'entries', [], '经历结构与服务端计划不一致。')]) }
   const diagnostics = inspectEntrySet(entries.map(entry => entry.entryId), output.entries.map(entry => entry.entryId))
   if (!diagnostics.passed) throw new EntrySetValidationError(diagnostics)
+  for (const entry of entries) {
+    const written = byId.get(entry.entryId)!
+    const issues = inspectEntrySkeleton({coverage: written.coverage, paragraphs: written.paragraphs,
+      gapDecisions: written.gapDecisions, requireGapDecisions: output.contractVersion === ENTRY_WRITING_POLICY,
+      gapContextFacts: entry.gapContextFacts, gapContextComplete: entry.gapContextComplete, targetTaskIds: entry.taskIds,
+      facts: entry.facts, identityEvidenceIds: entry.projectIdentity?.evidenceIds, hasProjectIdentity: ['project', 'research'].includes(entry.section) && Boolean(entry.projectIdentity?.text),
+      atoms: input.resume.evidenceAtoms, scopeId: entry.scopeId, business: entry.slot.kind === 'business_bullet', outputPath: entry.slot.outputPath})
+    if (issues.length) throw new SupportedWritingError(issues)
+  }
   const writingPlan = structuredClone(input.entryPlan.base)
   const plan = structuredClone(input.entryPlan.renderingPlan)
   const fixedSlots = writingPlan.blueprint.slots.filter(slot => writingPlan.fixedBlocks?.some(block => block.slotId === slot.slotId))
@@ -341,6 +430,8 @@ export function compileEntryWriting(input: {
   const blocks: Array<{ slotId: string; evidenceIds: string[]; text: string }> = []
   const sourceParagraphIndicesByPath = new Map<string, readonly number[]>()
   const entryParagraphReferences: EntryParagraphReference[] = []
+  const finalParagraphs = new Map<string, WrittenEntry['paragraphs'][number]>()
+  const entryIdsByPath = new Map<string, string>()
   const warnings = []
   const paragraphsById = new Map(entries.map(entry => [entry.entryId, byId.get(entry.entryId)!.paragraphs
     .map((paragraph, index) => ({ ...paragraph, sourceParagraphIndices: [index] }))
@@ -355,7 +446,8 @@ export function compileEntryWriting(input: {
     if (text === paragraph.text) return paragraph
     warnings.push(writingIssue('WRITER_UNSUPPORTED_LEADERSHIP_REMOVED', entry.entryId, paragraph.evidenceIds,
       '删除无来源依据的“主导”修饰，保留同条源材料明确记录的实际动作；未改写源事实。', 'warning'))
-    return { ...paragraph, text }
+    return rewriteFactParagraph(paragraph, value => value.replace(/主导(形成|设计|梳理|分析|开发|制定|搭建|完成)/gu, (original, action: string) =>
+      sources.some(atom => ['action', 'responsibility', 'deliverable'].includes(atom.claimType) && atom.verbatimText.includes(action)) ? action : original))
   })]))
   const countItems = () => entries.reduce((sum, entry) => sum + (entry.slot.kind === 'summary' ? 0
     : entry.slot.kind === 'business_bullet' ? paragraphsById.get(entry.entryId)!.length : 1), 0)
@@ -373,9 +465,7 @@ export function compileEntryWriting(input: {
     if (!pair) break
     const paragraphs = paragraphsById.get(pair.entryId)!
     const [left, right] = paragraphs.slice(pair.index, pair.index + 2)
-    paragraphs.splice(pair.index, 2, {role:left.role, text:`${left.text} ${right.text}`,
-      evidenceIds:[...new Set([...left.evidenceIds, ...right.evidenceIds])],
-      sourceParagraphIndices:[...left.sourceParagraphIndices, ...right.sourceParagraphIndices]})
+    paragraphs.splice(pair.index, 2, joinFactParagraphs(left, right))
     merges++
   }
   if (merges) warnings.push(writingIssue('WRITER_LAYOUT_COMPACTED', 'entries', [],
@@ -388,9 +478,7 @@ export function compileEntryWriting(input: {
     // Ancillary layout is server-owned. Preserve every sentence and reference
     // when a model splits a single summary/skill/education slot into paragraphs.
     let paragraphs = entry.slot.kind !== 'business_bullet' && written.paragraphs.length > 1
-      ? [{ role: written.paragraphs[0].role, text: written.paragraphs.map(p => p.text).join(' '),
-        evidenceIds: [...new Set(written.paragraphs.flatMap(p => p.evidenceIds))],
-        sourceParagraphIndices: written.paragraphs.map((_, index) => index) }]
+      ? [paragraphsById.get(entry.entryId)!.reduce((left, right) => joinFactParagraphs(left, right))]
       : paragraphsById.get(entry.entryId)!
     if (entry.slot.kind !== 'business_bullet' && written.paragraphs.length > 1) warnings.push(writingIssue('WRITER_ANCILLARY_PARAGRAPHS_JOINED', entry.entryId,
       paragraphs[0].evidenceIds, '辅助板块多段已按单槽布局合并，未删正文或引用。', 'warning'))
@@ -402,7 +490,7 @@ export function compileEntryWriting(input: {
         || !sources.some(atom => ['action', 'responsibility', 'deliverable'].includes(atom.claimType))) return paragraph
       warnings.push(writingIssue('WRITER_SUMMARY_OWNERSHIP_DOWNGRADED', entry.entryId, paragraph.evidenceIds,
         '摘要无依据的“主导”已降为“参与”；不新增经历，不修改来源。', 'warning'))
-      return {...paragraph, text:paragraph.text.replace(/主导过/gu, '参与过')}
+      return rewriteFactParagraph(paragraph, text => text.replace(/主导过/gu, '参与过'))
     })
     if (entry.section === 'education') {
       const degrees = entry.facts.flatMap(fact => {
@@ -415,8 +503,10 @@ export function compileEntryWriting(input: {
       const displayed = [scope?.organization, scope?.title, ...paragraphs.map(item => item.text)].filter(Boolean).join(' ')
       if (labels.length === 1 && !displayed.includes(labels[0])) {
         const first = paragraphs[0]
-        paragraphs = [{ ...first, text: `${labels[0]}；${first.text}`,
-          evidenceIds: [...new Set([...degrees.map(item => item.evidenceId), ...first.evidenceIds])] }, ...paragraphs.slice(1)]
+        const degreeIds = degrees.map(item => item.evidenceId)
+        const segments = first.segments ? [{kind: 'fact' as const, text: `${labels[0]}；`, evidenceIds: degreeIds}, ...first.segments] : undefined
+        paragraphs = [{ ...first, text: `${labels[0]}；${first.text}`, ...(segments ? {segments} : {}),
+          evidenceIds: [...new Set([...degreeIds, ...first.evidenceIds])] }, ...paragraphs.slice(1)]
         warnings.push(writingIssue('WRITER_EDUCATION_DEGREE_RETAINED', entry.entryId, degrees.map(item => item.evidenceId),
           '教育正文保留了同一经历中明确给出的学历原文，未推断毕业状态或新增学历。', 'warning'))
       }
@@ -446,6 +536,8 @@ export function compileEntryWriting(input: {
       writingPlan.coreEvidenceIdsBySlot[slotId] = []
       writingPlan.entryParagraphGroups[slotId] = entry.entryId
       blocks.push({ slotId, evidenceIds: paragraph.evidenceIds, text: paragraph.text })
+      finalParagraphs.set(path, paragraph)
+      entryIdsByPath.set(path, entry.entryId)
       if (entry.slot.kind === 'business_bullet') {
         const scope = input.resume.timeline.find(item => item.scopeId === entry.scopeId)
         const section = entry.section === 'project' ? '项目经历' : entry.section === 'research' ? '研究经历' : '工作经历'
@@ -491,7 +583,10 @@ export function compileEntryWriting(input: {
       if (!issues.length) return block
       const atoms = [...new Set(block.evidenceIds.flatMap(id => input.entryPlan.base.expandedEvidenceIds[id] ?? [id]))]
         .flatMap(id => input.resume.evidenceAtoms.filter(atom => atom.evidenceId === id))
-      const text = removeUnsupportedCollaboratorMentions(block.text, atoms)
+      const path = writingPlan.blueprint.slots.find(slot => slot.slotId === block.slotId)!.outputPath
+      const paragraph = finalParagraphs.get(path)!
+      const normalized = rewriteFactParagraph(paragraph, text => removeUnsupportedCollaboratorMentions(text, atoms))
+      const text = normalized.text
       if (text === block.text) return block
       collaboratorNormalizations.push(writingIssue(
         'WRITER_COLLABORATOR_REMOVED',
@@ -500,14 +595,88 @@ export function compileEntryWriting(input: {
         '已删除生成稿中无来源支持的具体协作部门，保留同一引用能够证明的实际动作。',
         'warning',
       ))
+      finalParagraphs.set(path, normalized)
       return {...block, text}
     })
     if (!collaboratorNormalizations.length) throw error
     result = compileBlocks(normalizedBlocks)
   }
   const entryParagraphPaths = new Set(writingPlan.blueprint.slots.filter(s => s.kind === 'business_bullet').map(s => s.outputPath))
+  // Normative rewrites above change fact segments first. Check optional clause
+  // boundaries again before building either public text or its preview.
+  for (const entry of entries) {
+    const paragraphs = [...finalParagraphs].filter(([path]) => entryIdsByPath.get(path) === entry.entryId).map(([, paragraph]) => paragraph)
+    const issues = inspectEntrySkeleton({coverage: byId.get(entry.entryId)!.coverage, paragraphs,
+      gapDecisions: byId.get(entry.entryId)!.gapDecisions, requireGapDecisions: output.contractVersion === ENTRY_WRITING_POLICY,
+      gapContextFacts: entry.gapContextFacts, gapContextComplete: entry.gapContextComplete, targetTaskIds: entry.taskIds,
+      facts: entry.facts, identityEvidenceIds: entry.projectIdentity?.evidenceIds,
+      hasProjectIdentity: ['project', 'research'].includes(entry.section) && Boolean(entry.projectIdentity?.text),
+      atoms: input.resume.evidenceAtoms, scopeId: entry.scopeId, business: entry.slot.kind === 'business_bullet', outputPath: entry.slot.outputPath})
+    if (issues.length) throw new SupportedWritingError(issues)
+  }
+  const enabledGaps = new Map<string, Set<number>>()
+  const priority = {core: 0, supporting: 1, optional: 2, unclear: 3}
+  const candidates = [...finalParagraphs].flatMap(([path, paragraph]) => (paragraph.segments ?? []).flatMap((segment, index): GapSelectionCandidate[] => {
+    if (segment.kind !== 'optional_gap_clause') return []
+    const entry = entries.find(item => item.entryId === entryIdsByPath.get(path))!
+    const element = GAP_TEMPLATES[segment.template].element
+    const decision = byId.get(entry.entryId)?.gapDecisions?.find(item => item.element === element && item.action === 'supplement')
+    const targetTasks = decision?.action === 'supplement' ? decision.targetTaskIds : entry.taskIds
+    const tasks = input.entryPlan.base.targeting?.profile.tasks.filter(task => targetTasks.includes(task.id)
+      && task.provenance.basis !== 'unknown') ?? []
+    const purpose = decision?.action === 'supplement' ? decision.purpose
+      : element === 'problem' || element === 'solution' ? 'explain_key_action'
+      : element === 'responsibility' ? 'clarify_contribution' : element === 'result' ? 'identify_deliverable' : 'identify_object'
+    return [{path, index, entryId: entry.entryId, scopeId: entry.scopeId, element, purpose,
+      taskPriority: Math.min(3, ...tasks.map(task => priority[task.priority])), order: entry.order}]
+  }))
+  const gapSelections = selectCompletionGaps(candidates)
+  const gaps = gapSelections.filter(item => item.disposition === 'selected')
+  for (const gap of gaps) {
+    const indices = enabledGaps.get(gap.path) ?? new Set<number>()
+    indices.add(gap.index); enabledGaps.set(gap.path, indices)
+  }
+  const buildDelivery = () => {
+    const lines = result.renderedBlocks.map(block => block.raw)
+    const deliveryParagraphs = new Map<string, string[]>()
+    const gapOutputPaths = new Set<string>()
+    for (const claim of result.artifact.claims) {
+      const paragraph = finalParagraphs.get(claim.outputPath), entryId = entryIdsByPath.get(claim.outputPath)
+      if (!paragraph || !entryId) continue
+      const text = paragraph.segments ? renderEntrySegments(paragraph.segments, enabledGaps.get(claim.outputPath) ?? new Set()) : paragraph.text
+      if (enabledGaps.get(claim.outputPath)?.size) {
+        gapOutputPaths.add(claim.outputPath)
+        if (!paragraph.segments || projectFactSegments(paragraph.segments) !== paragraph.text || claim.outputText !== `- ${paragraph.text}`) {
+          throw new SupportedWritingError([writingIssue('WRITER_PROJECTION_MISMATCH', claim.outputPath, paragraph.evidenceIds, '交付段与最终事实声明不一致。')])
+        }
+        const locations = result.renderedBlocks.flatMap((block, index) => block.outputPath === claim.outputPath ? [index] : [])
+        if (locations.length !== 1) throw new SupportedWritingError([writingIssue('WRITER_PROJECTION_MISMATCH', claim.outputPath, [], '无法唯一定位交付段。')])
+        lines[locations[0]] = `- ${text}`
+      }
+      deliveryParagraphs.set(entryId, [...(deliveryParagraphs.get(entryId) ?? []), text])
+    }
+    return {deliveryMarkdown: lines.join('\n'), deliveryParagraphs, gapOutputPaths}
+  }
+  let delivery = buildDelivery(), omittedGaps = 0
+  for (const gap of [...gaps].reverse()) {
+    if (deliveryLength(delivery.deliveryMarkdown, input.policy) <= input.policy.outputLength.hardMax) break
+    enabledGaps.get(gap.path)!.delete(gap.index)
+    gap.disposition = 'omitted_length'
+    omittedGaps++
+    delivery = buildDelivery()
+  }
+  if (omittedGaps) warnings.push(writingIssue('WRITER_GAPS_OMITTED_FOR_LENGTH', 'entries', [],
+    '填写说明超出交付篇幅余量；已按优先级省去低优先级可选子句，保留全部已知事实。', 'warning'))
+  const {deliveryMarkdown, deliveryParagraphs, gapOutputPaths} = delivery
+  validateDeliveryBudget(deliveryMarkdown, input.policy)
+  const completionDocument = buildCompletionDocument({documentId: input.documentId,
+    renderedBlocks: result.renderedBlocks, finalParagraphs, enabledGaps, artifactMarkdown: result.artifact.markdown})
+  if (serializeDraft(completionDocument) !== deliveryMarkdown) throw new SupportedWritingError([
+    writingIssue('WRITER_PROJECTION_MISMATCH', 'entries', [], '结构化编辑文档与最终交付正文不一致。'),
+  ])
   return {
-    ...result,
+    ...result, deliveryMarkdown, completionDocument, deliveryParagraphs, gapOutputPaths, gapSelections,
+    gapDecisionsByEntry: entries.map(entry => ({entryId: entry.entryId, decisions: byId.get(entry.entryId)?.gapDecisions ?? []})),
     writingIssues: [...result.writingIssues, ...warnings, ...collaboratorNormalizations],
     renderingPlan: plan,
     entryParagraphPaths,

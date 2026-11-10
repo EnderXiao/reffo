@@ -1,11 +1,12 @@
 import {generationJobRepository, type GenerationJobRepository} from '@/repositories/generation-job-repository'
 import {resumeHistoryRepository} from '@/repositories/resume-history-repository'
-import {v5SingleStepAdapter} from '@/v5/single-step-adapter'
+import {singleStepFingerprint, v5SingleStepAdapter} from '@/v5/single-step-adapter'
 import {V5WorkflowBlockedError} from '@/v5/errors'
 import {ResumeQuotaError} from './resume-quota'
 import {summarizeGenerationJob, type GenerationJob} from '@/types/generation-job'
 import type {ResumeHistoryRepositoryContract} from '@/repositories/interfaces'
 import {publishGenerationJobUpdate} from '@/services/generation-job-events'
+import {assertGenerationJobVersion, GenerationJobVersionError, hasGenerationStages} from './generation-job-version'
 
 export function jobHistory(job: GenerationJob) {
   const {input, analysis, matching, optimized, interview} = job.payload
@@ -38,9 +39,10 @@ export class GenerationJobWorker {
   private timer?: ReturnType<typeof setInterval>
 
   constructor(
-    private readonly repository: GenerationJobRepository = generationJobRepository,
-    private readonly adapter = v5SingleStepAdapter,
-    private readonly histories: ResumeHistoryRepositoryContract = resumeHistoryRepository,
+    private readonly repository: Pick<GenerationJobRepository, 'renew' | 'patch' | 'quota' | 'claim'> = generationJobRepository,
+    private readonly adapter: Pick<typeof v5SingleStepAdapter, 'analyze' | 'match' | 'generate' | 'interview'> = v5SingleStepAdapter,
+    private readonly histories: Pick<ResumeHistoryRepositoryContract, 'findById' | 'save'> = resumeHistoryRepository,
+    private readonly releaseFingerprint = singleStepFingerprint,
   ) {}
 
   async execute(initial: GenerationJob) {
@@ -59,11 +61,28 @@ export class GenerationJobWorker {
     }
 
     try {
+      // A previous attempt may have saved history before losing its final lease.
+      // Reuse that record so retry never overwrites subsequent user edits.
+      const savedHistory = await this.histories.findById(
+        {userId: job.user_id, useServiceRole: true}, job.history_id || `JD-${job.id}`,
+      )
+      if (savedHistory) {
+        await save({status: 'completed', history_id: savedHistory.id, error: null, lease_token: null})
+        return
+      }
+      const fingerprint = this.releaseFingerprint()
+      assertGenerationJobVersion(job.payload, fingerprint)
+      if (!hasGenerationStages(job.payload) && job.payload.releaseFingerprint !== fingerprint) {
+        await save({payload: {...job.payload, releaseFingerprint: fingerprint}})
+      }
       if (!job.payload.analysis) {
         await save({stage: 'analysis'})
         const result = await this.adapter.analyze(job.payload.input.resume_markdown, job.user_id,
-          {onCacheMiss: () => this.repository.quota(job, false)})
-        if (result.cache.status === 'miss' || result.cache.status === 'disabled') await this.repository.quota(job, true)
+          {onCacheMiss: async () => {if (!job.quota_charged) await this.repository.quota(job, false)}})
+        if (!job.quota_charged && (result.cache.status === 'miss' || result.cache.status === 'disabled')) {
+          await this.repository.quota(job, true)
+          await save({quota_charged: true})
+        }
         await save({payload: {...job.payload, analysis: result.data}})
       }
       if (!job.payload.matching) {
@@ -86,7 +105,7 @@ export class GenerationJobWorker {
       await save({status: 'completed', history_id: history.id, error: null, lease_token: null})
     } catch (error) {
       if (!lostLease) {
-        const message = error instanceof ResumeQuotaError ? error.message
+        const message = error instanceof ResumeQuotaError || error instanceof GenerationJobVersionError ? error.message
           : error instanceof V5WorkflowBlockedError && error.state === 'provider_failure' ? '模型服务暂时不可用，请稍后重试'
             : '本次生成未完成，请重试'
         const failed = await this.repository.patch(job.user_id, job.id, {status: 'failed', error: message, lease_token: null},

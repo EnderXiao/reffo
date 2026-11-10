@@ -6,6 +6,8 @@ import {generationJobWorker} from '@/services/generation-jobs'
 import {normalizeMarkdownText} from '@/services/text-normalizer'
 import {summarizeGenerationJob} from '@/types/generation-job'
 import {publishGenerationJobUpdate, subscribeGenerationJobUpdates} from '@/services/generation-job-events'
+import {singleStepFingerprint} from '@/v5/single-step-adapter'
+import {generationJobRetryChanges} from '@/services/generation-job-version'
 
 const jobParams = t.Object({id: t.String({pattern: '^[a-f0-9-]{36}$'})})
 export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'})
@@ -23,7 +25,7 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
     const job = await generationJobRepository.create(jobUser.userId, body.request_id, {
       resume_markdown: normalizeMarkdownText(body.resume_markdown), jd_text: normalizeMarkdownText(body.jd_text),
       company: body.company?.trim() || '', position: body.position?.trim() || '', location: body.location?.trim() || '',
-    })
+    }, singleStepFingerprint())
     set.status = 202
     publishGenerationJobUpdate(job)
     return {success: true, data: summarizeGenerationJob(job)}
@@ -115,7 +117,7 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
       : action === 'read' ? {read_at: job.read_at || now}
         : action === 'confirm' ? {confirmed_at: job.confirmed_at || now, read_at: job.read_at || now}
           : action === 'cancel' ? {status: 'cancelled' as const, lease_token: null}
-            : {status: 'queued' as const, error: null, lease_token: null, lease_expires_at: now}
+            : generationJobRetryChanges(job, singleStepFingerprint(), now)
     const updated = await generationJobRepository.patch(job.user_id, job.id, changes, {status: job.status})
     if (!updated) {set.status = 409; return {success: false, error: {code: 'JOB_STATE_CHANGED', message: '任务状态已更新，请重试'}}}
     publishGenerationJobUpdate(updated)

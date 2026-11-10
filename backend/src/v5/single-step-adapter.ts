@@ -14,12 +14,18 @@ import { toResumeAnalysis, toMatchAnalysis, toLegacyMvpProcessResponse, toInterv
 import { V5_WORKFLOW_VERSION, type V5ResumeExtractionResult, type V5WorkflowResult } from '@/v5/types'
 import type { ResumeAnalysis, InterviewSuggestions } from '@/types'
 import manifest from '@/v5/prompts/manifest.json'
+import { deliveredResumeMarkdown } from '@/v5/delivery-markdown'
+import { ENTRY_WRITING_POLICY, SKELETON_POLICY_VERSION } from '@/v5/writing/entries'
+import { V5_PROMPT_BUDGET_VERSION, V5_PROMPT_MAX_OUTPUT_TOKENS } from '@/v5/prompt-compiler'
 
 export const V5_ANALYSIS_CACHE_VERSION = 'v5-analysis-result-cache-v1'
 
 // 版本读取真实 Prompt manifest；变更模型、思考模式或 Prompt 后旧检查点不能混用。
 export function singleStepFingerprint() {
-  return createDigest({workflow: V5_WORKFLOW_VERSION, manifest, protocol: 'v5-single-step-v2',
+  return createDigest({workflow: V5_WORKFLOW_VERSION, manifest, protocol: 'v5-single-step-v3',
+    writer: ENTRY_WRITING_POLICY, skeleton: SKELETON_POLICY_VERSION, document: 'resume-completion-v1',
+    promptBudget: {version: V5_PROMPT_BUDGET_VERSION, ceilings: V5_PROMPT_MAX_OUTPUT_TOKENS,
+      contextWindowTokens: env.V5_CONTEXT_WINDOW_TOKENS},
     model: env.AI_MODEL, endpoint: env.OPENAI_BASE_URL, thinking: env.DEEPSEEK_THINKING_MODE,
     extractionThinking: env.DEEPSEEK_P01_THINKING_MODE, structuredOutput: env.V5_STRUCTURED_OUTPUT_MODE})
 }
@@ -29,7 +35,8 @@ function extractionCacheFingerprints() {
     implementationFingerprint: createDigest({
       workflow: V5_WORKFLOW_VERSION,
       manifest,
-      protocol: 'v5-single-step-v2',
+      protocol: 'v5-single-step-v3',
+      writer: ENTRY_WRITING_POLICY, skeleton: SKELETON_POLICY_VERSION, document: 'resume-completion-v1',
     }),
     providerConfigFingerprint: createDigest({
       endpoint: env.OPENAI_BASE_URL,
@@ -187,12 +194,13 @@ export class V5SingleStepAdapter {
     const response = toLegacyMvpProcessResponse(result)
     if (!stored.generated) await this.repository.update(row, {...stored, generated: result})
     return {runId: result.runId, steps: result.stepStatuses ?? [], data: {optimized_resume: response.step3_optimized_resume,
+      ...(response.step3_completion_document ? {completion_document: response.step3_completion_document} : {}),
       changes_summary: response.step3_changes_summary ?? [], strategy_review: response.step3_strategy_review, improvement_score: 0}}
   }
 
   async interview(analysis: unknown, matching: unknown, optimized: string, owner: string) {
     const {row, stored} = await this.matching(record(analysis).structured_resume, matching, owner)
-    if (!stored.generated || stored.generated.artifact.markdown.trim() !== optimized.trim()) throw new V5CheckpointError()
+    if (!stored.generated || deliveredResumeMarkdown(stored.generated).trim() !== optimized.trim()) throw new V5CheckpointError()
     if (stored.interview) return stored.interview
     const result = await this.workflow().prepareInterview(stored.generated)
     const interview = {runId: result.runId, steps: result.stepStatuses ?? [], data: toInterviewPreparation(result.preparation)}

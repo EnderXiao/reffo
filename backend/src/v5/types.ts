@@ -708,10 +708,15 @@ export interface V5DeliveryDiagnostics {
 }
 
 export interface V5WorkflowResult {
+  /** User-facing skeleton; artifact remains the evidence-only projection. Historical results omit this field. */
+  deliveryMarkdown?: string
+  completionDocument?: import('@/shared/resume-completion').ResumeCompletionDocument
   strategyReview?: import('@/shared/resume-strategy').ResumeStrategyReview
   stepStatuses?: StepRunSnapshot[]
   /** Internal replay metadata; public MVP response projection does not expose it. */
-  entryWriting?: { version: 'entry-writing-v1'; renderingPlan: V5ResumePlan; paragraphPaths: string[] }
+  entryWriting?: { version: 'entry-writing-v1' | 'entry-writing-v2' | 'entry-writing-v3'; renderingPlan: V5ResumePlan; paragraphPaths: string[]
+    gapSelections?: import('@/v5/writing/gap-selection').GapSelection[]
+    gapDecisions?: Array<{entryId: string; decisions: import('@/v5/writing/entry-skeleton').GapDecision[]}> }
   requirementAnalysis?: import('@/job-analysis/requirements').RequirementAnalysis
   state: ResumeAgentState
   releaseStatus: V5ReleaseStatus

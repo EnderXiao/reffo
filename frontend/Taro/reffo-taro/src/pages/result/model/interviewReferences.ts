@@ -1,4 +1,5 @@
 import type {ProcessResult} from '@/types'
+import {hasResumeCompletionPlaceholder} from '@/shared/resume-strategy'
 
 function normalizeReferenceLine(line: string) {
   return line
@@ -13,7 +14,7 @@ function splitReferenceLines(source: string) {
   return source
     .split(/\r?\n+/)
     .map(normalizeReferenceLine)
-    .filter(line => line.length >= 4)
+    .filter(line => line.length >= 4 && !hasResumeCompletionPlaceholder(line))
 }
 
 function tokenizeReferenceText(text: string) {

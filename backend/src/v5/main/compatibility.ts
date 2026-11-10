@@ -1,4 +1,5 @@
 import { strategyResultExcerpts } from '@/shared/resume-strategy'
+import { deliveredResumeMarkdown } from '@/v5/delivery-markdown'
 
 import type {
   InterviewSuggestions,
@@ -264,9 +265,10 @@ export function toLegacyMvpProcessResponse(result: V5WorkflowResult): MvpProcess
     used_safe_fallback: result.usedSafeFallback,
     step1_analysis: toResumeAnalysis(result),
     step2_matching: toMatchAnalysis(result),
-    step3_optimized_resume: result.artifact.markdown,
+    step3_optimized_resume: deliveredResumeMarkdown(result),
+    ...(result.completionDocument ? {step3_completion_document: result.completionDocument} : {}),
     step3_strategy_review: result.strategyReview,
-    step3_changes_summary: strategyResultExcerpts(result.strategyReview, result.artifact.markdown),
+    step3_changes_summary: strategyResultExcerpts(result.strategyReview, deliveredResumeMarkdown(result)),
     step4_interview_suggestions: toInterviewSuggestions(result),
   }
 }

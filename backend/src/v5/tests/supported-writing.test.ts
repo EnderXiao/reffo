@@ -137,10 +137,10 @@ describe('supported writing facts and contract', () => {
     expect(v5EvaluationComponentQuotas(1, 'generation-only', shape)).toEqual({ P02: 1, P02R: 1, P03: 1, P03R: 1, P04: 1, P06C: 1 })
     const writer = v5CaseOutputTokenEnvelope(1, 'generation-only', shape)
     const dsl = v5CaseOutputTokenEnvelope(1, 'generation-only', { validatedShardIndexes: [0] })
-    expect(writer.totalTokens - dsl.totalTokens).toBe(1800)
-    const entries = {...shape, entryWritingPolicy: 'entry-writing-v1' as const}
+    expect(writer.totalTokens - dsl.totalTokens).toBe(4200)
+    const entries = {...shape, entryWritingPolicy: 'entry-writing-v3' as const}
     expect(v5EvaluationComponentQuotas(1, 'generation-only', entries).P06C).toBe(3)
-    expect(v5CaseOutputTokenEnvelope(1, 'generation-only', entries).totalTokens - writer.totalTokens).toBe(9600)
+    expect(v5CaseOutputTokenEnvelope(1, 'generation-only', entries).totalTokens - writer.totalTokens).toBe(14400)
     expect(parseEvaluationRunnerArgs(['--artifact-mode', 'writer_v1'], { backendRoot: '/repo/backend' }).artifactGenerationMode).toBe('writer_v1')
     expect(parseEvaluationRunnerArgs([], { backendRoot: '/repo/backend' }).artifactGenerationMode).toBe('dsl_v1')
   })

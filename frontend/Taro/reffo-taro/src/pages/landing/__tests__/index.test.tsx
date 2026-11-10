@@ -1096,6 +1096,7 @@ describe('启动封页', () => {
     )
     expect(mockFeedbackSuccess).toHaveBeenCalledWith('resume.pdf 已上传')
     expect(mockFeedbackError).not.toHaveBeenCalled()
+    expect(container.firstElementChild?.classList.contains('reffo-landing-onboarding--queue-detail')).toBe(true)
     expect(container.firstElementChild?.className)
       .toContain('reffo-landing-onboarding--queue-detail-uploaded')
     expect(container.querySelector('.reffo-landing-onboarding__detail-card-arrow')).not.toBeNull()

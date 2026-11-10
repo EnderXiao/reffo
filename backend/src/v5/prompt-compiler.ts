@@ -4,7 +4,7 @@ import { createDigest } from '@/harness/run-context'
 import type { ChatMessage } from '@/providers/llm-provider'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { p06CompositionOutputSchema } from '@/v5/composition/contract'
-import { entryWritingOutputSchema, entryWritingTransportSchema, isEntryWritingEnvelope } from '@/v5/writing/entries'
+import { entryWritingV3OutputSchema, entryWritingTransportSchema, isEntryWritingEnvelope } from '@/v5/writing/entries'
 import { p06DslOutputSchema } from '@/v5/composition/dsl'
 import { isJobTargetedEnvelope, jobFitMapSchema, targetedJobExtractionSchema } from '@/v5/targeting/contracts'
 import { resumeDocumentFromEnvelope, resumeExtractionTransportSchema } from '@/v5/resume-extraction-transport'
@@ -84,18 +84,20 @@ const OUTPUT_TOKEN_BASE: Record<V5PromptComponent, number> = {
   P12: 5000,
 }
 
+export const V5_PROMPT_BUDGET_VERSION = 'v5-prompt-budget-v2' as const
+
 export const V5_PROMPT_MAX_OUTPUT_TOKENS: Readonly<Record<V5PromptComponent, number>> = Object.freeze({
   P01: DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
   P01R: DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS,
-  P02: 7200,
-  P02R: 7200,
-  P03: 6000,
-  P03R: 6000,
+  P02: 9600,
+  P02R: 9600,
+  P03: 9600,
+  P03R: 9600,
   P04: 2160,
   P05: 8400,
   P05R: 8400,
   P06: 9600,
-  P06C: 4800,
+  P06C: 7200,
   P06D: 3000,
   P07: 9600,
   P08: 9600,
@@ -257,7 +259,7 @@ export function schemaForV5Component(component: V5PromptComponent, envelope?: un
     case 'P08':
       return generatedResumeArtifactSchema
     case 'P06C':
-      return isEntryWritingEnvelope(envelope) ? entryWritingOutputSchema : p06CompositionOutputSchema
+      return isEntryWritingEnvelope(envelope) ? entryWritingV3OutputSchema : p06CompositionOutputSchema
     case 'P06D':
       return p06DslOutputSchema
     case 'P09': {
@@ -288,12 +290,17 @@ export function estimateV5PromptInputTokens(messages: readonly ChatMessage[]) {
 
 function calculateMaxOutputTokens(component: V5PromptComponent, envelope: unknown, envelopeLength: number) {
   const structuralHeadroom = Math.ceil(OUTPUT_TOKEN_BASE[component] * 1.2)
-  if (component === 'P06C' && isEntryWritingEnvelope(envelope)) return structuralHeadroom
+  // Complete task profiles and fit maps can outgrow even short inputs. Primary
+  // and repair use the same ceiling; the context-window guard below still caps it.
+  if (['P02', 'P02R', 'P03', 'P03R'].includes(component)) return V5_PROMPT_MAX_OUTPUT_TOKENS[component]
+  // Coverage and typed segments add JSON overhead; the resume's text budget is unchanged.
+  if (component === 'P06C' && isEntryWritingEnvelope(envelope)) return V5_PROMPT_MAX_OUTPUT_TOKENS.P06C
   if (component === 'P01' || component === 'P01R') {
     return resumeExtractionOutputTokenCapForBlocks(canonicalResumeBlocks(envelope) ?? [])
   }
   const inputScaled = Math.ceil(envelopeLength / 8)
-  return Math.min(V5_PROMPT_MAX_OUTPUT_TOKENS[component], Math.max(structuralHeadroom, inputScaled))
+  const cap = component === 'P06C' ? 4800 : V5_PROMPT_MAX_OUTPUT_TOKENS[component]
+  return Math.min(cap, Math.max(structuralHeadroom, inputScaled))
 }
 
 export class V5PromptBudgetError extends Error {
@@ -332,7 +339,7 @@ export function compileV5Prompt(input: {
   const providerSchema = extractionDocument ? resumeExtractionTransportSchema(extractionDocument)
     : input.component === 'P06C' && isEntryWritingEnvelope(input.envelope) ? entryWritingTransportSchema(input.envelope) : schema
   const schemaName = input.component === 'P06C'
-    ? isEntryWritingEnvelope(input.envelope) ? 'reffo_p06c_entry_v1' : 'reffo_p06c_composition_v1'
+    ? isEntryWritingEnvelope(input.envelope) ? 'reffo_p06c_entry_v3' : 'reffo_p06c_composition_v1'
     : input.component === 'P06D'
       ? 'reffo_p06d_dsl_v1'
     : `reffo_${input.component.toLowerCase()}_${V5_SCHEMA_VERSION.replaceAll('.', '_')}`

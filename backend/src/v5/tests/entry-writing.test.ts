@@ -1,9 +1,10 @@
+import { v3FixtureEntry } from './entry-skeleton-fixtures'
 import { writeValidatedEntries } from '@/v5/writing/entry-correction'
-import { test, expect } from 'bun:test'
+import { test, expect, spyOn } from 'bun:test'
 import { createV5ResultFixture } from '@/v5/tests/fixtures'
 import { createTargetingFixture } from '@/v5/tests/targeting-fixtures'
 import { buildWritingPlan, writingPayload } from '@/v5/writing/plan'
-import { buildEntryWritingPlan, compileEntryWriting, entryWritingPayload, ENTRY_WRITING_POLICY, isEntryWritingEnvelope, entryWritingOutputSchema, normalizeEntryWritingOutput } from '@/v5/writing/entries'
+import { assertEntryDeliveryProjection, buildEntryWritingPlan, compileEntryWriting, entryWritingPayload, ENTRY_WRITING_POLICY, isEntryWritingEnvelope, entryWritingOutputSchema, entryWritingV3OutputSchema, normalizeEntryWritingOutput } from '@/v5/writing/entries'
 import { compileV5Prompt } from '@/v5/prompt-compiler'
 import { validateGeneratedResumeArtifact } from '@/v5/validators'
 import { parseEvaluationRunnerArgs } from '@/v5/evaluation-runner-support'
@@ -148,16 +149,17 @@ test('entry plan is opt-in and immutable, with one source pool per experience', 
   expect(payload.entries.reduce((sum, e) => sum + e.lengthHint.target, 0)).toBeLessThanOrEqual(base.outputLength.softMax)
 })
 
-test('versioned entry prompt changes only the opt-in schema and preserves old Writer budget', () => {
+test('versioned entry prompt uses strict segments and budgets metadata without increasing fact length', () => {
   const f = fixture()
   const old = compileV5Prompt({ component: 'P06C', envelope: { payload: writingPayload(f.base) } })
   const next = compileV5Prompt({ component: 'P06C', envelope: { payload: entryWritingPayload(f.entryPlan) } })
   expect(old.manifest.promptFilePath).toBe('prompts/P06C-structural.md')
   expect(old.promptVersion).toBe('5.1.0-p06c-supported-writer-r19')
   expect(next.manifest.promptFilePath).toBe('prompts/P06C-entry.md')
-  expect(next.schema).toBe(entryWritingOutputSchema)
-  expect(next.promptVersion).toBe('5.2.0-p06c-entry-writer-r12')
-  expect(next.maxOutputTokens).toBe(old.maxOutputTokens)
+  expect(next.schema).toBe(entryWritingV3OutputSchema)
+  expect(next.promptVersion).toBe('5.4.0-p06c-entry-completion-r3')
+  expect(next.maxOutputTokens).toBe(7200)
+  expect(entryWritingPayload(f.entryPlan).outputLength).toEqual(writingPayload(f.base).outputLength)
   expect(next.messages[0].content).toContain('方案行')
   expect(next.messages[0].content).toContain('不是四项强制填空')
   expect(next.messages[0].content).not.toContain('每个 blueprint.slots')
@@ -173,11 +175,13 @@ test('request schema constrains IDs and count while compilation preserves presen
   expect(payload.requiredEntryCount).toBe(ids.length)
   expect(payload.entries.map(entry => entry.entryId)).not.toEqual(ids)
   const prompt = compileV5Prompt({ component: 'P06C', envelope: { payload } })
-  expect(prompt.providerSchema.safeParse(f.output).success).toBe(true)
-  for (const entries of [f.output.entries.slice(1), [...f.output.entries, f.output.entries[0]],
-    f.output.entries.map((entry, index) => index ? entry : { ...entry, entryId: 'entry:999' })]) {
-    expect(prompt.providerSchema.safeParse({ ...f.output, entries }).success).toBe(false)
-    expect(prompt.schema.safeParse({ ...f.output, entries }).success).toBe(true)
+  const wire = {...f.output, entries: f.output.entries.map(entry => v3FixtureEntry(entry, payload.entries.find(brief => brief.entryId === entry.entryId)!))}
+  expect(prompt.providerSchema.safeParse(wire).success).toBe(true)
+  expect(prompt.providerSchema.safeParse(f.output).success).toBe(false)
+  for (const entries of [wire.entries.slice(1), [...wire.entries, wire.entries[0]],
+    wire.entries.map((entry, index) => index ? entry : { ...entry, entryId: 'entry:999' })]) {
+    expect(prompt.providerSchema.safeParse({ ...wire, entries }).success).toBe(false)
+    expect(prompt.schema.safeParse({ ...wire, entries }).success).toBe(true)
   }
   const schema = JSON.parse(prompt.messages[1].content.split('STRICT_OUTPUT_JSON_SCHEMA:\n')[1])
   expect(schema.properties.entries).toMatchObject({ minItems: ids.length, maxItems: ids.length })
@@ -527,4 +531,97 @@ test.each(['corrected', 'still_invalid', 'extra_entry'] as const)('bounded fact 
   } else await expect(promise).rejects.toThrow()
   expect(calls).toBe(variant === 'still_invalid' ? 3 : 2)
   expect(f.output).toEqual(original)
+})
+
+test.each(['corrected', 'still_invalid', 'unknown', 'foreign_context', 'mixed', 'spoofed_fact'] as const)(
+  'only own context-only body citations receive bounded correction: %s', async variant => {
+    const f = fixture(true)
+    const target = f.entryPlan.entries.find(entry => entry.slot.kind === 'business_bullet')!
+    const originalPlan = structuredClone(f.entryPlan)
+    const contextId = 'private-context-reference'
+    target.gapContextFacts.push({evidenceId: contextId,
+      scopeId: variant === 'foreign_context' ? 'another-scope' : target.scopeId!,
+      text: '仅供查缺使用的内部材料。'})
+    const originalOutput = structuredClone(f.output)
+    const originalFacts = structuredClone(target.facts)
+    let calls = 0
+    const log = spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const promise = writeValidatedEntries({plan: f.entryPlan,
+        write: async (payload, attempt) => {
+          calls++
+          const output = structuredClone(f.output)
+          if (attempt) {
+            expect(payload.requiredEntryIds).toEqual([target.entryId])
+            expect(payload.entries[0].facts).toEqual(originalFacts)
+            if (attempt === 1) expect(payload.correction?.issues).toEqual([expect.objectContaining({
+              entryId: target.entryId, code: 'WRITER_EVIDENCE_INVALID',
+              paragraphIndex: 0, paragraphIndices: [0],
+              bodyEvidencePolicy: {
+                allowedEvidenceIds: originalFacts.map(fact => fact.evidenceId),
+                contextOnlyEvidenceIds: expect.arrayContaining([contextId]),
+              },
+            })])
+            output.entries = output.entries.filter(entry => entry.entryId === target.entryId)
+          }
+          const paragraph = output.entries.find(entry => entry.entryId === target.entryId)!.paragraphs[0]
+          if (attempt === 0 || variant === 'still_invalid') {
+            paragraph.evidenceIds = variant === 'unknown' ? ['private-unknown-reference']
+              : variant === 'mixed' ? [contextId, 'private-unknown-reference'] : [contextId]
+          } else if (variant === 'spoofed_fact') paragraph.text += '新增999个用户。'
+          return {contractVersion: ENTRY_WRITING_POLICY, entries: output.entries.map(entry => v3FixtureEntry(entry,
+            entryWritingPayload(f.entryPlan).entries.find(brief => brief.entryId === entry.entryId)!))}
+        },
+        validate: output => compileEntryWriting({output, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy}),
+      })
+      if (variant === 'corrected') {
+        const result = await promise
+        const baseline = compileEntryWriting({output: originalOutput, entryPlan: originalPlan, resume: f.input.resume, policy: f.input.policy})
+        expect(result.repairAttempts).toBe(1)
+        expect(result.result.artifact.markdown).toBe(baseline.artifact.markdown)
+      } else await expect(promise).rejects.toThrow()
+      expect(calls).toBe(variant === 'corrected' ? 2 : ['still_invalid', 'spoofed_fact'].includes(variant) ? 3 : 1)
+      const diagnostics = JSON.parse(log.mock.calls[0][1] as string)
+      expect(diagnostics.issues[0]).toMatchObject({code: 'WRITER_EVIDENCE_INVALID', entryId: target.entryId,
+        contextOnlyReferenceCount: ['unknown', 'foreign_context'].includes(variant) ? 0 : 1,
+        unknownReferenceCount: ['unknown', 'foreign_context', 'mixed'].includes(variant) ? 1 : 0,
+        correctionEligible: ['corrected', 'still_invalid', 'spoofed_fact'].includes(variant)})
+      const serializedLogs = JSON.stringify(log.mock.calls)
+      expect(serializedLogs).not.toContain(contextId)
+      expect(serializedLogs).not.toContain('private-unknown-reference')
+      expect(serializedLogs).not.toContain(originalOutput.entries[0].paragraphs[0].text)
+      expect(f.output).toEqual(originalOutput)
+      expect(target.facts).toEqual(originalFacts)
+    } finally { log.mockRestore() }
+  },
+)
+
+test('duplicate legacy body references do not become context-only correction', async () => {
+  const f = fixture()
+  const target = f.entryPlan.entries.find(entry => entry.slot.kind === 'business_bullet')!
+  target.gapContextFacts.push({evidenceId: 'context-only', scopeId: target.scopeId!, text: '只读查缺。'})
+  const paragraph = f.output.entries.find(entry => entry.entryId === target.entryId)!.paragraphs[0]
+  paragraph.evidenceIds = [paragraph.evidenceIds[0], paragraph.evidenceIds[0], 'context-only']
+  let calls = 0
+  await expect(writeValidatedEntries({plan: f.entryPlan,
+    write: async () => { calls++; return f.output },
+    validate: output => compileEntryWriting({output, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy}),
+  })).rejects.toThrow()
+  expect(calls).toBe(1)
+})
+
+
+test('delivery publication accepts metadata normalization but blocks a normalized fact-text change', () => {
+  const f = fixture()
+  const compiled = compileEntryWriting({ output: f.output, entryPlan: f.entryPlan, resume: f.input.resume, policy: f.input.policy })
+  const metadataNormalized = { ...compiled.artifact, claims: compiled.artifact.claims.map(claim => ({ ...claim })) }
+  expect(() => assertEntryDeliveryProjection(compiled.artifact, metadataNormalized)).not.toThrow()
+  expect(() => assertEntryDeliveryProjection(compiled.artifact, undefined)).not.toThrow()
+  const changed = { ...metadataNormalized, markdown: `${metadataNormalized.markdown}\n## 教育经历` }
+  try {
+    assertEntryDeliveryProjection(compiled.artifact, changed)
+    throw new Error('changed fact text must block delivery')
+  } catch (error) {
+    expect(error).toMatchObject({ issues: [{ code: 'WRITER_PROJECTION_MISMATCH', outputPath: 'artifact.markdown' }] })
+  }
 })

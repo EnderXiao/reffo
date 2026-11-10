@@ -3,7 +3,7 @@ import { assertV5ProductionWorkflow, assertV5ReleaseConfiguration, v5ReleaseWork
 
 test('R5 is the fixed release workflow', () => {
   expect(v5ReleaseWorkflowOptions()).toEqual({artifactGenerationMode:'writer_v1',
-    jobTargetingPolicy:'job-targeted-v1',entryWritingPolicy:'entry-writing-v1'})
+    jobTargetingPolicy:'job-targeted-v1',entryWritingPolicy:'entry-writing-v3'})
 })
 
 test('production accepts only the explicitly released complete Writer combination', () => {

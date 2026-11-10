@@ -15,6 +15,9 @@ import {
 } from '@/utils/shared-element-transition'
 import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
+import {feedback} from '@/utils/feedback'
+import {ResumePanel} from './components/ResumePanel.h5'
+import type {CompletionCommit} from './model/useResumeCompletionEditor'
 import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis'
 import {RequirementAnalysisPanel} from './components/RequirementAnalysis.h5'
 import type {ResultPageViewModel, ResultRetryStageKey} from './usePageModel'
@@ -25,10 +28,7 @@ import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
 import suggestionIcon from '@/assets/result/suggestion.svg'
-import downloadIcon from '@/assets/result/download.svg'
 import editIcon from '@/assets/result/edit.svg'
-import saveIcon from '@/assets/result/save.svg'
-import cancelIcon from '@/assets/result/cancel.svg'
 import alertIcon from '@/assets/result/alert-hex.svg'
 import confirmIcon from '@/assets/result/confirm.svg'
 import chatTagIcon from '@/assets/result/chat-tag.svg'
@@ -212,96 +212,6 @@ function getUnmatchedRequirements(items: HardRequirement[] | undefined) {
     .slice(0, 3)
 }
 
-interface MarkdownLine {
-  key: string
-  raw: string
-  prefix: string
-  text: string
-  kind:
-    | 'heading1'
-    | 'heading2'
-    | 'heading3'
-    | 'bullet'
-    | 'numbered'
-    | 'divider'
-    | 'blank'
-    | 'paragraph'
-}
-
-function parseMarkdownLine(raw: string, index: number): MarkdownLine {
-  const heading = raw.match(/^(#{1,3})\s+(.*)$/)
-  if (heading) {
-    const level = heading[1].length
-    return {
-      key: `${index}-${raw}`,
-      raw,
-      prefix: `${heading[1]} `,
-      text: heading[2],
-      kind: level === 1 ? 'heading1' : level === 2 ? 'heading2' : 'heading3',
-    }
-  }
-
-  const bullet = raw.match(/^(\s*[-*+]\s+)(.*)$/)
-  if (bullet) {
-    return {
-      key: `${index}-${raw}`,
-      raw,
-      prefix: bullet[1],
-      text: bullet[2],
-      kind: 'bullet',
-    }
-  }
-
-  const numbered = raw.match(/^(\s*\d+\.\s+)(.*)$/)
-  if (numbered) {
-    return {
-      key: `${index}-${raw}`,
-      raw,
-      prefix: numbered[1],
-      text: numbered[2],
-      kind: 'numbered',
-    }
-  }
-
-  if (/^\s*-{3,}\s*$/.test(raw)) {
-    return {
-      key: `${index}-divider`,
-      raw,
-      prefix: '',
-      text: '',
-      kind: 'divider',
-    }
-  }
-
-  if (raw.trim().length === 0) {
-    return {
-      key: `${index}-blank`,
-      raw,
-      prefix: '',
-      text: '',
-      kind: 'blank',
-    }
-  }
-
-  return {
-    key: `${index}-${raw}`,
-    raw,
-    prefix: '',
-    text: raw,
-    kind: 'paragraph',
-  }
-}
-
-function parseMarkdown(value: string): MarkdownLine[] {
-  const lines = value.trim().length > 0 ? value.split('\n') : ['']
-
-  return lines.map(parseMarkdownLine)
-}
-
-function canEditMarkdownLine(line: MarkdownLine) {
-  return line.kind !== 'blank' && line.kind !== 'divider' && line.text.trim().length > 0
-}
-
 function getVisibleStageStatus(
   stage: ResultStageKey,
   progress: ResultPageViewModel['progress'],
@@ -326,44 +236,6 @@ function getVisibleStageStatus(
   if (progress.interview === 'generating') return 'generating'
 
   return 'pending'
-}
-
-function sanitizeFileNameSegment(value: string, fallback: string) {
-  const sanitized = value.replace(/[\\/:*?"<>|]/g, '').trim()
-  return sanitized || fallback
-}
-
-function getDownloadName(result: ProcessResult, companyName: string, positionName: string) {
-  const name = result.analysis.structured_resume.personal_info.name.trim()
-  const safeCompany = sanitizeFileNameSegment(companyName, '目标公司')
-  const safePosition = sanitizeFileNameSegment(positionName, '目标岗位')
-  const safeName = sanitizeFileNameSegment(name, '用户')
-
-  return `${safeCompany}-${safePosition}-${safeName}-相契简历.md`
-}
-
-function renderInlineMarkdown(value: string) {
-  const segments = value.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean)
-
-  return segments.map((segment, index) => {
-    if (segment.startsWith('**') && segment.endsWith('**')) {
-      return (
-        <Text key={`${segment}-${index}`} className='reffo-result__markdown-strong'>
-          {segment.slice(2, -2)}
-        </Text>
-      )
-    }
-
-    if (segment.startsWith('`') && segment.endsWith('`')) {
-      return (
-        <Text key={`${segment}-${index}`} className='reffo-result__markdown-code'>
-          {segment.slice(1, -1)}
-        </Text>
-      )
-    }
-
-    return segment
-  })
 }
 
 function SectionTitle({children, icon}: {children: string; icon?: string}) {
@@ -573,189 +445,6 @@ function AnalysisPanel({result, onLocateReference}: {
   )
 }
 
-function ResumePanel({
-  result,
-  companyName,
-  positionName,
-  onOptimizedResumeChange,
-  reference,
-}: {
-  result: ProcessResult
-  companyName: string
-  positionName: string
-  onOptimizedResumeChange: (markdown: string) => Promise<void>
-  reference?: ResumeStrategyReference
-}) {
-  const [lines, setLines] = useState(() => parseMarkdown(result.optimized.optimized_resume))
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [editingDraft, setEditingDraft] = useState('')
-  const editorRef = useRef<HTMLTextAreaElement | null>(null)
-  const referenceRef = useRef<HTMLDivElement | null>(null)
-  const markdown = useMemo(() => lines.map(line => line.raw).join('\n'), [lines])
-  const isEditing = editingIndex !== null
-  const referenceLines = !isEditing && markdown === result.optimized.optimized_resume
-    && result.optimized.strategy_review && !hasStaleStrategyReview(result) && reference
-    ? findResumeReferenceLines(markdown, reference.quote) : undefined
-
-  useEffect(() => {
-    if (!referenceLines) return
-    const frame = window.requestAnimationFrame(() => {
-      referenceRef.current?.scrollIntoView?.({block: 'center', behavior: 'auto'})
-      referenceRef.current?.focus({preventScroll: true})
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [reference?.quote, referenceLines?.start, referenceLines?.end])
-
-  const resizeEditor = (element: HTMLTextAreaElement | null) => {
-    if (!element) return
-
-    element.style.height = 'auto'
-    element.style.height = `${element.scrollHeight}px`
-  }
-
-  useEffect(() => {
-    if (editingIndex !== null) return
-
-    setLines(parseMarkdown(result.optimized.optimized_resume))
-  }, [editingIndex, result.optimized.optimized_resume])
-
-  const commitMarkdown = async (nextLines = lines) => {
-    await onOptimizedResumeChange(nextLines.map(line => line.raw).join('\n'))
-  }
-
-  const handleEditLine = (lineIndex: number) => {
-    setEditingIndex(lineIndex)
-    setEditingDraft(lines[lineIndex]?.raw || '')
-  }
-
-  useEffect(() => {
-    resizeEditor(editorRef.current)
-  }, [editingDraft, editingIndex])
-
-  const handleCancelEdit = () => {
-    setEditingIndex(null)
-    setEditingDraft('')
-  }
-
-  const handleSaveLine = async (lineIndex: number) => {
-    const nextLines = lines.map((line, index) =>
-      index === lineIndex ? parseMarkdownLine(editingDraft, index) : line,
-    )
-
-    setLines(nextLines)
-    setEditingIndex(null)
-    setEditingDraft('')
-    await commitMarkdown(nextLines)
-  }
-
-  const handleDownload = () => {
-    if (isEditing) return
-
-    const blob = new Blob([markdown], {type: 'text/markdown;charset=utf-8'})
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-
-    link.href = url
-    link.download = getDownloadName(result, companyName, positionName)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
-  return (
-    <View className='reffo-result__panel reffo-result__panel--resume'>
-      <View className='reffo-result__resume-paper'>
-        <View
-          className={classNames('reffo-result__download', {
-            'reffo-result__download--disabled': isEditing,
-          })}
-          onClick={handleDownload}
-          aria-disabled={isEditing}
-        >
-          <Image className='reffo-result__download-icon' src={downloadIcon} mode='aspectFit' />
-          <Text>下载</Text>
-        </View>
-
-        {referenceLines && <p className='reffo-result__analysis-caption' role='status'>已定位：{reference?.location}</p>}
-        <View className='reffo-result__markdown'>
-          {lines.map((line, index) => (
-            <div
-              key={`line-${index}`}
-              ref={index === referenceLines?.start ? referenceRef : undefined}
-              tabIndex={index === referenceLines?.start ? -1 : undefined}
-              className={classNames(
-                'reffo-result__markdown-line',
-                `reffo-result__markdown-line--${line.kind}`,
-                {'reffo-result__markdown-line--located': referenceLines && index >= referenceLines.start && index <= referenceLines.end},
-              )}
-            >
-              {editingIndex === index ? (
-                <View className='reffo-result__markdown-editor'>
-                  <textarea
-                    ref={element => {
-                      editorRef.current = element
-                      resizeEditor(element)
-                    }}
-                    className='reffo-result__markdown-source'
-                    value={editingDraft}
-                    rows={1}
-                    onInput={event => {
-                      setEditingDraft(event.currentTarget.value)
-                      resizeEditor(event.currentTarget)
-                    }}
-                  />
-                  <View className='reffo-result__markdown-editor-actions'>
-                    <View
-                      className='reffo-result__markdown-save'
-                      onClick={() => {
-                        void handleSaveLine(index)
-                      }}
-                    >
-                      <Image className='reffo-result__markdown-action-icon' src={saveIcon} mode='aspectFit' />
-                    </View>
-                    <View className='reffo-result__markdown-cancel' onClick={handleCancelEdit}>
-                      <Image className='reffo-result__markdown-action-icon' src={cancelIcon} mode='aspectFit' />
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                <>
-                  {line.kind === 'divider' ? (
-                    <View className='reffo-result__markdown-divider' />
-                  ) : (
-                    <View className='reffo-result__markdown-rendered'>
-                      {line.kind === 'bullet' && (
-                        <Text className='reffo-result__markdown-marker'>•</Text>
-                      )}
-                      {line.kind === 'numbered' && (
-                        <Text className='reffo-result__markdown-marker'>{line.prefix.trim()}</Text>
-                      )}
-                      <Text className='reffo-result__markdown-text'>
-                        {renderInlineMarkdown(line.text)}
-                        {canEditMarkdownLine(line) && (
-                          <Image
-                            className='reffo-result__markdown-edit-icon'
-                            src={editIcon}
-                            mode='aspectFit'
-                            onClick={() => {
-                              handleEditLine(index)
-                            }}
-                          />
-                        )}
-                      </Text>
-                    </View>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-        </View>
-      </View>
-    </View>
-  )
-}
-
 function InterviewPanel({
   result,
   resumeContent,
@@ -840,6 +529,10 @@ function ResultContent({
   companyName,
   positionName,
   onOptimizedResumeChange,
+  onCompletionDocumentChange,
+  onEditingChange,
+  completionSaveStatus,
+  recoveryConflict,
   onLocateReference,
   reference,
 }: {
@@ -850,6 +543,10 @@ function ResultContent({
   companyName: string
   positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
+  onCompletionDocumentChange?: CompletionCommit
+  onEditingChange?: (active: boolean) => void
+  completionSaveStatus?: 'idle' | 'saving' | 'failed'
+  recoveryConflict?: boolean
   onLocateReference: (reference: ResumeStrategyReference) => void
   reference?: ResumeStrategyReference
 }) {
@@ -861,6 +558,10 @@ function ResultContent({
         companyName={companyName}
         positionName={positionName}
         onOptimizedResumeChange={onOptimizedResumeChange}
+        onCompletionDocumentChange={onCompletionDocumentChange}
+        onEditingChange={onEditingChange}
+        saveStatus={completionSaveStatus}
+        recoveryConflict={recoveryConflict}
         reference={reference}
       />
     )
@@ -887,14 +588,28 @@ export default function PageView({
   returnCard,
   canEditHistory,
   needsCompletion = false,
-  handleComplete,
-  handleBackHome,
-  handleEditHistory,
+  handleComplete: completeResult,
+  handleBackHome: backHome,
+  handleEditHistory: editHistory,
   handleRetryStage,
   handleOptimizedResumeChange,
+  handleCompletionDocumentChange,
+  completionSaveStatus,
+  recoveryConflict,
+  handleResolveRecovery,
   isCompleting,
   hideLandingHeader = false,
 }: ResultPageViewProps) {
+  const editorActiveRef = useRef(false)
+  const handleEditingChange = useCallback((active: boolean) => { editorActiveRef.current = active }, [])
+  const canLeaveEditor = useCallback(() => {
+    if (!editorActiveRef.current && completionSaveStatus !== 'saving' && completionSaveStatus !== 'failed') return true
+    feedback.message('请先保存或取消当前编辑')
+    return false
+  }, [completionSaveStatus])
+  const handleComplete = async () => { if (canLeaveEditor()) await completeResult() }
+  const handleBackHome = () => canLeaveEditor() ? backHome() : Promise.resolve()
+  const handleEditHistory = async () => { if (canLeaveEditor()) await editHistory() }
   const [stageIndex, setStageIndex] = useState(0)
   const [resumeReference, setResumeReference] = useState<ResumeStrategyReference>()
 
@@ -1132,6 +847,7 @@ export default function PageView({
     nextIndex: number,
     options: {shake?: boolean; direction?: StageMotionDirection; showBubble?: boolean} = {},
   ) => {
+    if (!canLeaveEditor()) return
     const nextStage = RESULT_STAGES[nextIndex]
 
     if (!nextStage || nextIndex === stageIndex) {
@@ -1169,7 +885,7 @@ export default function PageView({
       stageTransitionTimerRef.current = null
       setStageTransition(current => current?.toIndex === nextIndex ? null : current)
     }, RESULT_STAGE_SWITCH_DURATION)
-  }, [handleRetryStage, progress, showBlockedBubble, stageAvailability, stageIndex])
+  }, [canLeaveEditor, handleRetryStage, progress, showBlockedBubble, stageAvailability, stageIndex])
 
   const handleLocateReference = (reference: ResumeStrategyReference) => {
     if (!result || hasStaleStrategyReview(result)
@@ -1214,6 +930,7 @@ export default function PageView({
 
     const direction: StageMotionDirection = deltaX < 0 ? 'left' : 'right'
     const nextIndex = stageIndex + (direction === 'left' ? 1 : -1)
+    if (editorActiveRef.current) return
     const nextStage = RESULT_STAGES[nextIndex]
 
     if (!nextStage || stageAvailability[nextStage.key]) {
@@ -1298,6 +1015,7 @@ export default function PageView({
   }, [settleBlockedPreview])
 
   const handleReturnHome = useCallback(() => {
+    if (!canLeaveEditor()) return
     if (!enteredFromCard) {
       handleBackHome()
       return
@@ -1371,7 +1089,7 @@ export default function PageView({
 
       returnTimerRef.current = window.setTimeout(finishReturn, RESULT_RETURN_FALLBACK_DURATION)
     }, RESULT_CONTENT_EXIT_DURATION)
-  }, [enteredFromCard, handleBackHome, isReturningHome, returnCard])
+  }, [canLeaveEditor, enteredFromCard, handleBackHome, isReturningHome, returnCard])
 
   const handleAction = async () => {
     if (enteredFromCard) {
@@ -1720,6 +1438,10 @@ export default function PageView({
                         companyName={companyName}
                         positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
+                        onCompletionDocumentChange={handleCompletionDocumentChange}
+                        onEditingChange={handleEditingChange}
+                        completionSaveStatus={completionSaveStatus}
+                        recoveryConflict={recoveryConflict}
                         onLocateReference={handleLocateReference}
                       />
                     </View>
@@ -1739,6 +1461,10 @@ export default function PageView({
                         companyName={companyName}
                         positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
+                        onCompletionDocumentChange={handleCompletionDocumentChange}
+                        onEditingChange={handleEditingChange}
+                        completionSaveStatus={completionSaveStatus}
+                        recoveryConflict={recoveryConflict}
                         onLocateReference={handleLocateReference}
                       />
                     </View>
@@ -1756,6 +1482,10 @@ export default function PageView({
                       companyName={companyName}
                       positionName={positionName}
                       onOptimizedResumeChange={handleOptimizedResumeChange}
+                      onCompletionDocumentChange={handleCompletionDocumentChange}
+                      onEditingChange={handleEditingChange}
+                      completionSaveStatus={completionSaveStatus}
+                      recoveryConflict={recoveryConflict}
                       onLocateReference={handleLocateReference}
                       reference={resumeReference}
                     />
@@ -1763,6 +1493,11 @@ export default function PageView({
                 )}
               </View>
 
+              {recoveryConflict && <div className='reffo-completion__recovery' role='alert'>
+                <p className='reffo-completion__recovery-text'>这份历史和本地编辑稿都有更新，请选择要继续使用的版本。选择前不会覆盖历史。</p>
+                <button type='button' className='reffo-completion__action reffo-completion__action--recovery' onClick={() => { if (canLeaveEditor()) void handleResolveRecovery?.('history').catch(() => feedback.error('恢复失败，请重试')) }}>载入历史版本</button>
+                <button type='button' className='reffo-completion__action reffo-completion__action--recovery' onClick={() => { if (canLeaveEditor()) void handleResolveRecovery?.('session').catch(() => feedback.error('恢复失败，请重试')) }}>保留本地编辑稿</button>
+              </div>}
               <Text className='reffo-result__disclaimer'>*内容由人工智能生成，请仔细检查</Text>
             </View>
           </ScrollView>

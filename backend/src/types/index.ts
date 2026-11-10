@@ -232,6 +232,7 @@ export interface MvpProcessResponse {
   step1_analysis: ResumeAnalysis
   step2_matching: MatchAnalysis
   step3_optimized_resume: string
+  step3_completion_document?: import('@/shared/resume-completion').ResumeCompletionDocument
   step3_strategy_review?: ResumeStrategyReview
   step3_changes_summary?: string[]
   step4_interview_suggestions?: InterviewSuggestions

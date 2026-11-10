@@ -42,7 +42,7 @@ import {
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { boundedMap } from '@/v5/bounded-map'
 import { writeValidatedEntries } from '@/v5/writing/entry-correction'
-import { buildEntryWritingPlan, compileEntryWriting, ENTRY_WRITING_POLICY } from '@/v5/writing/entries'
+import { assertEntryDeliveryProjection, buildEntryWritingPlan, compileEntryWriting, ENTRY_WRITING_POLICY } from '@/v5/writing/entries'
 import { assignEntryStrategyActions, buildStrategyActionPlan, buildStrategyReview, completeEntryStrategyEvidence,
   type StrategyActionPlan, type EntryParagraphReference } from '@/v5/writing/strategy-outcomes'
 import { EntrySetValidationError } from '@/v5/writing/entry-set'
@@ -674,6 +674,9 @@ export class V5ResumeOptimizationWorkflow {
     const remaining = runtime.context.remainingMs
     const steps: StepRunSnapshot[] = []
     let entryWritingRecord: V5WorkflowResult['entryWriting']
+    let deliveryMarkdown: string | undefined
+    let completionDocument: V5WorkflowResult['completionDocument']
+    let gapOutputPaths: Set<string> | undefined
     let strategyActionPlan: StrategyActionPlan | undefined
     let strategyParagraphs: EntryParagraphReference[] = []
     const setState = (next: ResumeAgentState) => runtime.setState(next)
@@ -1063,10 +1066,12 @@ export class V5ResumeOptimizationWorkflow {
               const stream = entryPlan && journal ? new EntryJsonStream(entry => {
                 const brief = entryPlan.entries.find(item => item.entryId === entry.entryId)
                 if (!brief) return
+                // Optional clauses depend on the document-wide delivery budget; emit them only after final compilation.
+                if (entry.paragraphs.some(paragraph => paragraph.segments?.some(segment => segment.kind === 'optional_gap_clause'))) return
                 try {
-                  compileEntryWriting({ output: { contractVersion: ENTRY_WRITING_POLICY, entries: [entry] }, entryPlan,
+                  const preview = compileEntryWriting({ output: { contractVersion: ENTRY_WRITING_POLICY, entries: [entry] }, entryPlan,
                     resume: resumeEvidenceBundle, policy: generationPolicy, previewEntryId: entry.entryId })
-                  journal.preview(entry.entryId, brief.order, entry.paragraphs.map(p => p.text))
+                  journal.preview(entry.entryId, brief.order, preview.deliveryParagraphs.get(entry.entryId) ?? [])
                 } catch { /* Invalid previews stay private; final compilation diagnoses them. */ }
               }) : undefined
               await setState('drafting')
@@ -1090,12 +1095,13 @@ export class V5ResumeOptimizationWorkflow {
                     if (entryPlan) {
                       const corrected = await writeValidatedEntries({ plan: entryPlan, write,
                         validate: output => {
-                          const compiled = compileEntryWriting({ output, entryPlan, resume: resumeEvidenceBundle, policy: generationPolicy })
+                          const compiled = compileEntryWriting({ output, entryPlan, resume: resumeEvidenceBundle, policy: generationPolicy, documentId: `completion:${runContext.runId}` })
                           const validation = validateGeneratedResumeArtifact({ artifact: compiled.artifact, resume: resumeEvidenceBundle,
                             plan: compiled.renderingPlan, policy: generationPolicy, gateMode: 'relaxed_release',
                             textPolicy: 'supported_writing_v1', skillPolicy: writingPlan.skillPolicy,
                             entryParagraphPaths: compiled.entryParagraphPaths })
                           if (!validation.passed) throw new SupportedWritingError(validation.issues)
+                          assertEntryDeliveryProjection(compiled.artifact, validation.value)
                           return { ...compiled, validation }
                         },
                       })
@@ -1142,9 +1148,22 @@ export class V5ResumeOptimizationWorkflow {
                   message: '写作成品未通过本地结构与事实边界检查。', issues: validation.issues,
                 })
               }
+              if (entryPlan && journal && 'deliveryParagraphs' in writerStep.result) {
+                for (const entry of entryPlan.entries) {
+                  const paragraphs = writerStep.result.deliveryParagraphs.get(entry.entryId)
+                  if (paragraphs) journal.preview(entry.entryId, entry.order, paragraphs)
+                }
+              }
               journal?.finish(true)
+              if ('deliveryMarkdown' in writerStep.result) {
+                deliveryMarkdown = writerStep.result.deliveryMarkdown
+                completionDocument = writerStep.result.completionDocument
+                gapOutputPaths = writerStep.result.gapOutputPaths
+              }
               if (entryPlan) entryWritingRecord = { version: ENTRY_WRITING_POLICY,
-                renderingPlan: writerStep.result.renderingPlan, paragraphPaths: [...(writerStep.result.entryParagraphPaths ?? [])] }
+                renderingPlan: writerStep.result.renderingPlan, paragraphPaths: [...(writerStep.result.entryParagraphPaths ?? [])],
+                ...('gapSelections' in writerStep.result ? {gapSelections: writerStep.result.gapSelections,
+                  gapDecisions: writerStep.result.gapDecisionsByEntry} : {}) }
               strategyParagraphs = writerStep.result.entryParagraphReferences
               const artifactGenerationDiagnostics = {
                 mode: 'writer_v1' as const, contractVersion: SUPPORTED_WRITING_POLICY,
@@ -1702,8 +1721,11 @@ export class V5ResumeOptimizationWorkflow {
               generationPolicy,
               resumePlan,
               artifact,
+              ...(deliveryMarkdown !== undefined ? { deliveryMarkdown } : {}),
+              ...(completionDocument ? { completionDocument } : {}),
               ...(entryWritingRecord ? { entryWriting: entryWritingRecord } : {}),
-              ...(strategyActionPlan ? { strategyReview: buildStrategyReview({ plan: strategyActionPlan, artifact, paragraphs: strategyParagraphs }) } : {}),
+              ...(strategyActionPlan ? { strategyReview: buildStrategyReview({ plan: strategyActionPlan, artifact,
+                paragraphs: strategyParagraphs, deliveryMarkdown, gapOutputPaths }) } : {}),
               usedSafeFallback,
               usedAnyFallback,
               executionStatus: 'completed',

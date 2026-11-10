@@ -71,4 +71,6 @@ export interface CompositionCompileDiagnostics {
 export interface CompositionCompileResult {
   artifact: GeneratedResumeArtifact
   diagnostics: CompositionCompileDiagnostics
+  /** Renderer-owned identity; never locate a paragraph by matching its prose. */
+  renderedBlocks: Array<{raw: string; outputPath?: string}>
 }

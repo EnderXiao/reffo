@@ -31,6 +31,10 @@ export function resumeTextFingerprint(markdown: string): string {
   return `text-v1:${markdown.length}:${(first >>> 0).toString(16)}:${(second >>> 0).toString(16)}`
 }
 
+export function hasResumeCompletionPlaceholder(text: string): boolean {
+  return /【待完善[：:]/u.test(text)
+}
+
 export function currentStrategyReview(review: ResumeStrategyReview | undefined, markdown: string): ResumeStrategyReview | undefined {
   return normalizeStrategyReview(review, markdown)
 }
@@ -60,7 +64,7 @@ export function strategyResultExcerpts(review: ResumeStrategyReview | undefined,
   const seen = new Set<string>()
   return (current?.items ?? []).filter(item => item.status === 'linked').flatMap(item => item.references)
     .filter(ref => {
-      if (seen.has(ref.quote)) return false
+      if (hasResumeCompletionPlaceholder(ref.quote) || seen.has(ref.quote)) return false
       seen.add(ref.quote)
       return true
     }).slice(0, 2).map(ref => `${ref.location}：${ref.quote}`)
@@ -92,7 +96,8 @@ export function buildResumeValueSummary(input: {
     for (const reference of item.references) {
       if (!businessParagraphPath.test(reference.outputPath) || !reference.location.trim()) continue
       const quote = withoutListMarker(reference.quote)
-      if (!quote || /[\r\n]/u.test(quote) || !bodyLines.has(quote) || seen.has(quote)) continue
+      if (!quote || hasResumeCompletionPlaceholder(quote) || /[\r\n]/u.test(quote)
+        || !bodyLines.has(quote) || seen.has(quote)) continue
       seen.add(quote)
       paragraphs.push(`${reference.location.trim()}：${quote}`)
       if (paragraphs.length === 2) break

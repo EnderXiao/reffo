@@ -1,6 +1,7 @@
 import { expect, spyOn, test } from 'bun:test'
 import { V5CheckpointRepository, V5CheckpointError } from '@/repositories/v5-checkpoint-repository'
-import { analysisCacheKeyFor, V5SingleStepAdapter } from '@/v5/single-step-adapter'
+import { analysisCacheKeyFor, singleStepFingerprint, V5SingleStepAdapter } from '@/v5/single-step-adapter'
+import { env } from '@/config/env'
 import { createSingleStepFixture } from './single-step-fixtures'
 import { MemoryCheckpointStorage } from './checkpoint-storage-fixture'
 import { MemoryAnalysisCacheStorage } from './analysis-cache-storage-fixture'
@@ -79,6 +80,22 @@ test('analysis cache keys isolate users, resume content and release configuratio
   expect(analysisCacheKeyFor(FIXTURE_RESUME, 'user2')).not.toBe(base)
 })
 
+test('a prompt context-budget change invalidates old checkpoints and cached results', async () => {
+  const previousWindow = env.V5_CONTEXT_WINDOW_TOKENS
+  const storage = new MemoryCheckpointStorage()
+  const previousFingerprint = singleStepFingerprint()
+  const previousKey = analysisCacheKeyFor(FIXTURE_RESUME, 'user1')
+  const token = await new V5CheckpointRepository(previousFingerprint, storage).save('user1', {kind: 'matching'})
+  try {
+    env.V5_CONTEXT_WINDOW_TOKENS = previousWindow + 1024
+    const nextFingerprint = singleStepFingerprint()
+    expect(nextFingerprint).not.toBe(previousFingerprint)
+    expect(analysisCacheKeyFor(FIXTURE_RESUME, 'user1')).not.toBe(previousKey)
+    await expect(new V5CheckpointRepository(nextFingerprint, storage).load(token, 'user1')).rejects.toBeInstanceOf(V5CheckpointError)
+  } finally { env.V5_CONTEXT_WINDOW_TOKENS = previousWindow }
+  expect(singleStepFingerprint()).toBe(previousFingerprint)
+})
+
 test('analysis continues with a fresh checkpoint when persistent cache is unavailable', async () => {
   class CacheUnavailableStorage extends MemoryAnalysisCacheStorage {
     async claim(): Promise<never> {
@@ -121,4 +138,44 @@ test('checkpoint tokens reject expired, unknown and different-release state', as
   await expect(repo.load(token, 'user1')).rejects.toBeInstanceOf(V5CheckpointError)
   await storage.cleanup()
   expect(storage.rows.size).toBe(0)
+})
+
+test('interview checkpoint compares the delivered skeleton and keeps facts private', async () => {
+  const storage = new MemoryCheckpointStorage()
+  const {createWorkflow} = createSingleStepFixture()
+  const adapter = new V5SingleStepAdapter(new V5CheckpointRepository('skeleton', storage), createWorkflow,
+    new V5AnalysisCacheRepository(new MemoryAnalysisCacheStorage()))
+  const analysis = await adapter.analyze(FIXTURE_RESUME, 'skeleton-user')
+  const matching = await adapter.match(analysis.data.structured_resume, FIXTURE_JD, 'skeleton-user')
+  const generated = await adapter.generate(analysis.data.structured_resume, matching.data, 'skeleton-user')
+  const row = [...storage.rows.values()].find(item => (item.payload as {kind?: string}).kind === 'matching')!
+  const stored = row.payload as {generated: import('@/v5/types').V5WorkflowResult}
+  const factualMarkdown = stored.generated.artifact.markdown
+  const deliveryMarkdown = `${generated.data.optimized_resume}\n- 【待完善：填实际问题；补明背景；无则删去该短语】`
+  delete stored.generated.completionDocument // Historical checkpoints have only a delivery snapshot.
+  stored.generated.deliveryMarkdown = deliveryMarkdown
+  expect((await adapter.generate(analysis.data.structured_resume, matching.data, 'skeleton-user')).data.optimized_resume).toBe(deliveryMarkdown)
+  await expect(adapter.interview(analysis.data, matching.data, factualMarkdown, 'skeleton-user')).rejects.toBeInstanceOf(V5CheckpointError)
+  const interview = await adapter.interview(analysis.data, matching.data, deliveryMarkdown, 'skeleton-user')
+  expect(interview.data.questions.length).toBeGreaterThan(0)
+  expect(stored.generated.artifact.markdown).toBe(factualMarkdown)
+})
+
+test('typed Writer gaps reach public output without entering claims or the P10 input', async () => {
+  const {createWorkflow, versions, interviewInputs} = createSingleStepFixture({inlineGap: true})
+  const workflow = createWorkflow()
+  const extraction = await workflow.extractResume({resumeMarkdown: FIXTURE_RESUME})
+  const matching = await workflow.matchResume({resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD}, extraction)
+  const result = await workflow.generateResume(matching)
+  expect(result.deliveryMarkdown).toContain('【待完善：')
+  expect(result.completionDocument?.documentId).toBe(`completion:${result.runId}`)
+  expect(result.artifact.markdown).not.toContain('【待完善')
+  expect(result.artifact.markdown).toContain('参与团队产品迭代。')
+  expect(JSON.stringify(result.artifact.claims)).not.toContain('填一项实际业务问题')
+  expect(result.strategyReview?.resumeFingerprint).not.toBeUndefined()
+  await workflow.prepareInterview(result)
+  expect(interviewInputs).toHaveLength(1)
+  expect(JSON.stringify(interviewInputs[0])).not.toContain('【待完善')
+  expect(JSON.stringify(interviewInputs[0])).not.toContain('使方案对应的痛点明确')
+  expect(versions.filter(version => version.includes('-p06c-'))).toHaveLength(1)
 })

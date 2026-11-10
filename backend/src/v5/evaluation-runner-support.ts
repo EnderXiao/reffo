@@ -89,7 +89,7 @@ export type V5EvaluationComponent = keyof typeof V5_PROMPT_MAX_OUTPUT_TOKENS
 export type V5EvaluationComponentQuotas = Readonly<Partial<Record<V5EvaluationComponent, number>>>
 
 export interface V5ExtractionBudgetShape {
-  entryWritingPolicy?: 'entry-writing-v1'
+  entryWritingPolicy?: 'entry-writing-v3'
   artifactGenerationMode?: 'dsl_v1' | 'writer_v1'
   /** Output caps derived by the prompt compiler from each original source shard. */
   shardOutputTokenCaps?: readonly number[]
@@ -227,7 +227,7 @@ export interface EvaluationRunnerCliOptions {
   sourceRun: string | null
   artifactGenerationMode: 'dsl_v1' | 'writer_v1'
   jobTargetingPolicy?: 'job-targeted-v1'
-  entryWritingPolicy?: 'entry-writing-v1'
+  entryWritingPolicy?: 'entry-writing-v3'
 }
 
 export interface EvaluationCheckpointFingerprints {
@@ -608,7 +608,7 @@ export function parseEvaluationRunnerArgs(
   let sourceRun: string | null = null
   let artifactGenerationMode: 'dsl_v1' | 'writer_v1' = 'dsl_v1'
   let jobTargetingPolicy: 'job-targeted-v1' | undefined
-  let entryWritingPolicy: 'entry-writing-v1' | undefined
+  let entryWritingPolicy: 'entry-writing-v3' | undefined
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
@@ -637,7 +637,7 @@ export function parseEvaluationRunnerArgs(
     } else if (arg === '--job-targeted') {
       jobTargetingPolicy = 'job-targeted-v1'
     } else if (arg === '--entry-writer') {
-      entryWritingPolicy = 'entry-writing-v1'
+      entryWritingPolicy = 'entry-writing-v3'
     } else if (arg === '--source-run') {
       sourceRun = resolve(process.cwd(), requireFlagValue(argv, index, arg))
       index += 1

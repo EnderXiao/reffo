@@ -2,6 +2,7 @@ import type { RequestUserContext } from '@/auth/request-context'
 import type { ResumeHistoryRepositoryContract } from '@/repositories/interfaces'
 import { createSupabaseRestClient } from '@/repositories/supabase/client'
 import type { ResumeHistoryRecord, SaveResumeHistoryInput, UpdateResumeHistoryInput } from '@/types'
+import {assertResumeCompletionSnapshot} from '@/services/resume-completion-snapshot'
 
 const HISTORY_ID_PREFIX = 'JD'
 const HISTORY_ID_SEQUENCE_LENGTH = 5
@@ -138,6 +139,8 @@ export class SupabaseResumeHistoryRepository implements ResumeHistoryRepositoryC
   }
 
   async save(context: RequestUserContext, input: SaveResumeHistoryInput): Promise<ResumeHistoryRecord> {
+    assertResumeCompletionSnapshot(input)
+    if (input.id?.trim()) assertResumeCompletionSnapshot(input, await this.findById(context, input.id.trim()))
     const now = new Date().toISOString()
     const id = input.id?.trim() || createHistoryId(await this.getExistingIds(context, input.created_at), input.created_at)
     const rows = await createClient(context).request<ResumeHistoryRow[]>('/rest/v1/resume_histories', {

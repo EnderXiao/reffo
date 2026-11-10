@@ -57,11 +57,11 @@ describe('job-targeted internal contracts', () => {
     expect(parseEvaluationRunnerArgs(['--artifact-mode', 'writer_v1', '--job-targeted'], { backendRoot: '/repo/backend' }).jobTargetingPolicy).toBe(JOB_TARGETING_POLICY)
     expect(() => parseEvaluationRunnerArgs(['--job-targeted'], { backendRoot: '/repo/backend' })).toThrow()
   })
-  test('keeps existing P02/P03 budgets and source-fact namespaces separate', () => {
+  test('bounds P02/P03 budgets and keeps source-fact namespaces separate', () => {
     const fixture = createTargetingFixture()
     for (const component of ['P02', 'P02R', 'P03', 'P03R'] as const) {
       const prompt = compileV5Prompt({ component, envelope: { payload: { jobTargetingPolicy: JOB_TARGETING_POLICY } } })
-      expect(prompt.maxOutputTokens).toBe(component.startsWith('P02') ? 7200 : 6000)
+      expect(prompt.maxOutputTokens).toBe(9600)
     }
     expect(targetedJobExtractionSchema.safeParse(fixture.candidate).success).toBe(true)
     expect(validateTargetedJobExtraction(fixture.document, fixture.candidate).passed).toBe(true)

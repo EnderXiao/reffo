@@ -183,15 +183,19 @@ export function buildStrategyReview(input: {
   plan: StrategyActionPlan
   artifact: GeneratedResumeArtifact
   paragraphs: EntryParagraphReference[]
+  deliveryMarkdown?: string
+  gapOutputPaths?: ReadonlySet<string>
 }): ResumeStrategyReview {
-  const lines = new Set(input.artifact.markdown.split(/\r?\n/u))
-  return { version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(input.artifact.markdown),
+  const markdown = input.deliveryMarkdown ?? input.artifact.markdown
+  const lines = new Set(markdown.split(/\r?\n/u))
+  return { version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(markdown),
     items: input.plan.items.map(item => {
       if (item.state !== 'scheduled' || !item.assignment) return { strategyId: item.strategyId,
         strategy: item.strategy, status: item.state === 'needs_material' ? 'needs_material' : 'not_selected',
         explanation: item.explanation, references: [] }
       const action = item.assignment
       const references = input.paragraphs.filter(paragraph => paragraph.entryId === action.entryId).flatMap(paragraph => {
+        if (input.gapOutputPaths?.has(paragraph.outputPath)) return []
         const claims = input.artifact.claims.filter(claim => claim.outputPath === paragraph.outputPath)
         const claim = claims.length === 1 ? claims[0] : undefined
         if (!claim || !claim.evidenceIds.some(id => action.referenceEvidenceIds.includes(id))
@@ -199,10 +203,12 @@ export function buildStrategyReview(input: {
         return [{ outputPath: claim.outputPath, location: paragraph.location, quote: claim.outputText }]
       })
       const unique = [...new Map(references.map(reference => [reference.outputPath, reference])).values()].slice(0, 2)
-      return { strategyId: item.strategyId, strategy: item.strategy, status: unique.length ? 'linked' : 'not_located',
+      const awaitingMaterial = input.paragraphs.some(paragraph => paragraph.entryId === action.entryId
+        && input.gapOutputPaths?.has(paragraph.outputPath))
+      return { strategyId: item.strategyId, strategy: item.strategy, status: unique.length ? 'linked' : awaitingMaterial ? 'needs_material' : 'not_located',
         explanation: unique.length
           ? '本次对应正文如下，可对照查看具体表达。'
-          : '本次未找到这条建议对应的正文。',
+          : awaitingMaterial ? '对应经历保留了待完善内容，请先按正文说明补充真实材料。' : '本次未找到这条建议对应的正文。',
         references: unique }
     }),
   }

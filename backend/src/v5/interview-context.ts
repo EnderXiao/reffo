@@ -81,7 +81,8 @@ export function buildInterviewContext(result: Pick<V5WorkflowResult,
       schemaVersion: artifact.schemaVersion,
       // claims contain the delivered text and evidence links. Sending Markdown
       // too would repeat the same body and reintroduce contact details.
-      claims: claims.map(claim => ({ ...claim, evidenceIds: evidenceIds(claim.evidenceIds) }))
+      claims: claims.filter(claim => !claim.outputText.includes('【待完善'))
+        .map(claim => ({ ...claim, evidenceIds: evidenceIds(claim.evidenceIds) }))
         .filter(claim => claim.evidenceIds.length > 0),
     },
     resumeEvidenceBundle: {
