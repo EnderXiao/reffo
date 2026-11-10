@@ -4,7 +4,12 @@ import Taro, {useRouter} from '@tarojs/taro'
 import {parseApi} from '@/services/parse'
 import {resumeApi} from '@/services/resume'
 import {sourceResumeApi} from '@/services/sourceResume'
-import {generationTasksApi, type GenerationTask} from '@/services/backgroundGeneration'
+import {
+  generationTasksApi,
+  subscribeGenerationTaskEvents,
+  type GenerationTask,
+  type GenerationTaskStreamHandlers,
+} from '@/services/backgroundGeneration'
 import {useAuthStore, useLandingFlowStore, useResumeWorkspaceStore, useSourceResumeStore} from '@/store'
 import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
@@ -127,6 +132,7 @@ jest.mock('@/services/backgroundGeneration', () => ({
     get: jest.fn(),
     action: jest.fn(),
   },
+  subscribeGenerationTaskEvents: jest.fn(() => jest.fn()),
   createGenerationRequestId: jest.fn(() => '22222222-2222-4222-8222-222222222222'),
 }))
 
@@ -212,6 +218,7 @@ describe('CreatePage', () => {
   const mockCreateGenerationTask = generationTasksApi.create as jest.Mock
   const mockGetGenerationTask = generationTasksApi.get as jest.Mock
   const mockGenerationTaskAction = generationTasksApi.action as jest.Mock
+  const mockSubscribeGenerationTaskEvents = subscribeGenerationTaskEvents as jest.MockedFunction<typeof subscribeGenerationTaskEvents>
   const mockSaveLatestResultSession = saveLatestResultSession as jest.Mock
   const mockExpoImagePicker = jest.requireMock('expo-image-picker') as {
     requestMediaLibraryPermissionsAsync: jest.Mock
@@ -383,7 +390,7 @@ describe('CreatePage', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith({
         url: '/pages/landing-result/index',
       })
-    })
+    }, {timeout: 3500})
   })
 
   test('应该渲染新的单页流程容器', async () => {
@@ -595,11 +602,89 @@ describe('CreatePage', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith({
         url: `/pages/result/index?id=JD2026101300001&jobId=${DEFAULT_GENERATION_TASK_ID}`,
       })
-    })
+    }, {timeout: 3500})
 
     await waitFor(() => {
       expect(screen.getByText('开始生成最佳简历')).toBeTruthy()
     })
+  })
+
+  test('loading 三阶段完整播放后才进入结果页等待后续产物', async () => {
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    let streamHandlers: GenerationTaskStreamHandlers | null = null
+    mockSubscribeGenerationTaskEvents.mockImplementation(handlers => {
+      streamHandlers = handlers
+      return jest.fn()
+    })
+    mockCreateGenerationTask.mockResolvedValue(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+      updated_at: '2026-10-13T12:00:01.000Z',
+    }))
+    mockGetGenerationTask.mockResolvedValue(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+      updated_at: '2026-10-13T12:00:01.000Z',
+    }))
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
+
+    await renderPage()
+    fireEvent.change(screen.getByTestId('job-company-input'), {
+      target: {value: 'OpenAI'},
+    })
+    fireEvent.change(screen.getByTestId('job-position-input'), {
+      target: {value: '前端工程师'},
+    })
+    fireEvent.change(screen.getByTestId('job-description-input'), {
+      target: {value: '负责复杂前端应用开发与架构设计，推动高质量交付并优化体验。'},
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
+      await Promise.resolve()
+    })
+
+    await waitFor(() => expect(streamHandlers).not.toBeNull())
+    await act(async () => {
+      streamHandlers?.onTask(createGenerationTask({
+        status: 'running',
+        stage: 'matching',
+        history_id: 'JD2026101300001',
+        updated_at: '2026-10-13T12:00:02.000Z',
+      }))
+      await Promise.resolve()
+    })
+
+    // 匹配未完成时先不进结果页：结果页第一步「岗位分析」需要匹配结果。
+    expect(mockNavigateTo).not.toHaveBeenCalled()
+
+    await act(async () => {
+      streamHandlers?.onTask(createGenerationTask({
+        status: 'running',
+        stage: 'optimized',
+        history_id: 'JD2026101300001',
+        updated_at: '2026-10-13T12:00:03.000Z',
+      }))
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(mockNavigateTo).toHaveBeenCalledWith({
+        url: `/pages/result/index?id=JD2026101300001&jobId=${DEFAULT_GENERATION_TASK_ID}`,
+      })
+    }, {timeout: 3500})
   })
 
   test('第二步提交后应先进入 AI 分析态并展示关键信息', async () => {
@@ -653,6 +738,66 @@ describe('CreatePage', () => {
       }))
       expect(useResumeWorkspaceStore.getState().generationStatus).toBe('analyzing')
     })
+  })
+
+  test('生成进度由实时任务流驱动且仅校准一次当前状态', async () => {
+    const existingSourceResume = {
+      id: 'source-resume-1',
+      title: 'Jeremy Smith',
+      resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
+      sourceType: 'manual' as const,
+      originalFileName: 'Jeremy Smith.md',
+      createdAt: '2026-03-25T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z',
+    }
+    let streamHandlers: GenerationTaskStreamHandlers | undefined
+    mockSubscribeGenerationTaskEvents.mockImplementationOnce(handlers => {
+      streamHandlers = handlers
+      return jest.fn()
+    })
+    mockCreateGenerationTask.mockResolvedValueOnce(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+    }))
+    mockGetGenerationTask.mockResolvedValue(createGenerationTask({
+      status: 'running',
+      stage: 'analysis',
+      history_id: null,
+    }))
+    mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
+    await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
+    mockUseRouter.mockReturnValue({params: {step: 'jobDescription'}})
+
+    await renderPage()
+    fireEvent.change(screen.getByTestId('job-description-input'), {
+      target: {value: '负责复杂前端应用开发与架构设计，推动高质量交付并优化体验。'},
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(streamHandlers).toBeTruthy()
+    })
+
+    await act(async () => {
+      streamHandlers?.onOpen?.()
+      streamHandlers?.onTask(createGenerationTask({
+        status: 'completed',
+        stage: 'saving',
+        history_id: 'JD2026101300001',
+        updated_at: '2026-10-13T12:00:02.000Z',
+      }))
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(mockGetGenerationTask).toHaveBeenCalledTimes(1)
+      expect(mockNavigateTo).toHaveBeenCalledWith({
+        url: `/pages/result/index?id=JD2026101300001&jobId=${DEFAULT_GENERATION_TASK_ID}`,
+      })
+    }, {timeout: 3500})
   })
 
   test('分析态取消后应取消任务且不跳转结果页', async () => {
@@ -811,6 +956,11 @@ describe('CreatePage', () => {
 
   test('第二步上传岗位截图后可直接生成简历', async () => {
     jest.useFakeTimers()
+    mockCreateGenerationTask.mockResolvedValueOnce(createGenerationTask({
+      status: 'cancelled',
+      stage: 'analysis',
+      history_id: null,
+    }))
     const existingSourceResume = {
       id: 'source-resume-1',
       title: 'Jeremy Smith',
@@ -863,13 +1013,15 @@ describe('CreatePage', () => {
       expect(mockCreateGenerationTask.mock.calls.at(-1)?.[0].jd_text).toContain('公司名称：小米集团有限公司')
     })
 
-    await waitFor(() => {
-      expect(screen.getByText('开始生成最佳简历')).toBeTruthy()
-    })
   })
 
   test('上传岗位截图后会从 OCR 文本兜底填入公司和岗位名称', async () => {
     jest.useFakeTimers()
+    mockCreateGenerationTask.mockResolvedValueOnce(createGenerationTask({
+      status: 'cancelled',
+      stage: 'analysis',
+      history_id: null,
+    }))
     const existingSourceResume = {
       id: 'source-resume-1',
       title: 'Jeremy Smith',

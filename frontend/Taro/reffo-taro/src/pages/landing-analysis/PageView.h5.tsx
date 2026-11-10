@@ -17,6 +17,7 @@ export default function LandingAnalysisPageView({
   resumeSummaryState,
   jobDescriptionState,
   handleCancelGeneration,
+  handleGenerationPresentationComplete,
   handleClose,
   handleLandingSkip,
   embedded = false,
@@ -36,6 +37,7 @@ export default function LandingAnalysisPageView({
     <GenerationStageH5
       state={visibleGenerationState}
       onCancelGeneration={handleCancel}
+      onPresentationComplete={handleGenerationPresentationComplete}
       header={showLandingHeader ? (
         <LandingFlowHeader
           className='reffo-create__landing-header--analysis'

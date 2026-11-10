@@ -428,6 +428,7 @@ export default function PageView({
   handleReturnHome,
   handleCancelGeneration,
   handleContinueInBackground,
+  handleGenerationPresentationComplete,
   handleClose,
   isLandingFlow,
   handleLandingSkip,
@@ -689,6 +690,7 @@ export default function PageView({
           state={visibleGenerationState}
           onCancelGeneration={handleGenerationCancelClick}
           onContinueInBackground={isLandingFlow ? undefined : handleContinueInBackground}
+          onPresentationComplete={handleGenerationPresentationComplete}
           header={isLandingFlow ? (
             <LandingFlowHeader
               className='reffo-create__landing-header--analysis'
