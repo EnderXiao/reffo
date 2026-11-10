@@ -906,7 +906,8 @@ async function main() {
   const extractionThinkingMode = parseDeepSeekExtractionThinking(process.env.DEEPSEEK_P01_THINKING_MODE)
   const extractionThinking = resolveDeepSeekStageThinking(
     parseDeepSeekThinking(process.env.DEEPSEEK_THINKING_MODE, process.env.DEEPSEEK_REASONING_EFFORT),
-    extractionThinkingMode, true
+    extractionThinkingMode, true,
+    parseDeepSeekThinking(process.env.DEEPSEEK_WRITING_THINKING_MODE, process.env.DEEPSEEK_WRITING_REASONING_EFFORT), false
   )
   const extractionPolicy = evaluationDeepSeekPolicy(model, extractionThinking.mode, extractionThinking.effort)
   const contextWindowTokens = Number.parseInt(process.env.V5_CONTEXT_WINDOW_TOKENS || '64000', 10)

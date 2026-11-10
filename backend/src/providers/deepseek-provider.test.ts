@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type OpenAI from 'openai'
 import { z } from 'zod'
-import { deepSeekThinkingParameters, evaluationDeepSeekPolicy, parseDeepSeekThinking, parseDeepSeekExtractionThinking, isResumeExtractionRequest, resolveDeepSeekStageThinking } from '@/config/deepseek-thinking'
+import { deepSeekThinkingParameters, evaluationDeepSeekPolicy, parseDeepSeekThinking, parseDeepSeekExtractionThinking, isResumeExtractionRequest, isWritingRequest, resolveDeepSeekStageThinking } from '@/config/deepseek-thinking'
 import { compileV5Prompt } from '@/v5/prompt-compiler'
 import { createRunContext, createStepExecutionContext } from '@/harness/run-context'
 import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
@@ -144,7 +144,7 @@ describe('DeepSeekProvider abort signals', () => {
     const completion = provider.complete({
       messages: [{ role: 'user', content: 'hello' }],
       signal: callerController.signal,
-      stepContext: createStepExecutionContext(runContext, 'test-step', 1, stepController.signal),
+      stepContext: createStepExecutionContext(runContext, 'test-step', stepController.signal),
     })
 
     stepController.abort('step cancelled')
@@ -198,8 +198,9 @@ describe('explicit DeepSeek V4 thinking', () => {
     expect(parseDeepSeekExtractionThinking()).toBe('inherit')
     expect(() => parseDeepSeekExtractionThinking('default')).toThrow('INVALID_DEEPSEEK_P01_THINKING_MODE')
     const global = parseDeepSeekThinking('enabled', 'max')
-    expect(resolveDeepSeekStageThinking(global, 'inherit', true)).toEqual(global)
-    expect(resolveDeepSeekStageThinking(global, 'disabled', false)).toEqual(global)
+    const writing = parseDeepSeekThinking('enabled', 'low')
+    expect(resolveDeepSeekStageThinking(global, 'inherit', true, writing, false)).toEqual(global)
+    expect(resolveDeepSeekStageThinking(global, 'disabled', false, writing, false)).toEqual(global)
     expect(isResumeExtractionRequest({ promptVersion: '5.0.0-p01r-resume-evidence-repair-r17' })).toBe(true)
     expect(isResumeExtractionRequest({ promptVersion: 'user said P01' })).toBe(false)
     expect(isResumeExtractionRequest({ promptVersion: '5.0.0-p01-resume-evidence-r17',
@@ -207,10 +208,23 @@ describe('explicit DeepSeek V4 thinking', () => {
     expect(isResumeExtractionRequest({})).toBe(false)
   })
 
+  test('writing stage can enable low-effort thinking while global stays disabled', () => {
+    const global = parseDeepSeekThinking('disabled', 'low')
+    const writing = parseDeepSeekThinking('enabled', 'low')
+    expect(resolveDeepSeekStageThinking(global, 'inherit', false, writing, true)).toEqual(writing)
+    expect(resolveDeepSeekStageThinking(global, 'inherit', false, writing, false)).toEqual(global)
+    expect(resolveDeepSeekStageThinking(global, 'disabled', true, writing, true)).toEqual({ ...global, mode: 'disabled' })
+    expect(isWritingRequest({ promptManifest: { componentPromptId: 'P06C' } })).toBe(true)
+    expect(isWritingRequest({ promptManifest: { componentPromptId: 'P03' } })).toBe(false)
+    expect(isWritingRequest({ promptVersion: '5.3.0-p06c-entry-writer-r10' })).toBe(true)
+    expect(isWritingRequest({ promptVersion: 'user said P06C' })).toBe(false)
+  })
+
   test('extraction mode alters extraction policy fingerprints without altering global policy', () => {
     const global = parseDeepSeekThinking('enabled', 'low')
+    const writing = parseDeepSeekThinking('enabled', 'low')
     const policy = (override: 'inherit' | 'disabled', extraction: boolean) => {
-      const settings = resolveDeepSeekStageThinking(global, override, extraction)
+      const settings = resolveDeepSeekStageThinking(global, override, extraction, writing, false)
       return evaluationDeepSeekPolicy('deepseek-v4-flash', settings.mode, settings.effort)
     }
     expect(policy('disabled', true)).not.toEqual(policy('inherit', true))

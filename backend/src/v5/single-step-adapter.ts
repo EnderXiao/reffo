@@ -17,6 +17,34 @@ import manifest from '@/v5/prompts/manifest.json'
 
 export const V5_ANALYSIS_CACHE_VERSION = 'v5-analysis-result-cache-v1'
 
+/** 分步调用的会话级时间预算：/analyze 起算，后续步骤按剩余预算收紧各自上限。 */
+export interface SessionBudget {
+  deadlineMs: number
+  totalMs: number
+}
+
+export class V5SessionBudgetError extends Error {
+  readonly code = 'V5_SESSION_BUDGET_EXHAUSTED'
+  readonly status = 503
+
+  constructor() {
+    super('本次生成会话的可用时间已用完，请重新开始')
+    this.name = 'V5SessionBudgetError'
+  }
+}
+
+/** 旧检查点没有 budget 字段时按独立上限运行，保持向后兼容。 */
+export function sessionStepTimeoutMs(budget: SessionBudget | undefined, stepCapMs: number): number {
+  if (!budget) return stepCapMs
+  const remaining = budget.deadlineMs - Date.now()
+  if (remaining <= 0) throw new V5SessionBudgetError()
+  return Math.min(stepCapMs, remaining)
+}
+
+export function freshSessionBudget(): SessionBudget {
+  return { deadlineMs: Date.now() + env.V5_SESSION_BUDGET_MS, totalMs: env.V5_SESSION_BUDGET_MS }
+}
+
 // 版本读取真实 Prompt manifest；变更模型、思考模式或 Prompt 后旧检查点不能混用。
 export function singleStepFingerprint() {
   return createDigest({workflow: V5_WORKFLOW_VERSION, manifest, protocol: 'v5-single-step-v2',
@@ -62,13 +90,18 @@ interface ResumeCheckpoint {
   extraction: V5ResumeExtractionResult
   analysis: ResumeAnalysis
   resumeDigest: string
+  /** 会话级时间预算；旧检查点无此字段时各步按独立上限运行。 */
+  budget?: SessionBudget
 }
 interface MatchingCheckpoint {
   kind: 'matching'
   resumeToken: string
   checkpoint: V5MatchingCheckpoint
+  budget?: SessionBudget
   generated?: V5WorkflowResult
-  interview?: {runId: string; data: InterviewSuggestions; steps: StepRunSnapshot[]}
+  /** 首次生成时的剩余预算快照：幂等读取返回同一响应，不随时间漂移。 */
+  generatedRemainingBudgetMs?: number
+  interview?: {runId: string; parentRunId?: string; remainingBudgetMs?: number; data: InterviewSuggestions; steps: StepRunSnapshot[]}
 }
 type Checkpoint = ResumeCheckpoint | MatchingCheckpoint
 
@@ -139,11 +172,15 @@ export class V5SingleStepAdapter {
         fingerprint: singleStepFingerprint(),
         compute,
       })
-    const {checkpoint} = resolved.value
+    // 会话预算以本次 /analyze 响应起算：缓存命中时同样续期，
+    // 避免复用的旧 deadline 在后续步骤一开始就过期。
+    const budget = freshSessionBudget()
+    const checkpoint = {...resolved.value.checkpoint, budget}
     const token = await this.repository.save(owner, checkpoint)
     return {
       runId: resolved.value.runId,
       steps: resolved.value.steps,
+      remainingBudgetMs: budget.deadlineMs - Date.now(),
       data: {
         ...checkpoint.analysis,
         structured_resume: {...checkpoint.analysis.structured_resume, _v5_context: token},
@@ -166,10 +203,14 @@ export class V5SingleStepAdapter {
     // the provider truncates a response. Keep the workflow budget above the
     // individual provider call budget so recoverable truncation is not turned
     // into a premature workflow timeout.
-    const result = await this.workflow().matchResume({resumeMarkdown: stored.source, jobDescription: jd, workflowTimeoutMs: 180000}, stored.extraction)
-    const token = await this.repository.save(owner, {kind: 'matching', resumeToken, checkpoint: result} satisfies MatchingCheckpoint)
+    const timeoutMs = sessionStepTimeoutMs(stored.budget, 180000)
+    const result = await this.workflow().matchResume({resumeMarkdown: stored.source, jobDescription: jd, workflowTimeoutMs: timeoutMs}, stored.extraction)
+    const budget = stored.budget
+    const token = await this.repository.save(owner, {kind: 'matching', resumeToken, checkpoint: result, budget} satisfies MatchingCheckpoint)
     const matching = toMatchAnalysis({...result, resumeEvidenceBundle: stored.extraction.resumeEvidenceBundle})
-    return {runId: result.runId, steps: result.stepStatuses ?? [], data: {...matching, jd_structure: {...matching.jd_structure, _v5_context: token}}}
+    return {runId: result.runId, parentRunId: stored.extraction.runId, steps: result.stepStatuses ?? [],
+      remainingBudgetMs: budget ? budget.deadlineMs - Date.now() : undefined,
+      data: {...matching, jd_structure: {...matching.jd_structure, _v5_context: token}}}
   }
 
   private async matching(structured: unknown, matching: unknown, owner: string) {
@@ -183,10 +224,16 @@ export class V5SingleStepAdapter {
 
   async generate(structured: unknown, matching: unknown, owner: string) {
     const {row, stored} = await this.matching(structured, matching, owner)
-    const result = stored.generated ?? await this.workflow().generateResume(stored.checkpoint, {workflowTimeoutMs: 90000})
+    let remainingBudgetMs = stored.generatedRemainingBudgetMs
+    const result = stored.generated ?? await this.workflow().generateResume(stored.checkpoint, {workflowTimeoutMs: sessionStepTimeoutMs(stored.budget, 90000)})
     const response = toLegacyMvpProcessResponse(result)
-    if (!stored.generated) await this.repository.update(row, {...stored, generated: result})
-    return {runId: result.runId, steps: result.stepStatuses ?? [], data: {optimized_resume: response.step3_optimized_resume,
+    if (!stored.generated) {
+      remainingBudgetMs = stored.budget ? Math.max(0, stored.budget.deadlineMs - Date.now()) : undefined
+      await this.repository.update(row, {...stored, generated: result, generatedRemainingBudgetMs: remainingBudgetMs})
+    }
+    return {runId: result.runId, parentRunId: stored.checkpoint.runId, steps: result.stepStatuses ?? [],
+      remainingBudgetMs,
+      data: {optimized_resume: response.step3_optimized_resume,
       changes_summary: response.step3_changes_summary ?? [], strategy_review: response.step3_strategy_review, improvement_score: 0}}
   }
 
@@ -194,8 +241,10 @@ export class V5SingleStepAdapter {
     const {row, stored} = await this.matching(record(analysis).structured_resume, matching, owner)
     if (!stored.generated || stored.generated.artifact.markdown.trim() !== optimized.trim()) throw new V5CheckpointError()
     if (stored.interview) return stored.interview
-    const result = await this.workflow().prepareInterview(stored.generated)
-    const interview = {runId: result.runId, steps: result.stepStatuses ?? [], data: toInterviewPreparation(result.preparation)}
+    const result = await this.workflow().prepareInterview(stored.generated, sessionStepTimeoutMs(stored.budget, 60000))
+    const interview = {runId: result.runId, parentRunId: stored.generated.runId, steps: result.stepStatuses ?? [],
+      remainingBudgetMs: stored.budget ? Math.max(0, stored.budget.deadlineMs - Date.now()) : undefined,
+      data: toInterviewPreparation(result.preparation)}
     await this.repository.update(row, {...stored, interview})
     return interview
   }

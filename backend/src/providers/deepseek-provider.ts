@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { env } from '@/config/env'
-import { deepSeekThinkingParameters, parseDeepSeekThinking, isResumeExtractionRequest, resolveDeepSeekStageThinking, type DeepSeekThinkingSettings, type DeepSeekExtractionThinkingMode } from '@/config/deepseek-thinking'
+import { deepSeekThinkingParameters, parseDeepSeekThinking, isResumeExtractionRequest, isWritingRequest, resolveDeepSeekStageThinking, type DeepSeekThinkingSettings, type DeepSeekExtractionThinkingMode } from '@/config/deepseek-thinking'
 import { createHarnessEvent } from '@/harness/events'
 import { createDigest } from '@/harness/run-context'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
@@ -47,7 +47,8 @@ export class DeepSeekProvider implements LlmProvider {
   private readonly client: OpenAI
 
   constructor(client?: OpenAI, private readonly thinkingSettings?: DeepSeekThinkingSettings,
-    private readonly extractionThinkingMode: DeepSeekExtractionThinkingMode = env.DEEPSEEK_P01_THINKING_MODE) {
+    private readonly extractionThinkingMode: DeepSeekExtractionThinkingMode = env.DEEPSEEK_P01_THINKING_MODE,
+    private readonly writingThinkingSettings: DeepSeekThinkingSettings = parseDeepSeekThinking(env.DEEPSEEK_WRITING_THINKING_MODE, env.DEEPSEEK_WRITING_REASONING_EFFORT)) {
     this.client = client ?? new OpenAI({
       apiKey: env.OPENAI_API_KEY,
       baseURL: env.OPENAI_BASE_URL,
@@ -59,7 +60,9 @@ export class DeepSeekProvider implements LlmProvider {
     const resolvedSettings = resolveDeepSeekStageThinking(
       this.thinkingSettings ?? parseDeepSeekThinking(env.DEEPSEEK_THINKING_MODE, env.DEEPSEEK_REASONING_EFFORT),
       this.extractionThinkingMode,
-      isResumeExtractionRequest(input)
+      isResumeExtractionRequest(input),
+      this.writingThinkingSettings,
+      isWritingRequest(input)
     )
     const settings = input.thinkingOverride === 'disabled'
       ? { ...resolvedSettings, mode: 'disabled' as const }

@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from 'bun:test'
 import { V5CheckpointRepository, V5CheckpointError } from '@/repositories/v5-checkpoint-repository'
-import { analysisCacheKeyFor, V5SingleStepAdapter } from '@/v5/single-step-adapter'
+import { analysisCacheKeyFor, sessionStepTimeoutMs, V5SessionBudgetError, V5SingleStepAdapter } from '@/v5/single-step-adapter'
 import { createSingleStepFixture } from './single-step-fixtures'
 import { MemoryCheckpointStorage } from './checkpoint-storage-fixture'
 import { MemoryAnalysisCacheStorage } from './analysis-cache-storage-fixture'
@@ -121,4 +121,81 @@ test('checkpoint tokens reject expired, unknown and different-release state', as
   await expect(repo.load(token, 'user1')).rejects.toBeInstanceOf(V5CheckpointError)
   await storage.cleanup()
   expect(storage.rows.size).toBe(0)
+})
+
+test('session budget cap applies only when the remaining session time is tighter', () => {
+  expect(sessionStepTimeoutMs(undefined, 180000)).toBe(180000)
+  expect(sessionStepTimeoutMs({deadlineMs: Date.now() + 300000, totalMs: 480000}, 180000)).toBe(180000)
+  expect(sessionStepTimeoutMs({deadlineMs: Date.now() + 50000, totalMs: 480000}, 180000)).toBeLessThanOrEqual(50000)
+  expect(sessionStepTimeoutMs({deadlineMs: Date.now() + 50000, totalMs: 480000}, 180000)).toBeGreaterThan(40000)
+  expect(() => sessionStepTimeoutMs({deadlineMs: Date.now() - 1, totalMs: 480000}, 180000)).toThrow(V5SessionBudgetError)
+})
+
+test('session budget flows through steps and response meta carries the shared run chain', async () => {
+  const storage = new MemoryCheckpointStorage()
+  const {createWorkflow} = createSingleStepFixture()
+  const adapter = () => new V5SingleStepAdapter(
+    new V5CheckpointRepository('fixture', storage),
+    createWorkflow,
+    new V5AnalysisCacheRepository(new MemoryAnalysisCacheStorage()),
+  )
+  const analysis = await adapter().analyze(FIXTURE_RESUME, 'user1')
+  expect(analysis.remainingBudgetMs).toBeGreaterThan(0)
+
+  const matching = await adapter().match(analysis.data.structured_resume, FIXTURE_JD, 'user1')
+  expect(matching.remainingBudgetMs).toBeGreaterThan(0)
+  expect(matching.parentRunId).toBe(analysis.runId)
+
+  const normalized = {match_score: 999, jd_structure: JSON.parse(JSON.stringify(matching.data.jd_structure))}
+  const generated = await adapter().generate(analysis.data.structured_resume, normalized, 'user1')
+  expect(generated.remainingBudgetMs).toBeGreaterThan(0)
+  expect(generated.parentRunId).toBe(matching.runId)
+
+  const interview = await adapter().interview(analysis.data, normalized, generated.data.optimized_resume, 'user1')
+  expect(interview.remainingBudgetMs).toBeGreaterThan(0)
+  expect(interview.parentRunId).toBe(generated.runId)
+})
+
+test('expired session budget fails fast while legacy checkpoints keep per-step caps', async () => {
+  const storage = new MemoryCheckpointStorage()
+  const {createWorkflow} = createSingleStepFixture()
+  const adapter = () => new V5SingleStepAdapter(
+    new V5CheckpointRepository('fixture', storage),
+    createWorkflow,
+    new V5AnalysisCacheRepository(new MemoryAnalysisCacheStorage()),
+  )
+  const analysis = await adapter().analyze(FIXTURE_RESUME, 'user1')
+
+  // 预算到期：/match 应在任何 provider 调用前快速失败
+  const expiredRow = [...storage.rows.values()][0]!
+  expiredRow.payload = {...(expiredRow.payload as Record<string, unknown>), budget: {deadlineMs: Date.now() - 1000, totalMs: 480000}}
+  await expect(adapter().match(analysis.data.structured_resume, FIXTURE_JD, 'user1')).rejects.toBeInstanceOf(V5SessionBudgetError)
+
+  // 旧检查点没有 budget 字段：按独立上限继续跑
+  const legacyRow = [...storage.rows.values()][0]!
+  const legacyPayload = legacyRow.payload as Record<string, unknown>
+  delete legacyPayload.budget
+  const legacy = await adapter().match(analysis.data.structured_resume, FIXTURE_JD, 'user1')
+  expect(legacy.remainingBudgetMs).toBeUndefined()
+})
+
+test('cached generation and interview stay available after the session budget expires', async () => {
+  const storage = new MemoryCheckpointStorage()
+  const {createWorkflow} = createSingleStepFixture()
+  const adapter = () => new V5SingleStepAdapter(
+    new V5CheckpointRepository('fixture', storage),
+    createWorkflow,
+    new V5AnalysisCacheRepository(new MemoryAnalysisCacheStorage()),
+  )
+  const analysis = await adapter().analyze(FIXTURE_RESUME, 'user1')
+  const matching = await adapter().match(analysis.data.structured_resume, FIXTURE_JD, 'user1')
+  const normalized = {match_score: 999, jd_structure: JSON.parse(JSON.stringify(matching.data.jd_structure))}
+  const generated = await adapter().generate(analysis.data.structured_resume, normalized, 'user1')
+  const interview = await adapter().interview(analysis.data, normalized, generated.data.optimized_resume, 'user1')
+
+  // 会话预算过期后，已缓存的生成结果与面试建议仍可幂等读取，不再消耗模型预算
+  const matchingRow = [...storage.rows.values()].find(row => (row.payload as Record<string, unknown>).kind === 'matching')!
+  matchingRow.payload = {...(matchingRow.payload as Record<string, unknown>), budget: {deadlineMs: Date.now() - 1000, totalMs: 480000}}
+  expect(await adapter().generate(analysis.data.structured_resume, normalized, 'user1')).toEqual(generated)
+  expect(await adapter().interview(analysis.data, normalized, generated.data.optimized_resume, 'user1')).toEqual(interview)
 })
