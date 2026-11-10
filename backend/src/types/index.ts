@@ -4,7 +4,7 @@ import type { ResumeStrategyReview } from '@/shared/resume-strategy'
  * TypeScript 类型定义
  */
 
-import type { RecoverySummary } from '@/harness/runtime-state'
+import type { RecoverySummary } from '@/harness/recovery-summary'
 import type { HarnessResponseMeta } from '@/harness/harnessed-request'
 import type { ResumeAgentState, V5ReleaseStatus } from '@/v5/types'
 import type { RequirementAnalysis } from '@/job-analysis/requirements'
