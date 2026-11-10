@@ -23,7 +23,11 @@ import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@
 import {savePendingLandingHistory} from '@/utils/pending-landing-data'
 import {useAuthStore} from '@/store/authStore'
 import {toHistoryCardItem} from '../index/model/homeCardData'
-import {generationTasksApi} from '@/services/backgroundGeneration'
+import {
+  generationTasksApi,
+  subscribeGenerationTaskEvents,
+  type GenerationTask,
+} from '@/services/backgroundGeneration'
 import {useBackgroundGenerationStore} from '@/store/backgroundGenerationStore'
 
 const DONE_PROGRESS: LatestResultSessionProgress = {
@@ -33,45 +37,58 @@ const DONE_PROGRESS: LatestResultSessionProgress = {
   interview: 'done',
 }
 
+const PENDING_PROGRESS: LatestResultSessionProgress = {
+  analysis: 'pending',
+  matching: 'pending',
+  optimized: 'pending',
+  interview: 'pending',
+}
+
 const EMPTY_INTERVIEW = {
   questions: [],
   story_recommendations: [],
   follow_up_questions: [],
 }
 
-function normalizeInterviewResult(result: ProcessResult) {
-  const interview = result.interview
+function normalizeInterviewResult(result: Partial<ProcessResult>) {
+  const interview = result.interview ?? EMPTY_INTERVIEW
 
   return {
-    questions: Array.isArray(interview?.questions) ? interview.questions : [],
-    story_recommendations: Array.isArray(interview?.story_recommendations)
+    questions: Array.isArray(interview.questions) ? interview.questions : [],
+    story_recommendations: Array.isArray(interview.story_recommendations)
       ? interview.story_recommendations
       : [],
-    follow_up_questions: Array.isArray(interview?.follow_up_questions)
+    follow_up_questions: Array.isArray(interview.follow_up_questions)
       ? interview.follow_up_questions
       : [],
   }
 }
 
-function getDefaultProgress(result: ProcessResult | null): LatestResultSessionProgress {
+function getDefaultProgress(result: Partial<ProcessResult> | null): LatestResultSessionProgress {
   if (!result) {
-    return {
-      analysis: 'pending',
-      matching: 'pending',
-      optimized: 'pending',
-      interview: 'pending',
-    }
+    return {...PENDING_PROGRESS}
   }
 
   return {
     analysis: 'done',
-    matching: result.matching.match_score > 0 ? 'done' : 'pending',
-    optimized: result.optimized.optimized_resume.trim().length > 0 ? 'done' : 'pending',
+    matching: (result.matching?.match_score ?? 0) > 0 ? 'done' : 'pending',
+    optimized: (result.optimized?.optimized_resume ?? '').trim().length > 0 ? 'done' : 'pending',
     interview: normalizeInterviewResult(result).questions.length > 0 ||
       normalizeInterviewResult(result).story_recommendations.length > 0 ||
       normalizeInterviewResult(result).follow_up_questions.length > 0
       ? 'done'
       : 'pending',
+  }
+}
+
+function getHistoryProgress(history: ResumeHistory): LatestResultSessionProgress {
+  if (!history.progress) return {...DONE_PROGRESS}
+
+  return {
+    analysis: history.progress.analysis || 'done',
+    matching: history.progress.matching || 'done',
+    optimized: history.progress.optimized || 'done',
+    interview: history.progress.interview || 'done',
   }
 }
 
@@ -145,6 +162,24 @@ function buildFallbackResultFromHistory(history: ResumeHistory): ProcessResult {
   }
 }
 
+function buildResultFromHistory(history: ResumeHistory): ProcessResult {
+  const fallback = buildFallbackResultFromHistory(history)
+  const stored = history.processResult
+  const storedOptimized = stored?.optimized
+  const optimizedContent = history.optimizedContent || storedOptimized?.optimized_resume || ''
+
+  return {
+    analysis: stored?.analysis ?? fallback.analysis,
+    matching: stored?.matching ?? fallback.matching,
+    optimized: {
+      ...(storedOptimized ?? fallback.optimized),
+      optimized_resume: optimizedContent,
+      changes_summary: strategyResultExcerpts(storedOptimized?.strategy_review, optimizedContent),
+    },
+    interview: normalizeInterviewResult(stored ?? {}),
+  }
+}
+
 function buildContextFromHistory(history: ResumeHistory): LatestResultSessionContext {
   return history.resultContext ?? {
     company: history.company,
@@ -152,6 +187,20 @@ function buildContextFromHistory(history: ResumeHistory): LatestResultSessionCon
     resumeContent: history.resumeContent,
     jdContent: history.jdContent,
   }
+}
+
+function getTaskGenerationStatus(task: GenerationTask): ActiveGenerationStatus {
+  if (task.stage === 'analysis') return 'analyzing'
+  if (task.stage === 'matching') return 'matching'
+  if (task.stage === 'optimized') return 'optimizing'
+  return 'interviewing'
+}
+
+function getTaskProgressKey(task: GenerationTask): keyof LatestResultSessionProgress {
+  if (task.stage === 'analysis') return 'analysis'
+  if (task.stage === 'matching') return 'matching'
+  if (task.stage === 'optimized') return 'optimized'
+  return 'interview'
 }
 
 function syncWorkspaceResult(result: ProcessResult, context?: LatestResultSessionContext | null) {
@@ -247,9 +296,15 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   const continuationRef = useRef(0)
   const workspaceGenerationRunRef = useRef<number | null>(null)
   const isContinuingRef = useRef(false)
+  const generationJobUnsubscribeRef = useRef<(() => void) | null>(null)
+  const generationJobReadRef = useRef(false)
+  const generationTaskUpdatedAtRef = useRef('')
+  const historyRefreshQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => () => {
     continuationRef.current += 1
+    generationJobUnsubscribeRef.current?.()
+    generationJobUnsubscribeRef.current = null
     if (workspaceGenerationRunRef.current != null) {
       resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
       workspaceGenerationRunRef.current = null
@@ -266,6 +321,8 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
 
     if (resultId) {
+      generationJobUnsubscribeRef.current?.()
+      generationJobUnsubscribeRef.current = null
       void loadFromHistory(resultId)
       return
     }
@@ -273,58 +330,181 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     void loadFromLatestSession()
   }, [resultId])
 
+  const applyHistorySnapshot = (history: ResumeHistory) => {
+    const processResult = buildResultFromHistory(history)
+    const historyProgress = getHistoryProgress(history)
+    const context = buildContextFromHistory(history)
+    const displayHistory: ResumeHistory = {
+      ...history,
+      optimizedContent: processResult.optimized.optimized_resume,
+      processResult,
+    }
+
+    setReturnCard(toHistoryCardItem(displayHistory))
+    latestSessionRef.current = {
+      result: processResult,
+      context,
+      progress: historyProgress,
+    }
+    setResult(processResult)
+    setResultContext(context)
+    syncWorkspaceResult(processResult, context)
+    setProgress(historyProgress)
+    setSaved(true)
+    setSavedHistoryId(history.id)
+  }
+
+  const refreshHistorySnapshot = (id: string) => {
+    const refresh = historyRefreshQueueRef.current.catch(() => undefined).then(async () => {
+      const history = await useHistoryStore.getState().loadHistory(id, {force: true})
+      if (history) applyHistorySnapshot(history)
+    })
+    historyRefreshQueueRef.current = refresh.then(() => undefined, () => undefined)
+    return refresh
+  }
+
+  const syncGenerationTaskWorkspace = (task: GenerationTask) => {
+    if (task.status === 'completed') {
+      resumeWorkspaceActions.markGenerationCompleted()
+      workspaceGenerationRunRef.current = null
+      return
+    }
+
+    if (task.status === 'failed' || task.status === 'cancelled') {
+      if (workspaceGenerationRunRef.current != null) {
+        if (task.status === 'failed') {
+          resumeWorkspaceActions.failGeneration(
+            workspaceGenerationRunRef.current,
+            task.error || '生成失败，请重试',
+          )
+        } else {
+          resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
+        }
+        workspaceGenerationRunRef.current = null
+      }
+      return
+    }
+
+    const nextStatus = getTaskGenerationStatus(task)
+    if (workspaceGenerationRunRef.current == null) {
+      workspaceGenerationRunRef.current = resumeWorkspaceActions.startGeneration(nextStatus)
+    } else {
+      resumeWorkspaceActions.transitionGeneration(workspaceGenerationRunRef.current, nextStatus)
+    }
+  }
+
+  const consumeGenerationTask = async (task: GenerationTask, historyId: string) => {
+    if (task.id !== generationJobId || task.updated_at < generationTaskUpdatedAtRef.current) return
+    generationTaskUpdatedAtRef.current = task.updated_at
+    useBackgroundGenerationStore.getState().upsert(task)
+
+    if (task.history_id && task.history_id !== historyId) {
+      setNeedsCompletion(false)
+      return
+    }
+
+    syncGenerationTaskWorkspace(task)
+    if (task.status === 'running' || task.status === 'completed') {
+      await refreshHistorySnapshot(historyId)
+    }
+
+    if (task.status === 'failed') {
+      const error = task.error || '生成失败，请重试'
+      const progressKey = getTaskProgressKey(task)
+      setGenerationError(error)
+      setProgress(current => ({...current, [progressKey]: 'failed'}))
+      setNeedsCompletion(false)
+      return
+    }
+
+    if (task.status === 'cancelled') {
+      setGenerationError('生成已取消')
+      setNeedsCompletion(false)
+      return
+    }
+
+    if (task.status === 'completed') {
+      setGenerationError(null)
+      setNeedsCompletion(!task.confirmed_at)
+      if (!task.read_at && !generationJobReadRef.current) {
+        generationJobReadRef.current = true
+        try {
+          const updated = await generationTasksApi.action(generationJobId!, 'read')
+          useBackgroundGenerationStore.getState().upsert(updated)
+        } catch {
+          generationJobReadRef.current = false
+          feedback.message('已读状态暂未同步，稍后可重试')
+        }
+      }
+    }
+  }
+
+  const watchGenerationJob = async (historyId: string) => {
+    if (!generationJobId) return
+    const consume = (task: GenerationTask) => {
+      void consumeGenerationTask(task, historyId).catch(error => {
+        console.error('同步后台生成进度失败:', error)
+      })
+    }
+
+    try {
+      consume(await generationTasksApi.get(generationJobId))
+    } catch (error) {
+      console.error('获取后台生成任务失败:', error)
+    }
+
+    const unsubscribe = subscribeGenerationTaskEvents({
+      onTask: consume,
+      onOpen: () => {
+        void generationTasksApi.get(generationJobId).then(consume).catch(error => {
+          console.error('校准后台生成任务失败:', error)
+        })
+      },
+    })
+
+    // 手机 Safari 等环境 SSE 可能断流：轮询兜底，保证结果页后续阶段进度自己推进。
+    let stopped = false
+    const stop = () => {
+      stopped = true
+      clearInterval(pollTimer)
+    }
+    const pollTimer = setInterval(() => {
+      if (stopped) return
+      generationTasksApi.get(generationJobId).then(task => {
+        if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') {
+          stop()
+        }
+        consume(task)
+      }).catch(() => undefined)
+    }, 3000)
+
+    generationJobUnsubscribeRef.current?.()
+    generationJobUnsubscribeRef.current = () => {
+      unsubscribe()
+      stop()
+    }
+  }
+
   const loadFromHistory = async (id: string) => {
     try {
-      const history = await useHistoryStore.getState().loadHistory(id)
+      // 后台任务保存 history 与推送任务事件之间存在微小窗口，弱网下首次
+      // 请求也可能瞬断；失败时短间隔重试，避免误判成「未找到结果」。
+      let history = await useHistoryStore.getState().loadHistory(id, {force: true})
+      for (let attempt = 1; !history && attempt <= 2; attempt += 1) {
+        console.warn(`[result] loadHistory 重试 ${attempt}/2`, {id, jobId: generationJobId})
+        await new Promise(resolve => setTimeout(resolve, 400))
+        history = await useHistoryStore.getState().loadHistory(id, {force: true})
+      }
 
       if (history) {
-        setReturnCard(toHistoryCardItem(history))
-        const processResult: ProcessResult = history.processResult
-          ? {
-            ...history.processResult,
-            optimized: {
-              ...history.processResult.optimized,
-              optimized_resume: history.optimizedContent,
-              changes_summary: strategyResultExcerpts(history.processResult.optimized.strategy_review, history.optimizedContent),
-            },
-            interview: normalizeInterviewResult(history.processResult),
-          }
-          : buildFallbackResultFromHistory(history)
-        const historyProgress = {
-          ...DONE_PROGRESS,
-          ...history.progress,
-        }
-
-        const context = buildContextFromHistory(history)
-        latestSessionRef.current = {
-          result: processResult,
-          context,
-          progress: historyProgress,
-        }
-        setResult(processResult)
-        setResultContext(context)
-        syncWorkspaceResult(processResult, context)
-        resumeWorkspaceActions.markGenerationCompleted()
-        setProgress(historyProgress)
-        setSaved(true)
-        setSavedHistoryId(id)
+        applyHistorySnapshot(history)
         if (generationJobId) {
-          try {
-            const task = await generationTasksApi.get(generationJobId)
-            if (task.history_id === id && task.status === 'completed') {
-              setNeedsCompletion(!task.confirmed_at)
-              if (!task.read_at) {
-                const updated = await generationTasksApi.action(generationJobId, 'read')
-                useBackgroundGenerationStore.getState().upsert(updated)
-              }
-            } else {
-              setNeedsCompletion(false)
-            }
-          } catch {
-            feedback.message('已读状态暂未同步，稍后可重试')
-          }
+          await watchGenerationJob(id)
+        } else {
+          resumeWorkspaceActions.markGenerationCompleted()
         }
       } else {
+        console.warn('[result] loadHistory 重试后仍为空，判定未找到结果', {id, jobId: generationJobId})
         feedback.message('未找到结果')
         void route.reset(routePaths.home)
       }
@@ -363,6 +543,21 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         setProgress(sessionProgress)
         void continueLatestSession(nextSession)
       } else {
+        // Taro H5 首帧 URL 可能尚未更新，pageRoute 捕获的 params 缺 id，
+        // 导致误走本分支：短暂等待后从 window.location 重读 history id，
+        // 有则改走 history 加载，避免「未找到结果」闪现与误 reset。
+        await new Promise(resolve => setTimeout(resolve, 400))
+        if (resultRef.current) return
+        const hash = typeof window !== 'undefined' ? (window.location.hash || '') : ''
+        const queryIndex = hash.indexOf('?')
+        const hashId = queryIndex >= 0
+          ? (new URLSearchParams(hash.slice(queryIndex + 1)).get('id') || null)
+          : null
+        if (hashId) {
+          console.warn('[result] session 为空但 URL 已有 history id，改走 history 加载', hashId)
+          await loadFromHistory(hashId)
+          return
+        }
         feedback.message('未找到结果')
         void route.reset(routePaths.home)
       }

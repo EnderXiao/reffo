@@ -381,14 +381,29 @@ function isLocalPreviewHost(hostname: string): boolean {
     hostname === '::1';
 }
 
+function isLanHostname(hostname: string): boolean {
+  return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostname);
+}
+
 function getLocalPreviewApiBaseURL(): string | undefined {
   if (typeof window === 'undefined') {
     return undefined;
   }
 
-  return isLocalPreviewHost(window.location.hostname)
-    ? 'http://127.0.0.1:3000/api/v1'
-    : undefined;
+  const hostname = window.location.hostname;
+
+  // 本机访问预览服务：直连本机后端。
+  if (isLocalPreviewHost(hostname)) {
+    return 'http://127.0.0.1:3000/api/v1';
+  }
+
+  // 手机真机通过局域网 IP 访问 dev/预览服务：必须走同源 /api 代理，
+  // 不能打手机本机的 127.0.0.1。
+  if (isLanHostname(hostname)) {
+    return '/api/v1';
+  }
+
+  return undefined;
 }
 
 function getH5DevServerApiBaseURL(): string | undefined {

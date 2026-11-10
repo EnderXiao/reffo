@@ -58,7 +58,7 @@ export interface HistoryState {
   // Actions
   loadHistories: (options?: LoadOptions) => Promise<void>;
   loadHistorySummaries: (options?: LoadOptions) => Promise<void>;
-  loadHistory: (id: string) => Promise<ResumeHistory | null>;
+  loadHistory: (id: string, options?: {force?: boolean}) => Promise<ResumeHistory | null>;
   addHistory: (history: ResumeHistory) => Promise<string>;
   updateHistory: (id: string, history: Partial<ResumeHistory>) => Promise<void>;
   deleteHistory: (id: string) => Promise<void>;
