@@ -1,0 +1,18 @@
+frontend/Taro/reffo-taro/src/pages/index/__tests__/usePageModel.test.tsx
+  h_1edca6cb63ac1c 237-259
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  h_1edca6cb63ac1c 299-300,302,410-428
+frontend/Taro/reffo-taro/src/utils/feedback.ts
+  h_1edca6cb63ac1c 24,27-28,193,270-274,281-297,427,434,438-441,461-463,472-479,481
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3dade4d7199dcc8e96f70a51ff559472813107e1",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
