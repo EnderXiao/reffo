@@ -1,0 +1,42 @@
+backend/docs/referral-reward-supabase.sql
+  h_1edca6cb63ac1c 1-74
+backend/src/repositories/generation-job-repository.ts
+  h_1edca6cb63ac1c 6,110-117
+backend/src/repositories/referral-reward-repository.ts
+  h_1edca6cb63ac1c 1-107
+backend/src/routes/share-links.ts
+  h_1edca6cb63ac1c 6,34-76
+backend/src/services/referral-reward.ts
+  h_1edca6cb63ac1c 1-58
+backend/src/services/resume-quota.ts
+  h_1edca6cb63ac1c 5,58-64,72,75-77,80,89-95
+backend/src/tests/referral-reward-repository.test.ts
+  h_1edca6cb63ac1c 1-53
+backend/src/tests/referral-reward-service.test.ts
+  h_1edca6cb63ac1c 1-103
+backend/src/types/referral-reward.ts
+  h_1edca6cb63ac1c 1-14
+frontend/Taro/reffo-taro/src/pages/auth/__tests__/index.test.tsx
+  h_1edca6cb63ac1c 13-23,77-83,246-310
+frontend/Taro/reffo-taro/src/pages/auth/index.tsx
+  h_1edca6cb63ac1c 9-10,367-381,394
+frontend/Taro/reffo-taro/src/pages/share-landing/__tests__/usePageModel.test.tsx
+  h_1edca6cb63ac1c 15-19,117,133
+frontend/Taro/reffo-taro/src/pages/share-landing/usePageModel.ts
+  h_1edca6cb63ac1c 3,129-132,134
+frontend/Taro/reffo-taro/src/services/share.ts
+  h_1edca6cb63ac1c 8-13,15-18
+frontend/Taro/reffo-taro/src/utils/share-invite.ts
+  h_1edca6cb63ac1c 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3ba09347e9b9b5f69f58f87653994d5660e8cad",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
