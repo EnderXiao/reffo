@@ -1,0 +1,31 @@
+frontend/Taro/reffo-taro/src/components/business/GenerationStageH5/__tests__/index.test.tsx
+  s_4cb15deaca5902::t_60808a945da92e 1-2,21,31,51-97
+frontend/Taro/reffo-taro/src/components/business/GenerationStageH5/index.h5.scss
+  s_4cb15deaca5902::t_be45500b02c3ae 1-286
+frontend/Taro/reffo-taro/src/pages/create/PageView.h5.tsx
+  s_4cb15deaca5902::t_148491bd136f17 431,693
+frontend/Taro/reffo-taro/src/pages/create/constants/generationPresentation.ts
+  s_4cb15deaca5902::t_5a48eb1e66fb02 1-8
+frontend/Taro/reffo-taro/src/pages/create/index.h5.scss
+  s_4cb15deaca5902::t_da07bc45e46d49 1425,1445-1447,1457-1458,1461-1540,1542,1549-1557,2660-2661
+frontend/Taro/reffo-taro/src/pages/landing-analysis/PageView.h5.tsx
+  s_4cb15deaca5902::t_eed8af90daca14 20,40
+frontend/Taro/reffo-taro/src/pages/share/index.h5.scss
+  s_4cb15deaca5902::t_067bd58cf99d98 53,74,89,110,134,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c5379a1924b430829d9a116f4935af3918a28a8",
+  "prompts": {},
+  "sessions": {
+    "s_4cb15deaca5902": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1bf24-9ead-7cf0-868e-5246ecb4f514",
+        "model": "mimo-v2.6-pro-ultraspeed"
+      },
+      "human_author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
