@@ -51,8 +51,11 @@ export async function claimReferralReward(
     inviteeUserId: context.userId,
     inviterUserId: record.user_id,
     inviteeEmail: normalizeEmail(email),
+    shareLinkId: record.id,
     bonusCount: REFERRAL_BONUS_COUNT,
   })
   if (outcome === 'claimed') return {claimed: true, bonusCount: REFERRAL_BONUS_COUNT}
-  return {claimed: false, reason: outcome === 'email_duplicate' ? 'email_duplicate' : 'already_claimed'}
+  if (outcome === 'email_duplicate') return {claimed: false, reason: 'email_duplicate'}
+  if (outcome === 'token_duplicate') return {claimed: false, reason: 'token_duplicate'}
+  return {claimed: false, reason: 'already_claimed'}
 }

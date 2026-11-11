@@ -14,7 +14,7 @@ function createFakeShareLinks(record: {id: string; user_id: string; revoked_at: 
 
 function createFakeRewardRepository() {
   const claims: ReferralClaimInput[] = []
-  let outcome: 'claimed' | 'invitee_duplicate' | 'email_duplicate' = 'claimed'
+  let outcome: 'claimed' | 'invitee_duplicate' | 'email_duplicate' | 'token_duplicate' = 'claimed'
   return {
     claims,
     setOutcome(next: typeof outcome) { outcome = next },
@@ -99,5 +99,15 @@ describe('claimReferralReward', () => {
       false,
     )
     expect(repeated).toEqual({claimed: false, reason: 'already_claimed'})
+    fake.setOutcome('token_duplicate')
+    const tokenRepeated = await claimReferralReward(
+      {userId: 'invitee-3', useServiceRole: true},
+      validToken,
+      'third@example.com',
+      fake.repository,
+      createFakeShareLinks({id: shareId, user_id: 'inviter-1', revoked_at: null, expires_at: futureExpiresAt}) as never,
+      false,
+    )
+    expect(tokenRepeated).toEqual({claimed: false, reason: 'token_duplicate'})
   })
 })

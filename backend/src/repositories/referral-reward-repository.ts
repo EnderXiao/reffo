@@ -21,11 +21,18 @@ export class SqliteReferralRewardRepository implements ReferralRewardRepositoryC
     db.exec(
       'CREATE TABLE IF NOT EXISTS resume_referral_rewards (' +
         'invitee_user_id TEXT PRIMARY KEY, inviter_user_id TEXT NOT NULL,' +
-        'invitee_email TEXT NOT NULL UNIQUE, bonus_count INTEGER NOT NULL, created_at TEXT NOT NULL);' +
+        'invitee_email TEXT NOT NULL UNIQUE, share_link_id TEXT NOT NULL UNIQUE,' +
+        'bonus_count INTEGER NOT NULL, created_at TEXT NOT NULL);' +
       'CREATE INDEX IF NOT EXISTS referral_rewards_inviter ON resume_referral_rewards(inviter_user_id, created_at);' +
       'CREATE TABLE IF NOT EXISTS resume_bonus_quotas (' +
         'user_id TEXT PRIMARY KEY, bonus_count INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);',
     )
+    // 旧版表结构升级：补充 share_link_id 列（幂等）。
+    const columns = db.query('PRAGMA table_info(resume_referral_rewards)').all() as Array<{name: string}>
+    if (!columns.some(item => item.name === 'share_link_id')) {
+      db.exec('ALTER TABLE resume_referral_rewards ADD COLUMN share_link_id TEXT')
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS referral_rewards_share_link ON resume_referral_rewards(share_link_id)')
+    }
   }
 
   claim(input: ReferralClaimInput): ReferralClaimOutcome {
@@ -37,8 +44,10 @@ export class SqliteReferralRewardRepository implements ReferralRewardRepositoryC
       if (existingInvitee) return 'invitee_duplicate'
       const existingEmail = db.query('SELECT invitee_user_id FROM resume_referral_rewards WHERE invitee_email = ?').get(email)
       if (existingEmail) return 'email_duplicate'
-      db.query('INSERT INTO resume_referral_rewards (invitee_user_id, inviter_user_id, invitee_email, bonus_count, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(input.inviteeUserId, input.inviterUserId, email, input.bonusCount, now)
+      const existingToken = db.query('SELECT invitee_user_id FROM resume_referral_rewards WHERE share_link_id = ?').get(input.shareLinkId)
+      if (existingToken) return 'token_duplicate'
+      db.query('INSERT INTO resume_referral_rewards (invitee_user_id, inviter_user_id, invitee_email, share_link_id, bonus_count, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(input.inviteeUserId, input.inviterUserId, email, input.shareLinkId, input.bonusCount, now)
       for (const userId of [input.inviterUserId, input.inviteeUserId]) {
         db.query('INSERT INTO resume_bonus_quotas (user_id, bonus_count, updated_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET bonus_count = bonus_count + excluded.bonus_count, updated_at = excluded.updated_at')
           .run(userId, input.bonusCount, now)
@@ -70,6 +79,7 @@ class SupabaseReferralRewardRepository implements ReferralRewardRepositoryContra
           p_invitee_user_id: input.inviteeUserId,
           p_inviter_user_id: input.inviterUserId,
           p_invitee_email: input.inviteeEmail,
+          p_share_link_id: input.shareLinkId,
           p_bonus_count: input.bonusCount,
         },
       })

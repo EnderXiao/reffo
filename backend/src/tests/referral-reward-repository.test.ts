@@ -13,7 +13,7 @@ beforeEach(() => {
 describe('SqliteReferralRewardRepository', () => {
   test('首次领取：双方各得奖励额度，记录去重字段', () => {
     const repo = createRepository()
-    const outcome = repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-1', inviteeEmail: 'a@b.com', bonusCount: 3})
+    const outcome = repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-1', inviteeEmail: 'a@b.com', shareLinkId: 'share-a@b.com', bonusCount: 3})
     expect(outcome).toBe('claimed')
     expect(repo.getBonus('invitee-1')).toBe(3)
     expect(repo.getBonus('inviter-1')).toBe(3)
@@ -21,24 +21,33 @@ describe('SqliteReferralRewardRepository', () => {
 
   test('同一用户重复领取返回 invitee_duplicate', () => {
     const repo = createRepository()
-    repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-1', inviteeEmail: 'a@b.com', bonusCount: 3})
-    const second = repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-2', inviteeEmail: 'a@b.com', bonusCount: 3})
+    repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-1', inviteeEmail: 'a@b.com', shareLinkId: 'share-a@b.com', bonusCount: 3})
+    const second = repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-2', inviteeEmail: 'a@b.com', shareLinkId: 'share-a@b.com', bonusCount: 3})
     expect(second).toBe('invitee_duplicate')
     expect(repo.getBonus('invitee-1')).toBe(3)
   })
 
   test('同一邮箱换账号注册返回 email_duplicate，邀请人不重复得奖', () => {
     const repo = createRepository()
-    repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-1', inviteeEmail: 'A@B.com ', bonusCount: 3})
-    const second = repo.claim({inviteeUserId: 'invitee-2', inviterUserId: 'inviter-1', inviteeEmail: 'a@b.com', bonusCount: 3})
+    repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-1', inviteeEmail: 'A@B.com ', shareLinkId: 'share-A@B.com ', bonusCount: 3})
+    const second = repo.claim({inviteeUserId: 'invitee-2', inviterUserId: 'inviter-1', inviteeEmail: 'a@b.com', shareLinkId: 'share-a@b.com', bonusCount: 3})
     expect(second).toBe('email_duplicate')
+    expect(repo.getBonus('inviter-1')).toBe(3)
+    expect(repo.getBonus('invitee-2')).toBe(0)
+  })
+
+  test('同一分享链接只能领取一次，不同用户重复领返回 token_duplicate', () => {
+    const repo = createRepository()
+    repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-1', inviteeEmail: 'a@b.com', shareLinkId: 'share-token-1', bonusCount: 3})
+    const second = repo.claim({inviteeUserId: 'invitee-2', inviterUserId: 'inviter-1', inviteeEmail: 'b@c.com', shareLinkId: 'share-token-1', bonusCount: 3})
+    expect(second).toBe('token_duplicate')
     expect(repo.getBonus('inviter-1')).toBe(3)
     expect(repo.getBonus('invitee-2')).toBe(0)
   })
 
   test('奖励额度可消费，余额为零后返回 false', () => {
     const repo = createRepository()
-    repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-1', inviteeEmail: 'a@b.com', bonusCount: 2})
+    repo.claim({inviteeUserId: 'invitee-1', inviterUserId: 'inviter-1', inviteeEmail: 'a@b.com', shareLinkId: 'share-a@b.com', bonusCount: 2})
     expect(repo.consumeBonus('invitee-1')).toBe(true)
     expect(repo.consumeBonus('invitee-1')).toBe(true)
     expect(repo.consumeBonus('invitee-1')).toBe(false)
