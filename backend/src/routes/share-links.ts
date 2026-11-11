@@ -3,6 +3,7 @@ import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { resumeHistoryRepository } from '@/repositories/resume-history-repository'
 import { ShareHistoryIncompleteError } from '@/shared/share-link-snapshot'
 import { shareLinkService } from '@/services/share-link-service'
+import { claimReferralReward } from '@/services/referral-reward'
 import type { ApiResponse } from '@/types'
 import type {
   CreatedShareLink,
@@ -30,6 +31,49 @@ function readIdempotencyKey(headers: Record<string, string | undefined>) {
 }
 
 export const shareLinkRoutes = new Elysia({prefix: '/api/v1/share-links'})
+  .post(
+    '/claim-reward',
+    async ({body, headers, set}) => {
+      try {
+        const userContext = await resolveRequestUser(headers)
+        const result = await claimReferralReward(userContext, body.token, body.email)
+        if (!result.claimed && result.reason === 'invalid_token') {
+          set.status = 404
+          return {
+            success: false,
+            error: {code: 'REFERRAL_TOKEN_INVALID', message: '邀请链接不存在或已失效'},
+          } satisfies ApiResponse<never>
+        }
+        return {
+          success: true,
+          data: {
+            claimed: result.claimed,
+            reason: result.reason ?? null,
+            bonus_count: result.bonusCount ?? 0,
+          },
+        } satisfies ApiResponse<{claimed: boolean; reason: string | null; bonus_count: number}>
+      } catch (error) {
+        if (error instanceof RequestAuthError) return toAuthErrorResponse(error, set)
+        console.error('领取邀请奖励失败:', error)
+        set.status = 500
+        return {
+          success: false,
+          error: {code: 'REFERRAL_CLAIM_FAILED', message: '领取邀请奖励失败，请稍后重试'},
+        } satisfies ApiResponse<never>
+      }
+    },
+    {
+      body: t.Object({
+        token: t.String({description: '分享链接 token', minLength: 20, maxLength: 300}),
+        email: t.String({description: '注册邮箱', minLength: 3, maxLength: 200}),
+      }),
+      detail: {
+        summary: '领取注册邀请奖励',
+        description: '注册用户通过分享链接注册后领取双方奖励额度；按邮箱去重，本地环境跳过。',
+        tags: ['ShareLink'],
+      },
+    },
+  )
   .post(
     '/',
     async ({body, headers, set}) => {

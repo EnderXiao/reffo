@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react'
 import {shareApi} from '@/services/share'
+import {saveShareInviteToken} from '@/utils/share-invite'
 import {useAuthStore} from '@/store/authStore'
 import {routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import type {PublicShareLink} from '@/types/share'
@@ -125,8 +126,12 @@ export function usePageModel(): ShareLandingViewModel {
 
   const handleExperience = useCallback(async () => {
     const session = await useAuthStore.getState().restoreSession()
+    // 未登录用户暂存邀请 token，注册完成后凭它领取双方奖励。
+    if (!session && token) {
+      await saveShareInviteToken(token)
+    }
     await route.reset(session ? routePaths.home : routePaths.landing)
-  }, [route])
+  }, [route, token])
 
   return {
     share,
