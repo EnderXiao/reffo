@@ -1,0 +1,14 @@
+supabase/migrations/202611110001_referral_rewards.sql
+  h_1edca6cb63ac1c 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b44bf799ce18d1bd73f986a2679470a6580e8079",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
