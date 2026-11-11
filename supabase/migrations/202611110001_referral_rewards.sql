@@ -1,4 +1,5 @@
--- 分享注册邀请奖励：Supabase 建表 + RPC（在 Supabase SQL Editor 执行）
+-- 分享注册邀请奖励：建表 + RPC
+-- 由 release-tag 流程的 supabase db push 自动应用，无需手动执行。
 -- 应用层对应实现：backend/src/repositories/referral-reward-repository.ts
 
 create table if not exists public.resume_referral_rewards (
