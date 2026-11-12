@@ -1,0 +1,14 @@
+backend/src/config/env.ts
+  h_1edca6cb63ac1c 4-7,16,34-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc81325c993aa27a2ff061bc3f65f6828a2a04d2",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
