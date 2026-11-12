@@ -1,7 +1,10 @@
 import { parseDeepSeekExtractionThinking } from './deepseek-thinking'
 import { assertV5ReleaseConfiguration } from './v5-release'
 
-const NONPROD_CORS_ORIGIN = 'https://reffo-web-nonprod.onrender.com'
+const NONPROD_CORS_ORIGINS = [
+  'https://reffo-web-nonprod.onrender.com',
+  'https://nonprod.reffo.cn',
+]
 
 const DEFAULT_CORS_ORIGINS = [
   'http://localhost:5173',
@@ -10,7 +13,7 @@ const DEFAULT_CORS_ORIGINS = [
   'http://127.0.0.1:4173',
   'http://localhost:10086',
   'http://127.0.0.1:10086',
-  NONPROD_CORS_ORIGIN,
+  ...NONPROD_CORS_ORIGINS,
 ]
 
 function parseCorsOrigin(value: string | undefined, appEnv: AppEnv) {
@@ -28,8 +31,10 @@ function parseCorsOrigin(value: string | undefined, appEnv: AppEnv) {
     .map(origin => origin.trim())
     .filter(Boolean)
 
-  if (appEnv === 'nonprod' && !origins.includes(NONPROD_CORS_ORIGIN)) {
-    origins.push(NONPROD_CORS_ORIGIN)
+  if (appEnv === 'nonprod') {
+    for (const origin of NONPROD_CORS_ORIGINS) {
+      if (!origins.includes(origin)) origins.push(origin)
+    }
   }
 
   return origins
