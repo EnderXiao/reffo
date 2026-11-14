@@ -10,6 +10,17 @@ jest.mock('@/utils/feedback', () => ({
   },
 }))
 
+jest.mock('@/utils/share-invite', () => ({
+  readShareInviteToken: jest.fn(),
+  clearShareInviteToken: jest.fn(),
+}))
+
+jest.mock('@/services/share', () => ({
+  shareApi: {
+    claimReferralReward: jest.fn(),
+  },
+}))
+
 jest.mock('@/store/authStore', () => {
   const state = {
     loading: false,
@@ -62,6 +73,13 @@ const mockFeedback = jest.requireMock('@/utils/feedback').feedback as {
   modal: jest.Mock
   error: jest.Mock
   success: jest.Mock
+}
+const mockShareInvite = jest.requireMock('@/utils/share-invite') as {
+  readShareInviteToken: jest.Mock
+  clearShareInviteToken: jest.Mock
+}
+const mockShareApi = jest.requireMock('@/services/share').shareApi as {
+  claimReferralReward: jest.Mock
 }
 const mockAuthState = jest.requireMock('@/store/authStore').__mockAuthState as {
   loading: boolean
@@ -225,6 +243,71 @@ describe('AuthPage', () => {
       email: 'user@example.com',
       token: '12345678',
     })
+    expect(mockShareApi.claimReferralReward).not.toHaveBeenCalled()
+  })
+
+  test('signup with invite token claims referral reward for both sides', async () => {
+    mockShareInvite.readShareInviteToken.mockResolvedValueOnce('invite-token-value')
+    mockShareApi.claimReferralReward.mockResolvedValueOnce({claimed: true, reason: null, bonus_count: 3})
+    render(<AuthPage />)
+    fillLoginForm()
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('登录'))
+    })
+    await act(async () => {
+      mockFeedback.modal.mock.calls[0][0].onConfirm()
+      await Promise.resolve()
+    })
+    mockAuthState.checkEmailRegistered.mockResolvedValueOnce(false)
+    fireEvent.change(screen.getByPlaceholderText('再次输入密码'), {
+      target: {value: 'password123'},
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('确认注册'))
+    })
+    const otpInput = screen.getByRole('spinbutton')
+
+    await act(async () => {
+      fireEvent.change(otpInput, {target: {value: '12345678'}})
+    })
+
+    expect(mockShareApi.claimReferralReward).toHaveBeenCalledWith('invite-token-value', 'user@example.com')
+    expect(mockShareInvite.clearShareInviteToken).toHaveBeenCalled()
+    expect(mockFeedback.success).toHaveBeenCalledWith(expect.stringContaining('3'), expect.anything())
+  })
+
+  test('claim failure stays silent and does not block signup', async () => {
+    mockShareInvite.readShareInviteToken.mockResolvedValueOnce('invite-token-value')
+    mockShareApi.claimReferralReward.mockRejectedValueOnce(new Error('boom'))
+    render(<AuthPage />)
+    fillLoginForm()
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('登录'))
+    })
+    await act(async () => {
+      mockFeedback.modal.mock.calls[0][0].onConfirm()
+      await Promise.resolve()
+    })
+    mockAuthState.checkEmailRegistered.mockResolvedValueOnce(false)
+    fireEvent.change(screen.getByPlaceholderText('再次输入密码'), {
+      target: {value: 'password123'},
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('确认注册'))
+    })
+    const otpInput = screen.getByRole('spinbutton')
+
+    await act(async () => {
+      fireEvent.change(otpInput, {target: {value: '12345678'}})
+    })
+
+    expect(mockAuthState.verifySignupOtp).toHaveBeenCalled()
+    expect(mockShareInvite.clearShareInviteToken).toHaveBeenCalled()
+    expect(mockFeedback.success).toHaveBeenCalledWith('登录成功', expect.anything())
   })
 
   test('supports passwordless email OTP login', async () => {

@@ -19,6 +19,7 @@ export default function LandingAnalysisPageView({
   resumeSummaryState,
   jobDescriptionState,
   handleCancelGeneration,
+  handleGenerationPresentationComplete,
   handleClose,
   handleLandingSkip,
   handlePrimaryAction,
@@ -58,6 +59,7 @@ export default function LandingAnalysisPageView({
     <GenerationStageH5
       state={visibleGenerationState}
       onCancelGeneration={handleCancel}
+      onPresentationComplete={handleGenerationPresentationComplete}
       header={header}
     />
   )

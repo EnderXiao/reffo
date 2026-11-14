@@ -6,6 +6,12 @@ import {resumeApi} from '@/services/resume'
 import {resumeHistoryApi} from '@/services/resumeHistory'
 import {getPublicRuntimeConfig} from '@/services/runtime-config'
 import {RequestError} from '@/utils/httpTransport'
+import {
+  generationTasksApi,
+  subscribeGenerationTaskEvents,
+  type GenerationTask,
+  type GenerationTaskStreamHandlers,
+} from '@/services/backgroundGeneration'
 import {useResumeWorkspaceStore} from '@/store/resumeWorkspaceStore'
 import {useHistoryStore} from '@/store/historyStore'
 import type {ResumeHistory, ResumeStrategyReview} from '@/types'
@@ -24,6 +30,7 @@ import {historyCompletionBaseline} from '../model/completionSession'
 import {savePendingLandingHistory} from '@/utils/pending-landing-data'
 
 let mockResultId: string | null = null
+let mockJobId: string | null = null
 
 jest.mock('@/services/runtime-config', () => {
   const mockJest = require('@jest/globals').jest as typeof jest
@@ -42,6 +49,14 @@ jest.mock('@/services/resume', () => ({
   },
 }))
 
+jest.mock('@/services/backgroundGeneration', () => ({
+  generationTasksApi: {
+    get: jest.fn(),
+    action: jest.fn(),
+  },
+  subscribeGenerationTaskEvents: jest.fn(() => jest.fn()),
+}))
+
 jest.mock('@/utils/result-session', () => ({
   getLatestResultSession: jest.fn(),
   saveLatestResultSession: jest.fn(),
@@ -54,7 +69,7 @@ jest.mock('@/shared/routing', () => ({
   usePageRoute: () => ({
     params: {},
     path: '/pages/result/index',
-    readString: (key: string) => key === 'id' ? mockResultId : null,
+    readString: (key: string) => key === 'id' ? mockResultId : key === 'jobId' ? mockJobId : null,
     readBoolean: () => false,
     readNumber: () => null,
   }),
@@ -115,6 +130,26 @@ const interview = {
   follow_up_questions: [],
 }
 
+function createGenerationTask(overrides: Partial<GenerationTask> = {}): GenerationTask {
+  return {
+    id: '11111111-1111-4111-8111-111111111111',
+    status: 'running',
+    stage: 'matching',
+    background: false,
+    read_at: null,
+    confirmed_at: null,
+    history_id: 'JD2026101300001',
+    company: 'OpenAI',
+    position: '前端工程师',
+    location: '',
+    score: 91,
+    error: null,
+    created_at: '2026-10-13T12:00:00.000Z',
+    updated_at: '2026-10-13T12:00:02.000Z',
+    ...overrides,
+  }
+}
+
 function createSession(): LatestResultSession {
   return {
     result: {
@@ -160,6 +195,7 @@ describe('Result usePageModel workspace generation state', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockResultId = null
+    mockJobId = null
     useResumeWorkspaceStore.getState().reset()
     jest.mocked(useRouter).mockReturnValue({params: {}} as never)
     jest.mocked(getLatestResultSession).mockResolvedValue(createSession())
@@ -222,6 +258,90 @@ describe('Result usePageModel workspace generation state', () => {
     const second = renderHook(() => usePageModel())
     await waitFor(() => expect(second.result.current.loading).toBe(false))
     expect(second.result.current.result?.optimized.optimized_resume).toBe('本地草稿')
+    expect(resumeApi.generateInterviewSuggestions).not.toHaveBeenCalled()
+  })
+
+  test('后台任务在分析完成后进入结果页，并按事件逐步刷新阶段', async () => {
+    const taskId = '11111111-1111-4111-8111-111111111111'
+    const historyId = 'JD2026101300001'
+    const analysisOnlyHistory: ResumeHistory = {
+      id: historyId,
+      name: 'Jeremy Smith',
+      company: 'OpenAI',
+      position: '前端工程师',
+      createdAt: '2026-10-13T12:00:00.000Z',
+      qualityScore: 88,
+      matchScore: 0,
+      tags: [],
+      resumeContent: '# Resume',
+      jdContent: '岗位职责',
+      optimizedContent: '',
+      processResult: {analysis},
+      progress: {
+        analysis: 'done',
+        matching: 'generating',
+        optimized: 'pending',
+        interview: 'pending',
+      },
+    }
+    const matchingDoneHistory: ResumeHistory = {
+      ...analysisOnlyHistory,
+      matchScore: matching.match_score,
+      tags: matching.skill_match.matched_skills,
+      processResult: {analysis, matching},
+      progress: {
+        analysis: 'done',
+        matching: 'done',
+        optimized: 'generating',
+        interview: 'pending',
+      },
+    }
+    let currentHistory = analysisOnlyHistory
+    let streamHandlers: GenerationTaskStreamHandlers | null = null
+    mockResultId = historyId
+    mockJobId = taskId
+    jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockImplementation(async () => currentHistory)
+    jest.mocked(generationTasksApi.get).mockResolvedValue(createGenerationTask({id: taskId, history_id: historyId}))
+    jest.mocked(subscribeGenerationTaskEvents).mockImplementation(handlers => {
+      streamHandlers = handlers
+      return jest.fn()
+    })
+
+    const {result} = renderHook(() => usePageModel())
+
+    await waitFor(() => {
+      expect(result.current.progress).toMatchObject({
+        analysis: 'done',
+        matching: 'generating',
+        optimized: 'pending',
+        interview: 'pending',
+      })
+    })
+    expect(result.current.result?.analysis).toEqual(analysis)
+    expect(resumeApi.matchResume).not.toHaveBeenCalled()
+    expect(resumeApi.generateOptimizedResume).not.toHaveBeenCalled()
+
+    currentHistory = matchingDoneHistory
+    await act(async () => {
+      streamHandlers?.onTask(createGenerationTask({
+        id: taskId,
+        history_id: historyId,
+        stage: 'optimized',
+        updated_at: '2026-10-13T12:00:03.000Z',
+      }))
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(result.current.progress).toMatchObject({
+        matching: 'done',
+        optimized: 'generating',
+        interview: 'pending',
+      })
+    })
+    expect(result.current.result?.matching).toEqual(matching)
+    expect(resumeApi.matchResume).not.toHaveBeenCalled()
+    expect(resumeApi.generateOptimizedResume).not.toHaveBeenCalled()
     expect(resumeApi.generateInterviewSuggestions).not.toHaveBeenCalled()
   })
 

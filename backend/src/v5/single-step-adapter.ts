@@ -31,6 +31,34 @@ export const V5_ANALYSIS_CACHE_VERSION = 'v5-analysis-result-cache-v1'
 
 export {singleStepFingerprint} from '@/v5/single-step-fingerprint'
 
+/** 分步调用的会话级时间预算：/analyze 起算，后续步骤按剩余预算收紧各自上限。 */
+export interface SessionBudget {
+  deadlineMs: number
+  totalMs: number
+}
+
+export class V5SessionBudgetError extends Error {
+  readonly code = 'V5_SESSION_BUDGET_EXHAUSTED'
+  readonly status = 503
+
+  constructor() {
+    super('本次生成会话的可用时间已用完，请重新开始')
+    this.name = 'V5SessionBudgetError'
+  }
+}
+
+/** 旧检查点没有 budget 字段时按独立上限运行，保持向后兼容。 */
+export function sessionStepTimeoutMs(budget: SessionBudget | undefined, stepCapMs: number): number {
+  if (!budget) return stepCapMs
+  const remaining = budget.deadlineMs - Date.now()
+  if (remaining <= 0) throw new V5SessionBudgetError()
+  return Math.min(stepCapMs, remaining)
+}
+
+export function freshSessionBudget(): SessionBudget {
+  return { deadlineMs: Date.now() + env.V5_SESSION_BUDGET_MS, totalMs: env.V5_SESSION_BUDGET_MS }
+}
+
 function extractionCacheFingerprints() {
   return {
     implementationFingerprint: resumeStageFingerprint('extraction'),
@@ -78,6 +106,8 @@ interface ResumeCheckpoint {
   resumeDigest: string
   sourceDigest?: string
   stageFingerprint?: string
+  /** 会话级时间预算；旧检查点无此字段时各步按独立上限运行。 */
+  budget?: SessionBudget
 }
 interface MatchingCheckpoint {
   kind: 'matching'
@@ -85,10 +115,13 @@ interface MatchingCheckpoint {
   sourceDigest?: string
   stageFingerprint?: string
   checkpoint: V5MatchingCheckpoint
+  budget?: SessionBudget
   generated?: V5WorkflowResult
   generationFingerprint?: string
   completionContext?: string
-  interview?: {runId: string; data: InterviewSuggestions; steps: StepRunSnapshot[]; fingerprint?: string; snapshotDigest?: string}
+  /** 首次生成时的剩余预算快照：幂等读取返回同一响应，不随时间漂移。 */
+  generatedRemainingBudgetMs?: number
+  interview?: {runId: string; parentRunId?: string; remainingBudgetMs?: number; data: InterviewSuggestions; steps: StepRunSnapshot[]; fingerprint?: string; snapshotDigest?: string}
 }
 type Checkpoint = ResumeCheckpoint | MatchingCheckpoint
 
@@ -162,11 +195,15 @@ export class V5SingleStepAdapter {
         fingerprint: resumeStageFingerprint('extraction'),
         compute,
       })
-    const {checkpoint} = resolved.value
+    // 会话预算以本次 /analyze 响应起算：缓存命中时同样续期，
+    // 避免复用的旧 deadline 在后续步骤一开始就过期。
+    const budget = freshSessionBudget()
+    const checkpoint = {...resolved.value.checkpoint, budget}
     const token = await this.repository.save(owner, checkpoint)
     return {
       runId: resolved.value.runId,
       steps: resolved.value.steps,
+      remainingBudgetMs: budget.deadlineMs - Date.now(),
       data: {
         ...checkpoint.analysis,
         structured_resume: {...checkpoint.analysis.structured_resume, _v5_context: token},
@@ -189,20 +226,24 @@ export class V5SingleStepAdapter {
     // the provider truncates a response. Keep the workflow budget above the
     // individual provider call budget so recoverable truncation is not turned
     // into a premature workflow timeout.
-    const cached = await this.stageCache.resolve<V5MatchingCheckpoint>({owner,stage:'matching',timeoutMs: MATCHING_REQUEST_TIMEOUT_MS,
+    const budgetTimeoutMs = sessionStepTimeoutMs(stored.budget, MATCHING_REQUEST_TIMEOUT_MS)
+    const cached = await this.stageCache.resolve<V5MatchingCheckpoint>({owner,stage:'matching',timeoutMs: budgetTimeoutMs,
       dependency:{extraction: stored.extraction.resumeEvidenceBundle, jd: canonicalizeSourceDocument(jd,'stage-jd').canonicalDocument.sha256},
       sourceDigest: stored.sourceDigest ?? canonicalizeSourceDocument(stored.source,'stage-source').canonicalDocument.sha256,
-      compute: ({timeoutMs,signal}) => this.workflow(owner).matchResume({resumeMarkdown: stored.source,jobDescription:jd,workflowTimeoutMs:Math.min(MATCHING_REQUEST_TIMEOUT_MS,timeoutMs),signal},stored.extraction),
+      compute: ({timeoutMs,signal}) => this.workflow(owner).matchResume({resumeMarkdown: stored.source,jobDescription:jd,workflowTimeoutMs:Math.min(budgetTimeoutMs,timeoutMs),signal},stored.extraction),
       validate: (value): value is V5MatchingCheckpoint => !!value && typeof value === 'object' && (value as V5MatchingCheckpoint).state === 'matched'
         && jobRequirementBundleSchema.safeParse((value as V5MatchingCheckpoint).jobRequirementBundle).success
         && resumeEvidenceBundleSchema.safeParse((value as V5MatchingCheckpoint).extraction?.resumeEvidenceBundle).success
         && (()=>{const {actionPlan,...analysis}=(value as V5MatchingCheckpoint).matchAnalysis as V5MatchingCheckpoint['matchAnalysis'] & {actionPlan?:ResumeActionPlan};return canonicalMatchAnalysisSchema.safeParse(analysis).success && (!actionPlan || !validateActionPlan(actionPlan).length)})()})
     const result = cached.value
     // Tokens are fresh request capabilities; cached artifacts never retain an old resume token.
+    const budget = stored.budget
     const token = await this.repository.save(owner, {kind:'matching',resumeToken,checkpoint:result,
-      sourceDigest:stored.sourceDigest,stageFingerprint:resumeStageFingerprint('matching')} satisfies MatchingCheckpoint)
+      sourceDigest:stored.sourceDigest,stageFingerprint:resumeStageFingerprint('matching'),budget} satisfies MatchingCheckpoint)
     const matching = toMatchAnalysis({...result, resumeEvidenceBundle: stored.extraction.resumeEvidenceBundle})
-    return {runId: result.runId, steps: result.stepStatuses ?? [], data: {...matching, jd_structure: {...matching.jd_structure, _v5_context: token}}}
+    return {runId: result.runId, parentRunId: stored.extraction.runId, steps: result.stepStatuses ?? [],
+      remainingBudgetMs: budget ? budget.deadlineMs - Date.now() : undefined,
+      data: {...matching, jd_structure: {...matching.jd_structure, _v5_context: token}}}
   }
 
   private async matching(structured: unknown, matching: unknown, owner: string) {
@@ -221,7 +262,7 @@ export class V5SingleStepAdapter {
     const cached = reusableGenerated ? {value:reusableGenerated} : await this.stageCache.resolve<V5WorkflowResult>({owner,stage:'generation',
       dependency:{source:stored.checkpoint.extraction.resumeEvidenceBundle,job:stored.checkpoint.jobRequirementBundle,analysis:stored.checkpoint.matchAnalysis,
         fit:stored.checkpoint.jobFitMap ?? null},sourceDigest:stored.sourceDigest ?? stored.checkpoint.extraction.canonicalSourceDocument.sha256,
-      compute:({timeoutMs,signal})=>this.workflow(owner).generateResume(stored.checkpoint,{workflowTimeoutMs:Math.min(180000,timeoutMs),signal}),
+      compute:({timeoutMs,signal})=>this.workflow(owner).generateResume(stored.checkpoint,{workflowTimeoutMs:Math.min(sessionStepTimeoutMs(stored.budget,180000),timeoutMs),signal}),
       validate:(value):value is V5WorkflowResult=>!!value && typeof value==='object' && !!(value as V5WorkflowResult).runId
         && (!(value as V5WorkflowResult).completionDocument || validateCompletionDocument((value as V5WorkflowResult).completionDocument).ok)})
     const result = cached.value
@@ -230,8 +271,10 @@ export class V5SingleStepAdapter {
       : response.step3_completion_document && response.step3_completion_document.schemaVersion !== 'resume-completion-v1'
         ? await saveCompletionBaseline(owner,response.step3_completion_document, result.actionPlan && result.resolvedActionPlan
           ? {actionPlan:result.actionPlan,resolvedPlan:result.resolvedActionPlan,review:result.actionReview,changeManifest:result.changeManifest,identityState:result.identityState,deliveryState:result.deliveryState,interviewBasis:interviewGenerationBasis(result),matching:toMatchAnalysis(result)} : undefined) : undefined
-    if (!reusableGenerated || completionContext !== stored.completionContext) await this.repository.update(row, {...stored,generated:result,generationFingerprint:resumeStageFingerprint('generation'),completionContext})
-    return {runId: result.runId, steps: result.stepStatuses ?? [], data: {optimized_resume: response.step3_optimized_resume,
+    const remainingBudgetMs = reusableGenerated ? stored.generatedRemainingBudgetMs : (stored.budget ? Math.max(0, stored.budget.deadlineMs - Date.now()) : undefined)
+    if (!reusableGenerated || completionContext !== stored.completionContext) await this.repository.update(row, {...stored,generated:result,generationFingerprint:resumeStageFingerprint('generation'),completionContext,generatedRemainingBudgetMs:remainingBudgetMs})
+    return {runId: result.runId, parentRunId: stored.checkpoint.runId, steps: result.stepStatuses ?? [],
+      remainingBudgetMs, data: {optimized_resume: response.step3_optimized_resume,
       ...(response.step3_completion_document ? {completion_document: response.step3_completion_document} : {}),
       ...(completionContext ? {completion_context:completionContext} : {}),
       ...(result.actionPlan ? {action_plan: result.actionPlan} : {}),
@@ -257,14 +300,15 @@ export class V5SingleStepAdapter {
     const stored = loaded?.stored
     const snapshotDigest = createDigest({snapshot: current.interviewSnapshot ?? current.artifact, preparationTopics: current.preparationTopics ?? []})
     if (stored?.interview?.fingerprint === resumeStageFingerprint('interview') && stored.interview.snapshotDigest === snapshotDigest) return stored.interview
-    const cached = await this.stageCache.resolve({owner,stage:'interview',dependency:{document:current.completionDocument,
+    const cached = await this.stageCache.resolve({owner,stage:'interview',timeoutMs:sessionStepTimeoutMs(stored?.budget,60000),dependency:{document:current.completionDocument,
       allowedFacts:current.resumeEvidenceBundle,job:current.jobRequirementBundle,preparationTopics:current.preparationTopics ?? []},
       sourceDigest:current.resumeEvidenceBundle.sourceDocument.sha256,
-      compute:async({timeoutMs,signal})=>{const result=await this.workflow(owner).prepareInterview(current,Math.min(60000,timeoutMs),signal); return {runId:result.runId,steps:result.stepStatuses??[],data:toInterviewPreparation(result.preparation,current,
+      compute:async({timeoutMs,signal})=>{const result=await this.workflow(owner).prepareInterview(current,Math.min(60000,timeoutMs),signal); return {runId:result.runId,parentRunId:current.runId,remainingBudgetMs:stored?.budget ? Math.max(0, stored.budget.deadlineMs - Date.now()) : undefined,steps:result.stepStatuses??[],data:toInterviewPreparation(result.preparation,current,
         {sourceText: options.history?.resume_content ?? loaded?.stored.checkpoint.input.resumeMarkdown}),fingerprint:resumeStageFingerprint('interview'),snapshotDigest}},
-      validate:(value):value is {runId:string;steps:StepRunSnapshot[];data:InterviewSuggestions;fingerprint:string}=>!!value && typeof value==='object' && typeof (value as {runId?:unknown}).runId==='string' && !!(value as {data?:unknown}).data})
+      validate:(value):value is {runId:string;parentRunId?:string;remainingBudgetMs?:number;steps:StepRunSnapshot[];data:InterviewSuggestions;fingerprint:string}=>!!value && typeof value==='object' && typeof (value as {runId?:unknown}).runId==='string' && !!(value as {data?:unknown}).data})
     const interview = cached.value
     if (loaded) await this.repository.update(loaded.row, {...loaded.stored, interview})
+
     return interview
   }
 }

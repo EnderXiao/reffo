@@ -12,6 +12,11 @@ jest.mock('@/services/share', () => ({
   },
 }))
 
+const mockSaveShareInviteToken = jest.fn()
+jest.mock('@/utils/share-invite', () => ({
+  saveShareInviteToken: (...args: unknown[]) => mockSaveShareInviteToken(...args),
+}))
+
 jest.mock('@/store/authStore', () => ({
   useAuthStore: {
     getState: () => ({
@@ -109,6 +114,7 @@ describe('share landing model', () => {
     expect(mockRestoreSession).toHaveBeenCalledTimes(1)
     expect(mockReset).toHaveBeenCalledWith('/pages/index/index')
     expect(mockNavigate).not.toHaveBeenCalled()
+    expect(mockSaveShareInviteToken).not.toHaveBeenCalled()
   })
 
   test('sends signed-out users to the landing page', async () => {
@@ -124,6 +130,7 @@ describe('share landing model', () => {
     expect(mockRestoreSession).toHaveBeenCalledTimes(1)
     expect(mockReset).toHaveBeenCalledWith('/pages/landing/index')
     expect(mockNavigate).not.toHaveBeenCalled()
+    expect(mockSaveShareInviteToken).toHaveBeenCalledWith('public-token')
   })
 
   test('shows a retryable error for invalid shares', async () => {

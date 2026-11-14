@@ -234,6 +234,29 @@ describe('usePageModel', () => {
     expect(mockRefreshGenerationTasks).toHaveBeenCalledTimes(1)
   })
 
+  test('已确认的任务在对应 history 删除后不会以卡片复活', () => {
+    setGenerationTaskState([{
+      id: 'task-confirmed',
+      status: 'completed',
+      stage: 'saving',
+      background: false,
+      read_at: '2026-10-21T01:00:00.000Z',
+      confirmed_at: '2026-10-21T01:00:00.000Z',
+      history_id: 'JD-deleted',
+      company: '测试公司',
+      position: '前端工程师',
+      location: '北京',
+      score: 80,
+      error: null,
+      created_at: '2026-10-21T00:00:00.000Z',
+      updated_at: '2026-10-21T00:00:00.000Z',
+    }])
+    render(<HookProbe />)
+
+    expect((screen.getByTestId('card-id') as any).textContent).toBe('none')
+    expect((screen.getByTestId('create-mode') as any).textContent).toBe('yes')
+  })
+
   test('没有历史简历时不展示示例卡片并直接进入新申请创建态', () => {
     render(<HookProbe />)
 

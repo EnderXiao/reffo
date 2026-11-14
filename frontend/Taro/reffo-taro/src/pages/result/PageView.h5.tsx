@@ -92,7 +92,7 @@ const RESULT_STAGES: ResultStage[] = [
   {
     key: 'resume',
     title: '相契简历',
-    accent: '相契',
+    accent: '简历',
     label: '最佳简历',
     subtitle: '依据岗位要求，突出你已有的相关经历与优势，保留真实的岗位差距。',
     icon: textIcon,

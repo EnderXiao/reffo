@@ -36,7 +36,7 @@ function workerHarness(initial: GenerationJob, options: {existingHistory?: Resum
     analyze: async (_source, _owner, request) => {
       calls.model++
       await request?.onCacheMiss?.()
-      return {runId: 'test', data: analysis, steps: [], cache: {status: 'miss'}} as Awaited<ReturnType<typeof v5SingleStepAdapter.analyze>>
+      return {runId: 'test', data: analysis, steps: [], remainingBudgetMs: 0, cache: {status: 'miss'}} as Awaited<ReturnType<typeof v5SingleStepAdapter.analyze>>
     },
     match: async () => {calls.model++; throw options.matchingError ?? new Error('test stops after analysis')},
     generate: async () => {calls.model++; throw new Error('unexpected generation')},
@@ -44,7 +44,8 @@ function workerHarness(initial: GenerationJob, options: {existingHistory?: Resum
   }
   const histories: ConstructorParameters<typeof GenerationJobWorker>[2] = {
     findById: async () => options.existingHistory ?? null,
-    save: async () => {calls.historySave++; throw new Error('unexpected history overwrite')},
+    save: async () => {calls.historySave++; return {id: `JD-${current.id}`} as ResumeHistoryRecord},
+    update: async () => {calls.historySave++; return {id: `JD-${current.id}`} as ResumeHistoryRecord},
   }
   return {worker: new GenerationJobWorker(repository, adapter, histories, () => fingerprint),
     getJob: () => current, calls}
