@@ -17,7 +17,7 @@ interface CardSeedInput {
   location: string
   role: string
   dateLabel: string
-  score: number
+  score: number | null
   strategyBody: string
   strategyTitle?: string
   seedColor?: string
@@ -205,7 +205,7 @@ export function toGenerationTaskCard(task: GenerationTask, summary?: ResumeHisto
   )
   const card = summary ? toHistorySummaryCardItem(summary, 0, taskSeedColor) : buildCardItem({
     id: task.id, company: task.company, role: task.position, location: task.location || '--',
-    dateLabel: formatDateLabel(task.created_at), score: task.score ?? 0,
+    dateLabel: formatDateLabel(task.created_at), score: task.score ?? null,
     seedColor: taskSeedColor, strategyBody: '',
   })
   return {...card, id: task.id, historyId: task.history_id || undefined, generationTaskId: task.id,

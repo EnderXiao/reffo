@@ -1,3 +1,4 @@
+import {summarizePhysicalProviderCalls} from '@/services/provider-call-recorder'
 import { randomUUID } from 'node:crypto'
 import type { HarnessEvent } from '@/harness/events'
 import { env } from '@/config/env'
@@ -235,12 +236,7 @@ export class SupabaseHarnessRepository {
         const [step_name, status] = key.split(':')
         return { step_name, status, count }
       }),
-      attemptMetrics: {
-        total_attempts: indexed.attempts.length,
-        avg_latency_ms: indexed.attempts.reduce((sum, attempt) => sum + Number(attempt.latency_ms ?? 0), 0) / Math.max(1, indexed.attempts.length),
-        total_input_tokens: indexed.attempts.reduce((sum, attempt) => sum + Number(attempt.input_tokens ?? 0), 0),
-        total_output_tokens: indexed.attempts.reduce((sum, attempt) => sum + Number(attempt.output_tokens ?? 0), 0),
-      },
+      attemptMetrics:await summarizePhysicalProviderCalls(),
       failureSampleCount: { count: 0 },
       agentStateCounts: [],
       promptMetrics: [],

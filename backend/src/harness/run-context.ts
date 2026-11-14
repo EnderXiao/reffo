@@ -6,6 +6,7 @@ export interface RunContext {
   workflowName: 'resume_optimization' | 'ocr_document_parse'
   workflowVersion: string
   startedAt: string
+  signal?: AbortSignal
 }
 
 export interface StepExecutionContext extends RunContext {

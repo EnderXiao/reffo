@@ -3,14 +3,14 @@ import { assertV5ProductionWorkflow, assertV5ReleaseConfiguration, v5ReleaseWork
 
 test('R5 is the fixed release workflow', () => {
   expect(v5ReleaseWorkflowOptions()).toEqual({artifactGenerationMode:'writer_v1',
-    jobTargetingPolicy:'job-targeted-v1',entryWritingPolicy:'entry-writing-v3'})
+    jobTargetingPolicy:'job-targeted-v2',entryWritingPolicy:'entry-writing-v6'})
 })
 
 test('production accepts only the explicitly released complete Writer combination', () => {
   const config = {APP_ENV:'prod'}
   expect(() => assertV5ProductionWorkflow(config,v5ReleaseWorkflowOptions())).not.toThrow()
-  expect(() => assertV5ProductionWorkflow(config,{artifactGenerationMode:'writer_v1',jobTargetingPolicy:'job-targeted-v1'})).toThrow()
-  expect(() => assertV5ProductionWorkflow(config,{artifactGenerationMode:'dsl_v1',jobTargetingPolicy:'job-targeted-v1'})).toThrow()
+  expect(() => assertV5ProductionWorkflow(config,{artifactGenerationMode:'writer_v1',jobTargetingPolicy:'job-targeted-v2'})).toThrow()
+  expect(() => assertV5ProductionWorkflow(config,{artifactGenerationMode:'dsl_v1',jobTargetingPolicy:'job-targeted-v2'})).toThrow()
 })
 
 test('R5 rejects model or thinking-mode drift', () => {

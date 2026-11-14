@@ -1,3 +1,5 @@
+import {summarizePhysicalProviderCalls} from '@/services/provider-call-recorder'
+import {aggregateHarnessMetrics,type HarnessMetricRun,type HarnessMetricStep,type HarnessMetricAttempt,type HarnessMetricEvent} from '@/repositories/harness-metrics'
 import { initializeHarnessDatabase } from '@/repositories/database'
 import { randomUUID } from 'node:crypto'
 import { env } from '@/config/env'
@@ -71,7 +73,7 @@ function isStrictV5DeliveryDiagnostics(value: unknown): value is V5DeliveryDiagn
   if (
     !diagnostics
     || !hasExactKeys(diagnostics, ['version', 'taxonomyVersion', 'outcome', 'tracks', 'provenance', 'metrics'])
-    || diagnostics.version !== 'v5-delivery-diagnostics-v2'
+    || !['v5-delivery-diagnostics-v2', 'v5-delivery-diagnostics-v3'].includes(String(diagnostics.version))
     || diagnostics.taxonomyVersion !== 'v5-delivery-taxonomy-v1'
   ) return false
 
@@ -147,6 +149,7 @@ function isStrictV5DeliveryDiagnostics(value: unknown): value is V5DeliveryDiagn
     'plannedEvidenceCoverage',
     'stableCoreCoverage',
     'primaryRequirementCoverage',
+    ...(diagnostics.version === 'v5-delivery-diagnostics-v3' ? ['primaryWritingFocusCoverage'] : []),
     'outputLengthUnit',
     'outputLengthSoftMin',
     'outputLengthHardMin',
@@ -158,6 +161,7 @@ function isStrictV5DeliveryDiagnostics(value: unknown): value is V5DeliveryDiagn
     && isCoverage(metrics.plannedEvidenceCoverage)
     && isCoverage(metrics.stableCoreCoverage)
     && isCoverage(metrics.primaryRequirementCoverage)
+    && (diagnostics.version !== 'v5-delivery-diagnostics-v3' || metrics.primaryWritingFocusCoverage === null || isCoverage(metrics.primaryWritingFocusCoverage))
     && isEnum(metrics.outputLengthUnit, ['cjk_characters', 'words'])
     && isNullableNonNegativeInteger(metrics.outputLengthSoftMin)
     && isNullableNonNegativeInteger(metrics.outputLengthHardMin)
@@ -180,7 +184,7 @@ function numericSummary(values: number[]) {
 
 function coverageSummary(
   diagnostics: V5DeliveryDiagnostics[],
-  key: 'plannedEvidenceCoverage' | 'stableCoreCoverage' | 'primaryRequirementCoverage'
+  key: 'plannedEvidenceCoverage' | 'stableCoreCoverage' | 'primaryRequirementCoverage' | 'primaryWritingFocusCoverage'
 ) {
   let numerator = 0
   let denominator = 0
@@ -193,6 +197,10 @@ function coverageSummary(
       continue
     }
     const coverage = item.metrics[key]
+    if (!coverage) {
+      metricsUnavailableCount += 1
+      continue
+    }
     if (coverage.denominator === 0) {
       notApplicableCount += 1
       continue
@@ -282,7 +290,7 @@ export class HarnessRunRepository {
     return { run, events }
   }
 
-  getDashboardMetrics() {
+  async getDashboardMetrics() {
     if (env.DATABASE_PROVIDER === 'supabase') return supabaseHarnessRepository.getDashboardMetrics()
     const runStatusCounts = this.db
       .query('SELECT status, COUNT(*) AS count FROM process_runs GROUP BY status ORDER BY status ASC')
@@ -393,7 +401,7 @@ export class HarnessRunRepository {
         continue
       }
       if (
-        row.diagnostics_version !== 'v5-delivery-diagnostics-v2'
+        !['v5-delivery-diagnostics-v2', 'v5-delivery-diagnostics-v3'].includes(String(row.diagnostics_version))
         || typeof row.diagnostics_json !== 'string'
       ) {
         invalidDiagnosticsCount += 1
@@ -408,6 +416,7 @@ export class HarnessRunRepository {
       }
       if (
         !isStrictV5DeliveryDiagnostics(parsed)
+        || parsed.version !== row.diagnostics_version
         || !isV5DeliveryDiagnosticsSemanticallyValid(parsed)
       ) {
         invalidDiagnosticsCount += 1
@@ -437,6 +446,7 @@ export class HarnessRunRepository {
       plannedEvidenceCoverage: coverageSummary(validDiagnostics, 'plannedEvidenceCoverage'),
       stableCoreCoverage: coverageSummary(validDiagnostics, 'stableCoreCoverage'),
       primaryRequirementCoverage: coverageSummary(validDiagnostics, 'primaryRequirementCoverage'),
+      primaryWritingFocusCoverage: coverageSummary(validDiagnostics, 'primaryWritingFocusCoverage'),
     }
     const diagnosticsWithMetrics = validDiagnostics.flatMap(item => item.metrics ? [item.metrics] : [])
     const businessBulletMetrics = {
@@ -470,14 +480,16 @@ export class HarnessRunRepository {
     return {
       runStatusCounts,
       stepStatusCounts,
-      attemptMetrics,
+      attemptMetrics:await summarizePhysicalProviderCalls(),
+      legacyAttemptMetrics:attemptMetrics,
       failureSampleCount,
       agentStateCounts,
-      promptMetrics,
+      promptMetrics:promptMetrics.map(row=>{const value=row as Record<string,unknown>;return {...value,input_tokens:null,output_tokens:null,usage_source:'legacy_attempt_summary_unavailable'}}),
       deliveryDecisionCounts,
       safetyStatusCounts,
       productQualityStatusCounts,
-      deliverableRunTokenMetrics,
+      deliverableRunTokenMetrics:{deliverable_run_count:Number((deliverableRunTokenMetrics as Record<string,unknown>)?.deliverable_run_count??0),avg_input_tokens_per_run:null,avg_output_tokens_per_run:null,avg_total_tokens_per_run:null,usage_source:'legacy_attempt_summary_unavailable'},
+      metrics:aggregateHarnessMetrics({runs:this.db.query('SELECT id,status FROM process_runs').all() as HarnessMetricRun[],steps:this.db.query('SELECT * FROM step_runs').all() as HarnessMetricStep[],attempts:this.db.query('SELECT * FROM step_attempts').all() as HarnessMetricAttempt[],events:this.db.query('SELECT * FROM harness_events').all() as HarnessMetricEvent[]}),
       deliveryDispositionCounts,
       fallbackMetrics,
       coverageMetrics,

@@ -1,4 +1,4 @@
-import { normalizeWrittenEntry, writtenEntrySchema, writtenEntryV2Schema, writtenEntryV3Schema, materializeWrittenEntry, type WrittenEntry } from '@/v5/writing/entries'
+import { normalizeWrittenEntry, writtenEntrySchema, writtenEntryV2Schema, writtenEntryV3Schema, writtenEntryV4Schema, writtenEntryV5Schema, writtenEntryV6Schema, materializeWrittenEntry, type WrittenEntry } from '@/v5/writing/entries'
 
 /** Frames only complete objects in the root entries array; braces inside JSON
  * strings, escapes, and arbitrary network chunk boundaries are not delimiters. */
@@ -32,7 +32,7 @@ export class EntryJsonStream {
           try {
             const prefix = JSON.parse(this.buffer.slice(0, i) + '[]}')
             this.contractVersion = prefix.contractVersion
-            this.entriesArray = ['entry-writing-v1', 'entry-writing-v2', 'entry-writing-v3'].includes(this.contractVersion)
+            this.entriesArray = ['entry-writing-v1', 'entry-writing-v2', 'entry-writing-v3', 'entry-writing-v4', 'entry-writing-v5', 'entry-writing-v6'].includes(this.contractVersion)
           } catch { this.entriesArray = false }
         }
         if (char === '{' && this.entriesArray && this.stack.length === 2) this.start = i
@@ -45,8 +45,8 @@ export class EntryJsonStream {
           this.start = -1
           try {
             const value = normalizeWrittenEntry(JSON.parse(framed))
-            if (this.contractVersion === 'entry-writing-v2' || this.contractVersion === 'entry-writing-v3') {
-              const parsed = (this.contractVersion === 'entry-writing-v3' ? writtenEntryV3Schema : writtenEntryV2Schema).safeParse(value)
+            if (this.contractVersion === 'entry-writing-v2' || this.contractVersion === 'entry-writing-v3' || this.contractVersion === 'entry-writing-v4' || this.contractVersion === 'entry-writing-v5' || this.contractVersion === 'entry-writing-v6') {
+              const parsed = (this.contractVersion === 'entry-writing-v6' ? writtenEntryV6Schema : this.contractVersion === 'entry-writing-v5' ? writtenEntryV5Schema : this.contractVersion === 'entry-writing-v4' ? writtenEntryV4Schema : this.contractVersion === 'entry-writing-v3' ? writtenEntryV3Schema : writtenEntryV2Schema).safeParse(value)
               if (parsed.success) this.receive(materializeWrittenEntry(parsed.data))
             } else {
               const parsed = writtenEntrySchema.safeParse(value)

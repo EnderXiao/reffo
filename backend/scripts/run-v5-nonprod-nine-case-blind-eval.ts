@@ -93,7 +93,7 @@ interface CaseSummary {
   runId: string
   state: string
   usedSafeFallback: boolean
-  matchScore: number
+  matchScore: number | null
   baselineGate: 'pass' | 'fail' | 'inconsistent'
   candidateGate: 'pass' | 'fail' | 'inconsistent'
   baselineScore: number
@@ -117,7 +117,7 @@ interface GenerationCaseSummary {
   usedAnyFallback: boolean
   deliveryDecision: V5WorkflowResult['deliveryDecision']
   qualityGates: V5WorkflowResult['qualityGates']
-  matchScore: number
+  matchScore: number | null
   candidateChars: number
   candidateBullets: number
   deliveryDiagnostics: V5DeliveryDiagnostics
@@ -179,8 +179,8 @@ interface RunManifest {
     agentFactJudgeEnabled: false
     agentQualityJudgeEnabled: false
     artifactGenerationMode: 'dsl_v1' | 'writer_v1'
-    jobTargetingPolicy?: 'job-targeted-v1'
-    entryWritingPolicy?: 'entry-writing-v3'
+    jobTargetingPolicy?: 'job-targeted-v2'
+    entryWritingPolicy?: 'entry-writing-v6'
     artifactRepairMax: 0 | 2
     interviewMode: 'deferred'
     componentQuotaPolicy: typeof V5_EVALUATION_COMPONENT_QUOTA_POLICY_VERSION
@@ -201,7 +201,7 @@ export function providerComponentQuotasForRun(input: {
   stage: EvaluationRunStage
   validatedShardIndexes: readonly number[]
   artifactGenerationMode?: 'dsl_v1' | 'writer_v1'
-  entryWritingPolicy?: 'entry-writing-v3'
+  entryWritingPolicy?: 'entry-writing-v6'
 }) {
   // Historical usage is cumulative. Only new runs can shrink extraction
   // quotas to the missing shards without invalidating an existing journal.

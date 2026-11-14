@@ -1,4 +1,5 @@
 import type { EvidenceAtom, GeneratedResumeArtifact, ResumeEvidenceBundle, V5ResumePlan } from '@/v5/types'
+import { formatTimelineHeading } from '@/v5/composition/timeline-display'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 import { deriveEvidenceAssemblies } from '@/v5/composition/evidence-assembly'
 import {
@@ -34,11 +35,7 @@ function sectionTitle(key: string, language: string) {
   return labels[key]?.[english ? 0 : 1] ?? key
 }
 
-function metadataLine(item: ResumeEvidenceBundle['timeline'][number]) {
-  return [item.organization, item.title, [item.start, item.end].filter(Boolean).join(' - ')]
-    .filter(Boolean)
-    .join('｜')
-}
+const metadataLine = formatTimelineHeading
 
 function strongestAllowedAttribution(atoms: EvidenceAtom[]) {
   const rank = { unspecified: 0, supported: 1, contributed: 2, drove: 3, owned: 4 } as const

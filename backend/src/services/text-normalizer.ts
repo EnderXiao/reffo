@@ -43,7 +43,7 @@ const NAMED_ENTITIES: Record<string, string> = {
   apos: '\'',
 }
 
-function decodeHtmlEntities(value: string) {
+export function decodeHtmlEntities(value: string) {
   return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity: string) => {
     const normalized = entity.toLowerCase()
 

@@ -14,7 +14,7 @@ export interface HomeCardItem {
   location: string
   role: string
   dateLabel: string
-  score: number
+  score: number | null
   primaryColor: string
   surfaceColor: string
   stackColor: string

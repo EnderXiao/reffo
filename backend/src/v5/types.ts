@@ -1,10 +1,10 @@
 import type { StepRunSnapshot } from '@/harness/run-step'
 
 export const V5_SCHEMA_VERSION = '5.0.0' as const
-export const V5_WORKFLOW_VERSION = '5.0.0-deterministic-release-r3' as const
+export const V5_WORKFLOW_VERSION = '6.0.0-resume-linked-release-v1' as const
 export const V5_VALIDATOR_VERSION = '5.0.0-validator-v9' as const
 export const V5_ADAPTIVE_POLICY_VERSION = 'adaptive-v2' as const
-export const V5_SCORE_FORMULA_VERSION = 'match-score-v1' as const
+export const V5_SCORE_FORMULA_VERSION = 'match-score-v3' as const
 
 export type V5SchemaVersion = typeof V5_SCHEMA_VERSION
 export type EvidenceStatus = 'source_supported' | 'source_qualified' | 'excluded'
@@ -70,6 +70,7 @@ export interface NumericAtom {
 }
 
 export interface EvidenceAtom {
+  provenance?: {kind: 'source_resume' | 'user_edit'; documentId: string; revision: number}
   evidenceId: string
   sourceDocumentHash: string
   sourceBlockId: string
@@ -93,6 +94,7 @@ export interface EvidenceAtom {
 }
 
 export interface ResumeExtractionCandidate {
+  structureIssues?: Array<{code: string; sourceBlockIds: string[]; scopeLocalIds: string[]; reason: string}>
   schemaVersion: V5SchemaVersion
   identityCandidates: Array<{
     field: 'name' | 'email' | 'phone' | 'city_level_location' | 'link'
@@ -185,6 +187,7 @@ export interface ResumeEvidenceBundle {
     sha256: string
     primaryLanguage: string
   }
+  sourceStructure?: import('@/v5/source-structure').SourceStructure
   identity: {
     name: { value: string | null; evidenceIds: string[] }
     email: { value: string | null; evidenceIds: string[] }
@@ -252,6 +255,7 @@ export interface RequirementAtom {
   logicGroupId: string | null
   logicOperator: 'and' | 'or' | 'one_of' | null
   explicitness: 'explicit' | 'semantic_summary'
+  semantics?: import('@/v5/targeting/requirement-semantics').RequirementSemantics
 }
 
 export interface JobExtractionCandidate {
@@ -323,7 +327,9 @@ export interface RequirementMatch {
 }
 
 export interface V5MatchAnalysis {
+  actionPlan?: import('@/shared/resume-actions').ResumeActionPlan
   schemaVersion: V5SchemaVersion
+  judgmentBundle?: import('@/v5/targeting/judgments').RequirementJudgmentBundle
   requirementMatches: RequirementMatch[]
   strengths: Array<{
     strengthId: string
@@ -359,8 +365,9 @@ export interface V5MatchAnalysis {
 }
 
 export interface MatchScoreBreakdown {
-  formulaVersion: typeof V5_SCORE_FORMULA_VERSION
-  score: number
+  formulaVersion: 'match-score-v1' | 'match-score-v2' | 'match-score-v3'
+  score: number | null
+  metadata?: {candidateScore?: number | null; calibrationStatus?: 'pending' | 'calibrated' | 'rules_based'; scoreBasis?: 'current_material_requirement_coverage'; evaluatedGroupCount?: number; unprovenGroupCount?: number; conflictingGroupCount?: number; deduplicatedRequirementCount?: number}
   label: 'based_on_current_material'
   confidence: 'high' | 'medium' | 'low'
   components: Array<{
@@ -401,6 +408,8 @@ export interface GenerationPolicy {
   targetBusinessBulletMax: number
   hardTotalListItemMax: number
   hardProjectMax: number
+  projectSelectionTarget?: number
+  projectSelectionPolicy?: 'source_facets_v1'
   stableCoreCoverageMin: number
   primaryRequirementCoverageMin: number
   preferredDirectEvidenceRatio: { min: number; max: number }
@@ -424,6 +433,10 @@ export interface StrategyResolution {
 
 export interface V5ResumePlan {
   schemaVersion: V5SchemaVersion
+  writingFocusVersion?: 'writing-focus-v1'
+  writingFocus?: import('@/v5/planning/writing-focus').WritingFocus[]
+  primaryFocusIds?: string[]
+  scopeSelectionDecisions?: import('@/v5/planning/writing-focus').ScopeSelectionDecision[]
   strategyProfile: ResumeStrategyProfile
   generationPolicy: GenerationPolicy
   targetValueProposition: string
@@ -434,6 +447,7 @@ export interface V5ResumePlan {
     pillarId: string
     title: string
     requirementIds: string[]
+    focusIds?: string[]
     evidenceIds: string[]
     role: 'career_anchor' | 'jd_primary' | 'jd_adjacent'
   }>
@@ -478,6 +492,10 @@ export interface ValidationIssue {
   issueId: string
   severity: 'error' | 'warning' | 'info'
   code: string
+  subcode?: string
+  detailId?: string
+  paragraphIndex?: number
+  segmentIndex?: number
   outputPath: string | null
   claimId: string | null
   evidenceIds: string[]
@@ -517,6 +535,12 @@ export interface BlockingFactJudgeResult {
   }>
 }
 
+export interface InterviewStoryRequirementLink {
+  requirementId: string
+  evidenceIds: string[]
+  focus: string
+}
+
 export interface InterviewPreparation {
   schemaVersion: V5SchemaVersion
   questions: Array<{
@@ -534,6 +558,8 @@ export interface InterviewPreparation {
     background: string
     knownResult: string | null
     preparationGap: string | null
+    // Historical stored interviews may omit links; new model output declares them explicitly.
+    requirementLinks?: InterviewStoryRequirementLink[]
     // Historical stored interviews may have no plan; new model output requires one.
     storytellingApproach?: string[]
   }>
@@ -653,7 +679,7 @@ export interface V5ResumeExtractionResult {
 }
 
 export interface V5DeliveryDiagnostics {
-  version: 'v5-delivery-diagnostics-v2'
+  version: 'v5-delivery-diagnostics-v2' | 'v5-delivery-diagnostics-v3'
   taxonomyVersion: 'v5-delivery-taxonomy-v1'
   outcome: {
     execution: 'completed' | 'failed'
@@ -692,6 +718,7 @@ export interface V5DeliveryDiagnostics {
     plannedEvidenceCoverage: { numerator: number; denominator: number }
     stableCoreCoverage: { numerator: number; denominator: number }
     primaryRequirementCoverage: { numerator: number; denominator: number }
+    primaryWritingFocusCoverage?: { numerator: number; denominator: number } | null
     renderedBusinessBulletCount: number
     renderedTotalListItemCount: number
     renderedProjectCount: number
@@ -707,16 +734,45 @@ export interface V5DeliveryDiagnostics {
   }
 }
 
+export interface WorkflowDecisionDiagnostics {
+  version: 'workflow-decisions-v1'
+  stageResolutions: Array<{component: string; origin: 'primary' | 'repair' | 'deterministic_primary' | 'deterministic_fallback'; repairCount: number; triggerIssueCodes: string[]}>
+  sourceSelection: import('@/v5/planning/writing-focus').ScopeSelectionDecision[]
+  entryCorrections: Array<{attempt: number; entryId: string | null; issueCodes: string[]; disposition: 'repair' | 'local_recovery' | 'blocked';
+    issueSubcodes?: string[]; paragraphIndices?: number[]; candidateDigest?: string; outcome?: 'applied' | 'unchanged' | 'validated' | 'blocked'}>
+  recoveredEntryIds: string[]
+  fullRewriteApplied: boolean
+}
+
 export interface V5WorkflowResult {
+  /** Server-owned IDs and reason codes only; never sent back as source facts. */
+  decisionDiagnostics?: WorkflowDecisionDiagnostics
+  interviewSnapshot?: {documentId: string; revision: number; safeTextDigest: string; pendingDetailIds: string[]; preparationTopicsDigest?: string}
+  preparationTopics?: import('@/v5/writing/information-routing').InterviewPreparationTopic[]
   /** User-facing skeleton; artifact remains the evidence-only projection. Historical results omit this field. */
   deliveryMarkdown?: string
   completionDocument?: import('@/shared/resume-completion').ResumeCompletionDocument
+  actionPlan?: import('@/shared/resume-actions').ResumeActionPlan
+  resolvedActionPlan?: import('@/shared/resume-actions').ResolvedResumeActionPlan
+  actionReview?: import('@/shared/resume-actions').ResumeActionReview
+  changeManifest?: import('@/shared/resume-actions').ResumeChangeManifest
+  identityState?: import('@/shared/resume-actions').ResumeIdentityState
+  deliveryState?: import('@/shared/resume-actions').ResumeDeliveryState
   strategyReview?: import('@/shared/resume-strategy').ResumeStrategyReview
   stepStatuses?: StepRunSnapshot[]
   /** Internal replay metadata; public MVP response projection does not expose it. */
-  entryWriting?: { version: 'entry-writing-v1' | 'entry-writing-v2' | 'entry-writing-v3'; renderingPlan: V5ResumePlan; paragraphPaths: string[]
+  entryWriting?: { version: 'entry-writing-v1' | 'entry-writing-v2' | 'entry-writing-v3' | 'entry-writing-v4' | 'entry-writing-v5' | 'entry-writing-v6'; renderingPlan: V5ResumePlan; paragraphPaths: string[]
     gapSelections?: import('@/v5/writing/gap-selection').GapSelection[]
-    gapDecisions?: Array<{entryId: string; decisions: import('@/v5/writing/entry-skeleton').GapDecision[]}> }
+    gapDecisions?: Array<{entryId: string; decisions: import('@/v5/writing/entry-skeleton').GapDecision[]}>
+    entryAudits?: Array<{
+      entryId: string
+      coverage: import('@/v5/writing/entry-skeleton').EntryCoverage
+      detailAssessments: import('@/v5/writing/entry-skeleton').DetailAssessment[]
+      sourceUncertainties: Array<Omit<import('@/v5/writing/source-uncertainties').SourceUncertainty, 'text'>>
+      uncertaintyResolutions: import('@/v5/writing/entry-skeleton').UncertaintyResolution[]
+      rejectedActionReceipts?: Array<{actionId: string; reasonCodes: string[]}>
+      zeroGapReason: string | null
+    }> }
   requirementAnalysis?: import('@/job-analysis/requirements').RequirementAnalysis
   state: ResumeAgentState
   releaseStatus: V5ReleaseStatus
@@ -757,3 +813,7 @@ export interface V5StageEnvelope<TPayload> {
   workflowVersion: typeof V5_WORKFLOW_VERSION
   payload: TPayload
 }
+
+/** Trusted durable inputs for P10, independent of transport checkpoint expiry. */
+export type InterviewGenerationBasis = Pick<V5WorkflowResult, 'runId' | 'deliveryDecision' | 'usedSafeFallback' | 'artifact'
+  | 'resumeEvidenceBundle' | 'jobRequirementBundle' | 'matchAnalysis' | 'completionDocument' | 'interviewSnapshot' | 'resolvedActionPlan' | 'deliveryMarkdown' | 'preparationTopics'>

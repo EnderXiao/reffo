@@ -7,6 +7,7 @@ import { compileV5Prompt } from '@/v5/prompt-compiler'
 import { buildV5SystemPrompt } from '@/v5/prompts'
 import { V5ResumeOptimizationWorkflow } from '@/v5/main/workflow'
 import { compileWritingArtifact, SupportedWritingError } from '@/v5/writing/compiler'
+import {preserveNamedSkillSignals} from '@/v5/writing/tool-signals'
 
 test('preserves named source tools in an existing skill slot without requesting or trusting model rewrites', () => {
   const f = fixture(), before = structuredClone(f.input)
@@ -33,16 +34,26 @@ test('does not acquire a JD tool absent from selected source facts', () => {
   expect(buildWritingPlan({ ...f.input, editorialPolicy:STRUCTURAL_WRITING_POLICY }).fixedBlocks).toBeUndefined()
 })
 
+test('source delivery and validation skills survive alongside the fixed named skill list', () => {
+  const f = fixture(), source = f.plan.facts.find(fact => fact.claimType === 'skill')!
+  f.plan.facts.push({...source, evidenceId: 'source-validation', text: '交付与验证：数据埋点、敏捷迭代、灰度与A/B测试、跨团队协作。'})
+  preserveNamedSkillSignals(f.plan, f.input.job)
+  expect(f.plan.fixedBlocks?.[0].evidenceIds).toContain('source-validation')
+  expect(f.plan.fixedBlocks?.[0].text).toContain('技能：SQL')
+  expect(f.plan.fixedBlocks?.[0].text).toContain('交付与验证：数据埋点、敏捷迭代、灰度与A/B测试、跨团队协作。')
+  expect(f.plan.fixedBlocks?.[0].text).not.toContain('。；')
+})
+
 test('targeted matching loads a single contract and retains the default legacy prompt separately', () => {
   const targeted = compileV5Prompt({ component:'P03',envelope:{payload:{jobTargetingPolicy:'job-targeted-v1'}} })
-  expect(targeted.promptVersion).toBe('5.1.0-p03-job-fit-map-r8')
+  expect(targeted.promptVersion).toBe('5.1.0-p03-job-fit-map-r15')
   expect(targeted.manifest.promptFilePath).toBe('prompts/P03-targeted.md')
   expect(targeted.messages[0].content).not.toContain('下方为兼容规则')
   expect(targeted.messages[0].content).not.toContain('每个适用 RequirementAtom 必须且只能进入')
   expect(compileV5Prompt({component:'P03',envelope:{payload:{source:{jobTargetingPolicy:'job-targeted-v1'}}}}).promptVersion)
     .toBe('5.1.0-p03-job-fit-map-r5')
   const repair = compileV5Prompt({component:'P03R',envelope:{payload:{originalEnvelope:{payload:{jobTargetingPolicy:'job-targeted-v1'}}}}})
-  expect(repair.promptVersion).toBe('5.1.0-p03r-job-fit-map-repair-r7')
+  expect(repair.promptVersion).toBe('5.1.0-p03r-job-fit-map-repair-r16')
   expect(repair.maxOutputTokens).toBe(targeted.maxOutputTokens)
 })
 

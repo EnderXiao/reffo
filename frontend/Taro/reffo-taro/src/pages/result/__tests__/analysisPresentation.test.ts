@@ -1,9 +1,16 @@
+beforeAll(() => { if (!globalThis.structuredClone) globalThis.structuredClone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T })
+import {createPlainCompletionDocument, serializeDraft} from '@/shared/resume-completion'
+import {freezeActionPlan, freezeResolvedActionPlan, reconcileEditorialActions} from '@/shared/resume-actions'
 import type {ProcessResult} from '@/types'
 import {resumeTextFingerprint} from '@/shared/resume-strategy'
 import {buildInterviewStoryViewItems} from '../model/interviewReferences'
 import {
   buildGapViewItems,
+  strategyResumeReference,
+  isCurrentResumeReference,
+  currentActionReview,
   buildOptimizationStrategyViewItems,
+  buildOptimizationStrategyGroups,
   selectGapPreview,
   findResumeReferenceLines,
   hasStaleStrategyReview,
@@ -76,7 +83,8 @@ describe('analysis presentation', () => {
     const [story] = buildInterviewStoryViewItems(result, '负责用户调研和方案落地', '岗位要求用户调研')
     expect(story.storytellingApproach).toEqual(['先说明调研背景', '说明本人负责的工作'])
     expect(story.resumeQuote).toBe('负责用户调研和方案落地')
-    expect(story.jdQuote).toBe('岗位要求用户调研')
+    expect(story.jdReferences).toEqual([])
+    expect(story.fullJd).toBe('岗位要求用户调研')
   })
 
   test('keeps source references when historical interview data has no storytelling points', () => {
@@ -88,7 +96,8 @@ describe('analysis presentation', () => {
     const [story] = buildInterviewStoryViewItems(result, '负责用户调研和方案落地', '岗位要求用户调研')
     expect(story.storytellingApproach).toEqual([])
     expect(story.resumeQuote).toBeTruthy()
-    expect(story.jdQuote).toBeTruthy()
+    expect(story.jdReferences).toEqual([])
+    expect(story.fullJd).toBeTruthy()
   })
 
   test('does not create generic stories when recommendations have not been generated', () => {
@@ -170,6 +179,28 @@ describe('analysis presentation', () => {
   })
 })
 
+test('同一实际实践归为能力主题，保留全部动作和关系并优先必要条件', () => {
+  const result = buildResult()
+  const baseAction = {title: '前置研究产出', requirementIds: ['R1'], analysisGapIds: ['G1'], aspectIds: ['R1'],
+    operation: 'express_supported_aspect' as const, sourceScopeIds: ['scope-research'], evidenceIds: ['e1'], detailIds: [],
+    expectedEffect: '用真实调研动作回应要求', successConditions: [{aspectId: 'R1', criterion: '呈现研究产出'}], protectedBoundaries: [],
+    eligibility: 'executable' as const, planningState: 'proposed' as const, intendedScopeIds: ['scope-research'], origin: 'matching' as const}
+  result.matching.weakness_details = [{id: 'required', weakness: '必要资格待核对', is_required: true, evidence_type: 'direct_missing', evidence: '', suggestion: '补充资格依据'},
+    ...Array.from({length: 6}, (_, index) => ({id: `G${index}`, weakness: `研究方面${index}`, evidence_type: 'wording_gap' as const, evidence: '研究材料', suggestion: '使用同一研究发现'}))]
+  result.matching.action_plan = freezeActionPlan({planId: 'themes', sourceRevision: 'source', judgmentRevision: 'judgment', actions: [
+    ...Array.from({length: 6}, (_, index) => ({...baseAction, actionId: `action-${index}`, requirementIds: [`R${index}`], analysisGapIds: [`G${index}`]})),
+    {...baseAction, actionId: 'qualification', title: '核对必要资格', operation: 'preparation_only', eligibility: 'needs_user_fact',
+      requirementIds: ['required'], analysisGapIds: ['required'], sourceScopeIds: [], evidenceIds: []},
+  ]})
+  const groups = buildOptimizationStrategyGroups(result)
+  expect(groups).toHaveLength(2)
+  expect(groups[0].actionIds).toEqual(['qualification'])
+  expect(groups[1].actionIds).toHaveLength(6)
+  expect(groups[1].requirementIds).toHaveLength(6)
+  expect(groups[1].relatedGapIds).toHaveLength(6)
+  expect(result.matching.action_plan.actions).toHaveLength(7)
+})
+
 describe('strategy outcome presentation', () => {
   test('只关联相同策略ID的当前说明，已对应正文的策略优先展示', () => {
     const result = buildResult()
@@ -205,4 +236,53 @@ describe('strategy outcome presentation', () => {
     expect(representativeStrategyReference({strategyId: 'S1', strategy: '建议', status: 'not_selected', explanation: '',
       references: [{outputPath: 'projects[0]', location: '项目经历', quote: '正文'}]}, '正文')).toBeUndefined()
   })
+})
+
+describe('行动方案与正文联动', () => {
+  test('不截断策略关联实体，展示当前版本状态并仅定位有效稳定锚点', () => {
+    const result = buildResult()
+    const document = createPlainCompletionDocument('- 完成用户访谈并整理需求清单。', {documentId: 'action-document'})
+    const action = {actionId: 'action-research', title: '前置用户调研产出', requirementIds: ['R1'],
+      analysisGapIds: ['G1', 'G2', 'G3', 'G4', 'G5'], aspectIds: ['aspect-research'], operation: 'express_supported_aspect' as const,
+      sourceScopeIds: ['source-1'], evidenceIds: ['e1'], detailIds: [], expectedEffect: '回应用户研究要求',
+      successConditions: [{aspectId: 'aspect-research', criterion: '展示调研产出，尚不能证明独立统筹'}],
+      protectedBoundaries: ['参与贡献'], eligibility: 'executable' as const, planningState: 'proposed' as const,
+      intendedScopeIds: ['experience-1'], origin: 'matching' as const}
+    const plan = freezeActionPlan({planId: 'plan', sourceRevision: 'source', judgmentRevision: 'judgment', actions: [action]})
+    const resolved = freezeResolvedActionPlan({resolvedPlanId: 'resolved', revision: 0, basePlanId: plan.planId,
+      baseDigest: plan.baseDigest, actions: [action], bindings: [{actionId: action.actionId, selection: 'selected', selectionReason: null}]})
+    result.optimized = {...result.optimized, optimized_resume: serializeDraft(document), completion_document: document,
+      action_plan: plan, resolved_action_plan: resolved}
+    result.optimized.action_review = reconcileEditorialActions({resolvedPlan: resolved, document, outcomes: [{actionId: action.actionId,
+      state: 'partially_adopted', explanation: '已有调研产出，未证实统筹责任', anchors: [{blockId: document.blocks[0].blockId,
+        location: '工作经历', quote: '完成用户访谈并整理需求清单。'}], coveredAspectIds: [], remainingAspectIds: ['aspect-research'],
+      validation: 'deterministic', source: 'compiler'}]})
+    const [item] = buildOptimizationStrategyViewItems(result)
+    expect(item.relatedGapIds).toHaveLength(5)
+    expect(item.actionOutcome?.state).toBe('partially_adopted')
+    const reference = strategyResumeReference(item, result)!
+    expect('blockId' in reference).toBe(true)
+    expect(isCurrentResumeReference(reference, result)).toBe(true)
+    const modified = {...createPlainCompletionDocument('- 仅完成记录整理。', {documentId: document.documentId}), revision: 1}
+    result.optimized.completion_document = modified
+    result.optimized.optimized_resume = serializeDraft(modified)
+    expect(currentActionReview(result)).toBeUndefined()
+    expect(isCurrentResumeReference(reference, result)).toBe(false)
+    expect(buildOptimizationStrategyViewItems(result)[0].actionOutcome).toBeUndefined()
+    expect(result.matching.match_score).toBe(80)
+  })
+})
+
+test('新版面试故事只展示精确证据引用，空引用不回退到相似源文', () => {
+  const result = buildResult()
+  result.interview.story_recommendations = [{title: '用户调研', background: '实际访谈背景', result: '形成报告', storytelling_approach: ['准备说明本人角色'],
+    source_references: [{evidence_id: 'user-detail', source_scope_id: 'experience', source_quote: '完成三名用户访谈', source_kind: 'user_fact'}],
+    related_requirement_ids: ['R1'], action_ids: ['action-1']},
+  {title: '另一个故事', background: '', result: '', storytelling_approach: [], source_references: []}]
+  const items = buildInterviewStoryViewItems(result, '源简历里只写参与需求梳理', '岗位要求调研')
+  expect(items[0].resumeQuote).toBe('')
+  expect(items[0].sourceReferences[0].source_quote).toBe('完成三名用户访谈')
+  expect(items[0].relatedRequirementIds).toEqual(['R1'])
+  expect(items[1].hasStableReferences).toBe(true)
+  expect(items[1].resumeQuote).toBe('')
 })

@@ -19,6 +19,7 @@ jest.mock('@tarojs/taro', () => ({
 }))
 
 jest.mock('@/services/parse', () => ({
+  documentParseId: jest.requireActual('@/services/parse').documentParseId,
   parseApi: {
     parseResumeFile: jest.fn(),
   },
@@ -74,13 +75,14 @@ describe('resume-file-upload', () => {
     }
     mockCanUseBrowserFilePicker.mockReturnValue(false)
     mockChooseMessageFile.mockResolvedValue({tempFiles: [file]})
-    mockParseResumeFile.mockResolvedValue({markdown: '# PDF Resume', rawText: ''})
+    mockParseResumeFile.mockResolvedValue({markdown: '# PDF Resume', rawText: '', parse_id: '33333333-3333-4333-8333-333333333333'})
 
     const result = await pickAndParseResumeFile()
 
     expect(mockParseResumeFile).toHaveBeenCalledWith(file, {landing: false})
     expect(result?.extension).toBe('.pdf')
     expect(result?.extractedText).toBe('# PDF Resume')
+    expect(result?.parseId).toBe('33333333-3333-4333-8333-333333333333')
     expect(formatResumeFileSize(file.size)).toBe('2.0 Mb')
   })
 

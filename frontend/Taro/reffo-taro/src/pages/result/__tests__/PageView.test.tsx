@@ -1,3 +1,4 @@
+import {createPlainCompletionDocument, serializeDraft} from '@/shared/resume-completion'
 import {act, fireEvent, render, screen, waitFor, within} from '@testing-library/react'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck'
 import type {ProcessResult} from '@/types'
@@ -226,14 +227,16 @@ describe('结果页', () => {
     expect(screen.getByRole('region', {name: '岗位理想候选人画像'})).toBeTruthy()
   })
 
-  test('进入面试建议 tab 时正常渲染原文引用', () => {
-    render(<PageView {...model} />)
+  test('进入面试建议 tab 时仅渲染稳定原文引用，不展示全文JD', () => {
+    const current: ProcessResult = {...result, interview: {...result.interview, story_recommendations: [{...result.interview.story_recommendations[0], source_references: [{evidence_id: 'e1', source_scope_id: 's1', source_quote: model.resumeContent, source_kind: 'source_resume'}]}]}}
+    render(<PageView {...model} result={current} />)
 
     fireEvent.click(screen.getByLabelText('面试建议'))
 
     expect(screen.getByText('核心业务系统项目')).toBeTruthy()
     expect(screen.getAllByText('负责核心业务系统开发并按期完成上线').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('负责核心业务系统开发，熟悉 React').length).toBeGreaterThan(0)
+    expect(screen.queryByText('负责核心业务系统开发，熟悉 React')).toBeNull()
+    expect(screen.queryByRole('button', {name: '查看完整岗位描述'})).toBeNull()
   })
 
   test('简历生成失败后点击对应 tab 直接触发重试', () => {
@@ -317,10 +320,20 @@ describe('结果页', () => {
       story.storytelling_approach.forEach(point => expect(within(block).getByText(`• ${point}`)).toBeTruthy())
       const otherStory = stories.find(other => other.title !== story.title)!
       otherStory.storytelling_approach.forEach(point => expect(within(block).queryByText(`• ${point}`)).toBeNull())
-      expect(within(block).getByText(/参考源简历/)).toBeTruthy()
+      expect(within(block).getByText('此故事的来源引用暂缺，可更新面试建议补齐。')).toBeTruthy()
     })
     expect(screen.queryByText(/对齐讲述重点，优先说明这段经历如何回应岗位要求/)).toBeNull()
     expect(screen.queryByText(/此故事尚未生成讲述思路/)).toBeNull()
+  })
+
+  test('没有岗位来源ID的旧故事不猜摘录，也不展开全文岗位描述', () => {
+    const jd = '岗位要求用户研究与跨部门协作。\nSQL 使用经验优先。'
+    render(<PageView {...model} result={result} jdContent={jd} />)
+    fireEvent.click(screen.getByLabelText('面试建议'))
+    expect(screen.getByText('此故事的来源引用暂缺，可更新面试建议补齐。')).toBeTruthy()
+    expect(screen.queryByText('岗位相关摘录（用于准备）')).toBeNull()
+    expect(screen.queryByRole('button', {name: '查看完整岗位描述'})).toBeNull()
+    expect(screen.queryByText(/岗位要求用户研究与跨部门协作/)).toBeNull()
   })
 
   test('历史故事缺失讲述思路时提示重新生成，不用原文引用套写方案或补齐故事', () => {
@@ -334,7 +347,7 @@ describe('结果页', () => {
     expect(screen.queryByText(/对齐讲述重点，优先说明这段经历如何回应岗位要求/)).toBeNull()
     expect(screen.queryByText(/回到可核验事实，避免把岗位要求包装成自己已经做过的经历/)).toBeNull()
     expect(screen.queryByText('补齐短板的备选故事')).toBeNull()
-    expect(screen.getAllByText('负责核心业务系统开发并按期完成上线')).toHaveLength(1)
+    expect(screen.queryByText('负责核心业务系统开发并按期完成上线')).toBeNull()
   })
 
   test('没有故事推荐时展示未生成状态', () => {
@@ -414,4 +427,76 @@ describe('策略与生成正文的对应', () => {
     expect(screen.queryByRole('button', {name: '在相契简历中查看'})).toBeNull()
     expect(screen.queryByText('全部已落实')).toBeNull()
   })
+})
+
+test('简历更新后面试标旧版本，复用面试更新入口', () => {
+  const document = {...createPlainCompletionDocument('# 测试用户\n\n完成真实项目交付', {documentId: 'interview-version'}), revision: 2}
+  const current: ProcessResult = {...result, optimized: {...result.optimized, completion_document: document, optimized_resume: serializeDraft(document)},
+    interview: {...result.interview, based_on_document: {documentId: document.documentId, revision: 1}}}
+  const retry = jest.fn()
+  render(<PageView {...model} result={current} handleRetryStage={retry} />)
+  fireEvent.click(screen.getByLabelText('面试建议'))
+  expect(screen.getByText('简历已更新，以下建议基于较早版本。')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', {name: '按当前稿更新面试建议'}))
+  expect(retry).toHaveBeenCalledWith('interview')
+})
+
+
+test('四个主问题完整保留，准备主题只在明确关联故事显示，不追加孤立卡', () => {
+  const topic = (id: string, scopeId: string) => ({topicId: id, scopeId, subject: '有效率', dimensions: ['definition'],
+    sourceEvidenceIds: [`e-${scopeId}`], sourceSpans: [], requirementIds: [], actionIds: [], sourceAssertionStatus: 'recorded' as const,
+    sourceStatement: '', prompt: `准备追问${id}`, preparationFocus: `准备重点${id}`})
+  const linked = topic('story', 'one')
+  const unselected = Array.from({length: 5}, (_, index) => topic(`question-${index}`, 'two'))
+  const current = {...result, optimized: {...result.optimized, preparation_topics: [linked, ...unselected, linked]},
+    interview: {...result.interview, preparation_topics: [linked, ...unselected, linked], questions: ['主问题一', '主问题二', '主问题三', '主问题四'], story_recommendations: [{
+      title: '项目一故事', background: '故事背景', result: '结果', storytelling_approach: ['讲述方法'],
+      source_references: [{evidence_id: 'e-one', source_scope_id: 'one', source_kind: 'source_resume' as const, source_quote: '来源记录'}],
+    }]}}
+  render(<PageView {...model} result={current} />)
+  fireEvent.click(screen.getByLabelText('面试建议'))
+  for (const question of current.interview.questions) expect(screen.getByText(new RegExp(question))).toBeTruthy()
+  expect(document.querySelectorAll('[data-preparation-topic-id]')).toHaveLength(1)
+  const story = document.querySelector('.reffo-result__story-block')!
+  expect(within(story as HTMLElement).getByText('准备追问story')).toBeTruthy()
+  expect(screen.getAllByText('准备追问story')).toHaveLength(1)
+  expect(screen.queryByText('准备追问question-4')).toBeNull()
+  expect(screen.queryByText('项目补充准备')).toBeNull()
+})
+
+
+test('面试展示投影按问题落点展示准备重点，故事引用按组只标记一次', () => {
+  const prepared = {topicId: 'bound', scopeId: 'one', subject: '调研', dimensions: ['method'], sourceEvidenceIds: ['e-one'], sourceSpans: [],
+    requirementIds: ['r1'], actionIds: [], sourceAssertionStatus: 'recorded' as const, sourceStatement: '', prompt: '请准备调研样本说明', preparationFocus: '说明样本选择'}
+  const current: ProcessResult = {...result, interview: {...result.interview,
+    story_recommendations: [{...result.interview.story_recommendations[0], story_id: 'story-one'}],
+    presentation: {version: 'interview-presentation-v1', questions: [{questionId: 'q-one', question: '请介绍核心业务系统项目。', category: 'project_deep_dive', preparationFocus: '说明方案取舍', sourceEvidenceIds: ['e-one'], requirementIds: ['r1'], topics: [prepared]}],
+      stories: [{storyId: 'story-one', title: '核心业务系统项目', scopeId: 'one', sourceGroups: [{sourceKind: 'source_resume', label: '门店研究', stage: '研究阶段', evidenceIds: ['e-one', 'e-two'], spans: [], paragraphs: ['主导10+家门店调研', '形成方向，尚未上线。']}],
+        jobReferences: [{requirementId: 'r1', quote: '具备用户调研能力', focus: '解释如何发现一线问题'}], topics: [prepared]}]},
+  }}
+  render(<PageView {...model} result={current} />)
+  fireEvent.click(screen.getByLabelText('面试建议'))
+  const question = screen.getByText('“请介绍核心业务系统项目。”').closest('.reffo-result__interview-line-item')!
+  expect(within(question as HTMLElement).getByText('准备重点：说明方案取舍')).toBeTruthy()
+  expect(within(question as HTMLElement).getByText('请准备调研样本说明')).toBeTruthy()
+  expect(screen.getAllByText('请准备调研样本说明')).toHaveLength(1)
+  expect(screen.getAllByText('源简历依据 · 门店研究 · 研究阶段')).toHaveLength(1)
+  expect(screen.getByText('主导10+家门店调研')).toBeTruthy()
+  expect(screen.getByText('形成方向，尚未上线。')).toBeTruthy()
+  expect(screen.getAllByText('对应岗位原文')).toHaveLength(1)
+  expect(screen.getByText('关联重点：解释如何发现一线问题')).toBeTruthy()
+  expect(screen.queryByRole('button', {name: '查看完整岗位描述'})).toBeNull()
+})
+
+
+test('投影中的空白问题过滤时，问题ID与准备重点保持同行', () => {
+  const current: ProcessResult = {...result, interview: {...result.interview, presentation: {version: 'interview-presentation-v1', stories: [], questions: [
+    {questionId: 'blank', question: ' ', category: '', preparationFocus: '不应显示的重点', sourceEvidenceIds: [], requirementIds: [], topics: []},
+    {questionId: 'valid', question: '如何做用户研究？', category: '', preparationFocus: '说明研究方法', sourceEvidenceIds: [], requirementIds: [], topics: []},
+  ]}}}
+  render(<PageView {...model} result={current} />)
+  fireEvent.click(screen.getByLabelText('面试建议'))
+  const question = screen.getByText('“如何做用户研究？”').closest('.reffo-result__interview-line-item')!
+  expect(within(question as HTMLElement).getByText('准备重点：说明研究方法')).toBeTruthy()
+  expect(screen.queryByText('准备重点：不应显示的重点')).toBeNull()
 })

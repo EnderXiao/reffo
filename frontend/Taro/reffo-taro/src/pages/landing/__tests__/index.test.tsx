@@ -1055,6 +1055,7 @@ describe('启动封页', () => {
       onProgress?.(52)
       return {
         ...file,
+        parseId: '33333333-3333-4333-8333-333333333333',
         extractedText: '# Melvin Kuffour\n\n## Experience',
       }
     })
@@ -1092,8 +1093,10 @@ describe('启动封页', () => {
         title: 'resume.pdf',
         resumeMarkdown: '# Melvin Kuffour\n\n## Experience',
         sourceType: 'file',
+        parseId: '33333333-3333-4333-8333-333333333333',
       }),
     )
+    expect(useLandingFlowStore.getState().selectedResume?.parseId).toBe('33333333-3333-4333-8333-333333333333')
     expect(mockFeedbackSuccess).toHaveBeenCalledWith('resume.pdf 已上传')
     expect(mockFeedbackError).not.toHaveBeenCalled()
     expect(container.firstElementChild?.classList.contains('reffo-landing-onboarding--queue-detail')).toBe(true)

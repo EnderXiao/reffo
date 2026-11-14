@@ -469,8 +469,11 @@ export async function runV5StructuredStage<T>(input: {
   if (input.component === 'P06C' && isEntryWritingEnvelope(input.envelope)) {
     const normalized = normalizeEntryWritingOutput(parsed)
     parsed = normalized.value
-    normalizationApplied = normalized.removedNotes > 0
-    if (normalizationApplied) normalizationChanges = ['empty_entry_id_note_removed']
+    normalizationApplied = normalized.removedNotes > 0 || normalized.rejectedReceiptCount > 0
+    normalizationChanges = [
+      ...(normalized.removedNotes ? ['empty_entry_id_note_removed'] : []),
+      ...(normalized.rejectedReceiptCount ? [`invalid_action_receipt_quarantined:${normalized.rejectedReceiptCount}`] : []),
+    ]
   }
   if ((input.component === 'P01' || input.component === 'P01R') && !compiled.schema.safeParse(parsed).success) {
     const document = resumeDocumentFromEnvelope(input.envelope)

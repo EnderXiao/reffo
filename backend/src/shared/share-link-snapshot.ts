@@ -97,7 +97,8 @@ function buildJobCard(history: ResumeHistoryRecord): JobShareCardSnapshot {
     position,
     location: extractShareLocation(history),
     generated_date: formatShareDate(history.created_at),
-    match_score: Math.max(0, Math.min(100, Math.round(history.match_score || 0))),
+    match_score: typeof history.match_score === 'number' && Number.isFinite(history.match_score)
+      ? Math.max(0, Math.min(100, Math.round(history.match_score))) : null,
     summary_lines: buildSummaryLines(history),
     ...(history.card_color ? {card_color: sanitizeText(history.card_color, 16)} : {}),
     ...(history.card_pattern ? {card_pattern: sanitizeText(history.card_pattern, 24)} : {}),

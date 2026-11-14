@@ -6,6 +6,7 @@ export function historyCompletionBaseline(history: ResumeHistory): NonNullable<L
     optimizedContent: history.optimizedContent,
     completionDocument: history.processResult?.optimized.completion_document,
     updatedAt: history.updatedAt,
+    resolvedDigest: history.processResult?.optimized.resolved_action_plan?.resolvedDigest,
   }
 }
 
@@ -18,7 +19,9 @@ export function sameCompletionState(
 }
 
 export function resultSnapshotKey(result: ProcessResult) {
-  return JSON.stringify(result)
+  const {completion_edit: _pending, action_review: _review, change_manifest: _manifest, identity_state: _identity,
+    delivery_state: _delivery, changes_summary: _summary, ...optimized} = result.optimized
+  return JSON.stringify({...result, optimized})
 }
 
 export function resolveHistorySession(

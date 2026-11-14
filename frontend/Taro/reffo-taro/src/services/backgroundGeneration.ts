@@ -21,6 +21,8 @@ export interface GenerationTaskInput {
   request_id: string
   resume_markdown: string
   jd_text: string
+  jd_parse_id?: string
+  resume_parse_id?: string
   company: string
   position: string
   location: string
@@ -151,9 +153,11 @@ export function subscribeGenerationTaskEvents(
 }
 
 export const generationTasksApi = {
-  create: (input: GenerationTaskInput) => apiClient.post<GenerationTask>('/generation-jobs/', input),
+  create: (input: GenerationTaskInput) => apiClient.post<GenerationTask>('/generation-jobs/', input, {header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'}}),
   list: () => apiClient.get<GenerationTask[]>('/generation-jobs/'),
   get: (id: string) => apiClient.get<GenerationTask>(`/generation-jobs/${encodeURIComponent(id)}`),
   action: (id: string, action: 'background' | 'read' | 'confirm' | 'retry' | 'cancel') =>
-    apiClient.post<GenerationTask>(`/generation-jobs/${encodeURIComponent(id)}/${action}`, {}),
+    action === 'retry'
+      ? apiClient.post<GenerationTask>(`/generation-jobs/${encodeURIComponent(id)}/${action}`, {}, {header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'}})
+      : apiClient.post<GenerationTask>(`/generation-jobs/${encodeURIComponent(id)}/${action}`, {}),
 }

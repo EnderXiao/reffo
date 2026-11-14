@@ -28,7 +28,7 @@ export function createHistoryFromResult(
   const location = extractLocation(jdContent);
 
   // 提取姓名
-  const name = result.analysis.structured_resume.personal_info.name || '未知';
+  const name = result.analysis.structured_resume.personal_info.name || '';
 
   // 提取标签（取前 3 个匹配的技能）
   const tags = result.matching.skill_match.matched_skills.slice(0, 3);

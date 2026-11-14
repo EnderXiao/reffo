@@ -1155,6 +1155,7 @@ export default function LandingPage() {
         title: parsedFile.name,
         fileName: parsedFile.name,
         markdown: parsedFile.extractedText,
+        ...(parsedFile.parseId ? {parseId: parsedFile.parseId} : {}),
       })
 
       if (apiClient.getAuthToken()) {
@@ -1162,6 +1163,7 @@ export default function LandingPage() {
           title: parsedFile.name,
           resume_markdown: parsedFile.extractedText,
           source_type: 'file',
+          ...(parsedFile.parseId ? {parse_id: parsedFile.parseId} : {}),
           original_file_name: parsedFile.name,
         })
         await useSourceResumeStore.getState().setLatestSourceResume(savedSourceResume)
@@ -1172,6 +1174,7 @@ export default function LandingPage() {
           title: parsedFile.name,
           resumeMarkdown: parsedFile.extractedText,
           sourceType: 'file',
+          ...(parsedFile.parseId ? {parseId: parsedFile.parseId} : {}),
           originalFileName: parsedFile.name,
           sourcePath: parsedFile.path,
           sizeBytes: parsedFile.size,

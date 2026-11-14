@@ -6,6 +6,7 @@ import { compileV5Prompt } from '@/v5/prompt-compiler'
 import { createRunContext, createStepExecutionContext } from '@/harness/run-context'
 import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
 import { DeepSeekProvider } from '@/providers/deepseek-provider'
+import {ProviderCallRecorder, type ProviderCallEvent} from '@/services/provider-call-recorder'
 
 type FakeCompletionOptions = {
   signal?: AbortSignal | null
@@ -69,6 +70,56 @@ function createAbortError() {
   error.name = 'AbortError'
   return error
 }
+
+describe('DeepSeek physical call accounting', () => {
+  function recordedProvider(create: FakeCompletionCreate) {
+    const events: ProviderCallEvent[] = []
+    const recorder = new ProviderCallRecorder({append: async event => {events.push(event)}})
+    return {events, provider: new DeepSeekProvider(createClient(create), undefined, 'inherit', recorder)}
+  }
+
+  test('preflight observer failures and already cancelled requests never count as transport calls', async () => {
+    let requests = 0
+    const {events, provider} = recordedProvider(async () => {requests++; return createResponse()})
+    const eventBus = new FakeHarnessEventBus()
+    eventBus.publish = async () => {throw new Error('OBSERVER_PREFLIGHT_FAILED')}
+    await expect(provider.complete({messages: [], eventBus,
+      stepContext: createStepExecutionContext(createRunContext(), 'preflight')})).rejects.toThrow('OBSERVER_PREFLIGHT_FAILED')
+    const cancelled = new AbortController()
+    cancelled.abort('cancelled before transport')
+    await expect(provider.complete({messages: [], signal: cancelled.signal})).rejects.toBe('cancelled before transport')
+    expect(requests).toBe(0)
+    expect(events).toHaveLength(0)
+  })
+
+  test('records usage before a downstream observer rejects the completed response', async () => {
+    const {events, provider} = recordedProvider(async () => createFrames({usage: {prompt_tokens: 7, completion_tokens: 11}}))
+    const eventBus = new FakeHarnessEventBus()
+    const publish = eventBus.publish.bind(eventBus)
+    eventBus.publish = async event => {
+      if (event.type === 'provider.responded') throw new Error('OBSERVER_RESPONSE_FAILED')
+      await publish(event)
+    }
+    await expect(provider.complete({messages: [], eventBus,
+      stepContext: createStepExecutionContext(createRunContext(), 'response')})).rejects.toThrow('OBSERVER_RESPONSE_FAILED')
+    expect(events.map(event => event.event_kind)).toEqual(['requested', 'completed'])
+    expect(events[1]).toMatchObject({input_tokens: 7, output_tokens: 11, provider_request_id: 'request-1'})
+  })
+
+  test('empty content validation retains billable terminal usage', async () => {
+    const {events, provider} = recordedProvider(async () => createFrames({content: '', usage: {prompt_tokens: 3, completion_tokens: 20}}))
+    await expect(provider.complete({messages: []})).rejects.toThrow('AI 返回内容为空')
+    expect(events.map(event => event.event_kind)).toEqual(['requested', 'completed'])
+    expect(events[1]).toMatchObject({input_tokens: 3, output_tokens: 20})
+  })
+
+  test('transport failure records one request and an unknown usage failure', async () => {
+    const {events, provider} = recordedProvider(async () => {throw new Error('NETWORK_FAILED')})
+    await expect(provider.complete({messages: []})).rejects.toThrow('NETWORK_FAILED')
+    expect(events.map(event => event.event_kind)).toEqual(['requested', 'failed'])
+    expect(events[1]).toMatchObject({input_tokens: null, output_tokens: null})
+  })
+})
 
 describe('DeepSeekProvider abort signals', () => {
   test('records V6 call reason, context and retry metadata in Harness events', async () => {

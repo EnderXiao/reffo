@@ -1,3 +1,4 @@
+import {requireLinkedResumeCapability} from '@/services/completion-capabilities'
 import {Elysia, t} from 'elysia'
 import {RequestAuthError, resolveRequestUser} from '@/auth/request-context'
 import {generationJobRepository} from '@/repositories/generation-job-repository'
@@ -12,18 +13,22 @@ import {generationJobRetryChanges} from '@/services/generation-job-version'
 const jobParams = t.Object({id: t.String({pattern: '^[a-f0-9-]{36}$'})})
 export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'})
   .onError(({error, set}) => {
+    if (error instanceof Error && 'code' in error && error.code==='RESUME_CLIENT_UPGRADE_REQUIRED') {set.status=409;return {success:false,error:{code:error.code,message:error.message}}}
     if (error instanceof RequestAuthError || error instanceof ResumeQuotaError) {
       set.status = error.status
       return {success: false, error: {code: error.code, message: error.message}}
     }
   })
   .post('/', async ({body, headers, set}) => {
+    requireLinkedResumeCapability(headers)
     const jobUser = await resolveRequestUser(headers)
     const existing = await generationJobRepository.get(jobUser.userId, body.request_id)
     if (existing) return {success: true, data: summarizeGenerationJob(existing)}
     await ensureResumeQuotaAvailable(jobUser)
     const job = await generationJobRepository.create(jobUser.userId, body.request_id, {
       resume_markdown: normalizeMarkdownText(body.resume_markdown), jd_text: normalizeMarkdownText(body.jd_text),
+      ...(body.jd_parse_id ? {jd_parse_id: body.jd_parse_id} : {}),
+      ...(body.resume_parse_id ? {resume_parse_id: body.resume_parse_id} : {}),
       company: body.company?.trim() || '', position: body.position?.trim() || '', location: body.location?.trim() || '',
     }, singleStepFingerprint())
     set.status = 202
@@ -31,6 +36,8 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
     return {success: true, data: summarizeGenerationJob(job)}
   }, {body: t.Object({request_id: t.String({pattern: '^[a-f0-9-]{36}$'}),
     resume_markdown: t.String({minLength: 10, maxLength: 200000}), jd_text: t.String({minLength: 10, maxLength: 100000}),
+    jd_parse_id: t.Optional(t.String({pattern: '^[a-fA-F0-9-]{36}$'})),
+    resume_parse_id: t.Optional(t.String({format: 'uuid'})),
     company: t.Optional(t.String({maxLength: 200})), position: t.Optional(t.String({maxLength: 200})), location: t.Optional(t.String({maxLength: 200}))}),
     detail: {summary: '创建可后台执行的简历生成任务', tags: ['MVP']}})
   .get('/', async ({headers}) => {
@@ -103,6 +110,7 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
     const job = await generationJobRepository.get(jobUser.userId, params.id)
     if (!job) {set.status = 404; return {success: false, error: {code: 'JOB_NOT_FOUND', message: '未找到生成任务'}}}
     const action = params.action
+    if (action==='retry') requireLinkedResumeCapability(headers)
     const invalidAction =
       (action === 'background' && !['queued', 'running'].includes(job.status))
       || ((action === 'read' || action === 'confirm') && job.status !== 'completed')

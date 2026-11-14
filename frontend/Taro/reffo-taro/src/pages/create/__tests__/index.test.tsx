@@ -109,6 +109,7 @@ jest.mock('@/services/sourceResume', () => ({
 }))
 
 jest.mock('@/services/parse', () => ({
+  documentParseId: jest.requireActual('@/services/parse').documentParseId,
   parseApi: {
     parseJobDescriptionImage: jest.fn(),
     parseResumeFile: jest.fn(),
@@ -351,12 +352,15 @@ describe('CreatePage', () => {
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
     }
+    const resumeParseId = '33333333-3333-4333-8333-333333333333'
+    const jdParseId = '44444444-4444-4444-8444-444444444444'
     const selectedLandingResume = '# 小A\n\n## 项目经历\n- Landing 预设简历内容'
     const deferred = createDeferredPromise<typeof defaultProcessResult.analysis>()
     mockAnalyzeResume.mockReturnValue(deferred.promise)
     mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
     await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
     useLandingFlowStore.getState().startJobDescription({
+      parseId: jdParseId,
       content: '负责核心产品体验优化',
       companyName: 'reffo 科技',
       positionName: 'UX 设计师',
@@ -365,6 +369,7 @@ describe('CreatePage', () => {
     useLandingFlowStore.getState().selectResume({
       source: 'preset',
       id: 'landing-resume-design',
+      parseId: resumeParseId,
       title: '小A的体验简历',
       markdown: selectedLandingResume,
     })
@@ -373,7 +378,7 @@ describe('CreatePage', () => {
     await renderPage()
 
     await waitFor(() => {
-      expect(mockAnalyzeResume).toHaveBeenCalledWith(selectedLandingResume, {landing: true})
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(selectedLandingResume, {landing: true, resumeParseId, jdParseId})
     })
 
     await act(async () => {
@@ -385,6 +390,8 @@ describe('CreatePage', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith({
         url: '/pages/landing-result/index',
       })
+      expect(mockMatchResume).toHaveBeenCalledWith(defaultProcessResult.analysis, expect.any(String), {landing: true, resumeParseId, jdParseId})
+      expect(mockSaveLatestResultSession).toHaveBeenCalledWith(expect.objectContaining({context: expect.objectContaining({resumeParseId, jdParseId})}))
     })
   })
 
@@ -542,6 +549,7 @@ describe('CreatePage', () => {
         title: 'Jeremy Smith',
         resume_markdown: '# Jeremy Smith\n\n## 工作经历\n- 负责电商平台和设计系统建设',
         source_type: 'manual',
+        parse_id: null,
         original_file_name: 'Jeremy Smith.md',
       })
     })
@@ -989,13 +997,14 @@ describe('CreatePage', () => {
     })
   })
 
-  test('上传岗位截图后会从 OCR 文本兜底填入公司和岗位名称', async () => {
+  test('上传岗位截图后会兜底填入岗位信息并将解析标识传给生成任务', async () => {
     jest.useFakeTimers()
     const existingSourceResume = {
       id: 'source-resume-1',
       title: 'Jeremy Smith',
       resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
-      sourceType: 'manual' as const,
+      sourceType: 'file' as const,
+      parseId: '33333333-3333-4333-8333-333333333333',
       originalFileName: 'Jeremy Smith.md',
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
@@ -1014,6 +1023,7 @@ describe('CreatePage', () => {
     })
     mockParseJobDescriptionImage.mockResolvedValueOnce({
       provider: 'glm-ocr',
+      parse_id: '22222222-2222-4222-8222-222222222222',
       fileName: 'mango-tv-jd.png',
       fileType: 'image',
       rawText: '芒果tv正在招聘\n# AI创新产品经理\n长沙/20-40K/1-3年/本科\n## 职位详情',
@@ -1051,6 +1061,8 @@ describe('CreatePage', () => {
         position: 'AI创新产品经理',
         location: '长沙',
         jd_text: expect.stringContaining('公司名称：芒果 TV'),
+        jd_parse_id: '22222222-2222-4222-8222-222222222222',
+        resume_parse_id: '33333333-3333-4333-8333-333333333333',
       }))
     })
   })
@@ -1410,6 +1422,7 @@ describe('CreatePage', () => {
       ],
     })
 
+    mockParseResumeFile.mockResolvedValueOnce({markdown: '# Melvin Kuffour\n\n## Experience\n- Built payment platform', rawText: '', parse_id: '33333333-3333-4333-8333-333333333333'})
     await renderPage()
 
     await act(async () => {
@@ -1425,6 +1438,11 @@ describe('CreatePage', () => {
         '# Melvin Kuffour\n\n## Experience\n- Built payment platform',
       )
     })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
+      await Promise.resolve()
+    })
+    expect(mockSaveSourceResume).toHaveBeenCalledWith(expect.objectContaining({source_type: 'file', parse_id: '33333333-3333-4333-8333-333333333333'}))
   })
 
   test('非法文件类型应进入失败状态', async () => {

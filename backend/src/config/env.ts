@@ -159,6 +159,14 @@ export const env = {
   OCR_TIMEOUT_MS: parseInt(process.env.OCR_TIMEOUT_MS || '150000', 10),
   OCR_MAX_FILE_SIZE_MB: parseInt(process.env.OCR_MAX_FILE_SIZE_MB || '10', 10),
 
+  // PDF rendering is server-side; the bundled Chromium is used unless explicitly overridden locally.
+  PDF_CHROMIUM_EXECUTABLE_PATH: process.env.PDF_CHROMIUM_EXECUTABLE_PATH || '',
+  PDF_RENDER_TIMEOUT_MS: parsePositiveInteger(process.env.PDF_RENDER_TIMEOUT_MS, 20000),
+  PDF_MAX_CONCURRENT: parsePositiveInteger(process.env.PDF_MAX_CONCURRENT, 1),
+  PDF_EXPORT_TTL_MS: parsePositiveInteger(process.env.PDF_EXPORT_TTL_MS, 15 * 60 * 1000),
+  RESUME_STAGE_CACHE_TTL_MS: parsePositiveInteger(process.env.RESUME_STAGE_CACHE_TTL_MS, 24 * 60 * 60 * 1000),
+  DIAGNOSTIC_RETENTION_MS: parsePositiveInteger(process.env.DIAGNOSTIC_RETENTION_MS, 72 * 60 * 60 * 1000),
+
   // Server Configuration
   PORT: parseInt(process.env.PORT || '3000', 10),
   HOST: process.env.HOST || '0.0.0.0',

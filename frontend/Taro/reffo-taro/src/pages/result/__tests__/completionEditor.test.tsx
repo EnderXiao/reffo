@@ -1,12 +1,14 @@
+import {resumeExportApi} from '@/services/resumeExport'
 import {useState} from 'react'
 import {fireEvent, render, screen, waitFor} from '@testing-library/react'
-import {serializeDraft, type ResumeCompletionDocument} from '@/shared/resume-completion'
+import {renderCompletionHint, createCompletionDocument, findGap, serializeDraft, type ResumeCompletionDocument} from '@/shared/resume-completion'
 import {ResumePanel} from '../components/ResumePanel.h5'
 import {completionFixture, completionResult} from './completionFixture'
 
 function Harness({commit = async () => undefined, onDocument}: {commit?: () => Promise<void>; onDocument?: (doc: ResumeCompletionDocument) => void}) {
   const [result, setResult] = useState(completionResult())
   return <ResumePanel result={result} companyName='测试公司' positionName='产品经理'
+    prepareDownload={async () => ({historyId: 'saved', documentId: result.optimized.completion_document!.documentId, revision: result.optimized.completion_document!.revision})}
     onOptimizedResumeChange={async () => undefined}
     onCompletionDocumentChange={async doc => {
       setResult(current => ({...current, optimized: {...current.optimized, completion_document: doc, optimized_resume: serializeDraft(doc)}}))
@@ -16,13 +18,58 @@ function Harness({commit = async () => undefined, onDocument}: {commit?: () => P
 }
 
 describe('相契简历原位填写', () => {
+  test.each(['partial_recovery', 'draft_only', 'blocked'] as const)('交付状态%s不在正文前插入说明，原位填写保留', state => {
+    const result = completionResult()
+    result.optimized.delivery_state = {version: 'resume-delivery-state-v1', state, reasons: ['一条经历使用局部安全恢复。'],
+      gates: [{gate: 'structure_identity', state: 'warning', reasons: ['姓名仍待本人填写。']}]}
+    render(<ResumePanel result={result} companyName='测试公司' positionName='产品经理' onOptimizedResumeChange={async () => undefined} />)
+    expect(screen.queryByText('一条经历使用局部安全恢复。')).toBeNull()
+    expect(screen.queryByText('姓名仍待本人填写。')).toBeNull()
+    expect(screen.getByRole('button', {name: '填写实际交付名称'})).toBeTruthy()
+  })
+
+  test('正文前不展示修改清单，仍能定位岗位策略传入的当前锚点', () => {
+    const result = completionResult(), document = result.optimized.completion_document!
+    result.optimized.change_manifest = {version: 'resume-change-manifest-v1', documentId: document.documentId, revision: document.revision,
+      items: [{actionId: 'action-1', category: 'adopted', description: '调整说明', anchors: []}],
+      structureChanges: [{changeId: 'remove', kind: 'removed', description: '本版未保留独立研究项目。', sourceScopeIds: ['project'], beforeQuotes: [], anchors: [], validation: 'source_bound'}]}
+    render(<ResumePanel result={result} companyName='测试公司' positionName='产品经理' onOptimizedResumeChange={async () => undefined}
+      reference={{blockId: 'bullet', location: '工作经历第一行', quote: '参与需求梳理'}} />)
+    expect(screen.queryByText('本次简历调整')).toBeNull()
+    expect(screen.queryByText('调整说明')).toBeNull()
+    expect(screen.queryByText('本版未保留独立研究项目。')).toBeNull()
+    expect(screen.getByText('已定位：工作经历第一行')).toBeTruthy()
+    expect(globalThis.document.querySelector('[data-block-id="bullet"]')?.classList.contains('reffo-result__markdown-line--located')).toBe(true)
+  })
+
+  test('v4单格只显示一份单句提示，输入例子不重复提示且无需本人核对', async () => {
+    const base = completionFixture()
+    const document = createCompletionDocument({...base, schemaVersion: 'resume-completion-v4', blocks: base.blocks.map(block => ({...block,
+      segments: block.segments.map(segment => segment.kind === 'optional_gap_clause' ? {...segment, detailId: 'deliverable-detail',
+        hint: '补上你交付的设计产物，体现方案落地能力。'} : segment)}))})
+    const commit = jest.fn().mockResolvedValue(undefined)
+    render(<ResumePanel result={completionResult(document)} companyName='公司' positionName='岗位' onOptimizedResumeChange={async () => undefined}
+      onCompletionDocumentChange={commit} />)
+    const hint = '补上你交付的设计产物，体现方案落地能力。'
+    expect(screen.getAllByText(hint)).toHaveLength(1)
+    expect(screen.queryByRole('button', {name: '类别示例：页面原型'})).toBeNull()
+    fireEvent.click(screen.getByRole('button', {name: '填写实际交付名称'}))
+    expect(screen.getAllByText(hint)).toHaveLength(1)
+    expect(screen.getByLabelText('实际交付名称').getAttribute('placeholder')).toBe('实际交付名称')
+    fireEvent.change(screen.getByLabelText('实际交付名称'), {target: {value: '业务流程原型'}})
+    fireEvent.keyDown(screen.getByLabelText('实际交付名称'), {key: 'Enter'})
+    await waitFor(() => expect(commit).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText(/本人核对|确认依据/)).toBeNull()
+    expect(commit.mock.calls[0][0].blocks[0].segments[1].fill).toMatchObject({state: 'filled', value: '业务流程原型'})
+  })
+
   test('候选只填草稿，保存仅替换目标空位且保留局部编辑', async () => {
     const onDocument = jest.fn()
     render(<Harness onDocument={onDocument} />)
     fireEvent.click(screen.getByRole('button', {name: '填写实际交付名称'}))
     expect(screen.getByLabelText('实际交付名称')).toBeTruthy()
-    expect(screen.getByText('填实际交付的设计产物名称。补明具体产出。')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', {name: '页面原型'}))
+    expect(screen.getAllByText(renderCompletionHint(findGap(completionFixture(), 'deliverable')!))).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', {name: '类别示例：页面原型'}))
     expect(onDocument).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', {name: '保存'}))
     await waitFor(() => expect(screen.getByRole('button', {name: '修改实际交付名称'}).textContent).toBe('页面原型'))
@@ -153,26 +200,30 @@ describe('相契简历原位填写', () => {
     expect(screen.getByText('还有 1 处待补')).toBeTruthy()
   })
 
-  test('下载清理副本但不改在线文档，编辑时禁止下载', async () => {
+  test('认证 PDF 下载保留在线文档，编辑时禁止下载', async () => {
     const createObjectURL = jest.fn((_blob: Blob) => 'blob:resume')
     Object.defineProperty(URL, 'createObjectURL', {configurable: true, value: createObjectURL})
     Object.defineProperty(URL, 'revokeObjectURL', {configurable: true, value: jest.fn()})
     const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    const create = jest.spyOn(resumeExportApi, 'create').mockImplementation(async target => ({export_id: 'export-test', status: 'ready',
+      document_id: target.documentId, revision: target.revision, disposition: 'application_ready', reason_codes: [],
+      file_name: '测试用户_学校_产品经理.pdf', omitted_count: 1, omitted_claim_count: 1, download_path: '/authenticated-file'}))
+    const file = jest.spyOn(resumeExportApi, 'file').mockResolvedValue(new Uint8Array([37, 80, 68, 70, 45]).buffer)
+
     render(<Harness />)
     fireEvent.click(screen.getByRole('button', {name: '填写实际交付名称'}))
     fireEvent.click(screen.getByRole('button', {name: '下载'}))
     expect(createObjectURL).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', {name: '取消'}))
     fireEvent.click(screen.getByRole('button', {name: '下载'}))
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1))
     const blob = createObjectURL.mock.calls[0][0] as Blob
-    const content = await new Promise<string>(resolve => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result))
-      reader.readAsText(blob)
-    })
-    expect(content).toBe('- 参与需求梳理，支持评审。')
+    expect(blob.type).toBe('application/pdf')
+    expect(create).toHaveBeenCalledWith({historyId: 'saved', documentId: 'fixture-document', revision: 0}, expect.any(String))
     expect(screen.getByRole('button', {name: '填写实际交付名称'})).toBeTruthy()
     expect(click).toHaveBeenCalledTimes(1)
     click.mockRestore()
+    create.mockRestore()
+    file.mockRestore()
   })
 })

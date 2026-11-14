@@ -4,6 +4,8 @@ import {assertGenerationJobVersion, generationJobRetryChanges, GenerationJobVers
 import {GenerationJobWorker} from './generation-jobs'
 import type {v5SingleStepAdapter} from '@/v5/single-step-adapter'
 import type {ResumeHistoryRecord} from '@/types'
+import {V5WorkflowBlockedError} from '@/v5/errors'
+import {writingIssue} from '@/v5/writing/facts'
 
 const fingerprint = 'completion-v1-test'
 const now = '2026-11-10T00:00:00.000Z'
@@ -17,7 +19,7 @@ function makeJob(overrides: Partial<GenerationJob> = {}): GenerationJob {
     ...overrides}
 }
 
-function workerHarness(initial: GenerationJob, options: {existingHistory?: ResumeHistoryRecord} = {}) {
+function workerHarness(initial: GenerationJob, options: {existingHistory?: ResumeHistoryRecord; matchingError?: Error} = {}) {
   let current = structuredClone(initial)
   const calls = {model: 0, quota: [] as boolean[], historySave: 0}
   const repository: ConstructorParameters<typeof GenerationJobWorker>[0] = {
@@ -36,7 +38,7 @@ function workerHarness(initial: GenerationJob, options: {existingHistory?: Resum
       await request?.onCacheMiss?.()
       return {runId: 'test', data: analysis, steps: [], cache: {status: 'miss'}} as Awaited<ReturnType<typeof v5SingleStepAdapter.analyze>>
     },
-    match: async () => {calls.model++; throw new Error('test stops after analysis')},
+    match: async () => {calls.model++; throw options.matchingError ?? new Error('test stops after analysis')},
     generate: async () => {calls.model++; throw new Error('unexpected generation')},
     interview: async () => {calls.model++; throw new Error('unexpected interview')},
   }
@@ -74,6 +76,40 @@ describe('生成版本与显式重试', () => {
     const changes = generationJobRetryChanges(job, fingerprint, now)
     expect(changes).not.toHaveProperty('payload')
     expect(changes).not.toHaveProperty('stage')
+  })
+
+  test('重试清理上次失败诊断并保留同版本已完成阶段', () => {
+    const job = makeJob({status: 'failed', stage: 'matching'})
+    job.payload = {...job.payload, analysis, releaseFingerprint: fingerprint,
+      failure: {code: 'P03_VALIDATION_FAILED', stage: 'matching', runId: 'failed-run', issueCodes: [],
+        retryable: false, action: 'inspect_stage_validation', occurredAt: now}}
+    const changes = generationJobRetryChanges(job, fingerprint, now)
+    expect(changes.payload?.analysis).toBe(analysis)
+    expect(changes.payload).not.toHaveProperty('failure')
+    expect(job.payload.failure?.runId).toBe('failed-run')
+    expect(changes.error).toBeNull()
+  })
+
+  test('带阶段指纹的重试清除旧诊断，并仅丢弃失配阶段后的检查点', async () => {
+    const {currentGenerationStageFingerprints} = await import('./generation-job-version')
+    const job = makeJob({status: 'failed', stage: 'matching'})
+    job.payload = {...job.payload, analysis, releaseFingerprint: fingerprint,
+      stageFingerprints: currentGenerationStageFingerprints(),
+      failure: {code: 'P03_VALIDATION_FAILED', stage: 'matching', issueCodes: [],
+        retryable: false, action: 'inspect_stage_validation', occurredAt: now}}
+    for (const incompatibleMatching of [false, true]) {
+      if (incompatibleMatching) {
+        job.payload.matching = {} as NonNullable<GenerationJobPayload['matching']>
+        job.payload.stageFingerprints!.matching = 'incompatible-release'
+      }
+      const changes = generationJobRetryChanges(job, fingerprint, now)
+      expect(changes.payload?.analysis).toBe(analysis)
+      expect(changes.payload).not.toHaveProperty('failure')
+      if (incompatibleMatching) {
+        expect(changes.payload).not.toHaveProperty('matching')
+        expect(changes.stage).toBe('matching')
+      }
+    }
   })
 
   test('已完成阶段的旧版本只需保存，可继续完成', () => {
@@ -116,6 +152,8 @@ describe('生成版本与显式重试', () => {
 
   test('历史已保存但任务未确认时复用记录，不覆盖人工编辑', async () => {
     const job = makeJob({stage: 'saving'})
+    job.payload.failure = {code: 'GENERATION_FAILED', stage: 'saving', issueCodes: [], retryable: false,
+      action: 'inspect_harness_events', occurredAt: now}
     const existing = {id: `JD-${job.id}`, optimized_content: '用户后来填写的正文'} as ResumeHistoryRecord
     const harness = workerHarness(job, {existingHistory: existing})
     await harness.worker.execute(job)
@@ -123,5 +161,29 @@ describe('生成版本与显式重试', () => {
     expect(harness.calls.historySave).toBe(0)
     expect(harness.getJob().status).toBe('completed')
     expect(harness.getJob().history_id).toBe(existing.id)
+    expect(harness.getJob().payload).not.toHaveProperty('failure')
+  })
+
+  test('匹配失败保留检查点、失败运行编号与错误类别，不保存模型原文或建议盲目重试', async () => {
+    const job = makeJob({stage: 'matching', quota_charged: true})
+    job.payload = {...job.payload, analysis, releaseFingerprint: fingerprint}
+    const error = new V5WorkflowBlockedError({code: 'P03_VALIDATION_FAILED', state: 'blocked_fact_validation',
+      message: '不能保存的原始简历或模型草稿', issues: [writingIssue('JOB_FIT_INVENTED_SPECIALTY_GATE',
+        'private-evidence', ['sensitive-evidence'], '敏感来源细节')]})
+    error.runId = 'b607d80f-f055-473f-b058-15ae58d60d14'
+    const harness = workerHarness(job, {matchingError: error})
+    await harness.worker.execute(job)
+    const failed = harness.getJob()
+    expect(failed.status).toBe('failed')
+    expect(failed.stage).toBe('matching')
+    expect(failed.payload.analysis).toEqual(analysis)
+    expect(failed.payload.failure).toMatchObject({code: 'P03_VALIDATION_FAILED', stage: 'matching', runId: error.runId,
+      issueCodes: ['JOB_FIT_INVENTED_SPECIALTY_GATE'], retryable: false, action: 'inspect_stage_validation'})
+    expect(JSON.stringify(failed.payload.failure)).not.toContain('敏感')
+    expect(JSON.stringify(failed.payload.failure)).not.toContain('private-evidence')
+    expect(failed.error).toContain('岗位分析结果未通过')
+    expect(failed.error).not.toContain('请重试')
+    expect(harness.calls.model).toBe(1)
+    expect(harness.calls.quota).toEqual([])
   })
 })

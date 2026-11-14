@@ -1,4 +1,5 @@
 import type { ResumeAgentState, V5DeliveryDiagnostics, ValidationIssue } from '@/v5/types'
+import {sanitizeWritingRecoveryDiagnostics, type WritingRecoveryDiagnostics} from '@/v5/writing/recovery-diagnostics'
 
 export class V5WorkflowBlockedError extends Error {
   readonly code: string
@@ -10,6 +11,7 @@ export class V5WorkflowBlockedError extends Error {
   readonly providerStatus?: number
   runId?: string
   deliveryDiagnostics?: V5DeliveryDiagnostics
+  writingRecovery?: WritingRecoveryDiagnostics
 
   constructor(input: {
     code: string
@@ -19,6 +21,7 @@ export class V5WorkflowBlockedError extends Error {
     retryable?: boolean
     httpStatus?: number
     providerStatus?: number
+    writingRecovery?: WritingRecoveryDiagnostics
   }) {
     super(input.message)
     this.name = 'V5WorkflowBlockedError'
@@ -32,5 +35,6 @@ export class V5WorkflowBlockedError extends Error {
         : input.state === 'workflow_failure' ? 500 : 422
     )
     this.providerStatus = input.providerStatus
+    this.writingRecovery = sanitizeWritingRecoveryDiagnostics(input.writingRecovery)
   }
 }

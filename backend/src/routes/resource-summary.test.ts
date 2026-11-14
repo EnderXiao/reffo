@@ -8,9 +8,10 @@ import type {
   SourceResumeRecord,
   SourceResumeSummaryRecord,
 } from '@/types'
-import { resumeHistoryRoutes, toSummary } from '@/routes/resume-history'
+import { resumeHistoryRoutes, toSummary, publicResumeHistory } from '@/routes/resume-history'
 import { sourceResumeRoutes } from '@/routes/source-resume'
 import {resumeTextFingerprint, type ResumeStrategyReview} from '@/shared/resume-strategy'
+import {createPlainCompletionDocument} from '@/shared/resume-completion'
 
 let historyRecords: ResumeHistoryRecord[] = []
 let latestSourceResume: SourceResumeRecord | null = null
@@ -20,6 +21,25 @@ const originalEnv = {
 }
 
 describe('resource summary routes', () => {
+  test('history reader refreshes completed action gates without overwriting matching or pretending PDF ran', () => {
+    const document = createPlainCompletionDocument('# 示例姓名\n13800000000\n- 本人补充需求评审。')
+    const matching = {match_score: null, gap_analysis: ['原始判断保持不变']}
+    const process_result = {server_interview_basis: {private: true}, matching, optimized: {completion_document: document,
+      identity_state: {name: 'user_provided'}, action_review: {outcomes: [{actionId: 'a', state: 'pending_review', validation: 'pending'}]},
+      change_manifest: {structureBasis: {version: 'resume-structure-basis-v1', sourceRevision: 'source', nodes: [], sourceSectionTitles: []}, structureChanges: []},
+      delivery_state: {version: 'resume-delivery-state-v1', state: 'draft_only', gates: [{gate: 'fact', state: 'pass'}, {gate: 'supplement', state: 'pass'}]}}}
+    const record = summaryRecord({process_result})
+    const pending = publicResumeHistory(record).process_result as typeof process_result
+    expect(pending.optimized.delivery_state.state).toBe('draft_only')
+    process_result.optimized.action_review.outcomes = [{actionId: 'a', state: 'adopted', validation: 'semantic_pass'}]
+    const current = publicResumeHistory(record).process_result as typeof process_result
+    expect(current.optimized.delivery_state.state).toBe('application_ready')
+    expect(current.optimized.delivery_state.gates).toHaveLength(6)
+    expect(current.optimized.delivery_state.gates.find(gate => gate.gate === 'pdf')?.state).toBe('not_run')
+    expect(current.matching).toEqual(matching)
+    expect(current).not.toHaveProperty('server_interview_basis')
+    expect(process_result.optimized.delivery_state.state).toBe('draft_only')
+  })
   beforeEach(() => {
     historyRecords = []
     latestSourceResume = null

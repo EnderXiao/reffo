@@ -19,7 +19,7 @@ export interface JobShareCardSnapshot {
   position: string
   location: string
   generated_date: string
-  match_score: number
+  match_score: number | null
   summary_lines: string[]
   card_color?: string
   card_pattern?: string

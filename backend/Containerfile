@@ -5,10 +5,15 @@ FROM docker.io/oven/bun:1
 WORKDIR /app
 
 # 复制依赖文件
-COPY package.json bun.lockb* ./
+COPY package.json bun.lock ./
 
 # 安装依赖
 RUN bun install --frozen-lockfile
+
+# 与Playwright锁文件版本一致的浏览器及中文字体，运行时不联网下载。
+RUN bunx --no-install playwright install --with-deps chromium \
+  && apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk \
+  && rm -rf /var/lib/apt/lists/*
 
 # 复制源代码
 COPY . .

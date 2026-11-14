@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import {providerCallRecorder, type ProviderCallRecorder} from '@/services/provider-call-recorder'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { env } from '@/config/env'
 import { deepSeekThinkingParameters, parseDeepSeekThinking, isResumeExtractionRequest, resolveDeepSeekStageThinking, type DeepSeekThinkingSettings, type DeepSeekExtractionThinkingMode } from '@/config/deepseek-thinking'
@@ -47,10 +48,12 @@ export class DeepSeekProvider implements LlmProvider {
   private readonly client: OpenAI
 
   constructor(client?: OpenAI, private readonly thinkingSettings?: DeepSeekThinkingSettings,
-    private readonly extractionThinkingMode: DeepSeekExtractionThinkingMode = env.DEEPSEEK_P01_THINKING_MODE) {
+    private readonly extractionThinkingMode: DeepSeekExtractionThinkingMode = env.DEEPSEEK_P01_THINKING_MODE,
+    private readonly callRecorder: Pick<ProviderCallRecorder, 'begin'> = providerCallRecorder) {
     this.client = client ?? new OpenAI({
       apiKey: env.OPENAI_API_KEY,
       baseURL: env.OPENAI_BASE_URL,
+      maxRetries: 0,
     })
   }
 
@@ -129,6 +132,11 @@ export class DeepSeekProvider implements LlmProvider {
     let timeToFirstChunkMs: number | undefined
     let timeToFirstContentMs: number | undefined
     let streamChunkCount = 0
+    if (requestSignal.signal?.aborted) {
+      requestSignal.dispose()
+      requestSignal.signal.throwIfAborted()
+    }
+    const call = await this.callRecorder.begin(input, 'deepseek', model)
     const response = await (async () => {
       try {
         const stream = await this.client.chat.completions.create({
@@ -161,18 +169,15 @@ export class DeepSeekProvider implements LlmProvider {
         // A clean transport EOF without a terminal model frame is incomplete.
         if (!finished) throw new Error('PROVIDER_STREAM_INCOMPLETE')
         return { id, model: resolvedModel, choices: [{ message: { content }, finish_reason: finishReason }], usage }
+      } catch (error) {
+        await call.fail(error)
+        throw error
       } finally {
         requestSignal.dispose()
       }
     })()
     const latencyMs = Date.now() - startedAt
     const content = response.choices[0]?.message?.content
-
-    // A reasoning-only truncation still has billable usage. Let the structured
-    // stage reject `length` after the budget wrapper records the actual total.
-    if (!content && !input.structuredOutput) {
-      throw new Error('AI 返回内容为空')
-    }
 
     const result: ChatCompletionResult = {
       provider: 'deepseek',
@@ -192,6 +197,13 @@ export class DeepSeekProvider implements LlmProvider {
       reasoningTokens: response.usage?.completion_tokens_details?.reasoning_tokens,
       inputCacheHitTokens: (response.usage as (OpenAI.CompletionUsage & { prompt_cache_hit_tokens?: number }) | undefined)?.prompt_cache_hit_tokens,
       inputCacheMissTokens: (response.usage as (OpenAI.CompletionUsage & { prompt_cache_miss_tokens?: number }) | undefined)?.prompt_cache_miss_tokens,
+    }
+    await call.complete(result)
+
+    // Provider usage remains recorded even when application validation or a
+    // downstream observer rejects the completed response.
+    if (!content && !input.structuredOutput) {
+      throw new Error('AI 返回内容为空')
     }
 
     if (input.eventBus && input.stepContext) {

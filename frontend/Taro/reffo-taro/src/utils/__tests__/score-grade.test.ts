@@ -13,3 +13,10 @@ describe('score-grade', () => {
     expect(resolveResumeGrade(59)).toBe('D')
   })
 })
+
+test('未校准或未知分数不会显示为低分等级', () => {
+  expect(resolveResumeGrade(null)).toBe('待评估')
+  expect(resolveResumeGrade(undefined)).toBe('待评估')
+  expect(resolveResumeGrade(Number.NaN)).toBe('待评估')
+  expect(resolveResumeGrade(0)).toBe('D')
+})

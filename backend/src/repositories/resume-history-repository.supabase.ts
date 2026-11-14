@@ -1,8 +1,11 @@
+import {canonicalizeSourceDocument} from '@/v5/canonical-source'
 import type { RequestUserContext } from '@/auth/request-context'
 import type { ResumeHistoryRepositoryContract } from '@/repositories/interfaces'
+import {buildResumeReviewTasks} from '@/services/resume-review-service'
+import {assertExpectedHistory, historyCommitDigest, historyDocumentRef, ResumeHistoryCommitError} from '@/services/resume-history-commit'
 import { createSupabaseRestClient } from '@/repositories/supabase/client'
 import type { ResumeHistoryRecord, SaveResumeHistoryInput, UpdateResumeHistoryInput } from '@/types'
-import {assertResumeCompletionSnapshot} from '@/services/resume-completion-snapshot'
+import {prepareResumeHistorySnapshot, ResumeCompletionSnapshotError, withoutPendingCompletionEdits} from '@/services/resume-completion-snapshot'
 
 const HISTORY_ID_PREFIX = 'JD'
 const HISTORY_ID_SEQUENCE_LENGTH = 5
@@ -17,7 +20,7 @@ interface ResumeHistoryRow {
   created_at: string
   updated_at: string
   quality_score: number
-  match_score: number
+  match_score: number | null
   tags: string[] | null
   resume_content: string
   jd_content: string
@@ -84,7 +87,7 @@ function mapRowToRecord(row: ResumeHistoryRow): ResumeHistoryRecord {
     created_at: row.created_at,
     updated_at: row.updated_at,
     quality_score: Number(row.quality_score) || 0,
-    match_score: Number(row.match_score) || 0,
+    match_score: row.match_score === null ? null : Number(row.match_score) || 0,
     tags: Array.isArray(row.tags) ? row.tags : [],
     resume_content: row.resume_content,
     jd_content: row.jd_content,
@@ -116,7 +119,7 @@ function toSaveRow(context: RequestUserContext, id: string, input: SaveResumeHis
     optimized_content: input.optimized_content,
     optimization_suggestions: input.optimization_suggestions ?? null,
     changes_summary: input.changes_summary ?? null,
-    process_result: input.process_result ?? null,
+    process_result: withoutPendingCompletionEdits(input.process_result) ?? null,
     result_context: input.result_context ?? null,
     progress: input.progress ?? null,
     card_color: input.card_color ?? null,
@@ -138,26 +141,36 @@ export class SupabaseResumeHistoryRepository implements ResumeHistoryRepositoryC
     return rows.map(row => row.id)
   }
 
-  async save(context: RequestUserContext, input: SaveResumeHistoryInput): Promise<ResumeHistoryRecord> {
-    assertResumeCompletionSnapshot(input)
-    if (input.id?.trim()) assertResumeCompletionSnapshot(input, await this.findById(context, input.id.trim()))
+  async save(context: RequestUserContext, input: SaveResumeHistoryInput, requestDigestOverride?: string): Promise<ResumeHistoryRecord> {
+    const requestDigest = requestDigestOverride ?? historyCommitDigest(input)
+    const client = createSupabaseRestClient({useServiceRole: true})
+    // Check the acknowledgement before replay; an earlier successful response may have been lost.
+    if (input.commit_id) {
+      const commits = await client.request<Array<{request_digest: string; acknowledgement: ResumeHistoryRow & {commit_ack?: ResumeHistoryRecord['commit_ack']}}>>('/rest/v1/resume_history_commits', {
+        searchParams: {owner_id: `eq.${context.userId}`, commit_id: `eq.${input.commit_id}`, select: 'request_digest,acknowledgement', limit: 1}})
+      const commit = commits[0]
+      if (commit) {
+        if (commit.request_digest !== requestDigest) throw new ResumeHistoryCommitError('RESUME_COMMIT_CONFLICT', '本次提交编号已用于其他修改，请重新保存')
+        return {...mapRowToRecord(commit.acknowledgement), ...(commit.acknowledgement.commit_ack ? {commit_ack: commit.acknowledgement.commit_ack} : {})}
+      }
+    }
+    const previous = input.id?.trim() ? await this.findById(context, input.id.trim()) : null
+    assertExpectedHistory(input, previous)
+    input = prepareResumeHistorySnapshot(input, previous)
     const now = new Date().toISOString()
     const id = input.id?.trim() || createHistoryId(await this.getExistingIds(context, input.created_at), input.created_at)
-    const rows = await createClient(context).request<ResumeHistoryRow[]>('/rest/v1/resume_histories', {
-      method: 'POST',
-      searchParams: {
-        on_conflict: 'user_id,id',
-      },
-      prefer: 'resolution=merge-duplicates,return=representation',
-      body: toSaveRow(context, id, input, now),
-    })
-    const saved = rows[0]
-
-    if (!saved) {
-      throw new Error('保存历史记录失败')
-    }
-
-    return mapRowToRecord(saved)
+    const row = toSaveRow(context, id, input, now)
+    const provisional = mapRowToRecord(row)
+    const tasks = buildResumeReviewTasks(context.userId, provisional)
+    const result = await client.request<{record?: ResumeHistoryRow; commit_ack?: ResumeHistoryRecord['commit_ack']; conflict?: string}>('/rest/v1/rpc/commit_resume_history', {
+      method: 'POST', body: {p_owner_id: context.userId, p_record: row,
+        p_commit_id: input.commit_id ?? null, p_request_digest: requestDigest,
+        p_expected: previous ? {...historyDocumentRef(previous.process_result), updatedAt: previous.updated_at} : null,
+        p_tasks: tasks.map(task => ({id: task.id, owner_id: task.ownerId, history_id: task.historyId, document_id: task.documentId,
+          revision: task.revision, resolved_digest: task.resolvedDigest, action_id: task.actionId, input_digest: task.inputDigest,
+          task_generation: task.taskGeneration})), p_task_ttl_ms: 72 * 60 * 60 * 1000,p_source_digest: canonicalizeSourceDocument(input.resume_content,'stage-source').canonicalDocument.sha256}})
+    if (result.conflict || !result.record) throw new ResumeHistoryCommitError(result.conflict === 'commit' ? 'RESUME_COMMIT_CONFLICT' : 'RESUME_VERSION_CONFLICT', '当前稿已更新或提交不一致，请保留本地修改并核对版本')
+    return {...mapRowToRecord(result.record), ...(result.commit_ack ? {commit_ack: result.commit_ack} : {})}
   }
 
   async list(context: RequestUserContext, limit = 100): Promise<ResumeHistoryRecord[]> {
@@ -204,7 +217,7 @@ export class SupabaseResumeHistoryRepository implements ResumeHistoryRepositoryC
       name: updates.name ?? existing.name,
       created_at: updates.created_at ?? existing.created_at,
       quality_score: updates.quality_score ?? existing.quality_score,
-      match_score: updates.match_score ?? existing.match_score,
+      match_score: updates.match_score === undefined ? existing.match_score : updates.match_score,
       tags: updates.tags ?? existing.tags,
       resume_content: updates.resume_content ?? existing.resume_content,
       jd_content: updates.jd_content ?? existing.jd_content,
@@ -212,11 +225,31 @@ export class SupabaseResumeHistoryRepository implements ResumeHistoryRepositoryC
       optimization_suggestions: updates.optimization_suggestions ?? existing.optimization_suggestions,
       changes_summary: updates.changes_summary ?? existing.changes_summary,
       process_result: updates.process_result ?? existing.process_result,
+      completion_edit: updates.completion_edit,
+      commit_id: updates.commit_id,
+      expected_document: updates.expected_document,
+      action_baseline: updates.action_baseline,
+      completion_baseline: updates.completion_baseline,
       result_context: updates.result_context ?? existing.result_context,
       progress: updates.progress ?? existing.progress,
       card_color: updates.card_color ?? existing.card_color,
       card_pattern: updates.card_pattern ?? existing.card_pattern,
-    })
+    }, historyCommitDigest({id, ...updates} as SaveResumeHistoryInput))
+  }
+
+  async upgradeCompletion(context: RequestUserContext, previous: ResumeHistoryRecord, next: ResumeHistoryRecord): Promise<ResumeHistoryRecord> {
+    const now = new Date().toISOString()
+    const row = toSaveRow(context, previous.id, next, now)
+    const tasks = buildResumeReviewTasks(context.userId, next)
+    const result = await createSupabaseRestClient({useServiceRole: true}).request<{record?: ResumeHistoryRow; conflict?: string}>('/rest/v1/rpc/commit_resume_history', {
+      method: 'POST', body: {p_owner_id: context.userId, p_record: row, p_commit_id: null,
+        p_request_digest: historyCommitDigest(next),
+        p_expected: {...historyDocumentRef(previous.process_result), updatedAt: previous.updated_at, processResult: previous.process_result ?? null},
+        p_tasks: tasks.map(task => ({id: task.id, owner_id: task.ownerId, history_id: task.historyId, document_id: task.documentId,
+          revision: task.revision, resolved_digest: task.resolvedDigest, action_id: task.actionId, input_digest: task.inputDigest, task_generation: task.taskGeneration})),
+        p_task_ttl_ms: 72 * 60 * 60 * 1000, p_source_digest: canonicalizeSourceDocument(next.resume_content, 'stage-source').canonicalDocument.sha256}})
+    if (result.conflict || !result.record) throw new ResumeHistoryCommitError('RESUME_VERSION_CONFLICT', '当前稿已更新，请保留本地修改并重新打开')
+    return mapRowToRecord(result.record)
   }
 
   async delete(context: RequestUserContext, id: string): Promise<boolean> {

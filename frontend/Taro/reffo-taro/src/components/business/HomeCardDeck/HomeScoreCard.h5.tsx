@@ -329,7 +329,7 @@ export default function HomeScoreCard({
   ].filter(Boolean).join(' · ')
   const hasFoil = Boolean(card.unread || isTaskPending)
   const hasWrappedCompanyName = !isCreate && !isGenerating && isLikelyWrappedCompanyName(card.company)
-  const scoreGrade = resolveResumeGrade(card.score || (isTaskPending ? 88 : 0))
+  const scoreGrade = resolveResumeGrade(card.score)
   const scoreGradeClass = scoreGrade === 'A+' ? 'a' : scoreGrade.toLowerCase()
   const displayDateLabel = card.dateLabel.replace(/^生成日期\s*/, '')
   const generatingMark = isGenerating ? resolveGeneratingMark(card) : ''
@@ -369,7 +369,7 @@ export default function HomeScoreCard({
           </View>
         ) : null}
         <View className='reffo-home-card__score-result'>
-          <Text className='reffo-home-card__grade-letter'>{scoreGrade}</Text>
+          <Text className={classNames('reffo-home-card__grade-letter', {'reffo-home-card__grade-letter--pending': scoreGrade === '待评估'})}>{scoreGrade}</Text>
           <Text className='reffo-home-card__grade-meta'>岗位匹配度</Text>
         </View>
       </View>

@@ -1,3 +1,5 @@
+import {interviewGenerationBasis} from '@/v5/current-interview-snapshot'
+import {requireLinkedResumeCapability} from '@/services/completion-capabilities'
 import type { StepRunSnapshot } from '@/harness/run-step'
 import { Elysia, t } from 'elysia'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
@@ -16,6 +18,16 @@ import { V5_WORKFLOW_VERSION } from '@/v5/types'
 import { V5WorkflowBlockedError } from '@/v5/errors'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 import {consumeResumeQuota, ensureResumeQuotaAvailable, ResumeQuotaError} from '@/services/resume-quota'
+import {resumeHistoryRepository} from '@/repositories/resume-history-repository'
+import {historyDocumentRef, ResumeHistoryCommitError} from '@/services/resume-history-commit'
+import {saveCompletionBaseline} from '@/services/resume-completion-baseline'
+import {persistInputParseTrace} from '@/services/generation-input-trace'
+
+const parseReferences = {resume_parse_id: t.Optional(t.String({format: 'uuid'})), jd_parse_id: t.Optional(t.String({format: 'uuid'}))}
+async function traceSingleInput(body: {resume_parse_id?: string; jd_parse_id?: string}, stage: string, runId: unknown) {
+  await persistInputParseTrace({requestId: typeof runId === 'string' ? runId : '', resumeParseId: body.resume_parse_id, jdParseId: body.jd_parse_id, stage, runId})
+}
+const failedRunId = (error: unknown) => error && typeof error === 'object' && 'runId' in error ? error.runId : undefined
 
 function getHarnessRunRepository() {
   return new HarnessRunRepository()
@@ -80,7 +92,8 @@ function singleStepFailure(error: unknown, code: string, message: string) {
     code = 'GENERATED_ENTRIES_INCOMPLETE'
     message = '生成内容不完整，部分经历未正确生成，请重新生成'
   }
-  if (error instanceof RequestAuthError || error instanceof ResumeQuotaError || error instanceof V5CheckpointError) {
+  if (error instanceof Error && 'code' in error && error.code === 'RESUME_CLIENT_UPGRADE_REQUIRED') return {status:409,response:{success:false,error:{code:'RESUME_CLIENT_UPGRADE_REQUIRED',message:error.message}} satisfies ApiResponse<never>}
+  if (error instanceof RequestAuthError || error instanceof ResumeQuotaError || error instanceof V5CheckpointError || error instanceof ResumeHistoryCommitError) {
     return {status: error.status, response: {success: false, error: {
       code: error.code, message: error.message,
       ...(error instanceof ResumeQuotaError ? {details: {limit: error.limit, used: error.used}} : {}),
@@ -163,6 +176,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     '/process',
     async ({ body, headers, set }) => {
       try {
+        requireLinkedResumeCapability(headers)
         const userContext = await resolveRequestUser(headers)
         await ensureResumeQuotaAvailable(userContext)
         const { enable_llm_judge, output_language } = body
@@ -170,11 +184,13 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const jd_text = normalizeMarkdownText(body.jd_text)
 
         const workflow = new ResumeOptimizationWorkflow()
+        let interviewBasis: import('@/v5/types').InterviewGenerationBasis | undefined
         const result = await workflow.run({
           resume_markdown,
           jd_text,
           enable_llm_judge,
           output_language,
+          onGenerated: result => {interviewBasis = interviewGenerationBasis(result)},
           onAnalysisSucceeded: async () => {
             await consumeResumeQuota(userContext)
           },
@@ -182,11 +198,14 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
 
         const response: ApiResponse<MvpProcessResponse> = {
           success: true,
-          data: result,
+          data: {...result, ...(result.step3_completion_document && result.step3_completion_document.schemaVersion !== 'resume-completion-v1'
+            ? {step3_completion_context: await saveCompletionBaseline(userContext.userId, result.step3_completion_document, result.step3_action_plan && result.step3_resolved_action_plan ? {actionPlan: result.step3_action_plan, resolvedPlan: result.step3_resolved_action_plan, review: result.step3_action_review,identityState:result.step3_identity_state,deliveryState:result.step3_delivery_state,interviewBasis,matching:result.step2_matching} : undefined)} : {})},
         }
-
+        await traceSingleInput(body, 'process', result.run_id)
         return response
       } catch (error) {
+        await traceSingleInput(body, 'process_failed', failedRunId(error))
+        if (error instanceof Error && 'code' in error && error.code === 'RESUME_CLIENT_UPGRADE_REQUIRED') {set.status=409;return {success:false,error:{code:error.code,message:error.message}}}
         if (error instanceof ResumeQuotaError) {
           set.status = error.status
           return {success: false, error: {code: error.code, message: error.message, details: {limit: error.limit, used: error.used}}} satisfies ApiResponse<never>
@@ -208,6 +227,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     },
     {
       body: t.Object({
+        ...parseReferences,
         resume_markdown: t.String({
           description: 'Markdown 格式的简历内容',
           minLength: 10,
@@ -406,8 +426,10 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         if (user && (result.cache.status === 'miss' || result.cache.status === 'disabled')) {
           await consumeResumeQuota(user)
         }
+        await traceSingleInput(body, 'analysis', result.runId)
         return singleStepSuccess(result, startedAt)
       } catch (error) {
+        await traceSingleInput(body, 'analysis_failed', failedRunId(error))
         console.error('analyze request failed:', {
           errorName: error instanceof Error ? error.name : 'UnknownError',
           errorCode: error && typeof error === 'object' && 'code' in error
@@ -422,6 +444,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     },
     {
       body: t.Object({
+        ...parseReferences,
         resume_markdown: t.String({
           description: 'Markdown 格式的简历内容',
           minLength: 10,
@@ -454,8 +477,11 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           return {success: false, error: {code: 'INVALID_JD', message: '请提供有效的目标岗位描述'}}
         }
         const owner = await stepOwner(headers, body.landing === true && isLandingPresetJobId(body.preset_jd_id))
-        return singleStepSuccess(await v5SingleStepAdapter.match(body.structured_resume, jd, owner), startedAt)
+        const result = await v5SingleStepAdapter.match(body.structured_resume, jd, owner)
+        await traceSingleInput(body, 'matching', result.runId)
+        return singleStepSuccess(result, startedAt)
       } catch (error) {
+        await traceSingleInput(body, 'matching_failed', failedRunId(error))
         const failure = singleStepFailure(error, 'MATCH_FAILED', '匹配分析失败')
         set.status = failure.status
         return failure.response
@@ -463,6 +489,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     },
     {
       body: t.Object({
+        ...parseReferences,
         structured_resume: t.Any({
           description: '结构化简历数据',
         }),
@@ -493,8 +520,16 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       const startedAt = Date.now()
       try {
         const owner = await stepOwner(headers, body.landing === true && isLandingPresetJobId(body.preset_jd_id))
-        return singleStepSuccess(await v5SingleStepAdapter.generate(body.structured_resume, body.matching, owner), startedAt)
+        requireLinkedResumeCapability(headers)
+        const result = await v5SingleStepAdapter.generate(body.structured_resume, body.matching, owner)
+        const document = result.data.completion_document
+        if (owner === 'guest' && document && document.schemaVersion !== 'resume-completion-v1' && !result.data.completion_context) {
+          result.data.completion_context = await saveCompletionBaseline(owner, document, result.data.action_plan && result.data.resolved_action_plan ? {actionPlan: result.data.action_plan, resolvedPlan: result.data.resolved_action_plan, review: result.data.action_review,identityState:result.data.identity_state,deliveryState:result.data.delivery_state,matching:body.matching} : undefined)
+        }
+        await traceSingleInput(body, 'optimized', result.runId)
+        return singleStepSuccess(result, startedAt)
       } catch (error) {
+        await traceSingleInput(body, 'optimized_failed', failedRunId(error))
         const failure = singleStepFailure(error, 'GENERATE_FAILED', '简历生成失败')
         set.status = failure.status
         return failure.response
@@ -502,6 +537,7 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     },
     {
       body: t.Object({
+        ...parseReferences,
         structured_resume: t.Any({
           description: '结构化简历数据',
         }),
@@ -529,7 +565,16 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
       const startedAt = Date.now()
       try {
         const owner = await stepOwner(headers, body.landing === true && isLandingPresetJobId(body.preset_jd_id))
-        return singleStepSuccess(await v5SingleStepAdapter.interview(body.analysis, body.matching, body.optimized_resume, owner), startedAt)
+        const history = body.history_id ? await resumeHistoryRepository.findById({userId:owner,useServiceRole:true},body.history_id) : undefined
+        if (body.history_id && !history) throw new ResumeHistoryCommitError('RESUME_VERSION_CONFLICT','简历历史已删除，请重新打开当前记录')
+        if (history) {
+          const actual=historyDocumentRef(history.process_result)
+          if (!body.document_ref || body.document_ref.documentId!==actual.documentId || body.document_ref.revision!==actual.revision
+            || (body.document_ref.resolvedDigest!==undefined && body.document_ref.resolvedDigest!==actual.resolvedDigest)) {
+            throw new ResumeHistoryCommitError('RESUME_VERSION_CONFLICT','当前稿已更新，请先保存当前版本再生成面试建议')
+          }
+        }
+        return singleStepSuccess(await v5SingleStepAdapter.interview(body.analysis, body.matching, body.optimized_resume, owner, {history:history??undefined}), startedAt)
       } catch (error) {
         const failure = singleStepFailure(error, 'INTERVIEW_FAILED', '面试建议生成失败')
         set.status = failure.status
@@ -538,6 +583,8 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
     },
     {
       body: t.Object({
+        history_id:t.Optional(t.String({minLength:1})),
+        document_ref:t.Optional(t.Object({documentId:t.String(),revision:t.Number({minimum:0}),resolvedDigest:t.Optional(t.String())})),
         analysis: t.Any({
           description: '简历分析结果',
         }),

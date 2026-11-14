@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import type { MatchAnalysis } from '@/types'
+import { requirementJudgmentBundleSchema } from '@/v5/targeting/judgments'
+import { experienceDurationSchema } from '@/v5/experience-duration'
 
 const contextConfidenceSchema = z.enum(['high', 'medium', 'low', 'unknown'])
 
@@ -66,7 +68,7 @@ const booleanLikeSchema = z.preprocess((value) => {
   }
 
   return value
-}, z.boolean())
+}, z.boolean().nullable())
 
 const weaknessEvidenceTypeSchema = z.enum(['direct_missing', 'implicit_evidence', 'wording_gap'])
 const matchGapPrioritySchema = z.enum(['high', 'medium', 'low'])
@@ -77,7 +79,7 @@ const requiredSkillCheckSchema = z.preprocess((value) => {
   }
 
   const item = value as Record<string, unknown>
-  const status = item.status === 'matched' || item.status === 'missing' || item.status === 'unclear'
+  const status = ['matched', 'missing', 'partial', 'unproven', 'not_met', 'unclear'].includes(String(item.status))
     ? item.status
     : 'unclear'
 
@@ -89,7 +91,7 @@ const requiredSkillCheckSchema = z.preprocess((value) => {
   }
 }, z.object({
   requirement: z.string().default(''),
-  status: z.enum(['matched', 'missing', 'unclear']).default('unclear'),
+  status: z.enum(['matched', 'missing', 'partial', 'unproven', 'not_met', 'unclear']).default('unclear'),
   evidence: z.string().default(''),
 }).passthrough())
 
@@ -181,7 +183,13 @@ function deriveLegacyMatchFields(value: unknown) {
 }
 
 const matchAnalysisOutputObjectSchema = z.object({
-  match_score: z.coerce.number().min(0).max(100),
+  match_score: z.coerce.number().min(0).max(100).nullable(),
+  requirement_judgments: requirementJudgmentBundleSchema.optional(),
+  experience_duration: experienceDurationSchema.optional(),
+  score_formula_version: z.enum(['match-score-v1', 'match-score-v2', 'match-score-v3']).optional(),
+  score_calibration_status: z.enum(['pending', 'calibrated', 'rules_based']).optional(),
+  score_basis: z.literal('current_material_requirement_coverage').optional(),
+  score_confidence: z.enum(['high', 'medium', 'low']).optional(),
   hard_requirements_match: z.record(booleanLikeSchema).default({}),
   skill_match: z.object({
     matched: z.array(z.string()).default([]),
@@ -210,7 +218,13 @@ export const matchAnalysisOutputSchema = z.preprocess(
 )
 
 const matchAnalysisObjectSchema = z.object({
-  match_score: z.coerce.number().min(0).max(100),
+  match_score: z.coerce.number().min(0).max(100).nullable(),
+  requirement_judgments: requirementJudgmentBundleSchema.optional(),
+  experience_duration: experienceDurationSchema.optional(),
+  score_formula_version: z.enum(['match-score-v1', 'match-score-v2', 'match-score-v3']).optional(),
+  score_calibration_status: z.enum(['pending', 'calibrated', 'rules_based']).optional(),
+  score_basis: z.literal('current_material_requirement_coverage').optional(),
+  score_confidence: z.enum(['high', 'medium', 'low']).optional(),
   hard_requirements_match: z.record(booleanLikeSchema),
   skill_match: z.object({
     matched: z.array(z.string()),

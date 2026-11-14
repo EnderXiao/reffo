@@ -20,6 +20,7 @@ import {
   V5PromptBudgetError,
 } from '@/v5/prompt-compiler'
 import { loadV5Prompt, V5_PROMPT_VERSIONS, type V5PromptComponent } from '@/v5/prompts'
+import { jobFitMapSchema } from '@/v5/targeting/contracts'
 
 const COMPONENTS = Object.keys(V5_PROMPT_VERSIONS) as V5PromptComponent[]
 
@@ -281,14 +282,14 @@ describe('v5 prompt compiler and strict schemas', () => {
         const repair = compileV5Prompt({component, envelope: repairEnvelope, repairAttempt: 1})
         expect(primary.maxOutputTokens).toBe(9600)
         expect(repair.maxOutputTokens).toBe(9600)
-        expect(V5_PROMPT_MAX_OUTPUT_TOKENS[component]).toBe(9600)
+        expect(V5_PROMPT_MAX_OUTPUT_TOKENS[component]).toBe(component.startsWith('P03') ? 28000 : 9600)
         expect(repair.estimatedInputTokens).toBeGreaterThan(primary.estimatedInputTokens)
         expect(repair.estimatedInputTokens + repair.maxOutputTokens + 2048).toBeLessThanOrEqual(repair.contextWindowTokens)
       }
     } finally { env.V5_CONTEXT_WINDOW_TOKENS = previousWindow }
   })
 
-  test('matching and repair budgets still shrink or reject against actual available context', () => {
+  test('matching and repair reject insufficient capacity before a paid call', () => {
     const previousWindow = env.V5_CONTEXT_WINDOW_TOKENS
     const originalEnvelope = {payload: {jobTargetingPolicy: 'job-targeted-v1'}}
     const envelopes = [originalEnvelope, {payload: {originalEnvelope, currentOutput: {notes: '修复草稿'.repeat(1000)}}}]
@@ -297,18 +298,60 @@ describe('v5 prompt compiler and strict schemas', () => {
         for (const envelope of envelopes) {
           env.V5_CONTEXT_WINDOW_TOKENS = 64000
           const compiled = compileV5Prompt({component, envelope})
-          const minimum = component.startsWith('P02') ? 9600 : 5000
+          const minimum = 9600
           env.V5_CONTEXT_WINDOW_TOKENS = compiled.estimatedInputTokens + 2048 + minimum - 1
           expect(() => compileV5Prompt({component, envelope})).toThrow(V5PromptBudgetError)
           env.V5_CONTEXT_WINDOW_TOKENS += 1
           expect(compileV5Prompt({component, envelope}).maxOutputTokens).toBe(minimum)
           if (component.startsWith('P03')) {
             env.V5_CONTEXT_WINDOW_TOKENS = compiled.estimatedInputTokens + 2048 + 8500
-            expect(compileV5Prompt({component, envelope}).maxOutputTokens).toBe(8500)
+            expect(() => compileV5Prompt({component, envelope})).toThrow(V5PromptBudgetError)
           }
         }
       }
     } finally { env.V5_CONTEXT_WINDOW_TOKENS = previousWindow }
+  })
+
+  test('targeted fit budgets scale with trusted target count, preserve repair capacity, and ignore model-controlled counts', () => {
+    const previousWindow = env.V5_CONTEXT_WINDOW_TOKENS
+    try {
+      env.V5_CONTEXT_WINDOW_TOKENS = 64000
+      const targets = Array.from({length: 24}, (_, index) => ({id: `target:${index}`}))
+      const originalEnvelope = {payload: {jobTargetingPolicy: 'job-targeted-v2', targets}}
+      const primary = compileV5Prompt({component: 'P03', envelope: originalEnvelope})
+      const repairEnvelope = {payload: {originalEnvelope, currentOutput: {jobTargetingPolicy: 'job-targeted-v2', targets: Array(1000).fill({id: 'malicious'})}}}
+      const repair = compileV5Prompt({component: 'P03R', envelope: repairEnvelope})
+      expect(primary.maxOutputTokens).toBe(19080)
+      expect(repair.maxOutputTokens).toBe(primary.maxOutputTokens)
+      expect(compileV5Prompt({component: 'P03', envelope: {payload: {jobTargetingPolicy: 'job-targeted-v2', targets: targets.concat(targets)}}}).maxOutputTokens).toBe(primary.maxOutputTokens)
+      expect(compileV5Prompt({component: 'P03', envelope: {payload: {jobTargetingPolicy: 'job-targeted-v2', currentOutput: repairEnvelope.payload.currentOutput}}}).maxOutputTokens).toBe(9600)
+      expect(compileV5Prompt({component: 'P03', envelope: {payload: {targets}}}).maxOutputTokens).toBe(9600)
+      expect(compileV5Prompt({component: 'P03', envelope: {payload: {jobTargetingPolicy: 'job-targeted-v2', targets: Array.from({length: 100}, (_, index) => ({id: `large:${index}`}))}}}).maxOutputTokens).toBe(28000)
+      env.V5_CONTEXT_WINDOW_TOKENS = primary.estimatedInputTokens + 2048 + primary.maxOutputTokens - 1
+      expect(() => compileV5Prompt({component: 'P03', envelope: originalEnvelope})).toThrow(V5PromptBudgetError)
+    } finally {env.V5_CONTEXT_WINDOW_TOKENS = previousWindow}
+  })
+
+  test('targeted model transport requires every v2 aspect and boundary field while retaining legacy checkpoint reads', () => {
+    for (const component of ['P03', 'P03R'] as const) {
+      const compiled = compileV5Prompt({component, envelope: {payload: {jobTargetingPolicy: 'job-targeted-v2'}}})
+      const schema = zodResponseFormat(compiled.providerSchema!, compiled.schemaName).json_schema.schema!
+      const link = (schema.properties as {links: {items: {required: string[]}}}).links.items
+      for (const key of ['supportedAspects', 'unprovenAspects', 'roleBoundary', 'supportRelation']) expect(link.required).toContain(key)
+      const legacy = {contractVersion: 'job-fit-map-v1', links: [{targetId: 'job:task:t1', status: 'unknown',
+        evidenceIds: [], similarity: '', difference: '当前材料未说明。', expressionAngle: ''}], narratives: [], questions: []}
+      expect(jobFitMapSchema.safeParse(legacy).success).toBe(true)
+      expect(compiled.schema.safeParse(legacy).success).toBe(false)
+      expect(compiled.providerSchema!.safeParse(legacy).success).toBe(false)
+      const incompleteV2 = {...legacy, contractVersion: 'job-fit-map-v2'}
+      expect(compiled.schema.safeParse(incompleteV2).success).toBe(false)
+      const current = {...incompleteV2, links: incompleteV2.links.map(link => ({...link,
+        supportedAspects: [], unprovenAspects: [], roleBoundary: '', supportRelation: null}))}
+      expect(compiled.schema.safeParse(current).success).toBe(true)
+      const unsupportedAspect = {...current, links: current.links.map(link => ({...link,
+        supportedAspects: [{text: '未经证据支持的方面', evidenceIds: []}]}))}
+      expect(compiled.schema.safeParse(unsupportedAspect).success).toBe(false)
+    }
   })
 
   test('reserves enough structured output capacity for dense P01 chunks', () => {
@@ -379,7 +422,7 @@ describe('v5 prompt compiler and strict schemas', () => {
     const rootSchema = zodResponseFormat(schemaForV5Component('P01'), 'p01_root_contract').json_schema.schema
     if (!rootSchema) throw new Error('Missing extraction root schema')
     const rootFields = rootSchema.required as string[]
-    expect(rootFields).toHaveLength(9)
+    expect(rootFields).toHaveLength(10)
     for (const component of ['P01', 'P01R'] as const) {
       const prompt = compileV5Prompt({ component, envelope: { payload: {} } }).messages[0].content
       for (const field of rootFields) expect(prompt).toContain(field)
@@ -404,12 +447,12 @@ describe('v5 prompt compiler and strict schemas', () => {
     }
   })
 
-  test('maps each JD content block once using an exact full-block quote', () => {
+  test('keeps exact source coverage separate from independent semantic requirements', () => {
     for (const component of ['P02', 'P02R'] as const) {
       const compiled = compileV5Prompt({ component, envelope: { payload: { canonicalSourceDocument: { blocks: [] } } } })
-      expect(compiled.messages[0].content).toContain('完整 block')
+      expect(compiled.messages[0].content).toContain('同一 block')
       expect(compiled.messages[0].content).toContain('uncertainties')
-      expect(compiled.messages[0].content).toContain('不计入 block 覆盖')
+      expect(compiled.messages[0].content).toContain('语义')
       expect(V5_PROMPT_VERSIONS[component]).toContain('job-success-profile')
     }
   })
@@ -487,7 +530,7 @@ describe('v5 prompt compiler and strict schemas', () => {
       const schema = schemaForV5Component(component)
       expect(schema instanceof z.ZodObject).toBe(true)
       if (!(schema instanceof z.ZodObject)) throw new Error('Expected unchanged object contract')
-      expect(Object.keys(schema.shape)).toHaveLength(9)
+      expect(Object.keys(schema.shape)).toHaveLength(10)
     }
     for (const component of ['P03', 'P06C', 'P06D'] as const) {
       expect(compileV5Prompt({ component, envelope: { payload: {} } }).messages[0].content)

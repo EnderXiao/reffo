@@ -109,7 +109,7 @@ type PendingClaim = {
 }
 
 type SectionItem =
-  | { kind: 'heading'; text: string }
+  | { kind: 'heading'; text: string; outputPath: string }
   | { kind: 'claim'; claim: PendingClaim }
 
 export function compileCompositionArtifact(input: {
@@ -173,6 +173,10 @@ export function renderValidatedCompositionArtifact(input: {
     ))
 
   const appendClaim = (claim: PendingClaim) => {
+    if (/^awards(?:\.|\[)/u.test(claim.outputPath)) {
+      const schools = [...new Set(claim.atoms.flatMap(atom => input.resume.timeline.filter(scope => scope.kind === 'education' && scope.scopeId === atom.sourceScopeId).flatMap(scope => scope.organization ?? [])))]
+      if (schools.length === 1 && !claim.outputText.includes(schools[0])) claim = {...claim, outputText: `- ${schools[0]}：${withoutMarkdownMarker(claim.outputText)}`}
+    }
     if (!claim.outputText.trim() || claim.atoms.length === 0) return
     claimIndex += 1
     outputPathByLine.set(lines.length, claim.outputPath)
@@ -220,7 +224,10 @@ export function renderValidatedCompositionArtifact(input: {
     if (items.length === 0) return
     lines.push(`## ${sectionTitle(section, input.blueprint.outputLanguage)}`, '')
     for (const item of items) {
-      if (item.kind === 'heading') lines.push(item.text, '')
+      if (item.kind === 'heading') {
+        outputPathByLine.set(lines.length, item.outputPath)
+        lines.push(item.text, '')
+      }
       else {
         if (item.claim.outputPath.startsWith('timeline.')) lines.push('')
         appendClaim(item.claim)
@@ -276,7 +283,7 @@ export function renderValidatedCompositionArtifact(input: {
         if (scopeSlots.length === 0) continue
         const heading = timelineText(timeline)
         if (!heading) continue
-        items.push({ kind: 'heading', text: `### ${heading}` })
+        items.push({ kind: 'heading', text: `### ${heading}`, outputPath: `scope_heading.${section}.${timeline.scopeId}` })
         for (const slot of scopeSlots) {
           const block = blockBySlot.get(slot.slotId)
           if (!block) continue

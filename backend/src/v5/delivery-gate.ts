@@ -1,3 +1,4 @@
+import { measureWritingFocusCoverage } from '@/v5/planning/writing-focus'
 import type {
   GeneratedResumeArtifact,
   GenerationPolicy,
@@ -194,13 +195,14 @@ function isDiagnosticCoverage(value: unknown) {
     && value.numerator <= value.denominator
 }
 
-function isDeliveryMetrics(value: unknown) {
+function isDeliveryMetrics(value: unknown, focusVersion = false) {
   if (!isRecord(value)) return false
   if (!hasExactKeys(value, [
     ...DIAGNOSTIC_COUNT_KEYS,
     'plannedEvidenceCoverage',
     'stableCoreCoverage',
     'primaryRequirementCoverage',
+    ...(focusVersion ? ['primaryWritingFocusCoverage'] : []),
     'outputLengthUnit',
     'outputLengthSoftMin',
     'outputLengthHardMin',
@@ -210,6 +212,7 @@ function isDeliveryMetrics(value: unknown) {
     !isDiagnosticCoverage(value.plannedEvidenceCoverage)
     || !isDiagnosticCoverage(value.stableCoreCoverage)
     || !isDiagnosticCoverage(value.primaryRequirementCoverage)
+    || (focusVersion && value.primaryWritingFocusCoverage !== null && !isDiagnosticCoverage(value.primaryWritingFocusCoverage))
     || !isEnum(value.outputLengthUnit, ['cjk_characters', 'words'] as const)
   ) return false
   if (
@@ -346,12 +349,12 @@ function isIntrinsicDeliveryDiagnosticsConsistent(diagnostics: V5DeliveryDiagnos
 }
 
 /** Strict structural runtime guard shared by delivery boundaries. */
-export function isV5DeliveryDiagnosticsV2(value: unknown): value is V5DeliveryDiagnostics {
+export function isV5DeliveryDiagnostics(value: unknown): value is V5DeliveryDiagnostics {
   if (!isRecord(value)) return false
   if (
     !hasExactKeys(value, ['version', 'taxonomyVersion', 'outcome', 'tracks', 'provenance', 'metrics'])
     ||
-    value.version !== 'v5-delivery-diagnostics-v2'
+    !['v5-delivery-diagnostics-v2', 'v5-delivery-diagnostics-v3'].includes(String(value.version))
     || value.taxonomyVersion !== 'v5-delivery-taxonomy-v1'
     || !isRecord(value.outcome)
     || !isRecord(value.tracks)
@@ -412,9 +415,12 @@ export function isV5DeliveryDiagnosticsV2(value: unknown): value is V5DeliveryDi
   ) return false
 
   return outcome.execution === 'completed'
-    ? isDeliveryMetrics(value.metrics)
+    ? isDeliveryMetrics(value.metrics, value.version === 'v5-delivery-diagnostics-v3')
     : value.metrics === null
 }
+
+// Historical callers retain this name while the guard accepts both supported versions.
+export const isV5DeliveryDiagnosticsV2 = isV5DeliveryDiagnostics
 
 export function isV5DeliveryDiagnosticsSemanticallyValid(
   value: unknown
@@ -690,7 +696,7 @@ export function buildV5DeliveryDiagnostics(input: {
   const eligibleBusinessAtoms = eligibleEvidence.filter(atom => catalog.businessAnchorEvidenceIds.includes(atom.evidenceId))
 
   return {
-    version: 'v5-delivery-diagnostics-v2',
+    version: input.plan.writingFocusVersion ? 'v5-delivery-diagnostics-v3' : 'v5-delivery-diagnostics-v2',
     taxonomyVersion: 'v5-delivery-taxonomy-v1',
     outcome: {
       execution: 'completed',
@@ -729,6 +735,7 @@ export function buildV5DeliveryDiagnostics(input: {
       plannedEvidenceCoverage: { numerator: usedPlannedEvidenceCount, denominator: plannedContentIds.length },
       stableCoreCoverage: { numerator: coveredStableCoreCount, denominator: stableCoreIds.length },
       primaryRequirementCoverage: { numerator: coveredPrimaryRequirementCount, denominator: primaryRequirementIds.length },
+      ...(input.plan.writingFocusVersion ? {primaryWritingFocusCoverage: measureWritingFocusCoverage(input.plan, usedIds)} : {}),
       renderedBusinessBulletCount: input.artifact.renderStats.businessBulletCount,
       renderedTotalListItemCount: input.artifact.renderStats.totalListItemCount,
       renderedProjectCount: input.artifact.renderStats.projectCount,

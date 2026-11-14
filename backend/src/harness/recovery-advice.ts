@@ -5,6 +5,11 @@ export interface HarnessRecoveryAdvice {
 }
 
 const ADVICE_BY_CODE: Record<string, HarnessRecoveryAdvice> = {
+  RESUME_STAGE_BUSY: {
+    retryable: true,
+    action: 'retry_preserved_checkpoint',
+    message: '相同输入的阶段正在处理或恢复中，已有检查点已保留；稍后重试将复用已完成阶段，本次不会再发起同阶段模型调用。',
+  },
   V6_LLM_CALL_BUDGET_EXCEEDED: {
     retryable: false,
     action: 'reduce_context_or_disable_optional_stage',
@@ -13,7 +18,17 @@ const ADVICE_BY_CODE: Record<string, HarnessRecoveryAdvice> = {
   V5_CONTEXT_BUDGET_EXCEEDED: {
     retryable: false,
     action: 'reduce_context_or_split_input',
-    message: '输入上下文超过安全窗口；缩小输入或拆分文档后再试。',
+    message: '阶段请求连同输出预留超过安全窗口；检查是否重复携带草稿，缩小修复范围或按目标拆分后再执行。不要仅要求用户缩短源材料。',
+  },
+  P03_VALIDATION_FAILED: {
+    retryable: false,
+    action: 'inspect_stage_validation',
+    message: '岗位匹配在有界修复后仍未通过；检查精确岗位边界、证据引用和校验误报，保留已通过的阶段，不重复提交同一修复请求。',
+  },
+  V5_SCHEMA_VALIDATION_FAILED: {
+    retryable: false,
+    action: 'inspect_stage_validation',
+    message: '结构化结果未符合阶段契约；检查错误字段与局部修复范围，不把无效结构当作已验证事实放行。',
   },
   V5_OUTPUT_TRUNCATED: {
     retryable: false,

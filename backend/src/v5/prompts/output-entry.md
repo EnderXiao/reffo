@@ -1,10 +1,7 @@
-只输出当前阶段 Schema 的 JSON 对象。先写 contractVersion=entry-writing-v3，再写 entries。每条包含 entryId、完整五要素 coverage、gapDecisions 和 paragraphs；每段只包含 role、segments。用 fact 段完成已有事实与整段句法，仅在真实缺失的最小事实处使用服务器提供的 optional_gap_clause 模板；不自行输出标记或提示。不把已有事实重新挖空，不把候选、类别示例或 JD 当履历事实。删除整个可选子句后事实句必须仍完整。标题、排序和可见标记由服务器生成；不输出 Markdown、评分、思考过程或审计话术。
-metric_detail 专用于同 entry 同 scope 来源已记录的真实比较中唯一缺失的数值、单位或月份。该 template 额外返回 metric={evidenceId,object,missing:"value"|"unit"|"month",before,after}，candidates=[]，result coverage 为 missing/ambiguous；其他 template 省略 metric 或返回 metric:null；null 仅表示没有指标锚点，不提供事实。metric_detail 必须提供非空 metric 对象。before/after 必须逐字锚定同一个来源，object 为真实指标名；只填源文的单个缺失标记或真实自然缺口（截断比较终点/未记录单位/未记录月份），不挖空任何已知值，不切开数字，不创造比较或方向。已知对象和数字仍须完整保留在 fact；可选子句只是复述上下文并插入最小空位，不能承载唯一已知事实。无真实比较或口径有多项疑问则不用此模板。服务器生成填什么、补充价值和可删除提示，不输出自由提示或数值候选。
+只输出当前阶段 Schema 的 JSON 对象。根对象先写 contractVersion="entry-writing-v6"，再写 entries。每条只包含 entryId、coverage、detailAssessments、uncertaintyResolutions、actionReceipts、paragraphs；每段只包含 unitId、role、segments。
+coverage 恰好覆盖五要素，每项给具体 answer，结果区分交付物、采纳与实际收益。只使用本 entry 已准入 facts，按 informationRouting 保留完整事实与必要限定。
+普通短空引用 detailId，并给出一句简短 hint：说明补什么以及对当前岗位理解个人贡献的具体价值；不列多问、不拼接候选、核对或下载政策。已有信息直接用，不为统计定义、完整周期、样本选择、来源或人工介入细节生成正文格，这些进入独立 preparationTopics。
+每条 sourceUncertainties 有唯一处置，可保留已准入片段并把解释移至面试；冲突或未成立结果不因填写而当作事实。只在影响含义的必要字段缺失时使用受控 dependent_claim，不新增指标口径链。所有原始未知都有合理去向，不要求每项对应空位。
+actionReceipts 仅报告实际段落已表达的行动方面，不把准备主题或待填项冒称完成。不要添加额外键、自由说明或第二份正文。
 
-
-同经历已有明确行动来源时，problem/research_problem 留白必须放在有来源支持的具体行动句，不能挂在只有项目标题、阶段或泛目的的背景段。优先沿用真实问卷、访谈、分析等行动句，不新增来源没有的动作；来源确无明确行动时不强求补造。
-
-选择性留白：覆盖图记录材料是否已知，缺失不等于必须挖空。每个 missing/ambiguous 要素在 gapDecisions 恰好返回一个决策；known/not_applicable 不返回决策。省略为 {element,action:"omit",reason:"already_clear"|"low_value"|"not_established"|"too_complex"|"duplicate"|"context_incomplete"}；补充为 {element,action:"supplement",purpose:"clarify_contribution"|"explain_key_action"|"identify_deliverable"|"complete_existing_comparison"|"identify_object",contextEvidenceIds:[实际正文依附事实ID],targetTaskIds:[本entry合法任务ID]}。每个 supplement 必须对应一个同要素空位，每个 omit 不得有空位。没有缺失时 gapDecisions=[]。
-默认零空位，完整简历可以没有任何留白。现有动作和真实交付已经足够说明贡献时，缺少背景问题或百分比不构成必须补充的理由。只有补一个短语能明显解释个人分工、关键方法/判断依据或真实产出，才选择 supplement。每经历通常最多一处，两个独立高价值缺口时最多两处；服务器统一按作用和岗位重要性选最多三处，裁剪不影响事实覆盖状态。不能为达到数量而留白，也不能以 project/research 身份强制补问题。
-entry.gapContextFacts 是同经历只读查缺上下文，检查它及 projectIdentity、所有 facts 后再认定缺失。coverage 可以引用上下文中合法证据标 known，但正文 fact、metric 和候选仍只能引用已准入 facts；不把上下文直接抄入正文，不跨经历借事实。gapContextComplete=false 时不能认定确实缺失，missing/ambiguous 决策选择 context_incomplete 省略。contextEvidenceIds 仅锚定当前正文事实，不认证未知答案；targetTaskIds 可以为空，非空时只取本entry targetTaskIds。
-metric_detail 的对象、其余已知数字和比较关系必须同时在一个完整 fact 分句里保留，不能分散成仅可全文搜到的数字，以便用户下载时安全省略未填比较。
+真实研究实践中缺一项相关的具体发现时，只留短空，不代填答案；不能仅因原文未给发现或代写会推断就 omit。可因真实重复、低相关性、不完整上下文或需重新研究而省略，并给具体依据。

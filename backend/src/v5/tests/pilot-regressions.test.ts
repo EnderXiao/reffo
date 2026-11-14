@@ -84,7 +84,7 @@ test('keeps unsupported positive claims observable and retains evidenced gaps', 
     severity: 'warning',
   }))
   f.fit.links[0].status = 'explicit_gap'; f.fit.links[0].evidenceIds = [f.business.evidenceId]
-  expect(validateJobFitMap(f.fit, f.targets, f.resume).value!.links[0].status).toBe('explicit_gap')
+  expect(validateJobFitMap(f.fit, f.targets, f.resume).value!.links[0].status).toBe('unknown')
 })
 
 test('retains explicit platform-not-personal attribution, rejecting its removal and contradiction', () => {

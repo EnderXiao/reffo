@@ -1,5 +1,5 @@
 import Taro from '@tarojs/taro'
-import {parseApi} from '@/services/parse'
+import {documentParseId, parseApi} from '@/services/parse'
 import {
   canUseBrowserFilePicker,
   pickBrowserFile,
@@ -20,6 +20,7 @@ export interface ParsedResumeUploadFile {
   size: number
   extension: string
   extractedText: string
+  parseId?: string
   file?: File
 }
 
@@ -122,12 +123,14 @@ export async function pickAndParseResumeFile({
   onProgress?.(52)
 
   let extractedText: string
+  let parseId: string | undefined
   if (TEXT_FILE_TYPES.has(extension)) {
     extractedText = selectedFile.file
       ? await readBrowserTextFile(selectedFile.file)
       : await readTextFile(selectedFile.path)
   } else if (extension === '.pdf') {
     const parsedDocument = await parseApi.parseResumeFile(selectedFile, {landing: allowGuest})
+    parseId = documentParseId(parsedDocument)
     extractedText = parsedDocument.markdown?.trim() || parsedDocument.rawText.trim()
   } else {
     throw new Error('暂不支持 DOC/DOCX 解析，请另存为 PDF、MD 或 TXT')
@@ -152,5 +155,6 @@ export async function pickAndParseResumeFile({
   return {
     ...pendingFile,
     extractedText: normalizedResume,
+    ...(parseId ? {parseId} : {}),
   }
 }

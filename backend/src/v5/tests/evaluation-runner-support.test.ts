@@ -640,7 +640,7 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
     })
   })
 
-  test('keeps the default three-chunk case-2 dry-run within canary budgets', () => {
+  test('detects enlarged matching capacity beyond the unchanged case-2 canary budget', () => {
     const fullEnvelope = v5CaseOutputTokenEnvelope(3, 'full')
     const fullProfile = budgetProfileForCases([2], 'full', {
       requiredPhysicalCalls: v5CasePhysicalCallUpperBound(3, 'full'),
@@ -648,8 +648,9 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
       estimatedOutputTokens: fullEnvelope.totalTokens,
     })
     expect(fullProfile.name).toBe('case_2_canary')
-    expect(fullEnvelope.totalTokens).toBe(133_060)
-    expect(fullEnvelope.totalTokens).toBeLessThanOrEqual(fullProfile.caseLimits.maxOutputTokens)
+    expect(fullEnvelope.totalTokens).toBe(169_860)
+    expect(fullEnvelope.totalTokens).toBeGreaterThan(fullProfile.caseLimits.maxOutputTokens)
+    expect(fullProfile.caseLimits.maxOutputTokens).toBe(150_000)
 
     const extractEnvelope = v5CaseOutputTokenEnvelope(3, 'extract-only')
     const extractProfile = budgetProfileForCases([2], 'extract-only', {
@@ -706,15 +707,15 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
       primaryExtractionTokens: 217_000,
       repairCalls: 7,
       repairExtractionTokens: 108_500,
-      generationNonExtractionTokens: 43_560,
+      generationNonExtractionTokens: 80_360,
       judgeTokens: 12_000,
-      nonExtractionTokens: 55_560,
-      totalTokens: 381_060,
+      nonExtractionTokens: 92_360,
+      totalTokens: 417_860,
     })
-    expect(v5CaseOutputTokenEnvelope(14, 'generation-only').totalTokens).toBe(369_060)
+    expect(v5CaseOutputTokenEnvelope(14, 'generation-only').totalTokens).toBe(405_860)
     expect(v5CaseOutputTokenEnvelope(14, 'extract-only').totalTokens).toBe(325_500)
     expect(v5CaseOutputTokenEnvelope(14, 'judge-only').totalTokens).toBe(12_000)
-    expect(v5CaseOutputTokenEnvelope(17).totalTokens).toBe(458_560)
+    expect(v5CaseOutputTokenEnvelope(17).totalTokens).toBe(495_360)
     expect(v5CaseOutputTokenEnvelope(2).repairCalls).toBe(1)
     expect(() => v5CaseOutputTokenEnvelope(0)).toThrow('resumeChunks 必须是正安全整数')
   })
@@ -737,7 +738,7 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
     expect(document.blocks).toHaveLength(270)
     expect(resumeExtractionFactCandidateLimit(document.blocks)).toBe(345)
     expect(chunks.length).toBeLessThanOrEqual(15)
-    expect(generationEnvelope.totalTokens).toBe(350_442)
+    expect(generationEnvelope.totalTokens).toBe(387_242)
     expect(generationEnvelope.totalTokens).toBeGreaterThan(FULL_CASE_LIMITS.maxOutputTokens)
     expect(FULL_CASE_LIMITS.maxOutputTokens).toBe(350_000)
     expect(v5CasePhysicalCallUpperBound(chunks.length, 'generation-only'))
@@ -751,8 +752,8 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
     const perCaseDownstream = v5CaseOutputTokenEnvelope(1).nonExtractionTokens
     const frozenNineCaseEnvelope = uniqueResumeExtraction + perCaseDownstream * 9
 
-    expect(perCaseDownstream).toBe(55_560)
-    expect(frozenNineCaseEnvelope).toBe(1_027_040)
+    expect(perCaseDownstream).toBe(92_360)
+    expect(frozenNineCaseEnvelope).toBe(1_358_240)
     expect(frozenNineCaseEnvelope).toBeGreaterThan(FULL_RUN_LIMITS.maxOutputTokens)
     expect(FULL_RUN_LIMITS.maxOutputTokens).toBe(1_000_000)
     expect(v5CasePhysicalCallUpperBound(14, 'full')).toBeGreaterThan(FULL_CASE_LIMITS.maxPhysicalCalls)

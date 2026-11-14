@@ -3,6 +3,7 @@ import type { JobFitMap } from '@/v5/targeting/contracts'
 import type { JobTarget } from '@/v5/targeting/profile'
 import { buildWritingFact, inspectSupportedWriting, writingIssue } from '@/v5/writing/facts'
 import { validateV5MatchAnalysis } from '@/v5/validators'
+import { buildRequirementJudgments, hasExplicitContraryEvidence } from './judgments'
 
 // Bounded checks for concrete specialties; absence means unproven, not incapable.
 // This deliberately does not attempt to certify generic semantic equivalence.
@@ -14,6 +15,26 @@ const SPECIALTY_SIGNALS = [
   { label: 'Python', pattern: /\bPython\b/iu },
   { label: 'Figma', pattern: /\bFigma\b/iu },
 ] as const
+
+const MODEL_SPECIALTY_SIGNALS = [
+  {label: '模型训练', pattern: /(?:模型|LLM)[^，,；;。！？!?]{0,8}训练|训练[^，,；;。！？!?]{0,8}(?:模型|LLM)/iu},
+  {label: '模型微调', pattern: /(?:模型|LLM)[^，,；;。！？!?]{0,8}微调|微调[^，,；;。！？!?]{0,8}(?:模型|LLM)/iu},
+  {label: '模型评估', pattern: /(?:模型|LLM)(?:(?:的)?(?:效果|质量|性能|输出|回答|生成|离线|在线|端到端)){0,3}(?:评估|评测)|(?:模型|LLM)(?:(?:训练|微调)[和与及或、]){1,2}(?:评估|评测)|(?:评估|评测)(?:大语言|语言|生成式|基础|AI|人工智能)?(?:模型|LLM)/iu},
+] as const
+
+// “交易” also describes retail orders and digital marketplaces. It authorizes
+// checking transaction practice, but cannot authorize a financial-industry gate.
+const FINANCIAL_DOMAIN_PATTERN = /金融|风控|信贷|借贷|授信|银行|保险|证券/u
+const FINANCIAL_CONTEXT_PATTERN = /金融|风控|信贷|借贷|授信|交易|银行|保险|证券/u
+const FINANCIAL_SPECIALTIES = [
+  {label: '风控专项', pattern: /风控/u},
+  {label: '信贷专项', pattern: /信贷|借贷|授信/u},
+  {label: '交易专项', pattern: /交易/u},
+  {label: '银行专项', pattern: /银行/u},
+  {label: '保险专项', pattern: /保险/u},
+  {label: '证券专项', pattern: /证券/u},
+] as const
+const INDEPENDENT_OWNERSHIP_PATTERN = /独立(?:主导|牵头|负责|完成|承担|开展|建设|交付|规划|进行|推进|推动|设计|解决|从)|全权/u
 
 export function unprovenSpecialties(targetText: string, sourceTexts: string[]) {
   return SPECIALTY_SIGNALS.filter(signal => signal.pattern.test(targetText)
@@ -39,6 +60,189 @@ function sourceBoundedFitPresentation(link: JobFitMap['links'][number], atoms: E
   }
 }
 
+/** A domain-specific unknown does not negate an already supported generic practice. */
+function deniesGeneralReleaseFollowUp(text: string) {
+  return text.split(/[，。；;]|以及|并且|及/u).some(clause => {
+    const denial = /(?:尚未|没有|尚无|缺乏|未见|未提供|未说明)[^，。；;]{0,16}(?:上线后|发布后)[^，。；;]{0,12}(?:跟进|跟踪|监控|闭环|表现)/u.test(clause)
+      || /(?:上线后|发布后)[^，。；;]{0,12}(?:跟进|跟踪|监控|闭环|表现)[^，。；;]{0,12}(?:尚无|缺乏|未提供|未说明)/u.test(clause)
+    if (!denial) return false
+    const narrowedDomain = /(?:金融|风控|信贷|借贷|授信|交易|银行|保险|证券)[^，。；;]{0,10}(?:上线后|发布后)/u.test(clause)
+    const narrowedMetric = /(?:上线后|发布后)[^，。；;]{0,8}(?:业务指标|业务效果|转化率|留存率|收入指标|金融指标|风控指标)/u.test(clause)
+    return !narrowedDomain && !narrowedMetric
+  })
+}
+
+function scopeAssertions(text: string) {
+  return text.split(/[，,；;。！？!?]|但(?:是)?|然而|不过|却/u).flatMap(clause => {
+    const conjunctions = [...clause.matchAll(/以及|并且|而且|同时|另外|此外|且|和|及|也|而/gu)]
+    const assertions: string[] = []
+    let start = 0
+    for (const [index, conjunction] of conjunctions.entries()) {
+      const end = conjunction.index! + conjunction[0].length
+      const before = clause.slice(start, conjunction.index)
+      const after = clause.slice(end, conjunctions[index + 1]?.index ?? clause.length)
+      // Separate complete coordinated judgments, not a shared noun list such
+      // as “不要求模型训练和模型评估”. Each side needs its own predicate.
+      const predicate = /未|不|无|缺|待|需|应|不足|补充/u
+      if (predicate.test(before) && predicate.test(after)) {
+        assertions.push(before)
+        start = end
+      }
+    }
+    assertions.push(clause.slice(start))
+    return assertions
+  })
+}
+
+function hasRoleBoundaryDeficit(clauses: string[], index: number, mention: string) {
+  const deficit = /需(?:要)?补|待补|不足|缺口|差距/u
+  if (deficit.test(clauses[index]!)) return true
+  const specialtyTerms = mention.match(/训练|微调|评估|评测/gu) ?? []
+  // A later request for “这一差距” still targets the specialty. A named
+  // product responsibility is a separate assertion and cannot revoke its boundary.
+  return clauses.slice(index + 1).some(clause => deficit.test(clause) && (
+    specialtyTerms.some(term => clause.includes(term))
+    || /(?:该|这|此|其|相关|相应|上述|前述)(?:一|项|类|个)?(?:差距|缺口|方面|能力|专项|职责|经历|经验|材料|证据|细节|内容)/u.test(clause)
+    || /(?:需(?:要)?|应(?:当)?|须|待)(?:补充|补足|完善|提供|说明)(?:一些|更多|具体|相应|相关)?(?:材料|证据|经历|经验|能力|细节|说明|信息|记录|内容)?\s*$/u.test(clause)
+    || /^(?:仍|尚|还)?(?:有|存在)?(?:不足|缺口|差距)\s*$/u.test(clause)
+  ))
+}
+
+function isRenderedRoleBoundary(text: string, prefix: string, suffix: string, mention: string) {
+  if (!/(?:模型|LLM)/iu.test(mention) || !/训练|微调|评估|评测/u.test(mention)) return false
+  // “未写” is safe only as an account of the rendered role, not an absence of
+  // proof (“材料未写模型训练经验”) or an unproven ability in another field.
+  if (/(?:材料|简历|文档|证据|记录|履历)(?:中|里|上)?[^，,；;。]{0,6}(?:未写|没有写|未写明|未描述|未表述)$/u.test(prefix)) return false
+  if (/(?:未|不)(?:写成|表述为|描述为|声称)[^，,；;。]{0,6}$/u.test(prefix)) return true
+  if (/能力|经验|证明|证据|资质|水平/u.test(suffix)) return false
+  const contextualRole = /(?:为|属于|仅|只|限于|参与|承担|负责|围绕|侧重|聚焦)[^，,；;。]{0,30}(?:产品|功能|应用|方案|交互|业务|职责|设计|范围)/u.test(text)
+  return contextualRole && (
+    /(?:未写|没有写|不写)[^，,；;。]{0,6}$/u.test(prefix)
+    || /^[^，,；;。]{0,6}(?:未写|没有写|不写)(?:成|为)?\s*$/u.test(suffix)
+  )
+}
+
+function unexcludedScopeMentions(text: string, pattern: RegExp, roleBoundary = false) {
+  // A boundary disclaimer applies to its own assertion, never to the following
+  // contrast or a different field. Joining all fields let unrelated words form
+  // a specialty match and let one disclaimer conceal a real added requirement.
+  const clauses = scopeAssertions(text)
+  return clauses.flatMap((clause, index) => [...clause.matchAll(new RegExp(pattern.source, `${pattern.flags.replace('g', '')}g`))].flatMap(match => {
+    const prefix = clause.slice(0, match.index), suffix = clause.slice(match.index! + match[0].length)
+    const explicitlyExcluded = /(?:无需|不必|不需要|不要求)[^，,；;。]{0,16}$/u.test(prefix)
+      || /(?:非|不属[于]?|不作为|不纳入)(?:本项|此项|本条|该项)?(?:的)?(?:要求|门槛|条件|缺口|差距)[^，,；;。]{0,12}$/u.test(prefix)
+      || /不(?:自动)?(?:升级|等于|代表|视为)[^，,；;。]{0,16}$/u.test(prefix)
+      || /不(?:得|应|能|可)(?:将|把|写成|称为|视为|要求|增加|引入|作为)[^，,；;。]{0,20}$/u.test(prefix)
+      || /避免[^，,；;。]{0,8}(?:升级|当作|视为)[^，,；;。]{0,16}$/u.test(prefix)
+      || (/(?:不作为|不纳入|不设为|不构成)[^，,；;。]{0,8}$/u.test(prefix)
+        && /^[^，,；;。]{0,10}(?:门槛|要求|条件|缺口|差距)/u.test(suffix))
+      || (/不(?:将|把)[^，,；;。]{0,8}$/u.test(prefix)
+        && /^[^，,；;。]{0,10}(?:作为|纳入|设为|视为)(?:本项|此项|该项)?(?:的)?(?:门槛|要求|条件|缺口|差距)/u.test(suffix))
+      || /^[^，,；;。]{0,10}(?:并非|不是|非|不构成|不作为)(?:本项|此项|本条|该项)?(?:的)?(?:要求|门槛|条件|缺口|差距)/u.test(suffix)
+      || /^[^，,；;。]{0,10}(?:不属于|不在)(?:本项|此项|本条|该项)(?:的)?(?:要求|范围)/u.test(suffix)
+    if (explicitlyExcluded) return []
+    if (/^(?:独立|全权)/u.test(match[0]) && /非$/u.test(prefix)) return []
+    // “未涉及模型训练” can accurately limit the source role. “未说明模型
+    // 训练能力” is an unsupported deficit and deliberately remains actionable.
+    if (roleBoundary && !hasRoleBoundaryDeficit(clauses, index, match[0])
+      && (/(?:未涉及|不涉及|未包含|不包含|不承担|未承担|非)[^，,；;。]{0,8}$/u.test(prefix)
+        || /^[^，,；;。]{0,8}(?:未涉及|不涉及|未包含|不包含|不承担|未承担)/u.test(suffix)
+        || isRenderedRoleBoundary(text, prefix, suffix, match[0]))) return []
+    return [{clause: clause.trim(), mention: match[0]}]
+  }))
+}
+
+function hasUnexcludedScopeMention(text: string, pattern: RegExp, roleBoundary = false) {
+  return unexcludedScopeMentions(text, pattern, roleBoundary).length > 0
+}
+
+export interface FitRequirementScopeFinding {
+  code: string
+  field: string
+  clause: string
+  mention: string
+  criterion: string
+  sourceQuote: string
+}
+
+export function inspectFitRequirementScopeDetails(link: JobFitMap['links'][number], target: JobTarget): FitRequirementScopeFinding[] {
+  if (target.kind !== 'requirement') return []
+  const source = target.sourceQuote ?? target.text
+  // Every field can surface in the v2 judgment or editing strategy. A rejected
+  // threshold cannot survive in an aspect reason after difference is repaired.
+  const negativeAssessment: Array<{field: string; text: string; roleBoundary?: boolean}> = [
+    {field: 'difference', text: link.difference}, {field: 'roleBoundary', text: link.roleBoundary ?? '', roleBoundary: true},
+    ...(link.unprovenAspects ?? []).flatMap((aspect, index) => [
+      {field: `unprovenAspects[${index}].text`, text: aspect.text},
+      {field: `unprovenAspects[${index}].reason`, text: aspect.reason},
+    ]),
+    ...[{field: 'similarity', text: link.similarity}, {field: 'expressionAngle', text: link.expressionAngle},
+      ...(link.supportedAspects ?? []).map((aspect, index) => ({field: `supportedAspects[${index}].text`, text: aspect.text}))]
+      .flatMap(field => scopeAssertions(field.text).filter(clause => /未|缺|不足|需|待|补充/u.test(clause))
+        .map(text => ({...field, text}))),
+  ]
+  const findings: FitRequirementScopeFinding[] = []
+  const report = (code: string, criterion: string, pattern: RegExp) => {
+    for (const field of negativeAssessment) for (const match of unexcludedScopeMentions(field.text, pattern, field.roleBoundary)) {
+      findings.push({code, field: field.field, ...match, criterion, sourceQuote: source})
+    }
+  }
+  const introduced = (code: string, criterion: string, pattern: RegExp) => {
+    if (!hasUnexcludedScopeMention(source, pattern)) report(code, criterion, pattern)
+  }
+  if (!hasUnexcludedScopeMention(source, FINANCIAL_DOMAIN_PATTERN)) {
+    report('JOB_FIT_FOREIGN_DOMAIN_GATE', '行业专项', FINANCIAL_DOMAIN_PATTERN)
+  }
+  // A broad industry condition cannot silently become every specialty in
+  // that industry. A named specialty may still use its broad industry label.
+  for (const signal of FINANCIAL_SPECIALTIES) introduced('JOB_FIT_FOREIGN_DOMAIN_GATE', signal.label, signal.pattern)
+  introduced('JOB_FIT_INVENTED_OWNERSHIP_GATE', '独立责任', INDEPENDENT_OWNERSHIP_PATTERN)
+  for (const signal of MODEL_SPECIALTY_SIGNALS) introduced('JOB_FIT_INVENTED_SPECIALTY_GATE', signal.label, signal.pattern)
+  if (/基础|基本|一定/u.test(source) && !/系统化|体系化|系统性|精通|专家级|高级/u.test(source)) {
+    report('JOB_FIT_INVENTED_PROFICIENCY_GATE', '超出基础程度', /系统化|体系化|系统性|精通|专家级|高级/u)
+  }
+  if (/(?:0\s*(?:到|至|[-→])\s*1|零到一)/u.test(source) && !/全流程|全过程|规模化|立项/u.test(source)) {
+    report('JOB_FIT_INVENTED_SCOPE_GATE', '全过程范围', /全流程|全过程|完整(?:的)?(?:产品)?建设过程|立项.{0,10}规模化/u)
+  }
+  return findings
+}
+
+export function inspectFitRequirementScope(link: JobFitMap['links'][number], target: JobTarget): string[] {
+  return [...new Set(inspectFitRequirementScopeDetails(link, target).map(finding => finding.code))]
+}
+
+export function prepareJobFitScopeRepair(fit: JobFitMap, targets: JobTarget[], issues: ValidationIssue[]) {
+  const affected = new Set(issues.filter(issue => issue.severity === 'error').map(issue => issue.outputPath))
+  if (!affected.size || [...affected].some(id => !targets.some(target => target.id === id))) return null
+  const targetIds = new Set([...affected] as string[])
+  const isolatedRequirements = issues.filter(issue => issue.severity === 'error').every(issue => /JOB_FIT_(?:FOREIGN_DOMAIN|INVENTED_OWNERSHIP|INVENTED_SPECIALTY|INVENTED_PROFICIENCY|INVENTED_SCOPE)_GATE/u.test(issue.code))
+    && targets.filter(target => targetIds.has(target.id)).every(target => target.kind === 'requirement')
+  return {targetIds: [...targetIds], targets: targets.filter(target => targetIds.has(target.id)), isolatedRequirements,
+    currentOutput: isolatedRequirements ? {previousJudgmentsRejected: true,
+      sourceBoundaries: targets.filter(target => targetIds.has(target.id)).map(target => ({targetId: target.id,
+        sourceQuote: target.sourceQuote ?? target.text,
+        excludedCriteria: issues.filter(issue => issue.outputPath === target.id).flatMap(issue =>
+          issue.code === 'JOB_FIT_INVENTED_OWNERSHIP_GATE' ? ['此原文未要求独立责任；“未证明独立主导/负责/承担”不构成该要求的差距。责任边界只如实写参与、实习或团队贡献。']
+          : issue.code === 'JOB_FIT_INVENTED_SPECIALTY_GATE' ? [`此原文未要求${MODEL_SPECIALTY_SIGNALS.filter(signal => !hasUnexcludedScopeMention(target.sourceQuote ?? target.text, signal.pattern)).map(signal => signal.label).join('、')}；这些专项不能出现在本项的待证明方面、差距或补充要求中。原文实际要求的专项仍按真实证据判断；真实角色只写已证实的参与范围。`]
+          : issue.code === 'JOB_FIT_FOREIGN_DOMAIN_GATE' ? [hasUnexcludedScopeMention(target.sourceQuote ?? target.text, FINANCIAL_CONTEXT_PATTERN)
+            ? `此原文明示的行业条件应保留，但未要求${[...(!hasUnexcludedScopeMention(target.sourceQuote ?? target.text, FINANCIAL_DOMAIN_PATTERN) ? ['金融行业'] : []), ...FINANCIAL_SPECIALTIES.filter(signal => !hasUnexcludedScopeMention(target.sourceQuote ?? target.text, signal.pattern)).map(signal => signal.label)].join('、')}；不要把交易流程或广义行业经验升级成这些专项门槛。`
+            : '此原文没有限定金融、风控或交易等专项场景；不要将公司行业或其他目标的行业条件迁入本项。只依据本项原文核对已有通用实践及实际未证明的维度。']
+          : issue.code === 'JOB_FIT_INVENTED_PROFICIENCY_GATE' ? ['此原文只要求基础能力；未建系统化/体系化方法不是本项缺口，按实际基础分析实践判断。']
+          : issue.code === 'JOB_FIT_INVENTED_SCOPE_GATE' ? ['此原文只要求有0到1建设经验，没有要求独立、全流程或立项到规模化。参与的MVP/PRD/灰度/上线可以证明已有相应建设经验，具体结论仍按证据核对；未证明全过程不是新增缺口。'] : [])})),
+      admittedPriorPractice: fit.links.filter(link => targetIds.has(link.targetId)).map(link => ({targetId: link.targetId,
+        evidenceIds: link.evidenceIds, similarity: link.similarity, supportedAspects: link.supportedAspects ?? []})),
+      instruction: '此前差距依据越过本项原文，已丢弃该草稿的状态和差距文案；请按sourceQuote与真实证据重新判断，不沿用被拒绝的结论。'}
+      : {...fit, links: fit.links.filter(link => targetIds.has(link.targetId)), narratives: []},
+    merge(repaired: JobFitMap): JobFitMap {
+      if (repaired.links.length !== targetIds.size || new Set(repaired.links.map(link => link.targetId)).size !== targetIds.size
+        || repaired.links.some(link => !targetIds.has(link.targetId))) throw new Error('JOB_FIT_SCOPED_REPAIR_TARGET_MISMATCH')
+      const replacements = new Map(repaired.links.map(link => [link.targetId, link]))
+      return {...fit, links: fit.links.map(link => replacements.get(link.targetId) ?? link),
+        narratives: [...fit.narratives.filter(narrative => narrative.targetIds.every(id => !targetIds.has(id))), ...repaired.narratives],
+        questions: fit.questions}
+    }}
+}
+
 export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume: ResumeEvidenceBundle): ValidationResult<JobFitMap> {
   const fit = structuredClone(value)
   const targetById = new Map(targets.map(target => [target.id, target]))
@@ -50,15 +254,29 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
     const target = targetById.get(link.targetId)
     if (!target || seen.has(link.targetId)) { report('JOB_FIT_TARGET_INVALID', link.targetId, [], '目标未知或重复。'); continue }
     seen.add(link.targetId)
+    const scopeFindings = inspectFitRequirementScopeDetails(link, target)
+    for (const code of new Set(scopeFindings.map(finding => finding.code))) report(code, link.targetId, link.evidenceIds,
+      `该原子要求的可见判断字段引入了其精确JD原文没有的门槛。本项原文：${target.sourceQuote ?? target.text}；触发位置：${scopeFindings.filter(finding => finding.code === code)
+        .map(finding => `${finding.field}「${finding.clause}」（${finding.criterion}：${finding.mention}）`).join('；')}。请按sourceQuote重新评估所有理由字段，保留真实支持方面；不得只清理difference、直接改状态或编造证据。`)
+    if (link.supportedAspects?.some(aspect => !aspect.evidenceIds.length || aspect.evidenceIds.some(id => !link.evidenceIds.includes(id)))) {
+      report('JOB_FIT_ASPECT_EVIDENCE_INVALID', link.targetId, link.evidenceIds, '支持方面必须引用本目标已关联的真实证据，不能借用其他目标的事实。')
+    }
+    if (fit.contractVersion === 'job-fit-map-v2' && !['unknown', 'conflicted'].includes(link.status)
+      && (!link.supportedAspects || !link.unprovenAspects || link.roleBoundary === undefined)) {
+      report('JOB_FIT_ASSESSMENT_MISSING', link.targetId, link.evidenceIds, '新契约须分别评估已支持方面、未证实方面及角色边界；不能只提交旧单段理由。')
+    }
     if (new Set(link.evidenceIds).size !== link.evidenceIds.length || link.evidenceIds.some(id => {
       const atom = evidence.get(id)
       return !atom || atom.riskFlags.includes('sensitive_pii') || atom.riskFlags.includes('prompt_injection_like_text')
         || (atom.status === 'excluded' && link.status !== 'conflicted')
     })) report('JOB_FIT_EVIDENCE_INVALID', link.targetId, [], '只能使用真实简历证据引用，不能把岗位要求或推断作为个人事实。')
-    if (link.status === 'unknown' || target.basis === 'unknown') {
+    // An unknown verdict may still reference source practice without certifying
+    // the whole target. Keep that reference set stable for repeated validation.
+    if (target.basis === 'unknown') {
       link.status = 'unknown'; link.evidenceIds = []
+      if (link.supportedAspects) link.supportedAspects = []
     }
-    if (link.status === 'explicit_gap' && !link.evidenceIds.length) {
+    if (link.status === 'explicit_gap' && !hasExplicitContraryEvidence(target.text, link.evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : []))) {
       link.status = 'unknown'
       link.similarity = ''; link.expressionAngle = ''
       link.difference = '当前材料未提供足够证据，不能据此判定候选人存在该项缺陷。'
@@ -79,6 +297,12 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
       link.difference = `所引材料未明确支持：${missing.join('、')}。局部相关不能认证整项任务。`
       report('JOB_FIT_PARTIAL_COVERAGE_ALIGNED', link.targetId, link.evidenceIds, '具体专项缺乏证据，整体直接匹配改为局部信号；细分任务可保留独立匹配。', 'warning')
     }
+    const sourceTexts = link.evidenceIds.flatMap(id => evidence.get(id)?.verbatimText ?? [])
+    const followUpPractice = sourceTexts.some(text => /监控/u.test(text) && /日志|复现|修复|发版/u.test(text))
+    const followUpDenial = [link.difference, ...(link.unprovenAspects ?? []).map(item => item.text + item.reason)]
+      .some(deniesGeneralReleaseFollowUp)
+    if (followUpPractice && followUpDenial) report('JOB_FIT_SOURCE_NEGATION_CONFLICT', link.targetId, link.evidenceIds,
+      '所引来源已有监控、排查与修复发版实践，不能同时判断没有发布后跟进；请保留已支持方面并只说明实际未证明的范围。')
     const presentation = sourceBoundedFitPresentation(link, link.evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : []))
     if (presentation.difference !== link.difference || presentation.expressionAngle !== link.expressionAngle) {
       Object.assign(link, presentation)
@@ -100,6 +324,8 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
     if (unprovenTasks.length) report('JOB_FIT_RELATED_TASK_UNPROVEN', link.targetId, link.evidenceIds,
       '该目标关联的部分任务尚无独立支持。目标本身的判断不等于这些任务已被证明；保留原判断与差异供离线审阅，不自动重试。', 'warning')
   }
+  const originalNarratives = structuredClone(fit.narratives)
+  const filteredNarratives: Array<{index: number; code: string}> = []
   const retainedNarratives: JobFitMap['narratives'] = []
   for (const [index, narrative] of fit.narratives.entries()) {
     const supported = new Set(narrative.targetIds.flatMap(id => {
@@ -110,34 +336,101 @@ export function validateJobFitMap(value: JobFitMap, targets: JobTarget[], resume
     const invalidReferences = !narrative.targetIds.length || narrative.targetIds.some(id => !targetById.has(id))
       || !narrative.evidenceIds.length || narrative.evidenceIds.some(id => !evidence.has(id) || !referenced.has(id))
     if (invalidReferences) {
+      filteredNarratives.push({index, code: 'JOB_FIT_NARRATIVE_UNSUPPORTED'})
       report('JOB_FIT_NARRATIVE_UNSUPPORTED', `narratives[${index}]`, [], '可选主线引用无效，已局部省略；不影响经过验证的事实关联。', 'warning')
       continue
     }
     if (narrative.targetIds.some(id => !['direct', 'transferable'].includes(linkById.get(id)?.status ?? 'unknown'))
       || narrative.evidenceIds.some(id => !supported.has(id))) {
+      filteredNarratives.push({index, code: 'JOB_FIT_NARRATIVE_DOWNGRADED'})
       report('JOB_FIT_NARRATIVE_DOWNGRADED', `narratives[${index}]`, [], '对应关系已降为弱信号或未知，省略该胜任主线，不要求模型重试。', 'warning')
       continue
     }
     if (inspectSupportedWriting(narrative.statement,
       narrative.evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : []), `narratives[${index}]`).length) {
+      filteredNarratives.push({index, code: 'JOB_FIT_NARRATIVE_FACT_RISK'})
       report('JOB_FIT_NARRATIVE_FACT_RISK', `narratives[${index}]`, narrative.evidenceIds,
         '主线出现已知数字、工具或职责边界风险；省略该主线，保留原事实供 Writer 独立组织。', 'warning')
       continue
     }
     retainedNarratives.push(narrative)
   }
+  let recovery: NonNullable<JobFitMap['narrativeDiagnostics']>['recovery'] = 'not_needed'
+  const recoverAllSupported = !retainedNarratives.length
+  const rejectedNarrativeTargets = new Set(filteredNarratives.flatMap(item => originalNarratives[item.index]!.targetIds))
+  if (recoverAllSupported || rejectedNarrativeTargets.size) {
+    recovery = 'no_safe_candidate'
+    for (const link of fit.links) {
+      if (!['direct', 'transferable'].includes(link.status)) continue
+      if (!recoverAllSupported && !rejectedNarrativeTargets.has(link.targetId)) continue
+      for (const aspect of link.supportedAspects ?? []) {
+        const atoms = aspect.evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : [])
+        if (!atoms.length || aspect.evidenceIds.some(id => !link.evidenceIds.includes(id))
+          || inspectSupportedWriting(aspect.text, atoms, 'narrativeRecovery').length) continue
+        if (retainedNarratives.some(item => item.statement === aspect.text)) continue
+        retainedNarratives.push({statement: aspect.text, targetIds: [link.targetId], evidenceIds: aspect.evidenceIds})
+        recovery = 'recovered_from_supported_aspects'
+      }
+    }
+  }
   fit.narratives = retainedNarratives
+  fit.narrativeDiagnostics = value.narrativeDiagnostics ?? {original: originalNarratives, filtered: filteredNarratives, recovery}
   if (fit.questions.some(question => !targetById.has(question.targetId))) report('JOB_FIT_QUESTION_TARGET_INVALID', 'questions', [], '补充问题必须关联当前岗位目标。', 'warning')
   return { passed: !issues.some(issue => issue.severity === 'error'), issues, value: fit }
 }
 
-export function projectLegacyMatch(fit: JobFitMap, targets: JobTarget[], resume: ResumeEvidenceBundle, job: JobRequirementBundle): V5MatchAnalysis {
+/** Positive source practice is useful even when a whole qualification is partial.
+ * Keep this projection separate from verdicts and fully supported narratives. */
+export function sourcePracticeStrengths(fit: JobFitMap, targets: JobTarget[], resume: ResumeEvidenceBundle) {
+  const evidence = new Map(resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
+  const targetById = new Map(targets.map(target => [target.id, target]))
+  const coveredScopes = new Set(fit.narratives.flatMap(narrative => narrative.evidenceIds
+    .flatMap(id => evidence.get(id)?.sourceScopeId ?? [])))
+  const candidates = new Map<string, {text: string; evidenceIds: string[]; targetId: string; score: number}>()
+  for (const link of fit.links) {
+    const target = targetById.get(link.targetId)
+    if (!target || target.basis === 'unknown' || !['direct', 'transferable', 'weak_signal'].includes(link.status)) continue
+    for (const aspect of link.supportedAspects ?? []) {
+      const atoms = aspect.evidenceIds.flatMap(id => evidence.get(id) ? [evidence.get(id)!] : [])
+      if (!atoms.length || atoms.length !== aspect.evidenceIds.length || atoms.some(atom =>
+        !link.evidenceIds.includes(atom.evidenceId) || !isConcretePractice(atom) || !buildWritingFact(atom)
+        || atom.riskFlags.some(flag => ['uncertain', 'future_or_planned', 'conflicting', 'sensitive_pii', 'prompt_injection_like_text'].includes(flag)))
+        || inspectSupportedWriting(aspect.text, atoms, 'partialPracticeStrength').length
+        || /完全满足|全部满足|完全符合|胜任岗位/u.test(aspect.text)) continue
+      const scopes = [...new Set(atoms.map(atom => atom.sourceScopeId))]
+      if (scopes.length !== 1 || coveredScopes.has(scopes[0]!)) continue
+      // One complete source-grounded aspect per experience avoids multiplying
+      // the same practice across synonymous task/attribute/qualification labels.
+      const score = aspect.text.length + (target.kind === 'task' ? 80 : 0)
+      const prior = candidates.get(scopes[0]!)
+      if (!prior || score > prior.score) candidates.set(scopes[0]!, {text: aspect.text,
+        evidenceIds: aspect.evidenceIds, targetId: link.targetId, score})
+    }
+  }
+  return [...candidates].map(([scopeId, item]) => ({strengthId: `source_practice_${scopeId}`,
+    requirementIds: targetById.get(item.targetId)?.requirementIds ?? [], evidenceIds: item.evidenceIds,
+    statement: `可迁移实践：${item.text}`}))
+}
+
+export function projectLegacyMatch(originalFit: JobFitMap, targets: JobTarget[], resume: ResumeEvidenceBundle, job: JobRequirementBundle): V5MatchAnalysis {
+  const judgmentBundle = buildRequirementJudgments(originalFit, job, resume)
+  const judgments = new Map(judgmentBundle.items.map(item => [item.requirementId, item]))
+  const fit = structuredClone(originalFit)
+  for (const link of fit.links) {
+    const judgment = judgments.get(link.targetId)
+    if (!judgment) continue
+    link.status = judgment.conflict ? 'conflicted' : judgment.status === 'direct' ? 'direct'
+      : judgment.status === 'transferable_or_partial' ? 'transferable' : judgment.status === 'not_met' ? 'explicit_gap' : 'unknown'
+    link.evidenceIds = judgment.evidenceIds
+    link.difference = judgment.unprovenAspects.map(item => item.text).join('；') || link.difference
+  }
   const targetById = new Map(targets.map(target => [target.id, target]))
   const requirementById = new Map(job.requirementAtoms.map(requirement => [requirement.requirementId, requirement]))
   const links = new Map(fit.links.map(link => [link.targetId, link]))
   const requirementsFor = (ids: string[]) => [...new Set(ids.flatMap(id => targetById.get(id)?.requirementIds ?? []))]
   const states = { direct: 'direct_match', transferable: 'transferable_match', weak_signal: 'currently_unproven', unknown: 'currently_unproven', explicit_gap: 'currently_unproven', conflicted: 'conflicting_evidence' } as const
   const evidence = new Map(resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
+  const practiceStrengths = sourcePracticeStrengths(originalFit, targets, resume)
   const gaps: V5MatchAnalysis['gaps'] = []
   const priority = { core: 0, supporting: 1, optional: 2, unclear: 3 }
   // Questions are optional follow-ups, not the source of gap analysis or writing advice.
@@ -191,6 +484,7 @@ export function projectLegacyMatch(fit: JobFitMap, targets: JobTarget[], resume:
   }
   const match: V5MatchAnalysis = {
     schemaVersion: '5.0.0',
+    judgmentBundle,
     // A task link never certifies a whole compound qualification. Use its own judgment.
     requirementMatches: job.requirementAtoms.map(requirement => {
       const link = links.get(requirement.requirementId)
@@ -198,12 +492,12 @@ export function projectLegacyMatch(fit: JobFitMap, targets: JobTarget[], resume:
         evidenceIds: link && ['direct', 'transferable'].includes(link.status) ? link.evidenceIds : [], confidence: 'medium',
         rationale: link ? [link.status, link.similarity, link.difference].filter(Boolean).join('；') : '当前材料未知，不等于没有能力。' }
     }),
-    strengths: fit.narratives.map((narrative, index) => ({ strengthId: `target_strength_${index}`,
-      requirementIds: requirementsFor(narrative.targetIds), evidenceIds: narrative.evidenceIds, statement: narrative.statement })),
+    strengths: [...fit.narratives.map((narrative, index) => ({ strengthId: `target_strength_${index}`,
+      requirementIds: requirementsFor(narrative.targetIds), evidenceIds: narrative.evidenceIds, statement: narrative.statement })), ...practiceStrengths],
     gaps,
-    positioning: { statement: fit.narratives.map(item => item.statement).join('；'),
+    positioning: { statement: [...fit.narratives.map(item => item.statement), ...practiceStrengths.map(item => item.statement)].join('；'),
       primaryRequirementIds: requirementsFor(fit.narratives.flatMap(item => item.targetIds)).slice(0, 3),
-      primaryEvidenceIds: [...new Set(fit.narratives.flatMap(item => item.evidenceIds))], forbiddenIdentityClaims: [] },
+      primaryEvidenceIds: [...new Set([...fit.narratives.flatMap(item => item.evidenceIds), ...practiceStrengths.flatMap(item => item.evidenceIds)])], forbiddenIdentityClaims: [] },
     scoreInputs: { mustHaveApplicable: 0, mustHaveDirect: 0, mustHaveTransferable: 0, coreOutcomeApplicable: 0, coreOutcomeDirect: 0, coreOutcomeTransferable: 0, evidenceClarityRatio: 0 },
     contextUsed: [],
   }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { EvidenceAtom } from '@/v5/types'
-import { findInterviewResultContinuations, hasIncompleteInterviewResult, interviewResultEvidenceAtoms } from '@/v5/interview-results'
+import { findInterviewResultContinuations, hasIncompleteInterviewResult, interviewResultEvidenceAtoms, interviewDeliveredArtifactOptions } from '@/v5/interview-results'
 
 function fixture() {
   const leftText = '结果/边界个人材料记录：门店目标下发及时率由 57.4%提升至 90.7% ，员工目标下发及时率由 43.3%提升至'
@@ -16,6 +16,42 @@ function fixture() {
 }
 
 describe('interview result continuation and completeness', () => {
+  test('a completed research artifact is supported literally without implying adoption or business impact', () => {
+    const text='用户研究：主导问卷、10+家门店调研、访谈、埋点与行为分析；2025.08.15成果表记录回收答卷367份，形成使用研究、埋点分析及重优化方向材料。'
+    const atom:EvidenceAtom={...fixture().left,evidenceId:'research',claimType:'action',status:'source_supported',riskFlags:[],qualifiers:[],verbatimText:text,normalizedClaim:text}
+    const outcome='2025.08.15成果表记录回收答卷367份，形成使用研究、埋点分析及重优化方向材料'
+    expect(interviewDeliveredArtifactOptions([atom])).toEqual([{evidenceId:'research',sourceScopeId:atom.sourceScopeId,text:outcome}])
+    expect(interviewResultEvidenceAtoms(['research'],[atom],outcome+'。')).toEqual([atom])
+    for(const invented of [outcome.replace('367','999'),outcome+'，已被采纳并提升转化率',outcome+'；当前尚未上线', '主导问卷、10+家门店调研']) {
+      expect(interviewResultEvidenceAtoms(['research'],[atom],invented)).toEqual([])
+    }
+    expect(interviewResultEvidenceAtoms([],[atom],outcome)).toEqual([])
+    const withFuture={...atom,verbatimText:text+'下一阶段预计转化率达到99%。'}
+    expect(interviewResultEvidenceAtoms(['research'],[withFuture],outcome)).toEqual([withFuture])
+    expect(interviewResultEvidenceAtoms(['research'],[withFuture],outcome+'，转化率达到99%')).toEqual([])
+    expect(interviewDeliveredArtifactOptions([{...atom,verbatimText:'开展问卷、门店调研与访谈。'}])).toEqual([])
+    for(const unsafe of [{...atom,status:'excluded' as const},{...atom,riskFlags:['uncertain' as const]},
+      {...atom,qualifiers:['仅计划']},{...atom,verbatimText:'计划形成研究报告'}, {...atom,verbatimText:'尚未完成研究报告'},
+      {...atom,verbatimText:'如果回收问卷则形成研究报告'}, {...atom,verbatimText:'建议准备形成分析材料'}]) {
+      expect(interviewDeliveredArtifactOptions([unsafe])).toEqual([])
+    }
+  })
+  test('a literal measured outcome survives an action primary label without admitting an invented result', () => {
+    const f=fixture(), text='扩展目标分配与消息提醒。2025.12目标下发及时率达到90.7%（2025.05基线为79.2%）。'
+    const atom:EvidenceAtom={...f.left,evidenceId:'mixed-action',claimType:'action',status:'source_supported',riskFlags:[],qualifiers:[],
+      verbatimText:text,normalizedClaim:text,numericAtoms:[{raw:'90.7%',valueText:'90.7',unit:'%',qualifier:null,period:null,ownerScope:'target-project'}]}
+    const result='2025.12目标下发及时率达到90.7%（2025.05基线为79.2%）。'
+    expect(interviewResultEvidenceAtoms(['mixed-action'],[atom],result)).toEqual([atom])
+    expect(interviewResultEvidenceAtoms(['mixed-action'],[atom],result.replace('90.7%','99%'))).toEqual([])
+    expect(interviewResultEvidenceAtoms([],[atom],result)).toEqual([])
+    expect(interviewResultEvidenceAtoms(['mixed-action'],[atom],'扩展目标分配与消息提醒。')).toEqual([])
+    for(const unsafe of [{...atom,status:'excluded' as const},{...atom,riskFlags:['uncertain' as const]},
+      {...atom,riskFlags:['future_or_planned' as const]},{...atom,qualifiers:['待核实']}]) {
+      expect(interviewResultEvidenceAtoms(['mixed-action'],[unsafe],result)).toEqual([])
+    }
+    const future={...atom,verbatimText:'预计目标下发及时率达到90.7%。'}
+    expect(interviewResultEvidenceAtoms(['mixed-action'],[future],future.verbatimText)).toEqual([])
+  })
   test('binds the real B0089–B0090 comparison while retaining both original units and qualifications', () => {
     const f = fixture(), before = structuredClone(f.atoms)
     expect(findInterviewResultContinuations(f.atoms)).toEqual([{ resultEvidenceId: 'result', previousEvidenceId: 'result', tailEvidenceId: 'tail' }])

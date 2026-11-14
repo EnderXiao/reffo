@@ -7,6 +7,9 @@
 import {describe, test, expect, beforeEach, jest} from '@jest/globals';
 import {useHistoryStore} from '../historyStore';
 import type {ResumeHistory} from '@/types';
+import {createCompletionDocument, createPlainCompletionDocument, type ResumeCompletionDocument} from '@/shared/resume-completion';
+import {RequestError} from '@/utils/request';
+import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary';
 
 jest.mock('@/services/resumeHistory', () => ({
   ...jest.requireActual<typeof import('@/services/resumeHistory')>(
@@ -25,6 +28,7 @@ jest.mock('@/services/resumeHistory', () => ({
 
 jest.mock('@/services/runtime-config', () => ({
   isLocalRuntimeEnvironment: jest.fn(async () => true),
+  getPublicRuntimeConfig: jest.fn(),
 }));
 
 // Mock storage 模块
@@ -38,10 +42,35 @@ jest.mock('@/utils/storage', () => ({
 
 import * as storage from '@/utils/storage';
 import {resumeHistoryApi} from '@/services/resumeHistory';
-import {isLocalRuntimeEnvironment} from '@/services/runtime-config';
+import {getPublicRuntimeConfig, isLocalRuntimeEnvironment} from '@/services/runtime-config';
 import {useAuthStore} from '@/store/authStore';
 
 const mockedResumeHistoryApi = resumeHistoryApi as jest.Mocked<typeof resumeHistoryApi>;
+const mockedHistoryCacheRead = storage.getJSON as jest.MockedFunction<(key: string) => Promise<ResumeHistory[] | null>>;
+
+function completionHistory(version: 'resume-completion-v1' | 'resume-completion-v2'): ResumeHistory {
+  const markdown = '- 负责需求分析。';
+  const legacy = createPlainCompletionDocument(markdown);
+  const document = version === 'resume-completion-v1' ? legacy : createCompletionDocument({
+    schemaVersion: version, documentId: legacy.documentId, blocks: legacy.blocks,
+  });
+  return {id: 'completion-history', position: '产品经理', company: '测试公司', name: '测试用户',
+    createdAt: '2026-11-10T00:00:00.000Z', qualityScore: 80, matchScore: 80, tags: [],
+    resumeContent: '源简历', jdContent: '目标岗位', optimizedContent: markdown, processResult: {
+      analysis: {quality_score: 80, strengths: [], weaknesses: [], suggestions: [], capability_summary: '',
+        structured_resume: {personal_info: {name: '测试用户'}, education: [], experience: [], projects: [], skills: {hard_skills: [], soft_skills: []}}},
+      matching: {match_score: 80, hard_requirements_match: [], skill_match: {matched_skills: [], missing_skills: [], match_percentage: 80},
+        experience_match: {years_required: 0, years_actual: 0, relevant_experience: [], match_percentage: 80}, optimization_suggestions: []},
+      optimized: {optimized_resume: markdown, completion_document: document, changes_summary: [], improvement_score: 0},
+      interview: {questions: [], story_recommendations: [], follow_up_questions: []},
+    }};
+}
+
+const completionSaveFailures = [
+  ['409 冲突', new RequestError('填写版本已更新', 'RESUME_COMPLETION_MISMATCH', 409)],
+  ['422 无效结构', new RequestError('填写结构无效', 'RESUME_COMPLETION_INVALID', 422)],
+  ['网络失败', new RequestError('网络连接失败', 'NETWORK_ERROR')],
+] as const;
 
 describe('History Store', () => {
   // 在每个测试前重置 store
@@ -61,6 +90,8 @@ describe('History Store', () => {
     mockedResumeHistoryApi.deleteHistory.mockResolvedValue(undefined);
     mockedResumeHistoryApi.clearHistories.mockResolvedValue(undefined);
     (isLocalRuntimeEnvironment as jest.Mock).mockResolvedValue(true);
+    jest.mocked(getPublicRuntimeConfig).mockResolvedValue({appEnv: 'prod', databaseProvider: 'supabase', authRequired: true,
+      supabase: {url: '', publishableKey: '', storageBucket: 'user-files', projectEnv: ''}});
   });
 
   describe('初始状态', () => {
@@ -211,6 +242,39 @@ describe('History Store', () => {
   });
 
   describe('loadHistorySummaries', () => {
+    test('local 免登录首页从后端刷新已有摘要，覆盖旧缓存空分数', async () => {
+      jest.mocked(getPublicRuntimeConfig).mockResolvedValue({appEnv: 'local', databaseProvider: 'sqlite', authRequired: false,
+        supabase: {url: '', publishableKey: '', storageBucket: 'user-files', projectEnv: ''}});
+      const history = {...completionHistory('resume-completion-v1'), matchScore: null};
+      mockedHistoryCacheRead.mockResolvedValueOnce([history]);
+      mockedResumeHistoryApi.getHistorySummaries.mockResolvedValue([toResumeHistorySummaryFromHistory({...history, matchScore: 87})]);
+
+      await useHistoryStore.getState().loadHistorySummaries({force: true});
+
+      expect(mockedResumeHistoryApi.getHistorySummaries).toHaveBeenCalledTimes(1);
+      expect(mockedResumeHistoryApi.getHistories).not.toHaveBeenCalled();
+      expect(useHistoryStore.getState().historySummaries[0].matchScore).toBe(87);
+      expect(useAuthStore.getState().session).toBeNull();
+    });
+
+    test.each([['prod', false], ['nonprod', false], ['local', true]] as const)('%s authRequired=%s 的游客不请求后端摘要', async (appEnv, authRequired) => {
+      jest.mocked(getPublicRuntimeConfig).mockResolvedValue({appEnv, databaseProvider: 'supabase', authRequired,
+        supabase: {url: '', publishableKey: '', storageBucket: 'user-files', projectEnv: ''}});
+      await useHistoryStore.getState().loadHistorySummaries({force: true});
+      expect(mockedResumeHistoryApi.getHistorySummaries).not.toHaveBeenCalled();
+    });
+
+    test('刷新失败回退旧缓存时不把已恢复的数字分数改回空值', async () => {
+      jest.mocked(getPublicRuntimeConfig).mockResolvedValue({appEnv: 'local', databaseProvider: 'sqlite', authRequired: false,
+        supabase: {url: '', publishableKey: '', storageBucket: 'user-files', projectEnv: ''}});
+      const history = {...completionHistory('resume-completion-v1'), matchScore: null};
+      useHistoryStore.setState({historySummaries: [toResumeHistorySummaryFromHistory({...history, matchScore: 87})]});
+      mockedHistoryCacheRead.mockResolvedValueOnce([history]);
+      mockedResumeHistoryApi.getHistorySummaries.mockRejectedValueOnce(new Error('离线'));
+      await useHistoryStore.getState().loadHistorySummaries({force: true});
+      expect(useHistoryStore.getState().historySummaries[0].matchScore).toBe(87);
+    });
+
     test('远端摘要短暂滞后时保留当前已保存的新记录', async () => {
       useAuthStore.setState({
         session: {accessToken: 'test-token', user: {id: 'user-1'}},
@@ -341,6 +405,30 @@ describe('History Store', () => {
   });
 
   describe('loadHistory', () => {
+    test('旧缓存详情命中时不把新摘要已恢复的数字分数改回空值', async () => {
+      const history = {...completionHistory('resume-completion-v1'), matchScore: null};
+      useHistoryStore.setState({histories: [history], historySummaries: [toResumeHistorySummaryFromHistory({...history, matchScore: 87})]});
+      await useHistoryStore.getState().loadHistory(history.id);
+      expect(useHistoryStore.getState().historySummaries[0].matchScore).toBe(87);
+      expect(mockedResumeHistoryApi.getHistory).not.toHaveBeenCalled();
+    });
+
+    test.each(['缺少摘要', '旧摘要'])('缓存命中时修复%s，不再请求接口', async kind => {
+      const history = completionHistory('resume-completion-v1');
+      useHistoryStore.setState({histories: [history], historySummaries: kind === '缺少摘要' ? [] : [{
+        ...toResumeHistorySummaryFromHistory(history), name: '旧姓名', company: '旧公司', position: '旧岗位',
+        matchScore: 10,
+      }]});
+
+      await useHistoryStore.getState().loadHistory(history.id);
+
+      expect(mockedResumeHistoryApi.getHistory).not.toHaveBeenCalled();
+      expect(useHistoryStore.getState().historySummaries).toEqual([expect.objectContaining({
+        id: history.id, name: history.name, position: history.position, matchScore: history.matchScore,
+      })]);
+      expect(useHistoryStore.getState().currentHistory).toBe(history);
+    });
+
     test('详情按 ID 加载并回填摘要，不拉取完整列表', async () => {
       useAuthStore.setState({
         session: {accessToken: 'test-token', user: {id: 'user-1'}},
@@ -371,7 +459,87 @@ describe('History Store', () => {
     });
   });
 
+  test('接收权威保存结果时同步详情、摘要和当前记录，保留其他卡片并去重', () => {
+    const history = completionHistory('resume-completion-v1');
+    const other = {...history, id: 'other-history', createdAt: '2026-11-09T00:00:00.000Z'};
+    useHistoryStore.getState().acceptHistory(other);
+    useHistoryStore.getState().acceptHistory({...history, company: '旧公司'});
+    useHistoryStore.getState().acceptHistory(history);
+
+    const state = useHistoryStore.getState();
+    expect(state.histories).toEqual([history, other]);
+    expect(state.historySummaries.map(item => [item.id, item.company])).toEqual([
+      [history.id, history.company], [other.id, other.company],
+    ]);
+    expect(state.currentHistory).toBe(history);
+  });
+
+  test('结果页强制恢复时忽略旧缓存并读取远端当前版本', async () => {
+    useAuthStore.setState({session: {accessToken: 'test-token', user: {id: 'user-1'}}, initialized: true});
+    const cached = completionHistory('resume-completion-v2');
+    const fresh = {...cached, optimizedContent: '远端当前版本'};
+    useHistoryStore.setState({histories: [cached]});
+    (storage.getJSON as jest.Mock).mockResolvedValue([cached]);
+    mockedResumeHistoryApi.getHistory.mockResolvedValue(fresh);
+    await expect(useHistoryStore.getState().loadHistory(cached.id, {force: true})).resolves.toEqual(fresh);
+    expect(mockedResumeHistoryApi.getHistory).toHaveBeenCalledWith(cached.id);
+    expect(useHistoryStore.getState().currentHistory?.optimizedContent).toBe('远端当前版本');
+  });
+
   describe('addHistory', () => {
+    test.each(completionSaveFailures)('v2 %s 不能作为本地保存成功，原有缓存保持不变', async (_label, error) => {
+      const existing = {...completionHistory('resume-completion-v1'), id: 'existing-history'};
+      const histories = [existing];
+      useHistoryStore.setState({histories, currentHistory: existing});
+      mockedResumeHistoryApi.saveHistory.mockRejectedValueOnce(error);
+
+      await expect(useHistoryStore.getState().addHistory(completionHistory('resume-completion-v2'))).rejects.toBe(error);
+
+      expect(useHistoryStore.getState().histories).toBe(histories);
+      expect(useHistoryStore.getState().currentHistory).toBe(existing);
+      expect(useHistoryStore.getState().historySummaries).toEqual([]);
+      expect(storage.setJSON).not.toHaveBeenCalled();
+      expect(useHistoryStore.getState().loading).toEqual({isLoading: false, error: error.message});
+    });
+
+    test.each([['未来版本', {schemaVersion: 'resume-completion-v3'}], ['损坏结构', null]] as const)(
+      '%s 的远端保存失败不能回退为本地成功', async (_label, document) => {
+        const history = completionHistory('resume-completion-v2');
+        history.processResult!.optimized.completion_document = document as unknown as ResumeCompletionDocument;
+        const error = new Error('远端拒绝');
+        mockedResumeHistoryApi.saveHistory.mockRejectedValueOnce(error);
+
+        await expect(useHistoryStore.getState().addHistory(history)).rejects.toBe(error);
+
+        expect(useHistoryStore.getState().histories).toEqual([]);
+        expect(storage.setJSON).not.toHaveBeenCalled();
+      },
+    );
+
+    test('同 ID 旧式请求不能在远端失败后覆盖已有 v2 缓存', async () => {
+      const existing = completionHistory('resume-completion-v2');
+      const histories = [existing];
+      useHistoryStore.setState({histories});
+      const error = new Error('远端拒绝降级');
+      mockedResumeHistoryApi.saveHistory.mockRejectedValueOnce(error);
+
+      await expect(useHistoryStore.getState().addHistory({...existing, processResult: undefined})).rejects.toBe(error);
+
+      expect(useHistoryStore.getState().histories).toBe(histories);
+      expect(storage.setJSON).not.toHaveBeenCalled();
+    });
+
+    test('有效 v1 文档保留本地保存回退能力', async () => {
+      const history = completionHistory('resume-completion-v1');
+      mockedResumeHistoryApi.saveHistory.mockRejectedValueOnce(new Error('网络连接失败'));
+
+      await expect(useHistoryStore.getState().addHistory(history)).resolves.toBe(history.id);
+
+      expect(useHistoryStore.getState().histories).toEqual([history]);
+      expect(storage.setJSON).toHaveBeenCalledWith('resume_histories', [history]);
+      expect(useHistoryStore.getState().loading.error).toBeNull();
+    });
+
     test('应该添加新的历史记录', async () => {
       const newHistory: ResumeHistory = {
         id: '1',
@@ -505,6 +673,72 @@ describe('History Store', () => {
   });
 
   describe('updateHistory', () => {
+    test.each(completionSaveFailures)('v2 %s 必须保持失败，不能更新本地缓存', async (_label, error) => {
+      const existing = completionHistory('resume-completion-v2');
+      const histories = [existing];
+      useHistoryStore.setState({histories, currentHistory: existing});
+      mockedResumeHistoryApi.updateHistory.mockRejectedValueOnce(error);
+
+      await expect(useHistoryStore.getState().updateHistory(existing.id, {qualityScore: 95})).rejects.toBe(error);
+
+      expect(useHistoryStore.getState().histories).toBe(histories);
+      expect(useHistoryStore.getState().currentHistory).toBe(existing);
+      expect(useHistoryStore.getState().historySummaries).toEqual([]);
+      expect(storage.setJSON).not.toHaveBeenCalled();
+      expect(useHistoryStore.getState().loading).toEqual({isLoading: false, error: error.message});
+    });
+
+    test('更新请求丢失填写结构时仍以已有 v2 记录要求远端确认', async () => {
+      const existing = completionHistory('resume-completion-v2');
+      const histories = [existing];
+      useHistoryStore.setState({histories});
+      const error = new Error('填写状态缺失');
+      mockedResumeHistoryApi.updateHistory.mockRejectedValueOnce(error);
+      const processResult = {...existing.processResult!, optimized: {optimized_resume: '旧客户端正文', changes_summary: [], improvement_score: 0}};
+
+      await expect(useHistoryStore.getState().updateHistory(existing.id, {processResult, optimizedContent: '旧客户端正文'})).rejects.toBe(error);
+
+      expect(useHistoryStore.getState().histories).toBe(histories);
+      expect(storage.setJSON).not.toHaveBeenCalled();
+    });
+
+    test('旧记录升级为 v2 的保存失败不覆盖 v1 缓存', async () => {
+      const existing = completionHistory('resume-completion-v1');
+      const histories = [existing];
+      useHistoryStore.setState({histories});
+      const error = new Error('远端不可用');
+      mockedResumeHistoryApi.updateHistory.mockRejectedValueOnce(error);
+
+      await expect(useHistoryStore.getState().updateHistory(existing.id, {
+        processResult: completionHistory('resume-completion-v2').processResult,
+      })).rejects.toBe(error);
+
+      expect(useHistoryStore.getState().histories).toBe(histories);
+      expect(storage.setJSON).not.toHaveBeenCalled();
+    });
+
+    test('有效 v1 文档更新保留本地回退能力', async () => {
+      const existing = completionHistory('resume-completion-v1');
+      useHistoryStore.setState({histories: [existing]});
+      mockedResumeHistoryApi.updateHistory.mockRejectedValueOnce(new Error('网络连接失败'));
+
+      await expect(useHistoryStore.getState().updateHistory(existing.id, {qualityScore: 95})).resolves.toBeUndefined();
+
+      expect(useHistoryStore.getState().histories).toEqual([{...existing, qualityScore: 95}]);
+      expect(storage.setJSON).toHaveBeenCalledWith('resume_histories', [{...existing, qualityScore: 95}]);
+      expect(useHistoryStore.getState().loading.error).toBeNull();
+    });
+
+    test('v2 记录经远端确认后正常新增和更新缓存', async () => {
+      const history = completionHistory('resume-completion-v2');
+      await expect(useHistoryStore.getState().addHistory(history)).resolves.toBe(history.id);
+      await expect(useHistoryStore.getState().updateHistory(history.id, {qualityScore: 95})).resolves.toBeUndefined();
+      expect(mockedResumeHistoryApi.saveHistory).toHaveBeenCalledWith(history);
+      expect(mockedResumeHistoryApi.updateHistory).toHaveBeenCalledWith(history.id, {qualityScore: 95});
+      expect(useHistoryStore.getState().histories).toEqual([{...history, qualityScore: 95}]);
+      expect(storage.setJSON).toHaveBeenLastCalledWith('resume_histories', [{...history, qualityScore: 95}]);
+    });
+
     test('应该更新指定的历史记录', async () => {
       const history: ResumeHistory = {
         id: '1',

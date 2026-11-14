@@ -4,13 +4,15 @@ import { createTargetingFixture } from './targeting-fixtures'
 import { v3FixtureEntry } from './entry-skeleton-fixtures'
 import { buildWritingPlan } from '@/v5/writing/plan'
 import { buildEntryWritingPlan, compileEntryWriting, entryWritingPayload, entryWritingV2OutputSchema, entryWritingV3OutputSchema, entryWritingOutputSchema,
-  ENTRY_WRITING_POLICY, materializeWrittenEntry, type WrittenEntry } from '@/v5/writing/entries'
+  materializeWrittenEntry, type WrittenEntry } from '@/v5/writing/entries'
 import { EntryJsonStream } from '@/v5/writing/entry-stream'
 import { writeValidatedEntries } from '@/v5/writing/entry-correction'
 import { FIVE_ELEMENTS, inspectEntrySkeleton, projectFactSegments, renderEntrySegments,
   type EntryCoverage, type EntrySegment } from '@/v5/writing/entry-skeleton'
 import { validateGeneratedResumeArtifact } from '@/v5/validators'
 import { SupportedWritingError } from '@/v5/writing/compiler'
+
+const ENTRY_WRITING_POLICY = 'entry-writing-v3' as const
 
 function fixture(text = '参与团队设计辅导系统，形成辅导能力设计。') {
   const result = createV5ResultFixture(), targeting = createTargetingFixture()
@@ -182,14 +184,14 @@ test('a source candidate stays a scoped suggestion and never expands claims', ()
   expect(compiled.artifact.claims.filter(claim => claim.outputPath === [...compiled.gapOutputPaths][0])[0].evidenceIds).toEqual([f.id])
 })
 
-test('output budgets remove low priority optional clauses while retaining every known fact', () => {
+test('editing guidance does not consume the fact-only output budget', () => {
   const f = fixture(); addGap(f, 'design_deliverable')
   const noGap = fixture().compile()
   f.input.policy.outputLength.hardMax = (noGap.artifact.markdown.match(/[\u4e00-\u9fff]/gu) ?? []).length + 2
   const compiled = f.compile()
-  expect(compiled.deliveryMarkdown).toBe(compiled.artifact.markdown)
-  expect(compiled.gapOutputPaths.size).toBe(0)
-  expect(compiled.writingIssues.some(issue => issue.code === 'WRITER_GAPS_OMITTED_FOR_LENGTH' && issue.severity === 'warning')).toBe(true)
+  expect(compiled.deliveryMarkdown).toContain('待完善')
+  expect(compiled.gapOutputPaths.size).toBe(1)
+  expect(compiled.writingIssues.some(issue => issue.code === 'WRITER_GAPS_OMITTED_FOR_LENGTH')).toBe(false)
 })
 
 test('leadership and collaborator normalization rewrite fact segments before both projections', () => {
@@ -234,6 +236,7 @@ test('bounded correction replaces a complete segment tree and preserves the othe
 test('every streamed v3 chunk boundary yields the same validated delivery preview', () => {
   const f = fixture(); addGap(f)
   const json = JSON.stringify(f.wire)
+  const expected = f.compile().deliveryParagraphs.get(f.brief.entryId)!
   for (let index = 0; index <= json.length; index++) {
     const delivered: string[] = []
     const parser = new EntryJsonStream(entry => {
@@ -243,7 +246,7 @@ test('every streamed v3 chunk boundary yields the same validated delivery previe
       delivered.push(...compiled.deliveryParagraphs.get(entry.entryId)!)
     })
     parser.push(json.slice(0, index)); parser.push(json.slice(index))
-    expect(delivered).toEqual(f.compile().deliveryParagraphs.get(f.brief.entryId)!)
+    expect(delivered).toEqual(expected)
   }
 })
 
@@ -280,7 +283,7 @@ test('a real project heading cannot be downgraded to a missing project name', ()
   expectCode(f.compile, 'WRITER_KNOWN_ELEMENT_BLANKED')
 })
 
-test('presentation budget retains the higher-value problem gap before a delivery-name suggestion', () => {
+test('presentation guidance cannot silently remove otherwise useful gaps', () => {
   const f = fixture(); addGap(f, 'design_deliverable')
   f.written.coverage.find(item => item.element === 'problem')!.status = 'missing'
   f.written.coverage.find(item => item.element === 'problem')!.evidenceIds = []
@@ -295,8 +298,8 @@ test('presentation budget retains the higher-value problem gap before a delivery
   f.input.policy.outputLength.hardMax = (withProblemOnly.match(/[\u4e00-\u9fff]/gu) ?? []).length
   const compiled = f.compile()
   expect(compiled.deliveryMarkdown).toContain('实际业务问题')
-  expect(compiled.deliveryMarkdown).not.toContain('类别示例')
-  expect(compiled.gapOutputPaths.size).toBe(1)
+  expect(compiled.deliveryMarkdown).toContain('类别示例')
+  expect(compiled.gapOutputPaths.size).toBe(2)
   expect(compiled.artifact.markdown).toBe(both.artifact.markdown)
 })
 
@@ -383,7 +386,7 @@ test('bounded correction moves a problem gap onto a sourced concrete action sent
 })
 
 
-test('v2 replay stays readable while the production provider contract accepts only v3', () => {
+test('v2 replay stays readable and distinct from the legacy v3 contract', () => {
   const f = fixture()
   const historical = {contractVersion: 'entry-writing-v2', entries: f.wire.entries.map(({gapDecisions: _decisions, ...entry}) => entry)}
   expect(entryWritingV2OutputSchema.safeParse(historical).success).toBe(true)

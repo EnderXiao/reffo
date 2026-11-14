@@ -1,5 +1,6 @@
 import type {
   ProcessResult,
+  ResumeHistory,
   OptimizedResume,
   ResultSessionContext,
   ResultSessionProgress,
@@ -19,10 +20,12 @@ export interface LatestResultSession {
   progress?: LatestResultSessionProgress
   sessionSequence?: number
   originHistoryId?: string
+  pendingHistoryCommit?: {snapshotKey: string; history: ResumeHistory}
   baseHistorySnapshot?: {
     optimizedContent: string
     completionDocument?: OptimizedResume['completion_document']
     updatedAt?: string
+    resolvedDigest?: string
   }
 }
 

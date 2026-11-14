@@ -6,6 +6,7 @@ import { shareLinkRepository } from '@/repositories/share-link-repository.factor
 import { buildShareSnapshot } from '@/shared/share-link-snapshot'
 import { createShareToken, hashShareToken, verifyShareToken } from '@/shared/share-link-token'
 import type { ResumeHistoryRecord } from '@/types'
+import {projectResumeHistoryScore} from '@/services/resume-history-score'
 import type {
   CreatedShareLink,
   PublicShareLink,
@@ -89,7 +90,7 @@ export class ShareLinkService {
         mode,
         token_hash: hashShareToken(token),
         idempotency_key_hash: idempotencyKeyHash,
-        snapshot: buildShareSnapshot(history, mode),
+        snapshot: buildShareSnapshot(projectResumeHistoryScore(history), mode),
         schema_version: 1,
         created_via: createdVia,
         expires_at: expiresAt.toISOString(),

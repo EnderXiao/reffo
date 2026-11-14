@@ -20,6 +20,7 @@ function toSourceResumeSummaryMetaFromSummary(
     id: summary.id,
     title: summary.title,
     sourceType: summary.sourceType,
+    ...(summary.parseId ? {parseId: summary.parseId} : {}),
     originalFileName: summary.originalFileName,
     createdAt: summary.createdAt,
     updatedAt: summary.updatedAt,

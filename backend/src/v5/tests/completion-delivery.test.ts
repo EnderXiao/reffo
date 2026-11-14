@@ -12,13 +12,12 @@ function candidate(entryId: string, element: GapSelectionCandidate['element'], o
       : element === 'project' ? 'identify_object' : 'explain_key_action'}
 }
 
-test('document selection admits zero to three useful gaps, balancing entries and preserving a stable priority', () => {
+test('document selection admits every useful gap without a count quota', () => {
   expect(selectCompletionGaps([])).toEqual([])
   const candidates = [candidate('a', 'responsibility', 0), candidate('a', 'problem', 1),
     candidate('b', 'problem', 2), candidate('c', 'solution', 3), candidate('d', 'result', 4)]
   const selected = selectCompletionGaps(candidates)
-  expect(selected.filter(item => item.disposition === 'selected').map(item => item.entryId)).toEqual(['a', 'b', 'c'])
-  expect(selected.filter(item => item.disposition === 'omitted_document_budget')).toHaveLength(2)
+  expect(selected.filter(item => item.disposition === 'selected').map(item => item.entryId)).toEqual(['a', 'a', 'b', 'c', 'd'])
   expect(selectCompletionGaps([...candidates].reverse())).toEqual(selected)
 })
 
@@ -27,6 +26,15 @@ test('duplicate scope facts get one gap; different projects may independently ne
   const selected = selectCompletionGaps([first, duplicate, candidate('third', 'problem', 2)])
   expect(selected.find(item => item.entryId === 'second')?.disposition).toBe('omitted_duplicate')
   expect(selected.filter(item => item.disposition === 'selected')).toHaveLength(2)
+})
+
+test('a sourced child project owns its finding blank while independent child studies stay separate', () => {
+  const finding = (entryId: string, order: number, parentScopeId?: string): GapSelectionCandidate => ({...candidate(entryId, 'result', order),
+    detailId: `${entryId}:finding`, detailKind: 'research_finding', subject: entryId, anchorEvidenceIds: [`${entryId}:evidence`], ...(parentScopeId ? {parentScopeId} : {})})
+  const selected = selectCompletionGaps([finding('job', 0), finding('project-a', 1, 'job'), finding('project-b', 2, 'job'), finding('independent-job', 3)])
+  expect(selected.find(item => item.entryId === 'job')?.disposition).toBe('omitted_duplicate')
+  expect(selected.filter(item => item.disposition === 'selected').map(item => item.entryId)).toEqual(['project-a', 'project-b', 'independent-job'])
+  expect(selectCompletionGaps([finding('job', 0)])[0]?.disposition).toBe('selected')
 })
 
 function duplicateParagraphDocument() {
@@ -45,7 +53,7 @@ test('renderer identity locates only the intended duplicate paragraph and export
   expect(document.documentId).toBe('generation:stable')
   expect(document.revision).toBe(0)
   expect(serializeDraft(document).split('\n')[2]).not.toContain('待完善')
-  expect(serializeDraft(document).split('\n')[3]).toContain('待完善')
+  expect(serializeDraft(document).split('\n')[3]).toContain('待完善：填一项实际研究过的使用问题')
   expect(serializeWithoutAllGapClauses(document)).toBe(artifactMarkdown)
   const before = JSON.stringify(document)
   expect(prepareResumeExport(document)).toEqual({ok: true, markdown: artifactMarkdown, omittedCount: 1})

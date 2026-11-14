@@ -15,6 +15,12 @@ import { startV5CheckpointCleanup } from '@/repositories/v5-checkpoint-repositor
 import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 import {generationJobRoutes} from '@/routes/generation-jobs'
 import {generationJobWorker} from '@/services/generation-jobs'
+import {resumeExportRoutes} from '@/routes/resume-export'
+import {cleanupResumeTransientData} from '@/services/resume-transient-data'
+import {cleanupProviderCallEvents} from '@/services/provider-call-recorder'
+import {evaluateResumeAction} from '@/services/resume-action-evaluator'
+import {registerResumeActionEvaluator, startResumeReviewWorker} from '@/services/resume-review-service'
+import {startResumeExportCleanup} from '@/services/resume-export-service'
 
 /**
  * 启动应用
@@ -58,7 +64,7 @@ async function bootstrap() {
       cors({
         origin: env.CORS_ORIGIN,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Reffo-Completion-Schema'],
         credentials: true,
       })
     )
@@ -112,6 +118,7 @@ async function bootstrap() {
     .use(parseRoutes)
     .use(sourceResumeRoutes)
     .use(resumeHistoryRoutes)
+    .use(resumeExportRoutes)
     .use(shareLinkRoutes)
     .use(generationJobRoutes)
     // 启动服务
@@ -122,6 +129,11 @@ async function bootstrap() {
 
   startSupabaseHarnessCleanup()
   startV5CheckpointCleanup()
+  startResumeExportCleanup()
+  registerResumeActionEvaluator(evaluateResumeAction)
+  startResumeReviewWorker()
+  const transientCleanup=setInterval(()=>{void Promise.all([cleanupResumeTransientData(),cleanupProviderCallEvents()]).catch(()=>console.error('[Retention] 短期数据清理暂未完成'))},60_000)
+  transientCleanup.unref?.()
   generationJobWorker.start()
 
   console.log('\n🚀 Reffo MVP 服务启动成功！')

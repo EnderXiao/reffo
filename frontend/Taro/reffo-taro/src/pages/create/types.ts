@@ -17,6 +17,7 @@ export interface UploadedResumeFile {
 }
 
 export interface ResumeUploadStepState {
+  parseId?: string
   status: ResumeUploadStatus
   progress: number
   file: UploadedResumeFile | null
@@ -44,6 +45,7 @@ export interface UploadedJobDescriptionFile {
 }
 
 export interface JobDescriptionStepState {
+  parseId?: string
   content: string
   companyName: string
   positionName: string

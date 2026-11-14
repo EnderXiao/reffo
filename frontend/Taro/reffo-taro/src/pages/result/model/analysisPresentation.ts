@@ -1,3 +1,4 @@
+import {isCurrentActionAnchor, type ResumeActionAnchor, type ResumeActionOutcome, type ResumeActionReview} from '@/shared/resume-actions'
 import {currentStrategyReview, resumeTextFingerprint} from '@/shared/resume-strategy'
 import type {
   MatchGapPriority,
@@ -29,6 +30,63 @@ export interface OptimizationStrategyViewItem {
   optimizedContent: string
   structured: boolean
   outcome?: ResumeStrategyOutcome
+  actionOutcome?: ResumeActionOutcome
+  remainingAspects?: string[]
+}
+
+export interface OptimizationStrategyGroup {
+  id: string
+  title: string
+  actionIds: string[]
+  requirementIds: string[]
+  relatedGapIds: string[]
+  items: OptimizationStrategyViewItem[]
+  priorityReason: string
+}
+
+/** 只按共享事实/细节/要求归组；不会用相似文案猜测两项能力属于同一主题。 */
+export function buildOptimizationStrategyGroups(result: ProcessResult, items = buildOptimizationStrategyViewItems(result, Infinity)): OptimizationStrategyGroup[] {
+  const plan = result.optimized.resolved_action_plan ?? result.optimized.action_plan ?? result.matching.action_plan
+  const actions = new Map(plan?.actions.map(action => [action.actionId, action]) ?? [])
+  const gaps = new Map(buildGapViewItems(result, Infinity).map(gap => [gap.id, gap]))
+  const intersects = (left: string[], right: string[]) => left.some(id => right.includes(id))
+  const family = (id: string) => {
+    const operation = actions.get(id)?.operation
+    return operation && ['express_supported_aspect', 'preserve_fact', 'use_source_answer', 'compress_duplicate'].includes(operation) ? 'expression' : operation ?? id
+  }
+  const related = (left: OptimizationStrategyViewItem, right: OptimizationStrategyViewItem) => {
+    const a = actions.get(left.id), b = actions.get(right.id)
+    if (!a || !b || family(left.id) !== family(right.id)) return false
+    if (intersects(a.detailIds, b.detailIds)) return true
+    const sameFacts = a.evidenceIds.length > 0 && a.evidenceIds.length === b.evidenceIds.length
+      && a.evidenceIds.every(id => b.evidenceIds.includes(id))
+    return sameFacts || (intersects(a.requirementIds, b.requirementIds) && intersects(a.sourceScopeIds, b.sourceScopeIds))
+  }
+  const groups: OptimizationStrategyViewItem[][] = []
+  for (const item of items) {
+    const matches = groups.filter(group => group.some(member => related(member, item)))
+    if (!matches.length) groups.push([item])
+    else {
+      matches[0].push(item)
+      for (const merged of matches.slice(1)) { matches[0].push(...merged); groups.splice(groups.indexOf(merged), 1) }
+    }
+  }
+  const unique = (values: string[]) => [...new Set(values)]
+  const rank = (group: OptimizationStrategyViewItem[]) => {
+    const relatedGaps = group.flatMap(item => item.relatedGapIds.flatMap(id => gaps.get(id) ?? []))
+    return relatedGaps.some(gap => gap.isRequired) ? 0 : relatedGaps.some(gap => gap.priority === 'high') ? 1
+      : group.some(item => actions.get(item.id)?.eligibility === 'executable') ? 2
+        : group.some(item => actions.get(item.id)?.eligibility === 'needs_user_fact') ? 3 : 4
+  }
+  return groups.map((members, order) => {
+    const requirementIds = unique(members.flatMap(item => actions.get(item.id)?.requirementIds ?? []))
+    const relatedGapIds = unique(members.flatMap(item => item.relatedGapIds))
+    const priority = rank(members)
+    return {id: `theme:${members.map(item => item.id).sort().join('|')}`, title: members.length > 1
+      ? `围绕同一${family(members[0].id) === 'add_detail_gap' ? '补充事实' : '实践与能力'}统一优化` : members[0].strategyPoint,
+      actionIds: members.map(item => item.id), requirementIds, relatedGapIds, items: members,
+      priorityReason: ['先回应岗位必要条件', '优先处理岗位影响较大的差距', '已有事实可直接优化表达', '补充一项事实后继续完善', '作为后续准备，保留事实边界'][priority], priority, order}
+  }).sort((a, b) => a.priority - b.priority || b.requirementIds.length - a.requirementIds.length || a.order - b.order)
 }
 
 function clean(value: unknown) {
@@ -93,6 +151,20 @@ export function buildOptimizationStrategyViewItems(
   limit = 4,
 ): OptimizationStrategyViewItem[] {
   const review = currentStrategyReview(result.optimized.strategy_review, result.optimized.optimized_resume)
+  const plan = result.optimized.resolved_action_plan
+  const actionPlan = plan ?? result.optimized.action_plan ?? result.matching.action_plan
+  if (actionPlan) {
+    const actionReview = currentActionReview(result)
+    return actionPlan.actions.map(action => {
+      const outcome = actionReview?.outcomes.find(item => item.actionId === action.actionId)
+      return {
+        id: action.actionId, relatedGapIds: [...action.analysisGapIds], strategyPoint: action.title,
+        rationale: action.expectedEffect, sourceQuote: '', optimizedContent: '', structured: true,
+        actionOutcome: outcome,
+        remainingAspects: outcome?.remainingAspectIds.flatMap(id => action.successConditions.find(condition => condition.aspectId === id)?.criterion ?? []),
+      }
+    }).slice(0, limit)
+  }
   const details = result.matching.optimization_strategy_details ?? []
   const orderedGaps = selectGapPreview(buildGapViewItems(result, Infinity), Infinity)
   const gapRank = (ids: string[]) => {
@@ -103,7 +175,7 @@ export function buildOptimizationStrategyViewItems(
     .filter(detail => clean(detail.strategy_point).length > 0)
     .map((detail, index) => ({
       id: clean(detail.id) || `S${index + 1}`,
-      relatedGapIds: cleanItems(detail.related_gap_ids, 4),
+      relatedGapIds: cleanItems(detail.related_gap_ids, Infinity),
       strategyPoint: clean(detail.strategy_point),
       rationale: clean(detail.rationale),
       sourceQuote: clean(detail.optimization_example?.source_quote),
@@ -131,6 +203,7 @@ export function buildOptimizationStrategyViewItems(
 }
 
 export function hasStaleStrategyReview(result: ProcessResult): boolean {
+  if (result.optimized.action_review) return !currentActionReview(result)
   const review = result.optimized.strategy_review
   return Boolean(review?.version === 'resume-strategy-v1'
     && typeof review.resumeFingerprint === 'string'
@@ -154,4 +227,34 @@ export function representativeStrategyReference(
 ): ResumeStrategyReference | undefined {
   if (outcome?.status !== 'linked' || !Array.isArray(outcome.references)) return undefined
   return outcome.references.find(reference => reference.quote.trim() && markdown.includes(reference.quote))
+}
+
+export type ResumeReference = ResumeStrategyReference | ResumeActionAnchor
+
+export function currentActionReview(result: ProcessResult): ResumeActionReview | undefined {
+  const {completion_document: document, action_review: review, resolved_action_plan: plan} = result.optimized
+  if (!document || !review || !plan || review.documentId !== document.documentId
+    || review.revision !== document.revision || review.resolvedDigest !== plan.resolvedDigest
+    || review.resumeFingerprint !== resumeTextFingerprint(result.optimized.optimized_resume)) return undefined
+  return review
+}
+
+export function actionOutcomeLabel(outcome: ResumeActionOutcome | undefined): string {
+  if (!outcome) return '等待正文处理'
+  return {adopted: '已应用到正文', partially_adopted: '部分应用', needs_material: '待补充事实',
+    not_adopted: '本次未采用', pending_review: '待核对落实'}[outcome.state]
+}
+
+export function strategyResumeReference(item: OptimizationStrategyViewItem, result: ProcessResult): ResumeReference | undefined {
+  const document = result.optimized.completion_document
+  if (item.actionOutcome && document) {
+    return item.actionOutcome.anchors.find(anchor => isCurrentActionAnchor(anchor, document))
+  }
+  return representativeStrategyReference(item.outcome, result.optimized.optimized_resume)
+}
+
+export function isCurrentResumeReference(reference: ResumeReference, result: ProcessResult): boolean {
+  if ('blockId' in reference) return Boolean(result.optimized.completion_document
+    && isCurrentActionAnchor(reference, result.optimized.completion_document))
+  return !hasStaleStrategyReview(result) && Boolean(findResumeReferenceLines(result.optimized.optimized_resume, reference.quote))
 }

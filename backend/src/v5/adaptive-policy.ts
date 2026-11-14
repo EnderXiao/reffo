@@ -231,6 +231,7 @@ export function buildAdaptiveStrategy(input: {
   job: JobRequirementBundle
   match: V5MatchAnalysis
   requestedOutputLanguage?: string
+  projectSelectionPolicy?: 'source_facets_v1'
 }): { profile: ResumeStrategyProfile; policy: GenerationPolicy; requiresResolution: boolean } {
   const evidenceCatalog = buildEvidencePlanningCatalog(input.resume)
   const metrics = buildMetrics(input.resume, evidenceCatalog)
@@ -283,6 +284,10 @@ export function buildAdaptiveStrategy(input: {
     : mode === 'balanced_targeted' ? Math.min(businessCount, 9)
       : Math.min(businessCount, 12)
   const targetBusinessBulletTarget = targetBusinessBulletMax
+  const projectSelectionTarget = modeConfig.hardProjectMax
+  const hardProjectMax = input.projectSelectionPolicy === 'source_facets_v1'
+    ? Math.max(projectSelectionTarget, Math.min(metrics.projectScopeCount + metrics.researchScopeCount,
+      Math.max(0, targetBusinessBulletTarget - metrics.experienceScopeCount))) : projectSelectionTarget
   let summaryPolicy: GenerationPolicy['summaryPolicy'] = evidenceRichness === 'sparse'
     ? businessCount < 2 ? 'omit_if_unsupported' : 'one_sentence'
     : evidenceRichness === 'rich' ? 'one_to_three_sentences' : 'one_to_two_sentences'
@@ -297,7 +302,8 @@ export function buildAdaptiveStrategy(input: {
     targetBusinessBulletTarget,
     targetBusinessBulletMax,
     hardTotalListItemMax: modeConfig.hardTotalListItemMax,
-    hardProjectMax: modeConfig.hardProjectMax,
+    hardProjectMax,
+    ...(input.projectSelectionPolicy ? {projectSelectionPolicy: input.projectSelectionPolicy, projectSelectionTarget} : {}),
     stableCoreCoverageMin: modeConfig.stableCoreCoverageMin,
     primaryRequirementCoverageMin: modeConfig.primaryRequirementCoverageMin,
     preferredDirectEvidenceRatio: target.distance === 'direct'

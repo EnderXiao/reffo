@@ -1,6 +1,7 @@
 import {create} from 'zustand'
 
 export interface LandingJobDraft {
+  parseId?: string
   id?: string
   content: string
   companyName: string
@@ -9,6 +10,7 @@ export interface LandingJobDraft {
 }
 
 export interface LandingResumeSelection {
+  parseId?: string
   source: 'preset' | 'upload'
   id: string
   title: string

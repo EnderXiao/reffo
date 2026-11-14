@@ -1,4 +1,7 @@
 import {apiClient} from './api';
+import {actionContentDigest} from '@/shared/resume-actions';
+import type {ResumeCompletionDocument} from '@/shared/resume-completion';
+import {normalizeMatching} from './resume';
 import type {ResumeHistory, ResumeHistorySummary} from '@/types';
 
 interface ResumeHistoryApiRecord {
@@ -9,7 +12,7 @@ interface ResumeHistoryApiRecord {
   created_at: string;
   updated_at: string;
   quality_score: number;
-  match_score: number;
+  match_score: number | null;
   tags: string[];
   resume_content: string;
   jd_content: string;
@@ -21,6 +24,7 @@ interface ResumeHistoryApiRecord {
   progress?: unknown;
   card_color?: string;
   card_pattern?: string;
+  commit_ack?: ResumeHistory['commitAck'];
 }
 
 interface ResumeHistorySummaryApiRecord {
@@ -31,7 +35,7 @@ interface ResumeHistorySummaryApiRecord {
   created_at: string;
   updated_at: string;
   quality_score: number;
-  match_score: number;
+  match_score: number | null;
   tags: string[];
   location: string;
   strategy_body: string;
@@ -42,6 +46,9 @@ interface ResumeHistorySummaryApiRecord {
 
 type ResumeHistoryApiPayload = Omit<ResumeHistoryApiRecord, 'id' | 'updated_at'> & {
   id?: string | null;
+  completion_edit?: import('@/shared/resume-completion').CompletionEditJournal;
+  commit_id?: string;
+  expected_document?: NonNullable<ResumeHistory['completionCommit']>['expectedDocument'];
 };
 
 type ResumeHistoryApiUpdatePayload = Partial<Omit<ResumeHistoryApiPayload, 'id'>>;
@@ -49,6 +56,7 @@ type ResumeHistoryApiUpdatePayload = Partial<Omit<ResumeHistoryApiPayload, 'id'>
 function toApiPayload(history: ResumeHistory): ResumeHistoryApiPayload {
   return {
     id: history.id || null,
+    ...(history.completionCommit ? {commit_id: history.completionCommit.commitId, expected_document: history.completionCommit.expectedDocument} : {}),
     position: history.position,
     company: history.company,
     name: history.name,
@@ -62,6 +70,7 @@ function toApiPayload(history: ResumeHistory): ResumeHistoryApiPayload {
     ...(history.optimizationSuggestions ? {optimization_suggestions: history.optimizationSuggestions} : {}),
     ...(history.changesSummary ? {changes_summary: history.changesSummary} : {}),
     ...(history.processResult ? {process_result: history.processResult} : {}),
+    ...(history.processResult?.optimized.completion_edit ? {completion_edit: history.processResult.optimized.completion_edit} : {}),
     ...(history.resultContext ? {result_context: history.resultContext} : {}),
     ...(history.progress ? {progress: history.progress} : {}),
     ...(history.cardColor ? {card_color: history.cardColor} : {}),
@@ -71,6 +80,7 @@ function toApiPayload(history: ResumeHistory): ResumeHistoryApiPayload {
 
 function toApiUpdatePayload(updates: Partial<ResumeHistory>): ResumeHistoryApiUpdatePayload {
   return {
+    ...(updates.completionCommit ? {commit_id: updates.completionCommit.commitId, expected_document: updates.completionCommit.expectedDocument} : {}),
     ...(updates.position !== undefined ? {position: updates.position} : {}),
     ...(updates.company !== undefined ? {company: updates.company} : {}),
     ...(updates.name !== undefined ? {name: updates.name} : {}),
@@ -86,6 +96,7 @@ function toApiUpdatePayload(updates: Partial<ResumeHistory>): ResumeHistoryApiUp
       : {}),
     ...(updates.changesSummary !== undefined ? {changes_summary: updates.changesSummary} : {}),
     ...(updates.processResult !== undefined ? {process_result: updates.processResult} : {}),
+    ...(updates.processResult?.optimized.completion_edit ? {completion_edit: updates.processResult.optimized.completion_edit} : {}),
     ...(updates.resultContext !== undefined ? {result_context: updates.resultContext} : {}),
     ...(updates.progress !== undefined ? {progress: updates.progress} : {}),
     ...(updates.cardColor !== undefined ? {card_color: updates.cardColor} : {}),
@@ -94,6 +105,7 @@ function toApiUpdatePayload(updates: Partial<ResumeHistory>): ResumeHistoryApiUp
 }
 
 function toResumeHistory(record: ResumeHistoryApiRecord): ResumeHistory {
+  const processResult = record.process_result as ResumeHistory['processResult'];
   return {
     id: record.id,
     position: record.position,
@@ -101,6 +113,7 @@ function toResumeHistory(record: ResumeHistoryApiRecord): ResumeHistory {
     name: record.name,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
+    ...(record.commit_ack ? {commitAck: record.commit_ack} : {}),
     qualityScore: record.quality_score,
     matchScore: record.match_score,
     tags: record.tags,
@@ -109,7 +122,7 @@ function toResumeHistory(record: ResumeHistoryApiRecord): ResumeHistory {
     optimizedContent: record.optimized_content,
     ...(record.optimization_suggestions ? {optimizationSuggestions: record.optimization_suggestions} : {}),
     ...(record.changes_summary ? {changesSummary: record.changes_summary} : {}),
-    ...(record.process_result ? {processResult: record.process_result as ResumeHistory['processResult']} : {}),
+    ...(processResult ? {processResult: {...processResult, matching: normalizeMatching(processResult.matching)}} : {}),
     ...(record.result_context ? {resultContext: record.result_context as ResumeHistory['resultContext']} : {}),
     ...(record.progress ? {progress: record.progress as ResumeHistory['progress']} : {}),
     ...(record.card_color ? {cardColor: record.card_color} : {}),
@@ -166,6 +179,15 @@ export class ResumeHistoryApi {
     const response = await apiClient.put<ResumeHistoryApiRecord>(
       `/resume-history/${encodeURIComponent(id)}`,
       toApiUpdatePayload(updates),
+    );
+    return toResumeHistory(response);
+  }
+
+  async upgradeCompletion(id: string, document: ResumeCompletionDocument): Promise<ResumeHistory> {
+    const response = await apiClient.post<ResumeHistoryApiRecord>(
+      `/resume-history/${encodeURIComponent(id)}/completion-upgrade`,
+      {expected_document: {documentId: document.documentId, revision: document.revision, digest: actionContentDigest(document)}},
+      {header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'}},
     );
     return toResumeHistory(response);
   }

@@ -1,7 +1,7 @@
 .reffo-result__resume-paper {
-  --completion-ink: #74531a;
-  --completion-fill: #fff7df;
-  --completion-border: #dfb658;
+  --completion-ink: #62605a;
+  --completion-fill: rgba(255, 218, 105, 0.15);
+  --completion-border: #ffffff;
   --completion-focus: #a3650d;
 }
 
@@ -29,17 +29,20 @@
 .reffo-completion__gap {
   display: inline;
   max-width: 100%;
-  padding: 2px 3px;
-  border: 1px solid var(--completion-border);
+  padding: 1px 3px;
+  border: 1px solid #ffffff;
   border-radius: 4px;
   color: var(--completion-ink);
-  background: var(--completion-fill);
+  background: linear-gradient(180deg, rgba(255, 224, 117, 0.15), rgba(255, 211, 78, 0.2));
+  box-shadow: inset 0 0 4PX rgba(255, 208, 74, 0.12);
   font: inherit;
+  vertical-align: baseline;
   line-height: inherit;
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;
   box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
   cursor: pointer;
 }
 
@@ -50,6 +53,7 @@
   border-radius: 0;
   color: inherit;
   background: transparent;
+  box-shadow: none;
 }
 
 .reffo-completion__gap:focus-visible,
@@ -78,11 +82,11 @@
   scroll-margin-block: 100px;
 }
 
-.reffo-completion__label {
+.reffo-completion__hint {
   color: var(--completion-ink);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 18px;
+  font: inherit;
+  line-height: inherit;
+  overflow-wrap: anywhere;
 }
 
 .reffo-completion__input {

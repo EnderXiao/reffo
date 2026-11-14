@@ -16,6 +16,7 @@ export const WRITING_QUALITY_CODES = new Set(['WRITER_CORE_RESULT_OMITTED', 'WRI
 
 export class SupportedWritingError extends Error {
   readonly code = 'SUPPORTED_WRITING_VALIDATION_FAILED' as const
+  recoveryDiagnostics?: import('./recovery-diagnostics').WritingRecoveryDiagnostics
   constructor(
     readonly issues: ValidationIssue[],
     readonly sourceParagraphIndicesByPath: ReadonlyMap<string, readonly number[]> = new Map(),
