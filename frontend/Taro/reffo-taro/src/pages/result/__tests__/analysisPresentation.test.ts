@@ -74,30 +74,34 @@ function buildResult(): ProcessResult {
 }
 
 describe('analysis presentation', () => {
-  test('preserves generated storytelling points alongside source references', () => {
+  test('讲述要点与明确的源简历引用一同保留', () => {
     const result = buildResult()
     result.interview.story_recommendations = [{
       title: '用户调研', background: '负责用户调研', result: '推进方案落地',
       storytelling_approach: ['  先说明调研背景  ', '说明本人负责的工作', ''],
+      source_references: [{evidence_id: 'research-evidence', source_scope_id: 'experience',
+        source_quote: '负责用户调研和方案落地', source_kind: 'source_resume'}],
     }]
     const [story] = buildInterviewStoryViewItems(result, '负责用户调研和方案落地', '岗位要求用户调研')
     expect(story.storytellingApproach).toEqual(['先说明调研背景', '说明本人负责的工作'])
-    expect(story.resumeQuote).toBe('负责用户调研和方案落地')
+    expect(story.sourceReferences).toEqual(result.interview.story_recommendations[0].source_references)
+    expect(story.sourceGroups).toMatchObject([{sourceKind: 'source_resume', evidenceIds: ['research-evidence'],
+      paragraphs: ['负责用户调研和方案落地']}])
     expect(story.jdReferences).toEqual([])
-    expect(story.fullJd).toBe('岗位要求用户调研')
   })
 
-  test('keeps source references when historical interview data has no storytelling points', () => {
+  test('历史故事没有来源引用时保留正文，不从简历或岗位原文猜测', () => {
     const result = buildResult()
     result.interview.story_recommendations = [{
       title: '用户调研', background: '负责用户调研', result: '推进方案落地',
       storytelling_approach: [],
     }]
     const [story] = buildInterviewStoryViewItems(result, '负责用户调研和方案落地', '岗位要求用户调研')
+    expect(story).toMatchObject({title: '用户调研', background: '负责用户调研', result: '推进方案落地'})
     expect(story.storytellingApproach).toEqual([])
-    expect(story.resumeQuote).toBeTruthy()
+    expect(story.sourceReferences).toEqual([])
+    expect(story.sourceGroups).toEqual([])
     expect(story.jdReferences).toEqual([])
-    expect(story.fullJd).toBeTruthy()
   })
 
   test('does not create generic stories when recommendations have not been generated', () => {
@@ -273,16 +277,22 @@ describe('行动方案与正文联动', () => {
   })
 })
 
-test('新版面试故事只展示精确证据引用，空引用不回退到相似源文', () => {
+test('精确保留用户补充引用，空引用和历史岗位ID不触发猜测', () => {
   const result = buildResult()
+  const jdContent = '岗位要求调研'
+  result.matching.jd_structure = {basic_info: {title: '产品经理'}, hard_requirements: {required_skills: []},
+    responsibilities: [], tasks: [], soft_skills: [], nice_to_have: [], requirement_sources: [
+      {requirement_id: 'R1', source_quote: jdContent, source_block_id: 'jd-block', source_span: {start: 0, end: jdContent.length}},
+    ]}
   result.interview.story_recommendations = [{title: '用户调研', background: '实际访谈背景', result: '形成报告', storytelling_approach: ['准备说明本人角色'],
     source_references: [{evidence_id: 'user-detail', source_scope_id: 'experience', source_quote: '完成三名用户访谈', source_kind: 'user_fact'}],
     related_requirement_ids: ['R1'], action_ids: ['action-1']},
   {title: '另一个故事', background: '', result: '', storytelling_approach: [], source_references: []}]
-  const items = buildInterviewStoryViewItems(result, '源简历里只写参与需求梳理', '岗位要求调研')
-  expect(items[0].resumeQuote).toBe('')
-  expect(items[0].sourceReferences[0].source_quote).toBe('完成三名用户访谈')
-  expect(items[0].relatedRequirementIds).toEqual(['R1'])
-  expect(items[1].hasStableReferences).toBe(true)
-  expect(items[1].resumeQuote).toBe('')
+  const items = buildInterviewStoryViewItems(result, '源简历里只写参与需求梳理', jdContent)
+  expect(items[0].sourceReferences).toEqual(result.interview.story_recommendations[0].source_references)
+  expect(items[0].sourceGroups).toMatchObject([{sourceKind: 'user_fact', evidenceIds: ['user-detail'], paragraphs: ['完成三名用户访谈']}])
+  expect(items[0].jdReferences).toEqual([])
+  expect(items[1].sourceReferences).toEqual([])
+  expect(items[1].sourceGroups).toEqual([])
+  expect(items[1].jdReferences).toEqual([])
 })
