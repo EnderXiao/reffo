@@ -51,6 +51,8 @@ import {
   type GenerationTask,
 } from '@/services/backgroundGeneration'
 import {useBackgroundGenerationStore} from '@/store/backgroundGenerationStore'
+import {resumeApi} from '@/services/resume'
+import * as jobMetadataUtils from './utils/jobMetadata'
 
 export interface CreatePageViewModel {
   currentStep: CreateStepId
@@ -59,6 +61,7 @@ export interface CreatePageViewModel {
   resumeSummaryState: ResumeSummaryStepState | null
   jobDescriptionState: JobDescriptionStepState
   generationState: CreateGenerationState | null
+  generationError: string | null
   isHistoryEditMode: boolean
   editingHistoryCard: HomeCardItem | null
   canSaveCurrentStep: boolean
@@ -177,6 +180,7 @@ function buildJobDescriptionStateFromHistory(history: ResumeHistory): JobDescrip
 
   return {
     content: context?.jdContent || history.jdContent,
+    ...(context?.jdParseId ? {parseId: context.jdParseId} : {}),
     companyName: context?.company || history.company,
     positionName: context?.position || history.position,
     baseLocation: context?.location || '',
@@ -399,7 +403,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     currentStep,
     transitionToStep,
     replaceStep,
-  } = useCreateFlowRoute(initialCreateStep)
+  } = useCreateFlowRoute(initialCreateStep, {preloadInitialStep: !shouldAutoGenerateLanding})
   const [editingHistory, setEditingHistory] = useState<ResumeHistory | null>(null)
   const [hasLoadedEditingHistory, setHasLoadedEditingHistory] = useState(!isHistoryEditMode)
   const [hasResolvedLatestSourceResume, setHasResolvedLatestSourceResume] =
@@ -422,6 +426,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       return landingJob
         ? {
             ...initial,
+            ...(landingJob.parseId ? {parseId: landingJob.parseId} : {}),
             companyName: landingJob.companyName,
             positionName: landingJob.positionName,
             baseLocation: landingJob.baseLocation,
@@ -431,6 +436,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   const [generationState, setGenerationState] = useState<CreateGenerationState | null>(
     null,
   )
+  const [generationError, setGenerationError] = useState<string | null>(null)
   const [isSavingCurrentStep, setIsSavingCurrentStep] = useState(false)
   const latestSourceResume = useSourceResumeStore(state => state.latestSourceResume)
   const latestSourceResumeSummary =
@@ -640,7 +646,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         position,
         ...(location ? {location} : {}),
         resumeContent: editingHistory.resultContext?.resumeContent || editingHistory.resumeContent,
+        ...(editingHistory.resultContext?.resumeParseId ? {resumeParseId: editingHistory.resultContext.resumeParseId} : {}),
         jdContent: buildJobDescriptionPayload(jobDescriptionState),
+        ...(jobDescriptionState.parseId ? {jdParseId: jobDescriptionState.parseId} : {}),
       },
     })
   }, [
@@ -648,6 +656,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     jobDescriptionState.baseLocation,
     jobDescriptionState.companyName,
     jobDescriptionState.content,
+    jobDescriptionState.parseId,
     jobDescriptionState.positionName,
   ])
 
@@ -693,6 +702,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     setResumeUploadState(previous => ({
       ...previous,
       markdown: content,
+      ...(!previous.file ? {parseId: undefined} : {}),
     }))
   }
 
@@ -759,6 +769,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       status: 'idle',
       progress: 0,
       file: null,
+      parseId: undefined,
       errorMessage: null,
     }))
   }
@@ -790,6 +801,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
             }
           : null,
         markdown: sourceResume.resumeMarkdown,
+        parseId: sourceResume.parseId ?? undefined,
         errorMessage: null,
       }))
     })
@@ -859,6 +871,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
             ...previous,
             status: 'uploading',
             progress: 0,
+            parseId: undefined,
             file: pendingFile,
             errorMessage: null,
           }))
@@ -890,6 +903,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         progress: 100,
         file: uploadedFile,
         markdown: parsedFile.extractedText,
+        parseId: parsedFile.parseId,
         errorMessage: null,
       }))
 
@@ -908,6 +922,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         ...previous,
         status: 'error',
         progress: 0,
+        parseId: undefined,
         file: null,
         errorMessage: uploadCardMessage,
       }))
@@ -940,6 +955,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
           attachmentStatus: 'error',
           attachmentProgress: 0,
           attachment: null,
+          parseId: undefined,
           attachmentErrorMessage: validationMessage,
         }))
         feedback.error(validationMessage)
@@ -955,6 +971,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         attachmentStatus: 'uploading',
         attachmentProgress: 8,
         attachment: null,
+        parseId: undefined,
         attachmentErrorMessage: null,
       }))
       startJobAttachmentProgress(requestId)
@@ -980,6 +997,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         attachmentStatus: 'success',
         attachmentProgress: 100,
         attachment: parsedAttachment.attachment,
+        parseId: parsedAttachment.parseId,
         inputMode: 'manual',
         content: parsedAttachment.content,
         companyName:
@@ -1005,6 +1023,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         attachmentStatus: 'error',
         attachmentProgress: 0,
         attachment: null,
+        parseId: undefined,
         attachmentErrorMessage: message,
       }))
       feedback.error(message)
@@ -1049,6 +1068,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
           title: payload.title,
           resume_markdown: payload.resumeMarkdown,
           source_type: payload.sourceType,
+          parse_id: payload.sourceType === 'file' ? resumeUploadState.parseId ?? null : null,
           original_file_name: payload.originalFileName,
         })
 
@@ -1095,7 +1115,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
             position,
             ...(location ? {location} : {}),
             resumeContent,
+            ...(history.resultContext?.resumeParseId ? {resumeParseId: history.resultContext.resumeParseId} : {}),
             jdContent: jdText,
+            ...(jobDescriptionState.parseId ? {jdParseId: jobDescriptionState.parseId} : {}),
           },
         })
 
@@ -1133,6 +1155,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     generationPresentationPromiseRef.current = generationPresentationPromise
     const workspaceRunId = resumeWorkspaceActions.startGeneration('analyzing')
     workspaceGenerationRunRef.current = workspaceRunId
+    setGenerationError(null)
     const waitForGenerationPresentation = async () => {
       await generationPresentationPromise
       return generationRequestRef.current === requestId && !backgroundNavigationRef.current
@@ -1145,6 +1168,14 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         : latestSourceResume?.resumeMarkdown.trim() ||
           workspaceSourceResume.trim() ||
           resumeUploadState.markdown.trim()
+      const resumeParseId = isLandingFlow ? landingResume?.parseId
+        : latestSourceResume?.resumeMarkdown.trim() ? latestSourceResume.parseId ?? undefined
+        : resumeUploadState.markdown.trim() === resumeMarkdown ? resumeUploadState.parseId : undefined
+      const jdParseId = jobDescriptionState.parseId || (isLandingFlow ? landingJob?.parseId : undefined)
+      const parseTrace = {
+        ...(resumeParseId ? {resumeParseId} : {}),
+        ...(jdParseId ? {jdParseId} : {}),
+      }
       const jdText = buildJobDescriptionPayload(jobDescriptionState)
 
       if (!resumeMarkdown) {
@@ -1170,6 +1201,8 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       if (!isLandingFlow) {
         let task = await generationTasksApi.create({
           request_id: generationSeed, resume_markdown: resumeMarkdown, jd_text: jdText,
+          ...(resumeParseId ? {resume_parse_id: resumeParseId} : {}),
+          ...(jdParseId ? {jd_parse_id: jdParseId} : {}),
           company: jobDescriptionState.companyName.trim(), position: jobDescriptionState.positionName.trim(),
           location: jobDescriptionState.baseLocation.trim(),
         })
@@ -1304,13 +1337,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
 
       const presetJdId = isLandingFlow ? landingJob?.id : undefined
-      const [{resumeApi}, jobMetadataUtils] = await Promise.all([
-        import('@/services/resume'),
-        import('./utils/jobMetadata'),
-      ])
       const analysis = isLandingFlow
-        ? await resumeApi.analyzeResume(resumeMarkdown, {landing: true})
-        : await resumeApi.analyzeResume(resumeMarkdown)
+        ? await resumeApi.analyzeResume(resumeMarkdown, {landing: true, ...parseTrace})
+        : await resumeApi.analyzeResume(resumeMarkdown, parseTrace)
 
       if (generationRequestRef.current !== requestId) {
         return false
@@ -1322,7 +1351,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       const matching = await resumeApi.matchResume(
         analysis,
         presetJdId ? {presetJdId} : jdText,
-        {landing: isLandingFlow},
+        {landing: isLandingFlow, ...parseTrace},
       )
 
       if (generationRequestRef.current !== requestId) {
@@ -1372,6 +1401,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
           location: resolvedBaseLocation,
           resumeContent: resumeMarkdown,
           jdContent: jdText,
+          ...parseTrace,
           ...(presetJdId ? {presetJdId} : {}),
         },
         progress: {
@@ -1394,9 +1424,6 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
 
       if (isLandingFlow && options.onLandingGenerationComplete) {
-        if (!await waitForGenerationPresentation()) {
-          return generationRequestRef.current === requestId
-        }
         await options.onLandingGenerationComplete(initialResultSession)
         return true
       }
@@ -1412,6 +1439,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
       const message = error instanceof Error ? error.message : '生成失败，请重试'
       resumeWorkspaceActions.failGeneration(workspaceRunId, message)
+      setGenerationError(/ChunkLoadError|Loading (?:CSS )?chunk|Failed to fetch dynamically imported module/i.test(message)
+        ? '页面资源加载失败，请检查连接后重试；如仍失败，请刷新页面。'
+        : message)
       console.error('process resume failed', error)
       feedback.error(message)
       return false
@@ -1475,6 +1505,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       workspaceGenerationRunRef.current = null
     }
     setGenerationState(null)
+    setGenerationError(null)
     setIsSavingCurrentStep(false)
   }
 
@@ -1579,6 +1610,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     resumeSummaryState,
     jobDescriptionState,
     generationState,
+    generationError,
     isHistoryEditMode,
     editingHistoryCard,
     canSaveCurrentStep,

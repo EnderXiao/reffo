@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { env } from '@/config/env'
 import { createDigest } from '@/harness/run-context'
 import { createHarnessEvent } from '@/harness/events'
-import { normalizeMarkdownText } from '@/services/text-normalizer'
+import {normalizeOcrText, recordOcrTextProjection} from './ocr-normalization'
 import type {
   OcrProvider,
   OcrProviderOptions,
@@ -371,7 +371,9 @@ export class GlmOcrProvider implements OcrProvider {
         )
       }
 
-      const rawText = normalizeMarkdownText(pickText(payload))
+      const ocrRawText = pickText(payload)
+      const normalized = normalizeOcrText(ocrRawText)
+      const rawText = normalized.text
       if (!rawText) {
         throw new OcrProviderError('OCR_EMPTY_OUTPUT', 'GLM-OCR 未返回可用文本')
       }
@@ -385,10 +387,12 @@ export class GlmOcrProvider implements OcrProvider {
         fileName: input.fileName,
         fileType: input.fileType,
         rawText: structured?.jdText || rawText,
+        ocrRawText,
         markdown: input.purpose === 'resume' ? rawText : undefined,
         structured,
         usage,
-        warnings: [],
+        warnings: normalized.warnings,
+        normalization: recordOcrTextProjection(normalized.diagnostic, rawText, structured?.jdText || rawText),
       }
 
       if (options.eventBus && options.stepContext) {

@@ -6,6 +6,16 @@ import { validateInterviewPreparation } from '@/v5/validators'
 import type { EvidenceAtom, InterviewPreparation } from '@/v5/types'
 
 describe('P10 evidence context', () => {
+  test('explicit story options partition references by their real source scope',()=>{
+    const result=createV5ResultFixture(), context=buildInterviewContext(result)
+    const atoms=context.resumeEvidenceBundle.evidenceAtoms
+    expect(context.resumeEvidenceBundle.storyScopeOptions.length).toBeGreaterThan(0)
+    for(const group of context.resumeEvidenceBundle.storyScopeOptions) {
+      expect(group.evidenceIds.every(id=>atoms.find(atom=>atom.evidenceId===id)?.sourceScopeId===group.scopeId)).toBe(true)
+      expect(group.citationRule).toContain('同公司任职')
+    }
+    expect(context.resumeEvidenceBundle.storyScopeOptions.flatMap(group=>group.evidenceIds).sort()).toEqual(atoms.map(atom=>atom.evidenceId).sort())
+  })
   test('keeps every usable gap and delivered-claim reference with complete original evidence and boundaries', () => {
     const result = createV5ResultFixture()
     const source = result.resumeEvidenceBundle.evidenceAtoms.find(atom => atom.claimType === 'deliverable')!

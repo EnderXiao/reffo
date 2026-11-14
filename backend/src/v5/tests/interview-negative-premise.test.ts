@@ -76,9 +76,9 @@ describe('P10 source-backed negative premises', () => {
     expect(f.validate().passed).toBe(false)
     f.preparation.questions[0].question = '材料尚未明确团队管理职责，请说明是否承担及实际职责边界？'
     expect(f.validate().passed).toBe(true)
-    expect(compileV5Prompt({ component: 'P10', envelope: { payload: {} } }).promptVersion).toBe('5.0.0-p10-interview-preparation-r9')
+    expect(compileV5Prompt({ component: 'P10', envelope: { payload: {} } }).promptVersion).toBe('5.1.0-p10-interview-links-v5-r14')
     const repair = compileV5Prompt({ component: 'P10R', envelope: { payload: {} } })
-    expect(repair.promptVersion).toBe('5.0.0-p10r-interview-repair-r9')
+    expect(repair.promptVersion).toBe('5.1.0-p10r-interview-links-v5-r14')
     expect(repair.messages[0].content).toContain('UNSUPPORTED_INTERVIEW_NEGATIVE_PREMISE')
   })
 })

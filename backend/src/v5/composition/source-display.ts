@@ -14,6 +14,8 @@ export function sourceBusinessDisplayText(value: string) {
     // This is an editing instruction, not a claim about the candidate. The
     // preceding "未真实开发上线" (when present) remains verbatim.
     .replace(/[，,；;]\s*不写商业收益或规模化结果[。.]?$/u, '。')
+    // Source page navigation has no candidate fact; keep every preceding result.
+    .replace(/(?:^|(?<=[。.!！]))\s*(?:[\p{Script=Han}、\s]{0,40}(?:成果|详情|内容|资料))?(?:详见|见)(?:第[一二三四五六七八九十0-9]+页|下页|附页)[。.]?/gu, '')
     .trim()
 }
 

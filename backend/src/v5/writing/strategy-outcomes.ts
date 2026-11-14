@@ -4,6 +4,7 @@ import { normalizeEntryFact, type EntryWritingPlan } from './entries'
 import { buildWritingIntents, type EntryStrategyAction } from './intents'
 import { buildWritingFact, isWritingBoundaryContext } from './facts'
 import { hasIncompleteMetricValue } from '@/v5/composition/source-display'
+import { sourceUncertainties } from './source-uncertainties'
 
 export interface StrategyActionItem {
   strategyId: string
@@ -29,19 +30,19 @@ export function completeEntryStrategyEvidence(input: {
   const targeting = plan.base.targeting
   if (!targeting) return plan
   const atoms = new Map(input.resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
+  const uncertainIds = new Set([...new Set(input.resume.evidenceAtoms.map(atom => atom.sourceScopeId))]
+    .flatMap(scopeId => sourceUncertainties(input.resume.evidenceAtoms, scopeId).map(signal => signal.evidenceId)))
   const intents = buildWritingIntents({ ...targeting, resume: input.resume,
     selectedEvidenceIds: new Set(atoms.keys()) })
   const priority = { high: 0, medium: 1, low: 2 }
   const seen = new Set<string>()
-  let scheduled = 0
   for (const gap of [...input.match.gaps].sort((a, b) => priority[a.priority] - priority[b.priority])) {
-    if (scheduled >= 3) break
     if (seen.has(gap.gapId)) continue
     seen.add(gap.gapId)
     const match = { ...input.match, gaps: [gap] }
     const isScheduled = (entryPlan: EntryWritingPlan) => buildStrategyActionPlan({ ...input, match, entryPlan })
       .items.some(item => item.state === 'scheduled')
-    if (isScheduled(plan)) { scheduled++; continue }
+    if (isScheduled(plan)) continue
     const exactTarget = targeting.targets.find(target => `target_gap_${target.id}` === gap.gapId)
     const targets = exactTarget ? [exactTarget] : targeting.targets.filter(target =>
       target.requirementIds.some(id => gap.requirementIds.includes(id)))
@@ -50,7 +51,7 @@ export function completeEntryStrategyEvidence(input: {
     const options = plan.entries.filter(entry => entry.slot.kind === 'business_bullet' && entry.scopeId)
       .flatMap(entry => intents.filter(intent => intent.targetIds.some(id => targetIds.has(id))
         && intent.evidenceIds.some(id => gap.evidenceIds.includes(id))
-        && intent.expressionAngle.trim() && intent.expressionAngle.trim() === gap.safeHandling.trim()
+        && Boolean(intent.expressionAngle.trim())
         && intent.evidenceIds.every(id => atoms.get(id)?.sourceScopeId === entry.scopeId))
         .map(intent => ({entry, intent})))
       .sort((a, b) => b.intent.evidenceIds.filter(id => b.entry.coreEvidenceIds.includes(id)).length
@@ -64,7 +65,7 @@ export function completeEntryStrategyEvidence(input: {
         const expanded = candidate.base.expandedEvidenceIds[id] ?? [id]
         if (expanded.some(sourceId => {
           const source = atoms.get(sourceId)
-          return !source || source.sourceScopeId !== destination.scopeId || !buildWritingFact(source)
+          return !source || uncertainIds.has(sourceId) || source.sourceScopeId !== destination.scopeId || !buildWritingFact(source)
         })) return null
         const fact = existing ?? buildWritingFact(atoms.get(id)!)
         if (!fact || fact.scopeId !== destination.scopeId) return null
@@ -92,7 +93,6 @@ export function completeEntryStrategyEvidence(input: {
       if (scope) scope.selectedEvidenceIds = [...new Set([...scope.selectedEvidenceIds, ...missing])]
       if (!isScheduled(candidate)) continue
       plan = candidate
-      scheduled++
       break
     }
   }
@@ -113,7 +113,6 @@ export function buildStrategyActionPlan(input: {
   const allIntents = intentsFor(input.resume.evidenceAtoms.map(atom => atom.evidenceId))
   const entryIntents = new Map(businessEntries.map(entry => [entry.entryId, intentsFor(entry.facts.map(fact => fact.evidenceId))]))
   const priority = { high: 0, medium: 1, low: 2 }
-  let scheduled = 0
   const decisions = new Map<string, StrategyActionItem>()
   for (const gap of [...input.match.gaps].sort((a, b) => priority[a.priority] - priority[b.priority])) {
     const strategyId = `strategy_${gap.gapId}`
@@ -141,7 +140,7 @@ export function buildStrategyActionPlan(input: {
     const relevant = (intent: ReturnType<typeof intentsFor>[number]) => intent.targetIds.some(id => targetIds.has(id))
       && intent.evidenceIds.some(id => usableIds.includes(id))
       // A request to verify missing qualifications is not a writing operation.
-      && Boolean(intent.expressionAngle.trim()) && intent.expressionAngle.trim() === gap.safeHandling.trim()
+      && Boolean(intent.expressionAngle.trim())
     if (!allIntents.some(relevant)) continue
     item.state = 'not_selected'
     item.explanation = '这条建议所需的相关材料未完整选入本次对应经历。'
@@ -151,11 +150,6 @@ export function buildStrategyActionPlan(input: {
         - a.intent.evidenceIds.filter(id => a.entry.coreEvidenceIds.includes(id)).length || a.entry.order - b.entry.order)
     const selected = options[0]
     if (!selected) continue
-    if (scheduled >= 3) {
-      item.explanation = '本次优先处理了另外三条策略，这条建议暂未纳入。'
-      continue
-    }
-    scheduled++
     item.state = 'scheduled'
     item.explanation = ''
     item.assignment = { strategyId, entryId: selected.entry.entryId,
@@ -183,15 +177,19 @@ export function buildStrategyReview(input: {
   plan: StrategyActionPlan
   artifact: GeneratedResumeArtifact
   paragraphs: EntryParagraphReference[]
+  deliveryMarkdown?: string
+  gapOutputPaths?: ReadonlySet<string>
 }): ResumeStrategyReview {
-  const lines = new Set(input.artifact.markdown.split(/\r?\n/u))
-  return { version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(input.artifact.markdown),
+  const markdown = input.deliveryMarkdown ?? input.artifact.markdown
+  const lines = new Set(markdown.split(/\r?\n/u))
+  return { version: 'resume-strategy-v1', resumeFingerprint: resumeTextFingerprint(markdown),
     items: input.plan.items.map(item => {
       if (item.state !== 'scheduled' || !item.assignment) return { strategyId: item.strategyId,
         strategy: item.strategy, status: item.state === 'needs_material' ? 'needs_material' : 'not_selected',
         explanation: item.explanation, references: [] }
       const action = item.assignment
       const references = input.paragraphs.filter(paragraph => paragraph.entryId === action.entryId).flatMap(paragraph => {
+        if (input.gapOutputPaths?.has(paragraph.outputPath)) return []
         const claims = input.artifact.claims.filter(claim => claim.outputPath === paragraph.outputPath)
         const claim = claims.length === 1 ? claims[0] : undefined
         if (!claim || !claim.evidenceIds.some(id => action.referenceEvidenceIds.includes(id))
@@ -199,10 +197,12 @@ export function buildStrategyReview(input: {
         return [{ outputPath: claim.outputPath, location: paragraph.location, quote: claim.outputText }]
       })
       const unique = [...new Map(references.map(reference => [reference.outputPath, reference])).values()].slice(0, 2)
-      return { strategyId: item.strategyId, strategy: item.strategy, status: unique.length ? 'linked' : 'not_located',
+      const awaitingMaterial = input.paragraphs.some(paragraph => paragraph.entryId === action.entryId
+        && input.gapOutputPaths?.has(paragraph.outputPath))
+      return { strategyId: item.strategyId, strategy: item.strategy, status: unique.length ? 'linked' : awaitingMaterial ? 'needs_material' : 'not_located',
         explanation: unique.length
           ? '本次对应正文如下，可对照查看具体表达。'
-          : '本次未找到这条建议对应的正文。',
+          : awaitingMaterial ? '对应经历保留了待完善内容，请先按正文说明补充真实材料。' : '本次未找到这条建议对应的正文。',
         references: unique }
     }),
   }

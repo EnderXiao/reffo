@@ -28,10 +28,13 @@ export interface ParsedDocumentResult {
   fileName: string
   fileType: OcrFileType
   rawText: string
+  /** Exact OCR text before normalization; returned privately, never emitted in routine logs. */
+  ocrRawText?: string
   markdown?: string
   structured?: ParsedJobDescriptionResult
   usage?: OcrUsage
   warnings: string[]
+  normalization?: import('./ocr-normalization').OcrNormalizationDiagnostic
 }
 
 export interface ParsedJobDescriptionResult {

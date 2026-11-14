@@ -3,8 +3,11 @@ import { createDigest } from '@/harness/run-context'
 import { env } from '@/config/env'
 import { getDatabase } from '@/repositories/database'
 import { createSupabaseRestClient } from '@/repositories/supabase/client'
+import {hasStructuredCompletion, validateCompletionDocument} from '@/shared/resume-completion'
 
 export const V5_CHECKPOINT_TTL_MS = 24 * 60 * 60 * 1000
+const baselineSchema = (fingerprint: string) => fingerprint === 'resume-edit-baseline-v4' ? 'resume-completion-v4'
+  : fingerprint === 'resume-edit-baseline-v3' ? 'resume-completion-v3' : 'resume-completion-v2'
 export interface V5CheckpointRow {
   id: string
   owner_id: string
@@ -17,6 +20,7 @@ export interface V5CheckpointStorage {
   read(id: string, owner: string): Promise<V5CheckpointRow | null>
   write(row: V5CheckpointRow): Promise<void>
   cleanup(): Promise<void>
+  claimGuestCompletion?(id: string, owner: string, fingerprint: string, documentId: string): Promise<V5CheckpointRow | null>
 }
 
 export class V5CheckpointError extends Error {
@@ -67,6 +71,36 @@ export const v5CheckpointStorage: V5CheckpointStorage = {
       })
     } else sqlite().query('DELETE FROM v5_checkpoints WHERE expires_at <= ?').run(now)
   },
+  async claimGuestCompletion(id, owner, fingerprint, documentId) {
+    if (!owner || owner === 'guest') return null
+    const now = new Date().toISOString()
+    if (env.DATABASE_PROVIDER === 'supabase') {
+      const rows = await createSupabaseRestClient({useServiceRole: true}).request<V5CheckpointRow[]>('/rest/v1/v5_checkpoints', {
+        method: 'PATCH', body: {owner_id: owner}, prefer: 'return=representation',
+        searchParams: {id: `eq.${id}`, owner_id: 'eq.guest', fingerprint: `eq.${fingerprint}`, expires_at: `gt.${now}`,
+          'payload->>kind': 'eq.completion', 'payload->document->>documentId': `eq.${documentId}`,
+          'payload->document->>schemaVersion': `eq.${baselineSchema(fingerprint)}`, 'payload->document->>revision': 'eq.0'},
+      })
+      return rows[0] ?? null
+    }
+    const row = sqlite().query(`UPDATE v5_checkpoints SET owner_id = ?
+      WHERE id = ? AND owner_id = 'guest' AND fingerprint = ? AND expires_at > ?
+        AND json_extract(payload, '$.kind') = 'completion'
+        AND json_extract(payload, '$.document.documentId') = ?
+        AND json_extract(payload, '$.document.schemaVersion') = ?
+        AND json_extract(payload, '$.document.revision') = 0
+      RETURNING *`).get(owner, id, fingerprint, now, documentId, baselineSchema(fingerprint)) as (V5CheckpointRow & {payload: string}) | null
+    return row ? {...row, payload: JSON.parse(row.payload)} : null
+  },
+}
+
+function isCompletionBaseline(row: V5CheckpointRow, documentId: string) {
+  const payload = row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+    ? row.payload as Record<string, unknown> : undefined
+  if (payload?.kind !== 'completion') return false
+  const checked = validateCompletionDocument(payload.document)
+  return checked.ok && hasStructuredCompletion(checked.document)
+    && checked.document.revision === 0 && checked.document.documentId === documentId
 }
 
 /** 原文和证据只保存在服务端。前端拿到随机句柄，数据库只保存句柄哈希。 */
@@ -87,6 +121,34 @@ export class V5CheckpointRepository {
     if (!row || row.owner_id !== owner || row.fingerprint !== this.fingerprint
       || Date.parse(row.expires_at) <= Date.now() || !Number.isFinite(Date.parse(row.expires_at))) throw new V5CheckpointError()
     return row
+  }
+
+  /** 只接续访客的独立简历基准；分析和匹配检查点始终保留原归属。 */
+  async claimGuestCompletion(token: unknown, owner: string, documentId: string) {
+    if (!owner || owner === 'guest' || typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw new V5CheckpointError()
+    try {
+      const existing = await this.load(token, owner)
+      if (!isCompletionBaseline(existing, documentId)) throw new V5CheckpointError()
+      return existing
+    } catch (error) {
+      if (!(error instanceof V5CheckpointError)) throw error
+    }
+    let guest: V5CheckpointRow
+    try {
+      guest = await this.load(token, 'guest')
+    } catch (error) {
+      if (!(error instanceof V5CheckpointError)) throw error
+      const current = await this.load(token, owner)
+      if (!isCompletionBaseline(current, documentId)) throw new V5CheckpointError()
+      return current
+    }
+    if (!isCompletionBaseline(guest, documentId) || !this.storage.claimGuestCompletion) throw new V5CheckpointError()
+    const claimed = await this.storage.claimGuestCompletion(guest.id, owner, this.fingerprint, documentId)
+    // A concurrent retry from the same owner may already have completed the claim.
+    const current = claimed ?? await this.load(token, owner)
+    if (current.owner_id !== owner || current.fingerprint !== this.fingerprint
+      || !isCompletionBaseline(current, documentId) || Date.parse(current.expires_at) <= Date.now()) throw new V5CheckpointError()
+    return current
   }
 
   async update(row: V5CheckpointRow, payload: unknown) {

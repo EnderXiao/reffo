@@ -14,7 +14,7 @@ describe('mvpRoutes auth guard', () => {
     try {
       const response = await mvpRoutes.handle(new Request('http://localhost/api/v1/mvp/process', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json','X-Reffo-Completion-Schema':'resume-completion-v4' },
         body: JSON.stringify({ resume_markdown: 'source resume markdown', jd_text: 'target job description', output_language: 'en-US' }),
       }))
       expect(response.status).toBe(429)

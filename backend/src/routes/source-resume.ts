@@ -1,3 +1,4 @@
+import {clearOwnerResumeExtractionCache} from '@/v5/single-step-adapter'
 import { Elysia, t } from 'elysia'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { sourceResumeRepository } from '@/repositories/source-resume-repository'
@@ -21,6 +22,7 @@ function toSummary(record: SourceResumeRecord): SourceResumeSummaryRecord {
     title: record.title,
     source_type: record.source_type,
     original_file_name: record.original_file_name,
+    ...(record.parse_id ? {parse_id: record.parse_id} : {}),
     created_at: record.created_at,
     updated_at: record.updated_at,
   }
@@ -75,6 +77,7 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
         original_file_name: t.Optional(
           t.Union([t.String({ description: '原始文件名' }), t.Null()])
         ),
+        parse_id: t.Optional(t.Union([t.String({format: 'uuid'}), t.Null()])),
       }),
       detail: {
         summary: '保存源简历',
@@ -163,6 +166,7 @@ export const sourceResumeRoutes = new Elysia({ prefix: '/api/v1/source-resume' }
       try {
         const userContext = await resolveRequestUser(headers)
         const deleted = await sourceResumeRepository.delete(userContext, params.id)
+        if (deleted) clearOwnerResumeExtractionCache(userContext.userId)
 
         if (!deleted) {
           set.status = 404

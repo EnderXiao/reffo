@@ -3,6 +3,12 @@ import {env} from '@/config/env'
 import { getDatabase, resetDatabaseConnection } from '@/repositories/database'
 import type { ResumeHistoryRepositoryContract } from '@/repositories/interfaces'
 import type { ResumeHistoryRecord, SaveResumeHistoryInput, UpdateResumeHistoryInput } from '@/types'
+import {assertResumeCompletionSnapshot, prepareResumeHistorySnapshot, ResumeCompletionSnapshotError, withoutPendingCompletionEdits} from '@/services/resume-completion-snapshot'
+
+import {assertExpectedHistory, historyCommitAck, historyCommitDigest, ResumeHistoryCommitError} from '@/services/resume-history-commit'
+import {ensureResumeStageCacheTables} from '@/repositories/resume-stage-cache-repository'
+import {canonicalizeSourceDocument} from '@/v5/canonical-source'
+import {enqueueResumeReviewTasks, ensureResumeReviewTables} from '@/services/resume-review-service'
 
 const HISTORY_ID_PREFIX = 'JD'
 const HISTORY_ID_SEQUENCE_LENGTH = 5
@@ -21,7 +27,7 @@ function ensureDatabase() {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       quality_score INTEGER NOT NULL,
-      match_score INTEGER NOT NULL,
+      match_score INTEGER,
       tags_json TEXT NOT NULL,
       resume_content TEXT NOT NULL,
       jd_content TEXT NOT NULL,
@@ -42,12 +48,29 @@ function ensureDatabase() {
     ON resume_histories(updated_at DESC);
   `)
 
+  const scoreColumn = (database.query('PRAGMA table_info(resume_histories)').all() as Array<{name: string; notnull: number}>).find(column => column.name === 'match_score')
+  if (scoreColumn?.notnull) {
+    // SQLite cannot drop a NOT NULL constraint. Rebuild transactionally and preserve every row/index/trigger.
+    database.transaction(() => {
+      const schema = database.query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'resume_histories'").get() as {sql: string}
+      const dependents = database.query("SELECT sql FROM sqlite_master WHERE tbl_name = 'resume_histories' AND type IN ('index','trigger') AND sql IS NOT NULL").all() as Array<{sql: string}>
+      database.exec(schema.sql.replace(/CREATE TABLE(?: IF NOT EXISTS)?\s+["`]?resume_histories["`]?/iu, 'CREATE TABLE resume_histories_nullable')
+        .replace(/match_score\s+INTEGER\s+NOT NULL/iu, 'match_score INTEGER'))
+      database.exec('INSERT INTO resume_histories_nullable SELECT * FROM resume_histories')
+      database.exec('DROP TABLE resume_histories')
+      database.exec('ALTER TABLE resume_histories_nullable RENAME TO resume_histories')
+      for (const dependent of dependents) database.exec(dependent.sql)
+    }).immediate()
+  }
+
   const columns = database.query('PRAGMA table_info(resume_histories)').all() as Array<{name: string}>
   if (!columns.some(column => column.name === 'user_id')) {
     database.exec(`ALTER TABLE resume_histories ADD COLUMN user_id TEXT NOT NULL DEFAULT '${defaultUserId}'`)
   }
   database.exec('CREATE INDEX IF NOT EXISTS idx_resume_histories_user_id ON resume_histories(user_id)')
 
+  ensureResumeReviewTables(database)
+  ensureResumeStageCacheTables()
   return database
 }
 
@@ -117,7 +140,7 @@ function mapRowToRecord(row: Record<string, unknown> | null | undefined): Resume
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
     quality_score: Number(row.quality_score) || 0,
-    match_score: Number(row.match_score) || 0,
+    match_score: row.match_score === null ? null : Number(row.match_score) || 0,
     tags: parseJson<string[]>(row.tags_json, []),
     resume_content: String(row.resume_content),
     jd_content: String(row.jd_content),
@@ -159,6 +182,7 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
     try {
       return operation()
     } catch (error) {
+      if (error instanceof ResumeCompletionSnapshotError || error instanceof ResumeHistoryCommitError) throw error
       console.error('[ResumeHistoryRepository] database operation failed', error)
       resetDatabaseConnection()
       return operation()
@@ -175,17 +199,34 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
     return rows.map(row => row.id)
   }
 
-  save(context: RequestUserContext, input: SaveResumeHistoryInput): ResumeHistoryRecord {
+  save(context: RequestUserContext, input: SaveResumeHistoryInput, requestDigestOverride?: string): ResumeHistoryRecord {
+    const requestedId = input.id?.trim()
+    const requestDigest = requestDigestOverride ?? historyCommitDigest(input)
+    if (requestedId) {
+      const db = ensureDatabase()
+      const confirmed = input.commit_id && db.query('SELECT 1 FROM resume_history_commits WHERE owner_id = ? AND commit_id = ?').get(context.userId,input.commit_id)
+      if (!confirmed) assertResumeCompletionSnapshot(input,this.findById(context,requestedId))
+    }
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
+      return db.transaction(() => {
+      if (input.commit_id) {
+        const commit = db.query('SELECT request_digest, acknowledgement_json FROM resume_history_commits WHERE owner_id = ? AND commit_id = ?').get(context.userId, input.commit_id) as {request_digest: string; acknowledgement_json: string} | null
+        if (commit) {
+          if (commit.request_digest !== requestDigest) throw new ResumeHistoryCommitError('RESUME_COMMIT_CONFLICT', '本次提交编号已用于其他修改，请重新保存')
+          return JSON.parse(commit.acknowledgement_json) as ResumeHistoryRecord
+        }
+      }
       const now = new Date().toISOString()
-      const requestedId = input.id?.trim()
       const owner = requestedId
         ? db.query('SELECT user_id FROM resume_histories WHERE id = ?').get(requestedId) as {user_id: string} | null
         : null
       const id = requestedId && (!owner || owner.user_id === context.userId)
         ? requestedId
         : createHistoryId(this.getExistingIds(input.created_at), input.created_at)
+      const previous = mapRowToRecord(db.query('SELECT * FROM resume_histories WHERE user_id = ? AND id = ?').get(context.userId, id) as Record<string, unknown> | null)
+      assertExpectedHistory(input, previous)
+      input = prepareResumeHistorySnapshot(input, previous)
 
       db.query(`
         INSERT INTO resume_histories (
@@ -247,20 +288,27 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
         input.optimized_content,
         stringifyOptional(input.optimization_suggestions),
         stringifyOptional(input.changes_summary),
-        stringifyOptional(input.process_result),
+        stringifyOptional(withoutPendingCompletionEdits(input.process_result)),
         stringifyOptional(input.result_context),
         stringifyOptional(input.progress),
         input.card_color ?? null,
         input.card_pattern ?? null
       )
 
-      const saved = this.findById(context, id)
+      const saved = mapRowToRecord(db.query('SELECT * FROM resume_histories WHERE user_id = ? AND id = ?').get(context.userId, id) as Record<string, unknown> | null)
 
       if (!saved) {
         throw new Error('保存历史记录失败')
       }
 
-      return saved
+      const acknowledgement = {...saved, ...(historyCommitAck(input, saved) ? {commit_ack: historyCommitAck(input, saved)} : {})}
+      enqueueResumeReviewTasks(db, context.userId, saved)
+      const sourceDigest = canonicalizeSourceDocument(saved.resume_content,'stage-source').canonicalDocument.sha256
+      db.query('INSERT OR IGNORE INTO resume_stage_refs (owner_id,history_id,source_digest) VALUES (?,?,?)').run(context.userId,saved.id,sourceDigest)
+      if (input.commit_id) db.query('INSERT INTO resume_history_commits (owner_id,commit_id,request_digest,history_id,acknowledgement_json,created_at) VALUES (?,?,?,?,?,?)').run(
+        context.userId, input.commit_id, requestDigest, saved.id, JSON.stringify(acknowledgement), now)
+      return acknowledgement
+      }).immediate()
     })
   }
 
@@ -306,7 +354,7 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
       name: updates.name ?? existing.name,
       created_at: updates.created_at ?? existing.created_at,
       quality_score: updates.quality_score ?? existing.quality_score,
-      match_score: updates.match_score ?? existing.match_score,
+      match_score: updates.match_score === undefined ? existing.match_score : updates.match_score,
       tags: updates.tags ?? existing.tags,
       resume_content: updates.resume_content ?? existing.resume_content,
       jd_content: updates.jd_content ?? existing.jd_content,
@@ -314,11 +362,31 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
       optimization_suggestions: updates.optimization_suggestions ?? existing.optimization_suggestions,
       changes_summary: updates.changes_summary ?? existing.changes_summary,
       process_result: updates.process_result ?? existing.process_result,
+      completion_edit: updates.completion_edit,
+      commit_id: updates.commit_id,
+      expected_document: updates.expected_document,
+      action_baseline: updates.action_baseline,
+      completion_baseline: updates.completion_baseline,
       result_context: updates.result_context ?? existing.result_context,
       progress: updates.progress ?? existing.progress,
       card_color: updates.card_color ?? existing.card_color,
       card_pattern: updates.card_pattern ?? existing.card_pattern,
-    })
+    }, historyCommitDigest({id, ...updates} as SaveResumeHistoryInput))
+  }
+
+  upgradeCompletion(context: RequestUserContext, previous: ResumeHistoryRecord, next: ResumeHistoryRecord): ResumeHistoryRecord {
+    const db = ensureDatabase()
+    return db.transaction(() => {
+      const current = this.findById(context, previous.id)
+      if (!current || current.updated_at !== previous.updated_at || JSON.stringify(current.process_result) !== JSON.stringify(previous.process_result)) {
+        throw new ResumeHistoryCommitError('RESUME_VERSION_CONFLICT', '当前稿已更新，请保留本地修改并重新打开')
+      }
+      db.query('UPDATE resume_histories SET optimized_content = ?, process_result_json = ?, changes_summary_json = ?, updated_at = ? WHERE user_id = ? AND id = ?').run(
+        next.optimized_content, JSON.stringify(next.process_result), stringifyOptional(next.changes_summary), new Date().toISOString(), context.userId, previous.id)
+      const saved = this.findById(context, previous.id)!
+      enqueueResumeReviewTasks(db, context.userId, saved)
+      return saved
+    }).immediate()
   }
 
   delete(context: RequestUserContext, id: string): boolean {

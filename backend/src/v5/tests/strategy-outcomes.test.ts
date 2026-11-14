@@ -42,7 +42,7 @@ test('bounded actions reach only their owning business entry without expanding f
   expect(bound.entries.map(entry => entry.facts)).toEqual(before.entries.map(entry => entry.facts))
 })
 
-test('selects the highest priority three executable actions and records the rest honestly', () => {
+test('schedules every executable action by priority without a hard count quota', () => {
   const f = fixture(), targeting = f.entryPlan.base.targeting!
   const target = targeting.targets.find(item => item.id === 'job:task:t1')!
   const link = targeting.fit.links.find(item => item.targetId === target.id)!
@@ -54,10 +54,10 @@ test('selects the highest priority three executable actions and records the rest
   })
   const actions = buildStrategyActionPlan({match:f.match,resume:f.result.resumeEvidenceBundle,entryPlan:f.entryPlan})
   expect(actions.items.filter(item => item.state === 'scheduled').map(item => item.strategyId))
-    .toEqual(['strategy_target_gap_job:task:priority1','strategy_target_gap_job:task:priority3','strategy_target_gap_job:task:priority2'])
-  expect(actions.items.find(item => item.strategyId.endsWith('priority0'))).toMatchObject({state:'not_selected'})
+    .toEqual(['strategy_target_gap_job:task:priority1','strategy_target_gap_job:task:priority3','strategy_target_gap_job:task:priority2','strategy_target_gap_job:task:priority0'])
+  expect(actions.items.find(item => item.strategyId.endsWith('priority0'))).toMatchObject({state:'scheduled'})
   const payload = entryWritingPayload(assignEntryStrategyActions(f.entryPlan,actions))
-  expect(payload.entries.flatMap(entry => entry.strategyActions ?? [])).toHaveLength(3)
+  expect(payload.entries.flatMap(entry => entry.strategyActions ?? [])).toHaveLength(4)
 })
 
 test('distinguishes missing material from evidence omitted by the existing plan and never fills a quota', () => {
@@ -71,7 +71,8 @@ test('distinguishes missing material from evidence omitted by the existing plan 
   expect(omitted.items[0].explanation).not.toContain('篇幅')
   const confirmation = buildStrategyActionPlan({match:{...f.match,gaps:[{...f.match.gaps[0],safeHandling:'核对任职年限后补充材料。'}]},
     resume:f.result.resumeEvidenceBundle,entryPlan:f.entryPlan})
-  expect(confirmation.items[0].state).toBe('needs_material')
+  expect(confirmation.items[0].state).toBe('scheduled')
+  expect(confirmation.items[0].assignment!.instruction).toBe(f.target.fit.links[0].expressionAngle)
 })
 
 test('a partially selected evidence set cannot inherit an instruction relying on other entries', () => {
@@ -198,7 +199,7 @@ test.each(['result', 'other'] as const)('same-scope %s boundary completes the sa
   expect(f.entryPlan).toEqual(before)
 })
 
-test.each(['foreign_scope', 'excluded', 'pii', 'conflicting', 'injection', 'no_entry', 'unknown'] as const)
+test.each(['foreign_scope', 'excluded', 'pii', 'conflicting', 'injection', 'no_entry', 'unknown', 'pending_result'] as const)
 ('does not complete a strategy with %s evidence', variant => {
   const f = boundaryFixture()
   if (variant === 'foreign_scope') f.boundary.sourceScopeId = 'another-project'
@@ -208,12 +209,13 @@ test.each(['foreign_scope', 'excluded', 'pii', 'conflicting', 'injection', 'no_e
   if (variant === 'injection') f.boundary.riskFlags = ['prompt_injection_like_text']
   if (variant === 'no_entry') f.entryPlan.entries = f.entryPlan.entries.filter(entry => entry.slot.kind !== 'business_bullet')
   if (variant === 'unknown') f.result.resumeEvidenceBundle.evidenceAtoms = f.result.resumeEvidenceBundle.evidenceAtoms.filter(atom => atom !== f.boundary)
+  if (variant === 'pending_result') f.boundary.verbatimText = '原简历记载辅导有效率95%，评价标准、周期和人工介入范围待补证。'
   const plan = f.complete()
   expect(plan.entries.every(entry => entry.facts.every(fact => fact.evidenceId !== f.boundary.evidenceId))).toBe(true)
   expect(buildStrategyActionPlan({match: f.match, resume: f.result.resumeEvidenceBundle, entryPlan: plan}).items[0].state).not.toBe('scheduled')
 })
 
-test('only the three highest priority executable strategies may complete their retained entry material', () => {
+test('all executable strategies may complete safe material in their retained entry', () => {
   const f = boundaryFixture(), targeting = f.entryPlan.base.targeting!
   const target = targeting.targets[0], link = targeting.fit.links.find(item => item.targetId === target.id)!
   f.match.gaps = []
@@ -227,10 +229,10 @@ test('only the three highest priority executable strategies may complete their r
     return atom.evidenceId
   })
   const plan = f.complete(), added = plan.entries.flatMap(entry => entry.strategyBoundaryEvidenceIds ?? [])
-  expect(added).toEqual([ids[1], ids[3], ids[2]])
-  expect(plan.entries.flatMap(entry => entry.facts.map(fact => fact.evidenceId))).not.toContain(ids[0])
+  expect(added).toEqual([ids[1], ids[3], ids[2], ids[0]])
+  expect(plan.entries.flatMap(entry => entry.facts.map(fact => fact.evidenceId))).toContain(ids[0])
   expect(buildStrategyActionPlan({match: f.match, resume: f.result.resumeEvidenceBundle, entryPlan: plan})
-    .items.filter(item => item.state === 'scheduled')).toHaveLength(3)
+    .items.filter(item => item.state === 'scheduled')).toHaveLength(4)
 })
 
 test('adopting the practice without its completed boundary uses only the existing bounded correction', async () => {
@@ -241,6 +243,13 @@ test('adopting the practice without its completed boundary uses only the existin
   const validate = (output: unknown) => compileEntryWriting({output, entryPlan: plan, resume: f.result.resumeEvidenceBundle, policy: f.result.generationPolicy})
   const delivered = await writeValidatedEntries({plan, write: async payload => {
     calls.push(payload)
+    if (calls.length > 1) {
+      const issues = payload.correction!.issues
+      expect(issues.length).toBeGreaterThan(0)
+      expect(issues.every(issue => issue.entryId === actionEntry.entryId
+        && issue.outputPath === actionEntry.slot.outputPath
+        && issue.paragraphIndex === 0 && issue.paragraphIndices.includes(0))).toBe(true)
+    }
     return {...f.output, entries: f.output.entries.filter(entry => payload.requiredEntryIds.includes(entry.entryId)).map(entry => {
       if (calls.length === 1 || entry.entryId !== actionEntry.entryId) return entry
       return {...entry, paragraphs: [...entry.paragraphs, {role: 'detail' as const,
@@ -319,4 +328,21 @@ test('a pure other boundary cannot become executable practice by itself', () => 
   const plan = f.complete()
   expect(plan.entries.flatMap(entry => entry.facts.map(fact => fact.evidenceId))).not.toContain(f.boundary.evidenceId)
   expect(buildStrategyActionPlan({match: f.match, resume: f.result.resumeEvidenceBundle, entryPlan: plan}).items[0].state).not.toBe('scheduled')
+})
+
+test('skeleton references fingerprint delivered text and never quote a fact projection absent from delivery', () => {
+  const f = fixture()
+  const compiled = compileEntryWriting({output: f.output, entryPlan: f.entryPlan,
+    resume: f.result.resumeEvidenceBundle, policy: f.result.generationPolicy})
+  const assignment = f.actions.items[0].assignment!
+  const paths = compiled.entryParagraphReferences.filter(item => item.entryId === assignment.entryId).map(item => item.outputPath)
+  const claim = compiled.artifact.claims.find(item => paths.includes(item.outputPath))!
+  const deliveryMarkdown = compiled.artifact.markdown.replace(claim.outputText,
+    `${claim.outputText}【待完善：填实际问题；补明背景；无则删去该短语】`)
+  const review = buildStrategyReview({plan: f.actions, artifact: compiled.artifact,
+    paragraphs: compiled.entryParagraphReferences, deliveryMarkdown, gapOutputPaths: new Set(paths)})
+  expect(review.resumeFingerprint).toBe(resumeTextFingerprint(deliveryMarkdown))
+  expect(review.items[0]).toMatchObject({status: 'needs_material', references: []})
+  expect(currentStrategyReview(review, deliveryMarkdown)).toBeDefined()
+  expect(currentStrategyReview(review, compiled.artifact.markdown)).toBeUndefined()
 })

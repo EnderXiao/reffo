@@ -30,6 +30,14 @@ function createHistory(): ResumeHistoryRecord {
 }
 
 describe('buildShareSnapshot', () => {
+  test('preserves an unavailable score while keeping a real zero score', () => {
+    const history = createHistory()
+    for (const score of [null, 0, 88]) {
+      history.match_score = score
+      expect(buildShareSnapshot(history, 'job').card).toMatchObject({kind: 'job', match_score: score})
+    }
+  })
+
   test('builds a job snapshot without private history fields', () => {
     const snapshot = buildShareSnapshot(createHistory(), 'job')
 

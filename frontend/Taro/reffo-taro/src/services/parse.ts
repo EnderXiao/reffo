@@ -31,6 +31,12 @@ export interface ParsedDocumentResult {
   usage?: OcrUsage
   warnings: string[]
   run_id?: string
+  parse_id?: string
+}
+
+export function documentParseId(result: Pick<ParsedDocumentResult, 'parse_id' | 'run_id'>): string | undefined {
+  const value = result.parse_id ?? result.run_id
+  return typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value) ? value : undefined
 }
 
 interface ParseFilePayload {

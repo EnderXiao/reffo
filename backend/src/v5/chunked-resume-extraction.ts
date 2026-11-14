@@ -15,7 +15,7 @@ export const RESUME_EXTRACTION_OUTPUT_TOKENS_PER_FACT = 400
 export const RESUME_EXTRACTION_OUTPUT_CHARACTERS_PER_TOKEN = 4
 export const RESUME_EXTRACTION_FACT_CANDIDATE_HEADROOM = 4
 export const RESUME_EXTRACTION_RAW_FACT_SLOP_MAX = 16
-export const RESUME_EXTRACTION_CHUNK_PLAN_VERSION = 'deterministic-scope-plan-v10'
+export const RESUME_EXTRACTION_CHUNK_PLAN_VERSION = 'deterministic-scope-plan-v11'
 
 export interface ResumeExtractionScopeContext {
   /** Server-owned scope ID shared by every output shard of one source scope. */
@@ -371,6 +371,8 @@ const ENGLISH_ENTITY_AT_START = /^(?:company|corporation|university|college|inst
 const STRONG_ROLE_HEADING = /(?:产品经理|项目经理|运营经理|客户经理|设计师|工程师|分析师|咨询师|顾问|研究员|专员|助理|实习生|负责人|总监|主管|经理|product\s+manager|project\s+manager|designer|engineer|analyst|consultant|specialist|intern|director|lead)$/iu
 
 function isTimelineRangeBlock(text: string) {
+  // A dated business phase inside a role is not a new employment boundary.
+  if (/^\s*[-*•]\s*[^。；;]{1,32}[|｜丨]\s*(?:19|20)\d{2}/u.test(text)) return false
   // Reporting periods attached to a metric are not a new employment entry.
   return (EXPLICIT_TIMELINE_RANGE.test(text) || isSingleMonthProjectHeading(text))
     && !/(?:完成率|及时率|转化率|覆盖率|崩溃率|统计周期|报表周期|统计期间)/u.test(text)

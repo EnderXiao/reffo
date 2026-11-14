@@ -7,9 +7,11 @@ import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscri
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
 import { glmOcrProvider } from '@/services/ocr/glm-ocr-provider'
 import type { OcrProvider, ParsedDocumentResult, ParseDocumentInput } from '@/services/ocr/types'
+import {normalizationSummary} from '@/services/ocr/ocr-normalization'
 
 export interface OcrParseWorkflowResult extends ParsedDocumentResult {
   run_id: string
+  parse_id: string
   step_statuses: StepRunSnapshot[]
 }
 
@@ -79,6 +81,7 @@ export class OcrParseWorkflow {
                 purpose: input.purpose,
                 rawTextLength: result.rawText.length,
                 warningCount: result.warnings.length,
+                ...(result.normalization ? {normalization: normalizationSummary(result.normalization)} : {}),
               }),
             },
           }))
@@ -114,6 +117,7 @@ export class OcrParseWorkflow {
       return {
         ...parseStep.result,
         run_id: runContext.runId,
+        parse_id: runContext.runId,
         step_statuses: steps,
       }
     } catch (error) {

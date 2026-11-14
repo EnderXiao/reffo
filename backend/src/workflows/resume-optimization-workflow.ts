@@ -10,7 +10,7 @@ import type { MvpProcessResponse } from '@/types'
 import { toLegacyMvpProcessResponse } from '@/v5/main/compatibility'
 import { V5ResumeOptimizationWorkflow } from '@/v5/main/workflow'
 import { createTrustedResumeExtractionCache } from '@/v5/resume-extraction-cache'
-import { V5_WORKFLOW_VERSION } from '@/v5/types'
+import { V5_WORKFLOW_VERSION, type InterviewGenerationBasis } from '@/v5/types'
 
 const sharedResumeExtractionCache = createTrustedResumeExtractionCache({
   implementationFingerprint: V5_WORKFLOW_VERSION,
@@ -30,6 +30,7 @@ export interface ResumeOptimizationWorkflowInput {
   enable_llm_judge?: boolean
   output_language?: string
   onAnalysisSucceeded?: () => void | Promise<void>
+  onGenerated?: (result: InterviewGenerationBasis) => void | Promise<void>
 }
 
 export interface ResumeOptimizationWorkflowOptions {
@@ -88,6 +89,7 @@ export class ResumeOptimizationWorkflow {
           }
         },
       })
+      await input.onGenerated?.(result)
       return toLegacyMvpProcessResponse(result)
     } catch (error) {
       // Keep application errors (for example quota exhaustion) intact after V5 diagnostics.

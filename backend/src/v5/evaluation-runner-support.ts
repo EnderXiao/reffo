@@ -89,7 +89,7 @@ export type V5EvaluationComponent = keyof typeof V5_PROMPT_MAX_OUTPUT_TOKENS
 export type V5EvaluationComponentQuotas = Readonly<Partial<Record<V5EvaluationComponent, number>>>
 
 export interface V5ExtractionBudgetShape {
-  entryWritingPolicy?: 'entry-writing-v1'
+  entryWritingPolicy?: 'entry-writing-v6'
   artifactGenerationMode?: 'dsl_v1' | 'writer_v1'
   /** Output caps derived by the prompt compiler from each original source shard. */
   shardOutputTokenCaps?: readonly number[]
@@ -226,8 +226,8 @@ export interface EvaluationRunnerCliOptions {
   stage: EvaluationRunStage
   sourceRun: string | null
   artifactGenerationMode: 'dsl_v1' | 'writer_v1'
-  jobTargetingPolicy?: 'job-targeted-v1'
-  entryWritingPolicy?: 'entry-writing-v1'
+  jobTargetingPolicy?: 'job-targeted-v2'
+  entryWritingPolicy?: 'entry-writing-v6'
 }
 
 export interface EvaluationCheckpointFingerprints {
@@ -412,7 +412,7 @@ function diagnosticCoverage(value: unknown, path: string) {
 export function sanitizeV5DeliveryDiagnostics(value: unknown): V5DeliveryDiagnostics {
   const root = diagnosticRecord(value, 'deliveryDiagnostics')
   if (
-    root.version !== 'v5-delivery-diagnostics-v2'
+    !['v5-delivery-diagnostics-v2', 'v5-delivery-diagnostics-v3'].includes(String(root.version))
     || root.taxonomyVersion !== 'v5-delivery-taxonomy-v1'
   ) diagnosticsInvalid('deliveryDiagnostics.version')
 
@@ -444,6 +444,8 @@ export function sanitizeV5DeliveryDiagnostics(value: unknown): V5DeliveryDiagnos
         plannedEvidenceCoverage: diagnosticCoverage(metrics.plannedEvidenceCoverage, 'deliveryDiagnostics.metrics.plannedEvidenceCoverage'),
         stableCoreCoverage: diagnosticCoverage(metrics.stableCoreCoverage, 'deliveryDiagnostics.metrics.stableCoreCoverage'),
         primaryRequirementCoverage: diagnosticCoverage(metrics.primaryRequirementCoverage, 'deliveryDiagnostics.metrics.primaryRequirementCoverage'),
+        ...(root.version === 'v5-delivery-diagnostics-v3' ? {primaryWritingFocusCoverage: metrics.primaryWritingFocusCoverage === null ? null
+          : diagnosticCoverage(metrics.primaryWritingFocusCoverage, 'deliveryDiagnostics.metrics.primaryWritingFocusCoverage')} : {}),
         renderedBusinessBulletCount: diagnosticCount(metrics.renderedBusinessBulletCount, 'deliveryDiagnostics.metrics.renderedBusinessBulletCount'),
         renderedTotalListItemCount: diagnosticCount(metrics.renderedTotalListItemCount, 'deliveryDiagnostics.metrics.renderedTotalListItemCount'),
         renderedProjectCount: diagnosticCount(metrics.renderedProjectCount, 'deliveryDiagnostics.metrics.renderedProjectCount'),
@@ -463,7 +465,7 @@ export function sanitizeV5DeliveryDiagnostics(value: unknown): V5DeliveryDiagnos
       }
 
   const sanitized: V5DeliveryDiagnostics = {
-    version: 'v5-delivery-diagnostics-v2',
+    version: root.version as V5DeliveryDiagnostics['version'],
     taxonomyVersion: 'v5-delivery-taxonomy-v1',
     outcome: {
       execution: diagnosticEnum(
@@ -607,8 +609,8 @@ export function parseEvaluationRunnerArgs(
   let stage: EvaluationRunStage = 'full'
   let sourceRun: string | null = null
   let artifactGenerationMode: 'dsl_v1' | 'writer_v1' = 'dsl_v1'
-  let jobTargetingPolicy: 'job-targeted-v1' | undefined
-  let entryWritingPolicy: 'entry-writing-v1' | undefined
+  let jobTargetingPolicy: 'job-targeted-v2' | undefined
+  let entryWritingPolicy: 'entry-writing-v6' | undefined
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
@@ -635,9 +637,9 @@ export function parseEvaluationRunnerArgs(
       artifactGenerationMode = value
       index += 1
     } else if (arg === '--job-targeted') {
-      jobTargetingPolicy = 'job-targeted-v1'
+      jobTargetingPolicy = 'job-targeted-v2'
     } else if (arg === '--entry-writer') {
-      entryWritingPolicy = 'entry-writing-v1'
+      entryWritingPolicy = 'entry-writing-v6'
     } else if (arg === '--source-run') {
       sourceRun = resolve(process.cwd(), requireFlagValue(argv, index, arg))
       index += 1

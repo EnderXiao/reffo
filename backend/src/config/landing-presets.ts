@@ -18,9 +18,14 @@ export function resolveLandingPresetJob(value: unknown) {
     `地点：${job.location}`,
     `经验要求：${job.experience}`,
     '',
-    job.summary,
+    `岗位目标：${job.summary}`,
     '',
     '岗位职责：',
     ...job.responsibilities.map(item => `- ${item}`),
+    '',
+    '基本要求：',
+    ...job.requirements.map(item => `- ${item}`),
+    '',
+    `加分项：${job.bonus}`,
   ].join('\n')
 }

@@ -91,7 +91,9 @@ export function buildWritingPlan(input: {
   })
   const factById = new Map(facts.map(fact => [fact.evidenceId, fact]))
   const scores = input.targeting ? targetingEvidenceScores(input.targeting.fit, input.targeting.targets, input.resume) : buildTargetEvidenceScores(input.resume, input.job)
-  const primary = new Set(input.targeting ? [] : input.match.positioning.primaryEvidenceIds)
+  const primary = new Set(input.plan.writingFocusVersion
+    ? input.plan.evidencePillars.filter(pillar => pillar.focusIds?.length).flatMap(pillar => pillar.evidenceIds)
+    : input.targeting ? [] : input.match.positioning.primaryEvidenceIds)
   const semanticLinks = new Map<string, Set<string>>()
   for (const match of input.match.requirementMatches) {
     for (const id of match.evidenceIds) semanticLinks.set(id, new Set([...(semanticLinks.get(id) ?? []), match.requirementId]))
@@ -231,7 +233,7 @@ export function buildWritingPlan(input: {
     facts: selectedFacts,
     coreEvidenceIdsBySlot,
     expandedEvidenceIds,
-    positioning: input.targeting
+    positioning: input.plan.writingFocusVersion ? `写作主线：${input.plan.targetValueProposition}；仅表达已有实践，关联岗位要求不代表完整资格已满足。` : input.targeting
       ? '围绕核心岗位任务组织已有经历；岗位要求与匹配意见均不是个人事实。'
       : input.match.positioning.statement,
     guidance: input.plan.strategyProfile.evidenceRichness === 'sparse'

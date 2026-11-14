@@ -1,8 +1,19 @@
+import {upgradeResumeCompletion} from '@/services/resume-completion-upgrade'
 import { Elysia, t } from 'elysia'
 import { RequestAuthError, resolveRequestUser } from '@/auth/request-context'
 import { resumeHistoryRepository } from '@/repositories/resume-history-repository'
 import type { ApiResponse, ResumeHistoryRecord, ResumeHistorySummaryRecord } from '@/types'
 import { buildResumeValueSummary } from '@/shared/resume-strategy'
+import {completionDocumentFromSnapshot, ResumeCompletionSnapshotError} from '@/services/resume-completion-snapshot'
+import {loadCompletionBaselineBundle} from '@/services/resume-completion-baseline'
+import {ResumeHistoryCommitError} from '@/services/resume-history-commit'
+import {clearOwnerResumeExtractionCache} from '@/v5/single-step-adapter'
+import {reviewSidecar} from '@/services/resume-review-service'
+import {assessResumeDelivery} from '@/services/resume-delivery-assessment'
+import type {ResumeActionReview, ResumeIdentityState, ResolvedResumeActionPlan, ResumeChangeManifest} from '@/shared/resume-actions'
+import type {ResumeCompletionDocument} from '@/shared/resume-completion'
+import {projectResumeHistoryScore} from '@/services/resume-history-score'
+import {projectHistoryInterviewPresentation} from '@/services/interview-history-presentation'
 
 const resultStepStatusSchema = t.Union([
   t.Literal('pending'),
@@ -17,6 +28,8 @@ const resultContextSchema = t.Object({
   location: t.Optional(t.String({ description: '工作地点' })),
   resumeContent: t.String({ description: '原始简历内容' }),
   jdContent: t.String({ description: 'JD 内容' }),
+  resumeParseId: t.Optional(t.String({format: 'uuid'})),
+  jdParseId: t.Optional(t.String({format: 'uuid'})),
 })
 
 const progressSchema = t.Object({
@@ -30,10 +43,10 @@ const resumeHistoryBodySchema = t.Object({
   id: t.Optional(t.Union([t.String({ description: '历史记录 ID' }), t.Null()])),
   position: t.String({ description: '岗位名称', minLength: 1 }),
   company: t.String({ description: '公司名称', minLength: 1 }),
-  name: t.String({ description: '候选人姓名', minLength: 1 }),
+  name: t.String({ description: '候选人姓名，缺失时为空' }),
   created_at: t.String({ description: '生成时间 ISO 字符串', minLength: 1 }),
   quality_score: t.Number({ description: '简历质量评分' }),
-  match_score: t.Number({ description: '岗位匹配评分' }),
+  match_score: t.Union([t.Number({ description: '岗位匹配评分' }), t.Null()]),
   tags: t.Array(t.String(), { description: '卡片标签' }),
   resume_content: t.String({ description: '原始简历内容' }),
   jd_content: t.String({ description: 'JD 内容' }),
@@ -41,6 +54,9 @@ const resumeHistoryBodySchema = t.Object({
   optimization_suggestions: t.Optional(t.Array(t.String())),
   changes_summary: t.Optional(t.Array(t.String())),
   process_result: t.Optional(t.Any({ description: '完整生成结果快照' })),
+  completion_edit: t.Optional(t.Unknown({description: '可核对的填写操作记录'})),
+  commit_id: t.Optional(t.String({minLength: 8, maxLength: 128})),
+  expected_document: t.Optional(t.Object({documentId: t.String(), revision: t.Number({minimum: 0}), resolvedDigest: t.Optional(t.String())})),
   result_context: t.Optional(resultContextSchema),
   progress: t.Optional(progressSchema),
   card_color: t.Optional(t.Union([t.String(), t.Null()])),
@@ -50,10 +66,10 @@ const resumeHistoryBodySchema = t.Object({
 const resumeHistoryUpdateBodySchema = t.Object({
   position: t.Optional(t.String({ description: '岗位名称', minLength: 1 })),
   company: t.Optional(t.String({ description: '公司名称', minLength: 1 })),
-  name: t.Optional(t.String({ description: '候选人姓名', minLength: 1 })),
+  name: t.Optional(t.String({ description: '候选人姓名，缺失时为空' })),
   created_at: t.Optional(t.String({ description: '生成时间 ISO 字符串', minLength: 1 })),
   quality_score: t.Optional(t.Number({ description: '简历质量评分' })),
-  match_score: t.Optional(t.Number({ description: '岗位匹配评分' })),
+  match_score: t.Optional(t.Union([t.Number({ description: '岗位匹配评分' }), t.Null()])),
   tags: t.Optional(t.Array(t.String(), { description: '卡片标签' })),
   resume_content: t.Optional(t.String({ description: '原始简历内容' })),
   jd_content: t.Optional(t.String({ description: 'JD 内容' })),
@@ -61,6 +77,9 @@ const resumeHistoryUpdateBodySchema = t.Object({
   optimization_suggestions: t.Optional(t.Array(t.String())),
   changes_summary: t.Optional(t.Array(t.String())),
   process_result: t.Optional(t.Any({ description: '完整生成结果快照' })),
+  completion_edit: t.Optional(t.Unknown({description: '可核对的填写操作记录'})),
+  commit_id: t.Optional(t.String({minLength: 8, maxLength: 128})),
+  expected_document: t.Optional(t.Object({documentId: t.String(), revision: t.Number({minimum: 0}), resolvedDigest: t.Optional(t.String())})),
   result_context: t.Optional(resultContextSchema),
   progress: t.Optional(progressSchema),
   card_color: t.Optional(t.Union([t.String(), t.Null()])),
@@ -79,6 +98,11 @@ function toAuthErrorResponse(error: RequestAuthError, set: { status?: unknown })
   } satisfies ApiResponse<never>
 }
 
+function toCompletionErrorResponse(error: ResumeCompletionSnapshotError | ResumeHistoryCommitError, set: {status?: unknown}) {
+  set.status = error.status
+  return {success: false, error: {code: error.code, message: error.message}} satisfies ApiResponse<never>
+}
+
 function extractLocation(record: ResumeHistoryRecord) {
   const location = record.result_context?.location?.trim()
   if (location) return location
@@ -90,6 +114,7 @@ function extractLocation(record: ResumeHistoryRecord) {
 }
 
 export function toSummary(record: ResumeHistoryRecord): ResumeHistorySummaryRecord {
+  record = projectResumeHistoryScore(record)
   const processResult = record.process_result as {
     matching?: {optimization_suggestions?: string[]}
     optimized?: {strategy_review?: unknown}
@@ -120,6 +145,21 @@ export function toSummary(record: ResumeHistoryRecord): ResumeHistorySummaryReco
   }
 }
 
+/** P10 generation basis is repository data and cannot become an editable public sidecar. */
+export function publicResumeHistory(record: ResumeHistoryRecord): ResumeHistoryRecord {
+  record = projectResumeHistoryScore(record)
+  record = projectHistoryInterviewPresentation(record)
+  if (!record.process_result || typeof record.process_result !== 'object' || Array.isArray(record.process_result)) return record
+  const {server_interview_basis: _privateBasis, server_completion_upgrade_archive: _privateArchive, ...processResult} = record.process_result as Record<string, unknown>
+  const optimized = processResult.optimized && typeof processResult.optimized === 'object' && !Array.isArray(processResult.optimized)
+    ? processResult.optimized as Record<string, unknown> : undefined
+  if (!optimized?.completion_document) return {...record, process_result: processResult}
+  const delivery = assessResumeDelivery({document: optimized.completion_document as ResumeCompletionDocument,
+    identity: optimized.identity_state as ResumeIdentityState | undefined, review: optimized.action_review as ResumeActionReview | undefined,
+    resolvedPlan: optimized.resolved_action_plan as ResolvedResumeActionPlan | undefined, changeManifest: optimized.change_manifest as ResumeChangeManifest | undefined, previous: optimized.delivery_state})
+  return {...record, process_result: {...processResult, optimized: {...optimized, delivery_state: delivery}}}
+}
+
 export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history' })
   .get(
     '/',
@@ -128,7 +168,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
         const userContext = await resolveRequestUser(headers)
         const response: ApiResponse<ResumeHistoryRecord[]> = {
           success: true,
-          data: await resumeHistoryRepository.list(userContext),
+          data: (await resumeHistoryRepository.list(userContext)).map(publicResumeHistory),
         }
 
         return response
@@ -198,11 +238,15 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
     async ({ body, headers, set }) => {
       try {
         const userContext = await resolveRequestUser(headers)
-        const result = await resumeHistoryRepository.save(userContext, body)
+        const document = completionDocumentFromSnapshot(body.process_result)
+        const existing = body.id ? await resumeHistoryRepository.findById(userContext, body.id) : null
+        const bundle = !existing && document && document.schemaVersion !== 'resume-completion-v1'
+          ? await loadCompletionBaselineBundle(userContext.userId, body.process_result) : undefined
+        const result = await resumeHistoryRepository.save(userContext, {...body, completion_baseline: bundle?.document, action_baseline: bundle?.actionBaseline})
 
         const response: ApiResponse<ResumeHistoryRecord> = {
           success: true,
-          data: result,
+          data: publicResumeHistory(result),
         }
 
         return response
@@ -211,6 +255,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           return toAuthErrorResponse(error, set)
         }
 
+        if (error instanceof ResumeCompletionSnapshotError || error instanceof ResumeHistoryCommitError) return toCompletionErrorResponse(error, set)
         console.error('保存生成卡片历史失败:', error)
         set.status = 500
 
@@ -234,6 +279,38 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
       },
     }
   )
+  .post('/:id/completion-upgrade', async ({params, body, headers, set}) => {
+    try {
+      const context = await resolveRequestUser(headers)
+      const history = await resumeHistoryRepository.findById(context, params.id)
+      if (!history) {set.status = 404; return {success: false, error: {code: 'RESUME_HISTORY_NOT_FOUND', message: '生成历史不存在或已删除'}}}
+      const next = upgradeResumeCompletion(history, body.expected_document)
+      const saved = next === history ? history : await resumeHistoryRepository.upgradeCompletion(context, history, next)
+      set.headers['Cache-Control'] = 'no-store'
+      return {success: true, data: publicResumeHistory(saved)} satisfies ApiResponse<ResumeHistoryRecord>
+    } catch (error) {
+      if (error instanceof RequestAuthError) return toAuthErrorResponse(error, set)
+      if (error instanceof ResumeCompletionSnapshotError || error instanceof ResumeHistoryCommitError) return toCompletionErrorResponse(error, set)
+      console.error('填写文档升级失败:', error instanceof Error ? error.name : 'unknown')
+      set.status = 500
+      return {success: false, error: {code: 'RESUME_COMPLETION_UPGRADE_FAILED', message: '当前稿升级暂未完成，原始内容与填写已保留'}} satisfies ApiResponse<never>
+    }
+  }, {body: t.Object({expected_document: t.Object({documentId: t.String({minLength: 1}), revision: t.Number({minimum: 0}), digest: t.String({minLength: 1})})}),
+    detail: {summary: '升级填写文档', description: '对归属当前用户的旧填写文档执行幂等、无模型调用的兼容升级。', tags: ['ResumeHistory']}})
+  .get('/:id/action-review', async ({params, headers, query, set}) => {
+    try {
+      const context = await resolveRequestUser(headers)
+      const history = await resumeHistoryRepository.findById(context, params.id)
+      if (!history) {set.status = 404; return {success: false, error: {code: 'RESUME_HISTORY_NOT_FOUND', message: '生成历史不存在'}}}
+      const sidecar = reviewSidecar(history)
+      if (query.revision !== undefined && Number(query.revision) !== sidecar.review?.revision) {set.status = 409; return {success: false, error: {code: 'RESUME_VERSION_CONFLICT', message: '当前稿已更新'}}}
+      set.headers['Cache-Control'] = 'no-store'
+      return {success: true, data: {action_review: sidecar.review ?? null}}
+    } catch (error) {
+      if (error instanceof RequestAuthError) return toAuthErrorResponse(error, set)
+      set.status = 500; return {success: false, error: {code: 'RESUME_REVIEW_UNAVAILABLE', message: '暂时无法获取核对状态'}}
+    }
+  }, {query: t.Object({revision: t.Optional(t.String())})})
   .get(
     '/:id',
     async ({ params, headers, set }) => {
@@ -254,7 +331,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
 
         return {
           success: true,
-          data: result,
+          data: publicResumeHistory(result),
         } satisfies ApiResponse<ResumeHistoryRecord>
       } catch (error) {
         if (error instanceof RequestAuthError) {
@@ -289,7 +366,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
     async ({ params, body, headers, set }) => {
       try {
         const userContext = await resolveRequestUser(headers)
-        const result = await resumeHistoryRepository.update(userContext, params.id, body)
+        const result = await resumeHistoryRepository.update(userContext, params.id, {...body, completion_baseline: undefined})
 
         if (!result) {
           set.status = 404
@@ -304,13 +381,14 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
 
         return {
           success: true,
-          data: result,
+          data: publicResumeHistory(result),
         } satisfies ApiResponse<ResumeHistoryRecord>
       } catch (error) {
         if (error instanceof RequestAuthError) {
           return toAuthErrorResponse(error, set)
         }
 
+        if (error instanceof ResumeCompletionSnapshotError || error instanceof ResumeHistoryCommitError) return toCompletionErrorResponse(error, set)
         console.error('更新生成卡片历史失败:', error)
         set.status = 500
 
@@ -341,6 +419,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
       try {
         const userContext = await resolveRequestUser(headers)
         const deleted = await resumeHistoryRepository.clear(userContext)
+        clearOwnerResumeExtractionCache(userContext.userId)
 
         return {
           success: true,
@@ -377,6 +456,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
       try {
         const userContext = await resolveRequestUser(headers)
         const deleted = await resumeHistoryRepository.delete(userContext, params.id)
+        if (deleted) clearOwnerResumeExtractionCache(userContext.userId)
 
         if (!deleted) {
           set.status = 404

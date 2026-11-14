@@ -67,6 +67,7 @@ export type ContextConfidence = 'high' | 'medium' | 'low' | 'unknown'
 
 export interface JDStructure {
   requirement_analysis?: RequirementAnalysis
+  requirement_sources?: Array<{requirement_id: string; source_quote: string; source_span: {start: number; end: number}; source_block_id: string}>
   basic_info: {
     title: string
     company?: string
@@ -107,7 +108,7 @@ export interface JDStructure {
 export type WeaknessEvidenceType = 'direct_missing' | 'implicit_evidence' | 'wording_gap'
 export type MatchGapPriority = 'high' | 'medium' | 'low'
 
-export type RequiredSkillCheckStatus = 'matched' | 'missing' | 'unclear'
+export type RequiredSkillCheckStatus = 'matched' | 'missing' | 'partial' | 'unproven' | 'not_met' | 'unclear'
 
 export interface RequiredSkillCheck {
   requirement: string
@@ -142,9 +143,16 @@ export interface MatchOptimizationStrategyDetail {
 }
 
 export interface MatchAnalysis {
+  requirement_judgments?: import('@/v5/targeting/judgments').RequirementJudgmentBundle
+  experience_duration?: import('@/v5/experience-duration').ExperienceDuration
+  action_plan?: import('@/shared/resume-actions').ResumeActionPlan
+  score_formula_version?: 'match-score-v1' | 'match-score-v2' | 'match-score-v3'
+  score_calibration_status?: 'pending' | 'calibrated' | 'rules_based'
+  score_basis?: 'current_material_requirement_coverage'
+  score_confidence?: 'high' | 'medium' | 'low'
   requirement_analysis?: RequirementAnalysis
-  match_score: number
-  hard_requirements_match: Record<string, boolean>
+  match_score: number | null
+  hard_requirements_match: Record<string, boolean | null>
   skill_match: {
     matched: string[]
     missing: string[]
@@ -167,6 +175,12 @@ export interface MatchAnalysis {
 }
 
 export interface InterviewStoryRecommendation {
+  story_id?: string
+  scope_id?: string
+  case_group_id?: string
+  source_references?: Array<{evidence_id: string; source_scope_id: string; source_quote: string; source_kind: 'source_resume' | 'user_fact'}>
+  related_requirement_ids?: string[]
+  action_ids?: string[]
   title: string
   background: string
   result: string
@@ -174,9 +188,43 @@ export interface InterviewStoryRecommendation {
 }
 
 export interface InterviewSuggestions {
+  presentation?: InterviewPresentation
+  preparation_topics?: import('@/v5/writing/information-routing').InterviewPreparationTopic[]
   questions: string[]
   story_recommendations: InterviewStoryRecommendation[]
   follow_up_questions: string[]
+}
+
+export interface InterviewPresentation {
+  version: 'interview-presentation-v1'
+  basedOnDocument?: {documentId: string; revision: number; resolvedDigest?: string}
+  userFactSnapshot?: {documentId: string; revision: number; facts: Array<{evidenceId: string; sourceScopeId: string; sourceBlockId: string; text: string}>}
+  questions: Array<{
+    questionId: string
+    question: string
+    category?: string
+    preparationFocus: string
+    sourceEvidenceIds: string[]
+    requirementIds: string[]
+    topics: import('@/v5/writing/information-routing').InterviewPreparationTopic[]
+  }>
+  stories: Array<{
+    storyId: string
+    title: string
+    resultText?: string
+    scopeId: string
+    caseGroupId?: string
+    sourceGroups: Array<{
+      sourceKind: 'source_resume' | 'user_fact'
+      label: string
+      stage?: string
+      evidenceIds: string[]
+      spans: Array<{start: number; end: number}>
+      paragraphs: string[]
+    }>
+    jobReferences: Array<{requirementId: string; quote: string; focus?: string; evidenceIds?: string[]}>
+    topics: import('@/v5/writing/information-routing').InterviewPreparationTopic[]
+  }>
 }
 
 /**
@@ -232,7 +280,15 @@ export interface MvpProcessResponse {
   step1_analysis: ResumeAnalysis
   step2_matching: MatchAnalysis
   step3_optimized_resume: string
+  step3_completion_document?: import('@/shared/resume-completion').ResumeCompletionDocument
+  step3_completion_context?: string
   step3_strategy_review?: ResumeStrategyReview
+  step3_action_plan?: import('@/shared/resume-actions').ResumeActionPlan
+  step3_resolved_action_plan?: import('@/shared/resume-actions').ResolvedResumeActionPlan
+  step3_action_review?: import('@/shared/resume-actions').ResumeActionReview
+  step3_change_manifest?: import('@/shared/resume-actions').ResumeChangeManifest
+  step3_identity_state?: import('@/shared/resume-actions').ResumeIdentityState
+  step3_delivery_state?: import('@/shared/resume-actions').ResumeDeliveryState
   step3_changes_summary?: string[]
   step4_interview_suggestions?: InterviewSuggestions
 }
@@ -245,6 +301,7 @@ export interface SourceResumeRecord {
   resume_markdown: string
   source_type: SourceResumeSourceType
   original_file_name: string | null
+  parse_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -254,6 +311,7 @@ export interface SourceResumeSummaryRecord {
   title: string
   source_type: SourceResumeSourceType
   original_file_name: string | null
+  parse_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -263,6 +321,7 @@ export interface SaveSourceResumeInput {
   resume_markdown: string
   source_type: SourceResumeSourceType
   original_file_name?: string | null
+  parse_id?: string | null
 }
 
 export type ResultStepStatus = 'pending' | 'generating' | 'done' | 'failed'
@@ -273,6 +332,8 @@ export interface ResultSessionContextRecord {
   location?: string
   resumeContent: string
   jdContent: string
+  resumeParseId?: string
+  jdParseId?: string
 }
 
 export interface ResultSessionProgressRecord {
@@ -283,6 +344,7 @@ export interface ResultSessionProgressRecord {
 }
 
 export interface ResumeHistoryRecord {
+  commit_ack?: {commit_id: string; document_id: string | null; revision: number | null; resolved_digest: string | null}
   id: string
   position: string
   company: string
@@ -290,7 +352,7 @@ export interface ResumeHistoryRecord {
   created_at: string
   updated_at: string
   quality_score: number
-  match_score: number
+  match_score: number | null
   tags: string[]
   resume_content: string
   jd_content: string
@@ -312,7 +374,7 @@ export interface ResumeHistorySummaryRecord {
   created_at: string
   updated_at: string
   quality_score: number
-  match_score: number
+  match_score: number | null
   tags: string[]
   location: string
   strategy_title?: string
@@ -328,7 +390,7 @@ export interface SaveResumeHistoryInput {
   name: string
   created_at: string
   quality_score: number
-  match_score: number
+  match_score: number | null
   tags: string[]
   resume_content: string
   jd_content: string
@@ -336,6 +398,14 @@ export interface SaveResumeHistoryInput {
   optimization_suggestions?: string[]
   changes_summary?: string[]
   process_result?: unknown
+  completion_edit?: unknown
+  expected_document?: {documentId: string; revision: number; resolvedDigest?: string}
+  commit_id?: string
+  /** 只由服务端生成基准加载。 */
+  action_baseline?: {actionPlan: import('@/shared/resume-actions').ResumeActionPlan; resolvedPlan: import('@/shared/resume-actions').ResolvedResumeActionPlan;
+    review?: import('@/shared/resume-actions').ResumeActionReview; changeManifest?: import('@/shared/resume-actions').ResumeChangeManifest; identityState?: import('@/shared/resume-actions').ResumeIdentityState; deliveryState?: import('@/shared/resume-actions').ResumeDeliveryState; interviewBasis?: import('@/v5/types').InterviewGenerationBasis; matching?: unknown}
+  /** 仅服务端从已归属的生成记录读取，HTTP 不接收该字段。 */
+  completion_baseline?: import('@/shared/resume-completion').ResumeCompletionDocument
   result_context?: ResultSessionContextRecord
   progress?: ResultSessionProgressRecord
   card_color?: string | null

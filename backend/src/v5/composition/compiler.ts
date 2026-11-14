@@ -109,7 +109,7 @@ type PendingClaim = {
 }
 
 type SectionItem =
-  | { kind: 'heading'; text: string }
+  | { kind: 'heading'; text: string; outputPath: string }
   | { kind: 'claim'; claim: PendingClaim }
 
 export function compileCompositionArtifact(input: {
@@ -149,6 +149,7 @@ export function renderValidatedCompositionArtifact(input: {
 
   const claims: GeneratedResumeArtifact['claims'] = []
   const lines: string[] = []
+  const outputPathByLine = new Map<number, string>()
   let claimIndex = 0
 
   const atomsFor = (ids: string[]) => ids
@@ -172,8 +173,13 @@ export function renderValidatedCompositionArtifact(input: {
     ))
 
   const appendClaim = (claim: PendingClaim) => {
+    if (/^awards(?:\.|\[)/u.test(claim.outputPath)) {
+      const schools = [...new Set(claim.atoms.flatMap(atom => input.resume.timeline.filter(scope => scope.kind === 'education' && scope.scopeId === atom.sourceScopeId).flatMap(scope => scope.organization ?? [])))]
+      if (schools.length === 1 && !claim.outputText.includes(schools[0])) claim = {...claim, outputText: `- ${schools[0]}：${withoutMarkdownMarker(claim.outputText)}`}
+    }
     if (!claim.outputText.trim() || claim.atoms.length === 0) return
     claimIndex += 1
+    outputPathByLine.set(lines.length, claim.outputPath)
     lines.push(claim.outputText)
     claims.push({
       claimId: `composition_claim_${String(claimIndex).padStart(4, '0')}`,
@@ -218,7 +224,10 @@ export function renderValidatedCompositionArtifact(input: {
     if (items.length === 0) return
     lines.push(`## ${sectionTitle(section, input.blueprint.outputLanguage)}`, '')
     for (const item of items) {
-      if (item.kind === 'heading') lines.push(item.text, '')
+      if (item.kind === 'heading') {
+        outputPathByLine.set(lines.length, item.outputPath)
+        lines.push(item.text, '')
+      }
       else {
         if (item.claim.outputPath.startsWith('timeline.')) lines.push('')
         appendClaim(item.claim)
@@ -274,7 +283,7 @@ export function renderValidatedCompositionArtifact(input: {
         if (scopeSlots.length === 0) continue
         const heading = timelineText(timeline)
         if (!heading) continue
-        items.push({ kind: 'heading', text: `### ${heading}` })
+        items.push({ kind: 'heading', text: `### ${heading}`, outputPath: `scope_heading.${section}.${timeline.scopeId}` })
         for (const slot of scopeSlots) {
           const block = blockBySlot.get(slot.slotId)
           if (!block) continue
@@ -310,10 +319,18 @@ export function renderValidatedCompositionArtifact(input: {
     renderSection(section, items)
   }
 
-  const markdown = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  const renderedBlocks = lines.flatMap((raw, index) => raw === '' && (index === 0 || lines[index - 1] === '')
+    ? [] : [{raw, ...(outputPathByLine.has(index) ? {outputPath: outputPathByLine.get(index)!} : {})}])
+  while (renderedBlocks.at(-1)?.raw === '') renderedBlocks.pop()
+  if (renderedBlocks.length) {
+    renderedBlocks[0].raw = renderedBlocks[0].raw.trimStart()
+    renderedBlocks[renderedBlocks.length - 1].raw = renderedBlocks[renderedBlocks.length - 1].raw.trimEnd()
+  }
+  const markdown = renderedBlocks.map(block => block.raw).join('\n')
   const usedEvidenceIds = [...new Set(claims.flatMap(claim => claim.evidenceIds))]
   const plannedEvidenceIds = [...plannedContentEvidenceIds(input.resume, input.plan)]
   return {
+    renderedBlocks,
     artifact: {
       schemaVersion: V5_SCHEMA_VERSION,
       markdown,

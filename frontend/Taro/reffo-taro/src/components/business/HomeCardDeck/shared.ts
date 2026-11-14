@@ -14,7 +14,7 @@ export interface HomeCardItem {
   location: string
   role: string
   dateLabel: string
-  score: number
+  score: number | null
   primaryColor: string
   surfaceColor: string
   stackColor: string
@@ -25,8 +25,9 @@ export interface HomeCardItem {
   strategyTitle?: string
   resumeProfile?: {
     name: string
-    age: number
-    gender: '男' | '女'
+    headline?: string
+    age?: number
+    gender?: '男' | '女'
     avatarPrimary: string
     avatarAccent: string
     avatarVariant: number

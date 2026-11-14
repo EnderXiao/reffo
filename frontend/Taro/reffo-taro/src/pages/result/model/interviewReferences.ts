@@ -1,100 +1,156 @@
-import type {ProcessResult} from '@/types'
+import type {InterviewPreparationTopic, InterviewPresentation, ProcessResult} from '@/types'
+import {hasResumeCompletionPlaceholder} from '@/shared/resume-strategy'
+import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis'
 
-function normalizeReferenceLine(line: string) {
-  return line
-    .replace(/^#{1,6}\s*/, '')
-    .replace(/^[-*+]\s+/, '')
-    .replace(/^\d+[.)、]\s*/, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
+interface JobReference {requirementId: string; quote: string; focus?: string}
+type SourceGroup = InterviewPresentation['stories'][number]['sourceGroups'][number]
+const object = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined
 
-function splitReferenceLines(source: string) {
-  return source
-    .split(/\r?\n+/)
-    .map(normalizeReferenceLine)
-    .filter(line => line.length >= 4)
-}
-
-function tokenizeReferenceText(text: string) {
-  const normalized = text.toLowerCase()
-  const asciiTokens = normalized.match(/[a-z0-9][a-z0-9+#.-]{1,}/g) ?? []
-  const cjkTokens = normalized.match(/[\u4e00-\u9fa5]{2,}/g) ?? []
-  const cjkPairs = cjkTokens.flatMap(token => {
-    if (token.length <= 4) {
-      return [token]
+/** 仅显式提供的岗位 ID 可以连接原文，行动计划不构成故事与岗位的关联证明。 */
+export function resolveInterviewJobReferences(result: ProcessResult, requirementIds: string[], _actionIds: string[], jdContent: string): JobReference[] {
+  const ids = new Set(requirementIds)
+  const references: JobReference[] = []
+  const add = (id: unknown, quote: unknown) => {
+    if (typeof id !== 'string' || !ids.has(id) || typeof quote !== 'string' || !quote.trim()
+      || !jdContent.includes(quote) || references.some(item => item.requirementId === id && item.quote === quote)) return
+    references.push({requirementId: id, quote})
+  }
+  for (const source of result.matching.jd_structure?.requirement_sources ?? []) add(source.requirement_id, source.source_quote)
+  const analysis = normalizeRequirementAnalysis(result.matching.requirement_analysis)
+  if (analysis) for (const item of [analysis.portrait, ...analysis.tasks, ...analysis.outcomes, ...analysis.successConditions,
+    ...analysis.attributes, ...analysis.externalRequirements, ...analysis.conflicts]) {
+    if (item) for (const quote of item.sourceQuotes) add(item.id, quote)
+  }
+  const structure = object(result.matching.jd_structure)
+  const atoms = structure?.requirementAtoms ?? structure?.requirement_atoms
+  if (Array.isArray(atoms)) for (const value of atoms) {
+    const atom = object(value)
+    const id = atom?.requirementId ?? atom?.requirement_id
+    const quote = atom?.sourceQuote ?? atom?.source_quote
+    if (typeof quote === 'string') add(id, quote)
+    else {
+      const span = object(atom?.sourceSpan ?? atom?.source_span)
+      const start = span?.start ?? span?.startOffset
+      const end = span?.end ?? span?.endOffset
+      if (typeof start === 'number' && typeof end === 'number' && Number.isInteger(start) && Number.isInteger(end)
+        && start >= 0 && end > start && end <= jdContent.length) add(id, jdContent.slice(start, end))
     }
+  }
+  return references
+}
 
-    return Array.from({length: token.length - 1}, (_, index) => token.slice(index, index + 2))
+function cleanReference(value: string) {
+  return value.replace(/^#{1,6}\s*/, '').replace(/^[-*+]\s+/, '').trim()
+}
+
+function legacySourceGroups(references: NonNullable<ProcessResult['interview']['story_recommendations'][number]['source_references']>, title: string): SourceGroup[] {
+  const groups = new Map<string, SourceGroup>()
+  for (const reference of references) {
+    if (!reference.evidence_id || !reference.source_scope_id || !reference.source_quote?.trim()
+      || hasResumeCompletionPlaceholder(reference.source_quote)) continue
+    const key = `${reference.source_scope_id}:${reference.source_kind}`
+    const group = groups.get(key) ?? {sourceKind: reference.source_kind, label: title, evidenceIds: [], spans: [], paragraphs: []}
+    if (!group.evidenceIds.includes(reference.evidence_id)) group.evidenceIds.push(reference.evidence_id)
+    const text = cleanReference(reference.source_quote)
+    if (/^#{1,6}\s/.test(reference.source_quote)) { group.label = text; groups.set(key, group); continue }
+    const stage = text.replace(/^[ABC]\s*[|｜]\s*/, '')
+    if (/^(?:研究(?:与方向形成)?|规划|设计|开发|验证|未上线)(?:阶段)?$/.test(stage)) {
+      if (!group.stage) group.stage = stage
+    } else if (text && !group.paragraphs.includes(text)) group.paragraphs.push(text)
+    groups.set(key, group)
+  }
+  return [...groups.values()].filter(group => group.paragraphs.length > 0)
+}
+
+export function interviewPresentation(result: ProcessResult) {
+  const presentation = result.interview?.presentation
+  const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string')
+  if (presentation?.version !== 'interview-presentation-v1' || !Array.isArray(presentation.questions) || !Array.isArray(presentation.stories)) return undefined
+  const validQuestions = presentation.questions.every(item => item && typeof item.questionId === 'string' && typeof item.question === 'string'
+    && typeof item.preparationFocus === 'string' && strings(item.sourceEvidenceIds) && strings(item.requirementIds) && Array.isArray(item.topics))
+  const validStories = presentation.stories.every(item => item && typeof item.storyId === 'string' && typeof item.title === 'string'
+    && typeof item.scopeId === 'string' && Array.isArray(item.topics) && Array.isArray(item.sourceGroups) && item.sourceGroups.every(group => group
+      && ['source_resume', 'user_fact'].includes(group.sourceKind) && typeof group.label === 'string' && strings(group.evidenceIds) && strings(group.paragraphs))
+    && Array.isArray(item.jobReferences) && item.jobReferences.every(reference => reference && typeof reference.requirementId === 'string' && typeof reference.quote === 'string'))
+  return validQuestions && validStories ? presentation : undefined
+}
+
+/** 只升级同一份面试的展示数据，不替换用户当前稿或已重新生成的面试。 */
+export function upgradeInterviewPresentation(local: ProcessResult, authoritative: ProcessResult): ProcessResult {
+  const remote = interviewPresentation(authoritative)
+  if (!remote || interviewPresentation(local)) return local
+  const content = (result: ProcessResult) => ({
+    questions: result.interview.questions,
+    followUps: result.interview.follow_up_questions,
+    stories: result.interview.story_recommendations.map(story => ({title: story.title, background: story.background, result: story.result,
+      approach: story.storytelling_approach, references: story.source_references ?? []})),
+    basedOn: result.interview.based_on_document ?? interviewPresentation(result)?.basedOnDocument ?? null,
   })
-
-  return Array.from(new Set([...asciiTokens, ...cjkTokens, ...cjkPairs]))
+  if (JSON.stringify(content(local)) !== JSON.stringify(content(authoritative))) return local
+  return {...local, interview: {...local.interview, presentation: remote, story_recommendations: local.interview.story_recommendations.map((story, index) => {
+    const reference = authoritative.interview.story_recommendations[index]
+    return {...story, ...(reference.story_id ? {story_id: reference.story_id} : {}),
+      ...(reference.scope_id ? {scope_id: reference.scope_id} : {}), ...(reference.case_group_id ? {case_group_id: reference.case_group_id} : {})}
+  })}}
 }
 
-function clipReferenceLine(line: string, maxLength = 48) {
-  if (line.length <= maxLength) {
-    return line
-  }
-
-  return `${line.slice(0, maxLength - 1)}…`
+export function interviewSourceHeading(group: SourceGroup, storyTitle: string) {
+  const normalize = (value: string) => cleanReference(value).replace(/[\s\p{P}]/gu, '')
+  const label = group.label?.trim() || ''
+  const stage = group.stage?.trim() || ''
+  const labelKey = normalize(label)
+  const titleKey = normalize(storyTitle)
+  const stageKey = normalize(stage)
+  const showLabel = labelKey && !titleKey.includes(labelKey) && labelKey !== stageKey
+  return [group.sourceKind === 'user_fact' ? '用户补充（尚未经独立核验）' : '源简历依据',
+    showLabel ? label : '', stageKey && !(showLabel && labelKey.includes(stageKey)) ? stage : ''].filter(Boolean).join(' · ')
 }
 
-export function findBestOriginalQuote(source: string, query: string, fallbackQuery = '') {
-  const lines = splitReferenceLines(source)
-
-  if (lines.length === 0) {
-    return ''
-  }
-
-  const queryTokens = tokenizeReferenceText(`${query} ${fallbackQuery}`)
-  const scored = lines
-    .map((line, index) => {
-      const lowerLine = line.toLowerCase()
-      const score = queryTokens.reduce((total, token) => (
-        lowerLine.includes(token) ? total + Math.min(token.length, 8) : total
-      ), 0)
-
-      return {line, index, score}
-    })
-    .sort((left, right) => right.score - left.score || left.index - right.index)
-
-  const best = scored[0]
-  const selected = best && best.score > 0
-    ? best.line
-    : lines.find(line => /岗位|职责|要求|经验|项目|负责|开发|平台|系统|能力|熟悉|掌握/.test(line)) ?? lines[0]
-
-  return clipReferenceLine(selected)
-}
-
-export function buildInterviewStoryViewItems(
-  result: ProcessResult,
-  resumeContent: string,
-  jdContent: string,
-) {
+export function buildInterviewStoryViewItems(result: ProcessResult, _resumeContent: string, _jdContent: string) {
+  const presentation = interviewPresentation(result)
   const stories = result.interview?.story_recommendations ?? []
-
   return stories.map(story => {
     const title = story.title || '未命名故事'
-    const background = story.background || ''
-    const storyResult = story.result || ''
-    const storytellingApproach = Array.isArray(story.storytelling_approach)
-      ? story.storytelling_approach.filter(point => typeof point === 'string' && point.trim()).map(point => point.trim())
-      : []
-    const query = `${title} ${background} ${storyResult}`
-    const resumeQuote = findBestOriginalQuote(resumeContent || result.optimized.optimized_resume, query, title)
-    const jdQuote = findBestOriginalQuote(
-      jdContent,
-      `${query} ${result.matching.hard_requirements_match.map(item => item.requirement).join(' ')}`,
-      result.matching.skill_match.missing_skills.join(' '),
-    )
-
+    const matching = presentation?.stories.filter(item => story.story_id ? item.storyId === story.story_id : item.title === title) ?? []
+    const projected = matching.length === 1 ? matching[0] : undefined
+    const sourceReferences = story.source_references?.filter(reference => reference.evidence_id && reference.source_scope_id && reference.source_quote?.trim()) ?? []
     return {
-      title,
-      background,
-      result: storyResult,
-      storytellingApproach,
-      resumeQuote,
-      jdQuote,
+      title, background: story.background || '', result: projected?.resultText ?? story.result ?? '',
+      storytellingApproach: Array.isArray(story.storytelling_approach)
+        ? story.storytelling_approach.filter(point => typeof point === 'string' && point.trim()).map(point => point.trim()) : [],
+      sourceReferences,
+      sourceGroups: presentation ? projected?.sourceGroups ?? [] : legacySourceGroups(sourceReferences, title),
+      // 历史 related_requirement_ids 曾由证据交集反推，不能当作显式岗位关联。
+      jdReferences: projected?.jobReferences ?? [],
+      presentation: projected,
     }
   })
+}
+
+export function interviewNeedsRefresh(result: ProcessResult): boolean {
+  const document = result.optimized.completion_document
+  const reference = result.interview.based_on_document ?? interviewPresentation(result)?.basedOnDocument
+  if (!document) return false
+  if (!reference) return document.revision > 0
+  return reference.documentId !== document.documentId || reference.revision !== document.revision
+    || reference.resolvedDigest !== result.optimized.resolved_action_plan?.resolvedDigest
+}
+
+/** 服务端投影决定唯一落点；旧主题必须有唯一的直接证据归属。 */
+export function buildInterviewPreparationView(result: ProcessResult, stories: ReturnType<typeof buildInterviewStoryViewItems>) {
+  const presentation = interviewPresentation(result)
+  const seen = new Set<string>()
+  const unique = (topics: InterviewPreparationTopic[]) => topics.filter(topic => topic.topicId && topic.prompt?.trim()
+    && !seen.has(topic.topicId) && Boolean(seen.add(topic.topicId)))
+  const questionTopics = presentation?.questions.map(item => unique(item.topics)) ?? []
+  const storyTopics: InterviewPreparationTopic[][] = stories.map(story => unique(story.presentation?.topics ?? []))
+  if (!presentation) {
+    for (const topic of unique(result.interview?.preparation_topics ?? [])) {
+      const targets = stories.map((story, index) => ({story, index})).filter(({story}) => story.sourceReferences.some(reference =>
+        reference.source_scope_id === topic.scopeId && topic.sourceEvidenceIds.includes(reference.evidence_id)))
+      if (targets.length === 1 && topic.preparationFocus?.trim()) storyTopics[targets[0].index].push(topic)
+    }
+  }
+  return {storyTopics, questionTopics}
 }

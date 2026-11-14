@@ -5,6 +5,18 @@ import { toMatchAnalysis } from '@/v5/main/compatibility'
 import { calculateV5MatchScore } from '@/v5/match-score'
 
 describe('targeted gap and strategy presentation', () => {
+  test('new requirement semantics keep expected abilities out of preferred and preserve legacy projection',()=>{
+    const f=createTargetingFixture(), match=projectLegacyMatch(f.fit,f.targets,f.resume,f.job), original=f.job.requirementAtoms[0]!
+    const atom=(requirementId:string,condition:'required'|'expected'|'preferred')=>({...original,requirementId,normalizedRequirement:requirementId,
+      importance:'differentiator' as const,semantics:{kind:'general_ability' as const,condition,requiredOwnership:null,
+        domainConstraint:null,minimumYears:null,preferredRange:null,scoringGroupId:requirementId}})
+    f.job.requirementAtoms=[atom('degree','required'),atom('research','expected'),atom('figma','preferred'),
+      {...original,requirementId:'legacy',normalizedRequirement:'legacy',importance:'differentiator',semantics:undefined}]
+    const jd=toMatchAnalysis({resumeEvidenceBundle:f.resume,jobRequirementBundle:f.job,matchAnalysis:match,
+      matchScore:calculateV5MatchScore({job:f.job,match,resume:f.resume})}).jd_structure
+    expect(jd.nice_to_have).toEqual(['figma','legacy'])
+    expect(jd.requirement_hierarchy).toEqual({must_have:['degree'],core_outcomes:['research'],differentiators:['figma','legacy']})
+  })
   test('preserves specific differences and writing angles without depending on optional questions', () => {
     const f = createTargetingFixture()
     f.fit.questions = []
@@ -15,6 +27,9 @@ describe('targeted gap and strategy presentation', () => {
     const match = projectLegacyMatch(f.fit, f.targets, f.resume, f.job)
     const result = toMatchAnalysis({ resumeEvidenceBundle: f.resume, jobRequirementBundle: f.job,
       matchAnalysis: match, matchScore: calculateV5MatchScore({ job: f.job, match, resume: f.resume }) })
+    expect(result.jd_structure.requirement_sources).toEqual(f.job.requirementAtoms.map(atom => ({
+      requirement_id: atom.requirementId, source_quote: atom.verbatimText, source_span: atom.sourceSpan, source_block_id: atom.sourceBlockId,
+    })))
     expect(result.weaknesses.some(text => text.includes(task.difference))).toBe(true)
     expect(result.weakness_details?.find(gap => gap.weakness.includes(task.difference))).toMatchObject({
       evidence_type: 'implicit_evidence', priority: 'high', evidence: f.business.verbatimText,
@@ -173,7 +188,7 @@ describe('targeted gap and strategy presentation', () => {
     expect(projectLegacyMatch(f.fit, f.targets, f.resume, f.job).gaps[0].impact).toContain('尚缺少可核对的任职起止时间')
   })
 
-  test('uses education verification for an unknown degree without changing direct or explicit-gap judgments', () => {
+  test('keeps degree unknown when a claimed negative cites unrelated work evidence', () => {
     const f = createTargetingFixture()
     f.fit.narratives = []
     f.fit.links.forEach(link => { link.status = 'direct' })
@@ -187,8 +202,8 @@ describe('targeted gap and strategy presentation', () => {
     expect(match.gaps[0].safeHandling).not.toContain('交付物')
     Object.assign(link, { status: 'explicit_gap', evidenceIds: [f.business.evidenceId], difference: '材料明确为大专，与本科要求不一致。' })
     match = projectLegacyMatch(f.fit, f.targets, f.resume, f.job)
-    expect(match.gaps[0].impact).toContain(link.difference)
-    expect(match.gaps[0].safeHandling).toContain('如实保留')
+    expect(match.gaps[0].impact).toContain('暂不能判断学历')
+    expect(match.judgmentBundle!.items.find(item => item.requirementId === requirement.requirementId)!.status).toBe('unproven')
     link.status = 'direct'
     expect(projectLegacyMatch(f.fit, f.targets, f.resume, f.job).gaps).toEqual([])
   })
@@ -223,8 +238,8 @@ describe('targeted gap and strategy presentation', () => {
     expect(gap.safeHandling).not.toContain('交付物')
     Object.assign(link, { status: 'explicit_gap', evidenceIds: [f.business.evidenceId], difference: '本人明确只能在北京工作，不能接受岗位要求的长沙驻场。' })
     const explicit = projectLegacyMatch(f.fit, f.targets, f.resume, f.job).gaps[0]
-    expect(explicit.impact).toContain(link.difference)
-    expect(explicit.safeHandling).toContain('如实保留')
+    expect(explicit.impact).toContain('本人意向是否一致仍待确认')
+    expect(explicit.safeHandling).toContain('核对工作地点')
     link.status = 'direct'
     expect(projectLegacyMatch(f.fit, f.targets, f.resume, f.job).gaps).toEqual([])
   })

@@ -1,5 +1,6 @@
 import type { JobRequirementBundle } from '@/v5/types'
 import type { WritingPlan } from '@/v5/writing/plan'
+import { skillDimensions } from '@/v5/writing/skills'
 
 const NAMED_SKILLS = /\b(?:SQL|Excel|Python|Java|MySQL|Redis|Kafka|Spring(?:\s+Boot|\s+Cloud)?|JVM|Docker|Kubernetes|Linux|Figma|Tableau|Power\s*BI|SPSS|SAP|Jira|PRD|C\+\+|JavaScript|TypeScript)\b|用友|金蝶/giu
 const signals = (text: string) => [...new Set([...text.matchAll(NAMED_SKILLS)].map(m=>m[0].replace(/\s/g,'').toLowerCase()))]
@@ -20,10 +21,14 @@ export function preserveNamedSkillSignals(plan: WritingPlan, job: JobRequirement
     chosen.push(ranked[0].fact); ranked[0].covered.forEach(s=>remaining.delete(s))
   }
   if (!chosen.length) return
+  // Selected source skill lists already express distinct ability dimensions.
+  // Keep their wording instead of replacing a validation list with a research case.
+  for (const fact of pool) if (!chosen.includes(fact) && skillDimensions(fact.text).length >= 3) chosen.push(fact)
   const evidenceIds = chosen.map(f=>f.evidenceId)
   slot.scopeId = null; slot.allowedEvidenceIds = evidenceIds
   plan.coreEvidenceIdsBySlot[slot.slotId] = evidenceIds
   if (plan.skillThemes) delete plan.skillThemes[slot.slotId]
   if (plan.editorial) delete plan.editorial.slots[slot.slotId]
-  plan.fixedBlocks = [{ slotId:slot.slotId, evidenceIds, text:chosen.map(f=>f.text.replace(/\s*[\r\n]+\s*/gu,'；')).join('；') }]
+  const texts = chosen.map(f=>f.text.replace(/\s*[\r\n]+\s*/gu,'；'))
+  plan.fixedBlocks = [{ slotId:slot.slotId, evidenceIds, text:texts.length === 1 ? texts[0] : texts.map(text=>text.replace(/[；;。]\s*$/u,'')).join('；')+'。' }]
 }

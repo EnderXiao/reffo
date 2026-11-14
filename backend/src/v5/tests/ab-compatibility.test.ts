@@ -114,12 +114,12 @@ describe('v5 compatibility and offline A/B', () => {
       const checks = toLegacyMvpProcessResponse(result).step2_matching.skill_match.required_skill_checks!
       expect(checks.find(check => check.requirement === skill.verbatimText)).toEqual({
         requirement: skill.verbatimText,
-        status: status === 'direct_match' ? 'matched' : status === 'currently_unproven' ? 'missing' : 'unclear',
+        status: status === 'direct_match' ? 'matched' : status === 'currently_unproven' ? 'unproven' : 'partial',
         evidence: match.rationale,
       })
       result.matchAnalysis.requirementMatches = result.matchAnalysis.requirementMatches.filter(item => item !== match)
       expect(toLegacyMvpProcessResponse(result).step2_matching.skill_match.required_skill_checks)
-        .toContainEqual({ requirement: skill.verbatimText, status: 'unclear', evidence: '当前材料未完成该要求的核验。' })
+        .toContainEqual({ requirement: skill.verbatimText, status: 'unproven', evidence: '当前材料未完成该要求的核验。' })
     }
   })
 

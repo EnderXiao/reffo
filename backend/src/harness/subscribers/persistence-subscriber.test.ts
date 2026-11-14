@@ -370,6 +370,68 @@ describe('Phase 1 harness diagnostics persistence', () => {
     }
   })
 
+  test('preserves v3 writing focus coverage and keeps historical v2 coverage unavailable', async () => {
+    const { db, subscriber, repository } = createTestHarness()
+    try {
+      const historical = deliveryDiagnostics({ productPassed: true })
+      const current = {...historical, version: 'v5-delivery-diagnostics-v3', metrics: {
+        ...historical.metrics, primaryWritingFocusCoverage: {numerator: 2, denominator: 3},
+      }}
+      for (const [runId, diagnostics] of [['run-focus-v2', historical], ['run-focus-v3', current]] as const) {
+        startRun(subscriber, runId)
+        subscriber.handle(createHarnessEvent({
+          type: 'workflow.succeeded', runId, requestId: `request-${runId}`,
+          payload: {agentState: 'succeeded', usedSafeFallback: false, deliveryDiagnostics: diagnostics},
+        }))
+      }
+      const row = db.query('SELECT diagnostics_version, diagnostics_json FROM process_runs WHERE id = ?')
+        .get('run-focus-v3') as {diagnostics_version: string; diagnostics_json: string}
+      expect(row.diagnostics_version).toBe('v5-delivery-diagnostics-v3')
+      expect(JSON.parse(row.diagnostics_json)).toEqual(current)
+      const metrics = await sqliteDashboardMetrics(repository)
+      expect(metrics.diagnosticsV2Counts).toEqual({validCount: 2, missingCount: 0, invalidCount: 0})
+      expect(metrics.coverageMetrics.primaryWritingFocusCoverage).toEqual({
+        numerator: 2, denominator: 3, ratio: 2 / 3, sampleCount: 1,
+        notApplicableCount: 0, metricsUnavailableCount: 1,
+      })
+      db.query('UPDATE process_runs SET diagnostics_version = ? WHERE id = ?')
+        .run('v5-delivery-diagnostics-v2', 'run-focus-v3')
+      expect((await sqliteDashboardMetrics(repository)).diagnosticsV2Counts)
+        .toEqual({validCount: 1, missingCount: 0, invalidCount: 1})
+    } finally {
+      db.close()
+    }
+  })
+
+  test('rejects malformed v3 focus coverage instead of silently downgrading the version', async () => {
+    const { db, subscriber, repository } = createTestHarness()
+    try {
+      const historical = deliveryDiagnostics({ productPassed: true })
+      const malformed = [
+        {...historical, version: 'v5-delivery-diagnostics-v3'},
+        {...historical, version: 'v5-delivery-diagnostics-v3', metrics: {
+          ...historical.metrics, primaryWritingFocusCoverage: {numerator: 4, denominator: 3},
+        }},
+      ]
+      for (const [index, diagnostics] of malformed.entries()) {
+        const runId = `run-invalid-focus-${index}`
+        startRun(subscriber, runId)
+        subscriber.handle(createHarnessEvent({
+          type: 'workflow.succeeded', runId, requestId: `request-${runId}`,
+          payload: {agentState: 'succeeded', usedSafeFallback: false, deliveryDiagnostics: diagnostics},
+        }))
+        expect(db.query('SELECT diagnostics_json FROM process_runs WHERE id = ?').get(runId))
+          .toEqual({diagnostics_json: null})
+        db.query('UPDATE process_runs SET diagnostics_version = ?, diagnostics_json = ? WHERE id = ?')
+          .run('v5-delivery-diagnostics-v3', JSON.stringify(diagnostics), runId)
+      }
+      const metrics = await sqliteDashboardMetrics(repository)
+      expect(metrics.diagnosticsV2Counts).toEqual({validCount: 0, missingCount: 0, invalidCount: 2})
+    } finally {
+      db.close()
+    }
+  })
+
   test('persists failed terminal diagnostics with null metrics', () => {
     const { db, subscriber } = createTestHarness()
     try {
@@ -473,9 +535,10 @@ describe('Phase 1 harness diagnostics persistence', () => {
       ])
       expect(metrics.deliverableRunTokenMetrics).toEqual({
         deliverable_run_count: 1,
-        avg_input_tokens_per_run: 120,
-        avg_output_tokens_per_run: 30,
-        avg_total_tokens_per_run: 150,
+        avg_input_tokens_per_run: null,
+        avg_output_tokens_per_run: null,
+        avg_total_tokens_per_run: null,
+        usage_source: 'legacy_attempt_summary_unavailable',
       })
       expect(metrics.deliveryDispositionCounts).toEqual([
         { disposition: 'deliverable', count: 1 },
@@ -621,6 +684,14 @@ describe('Phase 1 harness diagnostics persistence', () => {
           sampleCount: 1,
           notApplicableCount: 1,
           metricsUnavailableCount: 1,
+        },
+        primaryWritingFocusCoverage: {
+          numerator: 0,
+          denominator: 0,
+          ratio: null,
+          sampleCount: 0,
+          notApplicableCount: 0,
+          metricsUnavailableCount: 3,
         },
       })
       expect(metrics.businessBulletMetrics).toEqual({

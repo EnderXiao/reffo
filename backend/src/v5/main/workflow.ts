@@ -1,3 +1,11 @@
+import {bindPreparationTopicsToCases} from '@/v5/preparation-topics'
+import {routeSourceInformation} from '@/v5/writing/information-routing'
+import {buildEditorialActionLedger, actionEvidenceScores, actionWritingFocus, bindEditorialActionsToEntries, resolveGeneratedDetailActions, buildCompiledActionReview} from '@/v5/writing/action-ledger'
+import {buildResumeStructureBasis} from '@/v5/writing/structure-manifest'
+import {buildChangeManifest} from '@/shared/resume-actions'
+import {buildDetailSeeds, safeRecoveredEntry} from '@/v5/writing/detail-ledger'
+import {assessResumeDelivery} from '@/services/resume-delivery-assessment'
+import {attachIdentityCompletion, serializeDraft, hasLinkedCompletion} from '@/shared/resume-completion'
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
 import { createHarnessEvent } from '@/harness/events'
 import { createDigest, type RunContext, type StepExecutionContext } from '@/harness/run-context'
@@ -7,6 +15,7 @@ import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
 import type { LlmProvider } from '@/providers/llm-provider'
+import {fallbackLlmProvider} from '@/providers/fallback-provider'
 import { BudgetAwareThinkingProvider } from '@/providers/budget-aware-thinking-provider'
 import { env } from '@/config/env'
 import { assertV5ProductionWorkflow } from '@/config/v5-release'
@@ -44,7 +53,7 @@ import {
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { boundedMap } from '@/v5/bounded-map'
 import { writeValidatedEntries } from '@/v5/writing/entry-correction'
-import { buildEntryWritingPlan, compileEntryWriting, ENTRY_WRITING_POLICY } from '@/v5/writing/entries'
+import { assertEntryDeliveryProjection, buildEntryWritingPlan, compileEntryWriting, ENTRY_WRITING_POLICY } from '@/v5/writing/entries'
 import { assignEntryStrategyActions, buildStrategyActionPlan, buildStrategyReview, completeEntryStrategyEvidence,
   type StrategyActionPlan, type EntryParagraphReference } from '@/v5/writing/strategy-outcomes'
 import { EntrySetValidationError } from '@/v5/writing/entry-set'
@@ -95,7 +104,11 @@ import { buildInterviewContext } from '@/v5/interview-context'
 import type { V5PromptComponent } from '@/v5/prompts'
 import { JOB_TARGETING_POLICY, type JobFitMap, type TargetedJobExtraction } from '@/v5/targeting/contracts'
 import { buildJobTargets, validateTargetedJobExtraction } from '@/v5/targeting/profile'
+import {prepareTargetedSignalRepair} from '@/v5/targeting/extraction-repair'
 import { compactTargetingResume, coreTaskEvidence, projectLegacyMatch, targetingEvidenceScores, validateJobFitMap } from '@/v5/targeting/fit'
+import { repairJobFitMap } from '@/v5/targeting/fit-repair'
+import {MatchingResourceBudget, MATCHING_STEP_TIMEOUT_MS} from '@/v5/targeting/matching-budget'
+import { buildWritingFocus } from '@/v5/planning/writing-focus'
 import type {
   GeneratedResumeArtifact,
   JobExtractionCandidate,
@@ -130,11 +143,13 @@ export interface V5WorkflowInput {
   /** @deprecated Release gating is deterministic; this flag is ignored. */
   enableQualityJudge?: boolean
   workflowTimeoutMs?: number
+  signal?: AbortSignal
   onAnalysisSucceeded?: () => void | Promise<void>
 }
 
 /** 仅供服务端适配器保存/恢复，HTTP 请求不能提供这些可信证据。 */
 export interface V5MatchingCheckpoint {
+  decisionDiagnostics?: V5WorkflowResult['decisionDiagnostics']
   stepStatuses: StepRunSnapshot[]
   state: 'matched'
   runId: string
@@ -158,6 +173,7 @@ interface RepairableStageResolution {
 export interface V5ResumeExtractionInput {
   resumeMarkdown: string
   workflowTimeoutMs?: number
+  signal?: AbortSignal
 }
 
 export type V5ArtifactGenerationMode = 'writer_v1' | 'dsl_v1' | 'composition_v1' | 'legacy'
@@ -175,7 +191,7 @@ export interface V5WorkflowOptions {
   writingEditorialPolicy?: 'document-editorial-v1'
   entryWritingPolicy?: typeof ENTRY_WRITING_POLICY
   onEntryStreamEvent?: (event: EntryStreamEvent) => void
-  jobTargetingPolicy?: typeof JOB_TARGETING_POLICY
+  jobTargetingPolicy?: typeof JOB_TARGETING_POLICY | 'job-targeted-v1'
   onTargetingAnalysis?: (analysis: { profile: TargetedJobExtraction['jobSuccessProfile']; targets: ReturnType<typeof buildJobTargets>; fit: JobFitMap }) => Promise<void>
 }
 
@@ -377,6 +393,7 @@ function normalizeBlockedError(error: unknown): V5WorkflowBlockedError {
   }
   if (cause instanceof V5WorkflowBlockedError) return cause
   if (cause instanceof V5ProviderCallError) {
+    if (cause.cause instanceof V5WorkflowBlockedError) return cause.cause
     return new V5WorkflowBlockedError({
       code: cause.retryable ? 'V5_PROVIDER_TEMPORARY_FAILURE' : 'V5_PROVIDER_REQUEST_FAILED',
       state: 'provider_failure',
@@ -482,7 +499,7 @@ export class V5ResumeOptimizationWorkflow {
   private readonly writingEditorialPolicy?: 'document-editorial-v1'
   private readonly entryWritingPolicy?: typeof ENTRY_WRITING_POLICY
   private readonly onEntryStreamEvent?: V5WorkflowOptions['onEntryStreamEvent']
-  private readonly jobTargetingPolicy?: typeof JOB_TARGETING_POLICY
+  private readonly jobTargetingPolicy?: typeof JOB_TARGETING_POLICY | 'job-targeted-v1' | 'job-targeted-v1'
   private readonly onTargetingAnalysis?: V5WorkflowOptions['onTargetingAnalysis']
 
   constructor(options: V5WorkflowOptions = {}) {
@@ -527,7 +544,7 @@ export class V5ResumeOptimizationWorkflow {
     input: V5ResumeExtractionInput,
     harness: HarnessedRequestContext
   ): Promise<V5ResumeExtractionResult> {
-    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 300000, harness)
+    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 300000, harness, input.signal)
     const { runContext } = runtime
     const remaining = runtime.context.remainingMs
     this.thinkingBudgetRemainingMs = remaining
@@ -634,7 +651,7 @@ export class V5ResumeOptimizationWorkflow {
     return result
   }
 
-  async generateResume(checkpoint: V5MatchingCheckpoint, options: Pick<V5WorkflowInput, 'outputLanguage' | 'workflowTimeoutMs'> = {}): Promise<V5WorkflowResult> {
+  async generateResume(checkpoint: V5MatchingCheckpoint, options: Pick<V5WorkflowInput, 'outputLanguage' | 'workflowTimeoutMs' | 'signal'> = {}): Promise<V5WorkflowResult> {
     const result = await this.runStages({ ...checkpoint.input, ...options }, {
       extraction: checkpoint.extraction,
       matching: checkpoint,
@@ -644,7 +661,7 @@ export class V5ResumeOptimizationWorkflow {
   }
 
   /** 独立按需 P10；完整流程仍在交付后停止，不增加面试调用。 */
-  async prepareInterview(result: V5WorkflowResult, timeoutMs = 60000): Promise<{runId: string; preparation: InterviewPreparation; stepStatuses: StepRunSnapshot[]}> {
+  async prepareInterview(result: import('@/v5/types').InterviewGenerationBasis, timeoutMs = 60000,signal?:AbortSignal): Promise<{runId: string; preparation: InterviewPreparation; stepStatuses: StepRunSnapshot[]}> {
     if (result.deliveryDecision !== 'deliver' || result.usedSafeFallback) throw new V5WorkflowBlockedError({
       code: 'V5_INTERVIEW_REQUIRES_DELIVERABLE', state: 'blocked_quality_validation', message: '请先完成可交付简历生成。',
     })
@@ -654,17 +671,18 @@ export class V5ResumeOptimizationWorkflow {
       workflowTimeoutMs: timeoutMs,
       eventBus: this.eventBus,
       publishWorkflowEvents: false,
-      execute: harness => this.prepareInterviewInternal(result, timeoutMs, harness),
+      execute: harness => this.prepareInterviewInternal(result, timeoutMs, harness, signal),
     })
     return interviewResult
   }
 
   private async prepareInterviewInternal(
-    generated: V5WorkflowResult,
+    generated: import('@/v5/types').InterviewGenerationBasis,
     timeoutMs: number,
-    harness: HarnessedRequestContext
+    harness: HarnessedRequestContext,
+    signal?: AbortSignal,
   ): Promise<{runId: string; preparation: InterviewPreparation; stepStatuses: StepRunSnapshot[]}> {
-    const runtime = this.createRuntime(timeoutMs, harness)
+    const runtime = this.createRuntime(timeoutMs, harness, signal)
     const {runContext} = runtime
     this.thinkingBudgetRemainingMs = runtime.context.remainingMs
     const stepStatuses = harness.steps
@@ -672,7 +690,7 @@ export class V5ResumeOptimizationWorkflow {
       type: 'workflow.started', runId: runContext.runId, requestId: runContext.requestId,
       payload: {workflowName: runContext.workflowName, workflowVersion: runContext.workflowVersion,
         executionMode: 'interview_only', parentRunId: generated.runId, startedAt: runContext.startedAt,
-        inputDigest: createDigest({artifact: generated.artifact, job: generated.jobRequirementBundle})},
+        inputDigest: createDigest({artifact: generated.artifact, job: generated.jobRequirementBundle, preparationTopics: generated.preparationTopics})},
     }))
     try {
       const preparation = await runtime.execute({
@@ -730,12 +748,22 @@ export class V5ResumeOptimizationWorkflow {
     matching?: V5MatchingCheckpoint
   }, harness: HarnessedRequestContext): Promise<V5WorkflowResult | V5MatchingCheckpoint> {
 
-    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 600000, harness)
+    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 600000, harness, input.signal)
     const { runContext, manifest: pluginManifest } = runtime
     const remaining = runtime.context.remainingMs
     this.thinkingBudgetRemainingMs = remaining
     const steps = harness.steps
     let entryWritingRecord: V5WorkflowResult['entryWriting']
+    let deliveryMarkdown: string | undefined
+    let completionDocument: V5WorkflowResult['completionDocument']
+    let resolvedActionPlan: V5WorkflowResult['resolvedActionPlan']
+    let actionReview: V5WorkflowResult['actionReview']
+    let changeManifest: V5WorkflowResult['changeManifest']
+    let recoveredEntryIds: string[] = []
+    const stageResolutions = [...(resume.matching?.decisionDiagnostics?.stageResolutions ?? [])]
+    const entryCorrections: NonNullable<V5WorkflowResult['decisionDiagnostics']>['entryCorrections'] = []
+    let sourceSelection: NonNullable<V5WorkflowResult['decisionDiagnostics']>['sourceSelection'] = []
+    let gapOutputPaths: Set<string> | undefined
     let strategyActionPlan: StrategyActionPlan | undefined
     let strategyParagraphs: EntryParagraphReference[] = []
     const setState = (next: ResumeAgentState) => runtime.setState(next)
@@ -840,6 +868,11 @@ export class V5ResumeOptimizationWorkflow {
                   component: 'P02', repairComponent: 'P02R', envelope, stepContext,
                   documentIds: [jobDocument.canonicalDocument.documentId],
                   validate: value => validateTargetedJobExtraction(jobDocument.canonicalDocument, value),
+                  prepareRepair: (current, issues) => {
+                    const repair = prepareTargetedSignalRepair(current, issues)
+                    return repair ? {...repair, envelope} : null
+                  },
+                  onResolution: resolution => stageResolutions.push({component: 'P02', ...resolution}),
                 })
                 return this.runRepairableStage<JobExtractionCandidate>({
                   component: 'P02',
@@ -848,6 +881,7 @@ export class V5ResumeOptimizationWorkflow {
                   stepContext,
                   documentIds: [jobDocument.canonicalDocument.documentId],
                   validate: value => validateJobExtractionCandidate(jobDocument.canonicalDocument, value),
+                  onResolution: resolution => stageResolutions.push({component: 'P02', ...resolution}),
                 })
               },
             })
@@ -875,22 +909,39 @@ export class V5ResumeOptimizationWorkflow {
           failureMapping: { apiCode: 'V5_MATCHING_FAILED', agentState: 'blocked_fact_validation' },
           run: async () => {
             if (resume.matching) return resume.matching.matchAnalysis
+            const matchingTimeoutMs = Math.min(MATCHING_STEP_TIMEOUT_MS, remaining())
             const matchStep = await runStep({
               runContext,
               eventBus: this.eventBus,
               stepName: 'v5_p03_match',
-              timeoutMs: Math.min(120000, remaining()),
+              timeoutMs: matchingTimeoutMs,
               execute: async stepContext => {
                 if (targetedCandidate) {
+                  const resourceBudget = new MatchingResourceBudget({timeoutMs: matchingTimeoutMs, signal: stepContext.signal})
+                  const matchingProvider = resourceBudget.bind(this.provider ?? fallbackLlmProvider)
                   const { candidatePortrait: _presentationOnly, ...matchingProfile } = targetedCandidate.jobSuccessProfile
+                  const matchingPayload = {jobTargetingPolicy: JOB_TARGETING_POLICY, jobSuccessProfile: matchingProfile,
+                    targets: jobTargets, resumeContext: compactTargetingResume(buildModelSafeResumeEvidenceBundle(resumeEvidenceBundle))}
                   jobFitMap = await this.runRepairableStage<JobFitMap>({
-                    component: 'P03', repairComponent: 'P03R', stepContext,
+                    component: 'P03', repairComponent: 'P03R', stepContext, provider: matchingProvider,
                     documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
-                    envelope: this.envelope(runContext.runId, {
-                      jobTargetingPolicy: JOB_TARGETING_POLICY, jobSuccessProfile: matchingProfile,
-                      targets: jobTargets, resumeContext: compactTargetingResume(buildModelSafeResumeEvidenceBundle(resumeEvidenceBundle)),
+                    envelope: this.envelope(runContext.runId, matchingPayload),
+                    repair: (current, issues, schemaValidated) => repairJobFitMap({current, issues, schemaValidated,
+                      payload: matchingPayload, resume: resumeEvidenceBundle, signal: stepContext.signal, resourceBudget,
+                      envelope: payload => this.envelope(runContext.runId, payload),
+                      observe: async diagnostic => {await this.eventBus.publish(createHarnessEvent({
+                        type: 'evaluation.completed', runId: stepContext.runId, requestId: stepContext.requestId,
+                        stepRunId: stepContext.stepRunId, attemptId: stepContext.attemptId,
+                        payload: {evaluatorName: 'targeted_fit_repair_scope', passed: true, ...diagnostic},
+                      }))},
+                      execute: async (envelope, {signal}) => (await runV5StructuredStage<JobFitMap>({component: 'P03R', envelope,
+                        options: {provider: matchingProvider, eventBus: this.eventBus, stepContext: {...stepContext, signal},
+                          maxProviderAttempts: 1, maxProviderModels: 1,
+                          inputDocumentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId], repairAttempt: 1},
+                      })).value,
                     }),
                     validate: value => validateJobFitMap(value, jobTargets, resumeEvidenceBundle),
+                    onResolution: resolution => stageResolutions.push({component: 'P03', ...resolution}),
                   })
                   return projectLegacyMatch(jobFitMap, jobTargets, resumeEvidenceBundle, jobRequirementBundle)
                 }
@@ -904,6 +955,7 @@ export class V5ResumeOptimizationWorkflow {
                 stepContext,
                 documentIds: [sourceDocument.canonicalDocument.documentId, jobDocument.canonicalDocument.documentId],
                 validate: value => validateV5MatchAnalysis({ resume: resumeEvidenceBundle, job: jobRequirementBundle, match: value, gateMode: 'relaxed_release' }),
+                onResolution: resolution => stageResolutions.push({component: 'P03', ...resolution}),
                 })
               },
             })
@@ -913,11 +965,14 @@ export class V5ResumeOptimizationWorkflow {
         },
         input,
       })
+      matchAnalysis.actionPlan ??= buildEditorialActionLedger({resume: resumeEvidenceBundle, match: matchAnalysis})
+      const actionPlan = matchAnalysis.actionPlan
       const matchScore = calculateV5MatchScore({ resume: resumeEvidenceBundle, job: jobRequirementBundle, match: matchAnalysis })
       if (targetedCandidate && !jobFitMap) throw new Error('JOB_TARGETING_FIT_MAP_MISSING')
       const targeting = targetedCandidate && jobFitMap ? { profile: targetedCandidate.jobSuccessProfile, targets: jobTargets, fit: jobFitMap } : undefined
       if (targeting) await this.onTargetingAnalysis?.(targeting)
-      const targetingScores = targeting ? targetingEvidenceScores(targeting.fit, targeting.targets, resumeEvidenceBundle) : undefined
+      const targetingScores = actionEvidenceScores(targeting ? targetingEvidenceScores(targeting.fit, targeting.targets, resumeEvidenceBundle) : undefined, actionPlan)
+      const writingFocus = actionWritingFocus(targeting ? buildWritingFocus({resume: resumeEvidenceBundle, targets: targeting.targets, fit: targeting.fit}) : undefined, actionPlan, resumeEvidenceBundle)
       await setState('matched')
 
       if (resume.stopAfterMatching) {
@@ -934,6 +989,7 @@ export class V5ResumeOptimizationWorkflow {
           state: 'matched', runId: runContext.runId, stepStatuses: steps,
           input: { resumeMarkdown: input.resumeMarkdown, jobDescription: input.jobDescription },
           extraction: resume.extraction, canonicalJobDocument: jobDocument.canonicalDocument, jobCandidate, jobRequirementBundle, matchAnalysis, matchScore, jobFitMap,
+          decisionDiagnostics: {version: 'workflow-decisions-v1', stageResolutions, sourceSelection: [], entryCorrections: [], recoveredEntryIds: [], fullRewriteApplied: false},
           ...(targetedCandidate ? { requirementAnalysis: buildRequirementAnalysis(targetedCandidate, jobDocument.canonicalDocument) } : {}),
         }
       }
@@ -951,6 +1007,7 @@ export class V5ResumeOptimizationWorkflow {
               job: jobRequirementBundle,
               match: matchAnalysis,
               requestedOutputLanguage: input.outputLanguage,
+              ...(this.entryWritingPolicy ? {projectSelectionPolicy: 'source_facets_v1' as const} : {}),
             })
             if (requiresResolution) {
         const conservativeProfile = {
@@ -977,6 +1034,7 @@ export class V5ResumeOptimizationWorkflow {
           ),
           hardTotalListItemMax: Math.min(8, generationPolicy.hardTotalListItemMax),
           hardProjectMax: Math.min(1, generationPolicy.hardProjectMax),
+          ...(generationPolicy.projectSelectionPolicy ? {projectSelectionTarget: 1} : {}),
           fallbackPolicy: 'source_preserving' as const,
         }
         const profileCandidates = new Map([
@@ -1054,6 +1112,7 @@ export class V5ResumeOptimizationWorkflow {
                   policy: generationPolicy,
                   profile: strategyProfile,
                   targetingScores,
+                  writingFocus,
                   targetingTaskEvidence: targeting ? coreTaskEvidence(targeting.fit, targeting.targets, resumeEvidenceBundle) : undefined,
                   preserveWorkCoverage: Boolean(this.entryWritingPolicy),
                 })
@@ -1089,6 +1148,7 @@ export class V5ResumeOptimizationWorkflow {
         },
         input,
       })
+      sourceSelection = resumePlan.scopeSelectionDecisions ?? []
       await setState('planned')
 
       const {
@@ -1120,15 +1180,22 @@ export class V5ResumeOptimizationWorkflow {
                 entryPlan = completeEntryStrategyEvidence({ match: matchAnalysis, resume: resumeEvidenceBundle, entryPlan })
                 strategyActionPlan = buildStrategyActionPlan({ match: matchAnalysis, resume: resumeEvidenceBundle, entryPlan })
                 entryPlan = assignEntryStrategyActions(entryPlan, strategyActionPlan)
+                resolvedActionPlan = bindEditorialActionsToEntries(actionPlan, entryPlan)
+                for (const entry of entryPlan.entries) {
+                  entry.detailSeeds = buildDetailSeeds(entry, resumeEvidenceBundle.evidenceAtoms)
+                  entry.editorialActions = resolvedActionPlan.actions.filter(item => resolvedActionPlan!.bindings.some(binding => binding.actionId === item.actionId && binding.destination?.entryId === entry.entryId))
+                }
               }
               const journal = entryPlan ? new EntryPreviewJournal(runContext.runId, this.onEntryStreamEvent) : undefined
               const stream = entryPlan && journal ? new EntryJsonStream(entry => {
                 const brief = entryPlan.entries.find(item => item.entryId === entry.entryId)
                 if (!brief) return
+                // 填写结构与关联结果须通过完整文档检查后才进入可见预览。
+                if (entry.paragraphs.some(paragraph => paragraph.segments?.some(segment => segment.kind !== 'fact'))) return
                 try {
-                  compileEntryWriting({ output: { contractVersion: ENTRY_WRITING_POLICY, entries: [entry] }, entryPlan,
+                  const preview = compileEntryWriting({ output: { contractVersion: ENTRY_WRITING_POLICY, entries: [entry] }, entryPlan,
                     resume: resumeEvidenceBundle, policy: generationPolicy, previewEntryId: entry.entryId })
-                  journal.preview(entry.entryId, brief.order, entry.paragraphs.map(p => p.text))
+                  journal.preview(entry.entryId, brief.order, preview.deliveryParagraphs.get(entry.entryId) ?? [])
                 } catch { /* Invalid previews stay private; final compilation diagnoses them. */ }
               }) : undefined
               await setState('drafting')
@@ -1150,17 +1217,20 @@ export class V5ResumeOptimizationWorkflow {
                       return output.value
                     }
                     if (entryPlan) {
-                      const corrected = await writeValidatedEntries({ plan: entryPlan, write,
+                      const corrected = await writeValidatedEntries({ plan: entryPlan, write, recoverEntry: safeRecoveredEntry,
+                        onDecision: decision => entryCorrections.push(decision),
                         validate: output => {
-                          const compiled = compileEntryWriting({ output, entryPlan, resume: resumeEvidenceBundle, policy: generationPolicy })
+                          const compiled = compileEntryWriting({ output, entryPlan, resume: resumeEvidenceBundle, policy: generationPolicy, documentId: `completion:${runContext.runId}` })
                           const validation = validateGeneratedResumeArtifact({ artifact: compiled.artifact, resume: resumeEvidenceBundle,
                             plan: compiled.renderingPlan, policy: generationPolicy, gateMode: 'relaxed_release',
                             textPolicy: 'supported_writing_v1', skillPolicy: writingPlan.skillPolicy,
                             entryParagraphPaths: compiled.entryParagraphPaths })
                           if (!validation.passed) throw new SupportedWritingError(validation.issues)
+                          assertEntryDeliveryProjection(compiled.artifact, validation.value)
                           return { ...compiled, validation }
                         },
                       })
+                      recoveredEntryIds = corrected.recoveredEntryIds ?? []
                       return { ...corrected.result, repairAttempts: corrected.repairAttempts }
                     }
                     return { ...compileWritingArtifact({
@@ -1181,6 +1251,7 @@ export class V5ResumeOptimizationWorkflow {
                       code: 'V5_SUPPORTED_WRITING_BLOCKED', state: error.issues.filter(issue => issue.severity === 'error')
                         .every(issue => WRITING_QUALITY_CODES.has(issue.code)) ? 'blocked_quality_validation' : 'blocked_fact_validation',
                       message: '正文在限定纠正次数内仍未通过本地写作校验。', issues: error.issues,
+                      writingRecovery: error.recoveryDiagnostics,
                     })
                   }
                 },
@@ -1204,10 +1275,38 @@ export class V5ResumeOptimizationWorkflow {
                   message: '写作成品未通过本地结构与事实边界检查。', issues: validation.issues,
                 })
               }
+              if (entryPlan && journal && 'deliveryParagraphs' in writerStep.result) {
+                for (const entry of entryPlan.entries) {
+                  const paragraphs = writerStep.result.deliveryParagraphs.get(entry.entryId)
+                  if (paragraphs) journal.preview(entry.entryId, entry.order, paragraphs)
+                }
+              }
               journal?.finish(true)
+              if ('deliveryMarkdown' in writerStep.result) {
+                deliveryMarkdown = writerStep.result.deliveryMarkdown
+                completionDocument = writerStep.result.completionDocument
+                gapOutputPaths = writerStep.result.gapOutputPaths
+              }
               if (entryPlan) entryWritingRecord = { version: ENTRY_WRITING_POLICY,
-                renderingPlan: writerStep.result.renderingPlan, paragraphPaths: [...(writerStep.result.entryParagraphPaths ?? [])] }
+                renderingPlan: writerStep.result.renderingPlan, paragraphPaths: [...(writerStep.result.entryParagraphPaths ?? [])],
+                ...('gapSelections' in writerStep.result ? {gapSelections: writerStep.result.gapSelections,
+                  gapDecisions: writerStep.result.gapDecisionsByEntry,
+                  entryAudits: writerStep.result.entryAudits} : {}) }
               strategyParagraphs = writerStep.result.entryParagraphReferences
+              if (completionDocument && resolvedActionPlan && 'actionReceipts' in writerStep.result) {
+                resolvedActionPlan = resolveGeneratedDetailActions({base: actionPlan, resolved: resolvedActionPlan, document: completionDocument,
+                  entryAudits: writerStep.result.entryAudits, entryPlan: entryPlan!})
+                if (hasLinkedCompletion(completionDocument) && !resumeEvidenceBundle.identity.name.value?.trim()) {
+                  completionDocument = attachIdentityCompletion(completionDocument, {actionIds: actionPlan.actions.filter(item => item.operation === 'retain_identity').map(item => item.actionId)})
+                  deliveryMarkdown = serializeDraft(completionDocument)
+                }
+                const reviewed = buildCompiledActionReview({base: actionPlan, resolved: resolvedActionPlan, document: completionDocument,
+                  receipts: writerStep.result.actionReceipts, references: strategyParagraphs})
+                actionReview = reviewed.actionReview
+                changeManifest = buildChangeManifest(actionReview, resolvedActionPlan, {document: completionDocument,
+                  structureBasis: buildResumeStructureBasis({source: sourceDocument.canonicalDocument, resume: resumeEvidenceBundle,
+                    artifact: writerStep.result.artifact, document: completionDocument, entryPlan})})
+              }
               const artifactGenerationDiagnostics = {
                 mode: 'writer_v1' as const, contractVersion: SUPPORTED_WRITING_POLICY,
                 compilerVersion: entryPlan ? ENTRY_WRITING_POLICY : WRITING_COMPILER_VERSION,
@@ -1764,8 +1863,25 @@ export class V5ResumeOptimizationWorkflow {
               generationPolicy,
               resumePlan,
               artifact,
+              decisionDiagnostics: {version: 'workflow-decisions-v1',
+                stageResolutions: [...stageResolutions, {component: 'P05', ...planResolution},
+                  {component: this.artifactGenerationMode === 'dsl_v1' ? 'P06D' : this.artifactGenerationMode === 'legacy' ? 'P06' : 'P06C', origin: repairAttempts ? 'repair' : 'primary', repairCount: repairAttempts,
+                    triggerIssueCodes: [...new Set(entryCorrections.flatMap(decision => decision.issueCodes))]}],
+                sourceSelection: resumePlan.scopeSelectionDecisions ?? [], entryCorrections, recoveredEntryIds,
+                fullRewriteApplied: this.artifactGenerationMode !== 'writer_v1' && repairAttempts > 0},
+              ...(deliveryMarkdown !== undefined ? { deliveryMarkdown } : {}),
+              ...(completionDocument ? { completionDocument } : {}),
+              actionPlan, resolvedActionPlan, actionReview, changeManifest,
+              preparationTopics: bindPreparationTopicsToCases(routeSourceInformation({atoms: resumeEvidenceBundle.evidenceAtoms, actions: resolvedActionPlan?.actions}).preparationTopics, resumeEvidenceBundle),
+              identityState: {name: resumeEvidenceBundle.identity.name.value?.trim() ? 'known' : 'missing', school: resumeEvidenceBundle.timeline.find(scope => scope.kind === 'education' && scope.organization)?.organization ?? undefined},
+              deliveryState: assessResumeDelivery({document: completionDocument,
+                identity: {name: resumeEvidenceBundle.identity.name.value?.trim() ? 'known' : 'missing'}, review: actionReview, resolvedPlan: resolvedActionPlan, changeManifest,
+                fact: deliveryGate.qualityGates.factSafety === 'pass' ? 'pass' : 'block',
+                content: deliveryGate.qualityGates.contentCompleteness === 'pass' ? 'pass' : 'warning',
+                supplementEvaluated: Boolean(entryWritingRecord?.entryAudits), recoveredEntryIds}),
               ...(entryWritingRecord ? { entryWriting: entryWritingRecord } : {}),
-              ...(strategyActionPlan ? { strategyReview: buildStrategyReview({ plan: strategyActionPlan, artifact, paragraphs: strategyParagraphs }) } : {}),
+              ...(strategyActionPlan ? { strategyReview: buildStrategyReview({ plan: strategyActionPlan, artifact,
+                paragraphs: strategyParagraphs, deliveryMarkdown, gapOutputPaths }) } : {}),
               usedSafeFallback,
               usedAnyFallback,
               executionStatus: 'completed',
@@ -1789,6 +1905,7 @@ export class V5ResumeOptimizationWorkflow {
       if (error instanceof StepRunError) steps.push(error.step)
       const blocked = normalizeBlockedError(error)
       blocked.runId ??= runContext.runId
+      recoveredEntryIds = blocked.writingRecovery?.recoveredEntryIds ?? recoveredEntryIds
       await setState(blocked.state)
       const deliveryDiagnostics = buildV5FailureDiagnostics({
         state: blocked.state,
@@ -1810,17 +1927,22 @@ export class V5ResumeOptimizationWorkflow {
           agentState: blocked.state,
           issueCodes: deliveryDiagnostics.outcome.decisionReasonCodes,
           deliveryDiagnostics,
+          ...(blocked.writingRecovery ? {writingRecovery: blocked.writingRecovery} : {}),
+          decisionDiagnostics: {version: 'workflow-decisions-v1', stageResolutions, sourceSelection,
+            entryCorrections, recoveredEntryIds, fullRewriteApplied: false,
+            blockedIssueCodes: [...new Set(blocked.issues.map(issue => issue.code))]},
         },
       }))
       throw blocked
     }
   }
 
-  private createRuntime(timeoutMs: number, harness?: HarnessedRequestContext) {
+  private createRuntime(timeoutMs: number, harness?: HarnessedRequestContext, signal?: AbortSignal) {
     return new V5StageRuntime({
       runContext: harness?.runContext,
       eventBus: harness?.eventBus ?? this.eventBus,
       timeoutMs,
+      signal,
       provider: this.provider,
       judgeProvider: this.judgeProvider,
       pluginOverrides: this.pluginOverrides,
@@ -2211,26 +2333,31 @@ export class V5ResumeOptimizationWorkflow {
     repairComponent: V5PromptComponent
     envelope: unknown
     stepContext: StepExecutionContext
+    provider?: LlmProvider
     documentIds: string[]
     validate: (value: T) => ValidationResult<T>
     fallback?: () => T
     fallbackBeforeRepair?: boolean
     beforeRepair?: () => void
     onResolution?: (resolution: RepairableStageResolution) => void
+    prepareRepair?: (current: T, issues: ValidationIssue[]) => {envelope: unknown; currentOutput: unknown; merge: (repaired: T) => T} | null
+    repair?: (current: unknown, issues: ValidationIssue[], schemaValidated: boolean) => Promise<T>
   }): Promise<T> {
     let currentOutput: unknown
+    let schemaValidated = false
     let validationIssues: ValidationIssue[] = []
     try {
       const result = await runV5StructuredStage<T>({
         component: input.component,
         envelope: input.envelope,
         options: {
-          provider: this.provider,
+          provider: input.provider ?? this.provider,
           eventBus: this.eventBus,
           stepContext: input.stepContext,
           inputDocumentIds: input.documentIds,
         },
       })
+      schemaValidated = true
       const validation = input.validate(result.value)
       const normalizedOutput = validation.value ?? result.value
       currentOutput = normalizedOutput
@@ -2244,11 +2371,19 @@ export class V5ResumeOptimizationWorkflow {
       validationIssues = validation.issues.filter(issue => issue.severity === 'error')
     } catch (error) {
       if (!(error instanceof V5StructuredOutputError)) throw error
+      schemaValidated = false
       if (error.code === 'V5_OUTPUT_TRUNCATED' && !input.fallbackBeforeRepair) throw error
       currentOutput = error.unsafeOutput
       validationIssues = structuredIssues(error).filter(issue => issue.severity === 'error')
     }
 
+    await this.eventBus.publish(createHarnessEvent({type: 'evaluation.completed', runId: input.stepContext.runId,
+      requestId: input.stepContext.requestId, stepRunId: input.stepContext.stepRunId, attemptId: input.stepContext.attemptId,
+      payload: {evaluatorName: 'structured_stage_repair_decision', passed: false, score: null,
+        decisionVersion: 'workflow-decisions-v1', component: input.component, repairComponent: input.repairComponent,
+        disposition: input.fallbackBeforeRepair && input.fallback ? 'deterministic_fallback' : 'repair',
+        issueCodes: [...new Set(validationIssues.map(issue => issue.code))],
+        issuePaths: [...new Set(validationIssues.map(issue => issue.outputPath).filter(Boolean))]}}))
     if (input.fallbackBeforeRepair && input.fallback) {
       const fallback = input.fallback()
       const fallbackValidation = input.validate(fallback)
@@ -2269,11 +2404,12 @@ export class V5ResumeOptimizationWorkflow {
     }
 
     input.beforeRepair?.()
-    const repairResult = await runV5StructuredStage<T>({
+    const scopedRepair = input.repair ? null : input.prepareRepair?.(currentOutput as T, validationIssues)
+    const repairResult = input.repair ? null : await runV5StructuredStage<T>({
       component: input.repairComponent,
       envelope: this.envelope(input.stepContext.runId, {
-        originalEnvelope: input.envelope,
-        currentOutput,
+        originalEnvelope: scopedRepair?.envelope ?? input.envelope,
+        currentOutput: scopedRepair?.currentOutput ?? currentOutput,
         validationIssues,
       }),
       options: {
@@ -2284,7 +2420,9 @@ export class V5ResumeOptimizationWorkflow {
         repairAttempt: 1,
       },
     })
-    const repairedValidation = input.validate(repairResult.value)
+    const mergedRepair = input.repair ? await input.repair(currentOutput, validationIssues, schemaValidated)
+      : scopedRepair ? scopedRepair.merge(repairResult!.value) : repairResult!.value
+    const repairedValidation = input.validate(mergedRepair)
     if (!repairedValidation.passed) {
       if (input.fallback) {
         const fallback = input.fallback()
@@ -2316,7 +2454,7 @@ export class V5ResumeOptimizationWorkflow {
       repairCount: 1,
       triggerIssueCodes: [...new Set(validationIssues.map(item => item.code))],
     })
-    return repairedValidation.value ?? repairResult.value
+    return repairedValidation.value ?? mergedRepair
   }
 
   private async runArtifactStage(input: {

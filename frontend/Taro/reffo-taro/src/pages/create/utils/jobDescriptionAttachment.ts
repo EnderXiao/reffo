@@ -1,7 +1,7 @@
 import Taro from '@tarojs/taro'
 import * as FileSystem from 'expo-file-system'
 import * as ImagePicker from 'expo-image-picker'
-import {parseApi} from '@/services/parse'
+import {parseApi, documentParseId} from '@/services/parse'
 import {
   canUseBrowserFilePicker,
   pickBrowserFile,
@@ -128,10 +128,12 @@ export async function parseJobDescriptionAttachment(file: BrowserPickedFile) {
     [metadata.baseLocation],
     [companyName, metadata.companyName, positionName],
   )
+  const parseId = documentParseId(parsedDocument)
 
   return {
     attachment,
     content,
+    ...(parseId ? {parseId} : {}),
     companyName: companyName || metadata.companyName,
     positionName,
     baseLocation,

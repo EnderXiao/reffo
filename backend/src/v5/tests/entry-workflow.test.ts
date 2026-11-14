@@ -1,3 +1,4 @@
+import { v5FixtureEntry } from './entry-skeleton-fixtures'
 import { expect, test } from 'bun:test'
 import type { LlmProvider } from '@/providers/llm-provider'
 import { createResumeFixture, FIXTURE_RESUME, FIXTURE_JD } from '@/v5/tests/fixtures'
@@ -16,7 +17,7 @@ type Payload = Partial<ReturnType<typeof entryWritingPayload>> & {
   resumeContext: { facts: Array<{ evidenceId: string; claimType: string }> }
 }
 
-test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'nonempty_note', 'unknown_field', 'truncated', 'foreign_reference', 'empty_body', 'missing_entry', 'duplicate_entry', 'unknown_entry'] as const)('entry workflow %s validates output with bounded fact correction', async variant => {
+test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'receipt_note', 'nonempty_note', 'unknown_field', 'truncated', 'foreign_reference', 'empty_body', 'missing_entry', 'duplicate_entry', 'unknown_entry'] as const)('entry workflow %s validates output with bounded fact correction', async variant => {
   const versions: string[] = [], events: EntryStreamEvent[] = []
   const eventBus = createHarnessEventBus(), diagnostics: HarnessEvent[] = []
   const validations: HarnessEvent[] = []
@@ -32,19 +33,21 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
     else if (version.includes('-p02-')) value = createTargetingFixture().candidate
     else if (version.includes('-p03-')) {
       const fact = payload.resumeContext.facts.find(f => f.claimType === 'deliverable')!
-      value = { contractVersion: 'job-fit-map-v1', links: payload.targets.map(target => ({
+      value = { contractVersion: 'job-fit-map-v2', links: payload.targets.map(target => ({
         targetId: target.id, status: 'transferable', evidenceIds: [fact.evidenceId],
         similarity: '具有相邻产品实践。', difference: '尚不等于完整岗位经验。', expressionAngle: '突出已有交付。',
+        supportedAspects: [{text: '参与产品交付。', evidenceIds: [fact.evidenceId]}],
+        unprovenAspects: [{text: '目标业务环境', reason: '尚未提供相同业务环境的实践。'}],
+        roleBoundary: '团队参与。', supportRelation: 'domain_transfer',
       })), narratives: [], questions: [] }
-    } else if (version === '5.2.0-p06c-entry-writer-r10') {
+    } else if (version === '5.7.0-p06c-entry-routed-v6-r6') {
       if (versions.filter(v => v.includes('-p06c-')).length === 1) expect(input.onContentDelta).toBeFunction()
-      expect(input.maxOutputTokens).toBe(4320)
+      expect(input.maxOutputTokens).toBe(7200)
       expect(input.maxProviderAttempts).toBe(1)
       expect(input.maxProviderModels).toBe(1)
       expect(payload.entries).toBeDefined()
       const actions = payload.entries!.flatMap(entry => entry.strategyActions ?? [])
       expect(actions.length).toBeGreaterThan(0)
-      expect(actions.length).toBeLessThanOrEqual(3)
       for (const entry of payload.entries!) for (const action of entry.strategyActions ?? []) {
         expect(entry.section).not.toBe('summary')
         expect(action.evidenceIds.every(id => entry.facts.some(fact => fact.evidenceId === id))).toBe(true)
@@ -64,10 +67,11 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
       if (variant === 'missing_entry') entries.pop()
       if (variant === 'duplicate_entry') entries.push(structuredClone(entries[0]))
       if (variant === 'unknown_entry') entries[0].entryId = '私人姓名和联系方式'
-      value = { contractVersion: ENTRY_WRITING_POLICY, entries: entries.map(entry => ({ ...entry,
+      value = { contractVersion: ENTRY_WRITING_POLICY, entries: entries.map(entry => ({ ...v5FixtureEntry(entry, payload.entries!.find(brief => brief.entryId === entry.entryId) ?? payload.entries![0]),
         ...(variant === 'empty_note' ? { entryIdNote: '' } : {}),
         ...(variant === 'nonempty_note' ? { entryIdNote: '不能丢弃的额外正文' } : {}),
         ...(variant === 'unknown_field' ? { extra: '' } : {}),
+        ...(variant === 'receipt_note' ? {actionReceipts: [{actionId: 'untrusted', unitIds: [], evidenceIds: [], detailIds: [], coveredAspectIds: [], explanation: '自报完成', evidenceIdsNote: '私人说明'}]} : {}),
       })) }
       let content = JSON.stringify(value)
       if (variant === 'truncated') content = content.slice(0, -3)
@@ -82,7 +86,7 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
     artifactGenerationMode: 'writer_v1', jobTargetingPolicy: 'job-targeted-v1', entryWritingPolicy: ENTRY_WRITING_POLICY,
     onEntryStreamEvent: event => { events.push(event) } })
   const promise = workflow.run({ resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD })
-  if (variant === 'valid' || variant === 'empty_note' || variant === 'corrected_number') {
+  if (variant === 'valid' || variant === 'empty_note' || variant === 'receipt_note' || variant === 'corrected_number') {
     const result = await promise
     expect(result.state).toBe('succeeded')
     expect(result.usedSafeFallback).toBe(false)
@@ -90,6 +94,12 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
     expect(result.artifact.markdown).toContain('团队交付3个功能。')
     expect(result.artifact.markdown).not.toContain('entry:')
     expect(result.entryWriting?.version).toBe(ENTRY_WRITING_POLICY)
+    expect(result.decisionDiagnostics?.sourceSelection).toEqual(result.resumePlan.scopeSelectionDecisions ?? [])
+    if (variant === 'corrected_number') {
+      expect(result.decisionDiagnostics?.entryCorrections).toEqual(expect.arrayContaining([expect.objectContaining({disposition: 'repair', issueCodes: expect.arrayContaining(['WRITER_NUMBER_CHANGED'])})]))
+      expect(JSON.stringify(result.decisionDiagnostics)).not.toContain('新增999个用户')
+      expect(result.decisionDiagnostics?.fullRewriteApplied).toBe(false)
+    }
     expect(result.strategyReview?.version).toBe('resume-strategy-v1')
     expect(result.strategyReview?.items.some(item => item.status === 'linked')).toBe(true)
     for (const item of result.strategyReview!.items) {
@@ -104,10 +114,30 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
     expect(replay.value!.markdown).toBe(result.artifact.markdown)
     if (variant !== 'corrected_number') expect(events.some(event => event.type === 'entry.preview')).toBe(true)
     expect(events.at(-1)?.type).toBe('writer.completed')
-    expect(validations.at(-1)?.payload).toMatchObject({ normalizationApplied: variant === 'empty_note',
-      normalizationChanges: variant === 'empty_note' ? ['empty_entry_id_note_removed'] : [] })
+    const audit = validations.at(-1)?.payload
+    expect(audit).toMatchObject({ normalizationApplied: variant === 'empty_note' || variant === 'receipt_note' })
+    if (variant === 'receipt_note') {
+      expect(audit?.normalizationChanges).toEqual([expect.stringMatching(/^invalid_action_receipt_quarantined:\d+$/u)])
+      expect(JSON.stringify(audit)).not.toContain('私人说明')
+      expect(result.actionReview?.outcomes.some(outcome => outcome.state === 'adopted')).toBe(false)
+    } else expect(audit?.normalizationChanges).toEqual(variant === 'empty_note' ? ['empty_entry_id_note_removed'] : [])
+  } else if (variant === 'uncorrected_number') {
+    const recovered = await promise
+    expect(recovered.artifact.markdown).not.toContain('999')
+    expect(recovered.deliveryState?.state).toBe('partial_recovery')
+    expect(recovered.decisionDiagnostics?.entryCorrections.at(-1)?.disposition).toBe('local_recovery')
+    expect(recovered.decisionDiagnostics?.recoveredEntryIds.length).toBeGreaterThan(0)
+    expect(recovered.decisionDiagnostics?.fullRewriteApplied).toBe(false)
+    expect(events.at(-1)?.type).toBe('writer.completed')
   } else {
     await expect(promise).rejects.toThrow()
+    if (variant === 'foreign_reference') await expect(promise).rejects.toMatchObject({
+      code: 'V5_SUPPORTED_WRITING_BLOCKED', writingRecovery: {
+        initialIssueCodes: expect.arrayContaining(['WRITER_EVIDENCE_INVALID']),
+        finalIssueCodes: expect.arrayContaining(['WRITER_EVIDENCE_INVALID']),
+        recoveredEntryIds: [], decisions: expect.arrayContaining([expect.objectContaining({disposition: 'blocked'})]),
+      },
+    })
     expect(events.at(-1)?.type).toBe('writer.failed')
     expect(events.some(event => event.type === 'writer.completed')).toBe(false)
     if (variant === 'foreign_reference') expect(events.some(event => event.type === 'entry.preview')).toBe(false)
@@ -131,4 +161,67 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'non
     expect(JSON.stringify(diagnostics)).not.toContain('私人姓名和联系方式')
     expect(JSON.stringify(diagnostics)).not.toContain('产品迭代')
   } else expect(diagnostics).toHaveLength(0)
+})
+
+test.each([true, false])('entry preview defers optional clauses until final compilation: gap=%s', async hasGap => {
+  const events: EntryStreamEvent[] = []
+  let gapEntryId = ''
+  const provider: LlmProvider = { complete: async input => {
+    const version = input.promptVersion!
+    const source = input.messages.find(message => message.role === 'user')!.content
+      .match(/UNTRUSTED_INPUT_JSON:\n([\s\S]+?)\n\n只返回本阶段/)![1]
+    const payload: Payload = JSON.parse(source).payload
+    let value: unknown
+    if (version.includes('-p01-')) value = createResumeFixture().candidate
+    else if (version.includes('-p02-')) value = createTargetingFixture().candidate
+    else if (version.includes('-p03-')) {
+      const fact = payload.resumeContext.facts.find(item => item.claimType === 'deliverable')!
+      value = { contractVersion: 'job-fit-map-v2', links: payload.targets.map(target => ({
+        targetId: target.id, status: 'transferable', evidenceIds: [fact.evidenceId],
+        similarity: '具有相邻产品实践。', difference: '尚不等于完整岗位经验。', expressionAngle: '突出已有交付。',
+        supportedAspects: [{text: '参与产品交付。', evidenceIds: [fact.evidenceId]}],
+        unprovenAspects: [{text: '目标业务环境', reason: '尚未提供相同业务环境的实践。'}],
+        roleBoundary: '团队参与。', supportRelation: 'domain_transfer',
+      })), narratives: [], questions: [] }
+    } else if (version.includes('-p06c-')) {
+      const business = payload.entries!.find(entry => entry.section === 'experience')!
+      gapEntryId = business.entryId
+      value = {contractVersion: ENTRY_WRITING_POLICY, entries: payload.entries!.map(entry => {
+        const fact = entry.facts.find(item => entry.coreEvidenceIds.includes(item.evidenceId)) ?? entry.facts[0]
+        const paragraphs = entry.section === 'experience'
+          ? [{role: 'contribution', text: '参与团队产品迭代。', evidenceIds: [fact.evidenceId]},
+            {role: 'outcome', text: '团队交付3个功能。', evidenceIds: [fact.evidenceId]}]
+          : [{role: 'detail', text: fact.text, evidenceIds: [fact.evidenceId]}]
+        const wire = v5FixtureEntry({entryId: entry.entryId, paragraphs}, entry)
+        if (!hasGap || entry.entryId !== gapEntryId) return wire
+        return {...wire,
+          detailAssessments: [{detailId: 'actual-problem', element: 'problem', detailKind: 'problem', subject: '产品迭代', anchorEvidenceIds: [fact.evidenceId], targetTaskIds: [], sourceState: 'missing', answerEvidenceIds: [], expressionState: 'underspecified', decision: 'supplement', reason: '实际业务问题未记录', benefit: '明确行动对应的问题'}],
+          coverage: wire.coverage.map(item => item.element === 'problem'
+            ? {...item, status: 'missing', evidenceIds: [], answer: '来源未提供明确业务问题。', resultKind: 'not_applicable'} : item),
+          paragraphs: wire.paragraphs.map((paragraph, index) => index ? paragraph : {...paragraph, segments: [
+            {kind: 'fact', text: '参与团队产品迭代', evidenceIds: [fact.evidenceId]},
+            {kind: 'optional_gap_clause', detailId: 'actual-problem', template: 'problem', hint: '补充实际解决的问题，说明产品判断如何支持岗位要求的迭代工作。', candidates: []},
+            {kind: 'fact', text: '。', evidenceIds: [fact.evidenceId]},
+          ]}),
+        }
+      })}
+      const content = JSON.stringify(value)
+      for (let index = 0; index < content.length; index += 9) input.onContentDelta?.(content.slice(index, index + 9))
+      expect(events.some(event => event.type === 'entry.preview' && event.entryId === gapEntryId)).toBe(!hasGap)
+      expect(events.some(event => event.type === 'writer.completed')).toBe(false)
+    } else throw new Error('UNEXPECTED_MODEL_STAGE')
+    return {provider: 'fake', model: 'fixture', content: JSON.stringify(value), latencyMs: 1, physicalAttempts: 1}
+  }}
+  const workflow = new V5ResumeOptimizationWorkflow({provider, enableDefaultSubscribers: false,
+    artifactGenerationMode: 'writer_v1', jobTargetingPolicy: 'job-targeted-v1', entryWritingPolicy: ENTRY_WRITING_POLICY,
+    onEntryStreamEvent: event => {events.push(event)},
+  })
+  const result = await workflow.run({resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD})
+  const previews = events.filter(event => event.type === 'entry.preview' && event.entryId === gapEntryId)
+  expect(previews).toHaveLength(1)
+  expect(previews[0].type).toBe('entry.preview')
+  if (previews[0].type !== 'entry.preview') throw new Error('EXPECTED_ENTRY_PREVIEW')
+  expect(previews[0].paragraphs.some(paragraph => paragraph.includes('【待完善：'))).toBe(hasGap)
+  for (const paragraph of previews[0].paragraphs) expect(result.deliveryMarkdown).toContain(paragraph)
+  expect(events.at(-1)?.type).toBe('writer.completed')
 })

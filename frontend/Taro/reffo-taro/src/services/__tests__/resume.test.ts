@@ -2,6 +2,7 @@ import {ResumeApi} from '../resume';
 import {apiClient} from '../api';
 import {RequestError} from '@/utils/request';
 import {resumeTextFingerprint} from '@/shared/resume-strategy';
+import {createCompletionDocument, createPlainCompletionDocument} from '@/shared/resume-completion';
 import type {ResumeAnalysis, MatchingResult, StructuredResume} from '@/types';
 
 // Mock apiClient
@@ -80,6 +81,20 @@ describe('ResumeApi', () => {
       expect(result.strengths).toHaveLength(2);
       expect(result.weaknesses).toHaveLength(2);
       expect(result.suggestions).toHaveLength(2);
+    });
+
+    test('分析和匹配同步入口携带两份 OCR 来源标识', async () => {
+      const trace = {resumeParseId: '33333333-3333-4333-8333-333333333333', jdParseId: '44444444-4444-4444-8444-444444444444'};
+      mockPost.mockResolvedValueOnce({analysis: mockAnalysisResponse});
+      const analysis = await resumeApi.analyzeResume(sampleResume, {landing: true, ...trace});
+      expect(mockPost).toHaveBeenLastCalledWith('/mvp/analyze', expect.objectContaining({
+        landing: true, resume_parse_id: trace.resumeParseId, jd_parse_id: trace.jdParseId,
+      }), expect.any(Object));
+      mockPost.mockResolvedValueOnce({match_score: null});
+      await resumeApi.matchResume(analysis, '负责用户研究与产品策略规划', {landing: true, ...trace});
+      expect(mockPost).toHaveBeenLastCalledWith('/mvp/match', expect.objectContaining({
+        landing: true, resume_parse_id: trace.resumeParseId, jd_parse_id: trace.jdParseId,
+      }), expect.any(Object));
     });
 
     test('should throw error when resume is empty', async () => {
@@ -187,6 +202,36 @@ describe('ResumeApi', () => {
         confidence: 'medium' as const,
       },
     };
+    const checkpointJdStructure = {...jdStructure, _v5_context: 'matching-token'};
+
+    test.each([false, true])('生成结果保留服务端独立填写凭证，landing=%s', async landing => {
+      const matching: MatchingResult = {
+        match_score: 80, hard_requirements_match: [],
+        skill_match: {matched_skills: [], missing_skills: [], match_percentage: 80},
+        experience_match: {years_required: 0, years_actual: 0, relevant_experience: [], match_percentage: 80},
+        optimization_suggestions: [], jd_structure: checkpointJdStructure,
+      };
+      const markdown = '# 张三\n主导门店流程优化。';
+      const completionDocument = createCompletionDocument({schemaVersion: 'resume-completion-v2',
+        documentId: 'generated-completion', blocks: createPlainCompletionDocument(markdown).blocks});
+      const completionContext = 'a'.repeat(64);
+      mockPost.mockResolvedValueOnce({optimized_resume: markdown, completion_document: completionDocument,
+        completion_context: completionContext, changes_summary: [], improvement_score: 5});
+
+      const generated = await resumeApi.generateOptimizedResume(analysis, matching,
+        {...(landing ? {landing: true, presetJdId: 'preset-product'} : {}),
+          resumeParseId: '33333333-3333-4333-8333-333333333333', jdParseId: '44444444-4444-4444-8444-444444444444'});
+
+      expect(generated.completion_document).toEqual(completionDocument);
+      expect(generated.completion_context).toBe(completionContext);
+      expect(generated.completion_context).not.toBe(checkpointJdStructure._v5_context);
+      expect(matching.jd_structure).toMatchObject({_v5_context: 'matching-token'});
+      expect(mockPost).toHaveBeenCalledWith('/mvp/generate', expect.objectContaining({
+        matching: expect.objectContaining({jd_structure: checkpointJdStructure}),
+        resume_parse_id: '33333333-3333-4333-8333-333333333333', jd_parse_id: '44444444-4444-4444-8444-444444444444',
+        ...(landing ? {landing: true, preset_jd_id: 'preset-product'} : {}),
+      }), {timeout: 90000, header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'}});
+    });
 
     test('保留每个故事的完整讲述方案，不截掉第 4、5 条建议', async () => {
       const stories = [{
@@ -210,6 +255,74 @@ describe('ResumeApi', () => {
       });
 
       expect(result.story_recommendations).toEqual(stories);
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(mockPost).toHaveBeenCalledWith('/mvp/interview', expect.objectContaining({
+        optimized_resume: '# 张三\n负责用户调研和跨团队产品交付',
+      }), {timeout: 60000});
+    });
+
+    test('有服务端检查点时回取原生成快照用于面试，并保留人工填词正文', async () => {
+      const checkpointAnalysis = {...analysis, structured_resume: {...structuredResume, _v5_context: 'resume-token'}};
+      const matching: MatchingResult = {
+        match_score: 80, hard_requirements_match: [],
+        skill_match: {matched_skills: [], missing_skills: [], match_percentage: 80},
+        experience_match: {years_required: 0, years_actual: 0, relevant_experience: [], match_percentage: 80},
+        optimization_suggestions: [], jd_structure: checkpointJdStructure,
+      };
+      const original = '# 张三\n负责用户研究，并具体完成【待完善：本人设计；仅选实际做过的项】。';
+      const edited = {optimized_resume: '# 张三\n负责用户研究，并具体完成原型设计。', changes_summary: [], improvement_score: 0};
+      const preparation = {questions: ['请说明研究过程。'], story_recommendations: [], follow_up_questions: []};
+      mockPost.mockResolvedValueOnce({optimized_resume: original}).mockResolvedValueOnce(preparation);
+
+      const result = await resumeApi.generateInterviewSuggestions(checkpointAnalysis, matching, edited,
+        {landing: true, presetJdId: 'preset-product'});
+
+      expect(mockPost).toHaveBeenNthCalledWith(1, '/mvp/generate', expect.objectContaining({
+        structured_resume: checkpointAnalysis.structured_resume,
+        matching: expect.objectContaining({jd_structure: matching.jd_structure}),
+        landing: true, preset_jd_id: 'preset-product',
+      }), {timeout: 90000, header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'}});
+      expect(mockPost).toHaveBeenNthCalledWith(2, '/mvp/interview', {
+        analysis: checkpointAnalysis, matching, optimized_resume: original,
+        landing: true, preset_jd_id: 'preset-product',
+      }, {timeout: 60000});
+      expect(result).toEqual(preparation);
+      expect(edited.optimized_resume).toBe('# 张三\n负责用户研究，并具体完成原型设计。');
+      expect(checkpointAnalysis.structured_resume._v5_context).toBe('resume-token');
+    });
+
+    test('原生成快照取回失败时不退回人工编辑稿请求面试', async () => {
+      const checkpointAnalysis = {...analysis, structured_resume: {...structuredResume, _v5_context: 'resume-token'}};
+      const matching: MatchingResult = {
+        match_score: 80, hard_requirements_match: [],
+        skill_match: {matched_skills: [], missing_skills: [], match_percentage: 80},
+        experience_match: {years_required: 0, years_actual: 0, relevant_experience: [], match_percentage: 80},
+        optimization_suggestions: [], jd_structure: checkpointJdStructure,
+      };
+      const edited = {optimized_resume: '# 张三\n负责用户研究，并具体完成原型设计。', changes_summary: [], improvement_score: 0};
+      mockPost.mockRejectedValueOnce(new Error('检查点已过期'));
+
+      await expect(resumeApi.generateInterviewSuggestions(checkpointAnalysis, matching, edited))
+        .rejects.toThrow('检查点已过期');
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(mockPost.mock.calls[0][0]).toBe('/mvp/generate');
+      expect(edited.optimized_resume).toContain('具体完成原型设计');
+    });
+
+    test('空生成快照不能用编辑正文替代', async () => {
+      const checkpointAnalysis = {...analysis, structured_resume: {...structuredResume, _v5_context: 'resume-token'}};
+      const matching: MatchingResult = {
+        match_score: 80, hard_requirements_match: [],
+        skill_match: {matched_skills: [], missing_skills: [], match_percentage: 80},
+        experience_match: {years_required: 0, years_actual: 0, relevant_experience: [], match_percentage: 80},
+        optimization_suggestions: [], jd_structure: checkpointJdStructure,
+      };
+      mockPost.mockResolvedValueOnce({optimized_resume: ''});
+
+      await expect(resumeApi.generateInterviewSuggestions(checkpointAnalysis, matching, {
+        optimized_resume: '# 张三\n负责用户研究，并具体完成原型设计。', changes_summary: [], improvement_score: 0,
+      })).rejects.toThrow('原生成简历结果不存在');
+      expect(mockPost).toHaveBeenCalledTimes(1);
     });
 
     test('normalizes final-v3 matching fields for the result pages', async () => {
@@ -319,6 +432,7 @@ describe('ResumeApi', () => {
       };
       mockPost.mockResolvedValue({
         optimized_resume: markdown,
+        completion_document: createPlainCompletionDocument(markdown),
         changes_summary: [],
         strategy_review: review,
         improvement_score: 7,
@@ -326,6 +440,8 @@ describe('ResumeApi', () => {
 
       const generated = await resumeApi.generateOptimizedResume(analysis, matching);
       expect(generated.strategy_review).toEqual(review);
+      expect(generated.completion_document).toEqual(createPlainCompletionDocument(markdown));
+      expect(generated).not.toHaveProperty('completion_context');
       expect(generated.changes_summary).toEqual([]);
 
       expect(mockPost).toHaveBeenCalledWith(
@@ -341,7 +457,7 @@ describe('ResumeApi', () => {
             jd_structure: jdStructure,
           }),
         },
-        {timeout: 90000},
+        {timeout: 90000, header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'}},
       );
     });
   });
@@ -410,7 +526,10 @@ describe('ResumeApi', () => {
 
     test('should process resume successfully', async () => {
       // Mock API 响应
-      mockPost.mockResolvedValue(mockProcessResponse);
+      const completionDocument = createPlainCompletionDocument(mockProcessResponse.step3_optimized_resume);
+      const completionContext = 'b'.repeat(64);
+      mockPost.mockResolvedValue({...mockProcessResponse, step3_completion_document: completionDocument,
+        step3_completion_context: completionContext});
 
       // 调用方法
       const result = await resumeApi.processResume(sampleResume, sampleJD);
@@ -420,7 +539,7 @@ describe('ResumeApi', () => {
       expect(mockPost).toHaveBeenCalledWith('/mvp/process', {
         resume_markdown: sampleResume,
         jd_text: sampleJD,
-      });
+      }, {header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'}});
 
       // 验证返回结果结构
       expect(result).toHaveProperty('analysis');
@@ -437,6 +556,8 @@ describe('ResumeApi', () => {
 
       // 验证优化结果
       expect(result.optimized.optimized_resume).toContain('高级软件工程师');
+      expect(result.optimized.completion_document).toEqual(completionDocument);
+      expect(result.optimized.completion_context).toBe(completionContext);
       expect(result.optimized.changes_summary).toEqual([]);
       expect(result.optimized.improvement_score).toBe(5); // 80 - 75
     });
@@ -516,7 +637,7 @@ describe('ResumeApi', () => {
       expect(mockPost).toHaveBeenCalledWith('/mvp/process', {
         resume_markdown: minResume,
         jd_text: minJD,
-      });
+      }, {header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'}});
     });
 
     test('should calculate improvement score correctly', async () => {
@@ -611,3 +732,46 @@ describe('ResumeApi', () => {
     });
   });
 });
+
+describe('新版未知判断与当前稿面试边界', () => {
+  const analysis: ResumeAnalysis = {quality_score: 80, strengths: [], weaknesses: [], suggestions: [], capability_summary: '',
+    structured_resume: {personal_info: {name: ''}, education: [], experience: [], projects: [], skills: {hard_skills: [], soft_skills: []}}}
+
+  test('未知分数、硬条件和经验年限不转换为0或不满足', async () => {
+    mockPost.mockResolvedValue({match_score: null, score_formula_version: 'match-score-v2', score_calibration_status: 'pending',
+      hard_requirements_match: {'五年经验': null}, experience_match: '日期不完整，无法核算',
+      skill_match: {matched: [], missing: []}, optimization_suggestions: []})
+    const matching = await new ResumeApi().matchResume(analysis, '目标岗位要求五年相关经验')
+    expect(matching.match_score).toBeNull()
+    expect(matching.hard_requirements_match[0].matched).toBeNull()
+    expect(matching.experience_match.years_actual).toBeNull()
+    expect(matching.experience_match.years_required).toBeNull()
+    expect(matching.experience_match.relevant_experience).toEqual(['日期不完整，无法核算'])
+  })
+
+  test('有已保存当前稿时面试不回取原生成文本，保留精确证据引用', async () => {
+    const checkpointAnalysis = {...analysis, structured_resume: {...analysis.structured_resume, _v5_context: 'checkpoint'}}
+    const matching: MatchingResult = {match_score: null, hard_requirements_match: [], skill_match: {matched_skills: [], missing_skills: [], match_percentage: null},
+      experience_match: {years_required: null, years_actual: null, relevant_experience: [], match_percentage: null}, optimization_suggestions: [],
+      jd_structure: {basic_info: {title: '产品经理'}, hard_requirements: {required_skills: []}, responsibilities: [], tasks: [], soft_skills: [], nice_to_have: [],
+        _v5_context: 'checkpoint'} as MatchingResult['jd_structure']}
+    const reference = {evidence_id: 'user-fact', source_scope_id: 'scope', source_quote: '实际完成用户访谈', source_kind: 'user_fact'}
+    const preparationTopics = Array.from({length: 5}, (_, index) => ({topicId: `topic-${index}`, scopeId: 'scope', subject: '访谈结果', dimensions: ['definition'], sourceEvidenceIds: ['user-fact'], sourceSpans: [], requirementIds: ['R1'], actionIds: ['A1'], sourceAssertionStatus: 'recorded', sourceStatement: '访谈记录', prompt: `准备问题${index}`, preparationFocus: '说明访谈样本与结论边界'}))
+    const presentation = {version: 'interview-presentation-v1', questions: [], stories: []}
+    mockPost.mockResolvedValue({presentation, preparation_topics: preparationTopics, based_on_document: {documentId: 'current', revision: 2}, questions: ['说明实际访谈方法'], story_recommendations: [{title: '访谈', background: '', result: '形成报告',
+      storytelling_approach: ['说明本人负责范围'], source_references: [reference], related_requirement_ids: ['R1'], action_ids: ['A1']}], follow_up_questions: []})
+    const api = new ResumeApi()
+    const generated = jest.spyOn(api, 'generateOptimizedResume')
+    const documentRef = {documentId: 'current', revision: 2, resolvedDigest: 'resolved'}
+    const result = await api.generateInterviewSuggestions(checkpointAnalysis, matching, {optimized_resume: '# 姓名\n\n已填写当前稿内容', changes_summary: [], improvement_score: null},
+      {historyId: 'history-current', documentRef})
+    expect(generated).not.toHaveBeenCalled()
+    expect(mockPost).toHaveBeenCalledWith('/mvp/interview', expect.objectContaining({history_id: 'history-current', document_ref: documentRef,
+      optimized_resume: '# 姓名\n\n已填写当前稿内容'}), {timeout: 60000})
+    expect(result.story_recommendations[0].source_references).toEqual([reference])
+    expect(result.presentation).toEqual(presentation)
+    expect(result.preparation_topics).toEqual(preparationTopics)
+    expect(result.based_on_document).toEqual({documentId: 'current', revision: 2})
+    generated.mockRestore()
+  })
+})

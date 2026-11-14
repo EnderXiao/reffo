@@ -1,5 +1,8 @@
 import { z } from 'zod'
 import { V5_ADAPTIVE_POLICY_VERSION, V5_SCHEMA_VERSION } from '@/v5/types'
+import { requirementSemanticsSchema } from '@/v5/targeting/requirement-semantics'
+import { sourceStructureSchema } from '@/v5/source-structure'
+import { requirementJudgmentBundleSchema } from '@/v5/targeting/judgments'
 
 const nonEmptyString = z.string().min(1)
 const nullableString = z.string().nullable()
@@ -156,6 +159,7 @@ const qualityAssessmentSchema = z.object({
 }).strict()
 
 export const resumeExtractionCandidateSchema = z.object({
+  structureIssues: z.array(z.object({code: nonEmptyString, sourceBlockIds: z.array(nonEmptyString), scopeLocalIds: z.array(nonEmptyString), reason: nonEmptyString}).strict()).optional(),
   schemaVersion: z.literal(V5_SCHEMA_VERSION),
   identityCandidates: z.array(z.object({
     field: z.enum(['name', 'email', 'phone', 'city_level_location', 'link']),
@@ -220,6 +224,7 @@ export function resumeExtractionCandidateSchemaWithFactLimit(maxFactCandidates: 
 
 export const resumeEvidenceBundleSchema = z.object({
   schemaVersion: z.literal(V5_SCHEMA_VERSION),
+  sourceStructure: sourceStructureSchema.optional(),
   sourceDocument: z.object({
     documentId: nonEmptyString,
     sha256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -293,6 +298,7 @@ export const requirementAtomSchema = z.object({
   logicGroupId: nullableString,
   logicOperator: logicOperatorSchema,
   explicitness: z.enum(['explicit', 'semantic_summary']),
+  semantics: requirementSemanticsSchema.optional(),
 }).strict()
 
 const sourcedContextSchema = z.object({
@@ -358,6 +364,7 @@ const requirementMatchStatusSchema = z.enum([
 
 export const v5MatchAnalysisSchema = z.object({
   schemaVersion: z.literal(V5_SCHEMA_VERSION),
+  judgmentBundle: requirementJudgmentBundleSchema.optional(),
   requirementMatches: z.array(z.object({
     requirementId: nonEmptyString,
     status: requirementMatchStatusSchema,
@@ -398,6 +405,12 @@ export const v5MatchAnalysisSchema = z.object({
   contextUsed: z.array(z.object({ contextId: nonEmptyString, effect: nonEmptyString }).strict()),
 }).strict()
 
+/** Server projections retain every independent judgment; provider prose quotas are not a cache contract. */
+export const canonicalMatchAnalysisSchema = v5MatchAnalysisSchema.extend({
+  strengths: z.array(v5MatchAnalysisSchema.shape.strengths.element),
+  gaps: z.array(v5MatchAnalysisSchema.shape.gaps.element),
+}).strict()
+
 export const strategyProfileSchema = z.object({
   profileVersion: z.literal(V5_ADAPTIVE_POLICY_VERSION),
   careerStage: z.enum(['student_or_early', 'experienced', 'senior_or_leadership', 'mixed', 'unknown']),
@@ -428,6 +441,8 @@ export const generationPolicySchema = z.object({
   targetBusinessBulletMax: z.number().int().nonnegative(),
   hardTotalListItemMax: z.number().int().positive(),
   hardProjectMax: z.number().int().nonnegative(),
+  projectSelectionTarget: z.number().int().nonnegative().optional(),
+  projectSelectionPolicy: z.literal('source_facets_v1').optional(),
   stableCoreCoverageMin: z.number().min(0).max(1),
   primaryRequirementCoverageMin: z.number().min(0).max(1),
   preferredDirectEvidenceRatio: z.object({ min: z.number().min(0).max(1), max: z.number().min(0).max(1) }).strict(),
@@ -451,6 +466,19 @@ export const strategyResolutionSchema = z.object({
 
 export const v5ResumePlanSchema = z.object({
   schemaVersion: z.literal(V5_SCHEMA_VERSION),
+  writingFocusVersion: z.literal('writing-focus-v1').optional(),
+  writingFocus: z.array(z.object({
+    focusId: nonEmptyString, targetId: nonEmptyString, targetKind: z.enum(['task', 'condition', 'attribute']),
+    title: nonEmptyString, priority: z.enum(['core', 'supporting', 'optional', 'unclear']),
+    selectionBasis: z.enum(['supported', 'partial_practice']), evidenceIds: z.array(nonEmptyString).min(1),
+    requirementIds: stringArray, taskIds: stringArray, coverageKey: nonEmptyString, limitation: nonEmptyString,
+  }).strict()).optional(),
+  primaryFocusIds: stringArray.optional(),
+  scopeSelectionDecisions: z.array(z.object({
+    scopeId: nonEmptyString, disposition: z.enum(['selected', 'omitted']),
+    reason: z.enum(['incremental_coverage', 'concrete_practice', 'project_budget']),
+    focusIds: stringArray, alternativeScopeIds: stringArray,
+  }).strict()).optional(),
   strategyProfile: strategyProfileSchema,
   generationPolicy: generationPolicySchema,
   targetValueProposition: z.string(),
@@ -461,9 +489,10 @@ export const v5ResumePlanSchema = z.object({
     pillarId: nonEmptyString,
     title: nonEmptyString,
     requirementIds: stringArray,
+    focusIds: stringArray.optional(),
     evidenceIds: z.array(nonEmptyString).min(1),
     role: z.enum(['career_anchor', 'jd_primary', 'jd_adjacent']),
-  }).strict()).max(4),
+  }).strict()),
   scopePlans: z.array(z.object({
     scopeId: nonEmptyString,
     scopeType: scopeKindSchema,
@@ -570,6 +599,11 @@ export const interviewPreparationSchema = z.object({
     background: nonEmptyString,
     knownResult: nullableString,
     preparationGap: nullableString,
+    requirementLinks: z.array(z.object({
+      requirementId: nonEmptyString,
+      evidenceIds: z.array(nonEmptyString).min(1),
+      focus: z.string().trim().min(1),
+    }).strict()),
     storytellingApproach: z.array(z.string().trim().min(1)).min(3).max(5),
   }).strict()).min(1).max(2),
   followUpQuestions: z.array(z.object({

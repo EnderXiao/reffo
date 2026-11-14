@@ -640,7 +640,7 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
     })
   })
 
-  test('keeps the default three-chunk case-2 dry-run within canary budgets', () => {
+  test('detects enlarged matching capacity beyond the unchanged case-2 canary budget', () => {
     const fullEnvelope = v5CaseOutputTokenEnvelope(3, 'full')
     const fullProfile = budgetProfileForCases([2], 'full', {
       requiredPhysicalCalls: v5CasePhysicalCallUpperBound(3, 'full'),
@@ -648,8 +648,9 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
       estimatedOutputTokens: fullEnvelope.totalTokens,
     })
     expect(fullProfile.name).toBe('case_2_canary')
-    expect(fullEnvelope.totalTokens).toBe(121_060)
-    expect(fullEnvelope.totalTokens).toBeLessThanOrEqual(fullProfile.caseLimits.maxOutputTokens)
+    expect(fullEnvelope.totalTokens).toBe(169_860)
+    expect(fullEnvelope.totalTokens).toBeGreaterThan(fullProfile.caseLimits.maxOutputTokens)
+    expect(fullProfile.caseLimits.maxOutputTokens).toBe(150_000)
 
     const extractEnvelope = v5CaseOutputTokenEnvelope(3, 'extract-only')
     const extractProfile = budgetProfileForCases([2], 'extract-only', {
@@ -706,20 +707,20 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
       primaryExtractionTokens: 217_000,
       repairCalls: 7,
       repairExtractionTokens: 108_500,
-      generationNonExtractionTokens: 31_560,
+      generationNonExtractionTokens: 80_360,
       judgeTokens: 12_000,
-      nonExtractionTokens: 43_560,
-      totalTokens: 369_060,
+      nonExtractionTokens: 92_360,
+      totalTokens: 417_860,
     })
-    expect(v5CaseOutputTokenEnvelope(14, 'generation-only').totalTokens).toBe(357_060)
+    expect(v5CaseOutputTokenEnvelope(14, 'generation-only').totalTokens).toBe(405_860)
     expect(v5CaseOutputTokenEnvelope(14, 'extract-only').totalTokens).toBe(325_500)
     expect(v5CaseOutputTokenEnvelope(14, 'judge-only').totalTokens).toBe(12_000)
-    expect(v5CaseOutputTokenEnvelope(17).totalTokens).toBe(446_560)
+    expect(v5CaseOutputTokenEnvelope(17).totalTokens).toBe(495_360)
     expect(v5CaseOutputTokenEnvelope(2).repairCalls).toBe(1)
     expect(() => v5CaseOutputTokenEnvelope(0)).toThrow('resumeChunks 必须是正安全整数')
   })
 
-  test('keeps a privacy-safe case3-density extraction plan inside the detailed-run budget', () => {
+  test('detects when a dense extraction plan exceeds the unchanged detailed-run budget', () => {
     const sourceLines = [
       ...Array.from({ length: 211 }, (_, index) => `短事实 ${index}`),
       ...Array.from({ length: 43 }, (_, index) => `事实 ${index}；独立补充 ${index}`),
@@ -737,21 +738,24 @@ describe('evaluation runner CLI and immutable safety configuration', () => {
     expect(document.blocks).toHaveLength(270)
     expect(resumeExtractionFactCandidateLimit(document.blocks)).toBe(345)
     expect(chunks.length).toBeLessThanOrEqual(15)
-    expect(generationEnvelope.totalTokens).toBeLessThanOrEqual(FULL_CASE_LIMITS.maxOutputTokens)
+    expect(generationEnvelope.totalTokens).toBe(387_242)
+    expect(generationEnvelope.totalTokens).toBeGreaterThan(FULL_CASE_LIMITS.maxOutputTokens)
+    expect(FULL_CASE_LIMITS.maxOutputTokens).toBe(350_000)
     expect(v5CasePhysicalCallUpperBound(chunks.length, 'generation-only'))
       .toBeLessThanOrEqual(FULL_CASE_LIMITS.maxPhysicalCalls)
   })
 
-  test('covers the frozen nine-case unique-resume envelope without increasing call caps', () => {
+  test('detects the larger nine-case output envelope without increasing run or call caps', () => {
     const uniqueResumeExtraction = [2, 3, 14, 3]
       .map(chunks => v5CaseOutputTokenEnvelope(chunks, 'extract-only').totalTokens)
       .reduce((sum, tokens) => sum + tokens, 0)
     const perCaseDownstream = v5CaseOutputTokenEnvelope(1).nonExtractionTokens
     const frozenNineCaseEnvelope = uniqueResumeExtraction + perCaseDownstream * 9
 
-    expect(perCaseDownstream).toBe(43_560)
-    expect(frozenNineCaseEnvelope).toBe(919_040)
-    expect(frozenNineCaseEnvelope).toBeLessThanOrEqual(FULL_RUN_LIMITS.maxOutputTokens)
+    expect(perCaseDownstream).toBe(92_360)
+    expect(frozenNineCaseEnvelope).toBe(1_358_240)
+    expect(frozenNineCaseEnvelope).toBeGreaterThan(FULL_RUN_LIMITS.maxOutputTokens)
+    expect(FULL_RUN_LIMITS.maxOutputTokens).toBe(1_000_000)
     expect(v5CasePhysicalCallUpperBound(14, 'full')).toBeGreaterThan(FULL_CASE_LIMITS.maxPhysicalCalls)
     expect(v5CaseOutputTokenEnvelope(17).totalTokens).toBeGreaterThan(FULL_CASE_LIMITS.maxOutputTokens)
     expect(FULL_RUN_LIMITS.maxPhysicalCalls).toBe(110)

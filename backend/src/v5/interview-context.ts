@@ -1,12 +1,13 @@
 import type { EvidenceAtom, V5WorkflowResult } from '@/v5/types'
 import { deriveInterviewCaseGroups } from '@/v5/interview-source-structure'
-import { findInterviewResultContinuations } from '@/v5/interview-results'
+import {filterInterviewPreparationTopics} from '@/v5/preparation-topics'
+import { findInterviewResultContinuations, interviewDeliveredArtifactOptions } from '@/v5/interview-results'
 
 const STORY_TYPES = new Set(['responsibility', 'action', 'deliverable', 'result'])
 
 /** Select complete evidence units; never truncate source text to fit a budget. */
 export function buildInterviewContext(result: Pick<V5WorkflowResult,
-  'artifact' | 'resumeEvidenceBundle' | 'jobRequirementBundle' | 'matchAnalysis'>) {
+  'artifact' | 'resumeEvidenceBundle' | 'jobRequirementBundle' | 'matchAnalysis' | 'interviewSnapshot' | 'preparationTopics'>) {
   const { artifact, resumeEvidenceBundle: resume, jobRequirementBundle: job, matchAnalysis: match } = result
   const eligible = resume.evidenceAtoms.filter(atom => atom.status !== 'excluded'
     && atom.claimType !== 'identity'
@@ -60,6 +61,7 @@ export function buildInterviewContext(result: Pick<V5WorkflowResult,
   const scopeIds = new Set(selectedAtoms.map(atom => atom.sourceScopeId))
   const compactAtom = (atom: EvidenceAtom) => ({
     evidenceId: atom.evidenceId,
+    ...(atom.provenance ? {provenance: atom.provenance} : {}),
     sourceScopeId: atom.sourceScopeId,
     verbatimText: atom.verbatimText,
     claimType: atom.claimType,
@@ -76,12 +78,18 @@ export function buildInterviewContext(result: Pick<V5WorkflowResult,
       ? { previousEvidenceId: atom.sourceContinuation.previousEvidenceId } : {}),
   })
   return {
-    contextVersion: 'interview-evidence-v1' as const,
+    contextVersion: 'interview-evidence-v2' as const,
+    // Topics authorize preparation only; their source statements never enter the fact pool.
+    preparationTopics: filterInterviewPreparationTopics(result.preparationTopics ?? [], resume).map(topic => ({...topic,
+      sourceEvidenceIds: topic.sourceEvidenceIds.filter(id => resume.evidenceAtoms.some(atom => atom.evidenceId === id
+        && atom.claimType !== 'identity' && !atom.riskFlags.some(flag => ['sensitive_pii', 'prompt_injection_like_text'].includes(flag))))})).filter(topic => topic.sourceEvidenceIds.length),
+    ...(result.interviewSnapshot ? {currentDocument: result.interviewSnapshot} : {}),
     artifact: {
       schemaVersion: artifact.schemaVersion,
       // claims contain the delivered text and evidence links. Sending Markdown
       // too would repeat the same body and reintroduce contact details.
-      claims: claims.map(claim => ({ ...claim, evidenceIds: evidenceIds(claim.evidenceIds) }))
+      claims: claims.filter(claim => !claim.outputText.includes('【待完善'))
+        .map(claim => ({ ...claim, evidenceIds: evidenceIds(claim.evidenceIds) }))
         .filter(claim => claim.evidenceIds.length > 0),
     },
     resumeEvidenceBundle: {
@@ -89,8 +97,12 @@ export function buildInterviewContext(result: Pick<V5WorkflowResult,
       timeline: resume.timeline.filter(item => scopeIds.has(item.scopeId))
         .map(item => ({ ...item, evidenceIds: evidenceIds(item.evidenceIds) })),
       evidenceAtoms: selectedAtoms.map(compactAtom),
+      deliveredArtifactOptions: interviewDeliveredArtifactOptions(selectedAtoms),
       caseGroups: caseGroups.filter(group => group.evidenceIds.some(id => selected.has(id)))
         .map(group => ({ ...group, evidenceIds: evidenceIds(group.evidenceIds) })),
+      storyScopeOptions: [...scopeIds].map(scopeId => ({scopeId,
+        evidenceIds: selectedAtoms.filter(atom => atom.sourceScopeId === scopeId).map(atom => atom.evidenceId),
+        citationRule: '单个故事只能选择本组证据；同公司任职或内部阶段的证据不属于本项目，不能借用责任、动作或结果。'})),
       conflicts: resume.conflicts.map(item => ({ ...item, evidenceIds: evidenceIds(item.evidenceIds) }))
         .filter(item => item.evidenceIds.length > 0),
     },

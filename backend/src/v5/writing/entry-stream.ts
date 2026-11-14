@@ -1,4 +1,4 @@
-import { normalizeWrittenEntry, writtenEntrySchema, type WrittenEntry } from '@/v5/writing/entries'
+import { normalizeWrittenEntry, writtenEntrySchema, writtenEntryV2Schema, writtenEntryV3Schema, writtenEntryV4Schema, writtenEntryV5Schema, writtenEntryV6Schema, materializeWrittenEntry, type WrittenEntry } from '@/v5/writing/entries'
 
 /** Frames only complete objects in the root entries array; braces inside JSON
  * strings, escapes, and arbitrary network chunk boundaries are not delimiters. */
@@ -8,6 +8,7 @@ export class EntryJsonStream {
   private inString = false
   private escaped = false
   private entriesArray = false
+  private contractVersion = ''
   private start = -1
   private disabled = false
   constructor(private readonly receive: (entry: WrittenEntry) => void, private readonly maxCharacters = 2_000_000) {}
@@ -30,7 +31,8 @@ export class EntryJsonStream {
         if (char === '[' && this.stack.length === 1 && /"entries"\s*:\s*$/u.test(this.buffer.slice(0, i))) {
           try {
             const prefix = JSON.parse(this.buffer.slice(0, i) + '[]}')
-            this.entriesArray = prefix.contractVersion === 'entry-writing-v1'
+            this.contractVersion = prefix.contractVersion
+            this.entriesArray = ['entry-writing-v1', 'entry-writing-v2', 'entry-writing-v3', 'entry-writing-v4', 'entry-writing-v5', 'entry-writing-v6'].includes(this.contractVersion)
           } catch { this.entriesArray = false }
         }
         if (char === '{' && this.entriesArray && this.stack.length === 2) this.start = i
@@ -42,8 +44,14 @@ export class EntryJsonStream {
           const framed = this.buffer.slice(this.start, i + 1)
           this.start = -1
           try {
-            const parsed = writtenEntrySchema.safeParse(normalizeWrittenEntry(JSON.parse(framed)))
-            if (parsed.success) this.receive(parsed.data)
+            const value = normalizeWrittenEntry(JSON.parse(framed))
+            if (this.contractVersion === 'entry-writing-v2' || this.contractVersion === 'entry-writing-v3' || this.contractVersion === 'entry-writing-v4' || this.contractVersion === 'entry-writing-v5' || this.contractVersion === 'entry-writing-v6') {
+              const parsed = (this.contractVersion === 'entry-writing-v6' ? writtenEntryV6Schema : this.contractVersion === 'entry-writing-v5' ? writtenEntryV5Schema : this.contractVersion === 'entry-writing-v4' ? writtenEntryV4Schema : this.contractVersion === 'entry-writing-v3' ? writtenEntryV3Schema : writtenEntryV2Schema).safeParse(value)
+              if (parsed.success) this.receive(materializeWrittenEntry(parsed.data))
+            } else {
+              const parsed = writtenEntrySchema.safeParse(value)
+              if (parsed.success) this.receive(parsed.data)
+            }
           } catch { /* Previews are optional; final parsing decides validity. */ }
         }
         if (char === ']' && this.stack.length === 1) this.entriesArray = false

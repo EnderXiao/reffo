@@ -2,7 +2,7 @@ import {useCallback, useEffect, useId, useMemo, useRef, useState} from 'react'
 import type {CSSProperties, ReactNode, TouchEvent} from 'react'
 import {Image, ScrollView, Text, View} from '@tarojs/components'
 import classNames from 'classnames'
-import type {HardRequirement, ProcessResult, ResumeStrategyReference} from '@/types'
+import type {HardRequirement, InterviewPreparationTopic, ProcessResult} from '@/types'
 import {FeedbackBubble} from '@/components/common/FeedbackBubble'
 import {
   startResultCardReturnTransition,
@@ -15,20 +15,20 @@ import {
 } from '@/utils/shared-element-transition'
 import type {LatestResultSessionProgress} from '@/utils/result-session'
 import {resolveResumeGrade} from '@/utils/score-grade'
+import {feedback} from '@/utils/feedback'
+import {ResumePanel} from './components/ResumePanel.h5'
+import type {CompletionCommit} from './model/useResumeCompletionEditor'
 import {normalizeRequirementAnalysis} from '@/utils/requirement-analysis'
 import {RequirementAnalysisPanel} from './components/RequirementAnalysis.h5'
 import type {ResultPageViewModel, ResultRetryStageKey} from './usePageModel'
-import {buildInterviewStoryViewItems} from './model/interviewReferences'
+import {buildInterviewPreparationView, buildInterviewStoryViewItems, interviewNeedsRefresh, interviewPresentation, interviewSourceHeading} from './model/interviewReferences'
 import {buildGapViewItems, buildOptimizationStrategyViewItems, findResumeReferenceLines,
-  hasStaleStrategyReview, representativeStrategyReference, selectGapPreview} from './model/analysisPresentation'
+  hasStaleStrategyReview, actionOutcomeLabel, strategyResumeReference, isCurrentResumeReference, selectGapPreview, buildOptimizationStrategyGroups, type ResumeReference} from './model/analysisPresentation'
 import LandingFlowHeader from '../create/components/LandingFlowHeader.h5'
 import lightIcon from '@/assets/result/light.svg'
 import textIcon from '@/assets/result/text.svg'
 import suggestionIcon from '@/assets/result/suggestion.svg'
-import downloadIcon from '@/assets/result/download.svg'
 import editIcon from '@/assets/result/edit.svg'
-import saveIcon from '@/assets/result/save.svg'
-import cancelIcon from '@/assets/result/cancel.svg'
 import alertIcon from '@/assets/result/alert-hex.svg'
 import confirmIcon from '@/assets/result/confirm.svg'
 import chatTagIcon from '@/assets/result/chat-tag.svg'
@@ -206,100 +206,10 @@ function getUnmatchedRequirements(items: HardRequirement[] | undefined) {
   if (!Array.isArray(items)) return []
 
   return items
-    .filter(item => !item.matched)
+    .filter(item => item.matched === false)
     .map(item => item.suggestion || item.requirement)
     .filter(item => item.trim().length > 0)
     .slice(0, 3)
-}
-
-interface MarkdownLine {
-  key: string
-  raw: string
-  prefix: string
-  text: string
-  kind:
-    | 'heading1'
-    | 'heading2'
-    | 'heading3'
-    | 'bullet'
-    | 'numbered'
-    | 'divider'
-    | 'blank'
-    | 'paragraph'
-}
-
-function parseMarkdownLine(raw: string, index: number): MarkdownLine {
-  const heading = raw.match(/^(#{1,3})\s+(.*)$/)
-  if (heading) {
-    const level = heading[1].length
-    return {
-      key: `${index}-${raw}`,
-      raw,
-      prefix: `${heading[1]} `,
-      text: heading[2],
-      kind: level === 1 ? 'heading1' : level === 2 ? 'heading2' : 'heading3',
-    }
-  }
-
-  const bullet = raw.match(/^(\s*[-*+]\s+)(.*)$/)
-  if (bullet) {
-    return {
-      key: `${index}-${raw}`,
-      raw,
-      prefix: bullet[1],
-      text: bullet[2],
-      kind: 'bullet',
-    }
-  }
-
-  const numbered = raw.match(/^(\s*\d+\.\s+)(.*)$/)
-  if (numbered) {
-    return {
-      key: `${index}-${raw}`,
-      raw,
-      prefix: numbered[1],
-      text: numbered[2],
-      kind: 'numbered',
-    }
-  }
-
-  if (/^\s*-{3,}\s*$/.test(raw)) {
-    return {
-      key: `${index}-divider`,
-      raw,
-      prefix: '',
-      text: '',
-      kind: 'divider',
-    }
-  }
-
-  if (raw.trim().length === 0) {
-    return {
-      key: `${index}-blank`,
-      raw,
-      prefix: '',
-      text: '',
-      kind: 'blank',
-    }
-  }
-
-  return {
-    key: `${index}-${raw}`,
-    raw,
-    prefix: '',
-    text: raw,
-    kind: 'paragraph',
-  }
-}
-
-function parseMarkdown(value: string): MarkdownLine[] {
-  const lines = value.trim().length > 0 ? value.split('\n') : ['']
-
-  return lines.map(parseMarkdownLine)
-}
-
-function canEditMarkdownLine(line: MarkdownLine) {
-  return line.kind !== 'blank' && line.kind !== 'divider' && line.text.trim().length > 0
 }
 
 function getVisibleStageStatus(
@@ -326,44 +236,6 @@ function getVisibleStageStatus(
   if (progress.interview === 'generating') return 'generating'
 
   return 'pending'
-}
-
-function sanitizeFileNameSegment(value: string, fallback: string) {
-  const sanitized = value.replace(/[\\/:*?"<>|]/g, '').trim()
-  return sanitized || fallback
-}
-
-function getDownloadName(result: ProcessResult, companyName: string, positionName: string) {
-  const name = result.analysis.structured_resume.personal_info.name.trim()
-  const safeCompany = sanitizeFileNameSegment(companyName, '目标公司')
-  const safePosition = sanitizeFileNameSegment(positionName, '目标岗位')
-  const safeName = sanitizeFileNameSegment(name, '用户')
-
-  return `${safeCompany}-${safePosition}-${safeName}-相契简历.md`
-}
-
-function renderInlineMarkdown(value: string) {
-  const segments = value.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean)
-
-  return segments.map((segment, index) => {
-    if (segment.startsWith('**') && segment.endsWith('**')) {
-      return (
-        <Text key={`${segment}-${index}`} className='reffo-result__markdown-strong'>
-          {segment.slice(2, -2)}
-        </Text>
-      )
-    }
-
-    if (segment.startsWith('`') && segment.endsWith('`')) {
-      return (
-        <Text key={`${segment}-${index}`} className='reffo-result__markdown-code'>
-          {segment.slice(1, -1)}
-        </Text>
-      )
-    }
-
-    return segment
-  })
 }
 
 function SectionTitle({children, icon}: {children: string; icon?: string}) {
@@ -459,7 +331,7 @@ function AnalysisDetail({label, value, quote = false}: {label: string; value: st
 
 function AnalysisPanel({result, onLocateReference}: {
   result: ProcessResult
-  onLocateReference: (reference: ResumeStrategyReference) => void
+  onLocateReference: (reference: ResumeReference) => void
 }) {
   const [allGaps, setAllGaps] = useState(false)
   const [allStrategies, setAllStrategies] = useState(false)
@@ -468,14 +340,15 @@ function AnalysisPanel({result, onLocateReference}: {
   const previewGaps = selectGapPreview(weaknesses)
   const visibleGaps = allGaps ? selectGapPreview(weaknesses, Infinity) : previewGaps
   const strategies = buildOptimizationStrategyViewItems(result, Infinity)
-  const visibleStrategies = allStrategies ? strategies : strategies.slice(0, 3)
+  const strategyGroups = buildOptimizationStrategyGroups(result, strategies)
+  const visibleGroups = allStrategies ? strategyGroups : strategyGroups.slice(0, 3)
   const staleReview = hasStaleStrategyReview(result)
   const hasPortrait = Boolean(normalizeRequirementAnalysis(result.matching.requirement_analysis)?.portrait?.text)
 
   return (
     <View className='reffo-result__panel'>
       <View className='reffo-result__score-row'>
-        <Text className='reffo-result__grade'>{grade}</Text>
+        <Text className={classNames('reffo-result__grade', {'reffo-result__grade--pending': grade === '待评估'})}>{grade}</Text>
         <Text className='reffo-result__grade-label'>岗位匹配度</Text>
       </View>
 
@@ -497,6 +370,16 @@ function AnalysisPanel({result, onLocateReference}: {
                       <AnalysisDetail label='已有依据' value={item.evidence} quote />
                       <AnalysisDetail label='影响与边界' value={item.impact} />
                       <AnalysisDetail label='建议方向' value={item.suggestion} />
+                      {strategies.filter(strategy => (strategy.actionOutcome || result.matching.action_plan || result.optimized.action_plan)
+                        && strategy.relatedGapIds.includes(item.id)).map(strategy => {
+                        const reference = strategyResumeReference(strategy, result)
+                        return <div key={strategy.id}>
+                          <AnalysisDetail label='对应策略' value={strategy.strategyPoint} />
+                          {strategy.actionOutcome && <AnalysisDetail label='本次处理' value={`${actionOutcomeLabel(strategy.actionOutcome)}：${strategy.actionOutcome.explanation}`} />}
+                          {reference && isCurrentResumeReference(reference, result) && <button type='button' className='reffo-result__analysis-toggle reffo-result__strategy-locate'
+                            onClick={() => onLocateReference(reference)}>查看对应正文或填写格</button>}
+                        </div>
+                      })}
                     </AnalysisDisclosure>
                   )}
                 </li>
@@ -519,21 +402,26 @@ function AnalysisPanel({result, onLocateReference}: {
         {strategies.length > 0 ? (
           <>
             <ul className='reffo-result__analysis-list'>
-              {visibleStrategies.map(item => {
+              {visibleGroups.map(group => <li key={group.id} className='reffo-result__analysis-list-item'>
+                {group.items.length > 1 && <>
+                  <p className='reffo-result__analysis-judgment'>{group.title}</p>
+                  <p className='reffo-result__analysis-caption'>{group.priorityReason}；共 {group.actionIds.length} 项处理，关联 {group.requirementIds.length} 项岗位要求。</p>
+                </>}
+                {group.items.map(item => {
                 const related = weaknesses.filter(gap => item.relatedGapIds.includes(gap.id))
-                const reference = representativeStrategyReference(item.outcome, result.optimized.optimized_resume)
-                const canLocate = reference && findResumeReferenceLines(result.optimized.optimized_resume, reference.quote)
-                const outcomeLabel = item.outcome?.status === 'linked' && reference ? '正文对应内容'
+                const reference = strategyResumeReference(item, result)
+                const canLocate = reference && isCurrentResumeReference(reference, result)
+                const outcomeLabel = item.actionOutcome ? actionOutcomeLabel(item.actionOutcome) : item.outcome?.status === 'linked' && reference ? '正文对应内容'
                   : item.outcome?.status === 'needs_material' ? '需补充材料'
                     : item.outcome?.status === 'not_selected' ? '本次未选入' : '暂未定位到正文'
                 return (
-                  <li key={item.id} className='reffo-result__analysis-list-item'>
+                  <div key={item.id} data-action-id={item.id}>
                     <p className='reffo-result__analysis-judgment'>{item.strategyPoint}</p>
-                    {item.outcome && <span className='reffo-result__analysis-outcome-label'>{outcomeLabel}</span>}
-                    {(item.outcome || item.rationale || item.sourceQuote || item.optimizedContent || related.length > 0) && (
-                      <AnalysisDisclosure label={item.outcome ? '查看说明与正文' : '查看策略依据'}>
-                        {item.outcome && <div className='reffo-result__strategy-outcome'>
-                          <AnalysisDetail label='本次处理' value={item.outcome.explanation} />
+                    {(item.actionOutcome || item.outcome) && <span className='reffo-result__analysis-outcome-label'>{outcomeLabel}</span>}
+                    {(item.actionOutcome || item.outcome || item.rationale || item.sourceQuote || item.optimizedContent || related.length > 0) && (
+                      <AnalysisDisclosure label={item.actionOutcome || item.outcome ? '查看说明与正文' : '查看策略依据'}>
+                        {(item.actionOutcome || item.outcome) && <div className='reffo-result__strategy-outcome'>
+                          <AnalysisDetail label='本次处理' value={item.actionOutcome?.explanation || item.outcome?.explanation || ''} />
                           {reference && <>
                             <AnalysisDetail label='简历位置' value={reference.location} />
                             <AnalysisDetail label='正文原句' value={reference.quote} quote />
@@ -541,6 +429,7 @@ function AnalysisPanel({result, onLocateReference}: {
                               onClick={() => onLocateReference(reference)}>在相契简历中查看</button>}
                           </>}
                         </div>}
+                        {item.remainingAspects?.map((aspect, index) => <AnalysisDetail key={index} label='仍需回应' value={aspect} />)}
                         <AnalysisDetail label='为什么调整' value={item.rationale} />
                         {related.map(gap => <div key={gap.id}>
                           <AnalysisDetail label='相关要求' value={gap.jdRequirement} quote />
@@ -552,13 +441,13 @@ function AnalysisPanel({result, onLocateReference}: {
                         {item.optimizedContent && <p className='reffo-result__analysis-caption'>此处为表达建议，实际内容请查看相契简历。</p>}
                       </AnalysisDisclosure>
                     )}
-                  </li>
+                  </div>
                 )
-              })}
+              })}</li>)}
             </ul>
-            {strategies.length > 3 && <button type='button' className='reffo-result__analysis-more'
+            {strategyGroups.length > 3 && <button type='button' className='reffo-result__analysis-more'
               aria-expanded={allStrategies} onClick={() => setAllStrategies(value => !value)}>
-              {allStrategies ? '收起其他策略' : `查看全部 ${strategies.length} 条策略`}
+              {allStrategies ? '收起其他策略' : `查看全部 ${strategyGroups.length} ${strategyGroups.length === strategies.length ? '条策略' : '组策略'}`}
             </button>}
           </>
         ) : <EmptyText />}
@@ -573,207 +462,44 @@ function AnalysisPanel({result, onLocateReference}: {
   )
 }
 
-function ResumePanel({
-  result,
-  companyName,
-  positionName,
-  onOptimizedResumeChange,
-  reference,
-}: {
-  result: ProcessResult
-  companyName: string
-  positionName: string
-  onOptimizedResumeChange: (markdown: string) => Promise<void>
-  reference?: ResumeStrategyReference
-}) {
-  const [lines, setLines] = useState(() => parseMarkdown(result.optimized.optimized_resume))
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [editingDraft, setEditingDraft] = useState('')
-  const editorRef = useRef<HTMLTextAreaElement | null>(null)
-  const referenceRef = useRef<HTMLDivElement | null>(null)
-  const markdown = useMemo(() => lines.map(line => line.raw).join('\n'), [lines])
-  const isEditing = editingIndex !== null
-  const referenceLines = !isEditing && markdown === result.optimized.optimized_resume
-    && result.optimized.strategy_review && !hasStaleStrategyReview(result) && reference
-    ? findResumeReferenceLines(markdown, reference.quote) : undefined
-
-  useEffect(() => {
-    if (!referenceLines) return
-    const frame = window.requestAnimationFrame(() => {
-      referenceRef.current?.scrollIntoView?.({block: 'center', behavior: 'auto'})
-      referenceRef.current?.focus({preventScroll: true})
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [reference?.quote, referenceLines?.start, referenceLines?.end])
-
-  const resizeEditor = (element: HTMLTextAreaElement | null) => {
-    if (!element) return
-
-    element.style.height = 'auto'
-    element.style.height = `${element.scrollHeight}px`
-  }
-
-  useEffect(() => {
-    if (editingIndex !== null) return
-
-    setLines(parseMarkdown(result.optimized.optimized_resume))
-  }, [editingIndex, result.optimized.optimized_resume])
-
-  const commitMarkdown = async (nextLines = lines) => {
-    await onOptimizedResumeChange(nextLines.map(line => line.raw).join('\n'))
-  }
-
-  const handleEditLine = (lineIndex: number) => {
-    setEditingIndex(lineIndex)
-    setEditingDraft(lines[lineIndex]?.raw || '')
-  }
-
-  useEffect(() => {
-    resizeEditor(editorRef.current)
-  }, [editingDraft, editingIndex])
-
-  const handleCancelEdit = () => {
-    setEditingIndex(null)
-    setEditingDraft('')
-  }
-
-  const handleSaveLine = async (lineIndex: number) => {
-    const nextLines = lines.map((line, index) =>
-      index === lineIndex ? parseMarkdownLine(editingDraft, index) : line,
-    )
-
-    setLines(nextLines)
-    setEditingIndex(null)
-    setEditingDraft('')
-    await commitMarkdown(nextLines)
-  }
-
-  const handleDownload = () => {
-    if (isEditing) return
-
-    const blob = new Blob([markdown], {type: 'text/markdown;charset=utf-8'})
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-
-    link.href = url
-    link.download = getDownloadName(result, companyName, positionName)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
-  return (
-    <View className='reffo-result__panel reffo-result__panel--resume'>
-      <View className='reffo-result__resume-paper'>
-        <View
-          className={classNames('reffo-result__download', {
-            'reffo-result__download--disabled': isEditing,
-          })}
-          onClick={handleDownload}
-          aria-disabled={isEditing}
-        >
-          <Image className='reffo-result__download-icon' src={downloadIcon} mode='aspectFit' />
-          <Text>下载</Text>
-        </View>
-
-        {referenceLines && <p className='reffo-result__analysis-caption' role='status'>已定位：{reference?.location}</p>}
-        <View className='reffo-result__markdown'>
-          {lines.map((line, index) => (
-            <div
-              key={`line-${index}`}
-              ref={index === referenceLines?.start ? referenceRef : undefined}
-              tabIndex={index === referenceLines?.start ? -1 : undefined}
-              className={classNames(
-                'reffo-result__markdown-line',
-                `reffo-result__markdown-line--${line.kind}`,
-                {'reffo-result__markdown-line--located': referenceLines && index >= referenceLines.start && index <= referenceLines.end},
-              )}
-            >
-              {editingIndex === index ? (
-                <View className='reffo-result__markdown-editor'>
-                  <textarea
-                    ref={element => {
-                      editorRef.current = element
-                      resizeEditor(element)
-                    }}
-                    className='reffo-result__markdown-source'
-                    value={editingDraft}
-                    rows={1}
-                    onInput={event => {
-                      setEditingDraft(event.currentTarget.value)
-                      resizeEditor(event.currentTarget)
-                    }}
-                  />
-                  <View className='reffo-result__markdown-editor-actions'>
-                    <View
-                      className='reffo-result__markdown-save'
-                      onClick={() => {
-                        void handleSaveLine(index)
-                      }}
-                    >
-                      <Image className='reffo-result__markdown-action-icon' src={saveIcon} mode='aspectFit' />
-                    </View>
-                    <View className='reffo-result__markdown-cancel' onClick={handleCancelEdit}>
-                      <Image className='reffo-result__markdown-action-icon' src={cancelIcon} mode='aspectFit' />
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                <>
-                  {line.kind === 'divider' ? (
-                    <View className='reffo-result__markdown-divider' />
-                  ) : (
-                    <View className='reffo-result__markdown-rendered'>
-                      {line.kind === 'bullet' && (
-                        <Text className='reffo-result__markdown-marker'>•</Text>
-                      )}
-                      {line.kind === 'numbered' && (
-                        <Text className='reffo-result__markdown-marker'>{line.prefix.trim()}</Text>
-                      )}
-                      <Text className='reffo-result__markdown-text'>
-                        {renderInlineMarkdown(line.text)}
-                        {canEditMarkdownLine(line) && (
-                          <Image
-                            className='reffo-result__markdown-edit-icon'
-                            src={editIcon}
-                            mode='aspectFit'
-                            onClick={() => {
-                              handleEditLine(index)
-                            }}
-                          />
-                        )}
-                      </Text>
-                    </View>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-        </View>
-      </View>
-    </View>
-  )
+function PreparationTopics({topics}: {topics: InterviewPreparationTopic[]}) {
+  return <div className='reffo-result__preparation-topics'>
+    {topics.map(topic => <div key={topic.topicId} data-preparation-topic-id={topic.topicId} className='reffo-result__preparation-topic'>
+      <p className='reffo-result__story-bullet'>{topic.prompt}</p>
+      {topic.preparationFocus && <p className='reffo-result__analysis-caption'>准备重点：{Array.isArray(topic.preparationFocus) ? topic.preparationFocus.join('；') : topic.preparationFocus}</p>}
+      {topic.sourceStatement && <AnalysisDisclosure label='查看来源记录'><SourceReference value={topic.sourceStatement} /></AnalysisDisclosure>}
+      {topic.userNotes?.map((note, index) => <p key={`${note.detailId ?? ''}:${index}`} className='reffo-result__analysis-caption'>已有准备：{note.text}</p>)}
+    </div>)}
+  </div>
 }
 
 function InterviewPanel({
   result,
   resumeContent,
   jdContent,
+  onRefresh,
 }: {
   result: ProcessResult
   resumeContent: string
   jdContent: string
+  onRefresh?: () => void
 }) {
+  const stale = interviewNeedsRefresh(result)
   const missingSkills = normalizeItems(result.matching.skill_match.missing_skills, 3)
   const unmatchedRequirements = getUnmatchedRequirements(result.matching.hard_requirements_match)
-  const generatedQuestions = normalizeItems(result.interview?.questions, 4)
+  const presentation = interviewPresentation(result)
+  const generatedQuestions = presentation ? [] : normalizeItems(result.interview?.questions, 4)
   const fallbackQuestions = [
     ...missingSkills.map(item => `你会如何补齐「${item}」相关经验？`),
     ...unmatchedRequirements.map(item => `针对「${item}」，你准备用什么项目证据回应？`),
   ].slice(0, 2)
-  const questions = generatedQuestions.length > 0 ? generatedQuestions : fallbackQuestions
   const storyItems = buildInterviewStoryViewItems(result, resumeContent, jdContent)
+  const preparation = buildInterviewPreparationView(result, storyItems)
+  const questionItems = presentation
+    ? presentation.questions.map((item, index) => ({questionId: item.questionId, question: item.question, preparationFocus: item.preparationFocus, topics: preparation.questionTopics[index] ?? []})).filter(item => item.question.trim())
+    : generatedQuestions.map(question => ({questionId: question, question, preparationFocus: '', topics: [] as InterviewPreparationTopic[]}))
+  const questions = questionItems.length ? questionItems : (fallbackQuestions.length ? fallbackQuestions : ['请介绍一段最能证明你适合这个岗位的经历。', '你如何理解这个岗位最核心的业务挑战？'])
+    .map(question => ({questionId: question, question, preparationFocus: '', topics: [] as InterviewPreparationTopic[]}))
   const generatedFollowUps = normalizeItems(result.interview?.follow_up_questions, 3)
   const followUps = generatedFollowUps.length > 0
     ? generatedFollowUps
@@ -784,11 +510,20 @@ function InterviewPanel({
 
   return (
     <View className='reffo-result__panel reffo-result__panel--interview'>
+      {stale && <div className='reffo-result__analysis-caption' role='status'>
+        简历已更新，以下建议基于较早版本。
+        {onRefresh && <button type='button' className='reffo-result__analysis-toggle' onClick={onRefresh}>按当前稿更新面试建议</button>}
+      </div>}
       <SectionTitle icon={chatTagIcon}>可能的问题</SectionTitle>
-      <InterviewQuoteList
-        className='reffo-result__question-list'
-        items={questions.length > 0 ? questions : ['请介绍一段最能证明你适合这个岗位的经历。', '你如何理解这个岗位最核心的业务挑战？']}
-      />
+      <View className='reffo-result__question-list'>
+        {questions.map(item => (
+          <View key={item.questionId} className='reffo-result__interview-line-item'>
+            <Text className='reffo-result__interview-quote'>“{item.question}”</Text>
+            {item.preparationFocus && <p className='reffo-result__analysis-caption'>准备重点：{item.preparationFocus}</p>}
+            {item.topics.length > 0 && <PreparationTopics topics={item.topics} />}
+          </View>
+        ))}
+      </View>
 
       <SectionTitle>明星故事推荐</SectionTitle>
       <View className='reffo-result__story-list'>
@@ -798,13 +533,18 @@ function InterviewPanel({
         {storyItems.map((item, index) => (
           <View key={`${item.title}-${index}`} className='reffo-result__story-block'>
             <Text className='reffo-result__story-title'>{item.title}</Text>
-            <Text className='reffo-result__story-source'>
-              参考源简历
-              <SourceReference value={item.resumeQuote} />
-              ；参考岗位描述
-              <SourceReference value={item.jdQuote} />
-              。
-            </Text>
+            {item.sourceGroups.map((group, groupIndex) => <View key={`${group.sourceKind}:${groupIndex}`} className='reffo-result__story-reference-group'>
+              <Text className='reffo-result__story-source'>{interviewSourceHeading(group, item.title)}</Text>
+              {group.paragraphs.map((paragraph, paragraphIndex) => <Text key={paragraphIndex} className='reffo-result__story-source'><SourceReference value={paragraph} /></Text>)}
+            </View>)}
+            {item.jdReferences.length > 0 && <View className='reffo-result__story-reference-group'>
+              <Text className='reffo-result__story-source'>对应岗位原文</Text>
+              {item.jdReferences.map(reference => <View key={`${reference.requirementId}:${reference.quote}`}>
+                <Text className='reffo-result__story-source'><SourceReference value={reference.quote} /></Text>
+                {reference.focus && <p className='reffo-result__analysis-caption'>关联重点：{reference.focus}</p>}
+              </View>)}
+            </View>}
+            {item.sourceGroups.length === 0 && <Text className='reffo-result__analysis-caption'>此故事的来源引用暂缺，可更新面试建议补齐。</Text>}
 
             <Text className='reffo-result__story-label'>故事回顾：</Text>
             <View className='reffo-result__story-bullets'>
@@ -812,6 +552,10 @@ function InterviewPanel({
               {item.result && <Text className='reffo-result__story-bullet'>• {item.result}</Text>}
             </View>
 
+            {preparation.storyTopics[index].length > 0 && <>
+              <Text className='reffo-result__story-label'>面试准备：</Text>
+              <PreparationTopics topics={preparation.storyTopics[index]} />
+            </>}
             <Text className='reffo-result__story-label'>讲述思路：</Text>
             <View className='reffo-result__story-bullets'>
               {item.storytellingApproach.length > 0 ? item.storytellingApproach.map((point, pointIndex) => (
@@ -840,8 +584,15 @@ function ResultContent({
   companyName,
   positionName,
   onOptimizedResumeChange,
+  onCompletionDocumentChange,
+  onEditingChange,
+  completionSaveStatus,
+  recoveryConflict,
   onLocateReference,
   reference,
+  prepareDownload,
+  onInterviewRefresh,
+  retryCompletionSave,
 }: {
   stage: ResultStageKey
   result: ProcessResult
@@ -850,8 +601,15 @@ function ResultContent({
   companyName: string
   positionName: string
   onOptimizedResumeChange: (markdown: string) => Promise<void>
-  onLocateReference: (reference: ResumeStrategyReference) => void
-  reference?: ResumeStrategyReference
+  onCompletionDocumentChange?: CompletionCommit
+  onEditingChange?: (active: boolean) => void
+  completionSaveStatus?: 'idle' | 'saving' | 'failed'
+  recoveryConflict?: boolean
+  onLocateReference: (reference: ResumeReference) => void
+  reference?: ResumeReference
+  prepareDownload?: ResultPageViewModel['prepareDownload']
+  onInterviewRefresh?: () => void
+  retryCompletionSave?: ResultPageViewModel['retryCompletionSave']
 }) {
   if (stage === 'analysis') return <AnalysisPanel result={result} onLocateReference={onLocateReference} />
   if (stage === 'resume') {
@@ -861,11 +619,17 @@ function ResultContent({
         companyName={companyName}
         positionName={positionName}
         onOptimizedResumeChange={onOptimizedResumeChange}
+        onCompletionDocumentChange={onCompletionDocumentChange}
+        onEditingChange={onEditingChange}
+        saveStatus={completionSaveStatus}
+        recoveryConflict={recoveryConflict}
         reference={reference}
+        prepareDownload={prepareDownload}
+        retryCompletionSave={retryCompletionSave}
       />
     )
   }
-  return <InterviewPanel result={result} resumeContent={resumeContent} jdContent={jdContent} />
+  return <InterviewPanel result={result} resumeContent={resumeContent} jdContent={jdContent} onRefresh={onInterviewRefresh} />
 }
 
 type ResultPageViewProps = ResultPageViewModel & {
@@ -887,16 +651,36 @@ export default function PageView({
   returnCard,
   canEditHistory,
   needsCompletion = false,
-  handleComplete,
-  handleBackHome,
-  handleEditHistory,
+  handleComplete: completeResult,
+  handleBackHome: backHome,
+  handleEditHistory: editHistory,
   handleRetryStage,
   handleOptimizedResumeChange,
+  handleCompletionDocumentChange,
+  handleCompletionEditingChange,
+  prepareDownload,
+  retryCompletionSave,
+  completionSaveStatus,
+  recoveryConflict,
+  handleResolveRecovery,
   isCompleting,
   hideLandingHeader = false,
 }: ResultPageViewProps) {
+  const editorActiveRef = useRef(false)
+  const handleEditingChange = useCallback((active: boolean) => {
+    editorActiveRef.current = active
+    handleCompletionEditingChange?.(active)
+  }, [handleCompletionEditingChange])
+  const canLeaveEditor = useCallback(() => {
+    if (!editorActiveRef.current && completionSaveStatus !== 'saving' && completionSaveStatus !== 'failed') return true
+    feedback.message('请先保存或取消当前编辑')
+    return false
+  }, [completionSaveStatus])
+  const handleComplete = async () => { if (canLeaveEditor()) await completeResult() }
+  const handleBackHome = () => canLeaveEditor() ? backHome() : Promise.resolve()
+  const handleEditHistory = async () => { if (canLeaveEditor()) await editHistory() }
   const [stageIndex, setStageIndex] = useState(0)
-  const [resumeReference, setResumeReference] = useState<ResumeStrategyReference>()
+  const [resumeReference, setResumeReference] = useState<ResumeReference>()
 
   useEffect(() => setResumeReference(undefined), [result?.optimized.optimized_resume])
   const [isFromCardReady, setIsFromCardReady] = useState(!enteredFromCard)
@@ -1132,6 +916,7 @@ export default function PageView({
     nextIndex: number,
     options: {shake?: boolean; direction?: StageMotionDirection; showBubble?: boolean} = {},
   ) => {
+    if (!canLeaveEditor()) return
     const nextStage = RESULT_STAGES[nextIndex]
 
     if (!nextStage || nextIndex === stageIndex) {
@@ -1169,13 +954,12 @@ export default function PageView({
       stageTransitionTimerRef.current = null
       setStageTransition(current => current?.toIndex === nextIndex ? null : current)
     }, RESULT_STAGE_SWITCH_DURATION)
-  }, [handleRetryStage, progress, showBlockedBubble, stageAvailability, stageIndex])
+  }, [canLeaveEditor, handleRetryStage, progress, showBlockedBubble, stageAvailability, stageIndex])
 
-  const handleLocateReference = (reference: ResumeStrategyReference) => {
-    if (!result || hasStaleStrategyReview(result)
-      || !findResumeReferenceLines(result.optimized.optimized_resume, reference.quote)) return
-    setResumeReference(reference)
+  const handleLocateReference = (reference: ResumeReference) => {
+    if (!result || !canLeaveEditor() || !isCurrentResumeReference(reference, result)) return
     requestStageSwitch(1)
+    setResumeReference(reference)
   }
 
   const handleStageTouchStart = useCallback((event: TouchEvent) => {
@@ -1214,6 +998,7 @@ export default function PageView({
 
     const direction: StageMotionDirection = deltaX < 0 ? 'left' : 'right'
     const nextIndex = stageIndex + (direction === 'left' ? 1 : -1)
+    if (editorActiveRef.current) return
     const nextStage = RESULT_STAGES[nextIndex]
 
     if (!nextStage || stageAvailability[nextStage.key]) {
@@ -1298,6 +1083,7 @@ export default function PageView({
   }, [settleBlockedPreview])
 
   const handleReturnHome = useCallback(() => {
+    if (!canLeaveEditor()) return
     if (!enteredFromCard) {
       handleBackHome()
       return
@@ -1371,7 +1157,7 @@ export default function PageView({
 
       returnTimerRef.current = window.setTimeout(finishReturn, RESULT_RETURN_FALLBACK_DURATION)
     }, RESULT_CONTENT_EXIT_DURATION)
-  }, [enteredFromCard, handleBackHome, isReturningHome, returnCard])
+  }, [canLeaveEditor, enteredFromCard, handleBackHome, isReturningHome, returnCard])
 
   const handleAction = async () => {
     if (enteredFromCard) {
@@ -1720,7 +1506,14 @@ export default function PageView({
                         companyName={companyName}
                         positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
+                        onCompletionDocumentChange={handleCompletionDocumentChange}
+                        prepareDownload={prepareDownload}
+                        retryCompletionSave={retryCompletionSave}
+                        onEditingChange={handleEditingChange}
+                        completionSaveStatus={completionSaveStatus}
+                        recoveryConflict={recoveryConflict}
                         onLocateReference={handleLocateReference}
+                        onInterviewRefresh={() => { if (canLeaveEditor()) void handleRetryStage('interview') }}
                       />
                     </View>
                     <View
@@ -1739,7 +1532,14 @@ export default function PageView({
                         companyName={companyName}
                         positionName={positionName}
                         onOptimizedResumeChange={handleOptimizedResumeChange}
+                        onCompletionDocumentChange={handleCompletionDocumentChange}
+                        prepareDownload={prepareDownload}
+                        retryCompletionSave={retryCompletionSave}
+                        onEditingChange={handleEditingChange}
+                        completionSaveStatus={completionSaveStatus}
+                        recoveryConflict={recoveryConflict}
                         onLocateReference={handleLocateReference}
+                        onInterviewRefresh={() => { if (canLeaveEditor()) void handleRetryStage('interview') }}
                       />
                     </View>
                   </>
@@ -1756,13 +1556,25 @@ export default function PageView({
                       companyName={companyName}
                       positionName={positionName}
                       onOptimizedResumeChange={handleOptimizedResumeChange}
+                      onCompletionDocumentChange={handleCompletionDocumentChange}
+                        prepareDownload={prepareDownload}
+                        retryCompletionSave={retryCompletionSave}
+                      onEditingChange={handleEditingChange}
+                      completionSaveStatus={completionSaveStatus}
+                      recoveryConflict={recoveryConflict}
                       onLocateReference={handleLocateReference}
+                        onInterviewRefresh={() => { if (canLeaveEditor()) void handleRetryStage('interview') }}
                       reference={resumeReference}
                     />
                   </View>
                 )}
               </View>
 
+              {recoveryConflict && <div className='reffo-completion__recovery' role='alert'>
+                <p className='reffo-completion__recovery-text'>这份历史和本地编辑稿都有更新，请选择要继续使用的版本。选择前不会覆盖历史。</p>
+                <button type='button' className='reffo-completion__action reffo-completion__action--recovery' onClick={() => { if (canLeaveEditor()) void handleResolveRecovery?.('history').catch(() => feedback.error('恢复失败，请重试')) }}>载入历史版本</button>
+                <button type='button' className='reffo-completion__action reffo-completion__action--recovery' onClick={() => { if (canLeaveEditor()) void handleResolveRecovery?.('session').catch(error => feedback.error(error instanceof Error ? error.message : '恢复失败，请重试')) }}>保留本地编辑稿</button>
+              </div>}
               <Text className='reffo-result__disclaimer'>*内容由人工智能生成，请仔细检查</Text>
             </View>
           </ScrollView>

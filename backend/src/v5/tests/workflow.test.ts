@@ -1389,9 +1389,11 @@ describe('v5 production adaptive workflow', () => {
     expect(result.usedAnyFallback).toBe(false)
     expect(result.qualityGates).toEqual({ factSafety: 'pass', contentCompleteness: 'pass', deliverability: 'pass' })
     expect(result.deliveryDecision).toBe('deliver')
+    expect(result.decisionDiagnostics).toMatchObject({version: 'workflow-decisions-v1', recoveredEntryIds: [], fullRewriteApplied: false})
+    expect(result.decisionDiagnostics?.stageResolutions.map(stage => stage.component)).toEqual(['P02', 'P03', 'P05', 'P06D'])
     expect(result).not.toHaveProperty('interviewPreparation')
     expect(result.deliveryDiagnostics).toMatchObject({
-      version: 'v5-delivery-diagnostics-v2',
+      version: 'v5-delivery-diagnostics-v3',
       outcome: { execution: 'completed', disposition: 'deliverable' },
       tracks: {
         factSafety: { status: 'pass', finalIssueCounts: {} },
@@ -1456,8 +1458,12 @@ describe('v5 production adaptive workflow', () => {
       }
       if (input.promptVersion?.includes('-p03-') && payload.jobTargetingPolicy) {
         const business = payload.resumeContext!.facts.find(fact => fact.claimType === 'deliverable')!
-        const fit: JobFitMap = { contractVersion: 'job-fit-map-v1',
-          links: payload.targets!.map(target => ({ targetId: target.id, status, evidenceIds: [business.evidenceId], similarity: '具有相邻产品实践。', difference: '尚不等于完整岗位经验。', expressionAngle: '突出已有交付。' })),
+        const fit: JobFitMap = { contractVersion: 'job-fit-map-v2',
+          links: payload.targets!.map(target => ({ targetId: target.id, status, evidenceIds: [business.evidenceId], similarity: '具有相邻产品实践。', difference: '尚不等于完整岗位经验。', expressionAngle: '突出已有交付。',
+            supportedAspects: [{text: '参与产品交付。', evidenceIds: [business.evidenceId]}],
+            unprovenAspects: [{text: '目标业务环境', reason: '尚未提供相同业务环境的实践。'}],
+            roleBoundary: '团队参与。', supportRelation: 'domain_transfer',
+          })),
           narratives: [{ statement: '具备团队产品交付实践。', targetIds: ['job:task:t1'], evidenceIds: [business.evidenceId] }], questions: [],
         }
         return { provider: 'fake', model: 'fixture', content: JSON.stringify(fit), latencyMs: 1 }
@@ -1489,6 +1495,30 @@ describe('v5 production adaptive workflow', () => {
     expect(result.requirementAnalysis?.portrait?.id).toBe('job:portrait:p1')
     expect(result.artifact.markdown).not.toContain('job:task:')
   })
+
+  test.each(['P03_CALL_BUDGET_EXCEEDED', 'P03_REPAIR_TIME_BUDGET_EXCEEDED'] as const)(
+    'preserves matching resource failure %s through the provider stage wrapper', async code => {
+      const delegate = new RoutingProvider()
+      const versions: string[] = []
+      const eventBus = createHarnessEventBus(), events: HarnessEvent[] = []
+      eventBus.subscribe('*', event => {events.push(event)})
+      const provider: LlmProvider = {complete: async input => {
+        const version = input.promptVersion ?? ''
+        versions.push(version)
+        if (version.includes('-p02-')) return {provider: 'fake', model: 'fixture',
+          content: JSON.stringify(createTargetingFixture().candidate), latencyMs: 1}
+        if (version.includes('-p03-')) throw new V5WorkflowBlockedError({code,
+          state: 'workflow_failure', message: '本次匹配资源预算已耗尽。'})
+        return delegate.complete(input)
+      }}
+      const workflow = new V5ResumeOptimizationWorkflow({provider, eventBus, enableDefaultSubscribers: false,
+        artifactGenerationMode: 'writer_v1', jobTargetingPolicy: 'job-targeted-v1'})
+      await expect(workflow.run({resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD}))
+        .rejects.toMatchObject({code, state: 'workflow_failure'})
+      expect(versions.filter(version => version.includes('-p03-'))).toHaveLength(1)
+      expect(versions.some(version => /-p03r-|-p06c-|-p10-/.test(version))).toBe(false)
+      expect(events.find(event => event.type === 'workflow.failed')?.payload).toMatchObject({errorCode: code})
+    })
 
   test('targeting cannot be enabled with an incompatible artifact mode', () => {
     expect(() => new V5ResumeOptimizationWorkflow({ artifactGenerationMode: 'dsl_v1', jobTargetingPolicy: 'job-targeted-v1', enableDefaultSubscribers: false })).toThrow('JOB_TARGETING_REQUIRES_WRITER')

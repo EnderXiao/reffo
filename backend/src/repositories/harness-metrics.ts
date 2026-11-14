@@ -118,9 +118,12 @@ export interface HarnessStageMetrics {
   runs: number
   llmCalls: number
   repairCalls: number
-  inputTokens: number
-  outputTokens: number
-  totalTokens: number
+  inputTokens: number | null
+  outputTokens: number | null
+  totalTokens: number | null
+  knownInputTokens: number
+  knownOutputTokens: number
+  missingUsageCalls: number
   avgLatencyMs: number
   p95LatencyMs: number
 }
@@ -155,12 +158,15 @@ export interface HarnessMetrics {
   networkRetryCalls: number
   deterministicGateEvaluations: number
   physicalAttempts: number
-  inputTokens: number
-  outputTokens: number
-  totalTokens: number
+  inputTokens: number | null
+  outputTokens: number | null
+  totalTokens: number | null
+  knownInputTokens: number
+  knownOutputTokens: number
+  missingUsageCalls: number
   avgLatencyMs: number
   p95LatencyMs: number
-  estimatedCostCny: number
+  estimatedCostCny: number | null
   stageMetrics: HarnessStageMetrics[]
   promptInputSummary: HarnessPromptInputSummaryMetrics
   recoveryAdvice: HarnessRecoveryAdviceMetrics
@@ -192,6 +198,7 @@ export function aggregateHarnessMetrics(input: {
   let networkRetryCalls = 0
   let inputTokens = 0
   let outputTokens = 0
+  let missingUsageCalls = 0
   let physicalAttempts = 0
   let llmCalls = 0
   const promptInputByComponent = new Map<string, HarnessPromptInputSummaryMetrics['byComponent'][number]>()
@@ -300,6 +307,7 @@ export function aggregateHarnessMetrics(input: {
         attempt,
         stepRunId: response?.stepRunId ?? request?.stepRunId ?? attempt?.step_run_id,
         metadata: { ...request?.payload, ...response?.payload },
+        hasProviderEvents: true,
       }
     })
   })
@@ -310,13 +318,18 @@ export function aggregateHarnessMetrics(input: {
       attempt,
       stepRunId: attempt.step_run_id,
       metadata: {} as Record<string, unknown>,
+      hasProviderEvents: false,
     }))
 
-  callRecords.forEach(({ attempt, stepRunId, metadata }) => {
+  callRecords.forEach(({ attempt, stepRunId, metadata, hasProviderEvents }) => {
     const reason = typeof metadata?.callReason === 'string' ? metadata.callReason : undefined
     llmCalls += 1
-    const attemptInput = finiteNumber(metadata.inputTokens) || finiteNumber(attempt?.input_tokens)
-    const attemptOutput = finiteNumber(metadata.outputTokens) || finiteNumber(attempt?.output_tokens)
+    const inputUsage = hasProviderEvents ? metadata.inputTokens : attempt?.input_tokens
+    const outputUsage = hasProviderEvents ? metadata.outputTokens : attempt?.output_tokens
+    const usageKnown = typeof inputUsage==='number' && Number.isFinite(inputUsage) && typeof outputUsage==='number' && Number.isFinite(outputUsage)
+    const attemptInput = finiteNumber(inputUsage)
+    const attemptOutput = finiteNumber(outputUsage)
+    if(!usageKnown)missingUsageCalls++
     const latency = finiteNumber(metadata.latencyMs) || finiteNumber(attempt?.latency_ms)
     inputTokens += attemptInput
     outputTokens += attemptOutput
@@ -335,14 +348,18 @@ export function aggregateHarnessMetrics(input: {
       inputTokens: 0,
       outputTokens: 0,
       totalTokens: 0,
+      knownInputTokens:0,knownOutputTokens:0,missingUsageCalls:0,
       avgLatencyMs: 0,
       p95LatencyMs: 0,
     }
     stage.llmCalls += 1
     stage.repairCalls += isRepairAttempt(attempt ?? {}, reason) ? 1 : 0
-    stage.inputTokens += attemptInput
-    stage.outputTokens += attemptOutput
-    stage.totalTokens += attemptInput + attemptOutput
+    stage.knownInputTokens += attemptInput
+    stage.knownOutputTokens += attemptOutput
+    if(!usageKnown)stage.missingUsageCalls++
+    stage.inputTokens = stage.missingUsageCalls ? null : stage.knownInputTokens
+    stage.outputTokens = stage.missingUsageCalls ? null : stage.knownOutputTokens
+    stage.totalTokens = stage.missingUsageCalls ? null : stage.knownInputTokens+stage.knownOutputTokens
     stageMap.set(stepName, stage)
   })
 
@@ -356,6 +373,7 @@ export function aggregateHarnessMetrics(input: {
       inputTokens: 0,
       outputTokens: 0,
       totalTokens: 0,
+      knownInputTokens:0,knownOutputTokens:0,missingUsageCalls:0,
       avgLatencyMs: 0,
       p95LatencyMs: 0,
     }
@@ -396,12 +414,13 @@ export function aggregateHarnessMetrics(input: {
     networkRetryCalls,
     deterministicGateEvaluations,
     physicalAttempts,
-    inputTokens,
-    outputTokens,
-    totalTokens: inputTokens + outputTokens,
+    inputTokens:missingUsageCalls?null:inputTokens,
+    outputTokens:missingUsageCalls?null:outputTokens,
+    totalTokens:missingUsageCalls?null:inputTokens+outputTokens,
+    knownInputTokens:inputTokens,knownOutputTokens:outputTokens,missingUsageCalls,
     avgLatencyMs: latencyValues.length === 0 ? 0 : Number((latencyValues.reduce((sum, value) => sum + value, 0) / latencyValues.length).toFixed(2)),
     p95LatencyMs: percentile(latencyValues, 0.95),
-    estimatedCostCny,
+    estimatedCostCny:missingUsageCalls?null:estimatedCostCny,
     stageMetrics: stages,
     promptInputSummary,
     recoveryAdvice,
@@ -426,7 +445,7 @@ export function evaluateV6ReleaseGate(metrics: HarnessMetrics, limits = DEFAULT_
   const checks = {
     logicalCalls: metrics.llmCalls <= limits.maxLogicalCalls,
     repairCalls: metrics.repairCalls <= limits.maxRepairCalls,
-    totalTokens: metrics.totalTokens <= limits.maxTotalTokens,
+    totalTokens: metrics.totalTokens !== null && metrics.totalTokens <= limits.maxTotalTokens,
     factSafety: metrics.safetyIncidents === 0,
     chunkIntegrity: metrics.chunkIntegrityFailures === 0,
   }

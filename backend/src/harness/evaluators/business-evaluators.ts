@@ -160,7 +160,7 @@ export function evaluateMatchAnalysisBusiness(
   const weaknessDetails = matchAnalysis.weakness_details ?? []
   const strategyDetails = matchAnalysis.optimization_strategy_details ?? []
 
-  if (matchAnalysis.match_score < 0 || matchAnalysis.match_score > 100) {
+  if ((matchAnalysis.match_score !== null && matchAnalysis.match_score < 0) || (matchAnalysis.match_score !== null && matchAnalysis.match_score > 100)) {
     issues.push({
       severity: 'error',
       code: 'MATCH_SCORE_OUT_OF_RANGE',

@@ -24,6 +24,13 @@ describe('Harness recovery advice', () => {
     })
   })
 
+  test('匹配校验和结构校验失败保留诊断而不是提示原样重试', () => {
+    for (const code of ['P03_VALIDATION_FAILED', 'V5_SCHEMA_VALIDATION_FAILED']) {
+      expect(recoveryAdviceForErrorCode(code)).toMatchObject({retryable: false, action: 'inspect_stage_validation'})
+    }
+    expect(recoveryAdviceForErrorCode('V5_CONTEXT_BUDGET_EXCEEDED').message).toContain('修复范围')
+  })
+
   test('maps exhausted V5 JSON transport repair to an inspectable recovery action', () => {
     expect(recoveryAdviceForErrorCode('V5_JSON_PARSE_FAILED')).toMatchObject({
       retryable: false,

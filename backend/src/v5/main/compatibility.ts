@@ -1,4 +1,11 @@
 import { strategyResultExcerpts } from '@/shared/resume-strategy'
+import { deliveredResumeMarkdown } from '@/v5/delivery-markdown'
+import { calculateExperienceDuration } from '@/v5/experience-duration'
+import {changeManifestDescriptions} from '@/shared/resume-actions'
+import {educationFields, isEducationIdentityOnly} from '@/v5/writing/education'
+import {timelineRoleTitle} from '@/v5/composition/timeline-display'
+import {buildInterviewPresentation} from '@/v5/interview-presentation'
+import {projectInterviewKnownResult} from '@/v5/interview-results'
 
 import type {
   InterviewSuggestions,
@@ -65,16 +72,15 @@ function toResumeStructure(result: Pick<V5WorkflowResult, 'resumeEvidenceBundle'
     },
     education: education.map(item => ({
       school: item.organization ?? '',
-      major: '',
-      degree: item.title ?? '',
+      ...educationFields(item.title),
       time_range: [item.start, item.end].filter(Boolean).join(' - '),
-      achievements: factText(scopeEvidence(result, item.scopeId), ['education', 'result', 'award']),
+      achievements: factText(scopeEvidence(result, item.scopeId).filter(atom => !isEducationIdentityOnly(atom, item)), ['education', 'result', 'award']),
     })),
     experience: experience.map(item => {
       const atoms = scopeEvidence(result, item.scopeId)
       return {
         company: item.organization ?? '',
-        position: item.title ?? '',
+        position: timelineRoleTitle(item) ?? '',
         time_range: [item.start, item.end].filter(Boolean).join(' - '),
         responsibilities: factText(atoms, ['responsibility', 'action', 'deliverable']),
         achievements: factText(atoms, ['result', 'award']),
@@ -113,6 +119,8 @@ function toJdStructure(result: Pick<V5WorkflowResult, 'jobRequirementBundle'>): 
     .filter(atom => atom.category === category)
     .map(atom => atom.normalizedRequirement)
   return {
+    requirement_sources: job.requirementAtoms.map(atom => ({requirement_id: atom.requirementId,
+      source_quote: atom.verbatimText, source_span: {...atom.sourceSpan}, source_block_id: atom.sourceBlockId})),
     basic_info: {
       title: job.basicInfo.title ?? '',
       company: job.basicInfo.company ?? undefined,
@@ -121,18 +129,19 @@ function toJdStructure(result: Pick<V5WorkflowResult, 'jobRequirementBundle'>): 
     hard_requirements: {
       education: byCategory('education')[0],
       experience_years: byCategory('experience')[0],
-      required_skills: byCategory('skill'),
+      required_skills: job.requirementAtoms.filter(atom => atom.category === 'skill'
+        && atom.semantics?.condition !== 'preferred' && atom.importance !== 'nice_to_have').map(atom => atom.normalizedRequirement),
     },
     responsibilities: byCategory('responsibility'),
     tasks: [...byCategory('outcome'), ...byCategory('other')],
     soft_skills: [],
     nice_to_have: job.requirementAtoms
-      .filter(atom => atom.importance === 'nice_to_have' || atom.importance === 'differentiator')
+      .filter(atom => atom.semantics ? atom.semantics.condition === 'preferred' : atom.importance === 'nice_to_have' || atom.importance === 'differentiator')
       .map(atom => atom.normalizedRequirement),
     requirement_hierarchy: {
-      must_have: job.requirementAtoms.filter(atom => atom.importance === 'must_have').map(atom => atom.normalizedRequirement),
-      core_outcomes: job.requirementAtoms.filter(atom => atom.importance === 'core_outcome').map(atom => atom.normalizedRequirement),
-      differentiators: job.requirementAtoms.filter(atom => atom.importance === 'differentiator').map(atom => atom.normalizedRequirement),
+      must_have: job.requirementAtoms.filter(atom => atom.semantics ? atom.semantics.condition === 'required' : atom.importance === 'must_have').map(atom => atom.normalizedRequirement),
+      core_outcomes: job.requirementAtoms.filter(atom => atom.semantics ? atom.semantics.condition === 'expected' : atom.importance === 'core_outcome').map(atom => atom.normalizedRequirement),
+      differentiators: job.requirementAtoms.filter(atom => atom.semantics ? atom.semantics.condition === 'preferred' : atom.importance === 'differentiator').map(atom => atom.normalizedRequirement),
     },
     company_context: {
       explicit_signals: job.explicitCompanySignals,
@@ -150,18 +159,51 @@ function toJdStructure(result: Pick<V5WorkflowResult, 'jobRequirementBundle'>): 
   }
 }
 
+/** Keep the explanatory profile on the same source-owned condition axis as JD lists. */
+export function alignRequirementAnalysisStrengths(analysis: V5WorkflowResult['requirementAnalysis'], job: V5WorkflowResult['jobRequirementBundle']) {
+  if (!analysis) return undefined
+  return {...analysis, externalRequirements: analysis.externalRequirements.map(item => {
+    const sources = job.requirementAtoms.filter(atom => item.sourceQuotes.includes(atom.verbatimText))
+    if (!sources.length) return job.requirementAtoms.some(atom => atom.semantics) ? {...item, strength: 'unspecified' as const} : item
+    if (sources.every(atom => !atom.semantics)) return item
+    const conditions = new Set(sources.map(atom => atom.semantics?.condition ?? 'unclear'))
+    const condition = conditions.size === 1 ? [...conditions][0] : 'unclear'
+    return {...item, strength: condition === 'required' ? 'necessary' as const
+      : condition === 'preferred' ? 'preferred' as const : 'unspecified' as const}
+  })}
+}
+
 export function toMatchAnalysis(result: Pick<V5WorkflowResult, 'resumeEvidenceBundle' | 'jobRequirementBundle' | 'matchAnalysis' | 'matchScore' | 'requirementAnalysis'>): MatchAnalysis {
   const requirement = new Map(result.jobRequirementBundle.requirementAtoms.map(atom => [atom.requirementId, atom]))
   const evidence = new Map(result.resumeEvidenceBundle.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
-  const direct = result.matchAnalysis.requirementMatches.filter(item => item.status === 'direct_match')
-  const missing = result.matchAnalysis.requirementMatches.filter(item => item.status === 'currently_unproven')
+  const judgments = new Map(result.matchAnalysis.judgmentBundle?.items.map(item => [item.requirementId, item]) ?? [])
+  const statusFor = (id: string) => {
+    const judgment = judgments.get(id)
+    if (judgment) return judgment.conflict ? 'unproven' as const : judgment.status
+    const old = result.matchAnalysis.requirementMatches.find(item => item.requirementId === id)
+    return old?.status === 'direct_match' ? 'direct' as const : old?.status === 'transferable_match' ? 'transferable_or_partial' as const : 'unproven' as const
+  }
+  const direct = result.matchAnalysis.requirementMatches.filter(item => statusFor(item.requirementId) === 'direct')
+  const missing = result.matchAnalysis.requirementMatches.filter(item => statusFor(item.requirementId) === 'not_met')
+  const duration = calculateExperienceDuration(result.resumeEvidenceBundle)
+  const experienceSummary = duration.fullTime.months === null
+    ? `全职任职已有可核对区间并集${duration.fullTime.knownLowerBoundMonths}个月；完整年限仍需核对任职月份与材料时点。`
+    : `全职任职时间并集${duration.fullTime.months}个月；相关性仍按各项岗位要求核验。`
+  const internshipSummary = duration.internship.scopeIds.length
+    ? duration.internship.months === null ? '实习时间单独记录，部分日期待核对，不与全职直接相加。' : `实习时间并集${duration.internship.months}个月，单独计算。` : ''
   const jd = toJdStructure(result)
   return {
     match_score: result.matchScore.score,
-    ...(result.requirementAnalysis ? { requirement_analysis: result.requirementAnalysis } : {}),
+    score_formula_version: result.matchScore.formulaVersion,
+    ...(result.matchScore.metadata?.scoreBasis ? {score_basis: result.matchScore.metadata.scoreBasis, score_confidence: result.matchScore.confidence} : {}),
+    ...(result.matchAnalysis.judgmentBundle ? {requirement_judgments: result.matchAnalysis.judgmentBundle} : {}),
+    experience_duration: duration,
+    ...(result.matchScore.metadata?.calibrationStatus ? {score_calibration_status: result.matchScore.metadata.calibrationStatus} : {}),
+    ...(result.matchAnalysis.actionPlan ? {action_plan: result.matchAnalysis.actionPlan} : {}),
+    ...(result.requirementAnalysis ? { requirement_analysis: alignRequirementAnalysisStrengths(result.requirementAnalysis, result.jobRequirementBundle) } : {}),
     hard_requirements_match: Object.fromEntries(result.matchAnalysis.requirementMatches.map(item => [
       requirement.get(item.requirementId)?.normalizedRequirement ?? item.requirementId,
-      item.status === 'direct_match' || item.status === 'transferable_match',
+      statusFor(item.requirementId) === 'direct' ? true : statusFor(item.requirementId) === 'not_met' ? false : null,
     ])),
     skill_match: {
       matched: direct
@@ -176,13 +218,14 @@ export function toMatchAnalysis(result: Pick<V5WorkflowResult, 'resumeEvidenceBu
           const match = result.matchAnalysis.requirementMatches.find(item => item.requirementId === atom.requirementId)
           return {
             requirement: atom.verbatimText,
-            status: match?.status === 'direct_match' ? 'matched' as const
-              : match?.status === 'currently_unproven' ? 'missing' as const : 'unclear' as const,
+            status: statusFor(atom.requirementId) === 'direct' ? 'matched' as const
+              : statusFor(atom.requirementId) === 'transferable_or_partial' ? 'partial' as const
+                : statusFor(atom.requirementId) === 'not_met' ? 'not_met' as const : 'unproven' as const,
             evidence: match?.rationale ?? '当前材料未完成该要求的核验。',
           }
         }),
     },
-    experience_match: result.matchAnalysis.positioning.statement,
+    experience_match: experienceSummary + internshipSummary,
     soft_skills_match: '仅基于当前材料和目标岗位显式要求评估。',
     strengths: result.matchAnalysis.strengths.map(item => item.statement),
     weaknesses: result.matchAnalysis.gaps.map(item => item.impact),
@@ -228,16 +271,31 @@ function toInterviewSuggestions(result: V5WorkflowResult): InterviewSuggestions 
   if (result.deliveryDiagnostics.provenance.interview !== 'generated') return undefined
   const preparation = result.interviewPreparation
   if (!preparation) return undefined
-  return toInterviewPreparation(preparation)
+  return toInterviewPreparation(preparation, result)
 }
 
-export function toInterviewPreparation(preparation: InterviewPreparation): InterviewSuggestions {
+export function toInterviewPreparation(preparation: InterviewPreparation, snapshot?: Pick<V5WorkflowResult, 'resumeEvidenceBundle' | 'jobRequirementBundle' | 'matchAnalysis' | 'resolvedActionPlan' | 'preparationTopics' | 'completionDocument'>, options?: {sourceText?: string}): InterviewSuggestions {
+  const document = snapshot?.completionDocument
+  const basedOnDocument = document ? {documentId: document.documentId, revision: document.revision,
+    ...(snapshot?.resolvedActionPlan?.resolvedDigest ? {resolvedDigest: snapshot.resolvedActionPlan.resolvedDigest} : {})} : undefined
+  const presentation = snapshot ? buildInterviewPresentation(preparation, snapshot, {...options, basedOnDocument}) : undefined
   return {
+    ...(presentation ? {presentation} : {}),
+    preparation_topics: snapshot?.preparationTopics ?? [],
     questions: preparation.questions.map(item => item.question),
-    story_recommendations: preparation.storyRecommendations.map(item => ({
+    story_recommendations: preparation.storyRecommendations.map((item, index) => ({
       title: item.title,
+      ...(presentation ? {story_id: presentation.stories[index]?.storyId, scope_id: item.scopeId,
+        case_group_id: presentation.stories[index]?.caseGroupId} : {}),
+      ...(snapshot ? {source_references: item.evidenceIds.flatMap(id => {
+        const atom = snapshot.resumeEvidenceBundle.evidenceAtoms.find(atom => atom.evidenceId === id && atom.status !== 'excluded')
+        return atom ? [{evidence_id: id, source_scope_id: atom.sourceScopeId, source_quote: atom.verbatimText,
+          source_kind: atom.provenance?.kind === 'user_edit' ? 'user_fact' as const : 'source_resume' as const}] : []
+      }), related_requirement_ids: presentation?.stories[index]?.jobReferences.map(reference => reference.requirementId) ?? [],
+      action_ids: snapshot.resolvedActionPlan?.actions.filter(action => action.evidenceIds.some(id => item.evidenceIds.includes(id))).map(action => action.actionId) ?? []} : {}),
       background: item.background,
-      result: item.knownResult ?? `待核实：${item.preparationGap ?? '结果证据不足'}`,
+      result: item.knownResult && snapshot ? projectInterviewKnownResult(item.knownResult, item.evidenceIds, snapshot.resumeEvidenceBundle.evidenceAtoms, options?.sourceText)
+        : item.knownResult ?? `待核实：${item.preparationGap ?? '结果证据不足'}`,
       storytelling_approach: item.storytellingApproach ?? [],
     })),
     follow_up_questions: preparation.followUpQuestions.map(item => item.question),
@@ -264,9 +322,17 @@ export function toLegacyMvpProcessResponse(result: V5WorkflowResult): MvpProcess
     used_safe_fallback: result.usedSafeFallback,
     step1_analysis: toResumeAnalysis(result),
     step2_matching: toMatchAnalysis(result),
-    step3_optimized_resume: result.artifact.markdown,
+    step3_optimized_resume: deliveredResumeMarkdown(result),
+    ...(result.completionDocument ? {step3_completion_document: result.completionDocument} : {}),
     step3_strategy_review: result.strategyReview,
-    step3_changes_summary: strategyResultExcerpts(result.strategyReview, result.artifact.markdown),
+    ...(result.actionPlan ? {step3_action_plan: result.actionPlan} : {}),
+    ...(result.resolvedActionPlan ? {step3_resolved_action_plan: result.resolvedActionPlan} : {}),
+    ...(result.actionReview ? {step3_action_review: result.actionReview} : {}),
+    ...(result.changeManifest ? {step3_change_manifest: result.changeManifest} : {}),
+    ...(result.identityState ? {step3_identity_state: result.identityState} : {}),
+    ...(result.deliveryState ? {step3_delivery_state: result.deliveryState} : {}),
+    step3_changes_summary: result.changeManifest ? changeManifestDescriptions(result.changeManifest)
+      : strategyResultExcerpts(result.strategyReview, deliveredResumeMarkdown(result)),
     step4_interview_suggestions: toInterviewSuggestions(result),
   }
 }

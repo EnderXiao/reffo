@@ -1852,3 +1852,21 @@ html[data-reffo-view-transition='forward'] .reffo-result--from-generation {
     opacity: 1;
   }
 }
+
+.reffo-result__grade--pending {
+  font-family: inherit;
+  font-size: 36px;
+  line-height: 44px;
+}
+
+.reffo-result__preparation-group {
+  margin-top: 16px;
+}
+
+.reffo-result__preparation-topic {
+  margin: 8px 0 14px;
+}
+
+.reffo-result__preparation-topic p {
+  margin: 0 0 5px;
+}

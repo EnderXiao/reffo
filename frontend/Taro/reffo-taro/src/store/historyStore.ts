@@ -48,11 +48,12 @@ import type {HistoryState, LoadOptions} from './types';
 import type {ResumeHistory, ResumeHistorySummary} from '@/types';
 import {resumeHistoryApi} from '@/services/resumeHistory';
 import {toResumeHistorySummaryFromHistory} from '@/utils/history-summary';
-import {isLocalRuntimeEnvironment} from '@/services/runtime-config';
+import {getPublicRuntimeConfig, isLocalRuntimeEnvironment} from '@/services/runtime-config';
 import {useAuthStore} from './authStore';
 import {getJSON, setJSON, storage} from '@/utils/storage';
 import {getUserStorageKey, HISTORY_STORAGE_KEY} from '@/utils/user-data-storage';
 import {PENDING_LANDING_HISTORIES_KEY} from '@/utils/pending-landing-data';
+import {validateCompletionDocument} from '@/shared/resume-completion';
 
 /**
  * 历史记录存储键名
@@ -66,6 +67,15 @@ let historyStoreEpoch = 0;
 
 function allowsLocalFallback() {
   return isLocalRuntimeEnvironment();
+}
+
+function requiresCompletionAcknowledgement(history?: Partial<ResumeHistory>) {
+  const optimized = history?.processResult?.optimized;
+  if (optimized?.completion_edit !== undefined) return true;
+  const document = optimized?.completion_document;
+  if (document === undefined) return false;
+  const checked = validateCompletionDocument(document);
+  return !checked.ok || checked.document.schemaVersion !== 'resume-completion-v1';
 }
 
 function hasAuthenticatedSession() {
@@ -191,6 +201,31 @@ function summariesFromHistories(histories: ResumeHistory[]) {
   return sortHistorySummaries(histories.map(toResumeHistorySummaryFromHistory));
 }
 
+function mergeCachedHistorySummaries(
+  cachedSummaries: ResumeHistorySummary[],
+  currentSummaries: ResumeHistorySummary[],
+) {
+  const currentById = new Map(currentSummaries.map(summary => [summary.id, summary]));
+  return mergeHistorySummaries(cachedSummaries.map(summary => {
+    const current = currentById.get(summary.id);
+    return summary.matchScore == null && current?.matchScore != null
+      ? {...summary, matchScore: current.matchScore}
+      : summary;
+  }), currentSummaries);
+}
+
+function historyReceiptState(state: HistoryState, history: ResumeHistory, fromCache = false) {
+  const summary = toResumeHistorySummaryFromHistory(history);
+  return {
+    histories: mergeHistories([history], state.histories),
+    historySummaries: fromCache
+      ? mergeCachedHistorySummaries([summary], state.historySummaries)
+      : mergeHistorySummaries([summary], state.historySummaries),
+    currentHistory: history,
+    summaryInitialized: true,
+  };
+}
+
 async function readCachedHistories(storageKey: string, includePending: boolean) {
   const [storedHistories, pendingLandingHistories] = await Promise.all([
     getJSON<ResumeHistory[]>(storageKey),
@@ -255,6 +290,10 @@ const initialState = {
 export const useHistoryStore = create<HistoryState>((set, get) => ({
   ...initialState,
 
+  acceptHistory: (history: ResumeHistory) => {
+    set(state => historyReceiptState(state, history));
+  },
+
   loadHistorySummaries: async (options: LoadOptions = {}) => {
     if (options.skipIfLoaded && get().summaryInitialized && !options.force) {
       return;
@@ -269,6 +308,8 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       const storageKey = getHistoryStorageKey();
       const isGuest = !hasAuthenticatedSession();
       const allowLocalFallback = isGuest || await allowsLocalFallback();
+      const runtimeConfig = isGuest ? await getPublicRuntimeConfig().catch(() => null) : null;
+      const hasLocalServerAccess = runtimeConfig?.appEnv === 'local' && runtimeConfig.authRequired === false;
       let cachedSummaries: ResumeHistorySummary[] = [];
 
       set(state => ({
@@ -288,20 +329,20 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
           cachedSummaries = summariesFromHistories(cachedHistories);
           if (cachedSummaries.length > 0) {
-            set(state => ({historySummaries: mergeHistorySummaries(cachedSummaries, state.historySummaries)}));
+            set(state => ({historySummaries: mergeCachedHistorySummaries(cachedSummaries, state.historySummaries)}));
           }
         } catch (error) {
           console.warn('[HistoryStore] Failed to read cached history summaries:', error);
         }
       }
 
-      if (isGuest) {
+      if (isGuest && !hasLocalServerAccess) {
         if (operationEpoch !== historyStoreEpoch) {
           return;
         }
 
         set({
-          historySummaries: mergeHistorySummaries(cachedSummaries, get().historySummaries),
+          historySummaries: mergeCachedHistorySummaries(cachedSummaries, get().historySummaries),
           loading: {
             isLoading: false,
             error: null,
@@ -321,7 +362,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         set({
           historySummaries: mergeHistorySummaries(
             remoteSummaries,
-            mergeHistorySummaries(cachedSummaries, currentSummaries),
+            mergeCachedHistorySummaries(cachedSummaries, currentSummaries),
           ),
           loading: {
             isLoading: false,
@@ -337,7 +378,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         const errorMessage = error instanceof Error ? error.message : '加载历史摘要失败';
         set(state => ({
           historySummaries: allowLocalFallback && cachedSummaries.length > 0
-            ? mergeHistorySummaries(cachedSummaries, state.historySummaries)
+            ? mergeCachedHistorySummaries(cachedSummaries, state.historySummaries)
             : state.historySummaries,
           loading: {
             ...state.loading,
@@ -422,7 +463,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
         set({
           histories: sortHistories(cachedHistories),
-          historySummaries: mergeHistorySummaries(summariesFromHistories(cachedHistories), get().historySummaries),
+          historySummaries: mergeCachedHistorySummaries(summariesFromHistories(cachedHistories), get().historySummaries),
           loading: {
             isLoading: false,
             error: null,
@@ -471,7 +512,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
             ? sortHistories(cachedHistories)
             : [],
           historySummaries: allowLocalFallback && cachedHistories.length > 0
-            ? summariesFromHistories(cachedHistories)
+            ? mergeCachedHistorySummaries(summariesFromHistories(cachedHistories), state.historySummaries)
             : state.historySummaries,
           loading: {
             ...state.loading,
@@ -491,10 +532,10 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     return loadHistoriesPromise;
   },
 
-  loadHistory: async (id: string, options: {force?: boolean} = {}) => {
+  loadHistory: async (id: string, options: LoadOptions = {}) => {
     const existing = get().histories.find(history => history.id === id);
     if (existing && !options.force) {
-      set({currentHistory: existing});
+      set(state => historyReceiptState(state, existing, true));
       return existing;
     }
 
@@ -504,10 +545,12 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     const isLocalRuntime = await isLocalRuntimeEnvironment();
     const allowLocalFallback = isGuest || isLocalRuntime;
     let history: ResumeHistory | null = null;
+    let fromCache = false;
 
-    if (allowLocalFallback) {
+    if (allowLocalFallback && (!options.force || isGuest)) {
       const cachedHistories = await readCachedHistories(storageKey, isGuest);
       history = cachedHistories.find(item => item.id === id) || null;
+      fromCache = Boolean(history);
     }
 
     // 已知确切 id 时始终尝试 API，不再依赖 isLocalRuntime 环境判断：
@@ -530,19 +573,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       return history;
     }
 
-    const histories = sortHistories([
-      history,
-      ...get().histories.filter(item => item.id !== history.id),
-    ]);
-    set({
-      histories,
-      historySummaries: mergeHistorySummaries(
-        [toResumeHistorySummaryFromHistory(history)],
-        get().historySummaries,
-      ),
-      currentHistory: history,
-      summaryInitialized: true,
-    });
+    set(state => historyReceiptState(state, history!, fromCache));
     return history;
   },
 
@@ -593,12 +624,15 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         ...history,
         id: history.id || createHistoryId(histories, history.createdAt),
       };
+      // 关联填写操作只能在远端确认后视为保存，旧缓存也不能被无结构请求降级。
+      const requiresRemoteSave = requiresCompletionAcknowledgement(historyWithId)
+        || requiresCompletionAcknowledgement(histories.find(item => item.id === historyWithId.id));
       let savedHistory = historyWithId;
 
       try {
         savedHistory = await resumeHistoryApi.saveHistory(historyWithId);
       } catch (error) {
-        if (!allowLocalFallback) {
+        if (!allowLocalFallback || requiresRemoteSave) {
           throw error;
         }
 
@@ -695,11 +729,13 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         ...histories[index],
         ...updates,
       };
+      const requiresRemoteSave = requiresCompletionAcknowledgement(histories[index])
+        || requiresCompletionAcknowledgement(updates);
 
       try {
         updatedHistory = await resumeHistoryApi.updateHistory(id, updates);
       } catch (error) {
-        if (!allowLocalFallback) {
+        if (!allowLocalFallback || requiresRemoteSave) {
           throw error;
         }
 

@@ -41,11 +41,13 @@ const CONFETTI_PIECES = Array.from({length: 52}, (_, index) => {
 export default function PageView({
   card,
   loading,
+  error,
   hasInitialEntryAnimation,
   isShareReturnEntry,
   isSharingTransition,
   handleShare,
   handleContinue,
+  handleRetry,
 }: CompletePageViewModel) {
   const visualCapability = useVisualTier({benchmark: true})
 
@@ -72,7 +74,7 @@ export default function PageView({
         </View>
       </View>
 
-      <View className='reffo-complete__confetti' aria-hidden='true'>
+      {card ? <View className='reffo-complete__confetti' aria-hidden='true'>
         {CONFETTI_PIECES.map(piece => (
           <View
             key={piece.key}
@@ -80,7 +82,7 @@ export default function PageView({
             style={piece.style as any}
           />
         ))}
-      </View>
+      </View> : null}
 
       <View className='reffo-complete__card-slot'>
         <View className={`reffo-complete__badge-stage ${isSharingTransition ? 'reffo-complete__badge-stage--sharing-exit' : ''}`}>
@@ -107,7 +109,7 @@ export default function PageView({
                 </View>
               ) : (
                 <View className='share-badge__card-frame reffo-complete__card-placeholder' data-share-transition-role='card'>
-                  <Text className='reffo-complete__card-placeholder-text'>Reffo</Text>
+                  <Text className='reffo-complete__card-placeholder-text'>{loading ? '加载中' : '暂未加载'}</Text>
                 </View>
               )}
             </PhysicsBadge>
@@ -116,8 +118,13 @@ export default function PageView({
       </View>
 
       <View className={`reffo-complete__copy ${isSharingTransition ? 'reffo-complete__copy--sharing-exit' : ''}`}>
-        <Text className='reffo-complete__title'>{loading ? '正在准备...' : '恭喜你！'}</Text>
-        <Text className='reffo-complete__subtitle'>新申请目标岗位的简历已经准备就绪！</Text>
+        <Text className='reffo-complete__title'>{loading ? '正在准备...' : card ? '恭喜你！' : '简历卡暂未就绪'}</Text>
+        <Text className='reffo-complete__subtitle'>{card ? '新申请目标岗位的简历已经准备就绪！' : loading ? '正在加载本次生成的简历卡' : error}</Text>
+        {error && !loading ? <Text
+          className='reffo-complete__hint'
+          data-share-surface='retry'
+          onClick={event => { event.stopPropagation(); handleRetry() }}
+        >点击重试</Text> : null}
         <Text className='reffo-complete__hint'>轻触屏幕进入首页</Text>
       </View>
       </View>

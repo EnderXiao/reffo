@@ -2,6 +2,15 @@ import { describe, expect, test } from 'bun:test'
 import { aggregateHarnessMetrics, evaluateV6ReleaseGate } from '@/repositories/harness-metrics'
 
 describe('harness metrics aggregation', () => {
+  test('failed physical requests never borrow the final attempt usage',()=>{
+    const metrics=aggregateHarnessMetrics({runs:[],steps:[],attempts:[{id:'same',provider:'deepseek',input_tokens:999,output_tokens:888}],events:[
+      {attempt_id:'same',type:'provider.requested',payload:{retryIndex:0}},
+      {attempt_id:'same',type:'provider.requested',payload:{retryIndex:1}},
+      {attempt_id:'same',type:'provider.responded',payload:{retryIndex:1,inputTokens:0,outputTokens:12}},
+    ]})
+    expect(metrics).toMatchObject({llmCalls:2,knownInputTokens:0,knownOutputTokens:12,missingUsageCalls:1,inputTokens:null,outputTokens:null,totalTokens:null,estimatedCostCny:null})
+    expect(evaluateV6ReleaseGate(metrics).checks.totalTokens).toBe(false)
+  })
   test('按阶段汇总调用、门禁、物理 attempt、token、延迟和成本', () => {
     const metrics = aggregateHarnessMetrics({
       runs: [{ id: 'run-1', status: 'succeeded' }],
@@ -21,7 +30,7 @@ describe('harness metrics aggregation', () => {
             inputSummary: { envelopeBytes: 800, estimatedInputTokens: 700, messageCharacterCounts: [100, 200] },
           },
         }) },
-        { attempt_id: 'attempt-p08', type: 'provider.responded', payload_json: JSON.stringify({ physicalAttempts: 1 }) },
+        { attempt_id: 'attempt-p08', type: 'provider.responded', payload_json: JSON.stringify({ physicalAttempts: 1,inputTokens:1000,outputTokens:500 }) },
         { attempt_id: 'attempt-p09', type: 'provider.requested', payload_json: JSON.stringify({
           callReason: 'semantic_gate',
           promptManifest: {
@@ -29,7 +38,7 @@ describe('harness metrics aggregation', () => {
             inputSummary: { envelopeBytes: 1200, estimatedInputTokens: 1100, messageCharacterCounts: [100, 300] },
           },
         }) },
-        { attempt_id: 'attempt-p09', type: 'provider.responded', payload_json: JSON.stringify({ physicalAttempts: 2 }) },
+        { attempt_id: 'attempt-p09', type: 'provider.responded', payload_json: JSON.stringify({ physicalAttempts: 2,inputTokens:2000,outputTokens:300 }) },
         { type: 'evaluation.completed', payload_json: JSON.stringify({ evaluatorName: 'markdown-resume-rules' }) },
         { type: 'evaluation.completed', payload_json: JSON.stringify({ evaluatorName: 'v5_resume_quality_judge' }) },
         { type: 'step.failed', payload_json: JSON.stringify({

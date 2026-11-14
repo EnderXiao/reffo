@@ -22,6 +22,8 @@ export interface ResumeHistoryRepositoryContract {
     id: string,
     updates: UpdateResumeHistoryInput
   ): Promise<ResumeHistoryRecord | null> | ResumeHistoryRecord | null
+  /** Server-only atomic document migration; no client snapshot is accepted. */
+  upgradeCompletion(context: RequestUserContext, previous: ResumeHistoryRecord, next: ResumeHistoryRecord): Promise<ResumeHistoryRecord> | ResumeHistoryRecord
   delete(context: RequestUserContext, id: string): Promise<boolean> | boolean
   clear(context: RequestUserContext): Promise<number> | number
 }

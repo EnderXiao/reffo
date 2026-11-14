@@ -1,7 +1,8 @@
 import {ReadableStream} from 'node:stream/web'
 import {TextDecoder, TextEncoder} from 'node:util'
-import {subscribeGenerationTaskEvents} from '../backgroundGeneration'
+import {generationTasksApi, subscribeGenerationTaskEvents} from '../backgroundGeneration'
 import type {GenerationTask} from '../backgroundGeneration'
+import {apiClient} from '../api'
 
 function createTask(): GenerationTask {
   return {
@@ -21,6 +22,37 @@ function createTask(): GenerationTask {
     updated_at: '2026-10-14T00:00:01.000Z',
   }
 }
+
+test('创建任务携带 OCR 关联标识和新版简历契约能力', async () => {
+  const input = {
+    request_id: '11111111-1111-4111-8111-111111111111',
+    resume_markdown: '# 候选人',
+    jd_text: '负责 AI 产品规划',
+    jd_parse_id: '22222222-2222-4222-8222-222222222222',
+    resume_parse_id: '33333333-3333-4333-8333-333333333333',
+    company: '目标公司', position: '产品经理', location: '上海',
+  }
+  const post = jest.spyOn(apiClient, 'post').mockResolvedValue(createTask())
+  try {
+    await generationTasksApi.create(input)
+    expect(post).toHaveBeenCalledWith('/generation-jobs/', input, {
+      header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'},
+    })
+    expect(Object.keys(post.mock.calls[0][1] as object)).not.toContain('rawText')
+  } finally {
+    post.mockRestore()
+  }
+})
+
+test('重试继续声明v4能力，普通任务动作沿用现有请求', async () => {
+  const post = jest.spyOn(apiClient, 'post').mockResolvedValue(createTask())
+  try {
+    await generationTasksApi.action('job-v4', 'retry')
+    expect(post).toHaveBeenNthCalledWith(1, '/generation-jobs/job-v4/retry', {}, {header: {'X-Reffo-Completion-Schema': 'resume-completion-v4'}})
+    await generationTasksApi.action('job-v4', 'read')
+    expect(post).toHaveBeenNthCalledWith(2, '/generation-jobs/job-v4/read', {})
+  } finally { post.mockRestore() }
+})
 
 describe('subscribeGenerationTaskEvents', () => {
   test('解析 SSE 心跳和任务更新事件', async () => {

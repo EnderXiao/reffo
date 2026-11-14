@@ -27,6 +27,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Check shared strategy module
         run: bun ../shared/sync-resume-strategy.mjs --check
+      - name: Check shared completion module
+        run: bun ../shared/sync-resume-completion.mjs --check
       - name: Validate Supabase migration inventory
         run: bash ../.github/scripts/supabase-migrate.sh --check-only
       - run: bunx --no-install tsc --noEmit

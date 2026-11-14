@@ -13,6 +13,8 @@ import {
 import {useAuthStore, useLandingFlowStore, useResumeWorkspaceStore, useSourceResumeStore} from '@/store'
 import {saveLatestResultSession} from '@/utils/result-session'
 import CreatePage from '../index'
+import {usePageModel} from '../usePageModel'
+import LandingAnalysisPageView from '@/pages/landing-analysis/PageView.h5'
 import {RequestError} from '@/utils/request'
 
 const defaultProcessResult = {
@@ -112,6 +114,7 @@ jest.mock('@/services/sourceResume', () => ({
 }))
 
 jest.mock('@/services/parse', () => ({
+  documentParseId: jest.requireActual('@/services/parse').documentParseId,
   parseApi: {
     parseJobDescriptionImage: jest.fn(),
     parseResumeFile: jest.fn(),
@@ -356,12 +359,15 @@ describe('CreatePage', () => {
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
     }
+    const resumeParseId = '33333333-3333-4333-8333-333333333333'
+    const jdParseId = '44444444-4444-4444-8444-444444444444'
     const selectedLandingResume = '# 小A\n\n## 项目经历\n- Landing 预设简历内容'
     const deferred = createDeferredPromise<typeof defaultProcessResult.analysis>()
     mockAnalyzeResume.mockReturnValue(deferred.promise)
     mockGetLatestSourceResume.mockResolvedValue(existingSourceResume)
     await useSourceResumeStore.getState().setLatestSourceResume(existingSourceResume)
     useLandingFlowStore.getState().startJobDescription({
+      parseId: jdParseId,
       content: '负责核心产品体验优化',
       companyName: 'reffo 科技',
       positionName: 'UX 设计师',
@@ -370,6 +376,7 @@ describe('CreatePage', () => {
     useLandingFlowStore.getState().selectResume({
       source: 'preset',
       id: 'landing-resume-design',
+      parseId: resumeParseId,
       title: '小A的体验简历',
       markdown: selectedLandingResume,
     })
@@ -378,7 +385,7 @@ describe('CreatePage', () => {
     await renderPage()
 
     await waitFor(() => {
-      expect(mockAnalyzeResume).toHaveBeenCalledWith(selectedLandingResume, {landing: true})
+      expect(mockAnalyzeResume).toHaveBeenCalledWith(selectedLandingResume, {landing: true, resumeParseId, jdParseId})
     })
 
     await act(async () => {
@@ -390,7 +397,128 @@ describe('CreatePage', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith({
         url: '/pages/landing-result/index',
       })
+      expect(mockMatchResume).toHaveBeenCalledWith(defaultProcessResult.analysis, expect.any(String), {landing: true, resumeParseId, jdParseId})
+      expect(mockSaveLatestResultSession).toHaveBeenCalledWith(expect.objectContaining({context: expect.objectContaining({resumeParseId, jdParseId})}))
     }, {timeout: 3500})
+  })
+
+  test('教程分析网络失败后保留选择并仅在点击重新生成时重试', async () => {
+    const selectedResume = {
+      source: 'preset' as const,
+      id: 'landing-resume-engineer',
+      title: '小林的体验简历',
+      markdown: '# 小林\n\n## 实习经历\n- 使用 React 开发后台页面',
+    }
+    const selectedJob = {
+      id: 'software',
+      content: '岗位职责：使用 React 和 TypeScript 开发页面',
+      companyName: '示例协作软件公司',
+      positionName: '初级前端工程师',
+      baseLocation: '上海',
+    }
+    const firstAnalysis = createDeferredPromise<typeof defaultProcessResult.analysis>()
+    const retryAnalysis = createDeferredPromise<typeof defaultProcessResult.analysis>()
+    const onComplete = jest.fn()
+    const networkError = new RequestError('网络连接失败，请稍后重试', 'NETWORK_ERROR')
+    const logError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockAnalyzeResume
+      .mockReturnValueOnce(firstAnalysis.promise)
+      .mockReturnValueOnce(retryAnalysis.promise)
+    useLandingFlowStore.getState().selectResume(selectedResume)
+    useLandingFlowStore.getState().startJobDescription(selectedJob)
+
+    function LandingAnalysisHarness() {
+      const model = usePageModel({
+        autoGenerateLanding: true,
+        onLandingGenerationComplete: onComplete,
+      })
+      return <LandingAnalysisPageView {...model} embedded showLandingHeader={false} />
+    }
+
+    try {
+      const {rerender} = render(<LandingAnalysisHarness />)
+
+      await waitFor(() => {
+        expect(mockAnalyzeResume).toHaveBeenCalledTimes(1)
+      })
+      expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
+
+      await act(async () => {
+        firstAnalysis.reject(networkError)
+        await Promise.resolve()
+      })
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeTruthy()
+        expect(screen.getByText('生成暂时中断')).toBeTruthy()
+        expect(screen.getByText('重新生成')).toBeTruthy()
+        expect(screen.queryByTestId('create-analysis-stage')).toBeNull()
+      })
+      expect(screen.getByText(networkError.message)).toBeTruthy()
+      expect(useLandingFlowStore.getState().selectedResume).toEqual(selectedResume)
+      expect(useLandingFlowStore.getState().selectedJob).toEqual(selectedJob)
+
+      await act(async () => {
+        rerender(<LandingAnalysisHarness />)
+        await Promise.resolve()
+      })
+
+      expect(mockAnalyzeResume).toHaveBeenCalledTimes(1)
+      expect(mockMatchResume).not.toHaveBeenCalled()
+      expect(onComplete).not.toHaveBeenCalled()
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('重新生成'))
+        await Promise.resolve()
+      })
+
+      await waitFor(() => {
+        expect(mockAnalyzeResume).toHaveBeenCalledTimes(2)
+        expect(screen.queryByRole('alert')).toBeNull()
+        expect(screen.getByTestId('create-analysis-stage')).toBeTruthy()
+      })
+      expect(mockAnalyzeResume).toHaveBeenNthCalledWith(2, selectedResume.markdown, {landing: true})
+
+      await act(async () => {
+        retryAnalysis.resolve(defaultProcessResult.analysis)
+        await Promise.resolve()
+      })
+
+      await waitFor(() => {
+        expect(onComplete).toHaveBeenCalledTimes(1)
+      })
+      expect(mockAnalyzeResume).toHaveBeenCalledTimes(2)
+      expect(mockMatchResume).toHaveBeenCalledTimes(1)
+      expect(mockMatchResume).toHaveBeenCalledWith(
+        defaultProcessResult.analysis,
+        {presetJdId: 'software'},
+        {landing: true},
+      )
+      expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
+        result: expect.objectContaining({
+          analysis: defaultProcessResult.analysis,
+          matching: defaultProcessResult.matching,
+        }),
+        context: expect.objectContaining({
+          company: selectedJob.companyName,
+          position: selectedJob.positionName,
+          location: selectedJob.baseLocation,
+          resumeContent: selectedResume.markdown,
+          jdContent: expect.stringContaining(selectedJob.content),
+          presetJdId: 'software',
+        }),
+        progress: {
+          analysis: 'done',
+          matching: 'done',
+          optimized: 'pending',
+          interview: 'pending',
+        },
+      }))
+      expect(mockSaveLatestResultSession).toHaveBeenCalledWith(onComplete.mock.calls[0][0])
+      expect(mockCreateGenerationTask).not.toHaveBeenCalled()
+    } finally {
+      logError.mockRestore()
+    }
   })
 
   test('应该渲染新的单页流程容器', async () => {
@@ -428,6 +556,7 @@ describe('CreatePage', () => {
         title: 'Jeremy Smith',
         resume_markdown: '# Jeremy Smith\n\n## 工作经历\n- 负责电商平台和设计系统建设',
         source_type: 'manual',
+        parse_id: null,
         original_file_name: 'Jeremy Smith.md',
       })
     })
@@ -1015,7 +1144,7 @@ describe('CreatePage', () => {
 
   })
 
-  test('上传岗位截图后会从 OCR 文本兜底填入公司和岗位名称', async () => {
+  test('上传岗位截图后会兜底填入岗位信息并将解析标识传给生成任务', async () => {
     jest.useFakeTimers()
     mockCreateGenerationTask.mockResolvedValueOnce(createGenerationTask({
       status: 'cancelled',
@@ -1026,7 +1155,8 @@ describe('CreatePage', () => {
       id: 'source-resume-1',
       title: 'Jeremy Smith',
       resumeMarkdown: '# Jeremy Smith\n\n## Experience\n- Built growth platform',
-      sourceType: 'manual' as const,
+      sourceType: 'file' as const,
+      parseId: '33333333-3333-4333-8333-333333333333',
       originalFileName: 'Jeremy Smith.md',
       createdAt: '2026-03-25T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z',
@@ -1045,6 +1175,7 @@ describe('CreatePage', () => {
     })
     mockParseJobDescriptionImage.mockResolvedValueOnce({
       provider: 'glm-ocr',
+      parse_id: '22222222-2222-4222-8222-222222222222',
       fileName: 'mango-tv-jd.png',
       fileType: 'image',
       rawText: '芒果tv正在招聘\n# AI创新产品经理\n长沙/20-40K/1-3年/本科\n## 职位详情',
@@ -1082,6 +1213,8 @@ describe('CreatePage', () => {
         position: 'AI创新产品经理',
         location: '长沙',
         jd_text: expect.stringContaining('公司名称：芒果 TV'),
+        jd_parse_id: '22222222-2222-4222-8222-222222222222',
+        resume_parse_id: '33333333-3333-4333-8333-333333333333',
       }))
     })
   })
@@ -1441,6 +1574,7 @@ describe('CreatePage', () => {
       ],
     })
 
+    mockParseResumeFile.mockResolvedValueOnce({markdown: '# Melvin Kuffour\n\n## Experience\n- Built payment platform', rawText: '', parse_id: '33333333-3333-4333-8333-333333333333'})
     await renderPage()
 
     await act(async () => {
@@ -1456,6 +1590,11 @@ describe('CreatePage', () => {
         '# Melvin Kuffour\n\n## Experience\n- Built payment platform',
       )
     })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-flow-primary-action'))
+      await Promise.resolve()
+    })
+    expect(mockSaveSourceResume).toHaveBeenCalledWith(expect.objectContaining({source_type: 'file', parse_id: '33333333-3333-4333-8333-333333333333'}))
   })
 
   test('非法文件类型应进入失败状态', async () => {

@@ -27,7 +27,7 @@ test('V5 single stages reuse validated checkpoints without repeating model stage
 
   const result = await createWorkflow().generateResume(matching)
   expect(versions).toHaveLength(4)
-  expect(versions[3]).toBe('5.2.0-p06c-entry-writer-r10')
+  expect(versions[3]).toBe('5.7.0-p06c-entry-routed-v6-r6')
   expect(result.state).toBe('succeeded')
   expect(toLegacyMvpProcessResponse(result).step3_optimized_resume).toContain('参与团队产品迭代')
   expect(result.matchScore).toEqual(matching.matchScore)
@@ -81,7 +81,7 @@ test('targeted match recovers P03 reasoning-only truncation with one thinking-di
         }
         const fact = payload.resumeContext.facts.find(item => item.claimType === 'deliverable')!
         return result({
-          contractVersion: 'job-fit-map-v1',
+          contractVersion: 'job-fit-map-v2',
           links: payload.targets.map(target => ({
             targetId: target.id,
             status: 'transferable',
@@ -89,6 +89,9 @@ test('targeted match recovers P03 reasoning-only truncation with one thinking-di
             similarity: '具有相邻产品实践。',
             difference: '尚不等于完整岗位经验。',
             expressionAngle: '突出已有交付。',
+            supportedAspects: [{text: '参与产品交付。', evidenceIds: [fact.evidenceId]}],
+            unprovenAspects: [{text: '目标业务环境', reason: '尚未提供相同业务环境的实践。'}],
+            roleBoundary: '团队参与。', supportRelation: 'domain_transfer',
           })),
           narratives: [],
           questions: [],
@@ -132,4 +135,41 @@ test('targeted match recovers P03 reasoning-only truncation with one thinking-di
     triggerErrorCode: 'V5_OUTPUT_TRUNCATED',
     recoveryMode: 'thinking_disabled',
   })
+})
+
+test('targeted matching recovers a malformed nested aspect with one scoped repair and full revalidation', async () => {
+  const extraction = await createSingleStepFixture().createWorkflow().extractResume({resumeMarkdown: FIXTURE_RESUME})
+  const fixture = createTargetingFixture(), requests: ChatCompletionInput[] = []
+  let validFit: unknown
+  const provider: LlmProvider = {complete: async input => {
+    requests.push(input)
+    const version = input.promptVersion ?? ''
+    let content: unknown
+    if (version.includes('-p02-')) content = fixture.candidate
+    else if (version.includes('-p03-')) {
+      const raw = input.messages.find(message => message.role === 'user')!.content.match(/UNTRUSTED_INPUT_JSON:\n([\s\S]+?)\n\n只返回本阶段/)![1]!
+      const payload = JSON.parse(raw).payload as {targets: Array<{id: string}>; resumeContext: {facts: Array<{evidenceId: string; claimType: string}>}}
+      const fact = payload.resumeContext.facts.find(item => item.claimType === 'deliverable')!
+      const fit = {contractVersion: 'job-fit-map-v2', links: payload.targets.map(target => ({targetId: target.id,
+        status: 'transferable', evidenceIds: [fact.evidenceId], similarity: '已有相邻产品实践。', difference: '业务对象不同。',
+        expressionAngle: '保留真实参与的交付。', supportedAspects: [{text: '参与产品迭代。', evidenceIds: [fact.evidenceId]}],
+        unprovenAspects: [], roleBoundary: '团队参与。', supportRelation: 'domain_transfer'})), narratives: [], questions: []}
+      validFit = structuredClone(fit)
+      content = {...fit, links: fit.links.map((link, index) => index ? link : {...link, supportedAspects: [{text: '参与产品迭代。'}]})}
+    } else if (version.includes('-p03r-')) {
+      const raw = input.messages.find(message => message.role === 'user')!.content.match(/UNTRUSTED_INPUT_JSON:\n([\s\S]+?)\n\n只返回本阶段/)![1]!
+      const payload = JSON.parse(raw).payload
+      expect(payload.originalEnvelope.payload.targets).toHaveLength(1)
+      const ids = new Set(payload.originalEnvelope.payload.repairScope.targetIds)
+      const fit = validFit as {links: Array<{targetId: string}>}
+      content = {...fit, links: fit.links.filter(link => ids.has(link.targetId))}
+    } else throw new Error(`unexpected ${version}`)
+    return {provider: 'fake', model: 'fixture', content: JSON.stringify(content), finishReason: 'stop', latencyMs: 1}
+  }}
+  const workflow = new V5ResumeOptimizationWorkflow({provider, enableDefaultSubscribers: false, artifactGenerationMode: 'writer_v1',
+    jobTargetingPolicy: 'job-targeted-v2', entryWritingPolicy: ENTRY_WRITING_POLICY})
+  const result = await workflow.matchResume({resumeMarkdown: FIXTURE_RESUME, jobDescription: FIXTURE_JD}, extraction)
+  expect(result.state).toBe('matched')
+  expect(result.jobFitMap!.links.length).toBeGreaterThan(1)
+  expect(requests.filter(request => request.promptVersion?.includes('-p03r-'))).toHaveLength(1)
 })

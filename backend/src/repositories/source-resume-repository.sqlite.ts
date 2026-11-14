@@ -1,3 +1,7 @@
+import {revokeSourceTransientDataInTransaction} from '@/services/resume-transient-data'
+import {ensureResumeStageCacheTables} from '@/repositories/resume-stage-cache-repository'
+import {clearOwnerResumeExtractionCache} from '@/v5/single-step-adapter'
+import {env} from '@/config/env'
 import { randomUUID } from 'node:crypto'
 import type { RequestUserContext } from '@/auth/request-context'
 import { getDatabase, resetDatabaseConnection } from '@/repositories/database'
@@ -21,6 +25,10 @@ function ensureDatabase() {
     ON source_resumes(updated_at DESC);
   `)
 
+  const columns=database.query('PRAGMA table_info(source_resumes)').all() as Array<{name:string}>
+  if(!columns.some(column=>column.name==='user_id'))database.exec(`ALTER TABLE source_resumes ADD COLUMN user_id TEXT NOT NULL DEFAULT '${env.DEV_USER_ID.replaceAll("'","''")}'`)
+  if(!columns.some(column=>column.name==='parse_id'))database.exec('ALTER TABLE source_resumes ADD COLUMN parse_id TEXT')
+  ensureResumeStageCacheTables()
   return database
 }
 
@@ -35,6 +43,7 @@ function mapRowToRecord(row: Record<string, unknown> | null | undefined): Source
     resume_markdown: String(row.resume_markdown),
     source_type: row.source_type === 'file' ? 'file' : 'manual',
     original_file_name: row.original_file_name ? String(row.original_file_name) : null,
+    parse_id: row.parse_id ? String(row.parse_id) : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   }
@@ -51,32 +60,36 @@ export class SqliteSourceResumeRepository implements SourceResumeRepositoryContr
     }
   }
 
-  save(_context: RequestUserContext, input: SaveSourceResumeInput): SourceResumeRecord {
+  save(context: RequestUserContext, input: SaveSourceResumeInput): SourceResumeRecord {
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
       const now = new Date().toISOString()
       const id = randomUUID()
 
-      db.query('DELETE FROM source_resumes').run()
+      db.query('DELETE FROM source_resumes WHERE user_id=?').run(context.userId)
 
       const statement = db.query(`
         INSERT INTO source_resumes (
           id,
+          user_id,
           title,
           resume_markdown,
           source_type,
           original_file_name,
+          parse_id,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
 
       statement.run(
         id,
+        context.userId,
         input.title,
         input.resume_markdown,
         input.source_type,
         input.original_file_name ?? null,
+        input.source_type === 'file' ? input.parse_id ?? null : null,
         now,
         now
       )
@@ -87,13 +100,14 @@ export class SqliteSourceResumeRepository implements SourceResumeRepositoryContr
         resume_markdown: input.resume_markdown,
         source_type: input.source_type,
         original_file_name: input.original_file_name ?? null,
+        parse_id: input.source_type === 'file' ? input.parse_id ?? null : null,
         created_at: now,
         updated_at: now,
       }
     })
   }
 
-  getLatest(_context: RequestUserContext): SourceResumeRecord | null {
+  getLatest(context: RequestUserContext): SourceResumeRecord | null {
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
       const statement = db.query(`
@@ -103,29 +117,30 @@ export class SqliteSourceResumeRepository implements SourceResumeRepositoryContr
           resume_markdown,
           source_type,
           original_file_name,
+          parse_id,
           created_at,
           updated_at
         FROM source_resumes
+        WHERE user_id = ?
         ORDER BY updated_at DESC
         LIMIT 1
       `)
 
-      return mapRowToRecord(statement.get() as Record<string, unknown> | null)
+      return mapRowToRecord(statement.get(context.userId) as Record<string, unknown> | null)
     })
   }
 
-  delete(_context: RequestUserContext, id: string): boolean {
+  delete(context: RequestUserContext, id: string): boolean {
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
-      const existing = db.query('SELECT id FROM source_resumes WHERE id = ? LIMIT 1').get(id)
-
-      if (!existing) {
-        return false
-      }
-
-      const result = db.query('DELETE FROM source_resumes').run()
-
-      return result.changes > 0
+      return db.transaction(()=>{
+        const existing=db.query('SELECT id FROM source_resumes WHERE id=? AND user_id=?').get(id,context.userId)
+        if(!existing)return false
+        db.query('DELETE FROM source_resumes WHERE id=? AND user_id=?').run(id,context.userId)
+        revokeSourceTransientDataInTransaction(db,context.userId)
+        clearOwnerResumeExtractionCache(context.userId)
+        return true
+      }).immediate()
     })
   }
 }

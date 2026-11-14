@@ -37,7 +37,7 @@ function fixture() {
       preparationFocus: '准备反馈归类过程与本人参与的需求整理记录。', assumptionContextIds: [],
     })),
     storyRecommendations: [{
-      title: '体验反馈分诊', scopeId: template.sourceScopeId, evidenceIds: ['story-1', 'story-2', 'story-3'],
+      title: '体验反馈分诊', requirementLinks: [], scopeId: template.sourceScopeId, evidenceIds: ['story-1', 'story-2', 'story-3'],
       background: '参与处理重复投诉，将反馈整理成团队可执行的迭代需求。',
       knownResult: null, preparationGap: '准备上线记录，核实业务影响及本人参与的环节。',
       storytellingApproach: [
@@ -46,7 +46,7 @@ function fixture() {
         '以团队已交付的反馈分诊功能收束，区分个人参与和团队产出；对接岗位产品规划要求时，补备优先级讨论与上线记录，业务影响尚待核实。',
       ],
     }, {
-      title: 'SQL告警排查', scopeId: template.sourceScopeId, evidenceIds: ['story-5', 'story-6', 'story-7'],
+      title: 'SQL告警排查', requirementLinks: [], scopeId: template.sourceScopeId, evidenceIds: ['story-5', 'story-6', 'story-7'],
       background: '围绕指标波动核对筛选条件，并与业务方确认异常来源。',
       knownResult: null, preparationGap: '准备排查记录，补充口径核验依据与待确认的业务影响。',
       storytellingApproach: [
@@ -71,6 +71,13 @@ describe('P10 story-specific storytelling plans', () => {
     expect(interviewPreparationSchema.safeParse(f.preparation).success).toBe(true)
     expect(f.validate().passed).toBe(true)
     expect(f.preparation).toEqual(before)
+  })
+
+  test('rejects a renamed second story using identical real case evidence', () => {
+    const f = fixture()
+    f.preparation.storyRecommendations[1]!.evidenceIds = [...f.preparation.storyRecommendations[0]!.evidenceIds].reverse()
+    expect(f.validate().issues).toContainEqual(expect.objectContaining({code: 'INTERVIEW_STORY_SELECTION_DUPLICATED',
+      outputPath: 'storyRecommendations[1]', severity: 'error'}))
   })
 
   test('requires storytelling plans on every newly generated story', () => {

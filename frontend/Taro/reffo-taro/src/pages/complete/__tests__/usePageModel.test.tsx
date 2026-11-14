@@ -1,7 +1,7 @@
 import {act, renderHook} from '@testing-library/react'
 import {afterEach, beforeEach, describe, expect, jest, test} from '@jest/globals'
 import {useDidHide, useDidShow} from '@tarojs/taro'
-import type {ResumeHistorySummary} from '@/types'
+import type {ResumeHistory, ResumeHistorySummary} from '@/types'
 import {
   consumeCompleteInitialEntry,
   consumeShareReturnEntry,
@@ -41,10 +41,22 @@ const summary = {
   position: '前端工程师',
   location: '北京',
   createdAt: '2026-10-31T10:00:00.000Z',
+  updatedAt: '2026-10-31T10:00:00.000Z',
+  qualityScore: 88,
+  tags: ['React'],
   matchScore: 92,
   strategyTitle: '优化建议',
   strategyBody: '突出复杂前端架构和交付能力。',
 } satisfies ResumeHistorySummary
+
+const history: ResumeHistory = {
+  ...summary,
+  qualityScore: 88,
+  tags: ['React'],
+  resumeContent: '# 测试用户',
+  jdContent: '工作地点：北京',
+  optimizedContent: '# 测试用户\n\n## 工作经历\n- 负责前端开发。',
+}
 
 describe('Complete usePageModel cached page transitions', () => {
   beforeEach(() => {
@@ -53,6 +65,7 @@ describe('Complete usePageModel cached page transitions', () => {
     useHistoryStore.setState({
       historySummaries: [summary],
       histories: [],
+      currentHistory: null,
       loading: {
         isLoading: false,
         error: null,
@@ -74,6 +87,70 @@ describe('Complete usePageModel cached page transitions', () => {
   afterEach(() => {
     jest.runOnlyPendingTimers()
     jest.useRealTimers()
+  })
+
+  test('仅有生成详情而缺少摘要时展示真实简历卡，并能打开对应分享页', async () => {
+    useHistoryStore.setState({historySummaries: [], histories: [history]})
+    const {result} = renderHook(() => usePageModel())
+
+    expect(result.current.card).toEqual(expect.objectContaining({id: history.id}))
+    expect(result.current.loading).toBe(false)
+    expect(result.current.error).toBeNull()
+    expect(useHistoryStore.getState().loadHistory).not.toHaveBeenCalled()
+    act(() => result.current.handleShare())
+    await act(async () => {
+      jest.advanceTimersByTime(720)
+      await Promise.resolve()
+    })
+    expect(mockNavigate).toHaveBeenCalledWith('/pages/share/index', {historyId: history.id})
+  })
+
+  test('详情加载完成后出现真实卡片和分享能力', async () => {
+    let resolveHistory!: (history: ResumeHistory) => void
+    useHistoryStore.setState({historySummaries: [], loadHistory: jest.fn(async () => {
+      const loaded = await new Promise<ResumeHistory>(resolve => { resolveHistory = resolve })
+      useHistoryStore.getState().acceptHistory(loaded)
+      return loaded
+    })})
+    const {result} = renderHook(() => usePageModel())
+    expect(result.current.card).toBeNull()
+    expect(result.current.loading).toBe(true)
+    await act(async () => { resolveHistory(history) })
+    expect(result.current.card?.id).toBe(history.id)
+    expect(result.current.loading).toBe(false)
+    act(() => result.current.handleShare())
+    await act(async () => {
+      jest.advanceTimersByTime(720)
+      await Promise.resolve()
+    })
+    expect(mockNavigate).toHaveBeenCalledWith('/pages/share/index', {historyId: history.id})
+  })
+
+  test.each(['missing', 'failed'])('详情%s时保留错误状态，不自动返回；重试成功后恢复卡片', async mode => {
+    const loadHistory = jest.fn<() => Promise<ResumeHistory | null>>(async () => {
+      if (mode === 'failed') throw new Error('网络失败')
+      return null
+    })
+    useHistoryStore.setState({historySummaries: [], loadHistory})
+    const {result} = renderHook(() => usePageModel())
+    await act(async () => { await Promise.resolve() })
+    expect(result.current.loading).toBe(false)
+    expect(result.current.error).toBeTruthy()
+    expect(result.current.card).toBeNull()
+    act(() => {
+      result.current.handleShare()
+      jest.advanceTimersByTime(12000)
+    })
+    expect(mockNavigate).not.toHaveBeenCalled()
+    expect(mockReset).not.toHaveBeenCalled()
+    loadHistory.mockImplementation(async () => {
+      useHistoryStore.getState().acceptHistory(history)
+      return history
+    })
+    await act(async () => { result.current.handleRetry() })
+    expect(result.current.card?.id).toBe(history.id)
+    expect(result.current.error).toBeNull()
+    expect(loadHistory).toHaveBeenCalledTimes(2)
   })
 
   test('does not replay entry state after the cached complete page is hidden', async () => {

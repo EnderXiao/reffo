@@ -8,15 +8,28 @@ interface CreateFlowRoute {
   navigationId: number
 }
 
-export function useCreateFlowRoute(initialStep: CreateStepId) {
+interface CreateFlowRouteOptions {
+  preloadInitialStep?: boolean
+}
+
+export function useCreateFlowRoute(
+  initialStep: CreateStepId,
+  {preloadInitialStep = true}: CreateFlowRouteOptions = {},
+) {
   const [route, setRoute] = useState<CreateFlowRoute>(() => ({
     step: initialStep,
     navigationId: 0,
   }))
 
   useEffect(() => {
-    void preloadCreateStep(initialStep)
-  }, [initialStep])
+    if (!preloadInitialStep) {
+      return
+    }
+
+    void preloadCreateStep(initialStep).catch(error => {
+      console.warn('[useCreateFlowRoute] Failed to preload initial step:', error)
+    })
+  }, [initialStep, preloadInitialStep])
 
   const transitionToStep = useCallback(async (
     step: CreateStepId,

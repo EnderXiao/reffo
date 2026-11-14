@@ -6,6 +6,7 @@ interface SourceResumeApiRecord {
   title: string;
   resume_markdown: string;
   source_type: SourceResumeSourceType;
+  parse_id?: string | null;
   original_file_name: string | null;
   created_at: string;
   updated_at: string;
@@ -15,6 +16,7 @@ interface SourceResumeSummaryApiRecord {
   id: string;
   title: string;
   source_type: SourceResumeSourceType;
+  parse_id?: string | null;
   original_file_name: string | null;
   created_at: string;
   updated_at: string;
@@ -24,6 +26,7 @@ export interface SaveSourceResumeRequest {
   title: string;
   resume_markdown: string;
   source_type: SourceResumeSourceType;
+  parse_id?: string | null;
   original_file_name?: string | null;
 }
 
@@ -33,6 +36,7 @@ function toSourceResumeSummary(record: SourceResumeApiRecord): SourceResumeSumma
     title: record.title,
     resumeMarkdown: record.resume_markdown,
     sourceType: record.source_type,
+    ...(record.parse_id ? {parseId: record.parse_id} : {}),
     originalFileName: record.original_file_name,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
@@ -44,6 +48,7 @@ function toSourceResumeSummaryMeta(record: SourceResumeSummaryApiRecord): Source
     id: record.id,
     title: record.title,
     sourceType: record.source_type,
+    ...(record.parse_id ? {parseId: record.parse_id} : {}),
     originalFileName: record.original_file_name,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
@@ -57,6 +62,7 @@ export function toSourceResumeSummaryMetaFromSummary(
     id: summary.id,
     title: summary.title,
     sourceType: summary.sourceType,
+    ...(summary.parseId ? {parseId: summary.parseId} : {}),
     originalFileName: summary.originalFileName,
     createdAt: summary.createdAt,
     updatedAt: summary.updatedAt,

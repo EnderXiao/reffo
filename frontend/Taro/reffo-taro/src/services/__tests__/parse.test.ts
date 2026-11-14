@@ -1,4 +1,4 @@
-import {parseApi} from '../parse'
+import {parseApi, documentParseId} from '../parse'
 import {apiClient} from '../api'
 import {getJSON} from '@/utils/storage'
 import {resetPublicRuntimeConfigCache} from '../runtime-config'
@@ -9,6 +9,22 @@ jest.mock('../api', () => ({
 jest.mock('@/utils/storage', () => ({
   getJSON: jest.fn(), setJSON: jest.fn(), storage: {removeItem: jest.fn()},
 }))
+
+describe('documentParseId', () => {
+  const parseId = '22222222-2222-4222-8222-222222222222'
+  const runId = '33333333-3333-4333-8333-333333333333'
+
+  test('优先采用 parse_id，同时兼容旧解析响应的 run_id', () => {
+    expect(documentParseId({parse_id: parseId, run_id: runId})).toBe(parseId)
+    expect(documentParseId({run_id: runId})).toBe(runId)
+    expect(documentParseId({})).toBeUndefined()
+  })
+
+  test('不把 OCR 文本或文件名作为解析关联标识', () => {
+    expect(documentParseId({parse_id: '候选人负责 AI 产品规划'})).toBeUndefined()
+    expect(documentParseId({run_id: 'jd-image.png'})).toBeUndefined()
+  })
+})
 
 describe('resume upload authentication', () => {
   const originalFetch = globalThis.fetch

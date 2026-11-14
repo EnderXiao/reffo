@@ -14,7 +14,7 @@ import { writingIssue } from '@/v5/writing/facts'
 
 async function post<T extends 'analyze' | 'match' | 'generate' | 'interview'>(path: T, body: unknown) {
   const response = await mvpRoutes.handle(new Request(`http://localhost/api/v1/mvp/${path}`, {
-    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+    method: 'POST', headers: {'Content-Type': 'application/json','X-Reffo-Completion-Schema':'resume-completion-v4'}, body: JSON.stringify(body),
   }))
   return {status: response.status, body: await response.json() as {
     data: Awaited<ReturnType<V5SingleStepAdapter[T]>>['data']
@@ -35,6 +35,7 @@ test('existing frontend request sequence reaches V5 analysis, matching, Writer a
     new V5CheckpointRepository('fixture', new MemoryCheckpointStorage()),
     fixture.createWorkflow,
     new V5AnalysisCacheRepository(new MemoryAnalysisCacheStorage()),
+    {resolve: async input => ({value: await input.compute({timeoutMs: 180000, signal: new AbortController().signal}), cacheStatus: 'disabled'})},
   )
   const mocks = [
     spyOn(v5SingleStepAdapter, 'analyze').mockImplementation(adapter.analyze.bind(adapter)),

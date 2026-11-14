@@ -10,6 +10,7 @@ export interface V5StageRuntimeOptions {
   runContext?: RunContext
   eventBus?: HarnessEventBus
   timeoutMs?: number
+  signal?: AbortSignal
   provider?: LlmProvider
   judgeProvider?: LlmProvider
   config?: Readonly<Record<string, unknown>>
@@ -26,6 +27,7 @@ export class V5StageRuntime {
 
   constructor(private readonly options: V5StageRuntimeOptions = {}) {
     this.runContext = options.runContext ?? createRunContext(V5_WORKFLOW_VERSION)
+    if (options.signal) this.runContext.signal = options.signal
     const timeoutMs = options.timeoutMs ?? 600000
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('INVALID_V5_WORKFLOW_TIMEOUT')
     const deadline = Date.now() + timeoutMs
@@ -65,6 +67,7 @@ export class V5StageRuntime {
     input: TInput
     enabled?: boolean
   }): Promise<TOutput> {
+    this.runContext.signal?.throwIfAborted()
     this.registry.register(input.plugin)
     const override = this.options.pluginOverrides?.[input.plugin.id]
     if (override) {
@@ -74,6 +77,7 @@ export class V5StageRuntime {
     if (input.enabled === false) this.registry.disable(input.plugin.id)
     this.registry.assertReady()
     const result = await this.registry.execute<TInput, TOutput>(input.plugin.id, this.context, input.input)
+    this.runContext.signal?.throwIfAborted()
     // 可选插件禁用/失败沿用 Registry 的 undefined 输出契约，调用者负责分支处理。
     return result.output as TOutput
   }

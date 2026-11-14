@@ -1,9 +1,10 @@
+import { WRITING_FOCUS_VERSION, isWritingFocusPractice, measureWritingFocusCoverage, selectWritingProjectScopes, type WritingFocus } from '@/v5/planning/writing-focus'
 import { interviewDeliveryContradictions } from '@/v5/interview-delivery-boundaries'
 import { createHash } from 'node:crypto'
 import { formatTimelineHeading as timelineHeading } from '@/v5/composition/timeline-display'
 import { deriveInterviewCaseGroups } from '@/v5/interview-source-structure'
 import { interviewResultEvidenceAtoms, hasIncompleteInterviewResult } from '@/v5/interview-results'
-import { educationCompanion, educationDetailPriority } from '@/v5/writing/education'
+import { educationCompanion, educationDetailPriority, isEducationIdentityOnly } from '@/v5/writing/education'
 import { isExactWorkScopeBrief, workScopeBrief } from '@/v5/writing/work-coverage'
 import { entryLayoutItemLimit } from '@/v5/writing/entry-layout'
 import type {
@@ -44,6 +45,7 @@ const TENURE_PATTERN = /(?:拥有|具备|累计|超过|至少|近)?\s*\d+(?:\.\d
 const NUMBER_PATTERN = /(?:约|近|超过|超|至少|最多|不足|逾)?\s*[¥￥$]?\s*\d+(?:[.,]\d+)*(?:%|％|万|亿|千|百|人|次|个|项|家|天|周|月|年|小时|分钟|QPS|ms|MB|GB)?/gi
 const QUALIFIERS = ['约', '近', '超过', '超', '至少', '最多', '不足', '逾']
 const CAUSALITY_PATTERN = /(?:从而|因此|进而|由此|带动|使得|thereby|resulting in|which led to)/i
+const IN_PROGRESS_STAGE_PATTERN = /开发中|联调中|测试中|待开发|待评审|待上线|待发布|待推进|待实施|尚未启动|仍未启动/u
 const PHONE_PATTERN = /(?<!\d)(?:\+?86[-\s]?)?1[3-9]\d{9}(?!\d)/g
 const URL_PATTERN = /https?:\/\/[^\s)]+/gi
 const BUSINESS_SECTION_KEYS = new Set(['experience', 'project', 'research', 'other'])
@@ -57,6 +59,16 @@ const ANCILLARY_SECTION_CLAIM_TYPES: Record<string, EvidenceAtom['claimType']> =
 }
 
 export type V5ValidationGateMode = 'strict' | 'relaxed_release'
+
+function preservesSourceInProgressStage(output: string, atoms: EvidenceAtom[]): boolean {
+  const compact = (text: string) => text.replace(/[\s，,。.;；:：、]/gu, '')
+  const normalizedOutput = compact(output)
+  return atoms.filter(atom => atom.riskFlags.includes('future_or_planned')).every(atom => {
+    const clauses = atom.verbatimText.split(/[。；;]/u).filter(clause => IN_PROGRESS_STAGE_PATTERN.test(clause))
+    // Keep the pending work tied to its source subject; an unrelated “开发中” cannot release a completed claim.
+    return clauses.length > 0 && clauses.every(clause => normalizedOutput.includes(compact(clause)))
+  })
+}
 
 export const RELAXED_PLAN_ADVISORY_CODES = new Set([
   'PLAN_QUALITY_UNDER_TARGET',
@@ -488,6 +500,7 @@ export function buildDeterministicV5ResumePlan(input: {
   profile: ResumeStrategyProfile
   targetingScores?: ReadonlyMap<string, number>
   targetingTaskEvidence?: ReadonlyMap<string, readonly string[]>
+  writingFocus?: WritingFocus[]
   preserveWorkCoverage?: boolean
 }): V5ResumePlan {
   const evidence = new Map(input.resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
@@ -563,7 +576,7 @@ export function buildDeterministicV5ResumePlan(input: {
     if (kind !== 'project' && kind !== 'research') continue
     projectLikeByScope.set(atom.sourceScopeId, [...(projectLikeByScope.get(atom.sourceScopeId) ?? []), atom])
   }
-  const permittedProjectScopeIds = new Set([...projectLikeByScope]
+  const legacyProjectScopeIds = new Set([...projectLikeByScope]
     .map(([scopeId, atoms]) => ({
       scopeId,
       primaryMatches: atoms.reduce((sum, atom) => sum + (matchesByEvidence.get(atom.evidenceId) ?? [])
@@ -579,6 +592,18 @@ export function buildDeterministicV5ResumePlan(input: {
     ))
     .slice(0, input.policy.hardProjectMax)
     .map(item => item.scopeId))
+  // The entry adapter retains safe same-scope practice across each kept work
+  // history. Credit that actual pool before comparing additional projects.
+  const retainedWorkScopes = new Set(input.preserveWorkCoverage ? input.resume.timeline
+    .filter(scope => ['experience', 'internship'].includes(scope.kind)).map(scope => scope.scopeId) : [])
+  const initialWorkPractice = allEligibleBusiness.filter(atom => retainedWorkScopes.has(atom.sourceScopeId))
+  const focusSelection = input.writingFocus !== undefined ? selectWritingProjectScopes({
+    scopes: projectLikeByScope, focus: input.writingFocus, retainedWorkEvidenceIds: initialWorkPractice.map(atom => atom.evidenceId),
+    retainedWorkAtoms: initialWorkPractice,
+    limit: input.policy.hardProjectMax, compareAtoms,
+    softTarget: input.policy.projectSelectionPolicy === 'source_facets_v1' ? input.policy.projectSelectionTarget : undefined,
+  }) : undefined
+  const permittedProjectScopeIds = focusSelection?.scopeIds ?? legacyProjectScopeIds
   const eligibleBusiness = allEligibleBusiness.filter(atom => {
     const kind = timeline.get(atom.sourceScopeId)?.kind
     return (kind !== 'project' && kind !== 'research') || permittedProjectScopeIds.has(atom.sourceScopeId)
@@ -625,7 +650,14 @@ export function buildDeterministicV5ResumePlan(input: {
       if (anchor && anchorSet.has(anchor.evidenceId)) reservedWorkAnchors.add(anchor.evidenceId)
     }
   }
-  if (input.targetingTaskEvidence?.size) {
+  if (input.writingFocus !== undefined) {
+    // Reserve a concrete anchor in each selected project before secondary detail
+    // consumes the remaining body budget. Project selection has already seen all scopes.
+    for (const scopeId of permittedProjectScopeIds) addAnchor(eligibleBusiness.find(atom => atom.sourceScopeId === scopeId))
+    for (const focus of input.writingFocus) {
+      if (!focus.evidenceIds.some(id => anchorSet.has(id))) addAnchor(eligibleBusiness.find(atom => focus.evidenceIds.includes(atom.evidenceId)))
+    }
+  } else if (input.targetingTaskEvidence?.size) {
     // Cover supported core tasks before generic legacy qualifications consume the budget.
     const groups = [...input.targetingTaskEvidence.values()].map(ids => eligibleBusiness.filter(atom => ids.includes(atom.evidenceId)))
       .filter(atoms => atoms.length).sort((left, right) => compareAtoms(left[0], right[0]))
@@ -659,8 +691,8 @@ export function buildDeterministicV5ResumePlan(input: {
     addAnchor(candidate)
   }
   const protectedClaimTypes = new Set<EvidenceAtom['claimType']>()
-  const targetedTaskGroups = input.targetingScores && input.targetingTaskEvidence
-    ? [...input.targetingTaskEvidence.values()] : []
+  const targetedTaskGroups = input.writingFocus?.map(focus => focus.evidenceIds) ?? (input.targetingScores && input.targetingTaskEvidence
+    ? [...input.targetingTaskEvidence.values()] : [])
   const ensureClaimType = (claimType: EvidenceAtom['claimType']) => {
     if (anchorIds.some(id => evidence.get(id)?.claimType === claimType)) {
       protectedClaimTypes.add(claimType)
@@ -745,9 +777,10 @@ export function buildDeterministicV5ResumePlan(input: {
       .filter(atom => atom.sourceScopeId === item.scopeId && safeAtom(atom.evidenceId))
       .filter(atom => evidenceCatalog.assessments.get(atom.evidenceId)?.allowedUses.includes('ancillary_item'))
       .filter(atom => ['education', 'award'].includes(atom.claimType))
+      .filter(atom => !input.targetingScores || !isEducationIdentityOnly(atom, item))
       .sort((a, b) => (input.targetingScores ? educationDetailPriority(b, item) - educationDetailPriority(a, item) : 0) || compareAtoms(a, b))
     const selected = candidates[0]
-    const companion = selected && input.targetingScores ? educationCompanion(selected, candidates) : undefined
+    const companion = selected && input.targetingScores ? educationCompanion(selected, candidates, item) : undefined
     const selectedIds = selected ? [selected.evidenceId, ...(companion ? [companion.evidenceId] : [])] : []
     if (selected) {
       educationEvidenceIds.push(...selectedIds)
@@ -773,11 +806,12 @@ export function buildDeterministicV5ResumePlan(input: {
     .map(atom => atom.evidenceId)
   const selectedPlanIds = [...selectedBusinessIds, ...featuredSkillEvidenceIds, ...educationEvidenceIds, ...ancillaryEvidenceIds]
   const customizedSet = new Set(selectedPlanIds.filter(id => (
-    (matchesByEvidence.get(id) ?? []).some(match => primarySet.has(match.requirementId))
+    input.writingFocus !== undefined ? input.writingFocus.some(focus => focus.evidenceIds.includes(id))
+      : (matchesByEvidence.get(id) ?? []).some(match => primarySet.has(match.requirementId))
   )))
   const customizedEvidenceIds = selectedPlanIds.filter(id => customizedSet.has(id))
   const stableCoreEvidenceIds = selectedPlanIds.filter(id => !customizedSet.has(id))
-  const evidencePillars = primaryRequirementIds.flatMap((requirementId, index) => {
+  const evidencePillars: V5ResumePlan['evidencePillars'] = primaryRequirementIds.flatMap((requirementId, index) => {
     const evidenceIds = (matchedByRequirement.get(requirementId) ?? [])
       .map(atom => atom.evidenceId)
       .filter(id => selectedPlanIds.includes(id))
@@ -791,11 +825,28 @@ export function buildDeterministicV5ResumePlan(input: {
     }]
   })
 
+  const selectedFocus = input.writingFocus?.filter(focus => focus.evidenceIds.some(id => selectedPlanIds.includes(id)))
+  if (selectedFocus) {
+    // Qualification pillars remain available, but do not become the business narrative.
+    for (const pillar of evidencePillars) pillar.role = 'career_anchor'
+    const seenCoverage = new Set<string>()
+    for (const focus of selectedFocus) {
+      if (seenCoverage.has(focus.coverageKey)) continue
+      seenCoverage.add(focus.coverageKey)
+      evidencePillars.push({ pillarId: `pillar_${focus.focusId}`, title: focus.title, requirementIds: [],
+        focusIds: selectedFocus.filter(other => other.coverageKey === focus.coverageKey).map(other => other.focusId),
+        evidenceIds: focus.evidenceIds.filter(id => selectedPlanIds.includes(id)), role: 'jd_primary' })
+    }
+  }
   return {
     schemaVersion: input.resume.schemaVersion,
+    ...(input.writingFocus !== undefined ? { writingFocusVersion: WRITING_FOCUS_VERSION,
+      writingFocus: input.writingFocus, primaryFocusIds: selectedFocus!.map(focus => focus.focusId),
+      scopeSelectionDecisions: focusSelection!.decisions } : {}),
     strategyProfile: input.profile,
     generationPolicy: input.policy,
-    targetValueProposition: input.match.positioning.statement,
+    targetValueProposition: selectedFocus?.length
+      ? [...new Set(selectedFocus.map(focus => focus.title))].join('；') : input.match.positioning.statement,
     primaryRequirementIds,
     stableCoreEvidenceIds,
     customizedEvidenceIds,
@@ -861,6 +912,31 @@ export function validateV5ResumePlan(input: {
     }))
   }
   const allSelected = selectedPlanEvidence(input.plan)
+  if (input.plan.writingFocusVersion === WRITING_FOCUS_VERSION) {
+    const focuses = input.plan.writingFocus ?? [], ids = new Set(focuses.map(focus => focus.focusId))
+    if (!input.plan.writingFocus || !input.plan.primaryFocusIds || !input.plan.scopeSelectionDecisions
+      || ids.size !== focuses.length || input.plan.primaryFocusIds.some(id => !ids.has(id))
+      || focuses.some(focus => !focus.limitation.trim() || !focus.evidenceIds.length
+        || focus.requirementIds.some(id => !requirementIds.has(id))
+        || focus.evidenceIds.some(id => {
+          const atom = evidence.get(id)
+          return !atom || !isWritingFocusPractice(atom)
+        }))) {
+      issues.push(issue({ code: 'WRITING_FOCUS_INVALID', outputPath: 'writingFocus',
+        message: '写作主线须包含有效的局部实践引用、边界及独立目标标识。',
+        expectedConstraint: '主线引用不能升级资格或绕过同经历事实校验' }))
+    }
+    for (const [index, pillar] of input.plan.evidencePillars.entries()) {
+      if ((pillar.focusIds ?? []).some(id => {
+        const focus = focuses.find(item => item.focusId === id)
+        return !focus || !pillar.evidenceIds.some(evidenceId => focus.evidenceIds.includes(evidenceId))
+      })) issues.push(issue({ code: 'PILLAR_FOCUS_NOT_SUPPORTED', outputPath: `evidencePillars[${index}]`,
+        message: '主线支柱引用与对应实践不一致。', expectedConstraint: '每个 focus 引用必须有对应的主线证据' }))
+    }
+  } else if (input.plan.writingFocus || input.plan.primaryFocusIds || input.plan.scopeSelectionDecisions) {
+    issues.push(issue({code: 'WRITING_FOCUS_INVALID', outputPath: 'writingFocusVersion',
+      message: '写作主线字段缺少受支持的版本。', expectedConstraint: '新主线字段须使用 writing-focus-v1'}))
+  }
   for (const evidenceId of allSelected) {
     const atom = evidence.get(evidenceId)
     if (!atom) {
@@ -1149,7 +1225,7 @@ export function validateV5ResumePlan(input: {
       outputPath: 'primaryRequirementIds',
       requirementIds: unsafeRequirement,
       message: '不存在、未证明、不适用或存在冲突的需求进入了正文计划。',
-      expectedConstraint: '只有 direct_match/transferable_match 可以进入正文计划；currently_unproven 必须 forbidden',
+      expectedConstraint: '资格引用只使用 direct_match/transferable_match；局部实践由独立写作主线表达',
     }))
   }
   const missingForbidden = [...currentlyUnproven].filter(id => !input.plan.forbiddenRequirementIds.includes(id))
@@ -1158,7 +1234,7 @@ export function validateV5ResumePlan(input: {
       code: 'UNPROVEN_REQUIREMENT_NOT_FORBIDDEN',
       outputPath: 'forbiddenRequirementIds',
       requirementIds: missingForbidden,
-      message: '存在 currently_unproven 需求未进入禁止正文列表。',
+      message: '存在未证明的完整资格缺少禁止断言标记。',
       expectedConstraint: '所有 currently_unproven requirement 必须明确 forbidden',
     }))
   }
@@ -1231,14 +1307,19 @@ export function validateV5ResumePlan(input: {
     pillar.requirementIds.includes(requirementId)
     && pillar.evidenceIds.some(id => matchEvidenceByRequirement.get(requirementId)?.has(id))
   ))).length
-  const primaryRatio = input.plan.primaryRequirementIds.length === 0 ? 1 : primaryCovered / input.plan.primaryRequirementIds.length
+  const focusCoverage = measureWritingFocusCoverage(input.plan, input.plan.evidencePillars
+    .filter(pillar => pillar.focusIds?.length).flatMap(pillar => pillar.evidenceIds))
+  const primaryRatio = focusCoverage !== null
+    ? focusCoverage.denominator ? focusCoverage.numerator / focusCoverage.denominator : 1
+    : input.plan.primaryRequirementIds.length === 0 ? 1 : primaryCovered / input.plan.primaryRequirementIds.length
   const eligibleBusinessEvidenceCount = evidenceCatalog.businessAnchorEvidenceIds.length
   const potentialPrimaryCovered = [...primaryIds].filter(requirementId => (
     (matchEvidenceByRequirement.get(requirementId)?.size ?? 0) > 0
   )).length
-  const potentialPrimaryRatio = input.plan.primaryRequirementIds.length === 0
-    ? 1
-    : potentialPrimaryCovered / input.plan.primaryRequirementIds.length
+  const potentialFocusCoverage = measureWritingFocusCoverage(input.plan, evidenceCatalog.businessAnchorEvidenceIds)
+  const potentialPrimaryRatio = potentialFocusCoverage !== null
+    ? potentialFocusCoverage.denominator ? potentialFocusCoverage.numerator / potentialFocusCoverage.denominator : 1
+    : input.plan.primaryRequirementIds.length === 0 ? 1 : potentialPrimaryCovered / input.plan.primaryRequirementIds.length
   const lowerBoundExceptionEligible = eligibleBusinessEvidenceCount < input.policy.targetBusinessBulletMin
     || potentialPrimaryRatio < input.policy.primaryRequirementCoverageMin
   if (input.plan.lowerBoundException && !lowerBoundExceptionEligible) {
@@ -2374,7 +2455,9 @@ export function validateGeneratedResumeArtifact(input: {
         expectedConstraint: '不得从日期推算 X 年经验',
       }))
     }
-    if (atoms.some(atom => atom.riskFlags.includes('future_or_planned')) && !/(?:规划|计划|方案|研究阶段|待立项|未上线|拟)/.test(claim.outputText)) {
+    if (atoms.some(atom => atom.riskFlags.includes('future_or_planned'))
+      && !/(?:规划|计划|方案|研究阶段|待立项|未上线|拟)/.test(claim.outputText)
+      && !preservesSourceInProgressStage(claim.outputText, atoms)) {
       issues.push(issue({
         code: 'STAGE_UPGRADE',
         outputPath: claim.outputPath,
@@ -2739,17 +2822,21 @@ export function validateGeneratedResumeArtifact(input: {
   const eligibleStable = plan.stableCoreEvidenceIds.filter(coverageEligible)
   const stableCoverage = eligibleStable.length === 0 ? 1
     : eligibleStable.filter(id => used.has(id)).length / eligibleStable.length
+  const focusCoverage = measureWritingFocusCoverage(plan, used)
   const primaryEvidence = new Set(plan.evidencePillars
-    .filter(pillar => pillar.requirementIds.some(id => plan.primaryRequirementIds.includes(id)))
+    .filter(pillar => focusCoverage !== null
+      ? pillar.focusIds?.some(id => plan.primaryFocusIds?.includes(id))
+      : pillar.requirementIds.some(id => plan.primaryRequirementIds.includes(id)))
     .flatMap(pillar => pillar.evidenceIds)
     .filter(coverageEligible))
-  const primaryCoverage = primaryEvidence.size === 0
-    ? (plan.primaryRequirementIds.length === 0 ? 1 : 0)
+  const primaryCoverage = focusCoverage !== null
+    ? focusCoverage.denominator ? focusCoverage.numerator / focusCoverage.denominator : 1
+    : primaryEvidence.size === 0 ? (plan.primaryRequirementIds.length === 0 ? 1 : 0)
     : [...primaryEvidence].filter(id => used.has(id)).length / primaryEvidence.size
   const eligibleBusinessEvidenceCount = evidenceCatalog.businessAnchorEvidenceIds.length
   const lowerBoundExceptionEligible = Boolean(plan.lowerBoundException) && (
     eligibleBusinessEvidenceCount < policy.targetBusinessBulletTarget
-    || (plan.primaryRequirementIds.length > 0 && primaryEvidence.size === 0)
+    || ((focusCoverage !== null ? (plan.primaryFocusIds?.length ?? 0) : plan.primaryRequirementIds.length) > 0 && primaryEvidence.size === 0)
   )
   const minimumBusinessBulletFloor = Math.min(
     policy.targetBusinessBulletMin,
@@ -2938,8 +3025,44 @@ export function validateInterviewPreparation(input: {
     }
   }
   const storyPlans = new Set<string>()
+  const storyEvidenceSets = new Set<string>()
   for (const [index, story] of input.preparation.storyRecommendations.entries()) {
     checkReferences(`storyRecommendations[${index}]`, story.evidenceIds, [], [])
+    const linkedRequirements = new Set<string>()
+    for (const [linkIndex, link] of (story.requirementLinks ?? []).entries()) {
+      const outputPath = `storyRecommendations[${index}].requirementLinks[${linkIndex}]`
+      checkReferences(outputPath, link.evidenceIds, [link.requirementId], [])
+      if (linkedRequirements.has(link.requirementId)) issues.push(issue({
+        code: 'INTERVIEW_REQUIREMENT_LINK_DUPLICATED', outputPath,
+        evidenceIds: link.evidenceIds, requirementIds: [link.requirementId],
+        message: '同一故事对同一岗位要求重复建立关联。请合并具体准备重点与本故事证据。',
+        expectedConstraint: '每个故事对同一 requirementId 只建立一次显式关联',
+      }))
+      linkedRequirements.add(link.requirementId)
+      if (link.evidenceIds.length === 0 || !link.focus.trim()) issues.push(issue({
+        code: 'INTERVIEW_REQUIREMENT_LINK_INCOMPLETE', outputPath,
+        evidenceIds: link.evidenceIds, requirementIds: [link.requirementId],
+        message: '岗位关联缺少本故事证据或具体准备价值。无法可靠关联时删除该项，不用通用模板填充。',
+        expectedConstraint: '每个显式岗位关联必须给出本故事 evidenceIds 与非空 focus',
+      }))
+      const outsideStory = link.evidenceIds.filter(id => !story.evidenceIds.includes(id)
+        || evidence.get(id)?.sourceScopeId !== story.scopeId)
+      if (outsideStory.length > 0 || caseIds(link.evidenceIds).size > 1) issues.push(issue({
+        code: 'INTERVIEW_REQUIREMENT_LINK_EVIDENCE_MISMATCH', outputPath,
+        evidenceIds: outsideStory.length ? outsideStory : link.evidenceIds, requirementIds: [link.requirementId],
+        message: '岗位关联引用了本故事以外或不同案例的证据。只选择当前故事实际引用且属于同一案例的证据。',
+        expectedConstraint: 'requirementLinks.evidenceIds 必须是本故事 evidenceIds 的有效同 scope、同案例子集',
+      }))
+    }
+    const storyEvidence = [...new Set(story.evidenceIds.filter(id => {
+      const atom = evidence.get(id)
+      return atom && !['identity', 'timeline', 'skill'].includes(atom.claimType)
+    }))].sort().join('|')
+    if (storyEvidence && storyEvidenceSets.has(storyEvidence)) issues.push(issue({
+      code: 'INTERVIEW_STORY_SELECTION_DUPLICATED', outputPath: `storyRecommendations[${index}]`, evidenceIds: story.evidenceIds,
+      message: '两个故事使用同一组实际案例证据，改换标题或讲述措辞不增加能力覆盖。选择另一项真实实践形成互补，或只保留一个有效故事。',
+      expectedConstraint: '故事组合使用可区分的真实案例证据，不能为凑数量重复同一个案例' }))
+    if (storyEvidence) storyEvidenceSets.add(storyEvidence)
     if (caseIds(story.evidenceIds).size > 1) issues.push(issue({
       code: 'INTERVIEW_CASE_GROUP_MIXED', outputPath: `storyRecommendations[${index}]`, evidenceIds: story.evidenceIds,
       message: '故事混用了原文已明确分开的案例。一个故事只保留同一 caseGroupId 的证据；任职 scope 相同不授权合并案例。',
@@ -2997,7 +3120,7 @@ export function validateInterviewPreparation(input: {
         code: 'INCOMPLETE_INTERVIEW_RESULT', outputPath: `storyRecommendations[${index}].knownResult`, evidenceIds: story.evidenceIds,
         message: 'knownResult 含截断数值或占位说明。请依据有绑定的完整原文尾块表达结果并保留月份/归因限定；不能可靠还原时设为 null，在 preparationGap 说明需确认项。',
         expectedConstraint: '不交付“原文截断/待补数值/提升至…”等不完整结果' }))
-      const resultAtoms = interviewResultEvidenceAtoms(story.evidenceIds, input.resume.evidenceAtoms)
+      const resultAtoms = interviewResultEvidenceAtoms(story.evidenceIds, input.resume.evidenceAtoms, story.knownResult)
       const unsupportedNumbers = normalizedNumbers(story.knownResult).filter(number => (
         !resultAtoms.some(atom => atom.verbatimText.replace(/\s/g, '').includes(number))
       ))

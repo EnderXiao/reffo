@@ -64,8 +64,13 @@ function qualitativeYearConflict(conflict: JobSuccessProfile['conflicts'][number
 export function validateTargetedJobExtraction(document: CanonicalSourceDocument, value: TargetedJobExtraction): ValidationResult<TargetedJobExtraction> {
   const { jobSuccessProfile, ...legacy } = value
   const checked = validateJobExtractionCandidate(document, legacy)
-  if (!checked.passed) return { passed: false, issues: checked.issues }
-  const candidate = { ...(checked.value ?? legacy), jobSuccessProfile: structuredClone(jobSuccessProfile) }
+  // Signal-ID mistakes do not make the schema-validated source candidates
+  // unreadable. Collect profile failures as well so one repair sees missing
+  // qualifications hidden behind an unrelated company/location association.
+  if (!checked.value || (!checked.passed && checked.issues.some(issue => issue.severity === 'error' && issue.code !== 'INVALID_SIGNAL_REFERENCE'))) {
+    return { passed: false, issues: checked.issues }
+  }
+  const candidate = { ...checked.value, jobSuccessProfile: structuredClone(jobSuccessProfile) }
   const profile = candidate.jobSuccessProfile
   const issues: ValidationIssue[] = [...checked.issues]
   const report = (code: string, path: string, message: string, severity: ValidationIssue['severity'] = 'error') => {
@@ -217,12 +222,14 @@ export interface JobTarget {
   taskIds: string[]
   requirementIds: string[]
   dimension?: JobSuccessProfile['attributes'][number]['dimension']
+  sourceQuote?: string
 }
 
 export function buildJobTargets(candidate: TargetedJobExtraction, job: JobRequirementBundle): JobTarget[] {
   const profile = candidate.jobSuccessProfile
   const localIds = new Map(candidate.requirementCandidates.map(item => [item.requirementLocalId,
-    job.requirementAtoms.find(atom => atom.sourceBlockId === item.sourceBlockId && atom.verbatimText === item.verbatimText)?.requirementId]))
+    job.requirementAtoms.find(atom => atom.sourceBlockId === item.sourceBlockId && atom.verbatimText === item.verbatimText
+      && atom.category === item.category && atom.normalizedRequirement === item.normalizedRequirement)?.requirementId]))
   const canonical = (ids: string[]) => [...new Set(ids.flatMap(id => localIds.get(id) ? [localIds.get(id)!] : []))]
   const taskById = new Map(profile.tasks.map(task => [task.id, task]))
   const taskRequirements = (ids: string[]) => canonical(ids.flatMap(id => taskById.get(id)?.requirementLocalIds ?? []))
@@ -239,7 +246,7 @@ export function buildJobTargets(candidate: TargetedJobExtraction, job: JobRequir
         priority: taskPriority(taskIds), taskIds, requirementIds: [...new Set([...canonical(attribute.requirementLocalIds), ...taskRequirements(taskIds)])], dimension: attribute.dimension }
     }),
     ...job.requirementAtoms.map(requirement => ({ id: requirement.requirementId, kind: 'requirement' as const,
-      text: requirement.normalizedRequirement, basis: requirement.explicitness === 'explicit' ? 'explicit' as const : 'inferred' as const,
+      text: requirement.normalizedRequirement, sourceQuote: requirement.verbatimText, basis: requirement.explicitness === 'explicit' ? 'explicit' as const : 'inferred' as const,
       priority: requirement.importance === 'core_outcome' ? 'core' as const : 'supporting' as const,
       taskIds: profile.tasks.filter(task => canonical(task.requirementLocalIds).includes(requirement.requirementId)).map(task => task.id), requirementIds: [requirement.requirementId] })),
   ]

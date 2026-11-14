@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { compileV5Prompt, schemaForV5Component } from '@/v5/prompt-compiler'
-import { JOB_TARGETING_POLICY, isJobTargetedEnvelope, jobFitMapSchema, targetedJobExtractionSchema } from '@/v5/targeting/contracts'
+import { JOB_TARGETING_POLICY, isJobTargetedEnvelope, jobFitMapTransportSchema, targetedJobExtractionSchema } from '@/v5/targeting/contracts'
 import { buildJobTargets, validateTargetedJobExtraction } from '@/v5/targeting/profile'
 import { compactTargetingResume, coreTaskEvidence, projectLegacyMatch, targetingEvidenceScores, validateJobFitMap } from '@/v5/targeting/fit'
 import { createTargetingFixture } from '@/v5/tests/targeting-fixtures'
@@ -50,18 +50,18 @@ describe('job-targeted internal contracts', () => {
   test('selects new contracts only from server wrappers, never from raw source or model repair output', () => {
     const envelope = { payload: { jobTargetingPolicy: JOB_TARGETING_POLICY } }
     expect(schemaForV5Component('P02', envelope)).toBe(targetedJobExtractionSchema)
-    expect(schemaForV5Component('P03R', { payload: { originalEnvelope: envelope } })).toBe(jobFitMapSchema)
+    expect(schemaForV5Component('P03R', { payload: { originalEnvelope: envelope } })).toBe(jobFitMapTransportSchema)
     expect(isJobTargetedEnvelope({ payload: { currentOutput: { jobTargetingPolicy: JOB_TARGETING_POLICY } } })).toBe(false)
     expect(isJobTargetedEnvelope({ payload: { canonicalJobDocument: { jobTargetingPolicy: JOB_TARGETING_POLICY } } })).toBe(false)
-    expect(schemaForV5Component('P03', {})).not.toBe(jobFitMapSchema)
+    expect(schemaForV5Component('P03', {})).not.toBe(jobFitMapTransportSchema)
     expect(parseEvaluationRunnerArgs(['--artifact-mode', 'writer_v1', '--job-targeted'], { backendRoot: '/repo/backend' }).jobTargetingPolicy).toBe(JOB_TARGETING_POLICY)
     expect(() => parseEvaluationRunnerArgs(['--job-targeted'], { backendRoot: '/repo/backend' })).toThrow()
   })
-  test('keeps existing P02/P03 budgets and source-fact namespaces separate', () => {
+  test('bounds P02/P03 budgets and keeps source-fact namespaces separate', () => {
     const fixture = createTargetingFixture()
     for (const component of ['P02', 'P02R', 'P03', 'P03R'] as const) {
       const prompt = compileV5Prompt({ component, envelope: { payload: { jobTargetingPolicy: JOB_TARGETING_POLICY } } })
-      expect(prompt.maxOutputTokens).toBe(component.startsWith('P02') ? 7200 : 6000)
+      expect(prompt.maxOutputTokens).toBe(9600)
     }
     expect(targetedJobExtractionSchema.safeParse(fixture.candidate).success).toBe(true)
     expect(validateTargetedJobExtraction(fixture.document, fixture.candidate).passed).toBe(true)
@@ -123,7 +123,7 @@ describe('job-targeted internal contracts', () => {
     expect(checked.value!.narratives).toEqual([])
     expect(checked.value!.links).toEqual(fixture.fit.links)
   })
-  test('weak signals and explicit gaps remain distinct internally and compatible publicly', () => {
+  test('partial concrete practice is preserved while unsupported negative verdicts become unproven', () => {
     const fixture = createTargetingFixture()
     const requirement = fixture.fit.links.find(link => link.targetId.startsWith('req_'))!
     for (const status of ['weak_signal', 'explicit_gap'] as const) {
@@ -131,7 +131,8 @@ describe('job-targeted internal contracts', () => {
       const checked = validateJobFitMap(fixture.fit, fixture.targets, fixture.resume)
       expect(checked.passed).toBe(true)
       const projected = projectLegacyMatch(checked.value!, fixture.targets, fixture.resume, fixture.job)
-      expect(projected.requirementMatches.find(item => item.requirementId === requirement.targetId)).toMatchObject({ status: 'currently_unproven', evidenceIds: [] })
+      expect(projected.requirementMatches.find(item => item.requirementId === requirement.targetId)).toMatchObject(status === 'weak_signal'
+        ? {status: 'transferable_match', evidenceIds: [fixture.business.evidenceId]} : {status: 'currently_unproven', evidenceIds: []})
     }
   })
   test('attribute multiplicity cannot inflate evidence rank', () => {
@@ -167,7 +168,7 @@ describe('job-targeted internal contracts', () => {
     const checked = validateJobFitMap(fixture.fit, fixture.targets, fixture.resume)
     expect(checked.passed).toBe(true)
     expect(checked.value!.narratives).toEqual([])
-    expect(checked.value!.links[0].status).toBe(status)
+    expect(checked.value!.links[0].status).toBe(status === 'explicit_gap' ? 'unknown' : status)
     expect(checked.issues.map(issue => issue.code)).toContain('JOB_FIT_NARRATIVE_DOWNGRADED')
     expect(fixture.fit).toEqual(before)
   })
@@ -200,7 +201,8 @@ describe('job-targeted internal contracts', () => {
     expect(scores.has(fixture.skill.evidenceId)).toBe(false)
     expect(coreTaskEvidence(fit, fixture.targets, fixture.resume).get('job:task:t1')).toEqual([fixture.business.evidenceId])
     const match = projectLegacyMatch(fit, fixture.targets, fixture.resume, fixture.job)
-    expect(match.requirementMatches.every(item => item.status === 'currently_unproven' && item.evidenceIds.length === 0)).toBe(true)
+    expect(match.judgmentBundle!.items.some(item => item.status === 'transferable_or_partial' && item.evidenceIds.includes(fixture.business.evidenceId))).toBe(true)
+    expect(match.judgmentBundle!.items.every(item => item.status !== 'direct')).toBe(true)
     const { profile, policy } = buildAdaptiveStrategy({ resume: fixture.resume, job: fixture.job, match })
     const plan = buildDeterministicV5ResumePlan({ resume: fixture.resume, job: fixture.job, match, profile, policy,
       targetingScores: scores, targetingTaskEvidence: coreTaskEvidence(fit, fixture.targets, fixture.resume) })

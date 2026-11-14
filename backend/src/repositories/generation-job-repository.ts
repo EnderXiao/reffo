@@ -29,11 +29,12 @@ function decode(row: GenerationJob | null): GenerationJob | null {
 }
 
 export class GenerationJobRepository {
-  async create(userId: string, id: string, input: GenerationJobInput) {
+  async create(userId: string, id: string, input: GenerationJobInput, releaseFingerprint?: string) {
     const now = new Date().toISOString()
     const job: GenerationJob = {id, user_id: userId, status: 'queued', stage: 'analysis', background: false,
       read_at: null, confirmed_at: null, history_id: null, error: null, created_at: now, updated_at: now,
-      lease_token: null, lease_expires_at: now, quota_charged: false, payload: {input}}
+      lease_token: null, lease_expires_at: now, quota_charged: false,
+      payload: {input, ...(releaseFingerprint ? {releaseFingerprint} : {})}}
     if (env.DATABASE_PROVIDER === 'supabase') {
       await service().request(table, {method: 'POST', searchParams: {on_conflict: 'id'},
         prefer: 'resolution=ignore-duplicates', body: job})

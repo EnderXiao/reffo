@@ -1,4 +1,6 @@
 import type {ResumeStrategyReview} from '@/shared/resume-strategy'
+import type {ResumeCompletionDocument} from '@/shared/resume-completion'
+import type {ResumeActionPlan, ResolvedResumeActionPlan, ResumeActionReview, ResumeChangeManifest, ResumeIdentityState, ResumeDeliveryState} from '@/shared/resume-actions'
 export type {ResumeStrategyReview, ResumeStrategyOutcome, ResumeStrategyReference} from '@/shared/resume-strategy'
 
 // 类型定义
@@ -12,6 +14,8 @@ export interface ResultSessionContext {
   resumeContent: string;
   jdContent: string;
   presetJdId?: string;
+  jdParseId?: string;
+  resumeParseId?: string;
 }
 
 export type ResultStepStatus = 'pending' | 'generating' | 'done' | 'failed';
@@ -31,7 +35,7 @@ export interface ResumeHistory {
   createdAt: string; // 创建时间（主成就日期）
   updatedAt?: string; // 后端更新时间，旧的本地快照可能没有
   qualityScore: number; // 质量评分 0-100
-  matchScore: number; // 匹配度 0-100
+  matchScore: number | null; // 匹配度 0-100
   tags: string[]; // 标签（技能、领域等）
   resumeContent: string; // 原始简历内容
   jdContent: string; // JD 内容
@@ -43,6 +47,8 @@ export interface ResumeHistory {
   progress?: ResultSessionProgress; // 结果生成进度快照
   cardColor?: string; // 卡片背景色
   cardPattern?: string; // 卡片图案类型
+  completionCommit?: {commitId: string; expectedDocument?: {documentId: string; revision: number; resolvedDigest?: string}};
+  commitAck?: {commit_id: string; document_id: string; revision: number; resolved_digest?: string};
 }
 
 export interface ResumeHistorySummary {
@@ -53,7 +59,7 @@ export interface ResumeHistorySummary {
   createdAt: string;
   updatedAt: string;
   qualityScore: number;
-  matchScore: number;
+  matchScore: number | null;
   tags: string[];
   location: string;
   strategyBody: string;
@@ -145,6 +151,7 @@ export interface Skills {
 export type ContextConfidence = 'high' | 'medium' | 'low' | 'unknown';
 
 export interface JobDescriptionStructure {
+  requirement_sources?: Array<{requirement_id: string; source_quote: string; source_span: {start: number; end: number}; source_block_id: string}>;
   basic_info: {
     title: string;
     company?: string;
@@ -210,7 +217,14 @@ export interface MatchOptimizationStrategyDetail {
 
 export interface MatchingResult {
   requirement_analysis?: import('./requirement-analysis').RequirementAnalysis;
-  match_score: number;
+  match_score: number | null;
+  score_formula_version?: string;
+  score_calibration_status?: 'pending' | 'calibrated' | 'rules_based';
+  score_basis?: 'current_material_requirement_coverage';
+  score_confidence?: 'high' | 'medium' | 'low';
+  action_plan?: ResumeActionPlan;
+  requirement_judgments?: RequirementJudgmentBundle;
+  experience_duration?: ExperienceDuration;
   hard_requirements_match: HardRequirement[];
   skill_match: SkillMatch;
   experience_match: ExperienceMatch;
@@ -231,7 +245,7 @@ export interface MatchingResult {
 
 export interface HardRequirement {
   requirement: string;
-  matched: boolean;
+  matched: boolean | null;
   evidence?: string;
   suggestion?: string;
 }
@@ -239,7 +253,7 @@ export interface HardRequirement {
 export interface SkillMatch {
   matched_skills: string[];
   missing_skills: string[];
-  match_percentage: number;
+  match_percentage: number | null;
   required_skill_checks?: Array<{
     requirement: string;
     status: 'matched' | 'missing' | 'unclear';
@@ -248,29 +262,82 @@ export interface SkillMatch {
 }
 
 export interface ExperienceMatch {
-  years_required: number;
-  years_actual: number;
+  years_required: number | null;
+  years_actual: number | null;
   relevant_experience: string[];
-  match_percentage: number;
+  match_percentage: number | null;
 }
 
 // ============ 优化结果 ============
 
 export interface OptimizedResume {
   optimized_resume: string;
+  completion_document?: ResumeCompletionDocument;
+  completion_edit?: import('@/shared/resume-completion').CompletionEditJournal;
+  completion_context?: string;
+  preparation_topics?: InterviewPreparationTopic[];
   changes_summary: string[];
-  improvement_score: number;
+  improvement_score: number | null;
   strategy_review?: ResumeStrategyReview;
+  action_plan?: ResumeActionPlan;
+  resolved_action_plan?: ResolvedResumeActionPlan;
+  action_review?: ResumeActionReview;
+  change_manifest?: ResumeChangeManifest;
+  identity_state?: ResumeIdentityState;
+  delivery_state?: ResumeDeliveryState;
 }
 
 export interface InterviewStoryRecommendation {
+  story_id?: string;
+  scope_id?: string;
+  case_group_id?: string;
+  source_references?: Array<{evidence_id: string; source_scope_id: string; source_quote: string; source_kind: 'source_resume' | 'user_fact'}>;
+  related_requirement_ids?: string[];
+  action_ids?: string[];
   title: string;
   background: string;
   result: string;
   storytelling_approach: string[];
 }
 
+export interface InterviewPreparationTopic {
+  topicId: string;
+  scopeId: string;
+  caseGroupId?: string;
+  subject: string;
+  dimensions: string[];
+  sourceEvidenceIds: string[];
+  sourceSpans: Array<{sourceBlockId: string; start: number; end: number}>;
+  requirementIds: string[];
+  actionIds: string[];
+  sourceAssertionStatus: 'recorded' | 'meaning_incomplete' | 'conflicted';
+  sourceStatement: string;
+  prompt: string;
+  preparationFocus: string;
+  userNotes?: Array<{detailId?: string; text: string; provenance?: unknown}>;
+}
+
+export interface InterviewPresentation {
+  version: 'interview-presentation-v1';
+  userFactSnapshot?: {documentId: string; revision: number; facts: Array<{evidenceId: string; sourceScopeId: string; sourceBlockId: string; text: string}>};
+  basedOnDocument?: {documentId: string; revision: number; resolvedDigest?: string};
+  questions: Array<{questionId: string; question: string; category: string; preparationFocus: string; sourceEvidenceIds: string[]; requirementIds: string[]; topics: InterviewPreparationTopic[]}>;
+  stories: Array<{
+    storyId: string;
+    title: string;
+    resultText?: string;
+    scopeId: string;
+    caseGroupId?: string;
+    sourceGroups: Array<{sourceKind: 'source_resume' | 'user_fact'; label: string; stage?: string; evidenceIds: string[]; spans: Array<{start: number; end: number}>; paragraphs: string[]}>;
+    jobReferences: Array<{requirementId: string; quote: string; focus?: string}>;
+    topics: InterviewPreparationTopic[];
+  }>;
+}
+
 export interface InterviewSuggestions {
+  presentation?: InterviewPresentation;
+  preparation_topics?: InterviewPreparationTopic[];
+  based_on_document?: {documentId: string; revision: number; resolvedDigest?: string};
   questions: string[];
   story_recommendations: InterviewStoryRecommendation[];
   follow_up_questions: string[];
@@ -292,6 +359,7 @@ export interface SourceResumeSummary {
   title: string;
   resumeMarkdown: string;
   sourceType: SourceResumeSourceType;
+  parseId?: string | null;
   originalFileName: string | null;
   createdAt: string;
   updatedAt: string;
@@ -301,7 +369,34 @@ export interface SourceResumeSummaryMeta {
   id: string;
   title: string;
   sourceType: SourceResumeSourceType;
+  parseId?: string | null;
   originalFileName: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RequirementJudgmentBundle {
+  version: 'requirement-judgment-v2'
+  judgmentRevision: string
+  sourceRevision: string
+  items: Array<{
+    requirementId: string
+    status: 'direct' | 'transferable_or_partial' | 'unproven' | 'not_met'
+    supportRelation: 'domain_transfer' | 'partial_coverage' | 'both' | null
+    supportedAspects: Array<{aspectId: string; text: string; evidenceIds: string[]}>
+    unprovenAspects: Array<{aspectId: string; text: string; evidenceIds: string[]}>
+    evidenceIds: string[]
+    roleBoundary: string
+    conflict: string | null
+  }>
+}
+
+export interface ExperienceDuration {
+  version: 'experience-duration-v2'
+  policy: 'month_boundary_union_no_runtime_extension'
+  sourceAsOf: string | null
+  fullTime: {months: number | null; knownLowerBoundMonths: number; scopeIds: string[]; unresolvedScopeIds: string[]}
+  internship: {months: number | null; knownLowerBoundMonths: number; scopeIds: string[]; unresolvedScopeIds: string[]}
+  excludedScopeIds: string[]
+  reasons: string[]
 }

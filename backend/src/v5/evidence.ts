@@ -13,6 +13,9 @@ import { V5_SCHEMA_VERSION } from '@/v5/types'
 import { bindSourceLineContinuations } from '@/v5/composition/source-continuation-proof'
 import { localizeTemporalRisk } from '@/v5/temporal-risk'
 import { assessResumeDocumentQuality } from '@/v5/resume-quality-assessment'
+import { preserveSourceTimeline } from '@/v5/source-structure'
+import { deriveRequirementSemantics, importanceForSemantics } from '@/v5/targeting/requirement-semantics'
+import { inspectRequirementSemanticCoverage } from '@/v5/targeting/requirement-coverage'
 import {
   readResumeExtractionScopePlan,
   resumeExtractionFactCandidateLimit,
@@ -1380,7 +1383,7 @@ export function buildResumeEvidenceBundle(
   const mappedBlocks = new Set(candidate.factCandidates.map(fact => fact.sourceBlockId))
   const unmappedBlocks = new Set(candidate.unmappedFragments.map(fragment => fragment.sourceBlockId))
 
-  return {
+  return preserveSourceTimeline(document, {
     schemaVersion: V5_SCHEMA_VERSION,
     sourceDocument: {
       documentId: document.documentId,
@@ -1430,7 +1433,7 @@ export function buildResumeEvidenceBundle(
       ...assessResumeDocumentQuality(candidate),
       ...serviceQualityAssessment(document, candidate),
     },
-  }
+  })
 }
 
 export function validateJobExtractionCandidate(
@@ -1550,6 +1553,27 @@ export function validateJobExtractionCandidate(
       }))
     }
   }
+
+  const facetKeys = candidate.requirementCandidates.map(item => [item.sourceBlockId, item.blockRelativeSpan.start,
+    item.blockRelativeSpan.end, item.category, item.normalizedRequirement.normalize('NFKC').toLowerCase().replace(/\s+/gu, '')].join('|'))
+  for (const duplicate of duplicateValues(facetKeys)) issues.push(createIssue({
+    code: 'DUPLICATE_REQUIREMENT_FACET', outputPath: 'requirementCandidates',
+    message: `同一来源范围的同义方面重复：${duplicate}`,
+    expectedConstraint: '同一span可保留不同方面，不得重复相同category与规范化要求',
+  }))
+  for (const [index, requirement] of candidate.requirementCandidates.entries()) {
+    const source = requirement.verbatimText, normalized = requirement.normalizedRequirement
+    if (/独立|主导|牵头/u.test(normalized) && !/独立|主导|牵头/u.test(source)) issues.push(createIssue({
+      code: 'JD_OWNERSHIP_UPGRADE', outputPath: `requirementCandidates[${index}].normalizedRequirement`,
+      message: '规范化要求新增了原文没有的独立或主导门槛。', expectedConstraint: '0到1等经历不自动意味着独立主导',
+    }))
+    if (/(?:金融|医疗|零售|电商|银行)/u.test(normalized) && !/(?:金融|医疗|零售|电商|银行)/u.test(source)) issues.push(createIssue({
+      code: 'JD_DOMAIN_PROPAGATION', outputPath: `requirementCandidates[${index}].normalizedRequirement`,
+      message: '规范化要求把其他条款的行业限定传播到本项通用能力。', expectedConstraint: '行业约束只能来自本项逐字来源',
+    }))
+  }
+
+  issues.push(...inspectRequirementSemanticCoverage(document, candidate))
 
   for (const [index, context] of candidate.sourcedContextCandidates.entries()) {
     try {
@@ -1713,7 +1737,9 @@ export function buildJobRequirementBundle(
       start: block.canonicalStart + requirement.blockRelativeSpan.start,
       end: block.canonicalStart + requirement.blockRelativeSpan.end,
     }
-    const requirementId = stableId('req', [document.sha256, requirement.sourceBlockId, sourceSpan.start, sourceSpan.end])
+    const facetKey = `${requirement.category}:${requirement.normalizedRequirement.normalize('NFKC').toLowerCase().replace(/\s+/gu, '')}`
+    const requirementId = stableId('req', [document.sha256, requirement.sourceBlockId, sourceSpan.start, sourceSpan.end, facetKey])
+    const semantics = deriveRequirementSemantics(document, requirement)
     localToRequirement.set(requirement.requirementLocalId, requirementId)
     return {
       requirementId,
@@ -1722,10 +1748,11 @@ export function buildJobRequirementBundle(
       verbatimText: requirement.verbatimText,
       normalizedRequirement: requirement.normalizedRequirement,
       category: requirement.category,
-      importance: requirement.importance,
+      importance: importanceForSemantics(semantics, requirement.importance),
       logicGroupId: requirement.logicGroupLocalId,
       logicOperator: requirement.logicOperator,
       explicitness: requirement.explicitness,
+      semantics,
     }
   })
 

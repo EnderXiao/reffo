@@ -18,6 +18,7 @@ import {
   type EvaluationUsageEntry,
 } from '@/v5/evaluation-runner-support'
 import { validateV5DeliveryEnvelopeConsistency } from '@/v5/delivery-gate'
+import { deliveredResumeMarkdown } from '@/v5/delivery-markdown'
 import {
   generatedResumeArtifactSchema,
   generationPolicySchema,
@@ -465,7 +466,7 @@ export async function loadValidatedJudgeSourceRun(input: {
       caseNumber: expected.caseNumber,
     })
     const markdown = await readFile(resolve(sourceRun, 'cases', `${expected.prefix}-v5.md`), 'utf8')
-    if (markdown !== v5Result.artifact.markdown) {
+    if (markdown !== deliveredResumeMarkdown(v5Result)) {
       return fail('JUDGE_SOURCE_MARKDOWN_MISMATCH', `案例 ${expected.caseNumber} 的 v5 Markdown 与检查点不一致`)
     }
     const sourceCheckpoint = checkpoint as EvaluationCheckpointEnvelope<V5WorkflowResult>

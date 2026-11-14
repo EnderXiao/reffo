@@ -118,7 +118,7 @@ function safeCoverage(value: unknown) {
   return numerator === null || denominator === null ? null : { numerator, denominator }
 }
 
-function sanitizeMetrics(value: unknown): NonNullable<V5DeliveryDiagnostics['metrics']> | null {
+function sanitizeMetrics(value: unknown, focusVersion = false): NonNullable<V5DeliveryDiagnostics['metrics']> | null {
   if (value === null) return null
   if (typeof value !== 'object' || Array.isArray(value)) return null
 
@@ -148,6 +148,7 @@ function sanitizeMetrics(value: unknown): NonNullable<V5DeliveryDiagnostics['met
   const plannedEvidenceCoverage = safeCoverage(metrics.plannedEvidenceCoverage)
   const stableCoreCoverage = safeCoverage(metrics.stableCoreCoverage)
   const primaryRequirementCoverage = safeCoverage(metrics.primaryRequirementCoverage)
+  const primaryWritingFocusCoverage = metrics.primaryWritingFocusCoverage === null ? null : safeCoverage(metrics.primaryWritingFocusCoverage)
   const outputLengthUnit = asEnum(metrics.outputLengthUnit, OUTPUT_LENGTH_UNITS)
   const outputLengthSoftMin = asNullableNonNegativeInteger(metrics.outputLengthSoftMin)
   const outputLengthHardMin = asNullableNonNegativeInteger(metrics.outputLengthHardMin)
@@ -157,6 +158,7 @@ function sanitizeMetrics(value: unknown): NonNullable<V5DeliveryDiagnostics['met
     || !plannedEvidenceCoverage
     || !stableCoreCoverage
     || !primaryRequirementCoverage
+    || (focusVersion && metrics.primaryWritingFocusCoverage !== null && !primaryWritingFocusCoverage)
     || !outputLengthUnit
     || (metrics.outputLengthSoftMin !== null && outputLengthSoftMin === null)
     || (metrics.outputLengthHardMin !== null && outputLengthHardMin === null)
@@ -176,7 +178,7 @@ function sanitizeMetrics(value: unknown): NonNullable<V5DeliveryDiagnostics['met
     plannedEvidenceCoverage,
     stableCoreCoverage,
     primaryRequirementCoverage,
-    renderedBusinessBulletCount: counts.renderedBusinessBulletCount!,
+    ...(focusVersion ? {primaryWritingFocusCoverage} : {}),    renderedBusinessBulletCount: counts.renderedBusinessBulletCount!,
     renderedTotalListItemCount: counts.renderedTotalListItemCount!,
     renderedProjectCount: counts.renderedProjectCount!,
     targetBusinessBulletMin: counts.targetBusinessBulletMin!,
@@ -200,7 +202,7 @@ function sanitizeMetrics(value: unknown): NonNullable<V5DeliveryDiagnostics['met
 function sanitizeDeliveryDiagnostics(value: unknown): V5DeliveryDiagnostics | null {
   const diagnostics = asRecord(value)
   if (
-    diagnostics.version !== 'v5-delivery-diagnostics-v2'
+    !['v5-delivery-diagnostics-v2', 'v5-delivery-diagnostics-v3'].includes(String(diagnostics.version))
     || diagnostics.taxonomyVersion !== 'v5-delivery-taxonomy-v1'
   ) return null
 
@@ -224,7 +226,7 @@ function sanitizeDeliveryDiagnostics(value: unknown): V5DeliveryDiagnostics | nu
   const usedSafeFallback = asBoolean(provenance.usedSafeFallback)
   const usedAnyFallback = asBoolean(provenance.usedAnyFallback)
   const interview = asEnum(provenance.interview, INTERVIEW_STATUSES)
-  const metrics = sanitizeMetrics(diagnostics.metrics)
+  const metrics = sanitizeMetrics(diagnostics.metrics, diagnostics.version === 'v5-delivery-diagnostics-v3')
 
   if (
     !execution
@@ -248,7 +250,7 @@ function sanitizeDeliveryDiagnostics(value: unknown): V5DeliveryDiagnostics | nu
   }
 
   const sanitized: V5DeliveryDiagnostics = {
-    version: 'v5-delivery-diagnostics-v2',
+    version: diagnostics.version as V5DeliveryDiagnostics['version'],
     taxonomyVersion: 'v5-delivery-taxonomy-v1',
     outcome: { execution, phaseReached, disposition, decisionReasonCodes },
     tracks: {

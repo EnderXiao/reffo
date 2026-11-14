@@ -123,7 +123,7 @@ describe('v5 resume extraction chunk boundaries', () => {
     expect(DEFAULT_RESUME_EXTRACTION_MAX_CHARACTERS).toBe(1_000)
     expect(DEFAULT_RESUME_EXTRACTION_MAX_ESTIMATED_OUTPUT_TOKENS).toBe(15_500)
     expect(RESUME_EXTRACTION_OUTPUT_TOKENS_PER_FACT).toBe(400)
-    expect(RESUME_EXTRACTION_CHUNK_PLAN_VERSION).toBe('deterministic-scope-plan-v10')
+    expect(RESUME_EXTRACTION_CHUNK_PLAN_VERSION).toBe('deterministic-scope-plan-v11')
   })
 
   test('scales the initial repair window and hard ceiling with the trusted shard plan', () => {

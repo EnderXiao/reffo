@@ -94,7 +94,10 @@ export class FallbackLlmProvider implements LlmProvider {
       for (let attemptNumber = 1; attemptNumber <= maxProviderAttempts; attemptNumber += 1) {
         physicalAttempts += 1
         try {
-          const result = await this.primary.complete({ ...input, model })
+          const result = await this.primary.complete({ ...input, model,
+            ...(physicalAttempts > 1 ? {callMetadata: {callReason: 'network_retry', contextMode: input.callMetadata?.contextMode ?? 'full',
+              repairScope: input.callMetadata?.repairScope ?? [],retryIndex: (input.callMetadata?.retryIndex ?? 0) + physicalAttempts - 1,
+              budgetRemaining: input.callMetadata?.budgetRemaining ?? null}} : {})})
 
           if (attemptNumber > 1 || modelIndex > 0) {
             await this.publishRecoveryStatus(input, 'recovery.succeeded', {
@@ -106,7 +109,7 @@ export class FallbackLlmProvider implements LlmProvider {
             })
           }
 
-          return { ...result, physicalAttempts: result.physicalAttempts ?? physicalAttempts }
+          return { ...result, physicalAttempts }
         } catch (error) {
           lastError = error
           if (isAbortError(error) || input.signal?.aborted || input.stepContext?.signal?.aborted) {
