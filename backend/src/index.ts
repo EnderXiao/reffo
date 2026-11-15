@@ -21,6 +21,8 @@ import {cleanupProviderCallEvents} from '@/services/provider-call-recorder'
 import {evaluateResumeAction} from '@/services/resume-action-evaluator'
 import {registerResumeActionEvaluator, startResumeReviewWorker} from '@/services/resume-review-service'
 import {startResumeExportCleanup} from '@/services/resume-export-service'
+import {requestTraceStorage, getTraceId} from '@/shared/request-context'
+import {logger} from '@/shared/logger'
 
 /**
  * 启动应用
@@ -64,10 +66,15 @@ async function bootstrap() {
       cors({
         origin: env.CORS_ORIGIN,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Reffo-Completion-Schema'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Reffo-Completion-Schema', 'X-Request-Id'],
         credentials: true,
       })
     )
+    // 请求级 traceId：响应头回传，供前端报障时定位
+    .onRequest(({ set }) => {
+      const traceId = getTraceId()
+      if (traceId) set.headers['X-Request-Id'] = traceId
+    })
     // 全局错误处理
     .onError(({ code, error, set }) => {
       console.error('Global error handler:', code, error)
@@ -122,10 +129,14 @@ async function bootstrap() {
     .use(shareLinkRoutes)
     .use(generationJobRoutes)
     // 启动服务
-    .listen({
-      hostname: env.HOST,
-      port: env.PORT,
-    })
+  Bun.serve({
+    hostname: env.HOST,
+    port: env.PORT,
+    fetch: (request) => {
+      const traceId = request.headers.get('x-request-id') ?? crypto.randomUUID()
+      return requestTraceStorage.run({ traceId }, () => app.handle(request))
+    },
+  })
 
   startSupabaseHarnessCleanup()
   startV5CheckpointCleanup()

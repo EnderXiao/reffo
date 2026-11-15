@@ -1,5 +1,6 @@
 import * as requestTransport from '@/utils/httpTransport';
 import {RequestError} from '@/utils/httpTransport';
+import {createTraceId} from '@/utils/trace-id';
 import type {RequestConfig, Response} from '@/utils/httpTransport';
 import {retry, type RetryOptions} from '@/utils/retry';
 import {redactSensitiveData} from '@/utils/redact';
@@ -140,6 +141,7 @@ export class ApiClient {
       url,
       header: {
         'Content-Type': 'application/json',
+        'X-Request-Id': createTraceId(),
         ...config.header,
         ...(this.authToken ? {Authorization: `Bearer ${this.authToken}`} : {}),
       },
@@ -196,6 +198,7 @@ export class ApiClient {
           message: requestError.message,
           statusCode: requestError.statusCode,
           details: requestError.response,
+          traceId: requestConfig.header?.['X-Request-Id'],
           timestamp: new Date().toISOString(),
         })
       }
