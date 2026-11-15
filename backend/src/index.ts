@@ -14,6 +14,7 @@ import { profileRoutes } from '@/routes/profile'
 import { startV5CheckpointCleanup } from '@/repositories/v5-checkpoint-repository'
 import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 import {generationJobRoutes} from '@/routes/generation-jobs'
+import {telemetryRoutes} from '@/routes/telemetry'
 import {generationJobWorker} from '@/services/generation-jobs'
 import {resumeExportRoutes} from '@/routes/resume-export'
 import {cleanupResumeTransientData} from '@/services/resume-transient-data'
@@ -23,6 +24,7 @@ import {registerResumeActionEvaluator, startResumeReviewWorker} from '@/services
 import {startResumeExportCleanup} from '@/services/resume-export-service'
 import {requestTraceStorage, getTraceId} from '@/shared/request-context'
 import {logger} from '@/shared/logger'
+import {reportError} from '@/shared/error-reporter'
 
 /**
  * 启动应用
@@ -76,8 +78,10 @@ async function bootstrap() {
       if (traceId) set.headers['X-Request-Id'] = traceId
     })
     // 全局错误处理
-    .onError(({ code, error, set }) => {
-      console.error('Global error handler:', code, error)
+    .onError(({ code, error, set, request, path }) => {
+      const status = code === 'VALIDATION' ? 400 : code === 'NOT_FOUND' ? 404 : 500
+      reportError({ path, method: request.method, status, errorCode: String(code), error })
+      logger.error('Global error handler:', error)
 
       if (code === 'VALIDATION') {
         set.status = 400
@@ -128,6 +132,7 @@ async function bootstrap() {
     .use(resumeExportRoutes)
     .use(shareLinkRoutes)
     .use(generationJobRoutes)
+    .use(telemetryRoutes)
     // 启动服务
   Bun.serve({
     hostname: env.HOST,
