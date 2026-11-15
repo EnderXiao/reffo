@@ -20,7 +20,8 @@
     "migrate:sqlite-to-supabase": "bun --env-file=.env.nonprod run scripts/migrate-sqlite-to-supabase.ts",
     "migrate:sqlite-to-supabase:nonprod": "bun --env-file=.env.nonprod run scripts/migrate-sqlite-to-supabase.ts",
     "migrate:sqlite-to-supabase:prod": "bun --env-file=.env.prod run scripts/migrate-sqlite-to-supabase.ts",
-    "mcp:start": "bun --env-file=.env.local run src/mcp/server.ts"
+    "mcp:start": "bun --env-file=.env.local run src/mcp/server.ts",
+    "test:e2e:analytics": "bun scripts/e2e-analytics.ts"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.0.0",
