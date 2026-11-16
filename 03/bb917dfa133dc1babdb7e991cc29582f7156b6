@@ -1,0 +1,16 @@
+backend/src/index.ts
+  h_1edca6cb63ac1c 18,137
+backend/src/routes/dashboard.ts
+  h_1edca6cb63ac1c 1-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03bb917dfa133dc1babdb7e991cc29582f7156b6",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
