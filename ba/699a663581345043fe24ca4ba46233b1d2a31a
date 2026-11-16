@@ -1,0 +1,22 @@
+backend/bun.lock
+  h_1edca6cb63ac1c 10,32-35,80-81,84-87,90-91,94-95,98-99,102-105,108-113,118-119,124-125,128-129,138-141,144-147,150-153,156-159,162-163,170-173,190-191,194-195,198-199,202-211,214-217,220-221,224,226-228,234-235,240-247,252-257,260-261,266-299,304-305,312-313,320-323,330-333,338-339,342-353,355-356
+backend/package.json
+  h_1edca6cb63ac1c 22-23,28
+backend/src/mcp/server.ts
+  h_1edca6cb63ac1c 1-113
+frontend/Taro/reffo-taro/src/utils/__tests__/analytics.test.ts
+  h_1edca6cb63ac1c 1-57
+frontend/Taro/reffo-taro/src/utils/analytics.ts
+  h_1edca6cb63ac1c 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba699a663581345043fe24ca4ba46233b1d2a31a",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
