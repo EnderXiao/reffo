@@ -1,0 +1,18 @@
+frontend/dashboard/src/App.tsx
+  h_1edca6cb63ac1c 1-36,38-73,75-120,122
+frontend/dashboard/src/components/blocks/error-table.tsx
+  h_1edca6cb63ac1c 1-178
+frontend/dashboard/src/services/dashboard.ts
+  h_1edca6cb63ac1c 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc8410473e94516492cd16630f409774a5c55076",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
