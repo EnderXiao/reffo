@@ -15,6 +15,7 @@ import { startV5CheckpointCleanup } from '@/repositories/v5-checkpoint-repositor
 import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 import {generationJobRoutes} from '@/routes/generation-jobs'
 import {telemetryRoutes} from '@/routes/telemetry'
+import {dashboardRoutes} from '@/routes/dashboard'
 import {generationJobWorker} from '@/services/generation-jobs'
 import {resumeExportRoutes} from '@/routes/resume-export'
 import {cleanupResumeTransientData} from '@/services/resume-transient-data'
@@ -133,6 +134,7 @@ async function bootstrap() {
     .use(shareLinkRoutes)
     .use(generationJobRoutes)
     .use(telemetryRoutes)
+    .use(dashboardRoutes)
     // 启动服务
   Bun.serve({
     hostname: env.HOST,
