@@ -1,0 +1,16 @@
+backend/package.json
+  h_1edca6cb63ac1c 23-24
+backend/scripts/e2e-analytics.ts
+  h_1edca6cb63ac1c 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dfa909d96fbbf2ff7825b04b196ef66ebc9d8a62",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
