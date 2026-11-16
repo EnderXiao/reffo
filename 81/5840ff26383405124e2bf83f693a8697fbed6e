@@ -1,0 +1,42 @@
+frontend/dashboard/.gitignore
+  h_1edca6cb63ac1c 1-6
+frontend/dashboard/components.json
+  h_1edca6cb63ac1c 1-38
+frontend/dashboard/index.html
+  h_1edca6cb63ac1c 1-12
+frontend/dashboard/package.json
+  h_1edca6cb63ac1c 1-34
+frontend/dashboard/pnpm-lock.yaml
+  h_1edca6cb63ac1c 1-2652
+frontend/dashboard/src/App.tsx
+  h_1edca6cb63ac1c 1-8
+frontend/dashboard/src/components/blocks/data-table-1.tsx
+  h_1edca6cb63ac1c 1-824
+frontend/dashboard/src/components/blocks/data-table-2.tsx
+  h_1edca6cb63ac1c 1-981
+frontend/dashboard/src/components/ui/button.tsx
+  h_1edca6cb63ac1c 1-57
+frontend/dashboard/src/index.css
+  h_1edca6cb63ac1c 1-148
+frontend/dashboard/src/lib/utils.ts
+  h_1edca6cb63ac1c 1
+frontend/dashboard/src/main.tsx
+  h_1edca6cb63ac1c 1-10
+frontend/dashboard/tsconfig.json
+  h_1edca6cb63ac1c 1-37
+frontend/dashboard/tsconfig.node.json
+  h_1edca6cb63ac1c 1-11
+frontend/dashboard/vite.config.ts
+  h_1edca6cb63ac1c 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "815840ff26383405124e2bf83f693a8697fbed6e",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
