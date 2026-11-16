@@ -1,0 +1,24 @@
+backend/src/index.ts
+  h_1edca6cb63ac1c 17,27,81-84,135
+backend/src/routes/telemetry.ts
+  h_1edca6cb63ac1c 1-84
+backend/src/shared/error-fingerprint.test.ts
+  h_1edca6cb63ac1c 1-27
+backend/src/shared/error-fingerprint.ts
+  h_1edca6cb63ac1c 1-29
+backend/src/shared/error-reporter.ts
+  h_1edca6cb63ac1c 1-100
+supabase/migrations/202611150001_observability.sql
+  h_1edca6cb63ac1c 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93f48fb11209b667e092494a6eb32151b167a7a3",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
