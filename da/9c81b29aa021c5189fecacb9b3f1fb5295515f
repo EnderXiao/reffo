@@ -1,0 +1,24 @@
+backend/src/index.ts
+  h_1edca6cb63ac1c 24-25,69,73-77,132-139
+backend/src/shared/logger.ts
+  h_1edca6cb63ac1c 1-22
+backend/src/shared/request-context.test.ts
+  h_1edca6cb63ac1c 1-25
+backend/src/shared/request-context.ts
+  h_1edca6cb63ac1c 1-16
+frontend/Taro/reffo-taro/src/services/api.ts
+  h_1edca6cb63ac1c 3,144,201
+frontend/Taro/reffo-taro/src/utils/trace-id.ts
+  h_1edca6cb63ac1c 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da9c81b29aa021c5189fecacb9b3f1fb5295515f",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
