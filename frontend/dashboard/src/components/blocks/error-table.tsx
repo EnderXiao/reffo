@@ -6,9 +6,9 @@ import type { ErrorEvent } from "@/services/dashboard";
 const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(" ");
 
-const canvas = "bg-white dark:bg-neutral-950";
-const greyFrame = "bg-neutral-50 dark:bg-neutral-900";
-const text1 = "text-neutral-900 dark:text-neutral-100";
+const canvas = "bg-transparent";
+const greyFrame = "bg-white/5";
+const text1 = "text-white";
 const text2 = "text-neutral-900/80 dark:text-neutral-100/80";
 const rowsRuled = "divide-y divide-neutral-900/8 dark:divide-neutral-100/8";
 const typeHeadingXs = "text-[16px]/[20px] font-[450] tracking-[-0.015em]";
@@ -31,9 +31,9 @@ const statusWord =
   "inline-flex items-start gap-1.5 text-[14px]/[16px] font-[450] tabular-nums";
 const statusWordSm =
   "inline-flex items-start gap-1 text-[13px]/[18px] font-[450] tabular-nums";
-const statusIdle = "text-neutral-900/66 dark:text-neutral-100/66";
-const statusOk = "text-neutral-900/80 dark:text-neutral-100/80";
-const statusWarn = "text-[oklch(49%_0.1_68)] dark:text-[oklch(80%_0.13_68)]";
+const statusIdle = "text-white/70";
+const statusOk = "text-white/85";
+const statusWarn = "text-[oklch(85%_0.13_68)]";
 const chip =
   "relative inline-flex h-7 max-w-full min-w-0 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[var(--rb-r-sm,6px)] border border-neutral-900/12 dark:border-neutral-100/14 bg-white dark:bg-neutral-900 px-2.5 text-[14px]/[16px] font-[450] text-neutral-900 dark:text-neutral-100 select-none shadow-[0_1px_2px_-1px_rgb(0_0_0/0.12)] dark:shadow-[0_1px_2px_-1px_rgb(0_0_0/0.36)] transition-[background-color,border-color,color,scale,outline-color] duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.98] active:duration-[60ms] motion-reduce:active:scale-100 hover:not-disabled:border-neutral-900/32 aria-pressed:border-neutral-900/32 aria-pressed:bg-neutral-900/9 aria-expanded:border-neutral-900/32 disabled:cursor-not-allowed disabled:text-neutral-900/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--rb-accent,oklch(20.5%_0_0))] dark:focus-visible:outline-[var(--rb-accent,oklch(100%_0_0))] dark:hover:not-disabled:border-neutral-100/32 dark:aria-pressed:border-neutral-100/32 dark:aria-pressed:bg-neutral-100/16 dark:aria-expanded:border-neutral-100/32 dark:disabled:text-neutral-100/40";
 const truncateFade =
@@ -44,8 +44,7 @@ const itemRow =
   "relative flex min-h-10 w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-1 py-2 text-left text-neutral-900 dark:text-neutral-100 transition-[background-color] duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)] has-[[data-description]]:min-h-14";
 const itemMeta =
   "shrink-0 text-[13px]/[18px] tabular-nums text-neutral-900/66 dark:text-neutral-100/66";
-const emptyTitle =
-  "text-[16px]/[20px] font-[450] tracking-[-0.015em] text-neutral-900 dark:text-neutral-100";
+const emptyTitle = "text-[16px]/[20px] font-[450] tracking-[-0.015em] text-white/90";
 const emptyDescription =
   "max-w-[48ch] text-[13px]/[18px] text-neutral-900/80 dark:text-neutral-100/80";
 const menuPopup =
@@ -58,15 +57,15 @@ const menuIndicator =
 const overlayEnter =
   "transition-opacity duration-[160ms] ease-[cubic-bezier(0.2,0,0,1)] starting:opacity-0 motion-reduce:transition-none";
 const paginationInfo =
-  "text-[13px]/[18px] tabular-nums text-neutral-900/66 dark:text-neutral-100/66";
+  "text-[13px]/[18px] tabular-nums text-white/70";
 const table =
   "w-full border-separate border-spacing-0 text-left text-[14px]/[20px]";
 const tableHead =
-  "h-8 border-b border-neutral-900/8 px-3 text-left align-middle text-[12px]/[16px] font-normal tabular-nums whitespace-nowrap text-neutral-900/66 dark:text-neutral-100/66 first:ps-4 last:pe-4 dark:border-neutral-100/8";
+  "h-8 border-b border-white/10 px-3 text-left align-middle text-[12px]/[16px] font-[450] tabular-nums whitespace-nowrap text-white/70 first:ps-4 last:pe-4";
 const tableRow =
-  "group transition-[background-color] duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)] hover:not-aria-selected:bg-neutral-900/5 aria-selected:bg-neutral-900/9 dark:hover:not-aria-selected:bg-neutral-100/5 dark:aria-selected:bg-neutral-100/9";
+  "group transition-[background-color] duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)] hover:not-aria-selected:bg-white/8";
 const tableCell =
-  "h-10 border-b border-neutral-900/8 px-3 align-middle whitespace-nowrap text-neutral-900 dark:text-neutral-100 group-last:border-b-0 first:ps-4 last:pe-4 dark:border-neutral-100/8";
+  "h-10 border-b border-white/8 px-3 align-middle whitespace-nowrap text-white/90 group-last:border-b-0 first:ps-4 last:pe-4";
 const numericCell = "text-right tabular-nums";
 const sortButton =
   "-mx-1.5 inline-flex h-7 min-w-0 cursor-pointer items-center gap-1 rounded-[var(--rb-r-sm,6px)] px-1.5 hover:bg-neutral-900/5 hover:text-neutral-900 data-sorted:text-neutral-900 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--rb-accent,oklch(20.5%_0_0))] dark:focus-visible:outline-[var(--rb-accent,oklch(100%_0_0))] dark:hover:bg-neutral-100/5 dark:hover:text-neutral-100 dark:data-sorted:text-neutral-100";
@@ -99,9 +98,10 @@ interface ErrorTableProps {
   page?: number;
   onPrev?: () => void;
   onNext?: () => void;
+  onRowClick?: (error: ErrorEvent) => void;
 }
 
-export default function ErrorTable({ errors, loading, hasMore, page = 1, onPrev, onNext }: ErrorTableProps) {
+export default function ErrorTable({ errors, loading, hasMore, page = 1, onPrev, onNext, onRowClick }: ErrorTableProps) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -115,7 +115,7 @@ export default function ErrorTable({ errors, loading, hasMore, page = 1, onPrev,
   }, [errors, query]);
 
   return (
-    <div className={cx(canvas, text1, "relative flex h-full min-h-[480px] w-full flex-col overflow-hidden")}>
+    <div className={cx(canvas, text1, "relative flex w-full flex-col")}>
       <header className={cx(greyFrame, "flex h-14 shrink-0 items-center gap-3 px-4 sm:px-6")}>
         <h2 className={cx(typeHeadingXs, "min-w-0 flex-1 truncate")}>错误列表</h2>
         <div className={cx(inputBox, fieldSm, "w-[220px]")}>
@@ -128,7 +128,7 @@ export default function ErrorTable({ errors, loading, hasMore, page = 1, onPrev,
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="max-h-[440px] overflow-auto">
         <table className={cx(table, "min-w-[720px]")}>
           <caption className="sr-only">错误事件</caption>
           <thead className={cx(canvas, "sticky top-0 z-20")}>
@@ -141,14 +141,14 @@ export default function ErrorTable({ errors, loading, hasMore, page = 1, onPrev,
           </thead>
           <tbody className={rowsRuled}>
             {loading ? (
-              <tr><td colSpan={4} className={cx(tableCell, "text-center text-neutral-900/50")}>加载中…</td></tr>
+              <tr><td colSpan={4} className={cx(tableCell, "text-center text-white/60")}>加载中…</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={4} className={cx(tableCell, "text-center")}>
                 <p className={emptyTitle}>暂无错误</p>
               </td></tr>
             ) : (
               filtered.map((e) => (
-                <tr key={e.trace_id} className={tableRow}>
+                <tr key={e.trace_id} className={cx(tableRow, "cursor-pointer")} onClick={() => onRowClick?.(e)}>
                   <td className={tableCell}>
                     <span className={cx(statusWord, statusTone(e.status), "whitespace-nowrap")}>
                       {e.status ?? "—"}
@@ -158,7 +158,7 @@ export default function ErrorTable({ errors, loading, hasMore, page = 1, onPrev,
                   <td className={cx(tableCell, "max-w-[360px]")}>
                     <span className={truncateFade} title={e.path}>{e.path}</span>
                   </td>
-                  <td className={cx(tableCell, "text-neutral-900/66 dark:text-neutral-100/66")}>{formatTime(e.created_at)}</td>
+                  <td className={cx(tableCell, "text-white/70")}>{formatTime(e.created_at)}</td>
                 </tr>
               ))
             )}
