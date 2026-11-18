@@ -1,0 +1,52 @@
+frontend/Taro/reffo-taro/src/pages/auth/index.tsx
+  h_1edca6cb63ac1c 13,226,304,330,433,451
+frontend/Taro/reffo-taro/src/pages/complete/usePageModel.ts
+  h_1edca6cb63ac1c 5,104-107,147,163
+frontend/Taro/reffo-taro/src/pages/create/usePageModel.ts
+  h_1edca6cb63ac1c 19,911,1013,1105,1214-1219,1432-1435,1456-1458,1511,1539
+frontend/Taro/reffo-taro/src/pages/index/PageView.h5.tsx
+  h_1edca6cb63ac1c 21,540-543
+frontend/Taro/reffo-taro/src/pages/index/model/usePageModel.ts
+  h_1edca6cb63ac1c 28,390,412-417,429-434,447
+frontend/Taro/reffo-taro/src/pages/landing/index.tsx
+  h_1edca6cb63ac1c 28,687-688,690-694,997,1031,1160,1604-1605
+frontend/Taro/reffo-taro/src/pages/profile/content.tsx
+  h_1edca6cb63ac1c 11,170,192,196
+frontend/Taro/reffo-taro/src/pages/profile/index.tsx
+  h_1edca6cb63ac1c 12,70,79
+frontend/Taro/reffo-taro/src/pages/result/components/ResumePanel.h5.tsx
+  h_1edca6cb63ac1c 9,65
+frontend/Taro/reffo-taro/src/pages/result/usePageModel.ts
+  h_1edca6cb63ac1c 27,1289-1292,1340,1405,1440
+frontend/Taro/reffo-taro/src/pages/share-landing/usePageModel.ts
+  h_1edca6cb63ac1c 5,48,72,131
+frontend/Taro/reffo-taro/src/pages/share/PageView.h5.tsx
+  h_1edca6cb63ac1c 13,77
+frontend/Taro/reffo-taro/src/pages/share/useShareAction.h5.ts
+  h_1edca6cb63ac1c 5,40,70
+frontend/Taro/reffo-taro/src/services/auth.ts
+  h_1edca6cb63ac1c 5,227-232,235-239,241,243-264,273,292,303,358
+frontend/Taro/reffo-taro/src/services/parse.ts
+  h_1edca6cb63ac1c 7,211-218,223-230
+frontend/Taro/reffo-taro/src/services/resumeExport.ts
+  h_1edca6cb63ac1c 2,29,32-33
+frontend/Taro/reffo-taro/src/services/resumeHistory.ts
+  h_1edca6cb63ac1c 2,176-178,186,201
+frontend/Taro/reffo-taro/src/services/share.ts
+  h_1edca6cb63ac1c 2,17-21,25,28-29
+frontend/Taro/reffo-taro/src/services/sourceResume.ts
+  h_1edca6cb63ac1c 2,76-78,93
+frontend/Taro/reffo-taro/src/store/backgroundGenerationStore.ts
+  h_1edca6cb63ac1c 3,54-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "577c262002d5e66c7ed16d726e60e4e86f206cb0",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
