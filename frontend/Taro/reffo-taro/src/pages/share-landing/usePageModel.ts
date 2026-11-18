@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react'
 import {shareApi} from '@/services/share'
 import {saveShareInviteToken} from '@/utils/share-invite'
 import {useAuthStore} from '@/store/authStore'
+import {track} from '@/utils/analytics'
 import {routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import type {PublicShareLink} from '@/types/share'
 import {SHARE_LANDING_REVEAL_DELAY_MS} from '@/utils/share/share-image-spec'
@@ -44,6 +45,7 @@ export function usePageModel(): ShareLandingViewModel {
   const revealStartedAtRef = useRef(0)
 
   const retry = useCallback(() => {
+    track('click_share_retry')
     setShare(null)
     setStatus('loading')
     setErrorMessage('')
@@ -67,6 +69,7 @@ export function usePageModel(): ShareLandingViewModel {
     shareApi.getPublicLink(token)
       .then(result => {
         if (!active) return
+        track('view_share_landing', {token, mode: result.mode})
         setShare(result)
         setStatus('teaser')
       })
@@ -125,6 +128,7 @@ export function usePageModel(): ShareLandingViewModel {
   }, [status])
 
   const handleExperience = useCallback(async () => {
+    track('click_share_experience')
     const session = await useAuthStore.getState().restoreSession()
     // 未登录用户暂存邀请 token，注册完成后凭它领取双方奖励。
     if (!session && token) {

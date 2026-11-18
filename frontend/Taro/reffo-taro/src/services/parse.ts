@@ -4,6 +4,7 @@ import {apiClient} from './api'
 import {authApi, type AuthSession} from './auth'
 import {getSupabasePublicConfig} from './runtime-config'
 import type {BrowserPickedFile} from '@/utils/web-file'
+import {track} from '@/utils/analytics'
 
 export interface OcrUsage {
   inputTokens?: number
@@ -207,12 +208,26 @@ export class ParseApi {
     if (options.landing) {
       payload.landing = true
     }
-    return apiClient.post<ParsedDocumentResult>('/parse/resume-file', payload, {timeout: 180000})
+    try {
+      const result = await apiClient.post<ParsedDocumentResult>('/parse/resume-file', payload, {timeout: 180000})
+      track('resume_parse_success', {parse_id: documentParseId(result), file_type: result.fileType})
+      return result
+    } catch (error) {
+      track('resume_parse_failed', {error: error instanceof Error ? error.message : String(error)})
+      throw error
+    }
   }
 
   async parseJobDescriptionImage(file: BrowserPickedFile): Promise<ParsedDocumentResult> {
     const payload = await buildPayload(file, 'image/png', 'jobDescription')
-    return apiClient.post<ParsedDocumentResult>('/parse/jd-image', payload, {timeout: 60000})
+    try {
+      const result = await apiClient.post<ParsedDocumentResult>('/parse/jd-image', payload, {timeout: 60000})
+      track('jd_parse_success', {parse_id: documentParseId(result)})
+      return result
+    } catch (error) {
+      track('jd_parse_failed', {error: error instanceof Error ? error.message : String(error)})
+      throw error
+    }
   }
 }
 

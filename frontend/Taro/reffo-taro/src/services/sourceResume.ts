@@ -1,4 +1,5 @@
 import {apiClient} from './api';
+import {track} from '@/utils/analytics';
 import type {SourceResumeSourceType, SourceResumeSummary, SourceResumeSummaryMeta} from '@/types';
 
 interface SourceResumeApiRecord {
@@ -72,7 +73,9 @@ export function toSourceResumeSummaryMetaFromSummary(
 export class SourceResumeApi {
   async saveSourceResume(payload: SaveSourceResumeRequest): Promise<SourceResumeSummary> {
     const response = await apiClient.post<SourceResumeApiRecord>('/source-resume', payload);
-    return toSourceResumeSummary(response);
+    const summary = toSourceResumeSummary(response);
+    track('source_resume_saved', {source_type: response.source_type});
+    return summary;
   }
 
   async getLatestSourceResume(): Promise<SourceResumeSummary | null> {
@@ -87,6 +90,7 @@ export class SourceResumeApi {
 
   async deleteSourceResume(id: string): Promise<void> {
     await apiClient.delete(`/source-resume/${encodeURIComponent(id)}`);
+    track('source_resume_deleted', {source_resume_id: id});
   }
 }
 

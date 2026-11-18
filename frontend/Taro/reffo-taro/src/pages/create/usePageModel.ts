@@ -16,6 +16,7 @@ import type {
 } from '@/types'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {feedback} from '@/utils/feedback'
+import {track} from '@/utils/analytics'
 import {routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import {storage} from '@/utils/storage'
 import {
@@ -907,6 +908,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         errorMessage: null,
       }))
 
+      track('click_upload_resume', {parse_id: parsedFile.parseId, extension: parsedFile.extension})
       feedback.success(`${parsedFile.name} 已上传`)
     } catch (error) {
       if (isResumeFileUploadCancelled(error)) {
@@ -1008,6 +1010,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         attachmentErrorMessage: null,
       }))
 
+      track('click_upload_jd_attachment', {parse_id: parsedAttachment.parseId})
       feedback.success(`${selectedFile.name} 已解析，可继续编辑`)
     } catch (error) {
       if (isResumeFileUploadCancelled(error)) {
@@ -1099,6 +1102,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
 
       setIsSavingCurrentStep(true)
 
+      track('click_history_update', {history_id: editHistoryId})
       try {
         const jdText = buildJobDescriptionPayload(jobDescriptionState)
         const company = jobDescriptionState.companyName.trim() || history.company
@@ -1207,6 +1211,12 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
           location: jobDescriptionState.baseLocation.trim(),
         })
         useBackgroundGenerationStore.getState().upsert(task)
+        track('click_generate', {
+          task_id: task.id,
+          flow: isLandingFlow ? 'landing' : 'create',
+          company: jobDescriptionState.companyName.trim(),
+          position: jobDescriptionState.positionName.trim(),
+        })
         if (generationRequestRef.current !== requestId) {
           if (task.status === 'queued' || task.status === 'running') {
             void generationTasksApi.action(task.id, 'cancel')
@@ -1419,6 +1429,10 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
 
       if (isLandingFlow) {
+        track('landing_generation_success', {
+          company: resolvedCompanyName,
+          position: resolvedPositionName,
+        })
         await storage.setItem('reffo.landing.seen', '1')
         useLandingFlowStore.getState().clear()
       }
@@ -1439,6 +1453,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       }
       const message = error instanceof Error ? error.message : '生成失败，请重试'
       resumeWorkspaceActions.failGeneration(workspaceRunId, message)
+      if (isLandingFlow) {
+        track('landing_generation_failed')
+      }
       setGenerationError(/ChunkLoadError|Loading (?:CSS )?chunk|Failed to fetch dynamically imported module/i.test(message)
         ? '页面资源加载失败，请检查连接后重试；如仍失败，请刷新页面。'
         : message)
@@ -1491,6 +1508,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
 
   const handleCancelGeneration = () => {
     generationRequestRef.current += 1
+    track('click_cancel_generation', {task_id: generationTaskRef.current})
     backgroundNavigationRef.current = false
     const taskId = generationTaskRef.current
     const taskStatus = generationTaskStatusRef.current
@@ -1518,6 +1536,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       feedback.message('正在提交生成任务，请稍候')
       return
     }
+    track('click_background_generation', {task_id: taskId})
     const requestId = generationRequestRef.current
     backgroundNavigationRef.current = true
     try {

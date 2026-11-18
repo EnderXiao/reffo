@@ -1,4 +1,5 @@
 import {apiClient} from '@/services/api'
+import {track} from '@/utils/analytics'
 import type {
   CreateShareLinkInput,
   CreatedShareLink,
@@ -13,13 +14,19 @@ export interface ReferralClaimRewardResult {
 
 export class ShareApi {
   async claimReferralReward(token: string, email: string): Promise<ReferralClaimRewardResult> {
-    return apiClient.post<ReferralClaimRewardResult>('/share-links/claim-reward', {token, email})
+    const result = await apiClient.post<ReferralClaimRewardResult>('/share-links/claim-reward', {token, email})
+    if (result.claimed) {
+      track('referral_reward_claimed', {bonus_count: result.bonus_count})
+    }
+    return result
   }
 
   async createLink(input: CreateShareLinkInput, idempotencyKey: string): Promise<CreatedShareLink> {
-    return apiClient.post<CreatedShareLink>('/share-links', input, {
+    const link = await apiClient.post<CreatedShareLink>('/share-links', input, {
       header: {'Idempotency-Key': idempotencyKey},
     })
+    track('share_created', {share_id: link.share_id})
+    return link
   }
 
   async getPublicLink(token: string): Promise<PublicShareLink> {

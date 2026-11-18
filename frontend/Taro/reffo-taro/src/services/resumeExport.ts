@@ -1,4 +1,5 @@
 import {apiClient} from './api'
+import {track} from '@/utils/analytics'
 
 export interface ResumeExportTarget {
   historyId: string
@@ -25,9 +26,11 @@ function exportPath(target: ResumeExportTarget) {
 
 export const resumeExportApi = {
   async create(target: ResumeExportTarget, requestId: string): Promise<ResumeExportMetadata> {
-    return apiClient.post<ResumeExportMetadata>(exportPath(target), {
+    const metadata = await apiClient.post<ResumeExportMetadata>(exportPath(target), {
       request_id: requestId, document_id: target.documentId, expected_revision: target.revision, format: 'pdf',
     }, {timeout: 120000})
+    track('resume_export', {export_id: metadata.export_id, format: 'pdf'})
+    return metadata
   },
   async status(target: ResumeExportTarget, exportId: string): Promise<ResumeExportMetadata> {
     return apiClient.get<ResumeExportMetadata>(`${exportPath(target)}/${encodeURIComponent(exportId)}`)

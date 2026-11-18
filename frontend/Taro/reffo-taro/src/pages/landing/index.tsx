@@ -25,6 +25,7 @@ import {feedback} from '@/utils/feedback'
 import {storage} from '@/utils/storage'
 import {savePendingLandingSourceResume} from '@/utils/pending-landing-data'
 import {navigation} from '@/utils/navigation'
+import {track} from '@/utils/analytics'
 import {
   formatResumeFileSize,
   isResumeFileUploadCancelled,
@@ -683,7 +684,14 @@ export default function LandingPage() {
     attachmentErrorMessage: null,
   })
 
+  const viewLandingTrackedRef = useRef(false)
+
   useEffect(() => {
+    if (!viewLandingTrackedRef.current) {
+      viewLandingTrackedRef.current = true
+      track('view_landing')
+    }
+
     let frameId = 0
     const refreshScale = () => {
       window.cancelAnimationFrame(frameId)
@@ -986,6 +994,7 @@ export default function LandingPage() {
     creatingJobAttachmentRequestRef.current += 1
     clearCreatingJobAttachmentProgress()
     useLandingFlowStore.getState().startJobDescription({...draft, id: job.id})
+    track('click_landing_select_job', {job_id: job.id})
     setCreatingJobDraft(draft)
     setIsReturningFromCreatingJob(false)
     setIsCreatingJob(true)
@@ -1019,6 +1028,7 @@ export default function LandingPage() {
       ...creatingJobDraft,
       id: LANDING_ONBOARDING_JOB_DESCRIPTIONS[selectedJobIndex]?.id,
     })
+    track('click_landing_start_generate', {job_id: LANDING_ONBOARDING_JOB_DESCRIPTIONS[selectedJobIndex]?.id})
     setIsLandingResultComplete(false)
     void runViewTransition('forward', () => {
       setInlineLandingPhase('analysis')
@@ -1147,6 +1157,7 @@ export default function LandingPage() {
         file: parsedFile.file,
         sizeLabel: formatResumeFileSize(parsedFile.size),
       })
+      track('click_landing_upload_resume', {parse_id: parsedFile.parseId})
       setQueueUploadProgress(100)
       resumeWorkspaceActions.setSourceResume(parsedFile.extractedText)
       useLandingFlowStore.getState().selectResume({
@@ -1590,6 +1601,8 @@ export default function LandingPage() {
   ])
 
   const completeOnboarding = async () => {
+    track('click_landing_skip')
+
     if (phase !== 'onboarding' || isLeaving) {
       return
     }

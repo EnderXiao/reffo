@@ -2,6 +2,7 @@ import {apiClient} from './api'
 import {getJSON, setJSON, storage} from '@/utils/storage'
 import {encryptPasswordPayload, type PasswordEncryptionConfig} from '@/utils/password-encryption'
 import {RequestError} from '@/utils/request'
+import {track} from '@/utils/analytics'
 import {getPublicRuntimeConfig} from './runtime-config'
 import {routePaths} from '@/shared/routing'
 
@@ -223,32 +224,44 @@ export class AuthApi {
   }
 
   async signInWithPassword(input: SignInWithPasswordInput): Promise<AuthSession> {
-    const response = await postEncryptedPasswordData<SupabaseAuthResponse>('/auth/sign-in', {
-      email: input.email.trim().toLowerCase(),
-      password: input.password,
-    })
-    const session = mapAuthResponse(response)
+    try {
+      const response = await postEncryptedPasswordData<SupabaseAuthResponse>('/auth/sign-in', {
+        email: input.email.trim().toLowerCase(),
+        password: input.password,
+      })
+      const session = mapAuthResponse(response)
 
-    await this.persistSession(session)
-    return session
+      await this.persistSession(session)
+      track('login_success')
+      return session
+    } catch (error) {
+      track('login_failed', {error: error instanceof Error ? error.message : String(error)})
+      throw error
+    }
   }
 
   async signUpWithPassword(input: SignUpWithPasswordInput): Promise<SignUpResult> {
-    const response = await postEncryptedPasswordData<SupabaseAuthResponse>('/auth/sign-up', {
-      email: input.email.trim().toLowerCase(),
-      password: input.password,
-      ...(input.displayName ? {display_name: input.displayName.trim()} : {}),
-    })
-    const session = response.access_token ? mapAuthResponse(response) : null
+    try {
+      const response = await postEncryptedPasswordData<SupabaseAuthResponse>('/auth/sign-up', {
+        email: input.email.trim().toLowerCase(),
+        password: input.password,
+        ...(input.displayName ? {display_name: input.displayName.trim()} : {}),
+      })
+      const session = response.access_token ? mapAuthResponse(response) : null
 
-    if (session) {
-      await this.persistSession(session)
-    }
+      if (session) {
+        await this.persistSession(session)
+        track('register_success')
+      }
 
-    return {
-      session,
-      user: response.user,
-      ...mapOtpConfig(response),
+      return {
+        session,
+        user: response.user,
+        ...mapOtpConfig(response),
+      }
+    } catch (error) {
+      track('register_failed', {error: error instanceof Error ? error.message : String(error)})
+      throw error
     }
   }
 
@@ -257,6 +270,7 @@ export class AuthApi {
       email: input.email.trim().toLowerCase(),
       ...(input.redirectTo ? {redirect_to: input.redirectTo} : {}),
     })
+    track('password_reset_requested')
 
     return mapOtpConfig(response)
   }
@@ -275,6 +289,7 @@ export class AuthApi {
       access_token: input.accessToken,
       password: input.password,
     })
+    track('password_updated')
   }
 
   async verifySignupOtp(input: VerifySignupOtpInput): Promise<AuthSession> {
@@ -285,6 +300,7 @@ export class AuthApi {
     const session = mapAuthResponse(response)
 
     await this.persistSession(session)
+    track('register_success')
     return session
   }
 
@@ -339,6 +355,7 @@ export class AuthApi {
     }
 
     await this.persistSession(session)
+    track('oauth_login_success')
     cleanOAuthCallbackUrl()
     return session
   }
