@@ -1,0 +1,30 @@
+backend/scripts/ingest-mark.ts
+  h_1edca6cb63ac1c 1-18
+backend/scripts/ingest-tracking.ts
+  h_1edca6cb63ac1c 1-24
+backend/src/index.ts
+  h_1edca6cb63ac1c 19-20,140-141
+backend/src/mcp/server.ts
+  h_1edca6cb63ac1c 105-195
+backend/src/routes/dashboard-pages.ts
+  h_1edca6cb63ac1c 1-111
+backend/src/routes/dashboard.ts
+  h_1edca6cb63ac1c 14-15,27,45-47,99-175,200-223
+backend/src/routes/tracking-requirements.ts
+  h_1edca6cb63ac1c 1-103
+supabase/migrations/202611160001_dashboard_pages.sql
+  h_1edca6cb63ac1c 1-28
+supabase/migrations/202611180001_tracking_requirements.sql
+  h_1edca6cb63ac1c 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0774de1941c17f53264b530706e29f8b022da16d",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
