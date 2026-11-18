@@ -16,6 +16,8 @@ import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 import {generationJobRoutes} from '@/routes/generation-jobs'
 import {telemetryRoutes} from '@/routes/telemetry'
 import {dashboardRoutes} from '@/routes/dashboard'
+import {dashboardPagesRoutes} from '@/routes/dashboard-pages'
+import {trackingRequirementRoutes} from '@/routes/tracking-requirements'
 import {generationJobWorker} from '@/services/generation-jobs'
 import {resumeExportRoutes} from '@/routes/resume-export'
 import {cleanupResumeTransientData} from '@/services/resume-transient-data'
@@ -135,6 +137,8 @@ async function bootstrap() {
     .use(generationJobRoutes)
     .use(telemetryRoutes)
     .use(dashboardRoutes)
+    .use(dashboardPagesRoutes)
+    .use(trackingRequirementRoutes)
     // 启动服务
   Bun.serve({
     hostname: env.HOST,

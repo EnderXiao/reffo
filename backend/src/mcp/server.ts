@@ -102,6 +102,97 @@ server.tool(
   },
 )
 
+// ===== 埋点需求台账工具 =====
+server.tool(
+  'listTrackingRequirements',
+  '查埋点需求台账：status 过滤（pending 待实现 / implemented 已上线 / 不传全部）',
+  { status: z.string().optional() },
+  async ({ status }) => {
+    const requirements = await client.request('/rest/v1/tracking_requirements', {
+      searchParams: { select: '*', ...(status ? { status: 'eq.' + status } : {}), order: 'created_at.desc' },
+    })
+    return textResult(requirements)
+  },
+)
+
+server.tool(
+  'getTrackingRequirement',
+  '按 event_name 查单个埋点需求（Agent 实现埋点前读取参数/页面/业务描述）',
+  { eventName: z.string() },
+  async ({ eventName }) => {
+    const requirements = await client.request('/rest/v1/tracking_requirements', {
+      searchParams: { select: '*', event_name: 'eq.' + eventName, limit: '1' },
+    })
+    return textResult(requirements)
+  },
+)
+
+server.tool(
+  'markTrackingRequirementImplemented',
+  '标记埋点需求为已上线（Agent 在前端实现埋点后调用）',
+  { eventName: z.string() },
+  async ({ eventName }) => {
+    await client.request('/rest/v1/tracking_requirements', {
+      method: 'PATCH',
+      searchParams: { event_name: 'eq.' + eventName },
+      body: { status: 'implemented', updated_at: new Date().toISOString() },
+    })
+    return textResult({ event_name: eventName, status: 'implemented' })
+  },
+)
+
+// ===== 低代码搭建工具 =====
+const CHART_TYPES = ['stat', 'line', 'bar', 'pie', 'funnel', 'table']
+
+server.tool(
+  'listChartTypes',
+  '列出可用的图表类型（stat 数字卡片 / line 折线 / bar 柱状 / pie 饼图 / funnel 漏斗 / table 表格）',
+  async () => textResult(CHART_TYPES),
+)
+
+server.tool(
+  'listDashboardPages',
+  '列出已建看板子页面',
+  async () => {
+    const pages = await client.request('/rest/v1/dashboard_pages', { searchParams: { select: 'id,name,slug', order: 'created_at.asc' } })
+    return textResult(pages)
+  },
+)
+
+server.tool(
+  'createDashboardPage',
+  '创建看板子页面',
+  { name: z.string(), slug: z.string().optional() },
+  async ({ name, slug }) => {
+    const id = crypto.randomUUID()
+    const finalSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || crypto.randomUUID().slice(0, 8)
+    await client.request('/rest/v1/dashboard_pages', { method: 'POST', body: { id, name, slug: finalSlug, created_at: new Date().toISOString() } })
+    return textResult({ id, name, slug: finalSlug })
+  },
+)
+
+server.tool(
+  'addChart',
+  '给看板页面添加图表卡片',
+  { pageId: z.string(), chartType: z.string(), title: z.string(), dataQuery: z.record(z.any()).optional(), position: z.number().optional() },
+  async ({ pageId, chartType, title, dataQuery, position }) => {
+    const id = crypto.randomUUID()
+    const chart = { id, page_id: pageId, chart_type: chartType, title, data_query: dataQuery ?? {}, position: position ?? 0, created_at: new Date().toISOString() }
+    await client.request('/rest/v1/dashboard_charts', { method: 'POST', body: chart })
+    return textResult(chart)
+  },
+)
+
+server.tool(
+  'deleteChart',
+  '删除图表卡片',
+  { chartId: z.string() },
+  async ({ chartId }) => {
+    await client.request('/rest/v1/dashboard_charts', { method: 'DELETE', searchParams: { id: 'eq.' + chartId } })
+    return textResult({ deleted: chartId })
+  },
+)
+
 async function main() {
   const transport = new StdioServerTransport()
   await server.connect(transport)
