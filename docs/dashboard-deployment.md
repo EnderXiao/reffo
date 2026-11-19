@@ -1,10 +1,10 @@
 # 管理后台部署与权限边界
 
-本次准备代码与部署配置，不创建生产服务、不迁移生产数据库、不合并 PR。
+本文记录已授权完成的生产看板/埋点补齐与后续运维边界；不是自动执行脚本。
 
 ## 部署架构
 
-- 看板：Render Static Site，独立域名 ops.reffo.cn，根目录 frontend/dashboard，发布 dist。
+- 看板：独立 Render Static Site，当前 https://reffo-dashboard-prod.onrender.com；自定义域名尚未绑定。根目录 frontend/dashboard，发布 dist。
 - API：复用现有 Bun/Elysia API。API 地址使用实际已配置的 HTTPS origin；示例 api.reffo.cn 不代表已配置该域名。
 - 数据：各环境自己的 Supabase Auth 与数据库；nonprod 和 prod 不共用凭据或 owner 名单。
 - MCP：仅本地 stdio，经后台 API 访问；不持有 service_role、不直连数据库、不提供远程监听。
@@ -44,8 +44,8 @@ APP_ENV=prod
 DATABASE_PROVIDER=supabase
 AUTH_REQUIRED=true
 SUPABASE_PROJECT_ENV=prod
-DASHBOARD_OWNER_USER_IDS=<auth-user-uuid>
-DASHBOARD_ALLOWED_ORIGINS=https://ops.reffo.cn
+DASHBOARD_OWNER_USER_IDS=
+DASHBOARD_ALLOWED_ORIGINS=https://reffo-dashboard-prod.onrender.com
 # CORS_ORIGIN 继续保留主产品精确来源；后台 origin 会单独合并
 ```
 
@@ -61,17 +61,48 @@ VITE_API_BASE_URL 只填 origin，不含 /api/v1；远端必须 HTTPS，本地�
 
 后端 CORS 对主产品保留原来源，同时加入后台来源；后台 guard 还会单独检查 Origin。CORS 不替代身份认证，无 Origin 的 CLI/MCP 仍必须带 token。代理/IP 白名单不作为唯一权限依据。
 
-## 发布顺序
+## 发布现状（2026-11-19）
 
-1. 在 nonprod 应用本分支的全部缺失迁移，包括 observability、dashboard_pages、tracking_requirements、dashboard_security 和 tracking_catalog。权限表、审计表及受限 RPC 仅供 service_role；tracking_catalog 为代码内已实现的 63 个事件补齐台账，遇到同名事件保留已有描述、参数与状态。不要把本地 SQLite 当成环境间同步来源。
-2. 在 Supabase Auth 准备后台账号（不在看板开放注册），写入 owner/viewer 成员记录。
-3. 更新现有 API 配置并发布安全加固版本。先验证无 token=401、普通产品用户=403、viewer 写入=403、owner 可读写、禁用即时拒绝。
-4. 在 Render 创建独立 Static Site。可参考 deploy/render-dashboard.yaml，手动填写公开环境值；不要直接 apply 未确认的生产配置。Node 22，pnpm 8.6.12（与现有 v6 lock 匹配），构建 frozen-lockfile + typecheck + build。
-5. 产品 H5 与看板需要分别构建发布。产品 H5 使用 frontend/Taro/reffo-taro 的 build:h5:nonprod 和 API_BASE_URL=https://reffo-api-nonprod.onrender.com/api/v1；仅发布后台 API 和 dashboard 不会发布业务埋点。将产品 H5 与看板发布到同一候选提交，确认真实页面操作的 /telemetry 请求及 analytics_events 落库，避免把“台账已实现”当成事件实际发生。
-6. 配置 ops 域名 HTTPS，绑定精确 Origin。以用户实际浏览器完成真实登录和跨域 PATCH/DELETE 预检验收；同一账号恢复前台只刷新内存 token，不卸载页面，服务端仍逐请求校验角色。
-7. nonprod 通过后重复生产流程。公开域名前补平台边缘限流；按需要使用 Cloudflare Access/VPN 作为附加防线，不替代 API RBAC。必须防止直访 API 的 Render 域名绕过边缘规则。
+PR #59 已合并到 main，应用提交为 0c93aa9c5b4a8e60a40b1f0fbbbfff901f68e4dc。生产 API 和产品 H5 由 Render main 自动部署；生产管理看板单独创建，同样运行该提交。
 
-Supavisor pooler 与 Supabase REST 是两条不同路径；pooler 故障不会必然阻止 REST。生产 REST/真实账号验收仍需独立完成，不要把本地 mock 验证当成生产通过。迁移可在 SQL Editor 执行，不需要先修 pooler。
+| 组件 | 地址或目标 | 已核实状态 |
+| --- | --- | --- |
+| 产品 H5 | https://reffo.cn | 原生 sendBeacon 上报 view_landing，API 200，并按浏览器 session 核实生产入库 |
+| API | https://reffo-api-prod.onrender.com | APP_ENV=prod、Supabase 生产项目、AUTH_REQUIRED=true；health 和 analysisCache 均 ok |
+| Dashboard | https://reffo-dashboard-prod.onrender.com | HTTPS 可用，main@0c93aa9；只持有公开 publishable key |
+| 数据库 | nptpliqejrfqwerhwavw | 看板表、4 个受限 RPC、RLS 与 63 项台账已验证 |
+| 管理员 | 生产 Supabase Auth 中已指定邮箱对应账号 | dashboard_members active owner；生产 UUID 单独核实，不复用 nonprod UUID |
+
+尚未配置自定义后台域名 ops.reffo.cn；当前使用 Render HTTPS 域名。生产 owner 的密码未读取或重置。真实生产 Auth 验收使用一次性 owner/viewer/普通用户：owner 可新增/修改台账，viewer 写 API 返回403，普通账号无后台权限；临时用户、成员与精确测试需求均已删除。
+
+### 本次迁移恢复记录
+
+1. GitHub run 44484320726 的 production migration 在 PgClient 连接失败处停止，后续 Render hook 跳过；但 Render autoDeploy 独立完成应用发布。因此该 workflow 的失败不等于应用未上线。
+2. 首先通过独立生产工作目录应用了看板/埋点 6 个迁移对象，并验证实际 schema/RLS；没有更改仓库的 nonprod 链接。
+3. 一次路径错误导致另外 8 个简历/缓存迁移 SQL 未执行，却错误地被 repair 标为 applied。该操作错误已纠正：仅将这 8 个实际缺失版本恢复 reverted，官方 dry-run 确认仅这 8 条，再由官方 db push --include-all 真正执行成功并自动登记。
+4. 恢复后逐表、列、触发器、函数最新定义和有效 ACL 验收通过；25 个原有版本对应实际结构；追加下述前向修复后共26条，官方dry-run返回Remote database is up to date。不能将 repair 标记本身当成 SQL 执行证据。
+5. 生产 API 原服务端 Supabase key 不匹配生产项目，REST 返回401 Invalid API key。验证正确生产 key 可读取 owner 后，只更新 SUPABASE_SECRET_KEY，并保留其他环境值；analysisCache 由 degraded 恢复 ok。密钥未写入代码或前端。
+6. 恢复时发现旧缓存撤销函数存在 text/uuid 比较错误42883，以及同源多阶段撤销重复命中21000。新增前向迁移 202611190003_cache_owner_text_and_revocation_dedup.sql，只修正两函数四处比较及撤销去重，不修改旧迁移。隔离 PostgreSQL 已复现旧错误并验证历史/源删除、导出撤销、跨用户和 guest 保留，测试写入全部回滚。该增量迁移已提交 cff2a34，先后应用 nonprod 和 production。最终 production 共26条migration，真实结构与权限验收通过，官方dry-run无待执行项。应用仍保持main@0c93aa9，无需因仅替换数据库函数重复发布应用。
+
+### 今后发布的硬性边界
+
+- 不重跑已完成的应用发布。任何迁移必须确认 production project ref、history 和真实 schema 三者一致；DB URL 与 secret 不允许从 nonprod 回退，也不输出到日志。
+- 当前 release-tag.yml 仍允许 SUPABASE_PROD_DB_URL 缺失时回退 SUPABASE_NONPROD_DB_URL，是待修的流水线风险；本次没有更改或重跑该 workflow。后续生产 migration 前必须改为缺专用 URL 即失败，并验证连接。
+- Render production API/Web 保持原来的 autoDeploy 设置。main 合并会绕过 GitHub migration 步骤独立触发部署；若要求严格先库后应用，应通过单独 PR 完善发布门，不把此次数据库恢复混同为该门已经实现。
+- 产品 H5 和 dashboard 分别构建。已实现台账不代表事件已发生；必须在目标环境验证产品页面真实操作、sendBeacon 请求与 analytics_events 同 session 落库。
+- 仅应用缺项，不删除业务数据、不复制 SQLite 测试库、不修改用户密码；应用回滚与数据库回滚分别判断。
+
+### Nonprod 参考
+
+Nonprod 使用独立项目 dinvspaogeakqspmjdxm、独立 owner 与密钥；API、产品 H5、dashboard 三个服务已部署1a4859d并验收。本仓库默认 linked 项目仍是 nonprod；所有 production CLI 操作使用独立临时工作目录和显式项目验证。
+
+### 验收范围与保留事项
+
+- 已用真实生产 Auth 临时账号完成 owner/viewer/普通账号验收：owner可新增/修改，viewer直接写403，普通账号无后台权限；账号、成员、精确测试需求均已清理，真实owner保留，密码未改。
+- 生产落地页会话 d15854d6-e7b9-41fa-bd50-08da05533c86 的 view_landing 已验证原生sendBeacon、API200和数据库入库；这是验收访问，不代表真实用户增长。
+- 未运行有付费模型调用的完整简历生成。删除修复的有数据执行回归在隔离PostgreSQL完成；生产只核验实际函数定义、权限、history和现有行数，未在真实业务数据上试删。
+- schema/history与API原配置恢复快照已保存于部署机权限0600的受限临时路径。含敏感配置的备份不进Git、PR或共享文档；临时目录不是长期备份，需后续归档到受控运维存储。
+- 旧GitHub发布run仍为failure，本次没有重跑它。生产DB URL连接问题、production URL fallback风险与Render autoDeploy发布门仍未修复，不能据本次手工恢复声称CI自动发布已恢复。
 
 ## 查询与服务保护
 
