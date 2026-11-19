@@ -1,0 +1,16 @@
+backend/tests/sql/cache-deletion-regression.sql
+  h_1edca6cb63ac1c 1-39
+supabase/migrations/202611190003_cache_owner_text_and_revocation_dedup.sql
+  h_1edca6cb63ac1c 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cff2a3413e09ed9aea615520a211969b900970e7",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
