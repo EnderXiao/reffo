@@ -3,15 +3,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import DitherWave from '@/components/react-bits/dither-wave';
 import { getAuthClient } from '@/services/auth';
-import { clearSession, fetchDashboardSession, isAbortError, requestMessage, setAccessErrorHandler, setAccessToken, type DashboardSession } from '@/services/dashboard';
+import { clearSession, fetchDashboardSession, setAccessErrorHandler, setAccessToken, type DashboardSession } from '@/services/dashboard';
+import { createDashboardSessionController, type DashboardAuthState } from '@/services/dashboard-session';
 
 const card = 'w-full max-w-sm space-y-5 rounded-2xl border border-white/25 bg-[#1a1430]/75 p-6 backdrop-blur-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.35),0_8px_32px_rgba(0,0,0,0.5)]';
 const action = 'h-10 rounded-xl border border-white/25 bg-white/15 px-4 text-[13px] text-white hover:bg-white/25';
 const input = 'h-10 w-full rounded-xl border border-white/25 bg-black/30 px-3 text-[14px] text-white outline-none focus:border-white/50';
-type AuthState = 'login' | 'checking' | 'ready' | 'forbidden' | 'error';
 
 export default function DashboardAuth({ children }: { children: (session: DashboardSession, logout: () => void) => ReactNode }) {
-  const [state, setState] = useState<AuthState>('login');
+  const [state, setState] = useState<DashboardAuthState>('login');
   const [session, setSession] = useState<DashboardSession | null>(null);
   const [message, setMessage] = useState('');
   const [configurationError, setConfigurationError] = useState('');
@@ -19,84 +19,57 @@ export default function DashboardAuth({ children }: { children: (session: Dashbo
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const auth = useRef<SupabaseClient>();
-  const check = useRef<AbortController>();
-  const verifiedUser = useRef<string>();
+  const checks = useRef<ReturnType<typeof createDashboardSessionController>>();
   const version = useRef(0);
 
-  const verify = useCallback(() => {
-    check.current?.abort();
-    const controller = new AbortController();
-    check.current = controller;
-    setState('checking');
-    setMessage('');
-    void fetchDashboardSession(controller.signal).then((data) => {
-      if (controller.signal.aborted) return;
-      setSession(data);
-      setState('ready');
-    }).catch((error: unknown) => {
-      if (controller.signal.aborted || isAbortError(error)) return;
-      setSession(null);
-      if (error instanceof Error && 'status' in error && error.status === 401) setState('login');
-      else if (error instanceof Error && 'status' in error && error.status === 403) setState('forbidden');
-      else setState('error');
-      setMessage(requestMessage(error));
-    });
-  }, []);
+  const verify = useCallback(() => checks.current?.retry(), []);
 
   const logout = useCallback(() => {
-    version.current += 1;
-    check.current?.abort();
-    verifiedUser.current = undefined;
-    clearSession();
-    setSession(null);
-    setState('login');
+    const attempt = ++version.current;
+    checks.current?.signOut();
     setPassword('');
     setMessage('');
     setSubmitting(false);
     // The SDK also owns only an in-memory session; clear its refresh token on logout.
     void auth.current?.auth.signOut({ scope: 'local' }).catch(() => {
-      setMessage('登录已退出，认证服务暂时不可用');
+      if (attempt === version.current) setMessage('登录已退出，认证服务暂时不可用');
     });
   }, []);
 
   useEffect(() => {
     let active = true;
     let subscription: { unsubscribe(): void } | undefined;
+    const controller = createDashboardSessionController({
+      clearSession,
+      setAccessToken,
+      fetchDashboardSession,
+      onChange(snapshot) {
+        if (!active) return;
+        setState(snapshot.state);
+        setSession(snapshot.session);
+        setMessage(snapshot.message);
+      },
+    });
+    checks.current = controller;
     setAccessErrorHandler((status) => {
       if (!active) return;
-      setSession(null);
       if (status === 401) {
         logout();
         setMessage('登录已失效，请重新登录');
-      } else {
-        check.current?.abort();
-        setState('forbidden');
-        setMessage('当前账号无后台权限，请联系管理员授权后重试');
-      }
+      } else controller.accessDenied(status);
     });
     try {
       const client = getAuthClient();
       auth.current = client;
       subscription = client.auth.onAuthStateChange((event, next) => {
         if (!active) return;
-        if (!next) {
-          clearSession();
-          verifiedUser.current = undefined;
-          setSession(null);
-          setState('login');
-          return;
+        if (event === 'SIGNED_OUT' || !next) {
+          version.current += 1;
+          setPassword('');
+          setSubmitting(false);
         }
-        // Keep this callback synchronous: Supabase holds its auth lock while notifying.
-        if (event !== 'TOKEN_REFRESHED' || verifiedUser.current !== next.user.id) {
-          clearSession();
-          setSession(null);
-          setState('checking');
-          verifiedUser.current = next.user.id;
-          setAccessToken(next.access_token);
-          verify();
-        } else {
-          setAccessToken(next.access_token);
-        }
+        // Synchronous notification only; the controller defers verification outside the auth lock.
+        controller.handleAuthStateChange(event, next);
       }).data.subscription;
     } catch (error) {
       setConfigurationError(error instanceof Error ? error.message : '认证配置不可用');
@@ -105,11 +78,12 @@ export default function DashboardAuth({ children }: { children: (session: Dashbo
       active = false;
       version.current += 1;
       subscription?.unsubscribe();
-      check.current?.abort();
-      clearSession();
+      controller.dispose();
+      checks.current = undefined;
+      auth.current = undefined;
       setAccessErrorHandler(undefined);
     };
-  }, [logout, verify]);
+  }, [logout]);
 
   async function login(event: FormEvent) {
     event.preventDefault();

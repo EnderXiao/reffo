@@ -72,6 +72,7 @@ export interface TrackingRequirement {
   status: 'pending' | 'implemented';
   created_at: string;
   updated_at: string;
+  received_count?: number;
 }
 
 export interface TrackingRequirementQuery {

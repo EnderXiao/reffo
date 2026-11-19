@@ -127,6 +127,13 @@ try{
   assert.equal(trackingNext.data.requirements.length,5);assert.equal(trackingNext.data.hasMore,false)
   const trackingSearch = await (await status('/tracking/requirements?search=catalog_104',200,'viewer')).json()
   assert.equal(trackingSearch.data.requirements[0].event_name,'catalog_104')
+  // 低频事件即使不在前十排行里，台账也须显示真实近七天计数。
+  for(let i=0;i<12;i++) for(let n=0;n<2;n++) ins.run(crypto.randomUUID(),'s','rank_'+i,'{}',now)
+  ins.run(crypto.randomUUID(),'s','catalog_104','{}',now)
+  ins.run(crypto.randomUUID(),'s','catalog_104','{}','2020-01-01T00:00:00.000Z')
+  const countedRequirement=await (await status('/tracking/requirements?eventName=catalog_104',200,'viewer')).json()
+  assert.equal(countedRequirement.data.requirements[0].received_count,1)
+  assert.equal(trackingFirst.data.requirements[0].received_count,0)
   const trackingPages = await (await status('/tracking/pages',200,'viewer')).json()
   assert.ok(trackingPages.data.pages.includes('创建页'));assert.ok(!trackingPages.data.pages.includes('pages/create'))
   // 已允许来源也不替代鉴权。

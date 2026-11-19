@@ -63,12 +63,13 @@ VITE_API_BASE_URL 只填 origin，不含 /api/v1；远端必须 HTTPS，本地�
 
 ## 发布顺序
 
-1. 在 nonprod 应用本分支的 observability、dashboard_pages、tracking_requirements、dashboard_security 四个迁移。最新迁移含权限表、审计表、受限聚合与台账分页 RPC；RPC 仅 service_role 可执行。
+1. 在 nonprod 应用本分支的全部缺失迁移，包括 observability、dashboard_pages、tracking_requirements、dashboard_security 和 tracking_catalog。权限表、审计表及受限 RPC 仅供 service_role；tracking_catalog 为代码内已实现的 63 个事件补齐台账，遇到同名事件保留已有描述、参数与状态。不要把本地 SQLite 当成环境间同步来源。
 2. 在 Supabase Auth 准备后台账号（不在看板开放注册），写入 owner/viewer 成员记录。
 3. 更新现有 API 配置并发布安全加固版本。先验证无 token=401、普通产品用户=403、viewer 写入=403、owner 可读写、禁用即时拒绝。
 4. 在 Render 创建独立 Static Site。可参考 deploy/render-dashboard.yaml，手动填写公开环境值；不要直接 apply 未确认的生产配置。Node 22，pnpm 8.6.12（与现有 v6 lock 匹配），构建 frozen-lockfile + typecheck + build。
-5. 配置 ops 域名 HTTPS，绑定精确 Origin。以用户实际浏览器完成真实登录和跨域 PATCH/DELETE 预检验收。
-6. nonprod 通过后重复生产流程。公开域名前补平台边缘限流；按需要使用 Cloudflare Access/VPN 作为附加防线，不替代 API RBAC。必须防止直访 API 的 Render 域名绕过边缘规则。
+5. 产品 H5 与看板需要分别构建发布。产品 H5 使用 frontend/Taro/reffo-taro 的 build:h5:nonprod 和 API_BASE_URL=https://reffo-api-nonprod.onrender.com/api/v1；仅发布后台 API 和 dashboard 不会发布业务埋点。将产品 H5 与看板发布到同一候选提交，确认真实页面操作的 /telemetry 请求及 analytics_events 落库，避免把“台账已实现”当成事件实际发生。
+6. 配置 ops 域名 HTTPS，绑定精确 Origin。以用户实际浏览器完成真实登录和跨域 PATCH/DELETE 预检验收；同一账号恢复前台只刷新内存 token，不卸载页面，服务端仍逐请求校验角色。
+7. nonprod 通过后重复生产流程。公开域名前补平台边缘限流；按需要使用 Cloudflare Access/VPN 作为附加防线，不替代 API RBAC。必须防止直访 API 的 Render 域名绕过边缘规则。
 
 Supavisor pooler 与 Supabase REST 是两条不同路径；pooler 故障不会必然阻止 REST。生产 REST/真实账号验收仍需独立完成，不要把本地 mock 验证当成生产通过。迁移可在 SQL Editor 执行，不需要先修 pooler。
 
@@ -91,7 +92,7 @@ DASHBOARD_ACCESS_TOKEN=<supabase-access-token>
 
 在后台专用的 viewer/owner 账号下签发短期 Supabase access token（到期重新提供），通过本地进程环境注入；不要给 Agent service_role。工具经 API 统一校验、限流、脱敏和审计。viewer 只查数据/需求，owner 才能改台账或低代码配置。未来远程 MCP 另行设计 OAuth/作用域/可撤销凭证，当前无远程传输。
 
-台账 implemented 仅表示代码已实现，历史界面“已上线”不证明生产发布；应结合部署版本和真实上报验证，不能由 markImplemented 自行推断已发布。当前数据都是本地验收台账，不会自动同步到生产。
+台账 implemented 仅表示代码已实现，历史界面“已上线”不证明生产发布；应结合部署版本和真实上报验证，不能由 markImplemented 自行推断已发布。已实现代码事件目录在 backend/catalog/tracking-events.json；202611190001_tracking_catalog.sql 补齐缺失目录，不覆盖用户手工维护内容。修改事件调用或参数时同步目录并新增增量 migration（不要修改已执行的迁移），运行 bun run check:tracking；CI 会校验。生产仍需迁移和产品 H5 发布，不会复制本地数据库。
 
 ## 验证和回滚
 

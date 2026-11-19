@@ -111,7 +111,7 @@
 }
 
 /* the plot: absolutely placed columns, each segment its own rounded box */
-.stb-plot { position: relative; width: 100%; touch-action: none; cursor: crosshair; }
+.stb-plot { position: relative; width: 100%; min-width: 0; overflow-x: clip; touch-action: none; cursor: crosshair; }
 
 .stb-base {
   position: absolute;
@@ -167,6 +167,8 @@
   top: 0;
   left: 0;
   box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -190,7 +192,9 @@
 
 .stb-tip b { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--fill-on, #17181a); }
 
-.stb-tip-row span { flex: 1; color: var(--stb-soft); }
+.stb-tip-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--stb-soft); }
+.stb-tip-head span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.stb-tip b { flex-shrink: 0; }
 
 .stb-tip-row b { font-weight: 400; }
 

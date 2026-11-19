@@ -22,7 +22,8 @@
     "migrate:sqlite-to-supabase:prod": "bun --env-file=.env.prod run scripts/migrate-sqlite-to-supabase.ts",
     "mcp:start": "bun --env-file=.env.local run src/mcp/server.ts",
     "test:e2e:analytics": "bun scripts/e2e-analytics.ts",
-    "test:dashboard:security": "bun scripts/run-dashboard-security.ts"
+    "test:dashboard:security": "bun scripts/run-dashboard-security.ts",
+    "check:tracking": "bun --no-env-file scripts/check-tracking-catalog.ts"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.0.0",

@@ -25,7 +25,7 @@ export class ShareApi {
     const link = await apiClient.post<CreatedShareLink>('/share-links', input, {
       header: {'Idempotency-Key': idempotencyKey},
     })
-    track('share_created', {share_id: link.share_id})
+    track('share_created', {share_id: link.id})
     return link
   }
 

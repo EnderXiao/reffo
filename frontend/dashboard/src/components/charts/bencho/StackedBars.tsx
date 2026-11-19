@@ -1,6 +1,7 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { animate, motion, useMotionValue } from "motion/react";
 import type { TrendSeriesPoint } from "@/services/dashboard";
+import { getColumnCount, getHoverGeometry, getPlotGeometry, getStackLayout, observePlotWidth, pickColumn } from "./stacked-bars-layout";
 import "./StackedBars.css";
 
 /* ══ Stacked bars（改编自 Bencho，MIT License，cabralorenzo/bencho） ═══════
@@ -8,7 +9,6 @@ import "./StackedBars.css";
    改编点：数据由外部注入（按天 × top N 维度），framer-motion 换成 motion/react，
    移除 Day/Week 切换与 escalated 条，深色主题由 CSS 变量覆盖。 */
 
-const PAD = 0;
 const CH = 104;
 const BH = 22;
 const SEG_GAP = 2;
@@ -31,24 +31,24 @@ export function StackedBars({
   bars?: number;
   gap?: number;
 }) {
-  const n = Math.max(2, Math.min(Math.round(bars), data.length));
+  const count = getColumnCount(data.length, bars);
   const [at, setAt] = useState<number | null>(null);
   const [seen, setSeen] = useState(false);
-  const root = useRef<HTMLDivElement | null>(null);
-  const plot = useRef<HTMLDivElement | null>(null);
+  const [plot, setPlot] = useState<HTMLDivElement | null>(null);
 
-  /* 响应式宽度：跟随外层卡片实际宽度 */
+  /* plot 挂载时立即测量；空数据切换、隐藏恢复和重新挂载都重新绑定。 */
   const [w, setW] = useState(0);
-  useEffect(() => {
-    const el = root.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width;
-      if (width && width > 0) setW(width);
+  useLayoutEffect(() => {
+    setAt(null);
+    if (!plot) return;
+    let previousWidth = -1;
+    return observePlotWidth(plot, (width) => {
+      if (width === previousWidth) return;
+      previousWidth = width;
+      setAt(null);
+      setW(width);
     });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [w > 0]);
+  }, [plot]);
 
   /* 首次渲染后一帧触发生长动画（headless 环境 IntersectionObserver 不可靠） */
   useEffect(() => {
@@ -59,7 +59,7 @@ export function StackedBars({
 
   /* 数据 → 柱：每个类目一列，val 按 categories 顺序堆叠 */
   const barsData = useMemo(() => {
-    const slice = data.slice(-n);
+    const slice = data.slice(data.length - count);
     return slice.map((d) => {
       const valMap = new Map(d.series.map((s) => [s.key, s.value]));
       return {
@@ -68,26 +68,16 @@ export function StackedBars({
         short: d.key.slice(5),
       };
     });
-  }, [data, categories, n]);
+  }, [data, categories, count]);
 
-  const W = w > 0 ? w : 300;
-  const CW = W - PAD * 2;
-  const g = Math.max(1, Math.min(gap, (CW - 3 * n) / (n - 1)));
-  const bw = (CW - g * (n - 1)) / n;
+  const n = barsData.length;
+  const geometry = useMemo(() => getPlotGeometry(w, n, gap), [w, n, gap]);
+  const { barWidth: bw } = geometry;
   const r = Math.min(2.5, bw / 2);
-  const totals = barsData.map((b) => b.vals.reduce((s, v) => s + v, 0));
-  const maxT = Math.max(1, ...totals);
-  const scale = (CH - LIFT - 2 - SEG_GAP * (categories.length - 1)) / maxT;
-  const layout = barsData.map((b) => {
-    let y = 0;
-    const segs = b.vals.map((v) => {
-      const h = Math.max(2, v * scale);
-      const s = { bottom: y, h };
-      y += h + SEG_GAP;
-      return s;
-    });
-    return { segs, top: y - SEG_GAP };
-  });
+  const { totals, layout } = useMemo(
+    () => getStackLayout(barsData.map((bar) => bar.vals), CH - LIFT - 2, SEG_GAP),
+    [barsData],
+  );
 
   const total = totals.reduce((s, v) => s + v, 0);
   const [gen, setGen] = useState(0);
@@ -102,37 +92,34 @@ export function StackedBars({
   const ringX = useMotionValue(0);
   const ringY = useMotionValue(0);
   const ringH = useMotionValue(0);
+  const ringW = useMotionValue(0);
   const tipX = useMotionValue(0);
-  const was = useRef<number | null>(null);
-  useEffect(() => {
-    if (at === null || at >= n) { was.current = null; return; }
-    const L = layout[at];
-    const left = at * (bw + g);
-    const x = left - 3;
-    const up = seen ? L.top : 0;
-    const y = CH - LIFT - up - 3;
+  const hover = useMemo(() => at === null ? null : getHoverGeometry(geometry, at, TIP_W), [geometry, at]);
+  const was = useRef<typeof geometry | null>(null);
+  useLayoutEffect(() => {
+    if (at === null || !hover) { was.current = null; return; }
+    const up = seen ? layout[at].top : 0;
+    const y = Math.max(0, CH - LIFT - up - 3);
     const h = up + LIFT + 1 + LIFT + 6;
-    const right = left + bw + 8;
-    const tx = right + TIP_W <= CW || left - 8 - TIP_W < 0
-      ? Math.min(CW - TIP_W, right)
-      : left - 8 - TIP_W;
+    const animations: Array<{ stop: () => void }> = [];
     const go = (mv: typeof ringX, v: number) => {
-      if (was.current === null) mv.set(v);
-      else animate(mv, v, SPRING);
+      // A resize must move bars and overlays together; hover keeps the Bencho spring.
+      if (was.current !== geometry) mv.set(v);
+      else animations.push(animate(mv, v, SPRING));
     };
-    go(ringX, x); go(ringY, y); go(ringH, h); go(tipX, tx);
-    was.current = at;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [at, n, bw, g, seen, w]);
+    go(ringX, hover.ringLeft); go(ringY, y); go(ringH, h); go(ringW, hover.ringWidth); go(tipX, hover.tipLeft);
+    was.current = geometry;
+    return () => animations.forEach((animation) => animation.stop());
+  }, [at, hover, geometry, layout, seen, ringX, ringY, ringH, ringW, tipX]);
 
-  const pick = (e: React.PointerEvent) => {
-    const b = plot.current?.getBoundingClientRect();
-    if (!b || b.width === 0) return;
-    const i = Math.floor(((e.clientX - b.left) / b.width) * n);
-    setAt(Math.max(0, Math.min(n - 1, i)));
+  const pick = (e: React.PointerEvent<HTMLDivElement>) => {
+    const bounds = e.currentTarget.getBoundingClientRect();
+    // Refresh synchronously with picking if a resize arrives before ResizeObserver.
+    setW(bounds.width);
+    setAt(pickColumn(getPlotGeometry(bounds.width, n, gap), e.clientX - bounds.left));
   };
 
-  const cur = at !== null && at < n ? barsData[at] : null;
+  const cur = at !== null && hover ? barsData[at] : null;
   const top2 = cur
     ? cur.vals.map((v, k) => ({ v, k })).sort((a, b) => b.v - a.v).slice(0, 2).filter((x) => x.v > 0)
     : [];
@@ -143,7 +130,6 @@ export function StackedBars({
 
   return (
     <div
-      ref={root}
       className="stb"
       data-colour="on"
       data-scrub={cur ? "" : undefined}
@@ -161,7 +147,7 @@ export function StackedBars({
       </div>
 
       <div
-        ref={plot}
+        ref={setPlot}
         className="stb-plot"
         style={{ height: CH + 1 + BH }}
         onPointerDown={(e) => {
@@ -182,9 +168,9 @@ export function StackedBars({
             key={i}
             className="stb-col"
             data-on={at === i || undefined}
-            style={{ left: i * (bw + g), width: bw, ["--i" as string]: i } as CSSProperties}
+            style={{ ...geometry.columns[i], ["--i" as string]: i } as CSSProperties}
           >
-            {layout[i].segs.map((s, k) => (
+            {layout[i].segs.map((s, k) => s.h > 0 && (
               <span
                 key={k}
                 className="stb-bar"
@@ -200,11 +186,12 @@ export function StackedBars({
 
         <motion.span
           className="stb-ring"
+          hidden={at !== null && layout[at]?.top === 0}
           aria-hidden
-          style={{ x: ringX, y: ringY, height: ringH, width: bw + 6 }}
+          style={{ x: ringX, y: ringY, height: ringH, width: ringW }}
         />
 
-        <motion.div className="stb-tip" style={{ x: tipX, width: TIP_W }} aria-hidden={!cur}>
+        <motion.div className="stb-tip" style={{ x: tipX, width: Math.min(TIP_W, geometry.width) }} aria-hidden={!cur}>
           {cur && (
             <>
               <div className="stb-tip-head">

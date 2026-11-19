@@ -69,7 +69,7 @@ export function usePageModel(): ShareLandingViewModel {
     shareApi.getPublicLink(token)
       .then(result => {
         if (!active) return
-        track('view_share_landing', {token, mode: result.mode})
+        track('view_share_landing', {share_id: result.share_id, mode: result.mode})
         setShare(result)
         setStatus('teaser')
       })

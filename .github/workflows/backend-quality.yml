@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'frontend/Taro/reffo-taro/src/**'
       - 'shared/**'
       - 'supabase/migrations/**'
       - '.github/scripts/supabase-migrate.sh'
@@ -29,6 +30,8 @@ jobs:
         run: bun ../shared/sync-resume-strategy.mjs --check
       - name: Check shared completion module
         run: bun ../shared/sync-resume-completion.mjs --check
+      - name: Check tracking catalog against frontend
+        run: bun --no-env-file scripts/check-tracking-catalog.ts
       - name: Validate Supabase migration inventory
         run: bash ../.github/scripts/supabase-migrate.sh --check-only
       - run: bunx --no-install tsc --noEmit

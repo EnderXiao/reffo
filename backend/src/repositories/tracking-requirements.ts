@@ -9,7 +9,7 @@ export async function listTrackingPages(): Promise<{pages: string[]}> {
   const rows = database().query('SELECT DISTINCT '+PAGE_SQL+' AS page FROM tracking_requirements ORDER BY page LIMIT 100').all() as Array<{page:string}>
   return {pages:rows.map(r=>r.page)}
 }
-interface Requirement {id:string;event_name:string;params:string[];page:string;description:string;status:'pending'|'implemented';created_at:string;updated_at:string}
+interface Requirement {id:string;event_name:string;params:string[];page:string;description:string;status:'pending'|'implemented';created_at:string;updated_at:string;received_count?:number}
 function database() {
   const db=getDatabase()
   db.exec("CREATE TABLE IF NOT EXISTS tracking_requirements (id TEXT PRIMARY KEY,event_name TEXT NOT NULL UNIQUE,params TEXT NOT NULL DEFAULT '[]',page TEXT NOT NULL,description TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL,updated_at TEXT NOT NULL);")
@@ -29,7 +29,17 @@ export async function listRequirements(status?:string,eventName?:string,limit=10
     const raw=database().query('SELECT * FROM tracking_requirements'+(where.length?' WHERE '+where.join(' AND '):'')+' ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?').all(...args,limit+1,offset) as Array<Omit<Requirement,'params'>&{params:string}>
     rows=raw.map(r=>({...r,params:JSON.parse(r.params)}))
   }
-  return {requirements:rows.slice(0,limit),hasMore:rows.length>limit}
+  const visible=rows.slice(0,limit)
+  const db=database()
+  const counts=new Map<string,number>()
+  if(visible.length && db.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='analytics_events'").get()) {
+    const now=new Date()
+    const since=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()-6)).toISOString()
+    const marks=visible.map(()=>'?').join(',')
+    const result=db.query('SELECT event_name,COUNT(*) AS count FROM analytics_events WHERE event_name IN ('+marks+') AND created_at >= ? GROUP BY event_name').all(...visible.map(r=>r.event_name),since) as Array<{event_name:string;count:number}>
+    for(const row of result)counts.set(row.event_name,row.count)
+  }
+  return {requirements:visible.map(row=>({...row,received_count:counts.get(row.event_name)??0})),hasMore:rows.length>limit}
 }
 export async function createRequirement(input:{event_name:string;params:string[];page:string;description:string}) {
   const row={...input,id:crypto.randomUUID(),status:'pending' as const,created_at:new Date().toISOString(),updated_at:new Date().toISOString()}

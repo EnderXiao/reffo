@@ -419,7 +419,7 @@ export default function App({ session, onLogout }: { session: DashboardSession; 
                   ))}
                   <div className="ms-auto flex flex-wrap items-center gap-3">
                     <input className="h-8 w-[200px] rounded-lg border border-white/25 bg-white/10 px-3 text-[12px] text-white outline-none backdrop-blur-xl placeholder:text-white/55 focus:border-white/45" placeholder="搜索事件名 / 描述" value={reqSearch} onChange={(e) => { setReqSearch(e.target.value); setReqListPage(1); }} />
-                    <span className="text-[12px] tabular-nums text-white/60">本页 {requirements.length} 个 · 对照实际收到的埋点数据</span>
+                    <span className="text-[12px] tabular-nums text-white/60">本页 {requirements.length} 个 · 对照近7天实际收到的埋点数据</span>
                   </div>
                 </div>
               </GlassCard>
@@ -444,7 +444,7 @@ export default function App({ session, onLogout }: { session: DashboardSession; 
                         <tr><td colSpan={5} className="py-8 text-center text-[13px] text-white/60">暂无已上线埋点</td></tr>
                       ) : (
                         requirements.map((r) => {
-                          const received = eventDist.find((e) => e.key === r.event_name);
+                          const received = r.received_count ?? 0;
                           return (
                             <tr key={r.id} className="transition-colors hover:bg-white/5">
                               <td className="px-3 py-2.5 font-mono text-[12.5px] font-[500] text-white">{r.event_name}</td>
@@ -452,7 +452,7 @@ export default function App({ session, onLogout }: { session: DashboardSession; 
                               <td className="whitespace-nowrap px-3 py-2.5 text-[12px] text-white/70">{pageLabel(r.page)}</td>
                               <td className="max-w-[360px] px-3 py-2.5 text-[12px] text-white/60">{r.description}</td>
                               <td className={"px-3 py-2.5 tabular-nums " + (received ? "text-emerald-300" : "text-white/50")}>
-                                {received ? received.value + " 次" : "暂无"}
+                                {received > 0 ? received + " 次" : "近7天暂无"}
                               </td>
                             </tr>
                           );
