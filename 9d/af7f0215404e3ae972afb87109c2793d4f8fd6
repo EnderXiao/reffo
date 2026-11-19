@@ -1,0 +1,14 @@
+docs/dashboard-deployment.md
+  h_1edca6cb63ac1c 3,7,47-48,64,66,68-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9daf7f0215404e3ae972afb87109c2793d4f8fd6",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
