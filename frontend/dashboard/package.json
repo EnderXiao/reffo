@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "description": "Reffo Dashboard - 异常与埋点数据看板",
   "type": "module",
-  "packageManager": "pnpm@10.33.2",
+  "packageManager": "pnpm@8.6.12",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -15,6 +17,7 @@
     "@hugeicons/core-free-icons": "^4.4.0",
     "@hugeicons/react": "^1.1.10",
     "@react-three/fiber": "^8.18.0",
+    "@supabase/supabase-js": "^2.119.0",
     "@tailwindcss/vite": "^4.3.5",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",

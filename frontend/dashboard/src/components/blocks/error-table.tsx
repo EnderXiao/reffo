@@ -148,7 +148,7 @@ export default function ErrorTable({ errors, loading, hasMore, page = 1, onPrev,
               </td></tr>
             ) : (
               filtered.map((e) => (
-                <tr key={e.trace_id} className={cx(tableRow, "cursor-pointer")} onClick={() => onRowClick?.(e)}>
+                <tr key={e.id} tabIndex={0} aria-label={"查看错误：" + e.path} className={cx(tableRow, "cursor-pointer focus-visible:outline-2 focus-visible:outline-white/60")} onClick={() => onRowClick?.(e)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onRowClick?.(e); } }}>
                   <td className={tableCell}>
                     <span className={cx(statusWord, statusTone(e.status), "whitespace-nowrap")}>
                       {e.status ?? "—"}

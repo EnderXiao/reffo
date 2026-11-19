@@ -1,16 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Activity01Icon, FileExclamationPointIcon, RefreshIcon, Search01Icon } from "@hugeicons/core-free-icons";
 import DitherWave from "@/components/react-bits/dither-wave";
 import ErrorTable from "@/components/blocks/error-table";
-import StatCard from "@/components/charts/StatCard";
-import LineChart from "@/components/charts/LineChart";
 import { StackedBars } from "@/components/charts/bencho/StackedBars";
 import BarChart from "@/components/charts/BarChart";
 import PieChart from "@/components/charts/PieChart";
 import ChartRenderer from "@/components/charts/ChartRenderer";
 import DetailModal from "@/components/DetailModal";
-import { fetchErrors, fetchIssues, fetchQuery, fetchPages, fetchPage, fetchAnalytics, fetchDaySeries, fetchTrackingRequirements, createTrackingRequirement, updateTrackingRequirementStatus, type ChartDatum, type ChartConfig, type DashboardPage, type ErrorEvent, type AnalyticsEvent, type TrendSeriesPoint, type TrackingRequirement, type Issue } from "@/services/dashboard";
+import ErrorDetails from "@/components/ErrorDetails";
+import { fetchErrors, fetchIssues, fetchQuery, fetchPages, fetchPage, fetchAnalytics, fetchDaySeries, fetchTrackingPages, fetchTrackingRequirements, createTrackingRequirement, updateTrackingRequirementStatus, isAbortError, requestMessage, type ChartDatum, type ChartConfig, type DashboardPage, type DashboardSession, type ErrorEvent, type AnalyticsEvent, type TrendSeriesPoint, type TrackingRequirement, type Issue } from "@/services/dashboard";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -51,19 +50,18 @@ function GlassCard({ title, caption, children, className }: { title?: string; ca
   );
 }
 
-export default function App() {
+export default function App({ session, onLogout }: { session: DashboardSession; onLogout: () => void }) {
+  const canWrite = session.role === "owner" && session.permissions.canWrite;
   const [tab, setTab] = useState<TabKey>("errors");
   const [errors, setErrors] = useState<ErrorEvent[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [errorTrend, setErrorTrend] = useState<ChartDatum[]>([]);
   const [errorSeries, setErrorSeries] = useState<TrendSeriesPoint[]>([]);
   const [analyticsSeries, setAnalyticsSeries] = useState<TrendSeriesPoint[]>([]);
   const [errorCats, setErrorCats] = useState<string[]>([]);
   const [analyticsCats, setAnalyticsCats] = useState<string[]>([]);
-  const [analyticsTrend, setAnalyticsTrend] = useState<ChartDatum[]>([]);
   const [eventDist, setEventDist] = useState<ChartDatum[]>([]);
   const [traceSearch, setTraceSearch] = useState("");
   const [traceResult, setTraceResult] = useState<ErrorEvent[] | null>(null);
@@ -79,60 +77,213 @@ export default function App() {
   const [reqStatusFilter, setReqStatusFilter] = useState<"all" | "pending" | "implemented">("all");
   const [reqSearch, setReqSearch] = useState("");
   const [showReqForm, setShowReqForm] = useState(false);
-  const [implPageFilter, setImplPageFilter] = useState<string | null>(null);
+  const [reqPages, setReqPages] = useState<string[]>([]);
+  const [reqListPage, setReqListPage] = useState(1);
+  const [reqHasMore, setReqHasMore] = useState(false);
+  const [reqLoading, setReqLoading] = useState(false);
+  const [reqError, setReqError] = useState('');
+  const [reqPagesError, setReqPagesError] = useState('');
+  const [reqRevision, setReqRevision] = useState(0);
+  const [debouncedReqSearch, setDebouncedReqSearch] = useState('');
+  const trackingActive = !selectedPage && (tab === 'requirements' || tab === 'implemented');
+  const trackingStatus = tab === 'implemented' ? 'implemented' : reqStatusFilter === 'all' ? undefined : reqStatusFilter;
 
-  const loadAll = () => {
-    fetchErrors({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })
-      .then((r) => { setErrors(r.errors); setHasMore(r.hasMore); setLoading(false); })
-      .catch(() => setLoading(false));
-    void fetchIssues().then((r) => setIssues(r.issues)).catch(() => undefined);
-    void fetchQuery({ source: "errors", groupBy: "day", range: 7 }).then((r) => setErrorTrend(r.rows)).catch(() => undefined);
-    void fetchQuery({ source: "analytics", groupBy: "day", range: 7 }).then((r) => setAnalyticsTrend(r.rows)).catch(() => undefined);
-    void fetchQuery({ source: "analytics", groupBy: "event_name", limit: 10 }).then((r) => setEventDist(r.rows)).catch(() => undefined);
-    void fetchDaySeries({ source: "errors", dimension: "fingerprint", range: 7, topN: 3 }).then((r) => { setErrorSeries(r.rows); setErrorCats(collectCategories(r.rows)); }).catch(() => undefined);
-    void fetchDaySeries({ source: "analytics", dimension: "event_name", range: 7, topN: 3 }).then((r) => { setAnalyticsSeries(r.rows); setAnalyticsCats(collectCategories(r.rows)); }).catch(() => undefined);
-    void fetchAnalytics({ limit: 50 }).then((r) => setAnalyticsList(r.events)).catch(() => undefined);
-    void fetchTrackingRequirements().then((r) => setRequirements(r.requirements)).catch(() => undefined);
-  };
+  const [revision, setRevision] = useState(0);
+  const [refreshing, setRefreshing] = useState(true);
+  const [refreshCooling, setRefreshCooling] = useState(true);
+  const [dataError, setDataError] = useState('');
+  const [listError, setListError] = useState('');
+  const [traceError, setTraceError] = useState('');
+  const [traceLoading, setTraceLoading] = useState(false);
+  const [pageError, setPageError] = useState('');
+  const [pageLoading, setPageLoading] = useState(false);
+  const [mutationError, setMutationError] = useState('');
+  const [writing, setWriting] = useState(false);
+  const lastRefresh = useRef(Date.now());
+  const writeController = useRef<AbortController>();
 
-  useEffect(() => { setLoading(true); loadAll(); void fetchPages().then((r) => setPages(r.pages)).catch(() => undefined); }, [page]);
+  useEffect(() => () => writeController.current?.abort(), []);
 
   useEffect(() => {
-    if (!selectedPage) { setPageCharts([]); return; }
-    void fetchPage(selectedPage.id).then((r) => setPageCharts(r.charts)).catch(() => undefined);
-  }, [selectedPage]);
-
-  useEffect(() => {
-    const q = traceSearch.trim();
-    if (!q) { setTraceResult(null); return; }
-    const timer = setTimeout(() => {
-      void fetchErrors({ limit: 20, traceId: q }).then((r) => setTraceResult(r.errors)).catch(() => setTraceResult([]));
-    }, 300);
+    const timer = setTimeout(() => setRefreshCooling(false), 3_000);
     return () => clearTimeout(timer);
-  }, [traceSearch]);
+  }, [revision]);
+
+  function refresh() {
+    if (refreshing || Date.now() - lastRefresh.current < 3_000) return;
+    lastRefresh.current = Date.now();
+    setRefreshCooling(true);
+    setRevision((value) => value + 1);
+  }
+
+  // Pagination only reloads the error list; aggregates are refreshed explicitly.
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setListError('');
+    void fetchErrors({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }, controller.signal)
+      .then((result) => { if (!controller.signal.aborted) { setErrors(result.errors); setHasMore(result.hasMore); } })
+      .catch((error: unknown) => { if (!controller.signal.aborted) setListError(requestMessage(error)); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [page, revision]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    setRefreshing(true);
+    setDataError('');
+    function apply<T>(promise: Promise<T>, update: (data: T) => void) {
+      return promise.then((data) => { if (!signal.aborted) update(data); });
+    }
+    void Promise.allSettled([
+      apply(fetchIssues(signal), (result) => setIssues(result.issues)),
+      apply(fetchQuery({ source: "analytics", groupBy: "event_name", limit: 10 }, signal), (result) => setEventDist(result.rows)),
+      apply(fetchDaySeries({ source: "errors", dimension: "fingerprint", range: 7, topN: 3 }, signal), (result) => { setErrorSeries(result.rows); setErrorCats(collectCategories(result.rows)); }),
+      apply(fetchDaySeries({ source: "analytics", dimension: "event_name", range: 7, topN: 3 }, signal), (result) => { setAnalyticsSeries(result.rows); setAnalyticsCats(collectCategories(result.rows)); }),
+      apply(fetchAnalytics({ limit: 50 }, signal), (result) => setAnalyticsList(result.events)),
+      apply(fetchPages(signal), (result) => setPages(result.pages)),
+    ]).then((results) => {
+      if (signal.aborted) return;
+      const failure = results.find((result) => result.status === 'rejected' && !isAbortError(result.reason));
+      if (failure?.status === 'rejected') setDataError(requestMessage(failure.reason));
+      setRefreshing(false);
+    });
+    return () => controller.abort();
+  }, [revision]);
+
+  useEffect(() => {
+    setPageCharts([]);
+    setPageError('');
+    if (!selectedPage) { setPageLoading(false); return; }
+    const controller = new AbortController();
+    setPageLoading(true);
+    void fetchPage(selectedPage.id, controller.signal)
+      .then((result) => { if (!controller.signal.aborted) setPageCharts(result.charts); })
+      .catch((error: unknown) => { if (!controller.signal.aborted) setPageError(requestMessage(error)); })
+      .finally(() => { if (!controller.signal.aborted) setPageLoading(false); });
+    return () => controller.abort();
+  }, [selectedPage, revision]);
+
+  useEffect(() => {
+    const query = traceSearch.trim();
+    setTraceResult(null);
+    setTraceError('');
+    if (!query) { setTraceLoading(false); return; }
+    const controller = new AbortController();
+    setTraceLoading(true);
+    const timer = setTimeout(() => {
+      void fetchErrors({ limit: PAGE_SIZE, traceId: query }, controller.signal)
+        .then((result) => { if (!controller.signal.aborted) setTraceResult(result.errors); })
+        .catch((error: unknown) => { if (!controller.signal.aborted) { setTraceError(requestMessage(error)); setTraceResult([]); } })
+        .finally(() => { if (!controller.signal.aborted) setTraceLoading(false); });
+    }, 300);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [traceSearch, revision]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedReqSearch(reqSearch.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [reqSearch]);
+
+  useEffect(() => {
+    if (!trackingActive) return;
+    const controller = new AbortController();
+    setReqPagesError('');
+    void fetchTrackingPages(controller.signal)
+      .then((result) => { if (!controller.signal.aborted) setReqPages(result.pages); })
+      .catch((error: unknown) => { if (!controller.signal.aborted) setReqPagesError(requestMessage(error)); });
+    return () => controller.abort();
+  }, [trackingActive, revision, reqRevision]);
+
+  useEffect(() => {
+    if (!trackingActive) return;
+    setReqLoading(true);
+    setReqError('');
+    setRequirements([]);
+    setReqHasMore(false);
+    if (reqSearch.trim() !== debouncedReqSearch) return;
+    const controller = new AbortController();
+    void fetchTrackingRequirements({
+      status: trackingStatus,
+      page: reqPageFilter ?? undefined,
+      search: debouncedReqSearch || undefined,
+      limit: PAGE_SIZE,
+      offset: (reqListPage - 1) * PAGE_SIZE,
+    }, controller.signal).then((result) => {
+      if (controller.signal.aborted) return;
+      // Return directly to the first page if concurrent changes emptied this page.
+      if (result.requirements.length === 0 && reqListPage > 1) {
+        setReqListPage(1);
+        return;
+      }
+      setRequirements(result.requirements);
+      setReqHasMore(result.hasMore);
+    }).catch((error: unknown) => {
+      if (!controller.signal.aborted) setReqError(requestMessage(error));
+    }).finally(() => {
+      if (!controller.signal.aborted) setReqLoading(false);
+    });
+    return () => controller.abort();
+  }, [trackingActive, trackingStatus, reqPageFilter, reqSearch, debouncedReqSearch, reqListPage, revision, reqRevision]);
+
+  async function saveRequirement(input?: TrackingRequirement) {
+    if (!canWrite || writing) return;
+    const controller = new AbortController();
+    writeController.current = controller;
+    setWriting(true);
+    setMutationError('');
+    try {
+      if (input) {
+        await updateTrackingRequirementStatus(input.id, input.status === 'implemented' ? 'pending' : 'implemented', controller.signal);
+      } else {
+        if (!reqForm.eventName.trim() || !reqForm.page.trim() || !reqForm.description.trim()) {
+          setMutationError('请填写埋点 id、触发页面和业务描述');
+          return;
+        }
+        await createTrackingRequirement({
+          eventName: reqForm.eventName.trim(),
+          params: reqForm.params.split(',').map((param) => param.trim()).filter(Boolean),
+          page: reqForm.page.trim(),
+          description: reqForm.description.trim(),
+        }, controller.signal);
+        if (controller.signal.aborted) return;
+        setReqForm({ eventName: '', params: '', page: '', description: '' });
+        setShowReqForm(false);
+      }
+      if (!controller.signal.aborted) setReqRevision((value) => value + 1);
+    } catch (error) {
+      if (!controller.signal.aborted) setMutationError(requestMessage(error));
+    } finally {
+      if (!controller.signal.aborted) setWriting(false);
+    }
+  }
 
   const todayCount = errors.filter((e) => e.created_at.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
   const totalAnalytics = eventDist.reduce((s, d) => s + d.value, 0);
   const activeTab: TabKey = selectedPage ? "page" : tab;
-  const reqPages = Array.from(new Set(requirements.map((r) => pageLabel(r.page))));
-  const filteredReqs = requirements.filter((r) => (
-    (!reqPageFilter || pageLabel(r.page) === reqPageFilter) &&
-    (reqStatusFilter === "all" || r.status === reqStatusFilter) &&
-    (!reqSearch.trim() || r.event_name.toLowerCase().includes(reqSearch.trim().toLowerCase()) || r.description.includes(reqSearch.trim()))
-  ));
-  const implementedReqs = requirements.filter((r) => r.status === "implemented" && (!implPageFilter || pageLabel(r.page) === implPageFilter));
+  const trackingPagination = (
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-[12px] text-white/70">
+      <span role="status">第 {reqListPage} 页 · 本页 {requirements.length} 条{reqHasMore ? ' · 还有更多' : ''}</span>
+      <div className="flex gap-2">
+        <button type="button" className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 disabled:opacity-40" disabled={reqListPage <= 1 || reqLoading || writing} onClick={() => setReqListPage((value) => Math.max(1, value - 1))}>上一页</button>
+        <button type="button" className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 disabled:opacity-40" disabled={!reqHasMore || reqLoading || writing || reqListPage * PAGE_SIZE > 10_000} onClick={() => setReqListPage((value) => value + 1)}>下一页</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="relative h-dvh w-full overflow-hidden text-white">
       <DitherWave className="absolute inset-0" speed={0.3} primaryColor="#6d28d9" secondaryColor="#3b0764" tertiaryColor="#a78bfa" opacity={0.7} />
       <div className="relative z-10 flex h-full flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-4 px-6">
+        <header className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3">
             <HugeiconsIcon icon={Activity01Icon} size={22} strokeWidth={1.8} aria-hidden="true" className="text-white/90" />
             <h1 className="text-[18px] font-[550] tracking-tight text-white">Reffo 看板</h1>
+            <span className="whitespace-nowrap rounded-full bg-white/10 px-2 py-1 text-[11px] text-white/80">{session.environment} · {session.role}{!canWrite && " · 只读"}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 rounded-full border border-white/15 bg-white/10 p-1 backdrop-blur-xl">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/15 bg-white/10 p-1 backdrop-blur-xl">
               <button type="button" aria-selected={activeTab === "errors"} className={glassTab} onClick={() => { setTab("errors"); setSelectedPage(null); }}>
                 <HugeiconsIcon icon={FileExclamationPointIcon} size={15} strokeWidth={1.8} aria-hidden="true" />
                 错误监控
@@ -141,10 +292,10 @@ export default function App() {
                 <HugeiconsIcon icon={Activity01Icon} size={15} strokeWidth={1.8} aria-hidden="true" />
                 埋点分析
               </button>
-              <button type="button" aria-selected={activeTab === "requirements"} className={glassTab} onClick={() => { setTab("requirements"); setSelectedPage(null); }}>
+              <button type="button" aria-selected={activeTab === "requirements"} className={glassTab} onClick={() => { if (tab !== "requirements") setReqListPage(1); setTab("requirements"); setSelectedPage(null); }}>
                 埋点需求
               </button>
-              <button type="button" aria-selected={activeTab === "implemented"} className={glassTab} onClick={() => { setTab("implemented"); setSelectedPage(null); }}>
+              <button type="button" aria-selected={activeTab === "implemented"} className={glassTab} onClick={() => { if (tab !== "implemented") setReqListPage(1); setTab("implemented"); setSelectedPage(null); }}>
                 已上线埋点
               </button>
               {pages.map((p) => (
@@ -157,21 +308,29 @@ export default function App() {
               <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={1.8} aria-hidden="true" className="pointer-events-none absolute left-3 text-white/75" />
               <input className="h-9 w-[240px] rounded-xl border border-white/25 bg-white/10 pl-9 pr-3 text-[14px] text-white outline-none backdrop-blur-xl placeholder:text-white/55 transition-colors hover:border-white/35 focus:border-white/45" placeholder="按 traceId 搜索" value={traceSearch} onChange={(e) => setTraceSearch(e.target.value)} />
             </div>
-            <button type="button" aria-label="刷新" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/80 backdrop-blur-xl hover:text-white" onClick={() => { setLoading(true); loadAll(); }}>
+            <button type="button" aria-label="刷新" title="刷新间隔至少 3 秒" disabled={refreshing || refreshCooling} className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/80 backdrop-blur-xl hover:text-white disabled:opacity-40" onClick={refresh}>
               <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={1.8} aria-hidden="true" />
             </button>
+            <button type="button" className="h-9 rounded-full border border-white/15 bg-white/10 px-3 text-[12px] text-white/80 hover:text-white" onClick={onLogout}>退出</button>
           </div>
         </header>
 
         <main className="min-h-0 flex-1 overflow-auto p-6">
+          {(dataError || listError || traceError || pageError || mutationError || (trackingActive && (reqError || reqPagesError))) && (
+            <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200/25 bg-[#1a1430]/85 p-3 text-[13px] text-amber-100 backdrop-blur-xl">
+              <span>{[dataError, listError, traceError, pageError, mutationError, ...(trackingActive ? [reqError, reqPagesError] : [])].filter(Boolean).filter((value, index, all) => all.indexOf(value) === index).join('；')}</span>
+              <button type="button" className="rounded-lg border border-white/20 px-3 py-1 disabled:opacity-40" disabled={refreshing || refreshCooling} onClick={refresh}>刷新重试</button>
+            </div>
+          )}
           {activeTab === "page" ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {pageCharts.map((chart) => (
                 <GlassCard key={chart.id} title={chart.title} caption={chart.chart_type} className={chart.chart_type === "bar" || chart.chart_type === "funnel" || chart.chart_type === "table" ? "md:col-span-2" : ""}>
-                  <ChartRenderer chart={chart} />
+                  <ChartRenderer chart={chart} refreshKey={revision} />
                 </GlassCard>
               ))}
-              {pageCharts.length === 0 && <p className="col-span-full py-12 text-center text-[13px] text-white/75">该页面暂无图表，可通过 MCP 添加</p>}
+              {pageLoading && <p role="status" className="col-span-full py-12 text-center text-[13px] text-white/75">图表加载中…</p>}
+              {!pageLoading && !pageError && pageCharts.length === 0 && <p className="col-span-full py-12 text-center text-[13px] text-white/75">该页面暂无图表，可通过 MCP 添加</p>}
             </div>
           ) : tab === "errors" ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -181,7 +340,7 @@ export default function App() {
               <GlassCard title="最高频错误" caption="次数"><div className="text-[28px] font-[500] tabular-nums text-white">{issues[0] ? issues[0].count + "×" : "—"}</div></GlassCard>
 
               <GlassCard title="错误趋势" caption="每日 top 3 · 悬停看明细" className="col-span-2"><StackedBars data={errorSeries} categories={errorCats} /></GlassCard>
-              <GlassCard title="错误列表" caption="分页" className="col-span-2"><ErrorTable errors={traceResult ?? errors} loading={loading} hasMore={hasMore && !traceResult} page={page} onPrev={() => setPage((p) => Math.max(1, p - 1))} onNext={() => setPage((p) => p + 1)} onRowClick={setSelectedError} /></GlassCard>
+              <GlassCard title="错误列表" caption="分页" className="col-span-2"><ErrorTable errors={traceResult ?? errors} loading={loading || traceLoading} hasMore={hasMore && !traceSearch.trim()} page={traceSearch.trim() ? 1 : page} onPrev={() => setPage((p) => Math.max(1, p - 1))} onNext={() => setPage((p) => p + 1)} onRowClick={setSelectedError} /></GlassCard>
             </div>
           ) : tab === "requirements" ? (
             <div className="flex h-full flex-col gap-4">
@@ -189,25 +348,25 @@ export default function App() {
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
                   <span className="mr-1 text-[12px] font-[500] text-white/60">状态</span>
                   {(["all", "pending", "implemented"] as const).map((s) => (
-                    <button key={s} type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (reqStatusFilter === s ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => setReqStatusFilter(s)}>
+                    <button key={s} type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (reqStatusFilter === s ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => { setReqStatusFilter(s); setReqListPage(1); }}>
                       {s === "all" ? "全部" : s === "pending" ? "待实现" : "已上线"}
                     </button>
                   ))}
                   <span className="mx-2 h-4 w-px bg-white/15" />
                   <span className="text-[12px] font-[500] text-white/60">页面</span>
-                  <button type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (reqPageFilter === null ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => setReqPageFilter(null)}>全部</button>
+                  <button type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (reqPageFilter === null ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => { setReqPageFilter(null); setReqListPage(1); }}>全部</button>
                   {reqPages.map((pg) => (
-                    <button key={pg} type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (reqPageFilter === pg ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => setReqPageFilter(reqPageFilter === pg ? null : pg)}>
+                    <button key={pg} type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (reqPageFilter === pg ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => { setReqPageFilter(reqPageFilter === pg ? null : pg); setReqListPage(1); }}>
                       {pg}
                     </button>
                   ))}
                   <div className="ms-auto flex items-center gap-2">
-                    <input className="h-8 w-[200px] rounded-lg border border-white/25 bg-white/10 px-3 text-[12px] text-white outline-none backdrop-blur-xl placeholder:text-white/55 focus:border-white/45" placeholder="搜索事件名 / 描述" value={reqSearch} onChange={(e) => setReqSearch(e.target.value)} />
-                    <button type="button" className="h-8 shrink-0 rounded-lg border border-white/25 bg-white/15 px-3 text-[12px] font-[500] text-white transition-colors hover:bg-white/25" onClick={() => setShowReqForm(true)}>+ 新增埋点</button>
+                    <input className="h-8 w-[200px] rounded-lg border border-white/25 bg-white/10 px-3 text-[12px] text-white outline-none backdrop-blur-xl placeholder:text-white/55 focus:border-white/45" placeholder="搜索事件名 / 描述" value={reqSearch} onChange={(e) => { setReqSearch(e.target.value); setReqListPage(1); }} />
+                    {canWrite && <button type="button" className="h-8 shrink-0 rounded-lg border border-white/25 bg-white/15 px-3 text-[12px] font-[500] text-white transition-colors hover:bg-white/25" onClick={() => { setMutationError(''); setShowReqForm(true); }}>+ 新增埋点</button>}
                   </div>
                 </div>
               </GlassCard>
-              <GlassCard title={"埋点需求（" + filteredReqs.length + "）"} caption="点击状态徽章切换 pending / implemented">
+              <GlassCard title={"埋点需求（本页 " + requirements.length + "）"} caption={canWrite ? "点击状态徽章切换 pending / implemented" : "只读权限"}>
                 <div className="max-h-[calc(100vh-320px)] overflow-auto">
                   <table className="w-full border-separate border-spacing-0 text-left text-[13px]">
                     <thead>
@@ -220,22 +379,21 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {filteredReqs.length === 0 ? (
+                      {reqLoading ? (
+                        <tr><td colSpan={5} role="status" className="py-8 text-center text-[13px] text-white/60">加载中…</td></tr>
+                      ) : reqError ? (
+                        <tr><td colSpan={5} className="py-8 text-center text-[13px] text-amber-200">台账加载失败，请刷新重试</td></tr>
+                      ) : requirements.length === 0 ? (
                         <tr><td colSpan={5} className="py-8 text-center text-[13px] text-white/60">没有匹配的埋点需求</td></tr>
                       ) : (
-                        filteredReqs.map((r) => (
+                        requirements.map((r) => (
                           <tr key={r.id} className="transition-colors hover:bg-white/5">
                             <td className="px-3 py-2.5 font-mono text-[12.5px] font-[500] text-white">{r.event_name}</td>
                             <td className="px-3 py-2.5 text-[12px] text-white/70">{r.params.length > 0 ? r.params.join(", ") : "—"}</td>
                             <td className="whitespace-nowrap px-3 py-2.5 text-[12px] text-white/70">{pageLabel(r.page)}</td>
                             <td className="max-w-[360px] px-3 py-2.5 text-[12px] text-white/60">{r.description}</td>
                             <td className="px-3 py-2.5">
-                              <button type="button" className={"shrink-0 cursor-pointer rounded-full px-2.5 py-0.5 text-[11px] font-[500] transition-colors " + (r.status === "implemented" ? "bg-emerald-400/20 text-emerald-300 hover:bg-emerald-400/30" : "bg-amber-400/20 text-amber-300 hover:bg-amber-400/30")} onClick={() => {
-                                const next = r.status === "implemented" ? "pending" : "implemented";
-                                void updateTrackingRequirementStatus(r.id, next).then(() => {
-                                  void fetchTrackingRequirements().then((x) => setRequirements(x.requirements)).catch(() => undefined);
-                                }).catch(() => undefined);
-                              }}>
+                              <button type="button" disabled={!canWrite || writing} title={canWrite ? '切换状态' : '当前账号仅可查看'} className={"shrink-0 cursor-pointer rounded-full px-2.5 py-0.5 text-[11px] font-[500] transition-colors disabled:cursor-default disabled:opacity-75 " + (r.status === "implemented" ? "bg-emerald-400/20 text-emerald-300 hover:enabled:bg-emerald-400/30" : "bg-amber-400/20 text-amber-300 hover:enabled:bg-amber-400/30")} onClick={() => { void saveRequirement(r); }}>
                                 {r.status === "implemented" ? "已上线" : "待实现"}
                               </button>
                             </td>
@@ -245,6 +403,7 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
+                {trackingPagination}
               </GlassCard>
             </div>
           ) : tab === "implemented" ? (
@@ -252,16 +411,19 @@ export default function App() {
               <GlassCard>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[12px] font-[500] text-white/60">页面</span>
-                  <button type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (implPageFilter === null ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => setImplPageFilter(null)}>全部</button>
+                  <button type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (reqPageFilter === null ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => { setReqPageFilter(null); setReqListPage(1); }}>全部</button>
                   {reqPages.map((pg) => (
-                    <button key={pg} type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (implPageFilter === pg ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => setImplPageFilter(implPageFilter === pg ? null : pg)}>
+                    <button key={pg} type="button" className={"shrink-0 cursor-pointer rounded-full px-3 py-1 text-[12px] font-[450] transition-colors " + (reqPageFilter === pg ? "bg-white/20 text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white")} onClick={() => { setReqPageFilter(reqPageFilter === pg ? null : pg); setReqListPage(1); }}>
                       {pg}
                     </button>
                   ))}
-                  <span className="ms-auto text-[12px] tabular-nums text-white/60">共 {implementedReqs.length} 个 · 对照实际收到的埋点数据</span>
+                  <div className="ms-auto flex flex-wrap items-center gap-3">
+                    <input className="h-8 w-[200px] rounded-lg border border-white/25 bg-white/10 px-3 text-[12px] text-white outline-none backdrop-blur-xl placeholder:text-white/55 focus:border-white/45" placeholder="搜索事件名 / 描述" value={reqSearch} onChange={(e) => { setReqSearch(e.target.value); setReqListPage(1); }} />
+                    <span className="text-[12px] tabular-nums text-white/60">本页 {requirements.length} 个 · 对照实际收到的埋点数据</span>
+                  </div>
                 </div>
               </GlassCard>
-              <GlassCard title={"已上线埋点（" + implementedReqs.length + "）"}>
+              <GlassCard title={"已上线埋点（本页 " + requirements.length + "）"}>
                 <div className="max-h-[calc(100vh-320px)] overflow-auto">
                   <table className="w-full border-separate border-spacing-0 text-left text-[13px]">
                     <thead>
@@ -274,10 +436,14 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {implementedReqs.length === 0 ? (
+                      {reqLoading ? (
+                        <tr><td colSpan={5} role="status" className="py-8 text-center text-[13px] text-white/60">加载中…</td></tr>
+                      ) : reqError ? (
+                        <tr><td colSpan={5} className="py-8 text-center text-[13px] text-amber-200">台账加载失败，请刷新重试</td></tr>
+                      ) : requirements.length === 0 ? (
                         <tr><td colSpan={5} className="py-8 text-center text-[13px] text-white/60">暂无已上线埋点</td></tr>
                       ) : (
-                        implementedReqs.map((r) => {
+                        requirements.map((r) => {
                           const received = eventDist.find((e) => e.key === r.event_name);
                           return (
                             <tr key={r.id} className="transition-colors hover:bg-white/5">
@@ -295,6 +461,7 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
+                {trackingPagination}
               </GlassCard>
             </div>
           ) : (
@@ -327,38 +494,9 @@ export default function App() {
         </main>
       </div>
 
-    {selectedError && (
-      <DetailModal title="错误详情" onClose={() => setSelectedError(null)}>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 text-[13px]">
-            <div><span className="font-[450] text-neutral-100">路径：</span><span className="break-all text-white">{selectedError.path}</span></div>
-            <div><span className="font-[450] text-neutral-100">方法：</span><span className="text-white">{selectedError.method}</span></div>
-            <div><span className="font-[450] text-neutral-100">状态：</span><span className="text-white">{selectedError.status ?? "—"}</span></div>
-            <div><span className="font-[450] text-neutral-100">错误码：</span><span className="text-white">{selectedError.error_code ?? "—"}</span></div>
-          </div>
-          <div>
-            <div className="mb-1.5 text-[12px] font-[500] uppercase tracking-wider text-neutral-100">Trace ID</div>
-            <div className="break-all rounded-lg bg-black/50 p-2.5 font-mono text-[12px] leading-relaxed text-white">{selectedError.trace_id}</div>
-          </div>
-          <div>
-            <div className="mb-1.5 text-[12px] font-[500] uppercase tracking-wider text-neutral-100">错误信息</div>
-            <div className="break-all rounded-lg bg-black/50 p-2.5 text-[13px] leading-relaxed text-white">{selectedError.error_message}</div>
-          </div>
-          {selectedError.error_stack && (
-            <div>
-              <div className="mb-1.5 text-[12px] font-[500] uppercase tracking-wider text-neutral-100">调用栈</div>
-              <pre className="max-h-[300px] overflow-x-auto overflow-y-auto rounded-lg bg-black/50 p-3 font-mono text-[13px] leading-6 whitespace-pre text-neutral-100">{selectedError.error_stack}</pre>
-            </div>
-          )}
-          <div>
-            <div className="mb-1.5 text-[12px] font-[500] uppercase tracking-wider text-neutral-100">上下文</div>
-            <pre className="max-h-[200px] overflow-auto rounded-lg bg-black/50 p-3 text-[13px] leading-6 whitespace-pre-wrap break-words text-neutral-100">{Object.keys(selectedError.context ?? {}).length > 0 ? JSON.stringify(selectedError.context, null, 2) : '暂无上下文数据'}</pre>
-          </div>
-        </div>
-      </DetailModal>
-    )}
+    {selectedError && <ErrorDetails error={selectedError} onClose={() => setSelectedError(null)} />}
 
-    {showReqForm && (
+    {showReqForm && canWrite && (
       <DetailModal title="新增埋点需求" onClose={() => setShowReqForm(false)}>
         <div className="space-y-4">
           <div>
@@ -377,19 +515,8 @@ export default function App() {
             <div className="mb-1.5 text-[12px] font-[500] uppercase tracking-wider text-neutral-100">业务逻辑描述</div>
             <textarea className="min-h-[100px] w-full rounded-xl border border-white/20 bg-black/40 px-3 py-2 text-[13px] text-white outline-none placeholder:text-white/40 focus:border-white/40" placeholder="什么时候触发、上报什么" value={reqForm.description} onChange={(e) => setReqForm((f) => ({...f, description: e.target.value}))} />
           </div>
-          <button type="button" className="h-10 w-full rounded-xl bg-white/15 text-[13px] font-[500] text-white transition-colors hover:bg-white/25" onClick={() => {
-            if (!reqForm.eventName.trim() || !reqForm.page.trim() || !reqForm.description.trim()) return;
-            void createTrackingRequirement({
-              eventName: reqForm.eventName.trim(),
-              params: reqForm.params.split(",").map((p) => p.trim()).filter(Boolean),
-              page: reqForm.page.trim(),
-              description: reqForm.description.trim(),
-            }).then(() => {
-              setReqForm({ eventName: "", params: "", page: "", description: "" });
-              setShowReqForm(false);
-              void fetchTrackingRequirements().then((r) => setRequirements(r.requirements)).catch(() => undefined);
-            }).catch(() => undefined);
-          }}>提交需求</button>
+          {mutationError && <p role="alert" className="text-[13px] text-amber-200">{mutationError}</p>}
+          <button type="button" disabled={!canWrite || writing} className="h-10 w-full rounded-xl bg-white/15 text-[13px] font-[500] text-white transition-colors hover:bg-white/25 disabled:opacity-40" onClick={() => { void saveRequirement(); }}>{writing ? '提交中…' : '提交需求'}</button>
         </div>
       </DetailModal>
     )}

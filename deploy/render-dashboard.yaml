@@ -1,0 +1,32 @@
+# 供 review 的独立看板 Blueprint；本次未应用到生产。
+services:
+  - type: web
+    name: reffo-dashboard-prod
+    runtime: static
+    rootDir: frontend/dashboard
+    branch: main
+    buildCommand: corepack pnpm@8.6.12 install --frozen-lockfile && corepack pnpm@8.6.12 typecheck && corepack pnpm@8.6.12 build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: 22.23.3
+      - key: VITE_API_BASE_URL
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: X-Frame-Options
+        value: DENY

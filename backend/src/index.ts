@@ -28,6 +28,7 @@ import {startResumeExportCleanup} from '@/services/resume-export-service'
 import {requestTraceStorage, getTraceId} from '@/shared/request-context'
 import {logger} from '@/shared/logger'
 import {reportError} from '@/shared/error-reporter'
+import {DashboardAccessError} from '@/auth/dashboard-access'
 
 /**
  * 启动应用
@@ -69,10 +70,11 @@ async function bootstrap() {
     // CORS 支持
     .use(
       cors({
-        origin: env.CORS_ORIGIN,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        origin: Array.isArray(env.CORS_ORIGIN) ? [...env.CORS_ORIGIN, ...env.DASHBOARD_ALLOWED_ORIGINS] : env.CORS_ORIGIN,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Reffo-Completion-Schema', 'X-Request-Id'],
         credentials: true,
+        exposeHeaders: ['X-Request-Id', 'Retry-After'],
       })
     )
     // 请求级 traceId：响应头回传，供前端报障时定位
@@ -82,6 +84,10 @@ async function bootstrap() {
     })
     // 全局错误处理
     .onError(({ code, error, set, request, path }) => {
+      if (error instanceof DashboardAccessError) {
+        set.status = error.status
+        return {success: false, error: {code: error.code, message: error.message}}
+      }
       const status = code === 'VALIDATION' ? 400 : code === 'NOT_FOUND' ? 404 : 500
       reportError({ path, method: request.method, status, errorCode: String(code), error })
       logger.error('Global error handler:', error)

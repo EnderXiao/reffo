@@ -4,7 +4,7 @@ import LineChart from "./LineChart";
 import BarChart from "./BarChart";
 import PieChart from "./PieChart";
 import FunnelChart from "./FunnelChart";
-import { fetchQuery, type ChartDatum } from "@/services/dashboard";
+import { fetchQuery, requestMessage, type ChartDatum } from "@/services/dashboard";
 
 export interface ChartConfig {
   id: string;
@@ -15,17 +15,26 @@ export interface ChartConfig {
   position: number;
 }
 
-export default function ChartRenderer({ chart }: { chart: ChartConfig }) {
+export default function ChartRenderer({ chart, refreshKey }: { chart: ChartConfig; refreshKey: number }) {
   const [data, setData] = useState<ChartDatum[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
+    setError('');
     const q = chart.data_query as { source?: 'errors' | 'analytics'; groupBy?: string; range?: number; limit?: number };
-    void fetchQuery(q).then((r) => setData(r.rows)).catch(() => setData([])).finally(() => setLoading(false));
-  }, [chart]);
+    void fetchQuery(q, controller.signal)
+      .then((result) => { if (!controller.signal.aborted) setData(result.rows); })
+      .catch((failure: unknown) => { if (!controller.signal.aborted) setError(requestMessage(failure)); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [chart, refreshKey]);
 
   if (loading) return <div className="py-8 text-center text-[13px] text-neutral-900/40 dark:text-neutral-100/40">加载中…</div>;
+
+  if (error) return <p role="alert" className="py-6 text-[13px] text-amber-200">{error}，请使用页面刷新按钮重试</p>;
 
   switch (chart.chart_type) {
     case "stat": {

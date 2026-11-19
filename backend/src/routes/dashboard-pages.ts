@@ -1,8 +1,10 @@
-import { Elysia, t } from 'elysia'
+import { t } from 'elysia'
+import { dashboardRouter } from '@/auth/dashboard-guard'
+import { DashboardAccessError } from '@/auth/dashboard-access'
 import { randomUUID } from 'node:crypto'
 import { env } from '@/config/env'
 import { getDatabase } from '@/repositories/database'
-import { createSupabaseRestClient } from '@/repositories/supabase/client'
+import { dashboardClient } from '@/repositories/dashboard-client'
 
 interface ChartConfig {
   id: string
@@ -33,22 +35,22 @@ function ensureSqliteTables() {
   return db
 }
 
-const client = () => createSupabaseRestClient({ useServiceRole: true })
+const client = dashboardClient
 
 async function listPages(): Promise<Array<{ id: string; name: string; slug: string }>> {
   if (env.DATABASE_PROVIDER === 'supabase') {
-    return client().request('/rest/v1/dashboard_pages', { searchParams: { select: 'id,name,slug', order: 'created_at.asc' } })
+    return client().request('/rest/v1/dashboard_pages', { searchParams: { select: 'id,name,slug', order: 'created_at.asc', limit: '100' } })
   }
   const db = ensureSqliteTables()
-  return db.query('SELECT id, name, slug FROM dashboard_pages ORDER BY created_at ASC').all() as unknown as Array<{ id: string; name: string; slug: string }>
+  return db.query('SELECT id, name, slug FROM dashboard_pages ORDER BY created_at ASC LIMIT 100').all() as unknown as Array<{ id: string; name: string; slug: string }>
 }
 
 async function getCharts(pageId: string): Promise<ChartConfig[]> {
   if (env.DATABASE_PROVIDER === 'supabase') {
-    return client().request('/rest/v1/dashboard_charts', { searchParams: { select: 'id,page_id,chart_type,title,data_query,position', page_id: `eq.${pageId}`, order: 'position.asc' } })
+    return client().request('/rest/v1/dashboard_charts', { searchParams: { select: 'id,page_id,chart_type,title,data_query,position', page_id: `eq.${pageId}`, order: 'position.asc', limit: '100' } })
   }
   const db = ensureSqliteTables()
-  const rows = db.query('SELECT id, page_id, chart_type, title, data_query, position FROM dashboard_charts WHERE page_id = ? ORDER BY position ASC').all(pageId) as unknown as Array<{ id: string; page_id: string; chart_type: string; title: string; data_query: string; position: number }>
+  const rows = db.query('SELECT id, page_id, chart_type, title, data_query, position FROM dashboard_charts WHERE page_id = ? ORDER BY position ASC LIMIT 100').all(pageId) as unknown as Array<{ id: string; page_id: string; chart_type: string; title: string; data_query: string; position: number }>
   return rows.map((r) => ({ ...r, data_query: JSON.parse(r.data_query || '{}') }))
 }
 
@@ -85,27 +87,32 @@ async function deleteChart(chartId: string) {
   }
 }
 
-export const dashboardPagesRoutes = new Elysia({ prefix: '/api/v1/dashboard' })
-  .get('/pages', async () => {
-    const pages = await listPages()
-    return { success: true, data: { pages } }
-  })
-  .post('/pages', async ({ body }) => {
-    const slug = body.slug || body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || randomUUID().slice(0, 8)
-    const page = await createPage(body.name, slug)
-    return { success: true, data: { page } }
-  }, { body: t.Object({ name: t.String(), slug: t.Optional(t.String()) }) })
-  .get('/pages/:id', async ({ params }) => {
-    const pages = await listPages()
-    const page = pages.find((p) => p.id === params.id)
-    const charts = await getCharts(params.id)
-    return { success: true, data: { page, charts } }
-  })
-  .post('/pages/:id/charts', async ({ params, body }) => {
-    const chart = await addChart(params.id, body.chartType, body.title, body.dataQuery ?? {}, body.position ?? 0)
-    return { success: true, data: { chart } }
-  }, { body: t.Object({ chartType: t.String(), title: t.String(), dataQuery: t.Optional(t.Record(t.String(), t.Any())), position: t.Optional(t.Number()) }) })
-  .delete('/charts/:id', async ({ params }) => {
+const idParams = t.Object({id: t.String({format:'uuid'})})
+const chartQuery = t.Object({
+  source: t.Optional(t.Union([t.Literal('errors'),t.Literal('analytics')])),
+  groupBy: t.Optional(t.Union(['day','hour','event_name','fingerprint','path','status','method','day_series'].map(x => t.Literal(x)))),
+  range: t.Optional(t.Integer({minimum:1,maximum:90})), limit: t.Optional(t.Integer({minimum:1,maximum:100})),
+  topN: t.Optional(t.Integer({minimum:1,maximum:8})), dimension: t.Optional(t.Union([t.Literal('event_name'),t.Literal('fingerprint')])),
+}, {additionalProperties:false})
+
+export const dashboardPagesRoutes = dashboardRouter()
+  .get('/pages', async () => ({success:true,data:{pages:await listPages()}}))
+  .post('/pages', async ({body}) => {
+    if ((await listPages()).length >= 100) throw new DashboardAccessError('DASHBOARD_CAPACITY','最多 100 个看板页面',400)
+    const slug = body.slug || body.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || randomUUID().slice(0,8)
+    return {success:true,data:{page:await createPage(body.name.trim(),slug)}}
+  }, {body:t.Object({name:t.String({minLength:1,maxLength:80,pattern:'\\S'}),slug:t.Optional(t.String({minLength:1,maxLength:80,pattern:'^[a-z0-9]+(-[a-z0-9]+)*$'}))},{additionalProperties:false})})
+  .get('/pages/:id', async ({params}) => {
+    const page = (await listPages()).find(p=>p.id===params.id)
+    if (!page) throw new DashboardAccessError('DASHBOARD_NOT_FOUND','看板页面不存在',404)
+    return {success:true,data:{page,charts:await getCharts(params.id)}}
+  }, {params:idParams})
+  .post('/pages/:id/charts', async ({params,body}) => {
+    if (!(await listPages()).some(p=>p.id===params.id)) throw new DashboardAccessError('DASHBOARD_NOT_FOUND','看板页面不存在',404)
+    if ((await getCharts(params.id)).length >= 50) throw new DashboardAccessError('DASHBOARD_CAPACITY','每页最多 50 张图表',400)
+    return {success:true,data:{chart:await addChart(params.id,body.chartType,body.title.trim(),body.dataQuery??{},body.position??0)}}
+  }, {params:idParams,body:t.Object({chartType:t.Union(['stat','line','bar','pie','funnel','table'].map(x=>t.Literal(x))),title:t.String({minLength:1,maxLength:100}),dataQuery:t.Optional(chartQuery),position:t.Optional(t.Integer({minimum:0,maximum:99}))},{additionalProperties:false})})
+  .delete('/charts/:id', async ({params}) => {
     await deleteChart(params.id)
-    return { success: true, data: {} }
-  })
+    return {success:true,data:{}}
+  }, {params:idParams})
