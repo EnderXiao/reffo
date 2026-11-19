@@ -24,6 +24,7 @@ import {
 } from '@/utils/result-session'
 import {createHistoryFromResult} from '@/utils/history-helper'
 import {feedback} from '@/utils/feedback'
+import {track} from '@/utils/analytics'
 import {RequestError} from '@/utils/httpTransport'
 import {markCompleteInitialEntry} from '@/utils/navigation-transition'
 import {appendRouteParams, routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
@@ -1285,7 +1286,10 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   }, [loading, ownerId, hasCompletionRemoteAccess, result?.optimized.completion_document, savedHistoryId, completionSaveStatus,
     recoveryConflict, editorActive, progress.optimized, progress.interview])
 
-  const handleSave = async () => saveCurrentResult(true)
+  const handleSave = async () => {
+    track('click_result_save')
+    return saveCurrentResult(true)
+  }
 
   const retryCompletionSave = async () => {
     upgradeAttemptsRef.current.clear()
@@ -1333,6 +1337,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       return
     }
 
+    track('click_result_complete')
     setIsCompleting(true)
     try {
       const historyId = await saveCurrentResult(false)
@@ -1397,6 +1402,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       return
     }
 
+    track('click_result_edit_history', {history_id: savedHistoryId})
     continuationRef.current += 1
     if (workspaceGenerationRunRef.current != null) {
       resumeWorkspaceActions.cancelGeneration(workspaceGenerationRunRef.current)
@@ -1431,6 +1437,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       return
     }
 
+    track('click_result_retry_stage', {stage})
     if (!resultContext) {
       feedback.message('缺少简历或岗位信息，无法重试')
       return

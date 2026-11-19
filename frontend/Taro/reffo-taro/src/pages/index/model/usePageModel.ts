@@ -25,6 +25,7 @@ import {
   bootstrapHomeData,
   hasBootstrappedHomeData,
 } from '@/utils/home-data-bootstrap'
+import {track} from '@/utils/analytics'
 
 const RESULT_RETURN_HOME_STORAGE_KEY = 'reffo.resultReturnHome'
 const NEW_CARD_ID_QUERY_KEY = 'newCardId'
@@ -386,6 +387,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
 
   const handleConfirmCreate = useCallback(() => {
     resumeWorkspaceActions.reset()
+    track('click_home_create', {has_source_resume: Boolean(latestSourceResumeSummary)})
 
     void route.navigate(appendRouteParams(routePaths.create, latestSourceResumeSummary ? {step: 'jobDescription'} : undefined))
   }, [latestSourceResumeSummary])
@@ -407,9 +409,12 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
 
     if (card.generationStatus === 'failed' && card.generationTaskId) {
       const taskId = card.generationTaskId
-      const runRetry = () => {void generationTasksApi.action(taskId, 'retry')
-        .then(task => useBackgroundGenerationStore.getState().upsert(task))
-        .catch(error => feedback.error(error instanceof Error ? error.message : '重试失败'))}
+      const runRetry = () => {
+        track('click_home_retry_generation', {task_id: taskId})
+        void generationTasksApi.action(taskId, 'retry')
+          .then(task => useBackgroundGenerationStore.getState().upsert(task))
+          .catch(error => feedback.error(error instanceof Error ? error.message : '重试失败'))
+      }
       feedback.modal({
         title: '这份简历生成失败了',
         content: '可以重试继续生成，或者删除这个任务。',
@@ -421,9 +426,12 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
         onConfirm: runRetry,
         onCancel: () => {
           feedback.modal({title: '删除失败的任务？', content: '删除后无法恢复，需要重新发起生成。', confirmText: '删除', tone: 'danger',
-            onConfirm: () => {void generationTasksApi.action(taskId, 'cancel')
-              .then(task => useBackgroundGenerationStore.getState().upsert(task))
-              .catch(error => feedback.error(error instanceof Error ? error.message : '删除失败'))}})
+            onConfirm: () => {
+              track('click_home_delete_task', {task_id: taskId})
+              void generationTasksApi.action(taskId, 'cancel')
+                .then(task => useBackgroundGenerationStore.getState().upsert(task))
+                .catch(error => feedback.error(error instanceof Error ? error.message : '删除失败'))
+            }})
         },
       })
       return Promise.resolve()
@@ -436,6 +444,7 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
       return Promise.resolve()
     }
 
+    track('click_home_card', {history_id: targetHistoryId})
     suppressNextNavigationTransition()
     return route.navigate(appendRouteParams(routePaths.result, {
       id: targetHistoryId,

@@ -8,6 +8,7 @@ import {profileApi, type ResumeQuota} from '@/services/profile'
 import {clearBusinessCache, getBusinessCacheSize} from '@/utils/storage'
 import {feedback} from '@/utils/feedback'
 import {routePaths, useRouteTransition} from '@/shared/routing'
+import {track} from '@/utils/analytics'
 import {appReleaseDate, appVersion} from '@/config/version'
 import ProfileAvatar from './components/ProfileAvatar'
 import './content.scss'
@@ -166,6 +167,7 @@ export default function ProfileContentPage() {
       tone: 'danger',
     })
     if (!confirmed || busy) return
+    track('click_profile_clear_cache')
     setBusy(true)
     try {
       const count = await clearBusinessCache()
@@ -187,9 +189,11 @@ export default function ProfileContentPage() {
       tone: 'danger',
     })
     if (!confirmed || busy) return
+    track('click_profile_delete_histories', {count: historyCount})
     setBusy(true)
     try {
       await clearHistories()
+      track('resume_history_cleared', {count: historyCount})
       feedback.success('已删除简历数据')
     } catch (error) {
       feedback.error(error instanceof Error ? error.message : '删除简历数据失败')

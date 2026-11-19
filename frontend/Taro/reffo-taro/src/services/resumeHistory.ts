@@ -1,4 +1,5 @@
 import {apiClient} from './api';
+import {track} from '@/utils/analytics';
 import {actionContentDigest} from '@/shared/resume-actions';
 import type {ResumeCompletionDocument} from '@/shared/resume-completion';
 import {normalizeMatching} from './resume';
@@ -172,7 +173,9 @@ export class ResumeHistoryApi {
       '/resume-history',
       toApiPayload(history),
     );
-    return toResumeHistory(response);
+    const saved = toResumeHistory(response);
+    track('resume_history_saved', {history_id: response.id});
+    return saved;
   }
 
   async updateHistory(id: string, updates: Partial<ResumeHistory>): Promise<ResumeHistory> {
@@ -180,6 +183,7 @@ export class ResumeHistoryApi {
       `/resume-history/${encodeURIComponent(id)}`,
       toApiUpdatePayload(updates),
     );
+    track('resume_history_updated', {history_id: id});
     return toResumeHistory(response);
   }
 
@@ -194,6 +198,7 @@ export class ResumeHistoryApi {
 
   async deleteHistory(id: string): Promise<void> {
     await apiClient.delete(`/resume-history/${encodeURIComponent(id)}`);
+    track('resume_history_deleted', {history_id: id});
   }
 
   async clearHistories(): Promise<void> {

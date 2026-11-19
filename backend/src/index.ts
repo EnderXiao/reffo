@@ -14,6 +14,10 @@ import { profileRoutes } from '@/routes/profile'
 import { startV5CheckpointCleanup } from '@/repositories/v5-checkpoint-repository'
 import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 import {generationJobRoutes} from '@/routes/generation-jobs'
+import {telemetryRoutes} from '@/routes/telemetry'
+import {dashboardRoutes} from '@/routes/dashboard'
+import {dashboardPagesRoutes} from '@/routes/dashboard-pages'
+import {trackingRequirementRoutes} from '@/routes/tracking-requirements'
 import {generationJobWorker} from '@/services/generation-jobs'
 import {resumeExportRoutes} from '@/routes/resume-export'
 import {cleanupResumeTransientData} from '@/services/resume-transient-data'
@@ -21,6 +25,10 @@ import {cleanupProviderCallEvents} from '@/services/provider-call-recorder'
 import {evaluateResumeAction} from '@/services/resume-action-evaluator'
 import {registerResumeActionEvaluator, startResumeReviewWorker} from '@/services/resume-review-service'
 import {startResumeExportCleanup} from '@/services/resume-export-service'
+import {requestTraceStorage, getTraceId} from '@/shared/request-context'
+import {logger} from '@/shared/logger'
+import {reportError} from '@/shared/error-reporter'
+import {DashboardAccessError} from '@/auth/dashboard-access'
 
 /**
  * 启动应用
@@ -62,15 +70,27 @@ async function bootstrap() {
     // CORS 支持
     .use(
       cors({
-        origin: env.CORS_ORIGIN,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Reffo-Completion-Schema'],
+        origin: Array.isArray(env.CORS_ORIGIN) ? [...env.CORS_ORIGIN, ...env.DASHBOARD_ALLOWED_ORIGINS] : env.CORS_ORIGIN,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Reffo-Completion-Schema', 'X-Request-Id'],
         credentials: true,
+        exposeHeaders: ['X-Request-Id', 'Retry-After'],
       })
     )
+    // 请求级 traceId：响应头回传，供前端报障时定位
+    .onRequest(({ set }) => {
+      const traceId = getTraceId()
+      if (traceId) set.headers['X-Request-Id'] = traceId
+    })
     // 全局错误处理
-    .onError(({ code, error, set }) => {
-      console.error('Global error handler:', code, error)
+    .onError(({ code, error, set, request, path }) => {
+      if (error instanceof DashboardAccessError) {
+        set.status = error.status
+        return {success: false, error: {code: error.code, message: error.message}}
+      }
+      const status = code === 'VALIDATION' ? 400 : code === 'NOT_FOUND' ? 404 : 500
+      reportError({ path, method: request.method, status, errorCode: String(code), error })
+      logger.error('Global error handler:', error)
 
       if (code === 'VALIDATION') {
         set.status = 400
@@ -121,11 +141,19 @@ async function bootstrap() {
     .use(resumeExportRoutes)
     .use(shareLinkRoutes)
     .use(generationJobRoutes)
+    .use(telemetryRoutes)
+    .use(dashboardRoutes)
+    .use(dashboardPagesRoutes)
+    .use(trackingRequirementRoutes)
     // 启动服务
-    .listen({
-      hostname: env.HOST,
-      port: env.PORT,
-    })
+  Bun.serve({
+    hostname: env.HOST,
+    port: env.PORT,
+    fetch: (request) => {
+      const traceId = request.headers.get('x-request-id') ?? crypto.randomUUID()
+      return requestTraceStorage.run({ traceId }, () => app.handle(request))
+    },
+  })
 
   startSupabaseHarnessCleanup()
   startV5CheckpointCleanup()

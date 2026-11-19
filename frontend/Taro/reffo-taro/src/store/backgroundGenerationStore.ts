@@ -1,5 +1,6 @@
 import {create} from 'zustand'
 import {generationTasksApi, type GenerationTask} from '@/services/backgroundGeneration'
+import {track} from '@/utils/analytics'
 
 interface BackgroundGenerationState {
   tasks: GenerationTask[]
@@ -48,6 +49,14 @@ export const useBackgroundGenerationStore = create<BackgroundGenerationState>((s
     const existing = state.tasks.find(item => item.id === task.id)
     if (existing && existing.updated_at > task.updated_at) {
       return state
+    }
+
+    // 终态埋点：仅状态真正变化时上报一次（重连重放由 updated_at 门禁挡住）
+    if (existing?.status !== task.status && (task.status === 'completed' || task.status === 'failed')) {
+      track(task.status === 'completed' ? 'generation_success' : 'generation_failed', {
+        task_id: task.id,
+        history_id: task.history_id,
+      })
     }
 
     return {tasks: mergeGenerationTasks([task], state.tasks)}
