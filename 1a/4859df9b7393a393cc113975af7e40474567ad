@@ -1,0 +1,58 @@
+.github/workflows/backend-quality.yml
+  h_1edca6cb63ac1c 7,33-34
+backend/catalog/tracking-events.json
+  h_1edca6cb63ac1c 1-537
+backend/package.json
+  h_1edca6cb63ac1c 25-26
+backend/scripts/check-tracking-catalog.ts
+  h_1edca6cb63ac1c 1-190
+backend/scripts/test-dashboard-security.ts
+  h_1edca6cb63ac1c 130-136
+backend/src/repositories/tracking-requirements.ts
+  h_1edca6cb63ac1c 12,32-42
+docs/dashboard-deployment.md
+  h_1edca6cb63ac1c 66,70-72,95
+frontend/Taro/reffo-taro/src/app.ts
+  h_1edca6cb63ac1c 8,33,36,54
+frontend/Taro/reffo-taro/src/pages/share-landing/usePageModel.ts
+  h_1edca6cb63ac1c 72
+frontend/Taro/reffo-taro/src/services/share.ts
+  h_1edca6cb63ac1c 28
+frontend/Taro/reffo-taro/src/utils/__tests__/analytics.test.ts
+  h_1edca6cb63ac1c 55-117
+frontend/Taro/reffo-taro/src/utils/analytics.ts
+  h_1edca6cb63ac1c 19-44,56,76,84
+frontend/dashboard/src/App.tsx
+  h_1edca6cb63ac1c 422,447,455
+frontend/dashboard/src/components/DashboardAuth.tsx
+  h_1edca6cb63ac1c 6-7,14,22,25,28-29,35,42-53,59,66-69,71-72,81-83,86
+frontend/dashboard/src/components/charts/bencho/StackedBars.css
+  h_1edca6cb63ac1c 114,170-171,195-197
+frontend/dashboard/src/components/charts/bencho/StackedBars.tsx
+  h_1edca6cb63ac1c 1,4,34,37,39,41-49,51,62,71,73-75,77-80,95,97-102,104,106-108,110-119,122,150,171,173,189,191,194
+frontend/dashboard/src/components/charts/bencho/stacked-bars-layout.ts
+  h_1edca6cb63ac1c 1-75
+frontend/dashboard/src/services/dashboard-session.ts
+  h_1edca6cb63ac1c 1-123
+frontend/dashboard/src/services/dashboard.ts
+  h_1edca6cb63ac1c 75
+frontend/dashboard/tests/dashboard-session.test.mjs
+  h_1edca6cb63ac1c 1-295
+frontend/dashboard/tests/stacked-bars.test.mjs
+  h_1edca6cb63ac1c 1-149
+supabase/migrations/202611190001_tracking_catalog.sql
+  h_1edca6cb63ac1c 1-555
+supabase/migrations/202611190002_tracking_received_counts.sql
+  h_1edca6cb63ac1c 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a4859df9b7393a393cc113975af7e40474567ad",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
