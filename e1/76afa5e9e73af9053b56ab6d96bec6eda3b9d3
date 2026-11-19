@@ -1,0 +1,88 @@
+backend/.env.example
+  h_1edca6cb63ac1c 31-35
+backend/package.json
+  h_1edca6cb63ac1c 24-25
+backend/scripts/ingest-mark.ts
+  h_1edca6cb63ac1c 1-5,8-13,15-18,20-29,31-32
+backend/scripts/ingest-tracking.ts
+  h_1edca6cb63ac1c 1-4,7-12,14-21,23-32,34,36-37
+backend/scripts/run-dashboard-security.ts
+  h_1edca6cb63ac1c 1-13
+backend/scripts/test-dashboard-security.ts
+  h_1edca6cb63ac1c 1-156
+backend/src/auth/dashboard-access.ts
+  h_1edca6cb63ac1c 1-47
+backend/src/auth/dashboard-guard.ts
+  h_1edca6cb63ac1c 1-141
+backend/src/config/env.ts
+  h_1edca6cb63ac1c 117-120,235-242
+backend/src/index.ts
+  h_1edca6cb63ac1c 31,73-74,77,87-90
+backend/src/mcp/server.test.ts
+  h_1edca6cb63ac1c 1-181
+backend/src/mcp/server.ts
+  h_1edca6cb63ac1c 5-29,32-38,41-50,57-122,124-167,169,172-177
+backend/src/repositories/dashboard-client.ts
+  h_1edca6cb63ac1c 1-11
+backend/src/repositories/dashboard-data.ts
+  h_1edca6cb63ac1c 1-116
+backend/src/repositories/dashboard-security.ts
+  h_1edca6cb63ac1c 1-41
+backend/src/repositories/supabase/client.ts
+  h_1edca6cb63ac1c 13-14,58-76,97,107,128-129
+backend/src/repositories/tracking-requirements.ts
+  h_1edca6cb63ac1c 1-54
+backend/src/routes/dashboard-pages.ts
+  h_1edca6cb63ac1c 1-3,7,38,42,45,50,53,90-115,117-118
+backend/src/routes/dashboard.ts
+  h_1edca6cb63ac1c 1-20,22-24,26-32,34-37,39-43,45-50,52-53
+backend/src/routes/tracking-requirements.ts
+  h_1edca6cb63ac1c 1-17
+backend/src/shared/dashboard-redaction.ts
+  h_1edca6cb63ac1c 1-32
+deploy/render-dashboard.yaml
+  h_1edca6cb63ac1c 1-32
+docs/dashboard-deployment.md
+  h_1edca6cb63ac1c 1-112
+frontend/dashboard/.env.example
+  h_1edca6cb63ac1c 1-5
+frontend/dashboard/package.json
+  h_1edca6cb63ac1c 6,10-11,20
+frontend/dashboard/pnpm-lock.yaml
+  h_1edca6cb63ac1c 23-25,1018-1074,1881-1885,2834-2837
+frontend/dashboard/src/App.tsx
+  h_1edca6cb63ac1c 1,11-12,53-54,80-89,91-110,112-117,119,121-129,132-174,176-179,181-185,187-260,265-273,279,283,285-286,295,298,311,314,319-324,329,332-333,343,351,357,359,364-365,369,382-386,389,396,406,414,416,420-423,426,439-443,446,464,497,499,518-519
+frontend/dashboard/src/components/DashboardAuth.tsx
+  h_1edca6cb63ac1c 1-164
+frontend/dashboard/src/components/ErrorDetails.tsx
+  h_1edca6cb63ac1c 1-77
+frontend/dashboard/src/components/blocks/error-table.tsx
+  h_1edca6cb63ac1c 151
+frontend/dashboard/src/components/charts/ChartRenderer.tsx
+  h_1edca6cb63ac1c 7,18,21,24,26,28-33,37-38
+frontend/dashboard/src/main.tsx
+  h_1edca6cb63ac1c 4,9
+frontend/dashboard/src/services/auth.ts
+  h_1edca6cb63ac1c 1-21
+frontend/dashboard/src/services/dashboard.ts
+  h_1edca6cb63ac1c 1-2,4,12-15,59-63,77-85,101-124,127-128,131-138,140-307
+frontend/dashboard/src/services/secure-url.ts
+  h_1edca6cb63ac1c 1-15
+frontend/dashboard/src/vite-env.d.ts
+  h_1edca6cb63ac1c 1-7
+frontend/dashboard/tests/dashboard.test.mjs
+  h_1edca6cb63ac1c 1-312
+supabase/migrations/202611180002_dashboard_security.sql
+  h_1edca6cb63ac1c 1-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e176afa5e9e73af9053b56ab6d96bec6eda3b9d3",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
