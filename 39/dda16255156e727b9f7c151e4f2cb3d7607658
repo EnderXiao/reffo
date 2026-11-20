@@ -1,0 +1,14 @@
+frontend/Taro/reffo-taro/src/services/resume.ts
+  h_1edca6cb63ac1c 283-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39dda16255156e727b9f7c151e4f2cb3d7607658",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
