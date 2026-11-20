@@ -1,0 +1,28 @@
+backend/src/http-error-handler.test.ts
+  h_1edca6cb63ac1c 1-87
+backend/src/http-error-handler.ts
+  h_1edca6cb63ac1c 1-65
+backend/src/index.ts
+  h_1edca6cb63ac1c 29,84
+backend/src/shared/error-fingerprint.ts
+  h_1edca6cb63ac1c 4
+backend/src/shared/error-reporter.test.ts
+  h_1edca6cb63ac1c 1-40
+backend/src/shared/error-reporter.ts
+  h_1edca6cb63ac1c 5,92-100,103-115,120
+frontend/Taro/reffo-taro/src/services/__tests__/backgroundGeneration.test.ts
+  h_1edca6cb63ac1c 130-157
+frontend/Taro/reffo-taro/src/services/backgroundGeneration.ts
+  h_1edca6cb63ac1c 37,110-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96568e0c9418887012ab5f1925e6f31bada5aa6f",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
