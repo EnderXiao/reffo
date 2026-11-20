@@ -415,7 +415,8 @@ export function createDashboardClient(options: { apiOrigin?: string; fetcher?: t
     async requestDiagnosticAnalysis(runId: string, signal?: AbortSignal) {
       // 分析耗时较长，放宽只读请求的默认 20s 超时；429 展示服务端限流文案，502 提示稍后重试。
       try {
-        return await request<DiagnosticAnalysisResult>('/diagnostics/runs/' + encodeURIComponent(runId) + '/analysis', {}, { method: 'POST', signal, timeoutMs: 120_000 });
+        // 必须带请求体：dashboard guard 要求写请求为 JSON Content-Type，空 body 会被拒绝。
+        return await request<DiagnosticAnalysisResult>('/diagnostics/runs/' + encodeURIComponent(runId) + '/analysis', {}, { method: 'POST', body: {}, signal, timeoutMs: 120_000 });
       } catch (error) {
         if (!(error instanceof DashboardRequestError)) throw error;
         if (error.status === 429 && error.serverMessage) throw new DashboardRequestError(error.serverMessage, 429, error.code);

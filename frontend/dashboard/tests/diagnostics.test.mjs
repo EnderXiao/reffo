@@ -170,7 +170,8 @@ test('owner can request AI analysis and receives the parsed result', async () =>
   const last = calls.at(-1);
   assert.equal(new URL(last.url).pathname, '/api/v1/dashboard/diagnostics/runs/run-1/analysis');
   assert.equal(last.options.method, 'POST');
-  assert.equal(last.options.body, undefined);
+  assert.equal(last.options.body, '{}');
+  assert.equal(last.options.headers['Content-Type'], 'application/json');
 });
 
 test('502 analysis failure maps to a retryable friendly message', async () => {
