@@ -1,9 +1,10 @@
-import {describe, expect, mock, test} from 'bun:test'
+import {afterEach, beforeEach, describe, expect, test} from 'bun:test'
+import {env} from '@/config/env'
+import {generationJobRoutes} from '@/routes/generation-jobs'
 
-mock.module('@/services/generation-jobs', () => ({generationJobWorker: {start(){}, tick(){}}}))
-mock.module('@/repositories/generation-job-repository', () => ({generationJobRepository: {list: async () => [], get: async () => null, create: async () => null, patch: async () => null}}))
-
-const {generationJobRoutes} = await import('@/routes/generation-jobs')
+// 不 mock 模块：bun test 同进程共享模块注册表，mock.module 会污染其它测试文件。
+const originalAppEnv = env.APP_ENV
+const originalAuthRequired = env.AUTH_REQUIRED
 
 async function readFirstChunk(response: Response) {
   const reader = response.body!.getReader()
@@ -13,6 +14,16 @@ async function readFirstChunk(response: Response) {
 }
 
 describe('GET /generation-jobs/events', () => {
+  beforeEach(() => {
+    env.APP_ENV = 'local'
+    env.AUTH_REQUIRED = false
+  })
+
+  afterEach(() => {
+    env.APP_ENV = originalAppEnv
+    env.AUTH_REQUIRED = originalAuthRequired
+  })
+
   test('建流后立即发送首帧，避免边缘代理首字节超时返回 502', async () => {
     const response = await generationJobRoutes.handle(new Request('http://localhost/api/v1/generation-jobs/events', {
       headers: {accept: 'text/event-stream'},
