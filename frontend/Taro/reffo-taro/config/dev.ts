@@ -42,12 +42,24 @@ export default {
       client: {
         overlay: false,
       },
+      // SSE（/generation-jobs/events）会被压缩中间件缓冲，导致长连接拿不到首字节而反复重连。
+      compress: false,
       proxy: {
         '/api': {
           target: getApiProxyTarget(),
           changeOrigin: true,
           timeout: 180000,
           proxyTimeout: 180000,
+          // 关闭代理侧缓冲，保证 text/event-stream 立即透传。
+          headers: {
+            'X-Accel-Buffering': 'no',
+          },
+          onProxyRes: (proxyRes: {headers: Record<string, string | string[] | undefined>}) => {
+            if (String(proxyRes.headers['content-type'] ?? '').includes('text/event-stream')) {
+              delete proxyRes.headers['content-length']
+              proxyRes.headers['cache-control'] = 'no-cache, no-transform'
+            }
+          },
         },
       },
     },
