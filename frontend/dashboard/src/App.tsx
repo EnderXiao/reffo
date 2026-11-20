@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Activity01Icon, FileExclamationPointIcon, RefreshIcon, Search01Icon } from "@hugeicons/core-free-icons";
+import { Activity01Icon, AiBrain01Icon, FileExclamationPointIcon, RefreshIcon, Search01Icon } from "@hugeicons/core-free-icons";
 import DitherWave from "@/components/react-bits/dither-wave";
 import ErrorTable from "@/components/blocks/error-table";
 import { StackedBars } from "@/components/charts/bencho/StackedBars";
@@ -9,6 +9,7 @@ import PieChart from "@/components/charts/PieChart";
 import ChartRenderer from "@/components/charts/ChartRenderer";
 import DetailModal from "@/components/DetailModal";
 import ErrorDetails from "@/components/ErrorDetails";
+import DiagnosticsTab from "@/components/DiagnosticsTab";
 import { fetchErrors, fetchIssues, fetchQuery, fetchPages, fetchPage, fetchAnalytics, fetchDaySeries, fetchTrackingPages, fetchTrackingRequirements, createTrackingRequirement, updateTrackingRequirementStatus, isAbortError, requestMessage, type ChartDatum, type ChartConfig, type DashboardPage, type DashboardSession, type ErrorEvent, type AnalyticsEvent, type TrendSeriesPoint, type TrackingRequirement, type Issue } from "@/services/dashboard";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
@@ -34,7 +35,7 @@ function collectCategories(series: TrendSeriesPoint[], topN = 3): string[] {
   return Array.from(freq.entries()).sort((a, b) => b[1] - a[1]).slice(0, topN).map(([k]) => k);
 }
 
-type TabKey = "errors" | "analytics" | "page" | "requirements" | "implemented";
+type TabKey = "errors" | "analytics" | "page" | "requirements" | "implemented" | "diagnostics";
 
 function GlassCard({ title, caption, children, className }: { title?: string; caption?: string; children: React.ReactNode; className?: string }) {
   return (
@@ -298,6 +299,10 @@ export default function App({ session, onLogout }: { session: DashboardSession; 
               <button type="button" aria-selected={activeTab === "implemented"} className={glassTab} onClick={() => { if (tab !== "implemented") setReqListPage(1); setTab("implemented"); setSelectedPage(null); }}>
                 已上线埋点
               </button>
+              <button type="button" aria-selected={activeTab === "diagnostics"} className={glassTab} onClick={() => { setTab("diagnostics"); setSelectedPage(null); }}>
+                <HugeiconsIcon icon={AiBrain01Icon} size={15} strokeWidth={1.8} aria-hidden="true" />
+                AI 诊断
+              </button>
               {pages.map((p) => (
                 <button key={p.id} type="button" aria-selected={selectedPage?.id === p.id} className={glassTab} onClick={() => setSelectedPage(p)}>
                   {p.name}
@@ -464,6 +469,8 @@ export default function App({ session, onLogout }: { session: DashboardSession; 
                 {trackingPagination}
               </GlassCard>
             </div>
+          ) : tab === "diagnostics" ? (
+            <DiagnosticsTab canWrite={canWrite} />
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <GlassCard title="埋点总数" caption="聚合"><div className="text-[28px] font-[500] tabular-nums text-white">{totalAnalytics}</div></GlassCard>
