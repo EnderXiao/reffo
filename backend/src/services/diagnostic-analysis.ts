@@ -58,7 +58,8 @@ const SYSTEM_PROMPT = [
   '2. 引用证据时必须带上事件发生时间与错误码（如 errorCode、failure_class、HTTP 状态）；',
   '3. 证据不足时必须把 confidence 设为 low，并在 uncertainFactors 中显式列出所有未知项；',
   '4. 证据中不包含任何用户简历、职位描述或提示词内容，你也绝不输出或猜测此类内容；',
-  '5. 只输出严格符合 JSON schema 的纯 JSON，不要输出任何解释文字或 Markdown 代码块。',
+  '5. 只输出一个严格符合以下结构的纯 JSON 对象，不要输出任何解释文字、Markdown 代码块或额外字段：',
+  '{"conclusion":"一句根因结论","confidence":"high|medium|low","rootCauseClass":"provider_http|timeout|network|stream_incomplete|rate_limit|output_validation|unknown","confirmedEvidence":["带时间与错误码的证据"],"uncertainFactors":["证据不足时列出的未知项"],"recommendedActions":["可执行建议"],"followUpQuestions":["需要追问的问题"]}',
 ].join('\n')
 
 function evidenceMessage(evidence: DiagnosticEvidence, retryHint: string | null) {
