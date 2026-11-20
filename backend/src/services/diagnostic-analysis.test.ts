@@ -108,7 +108,7 @@ describe('diagnostic-analysis', () => {
       assert.equal(input.model, env.AI_MODEL)
       assert.equal(input.temperature, 0)
       assert.equal(input.maxOutputTokens, 1000)
-      assert.equal(input.structuredOutput.name, 'diagnostic_analysis')
+      assert.equal(input.responseFormat, 'json_object')
       assert.equal(input.messages[0].role, 'system')
       console.log(JSON.stringify({ok: true}))
     `)

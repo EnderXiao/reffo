@@ -125,7 +125,8 @@ function analysisInput(evidence: DiagnosticEvidence, retryHint: string | null): 
     model: env.AI_MODEL,
     temperature: 0,
     maxOutputTokens: 1000,
-    structuredOutput: {name: 'diagnostic_analysis', schema: diagnosticAnalysisSchema, strict: true},
+    // DeepSeek 端点仅接受 json_object 响应格式；结构化由服务端 zod 校验 + 一次提示重试兜底。
+    responseFormat: 'json_object',
   }
 }
 
