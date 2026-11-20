@@ -1,0 +1,18 @@
+backend/src/routes/auth.test.ts
+  h_1edca6cb63ac1c 189,211-256
+backend/src/routes/auth.ts
+  h_1edca6cb63ac1c 77,140-147,604
+frontend/Taro/reffo-taro/src/utils/client-error.ts
+  h_1edca6cb63ac1c 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e69b0e3932b1930a904782756f0e8175b72ae6c9",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
