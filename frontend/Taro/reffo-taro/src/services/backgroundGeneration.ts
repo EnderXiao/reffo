@@ -34,6 +34,7 @@ export interface GenerationTaskStreamHandlers {
   onActivity?: () => void
   onError?: (error: unknown) => void
   onClose?: () => void
+  onSessionInvalid?: () => void
 }
 
 const GENERATION_STREAM_RECONNECT_DELAYS = [2000, 5000, 10000, 30000]
@@ -105,6 +106,14 @@ export function subscribeGenerationTaskEvents(
         },
         signal: controller.signal,
       })
+
+      // 登录态失效时停止重连，避免用过期 token 无限轮询刷后端异常表。
+      if (response.status === 401 || response.status === 403) {
+        stopped = true
+        handlers.onSessionInvalid?.()
+        handlers.onError?.(new Error('登录状态已失效，请重新登录'))
+        return
+      }
 
       if (!response.ok || !response.body) {
         throw new Error(`实时任务流连接失败 (${response.status})`)
