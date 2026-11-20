@@ -1,0 +1,18 @@
+frontend/dashboard/src/components/DiagnosticsTab.tsx
+  h_1edca6cb63ac1c 401-402
+frontend/dashboard/src/services/dashboard.ts
+  h_1edca6cb63ac1c 181-182
+frontend/dashboard/tests/diagnostics.test.mjs
+  h_1edca6cb63ac1c 87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "563ebd5e110c58ee08b7153e8eae5d80f019c5ad",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
