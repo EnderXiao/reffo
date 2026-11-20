@@ -27,7 +27,11 @@ export function consumeDashboardLimit(key: string, limit: number, now = Date.now
 
 function category(request: Request) {
   const path = new URL(request.url).pathname
-  if (!['GET', 'HEAD'].includes(request.method)) return {bucket: path.includes('/tracking/') ? 'tracking-write' : 'write', limit: path.includes('/tracking/') ? 20 : 30}
+  if (!['GET', 'HEAD'].includes(request.method)) {
+    // LLM 诊断分析成本高，单独收紧限流桶；路由内还做一次同名桶检查作为双保险（见 dashboard-diagnostics.ts）。
+    if (path.includes('/diagnostics/') && path.endsWith('/analysis')) return {bucket: 'analysis', limit: 10}
+    return {bucket: path.includes('/tracking/') ? 'tracking-write' : 'write', limit: path.includes('/tracking/') ? 20 : 30}
+  }
   if (path.includes('/error/')) return {bucket: 'detail', limit: 30}
   if (['/query', '/trend', '/issues', '/analytics/events'].some(s => path.endsWith(s))) return {bucket: 'aggregate', limit: 10}
   return {bucket: 'read', limit: 60}
