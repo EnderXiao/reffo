@@ -9,6 +9,7 @@ import type {ResumeHistoryRepositoryContract} from '@/repositories/interfaces'
 import {publishGenerationJobUpdate} from '@/services/generation-job-events'
 import {assertGenerationJobVersion, currentGenerationStageFingerprints, hasGenerationStages, withoutGenerationFailure} from './generation-job-version'
 import {generationJobFailure} from './generation-job-failure'
+import {isHistoryFullyDelivered} from './generation-job-delivery'
 import {hasLinkedCompletion} from '@/shared/resume-completion'
 
 export function generationJobProgress(job: GenerationJob, failed = false): ResultSessionProgressRecord {
@@ -118,10 +119,14 @@ export class GenerationJobWorker {
       const savedHistory = await this.histories.findById(
         {userId: job.user_id, useServiceRole: true}, job.history_id || `JD-${job.id}`,
       )
-      if (savedHistory) {
+      if (savedHistory && isHistoryFullyDelivered(savedHistory)) {
         await save({status: 'completed', history_id: savedHistory.id, error: null, lease_token: null,
           ...(job.payload.failure ? {payload: withoutGenerationFailure(job.payload)} : {})})
         return
+      }
+      // 历史存在但未跑完（分析阶段就已落库）：把 job 关联回这条记录，继续执行剩余阶段。
+      if (savedHistory && !job.history_id) {
+        await save({history_id: savedHistory.id})
       }
       const fingerprint = this.releaseFingerprint()
       assertGenerationJobVersion(job.payload, fingerprint)
