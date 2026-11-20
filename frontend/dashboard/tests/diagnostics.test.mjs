@@ -84,8 +84,8 @@ const analysisResult = {
   runId: 'run-1',
   model: 'deepseek-v4-pro',
   analyzedAt: '2026-11-20T03:11:00.000Z',
-  events: 42,
-  providerCalls: 2,
+  events: [{ id: 'ev-1', type: 'step.failed', stepRunId: null, attemptId: null, occurredAt: '2026-11-20T03:09:00.000Z', payload: {} }],
+  providerCalls: [{ id: 'call-1', callId: 'c1', eventKind: 'failed', provider: 'deepseek', model: 'deepseek-v4-pro', stage: null, retryIndex: 0, callReason: null, occurredAt: '2026-11-20T03:09:58.000Z', latencyMs: 120, inputTokens: null, outputTokens: null, reasoningTokens: null, providerRequestId: null, errorCode: 'HTTP_503', failureClass: 'provider_http', providerStatus: 503 }],
   analysis: {
     conclusion: 'Provider 在重试多次后仍返回 503 临时故障，任务未能完成。',
     confidence: 'high',

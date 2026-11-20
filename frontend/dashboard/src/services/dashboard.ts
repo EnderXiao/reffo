@@ -178,8 +178,8 @@ export interface DiagnosticAnalysisResult {
   runId: string;
   model: string;
   analyzedAt: string;
-  events: number;
-  providerCalls: number;
+  events: DiagnosticEvent[];
+  providerCalls: DiagnosticProviderCall[];
   analysis: DiagnosticAnalysis;
 }
 

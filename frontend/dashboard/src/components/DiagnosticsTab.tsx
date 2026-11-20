@@ -398,8 +398,8 @@ export default function DiagnosticsTab({ canWrite }: { canWrite: boolean }) {
                 <span className="text-[13px] text-white">{rootCauseClassLabel(analysis.analysis.rootCauseClass)}</span>
                 <span className="font-mono text-[11px] text-white/45">{analysis.analysis.rootCauseClass}</span>
                 <span className="ms-auto flex items-center gap-3 text-[11.5px] tabular-nums text-white/55">
-                  <span>{analysis.events} 事件</span>
-                  <span>{analysis.providerCalls} 调用</span>
+                  <span>{analysis.events.length} 事件</span>
+                  <span>{analysis.providerCalls.length} 调用</span>
                   <span>{formatTime(analysis.analyzedAt)}</span>
                 </span>
               </div>
