@@ -1,0 +1,16 @@
+backend/src/services/diagnostic-analysis.test.ts
+  h_1edca6cb63ac1c 111
+backend/src/services/diagnostic-analysis.ts
+  h_1edca6cb63ac1c 128-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ac3cacb8aee82d66161a617e33c1c3dba70b147",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
