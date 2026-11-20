@@ -6,7 +6,8 @@ import {v5CheckpointStorage} from '@/repositories/v5-checkpoint-repository'
 import {createDigest} from '@/harness/run-context'
 import {env} from '@/config/env'
 import {ensureResumeQuotaAvailable, ResumeQuotaError} from '@/services/resume-quota'
-import {generationJobWorker} from '@/services/generation-jobs'
+import {generationJobProgress, generationJobWorker, jobHistory} from '@/services/generation-jobs'
+import {resumeHistoryRepository} from '@/repositories/resume-history-repository'
 import {normalizeMarkdownText} from '@/services/text-normalizer'
 import {summarizeGenerationJob, type GenerationJob} from '@/types/generation-job'
 import {publishGenerationJobUpdate, subscribeGenerationJobUpdates} from '@/services/generation-job-events'
@@ -159,6 +160,18 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
     const updated = await generationJobRepository.patch(job.user_id, job.id, changes, {status: job.status})
     if (!updated) {set.status = 409; return {success: false, error: {code: 'JOB_STATE_CHANGED', message: '任务状态已更新，请重试'}}}
     publishGenerationJobUpdate(updated)
+    // 取消后把历史进度收敛成 failed，避免记录永远停在 generating 而被当成进行中。
+    if (action === 'cancel') {
+      try {
+        await resumeHistoryRepository.update(
+          {userId: job.user_id, useServiceRole: true},
+          updated.history_id ?? `JD-${updated.id}`,
+          jobHistory(updated, generationJobProgress(updated, true)),
+        )
+      } catch (error) {
+        console.error('取消任务时收敛历史进度失败:', error instanceof Error ? error.message : error)
+      }
+    }
     if (action === 'retry') void generationJobWorker.tick()
     return {success: true, data: summarizeGenerationJob(updated)}
   }, {params: t.Object({id: jobParams.properties.id, action: t.Union([
