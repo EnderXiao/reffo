@@ -1,0 +1,22 @@
+backend/src/routes/generation-jobs.ts
+  h_1edca6cb63ac1c 9-10,163-174
+backend/src/services/generation-job-delivery.test.ts
+  h_1edca6cb63ac1c 1-43
+backend/src/services/generation-job-delivery.ts
+  h_1edca6cb63ac1c 1-18
+backend/src/services/generation-job-version.test.ts
+  h_1edca6cb63ac1c 158-159
+backend/src/services/generation-jobs.ts
+  h_1edca6cb63ac1c 12,122,127-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0d3f0e12aa43c41efa661b5f284ebf0f21fe428",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
