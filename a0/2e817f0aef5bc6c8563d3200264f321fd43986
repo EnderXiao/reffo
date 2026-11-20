@@ -1,0 +1,16 @@
+backend/src/routes/generation-jobs-events.test.ts
+  h_1edca6cb63ac1c 1-29
+backend/src/routes/generation-jobs.ts
+  h_1edca6cb63ac1c 77,99-100,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a02e817f0aef5bc6c8563d3200264f321fd43986",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
