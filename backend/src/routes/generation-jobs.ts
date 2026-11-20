@@ -74,7 +74,7 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
     const jobUser = await resolveRequestUser(headers)
     set.headers['content-type'] = 'text/event-stream; charset=utf-8'
     set.headers['cache-control'] = 'no-cache, no-transform'
-    set.headers['connection'] = 'keep-alive'
+    // 不设置 hop-by-hop 的 Connection：Render/HTTP2 边缘会因此拒绝长连接响应。
     set.headers['x-accel-buffering'] = 'no'
 
     let cleanup: (() => void) | undefined
@@ -96,6 +96,8 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
             controller.close()
           } catch {}
         }
+        // 立即发送首帧：边缘代理会以首字节超时判定上游失败，空闲等待心跳会返回 502。
+        send(': connected\n\n')
         const unsubscribe = subscribeGenerationJobUpdates(event => {
           if (event.userId !== jobUser.userId) return
           const eventId = `${event.job.id}:${event.job.updated_at}`
@@ -105,7 +107,7 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
           unsubscribe()
           cleanup = undefined
         }
-        heartbeat = setInterval(() => send(': ping\n\n'), 20000)
+        heartbeat = setInterval(() => send(': ping\n\n'), 10000)
         request.signal.addEventListener('abort', close, {once: true})
       },
       cancel() {
