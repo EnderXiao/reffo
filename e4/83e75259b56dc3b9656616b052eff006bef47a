@@ -1,0 +1,14 @@
+frontend/Taro/reffo-taro/config/dev.ts
+  h_1edca6cb63ac1c 45-46,53-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e483e75259b56dc3b9656616b052eff006bef47a",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
