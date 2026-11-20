@@ -24,6 +24,8 @@ const CLIENT_ERROR_MESSAGES: Record<string, string> = {
   AUTH_EMAIL_NOT_CONFIRMED: '邮箱尚未完成验证，请先完成邮箱验证',
   AUTH_PASSWORD_RESET_FAILED: '密码重置邮件发送失败，请稍后重试',
   AUTH_PASSWORD_RESET_VERIFY_FAILED: '密码重置验证码校验失败，请稍后重试',
+  AUTH_SAME_PASSWORD: '新密码不能与当前密码相同',
+  AUTH_WEAK_PASSWORD: '密码强度不足，请至少使用 6 位字符',
   AUTH_PASSWORD_UPDATE_FAILED: '密码更新失败，请稍后重试',
   AUTH_ENCRYPTION_REQUIRED: '当前登录请求不安全，请刷新页面后重试',
   AUTH_ENCRYPTION_INVALID: '登录加密信息已失效，请重新提交',
