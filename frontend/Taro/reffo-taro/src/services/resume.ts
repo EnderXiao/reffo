@@ -280,7 +280,8 @@ export function normalizeMatching(matching: MatchingApiResult | MatchingResult):
   const structuredExperienceMatch = experienceMatch && typeof experienceMatch === 'object'
     ? experienceMatch as Partial<MatchingResult['experience_match']>
     : undefined;
-  const rawMatching = matching as MatchingApiResult;
+  // 历史记录可能只保存了 analysis（生成中/失败中断），matching 会缺失；这里必须有空对象兜底。
+  const rawMatching = (matching ?? {}) as MatchingApiResult;
   const weaknessDetails = normalizeWeaknessDetails(rawMatching.weakness_details);
   const optimizationStrategyDetails = normalizeOptimizationStrategyDetails(
     rawMatching.optimization_strategy_details,
