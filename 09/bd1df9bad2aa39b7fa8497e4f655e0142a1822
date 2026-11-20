@@ -1,0 +1,38 @@
+backend/src/auth/dashboard-guard.ts
+  h_1edca6cb63ac1c 30-34
+backend/src/index.ts
+  h_1edca6cb63ac1c 19,147
+backend/src/mcp/server.test.ts
+  h_1edca6cb63ac1c 62,71-73,152
+backend/src/mcp/server.ts
+  h_1edca6cb63ac1c 16-17,142-144
+backend/src/repositories/dashboard-diagnostics.test.ts
+  h_1edca6cb63ac1c 1-235
+backend/src/repositories/dashboard-diagnostics.ts
+  h_1edca6cb63ac1c 1-488
+backend/src/routes/dashboard-diagnostics.test.ts
+  h_1edca6cb63ac1c 1-95
+backend/src/routes/dashboard-diagnostics.ts
+  h_1edca6cb63ac1c 1-41
+backend/src/services/diagnostic-analysis.test.ts
+  h_1edca6cb63ac1c 1-168
+backend/src/services/diagnostic-analysis.ts
+  h_1edca6cb63ac1c 1-168
+backend/src/services/provider-call-recorder.test.ts
+  h_1edca6cb63ac1c 2-6,11,13,18-21,24-71
+backend/src/services/provider-call-recorder.ts
+  h_1edca6cb63ac1c 2,27-28,37,40,43-54,66-85,96,105-110
+supabase/migrations/202611200001_llm_diagnostics.sql
+  h_1edca6cb63ac1c 1-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09bd1df9bad2aa39b7fa8497e4f655e0142a1822",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
