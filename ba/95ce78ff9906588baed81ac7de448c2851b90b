@@ -1,0 +1,22 @@
+frontend/dashboard/src/App.tsx
+  h_1edca6cb63ac1c 3,12,38,302-305,472-473
+frontend/dashboard/src/components/DiagnosticsTab.tsx
+  h_1edca6cb63ac1c 1-494
+frontend/dashboard/src/components/diagnostics-format.ts
+  h_1edca6cb63ac1c 1-39
+frontend/dashboard/src/services/dashboard.ts
+  h_1edca6cb63ac1c 87-185,210,212,217,243,306,342-349,406-425,435
+frontend/dashboard/tests/diagnostics.test.mjs
+  h_1edca6cb63ac1c 1-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba95ce78ff9906588baed81ac7de448c2851b90b",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
