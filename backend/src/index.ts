@@ -108,6 +108,9 @@ async function bootstrap() {
   Bun.serve({
     hostname: env.HOST,
     port: env.PORT,
+    // Bun 默认 idleTimeout 只有 10 秒，SSE 长连接（含 10 秒心跳）会被直接掐断，
+    // 前端表现为反复重连。放宽到 120 秒，心跳仍保持 10 秒活跃。
+    idleTimeout: 120,
     fetch: (request) => {
       const traceId = request.headers.get('x-request-id') ?? crypto.randomUUID()
       return requestTraceStorage.run({ traceId }, () => app.handle(request))
