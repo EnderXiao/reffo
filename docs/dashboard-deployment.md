@@ -53,11 +53,11 @@ DASHBOARD_ALLOWED_ORIGINS=https://reffo-dashboard-prod.onrender.com
 
 ```dotenv
 VITE_API_BASE_URL=https://<existing-api-host>
-VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_<public-key>
 ```
 
-VITE_API_BASE_URL 只填 origin，不含 /api/v1；远端必须 HTTPS，本地只允许 loopback HTTP。key 只用 publishable，禁止 service_role、sb_secret、数据库连接串或 MCP token。React Bits 的源码已安装，生产构建不需要 REACTBITS_LICENSE_KEY；它只在本地 shadcn 安装时使用，不得加 VITE_ 前缀。
+看板不持有也不使用 Supabase URL / key：登录、token 刷新、身份校验全部经自有 API 的 `/api/v1/auth/*` 代理流转，浏览器不直连 `supabase.co`。密码在浏览器内用 `/api/v1/auth/crypto-key` 下发的公钥做应用层加密（RSA-OAEP-SHA256 + AES-256-GCM），后端用私钥解密后才转发 Supabase，禁止明文传输。构建不再需要 `VITE_SUPABASE_*`，旧构建产物中的 Supabase 变量会失效并回退到登录页。
+
+VITE_API_BASE_URL 只填 origin，不含 /api/v1；远端必须 HTTPS，本地只允许 loopback HTTP。React Bits 的源码已安装，生产构建不需要 REACTBITS_LICENSE_KEY；它只在本地 shadcn 安装时使用，不得加 VITE_ 前缀。
 
 后端 CORS 对主产品保留原来源，同时加入后台来源；后台 guard 还会单独检查 Origin。CORS 不替代身份认证，无 Origin 的 CLI/MCP 仍必须带 token。代理/IP 白名单不作为唯一权限依据。
 
@@ -69,7 +69,7 @@ PR #59 已合并到 main，应用提交为 0c93aa9c5b4a8e60a40b1f0fbbbfff901f68e
 | --- | --- | --- |
 | 产品 H5 | https://reffo.cn | 原生 sendBeacon 上报 view_landing，API 200，并按浏览器 session 核实生产入库 |
 | API | https://reffo-api-prod.onrender.com | APP_ENV=prod、Supabase 生产项目、AUTH_REQUIRED=true；health 和 analysisCache 均 ok |
-| Dashboard | https://reffo-dashboard-prod.onrender.com | HTTPS 可用，main@0c93aa9；只持有公开 publishable key |
+| Dashboard | https://reffo-dashboard-prod.onrender.com | HTTPS 可用；不持有 Supabase key，登录/刷新经 API 代理、密码应用层加密 |
 | 数据库 | nptpliqejrfqwerhwavw | 看板表、4 个受限 RPC、RLS 与 63 项台账已验证 |
 | 管理员 | 生产 Supabase Auth 中已指定邮箱对应账号 | dashboard_members active owner；生产 UUID 单独核实，不复用 nonprod UUID |
 

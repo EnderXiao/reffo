@@ -1,7 +1,8 @@
-import type { AuthChangeEvent } from '@supabase/supabase-js';
 import { DashboardRequestError, requestMessage, type DashboardSession } from './dashboard.ts';
 
 export type DashboardAuthState = 'login' | 'checking' | 'ready' | 'forbidden' | 'error';
+/** 由看板登录/刷新适配层产生，取代 supabase-js 的 onAuthStateChange 事件。 */
+export type AuthChangeEvent = 'INITIAL_SESSION' | 'SIGNED_IN' | 'SIGNED_OUT' | 'TOKEN_REFRESHED';
 type AuthSession = { user: { id: string }; access_token: string };
 type Verification = { userId: string; controller: AbortController };
 
