@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import DitherWave from '@/components/react-bits/dither-wave';
-import { getAuthClient } from '@/services/auth';
+import { AuthRequestError, authClient, type AuthSession } from '@/services/auth';
 import { clearSession, fetchDashboardSession, setAccessErrorHandler, setAccessToken, type DashboardSession } from '@/services/dashboard';
 import { createDashboardSessionController, type DashboardAuthState } from '@/services/dashboard-session';
 
@@ -10,35 +9,96 @@ const card = 'w-full max-w-sm space-y-5 rounded-2xl border border-white/25 bg-[#
 const action = 'h-10 rounded-xl border border-white/25 bg-white/15 px-4 text-[13px] text-white hover:bg-white/25';
 const input = 'h-10 w-full rounded-xl border border-white/25 bg-black/30 px-3 text-[14px] text-white outline-none focus:border-white/50';
 
+const REFRESH_LEAD_MS = 60_000;
+const REFRESH_RETRY_MS = 30_000;
+const REFRESH_RETRIES = 3;
+
 export default function DashboardAuth({ children }: { children: (session: DashboardSession, logout: () => void) => ReactNode }) {
   const [state, setState] = useState<DashboardAuthState>('login');
   const [session, setSession] = useState<DashboardSession | null>(null);
   const [message, setMessage] = useState('');
-  const [configurationError, setConfigurationError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const auth = useRef<SupabaseClient>();
+  const credential = useRef<AuthSession>();
   const checks = useRef<ReturnType<typeof createDashboardSessionController>>();
+  const refreshTimer = useRef<ReturnType<typeof setTimeout>>();
+  const refreshRef = useRef<(next: AuthSession, attempt?: number) => Promise<void>>(async () => {});
+  const refreshing = useRef(false);
   const version = useRef(0);
 
   const verify = useCallback(() => checks.current?.retry(), []);
 
+  const stopRefresh = useCallback(() => {
+    if (refreshTimer.current !== undefined) clearTimeout(refreshTimer.current);
+    refreshTimer.current = undefined;
+  }, []);
+
   const logout = useCallback(() => {
-    const attempt = ++version.current;
+    version.current += 1;
+    credential.current = undefined;
+    refreshing.current = false;
+    stopRefresh();
     checks.current?.signOut();
     setPassword('');
     setMessage('');
     setSubmitting(false);
-    // The SDK also owns only an in-memory session; clear its refresh token on logout.
-    void auth.current?.auth.signOut({ scope: 'local' }).catch(() => {
-      if (attempt === version.current) setMessage('登录已退出，认证服务暂时不可用');
-    });
+  }, [stopRefresh]);
+
+  const scheduleRefresh = useCallback((next: AuthSession, attempt = 0) => {
+    stopRefresh();
+    const delay = Math.max(0, next.expires_at * 1000 - Date.now() - REFRESH_LEAD_MS);
+    refreshTimer.current = setTimeout(() => { void refreshRef.current(next, attempt); }, delay);
+  }, [stopRefresh]);
+
+  const retryRefresh = useCallback((next: AuthSession, attempt: number) => {
+    stopRefresh();
+    refreshTimer.current = setTimeout(() => { void refreshRef.current(next, attempt); }, REFRESH_RETRY_MS);
+  }, [stopRefresh]);
+
+  // 刷新只轮转 token，由会话控制器复用已核验的权限对象，不重建看板子树。
+  const refreshSession = useCallback(async (current: AuthSession, attempt = 0) => {
+    if (refreshing.current || credential.current?.refresh_token !== current.refresh_token) return;
+    refreshing.current = true;
+    try {
+      const next = await authClient.refresh(current.refresh_token);
+      refreshing.current = false;
+      if (credential.current?.refresh_token !== current.refresh_token) return;
+      credential.current = next;
+      checks.current?.handleAuthStateChange('TOKEN_REFRESHED', next);
+      scheduleRefresh(next);
+    } catch (error) {
+      refreshing.current = false;
+      if (credential.current?.refresh_token !== current.refresh_token) return;
+      const invalid = error instanceof AuthRequestError &&
+        (error.status === 401 || error.status === 403 || error.code === 'AUTH_SESSION_INVALID');
+      if (!invalid && attempt < REFRESH_RETRIES) {
+        retryRefresh(current, attempt + 1);
+        return;
+      }
+      logout();
+      setMessage(invalid ? '登录已失效，请重新登录' : '登录态刷新失败，请重新登录');
+    }
+  }, [logout, retryRefresh, scheduleRefresh]);
+
+  useEffect(() => {
+    refreshRef.current = refreshSession;
+  }, [refreshSession]);
+
+  // 后台标签页的定时器会被浏览器节流，回到前台时补一次到期检查，避免会话整点掉线。
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState !== 'visible') return;
+      const current = credential.current;
+      if (!current) return;
+      if (current.expires_at * 1000 - Date.now() <= REFRESH_LEAD_MS) void refreshRef.current(current, 0);
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, []);
 
   useEffect(() => {
     let active = true;
-    let subscription: { unsubscribe(): void } | undefined;
     const controller = createDashboardSessionController({
       clearSession,
       setAccessToken,
@@ -58,46 +118,34 @@ export default function DashboardAuth({ children }: { children: (session: Dashbo
         setMessage('登录已失效，请重新登录');
       } else controller.accessDenied(status);
     });
-    try {
-      const client = getAuthClient();
-      auth.current = client;
-      subscription = client.auth.onAuthStateChange((event, next) => {
-        if (!active) return;
-        if (event === 'SIGNED_OUT' || !next) {
-          version.current += 1;
-          setPassword('');
-          setSubmitting(false);
-        }
-        // Synchronous notification only; the controller defers verification outside the auth lock.
-        controller.handleAuthStateChange(event, next);
-      }).data.subscription;
-    } catch (error) {
-      setConfigurationError(error instanceof Error ? error.message : '认证配置不可用');
-    }
     return () => {
       active = false;
       version.current += 1;
-      subscription?.unsubscribe();
+      refreshing.current = false;
+      stopRefresh();
       controller.dispose();
       checks.current = undefined;
-      auth.current = undefined;
+      credential.current = undefined;
       setAccessErrorHandler(undefined);
     };
-  }, [logout]);
+  }, [logout, stopRefresh]);
 
   async function login(event: FormEvent) {
     event.preventDefault();
-    if (!auth.current || submitting || configurationError) return;
+    if (submitting) return;
     const attempt = ++version.current;
     setSubmitting(true);
     setMessage('');
     try {
-      const { error } = await auth.current.auth.signInWithPassword({ email: email.trim(), password });
+      const next = await authClient.signIn(email, password);
       if (attempt !== version.current) return;
+      credential.current = next;
       setPassword('');
-      if (error) setMessage('登录失败，请检查邮箱和密码或稍后重试');
-    } catch {
-      if (attempt === version.current) setMessage('无法连接认证服务，请稍后重试');
+      checks.current?.handleAuthStateChange('SIGNED_IN', next);
+      scheduleRefresh(next);
+    } catch (error) {
+      if (attempt !== version.current) return;
+      setMessage(error instanceof AuthRequestError ? error.message : '无法连接认证服务，请稍后重试');
     } finally {
       if (attempt === version.current) setSubmitting(false);
     }
@@ -113,7 +161,7 @@ export default function DashboardAuth({ children }: { children: (session: Dashbo
           <h1 className="text-[18px] font-[550] tracking-tight">Reffo 看板</h1>
           <p className="mt-2 text-[13px] leading-5 text-white/70">使用已获授权的后台账号登录</p>
         </div>
-        {configurationError ? <p role="alert" className="text-[13px] leading-6 text-amber-200">{configurationError}</p> : state === 'login' ? (
+        {state === 'login' ? (
           <form className="space-y-4" onSubmit={login}>
             <label className="block space-y-2 text-[13px]">邮箱<input className={input} type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} disabled={submitting} /></label>
             <label className="block space-y-2 text-[13px]">密码<input className={input} type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} disabled={submitting} /></label>
