@@ -1,0 +1,26 @@
+docs/dashboard-deployment.md
+  h_1edca6cb63ac1c 58-60,72
+frontend/dashboard/.env.example
+  h_1edca6cb63ac1c 2
+frontend/dashboard/src/components/DashboardAuth.tsx
+  h_1edca6cb63ac1c 4,12-15,23,25-27,32-36,38-41,46-97,124-125,128,131,135,140,142,144-148,164
+frontend/dashboard/src/services/auth.ts
+  h_1edca6cb63ac1c 1,4-6,8-201
+frontend/dashboard/src/services/dashboard-session.ts
+  h_1edca6cb63ac1c 4-5
+frontend/dashboard/src/services/password-encryption.ts
+  h_1edca6cb63ac1c 1-100
+frontend/dashboard/tests/auth.test.mjs
+  h_1edca6cb63ac1c 1-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "562666c8a40d8e28885b493de4c266669714e929",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
