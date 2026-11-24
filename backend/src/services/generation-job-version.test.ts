@@ -156,7 +156,7 @@ describe('生成版本与显式重试', () => {
     job.payload.failure = {code: 'GENERATION_FAILED', stage: 'saving', issueCodes: [], retryable: false,
       action: 'inspect_harness_events', occurredAt: now}
     // findById 的契约是领域对象（camelCase）：已有正文明细视为用户已编辑，不能重跑覆盖。
-    const existing = {id: `JD-${job.id}`, optimizedContent: '用户后来填写的正文'} as ResumeHistoryRecord
+    const existing = {id: `JD-${job.id}`, optimizedContent: '用户后来填写的正文'} as unknown as ResumeHistoryRecord
     const harness = workerHarness(job, {existingHistory: existing})
     await harness.worker.execute(job)
     expect(harness.calls.model).toBe(0)
