@@ -431,10 +431,14 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
 
     setReturnCard(toHistoryCardItem(displayHistory))
+    // 后台任务推进时会覆盖会话快照；这里必须同时刷新服务端基线，否则任务完成后的首次保存
+    // 拿不到 completionDocument，请求会缺少 expected_document 并被服务端按版本冲突拒绝。
     latestSessionRef.current = {
       result: processResult,
       context,
       progress: historyProgress,
+      originHistoryId: history.id,
+      baseHistorySnapshot: historyCompletionBaseline(history),
     }
     setResult(processResult)
     setResultContext(context)
