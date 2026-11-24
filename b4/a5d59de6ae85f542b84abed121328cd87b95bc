@@ -1,0 +1,24 @@
+backend/src/repositories/resume-history-repository.sqlite.ts
+  h_1edca6cb63ac1c 208,367
+backend/src/repositories/resume-history-repository.supabase.ts
+  h_1edca6cb63ac1c 230
+backend/src/services/generation-job-commit.test.ts
+  h_1edca6cb63ac1c 100-103,127-154
+backend/src/services/generation-jobs.ts
+  h_1edca6cb63ac1c 61
+backend/src/services/resume-completion-snapshot.ts
+  h_1edca6cb63ac1c 112-114
+backend/src/types/index.ts
+  h_1edca6cb63ac1c 404-405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4a5d59de6ae85f542b84abed121328cd87b95bc",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
