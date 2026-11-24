@@ -97,7 +97,10 @@ describe('生成任务的历史提交编号', () => {
       import {getDatabase} from './src/repositories/database.ts'
       const analysis = ${JSON.stringify(analysis)}
       const matching = ${JSON.stringify(matching)}
-      const optimized = ${JSON.stringify(optimized)}
+      const {createPlainCompletionDocument, serializeDraft} = await import('./src/shared/resume-completion.ts')
+      const document = createPlainCompletionDocument(['# Jeremy Smith', '', '## Optimized'].join(String.fromCharCode(10)))
+      const optimized = {optimized_resume: serializeDraft(document), completion_document: document,
+        changes_summary: ['突出架构能力'], improvement_score: 4}
       const interview = ${JSON.stringify(interview)}
       let job = {id:'11111111-1111-4111-8111-111111111111', user_id:'user-1', status:'running', stage:'analysis',
         background:false, read_at:null, confirmed_at:null, history_id:null, error:null,
@@ -120,5 +123,33 @@ describe('生成任务的历史提交编号', () => {
     // 面试阶段的进度已收敛为 done，收尾写入与它内容一致，因此命中同一条提交（幂等回放），
     // 关键是不再出现同一编号对应不同内容的情况。
     expect(output.commits).toEqual({total: 4, distinctIds: 4})
+  })
+
+  test('服务端生成写入不受客户端补全基准校验拦截', () => {
+    const output = isolated(`
+      import {SqliteResumeHistoryRepository} from './src/repositories/resume-history-repository.sqlite.ts'
+      import {createCompletionDocument, serializeDraft} from './src/shared/resume-completion.ts'
+      const document = createCompletionDocument({schemaVersion: 'resume-completion-v4', documentId: 'v4', blocks: [
+        {blockId: 'body', kind: 'bullet', prefix: '- ', entryId: 'entry', unitId: 'unit',
+          segments: [{kind: 'text', segmentId: 'safe', markdown: '设计门店辅导流程', origin: 'generated'}]}]})
+      const repo = new SqliteResumeHistoryRepository()
+      const context = {userId: 'owner-1', useServiceRole: true}
+      const base = {id: 'JD-1', position: '产品经理', company: '示例公司', name: '候选人',
+        created_at: '2026-11-24T00:00:00.000Z', quality_score: 80, match_score: 0, tags: [],
+        resume_content: '源简历', jd_content: '目标JD', optimized_content: '',
+        process_result: {analysis: {}}, progress: {analysis: 'done', matching: 'generating', optimized: 'pending', interview: 'pending'},
+        commit_id: 'gen-1-analysis', server_generated: true}
+      repo.save(context, base)
+      const optimized = {optimized_resume: serializeDraft(document), completion_document: document}
+      const write = (commitId, generated) => repo.update(context, 'JD-1', {...base, commit_id: commitId,
+        server_generated: generated, optimized_content: optimized.optimized_resume,
+        process_result: {analysis: {}, optimized: JSON.parse(JSON.stringify(optimized))}})
+      let blocked = null
+      try { write('gen-1-client-edit', false) } catch (error) { blocked = error.code }
+      const saved = write('gen-1-server-write', true)
+      console.log(JSON.stringify({blocked, stored: saved.optimized_content.length > 0}))
+    `)
+
+    expect(output).toEqual({blocked: 'RESUME_COMPLETION_MISMATCH', stored: true})
   })
 })

@@ -58,6 +58,7 @@ export function jobHistory(
       relevant_experience: matching.experience_match ? [matching.experience_match] : []},
   } : undefined
   const history: SaveResumeHistoryInput = {
+    server_generated: true,
     id: `JD-${job.id}`, company: summary.company, position: summary.position,
     name: analysis.structured_resume.personal_info.name || '候选人', created_at: job.created_at,
     quality_score: analysis.quality_score, match_score: matching?.match_score ?? 0,
