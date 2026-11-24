@@ -109,6 +109,9 @@ export function assertResumeCompletionSnapshot(
 
 /** Recompute trusted editorial state after replay; clients cannot certify their own changes. */
 export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, previous?: import('@/types').ResumeHistoryRecord | null): SaveResumeHistoryInput {
+  // 生成任务 worker 的写入由服务端产出，没有客户端编辑记录，不能用客户端校验契约
+  // （服务端基准 / expected_document）要求它；HTTP 路由不接收该字段。
+  if (input.server_generated) return input
   assertResumeCompletionSnapshot(input, previous)
   const rawResult = record(input.process_result)
   const {server_interview_basis: _clientBasis, server_completion_upgrade_archive: _clientArchive, ...publicResult} = rawResult ?? {}

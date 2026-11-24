@@ -127,4 +127,32 @@ describe('subscribeGenerationTaskEvents', () => {
     globalThis.fetch = originalFetch
     jest.useRealTimers()
   })
+
+  test('登录态失效(401)时停止重连并通知会话失效', async () => {
+    jest.useFakeTimers()
+    Object.assign(globalThis, {ReadableStream, TextDecoder, TextEncoder})
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 401,
+      body: null,
+    })) as unknown as typeof fetch
+    const onError = jest.fn()
+    const onSessionInvalid = jest.fn()
+
+    const unsubscribe = subscribeGenerationTaskEvents({onTask: jest.fn(), onError, onSessionInvalid})
+    await jest.advanceTimersByTimeAsync(0)
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+    expect(onSessionInvalid).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledTimes(1)
+
+    // 退避窗口远超最大重连间隔，仍不应再次发起请求
+    await jest.advanceTimersByTimeAsync(120000)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+
+    unsubscribe()
+    globalThis.fetch = originalFetch
+    jest.useRealTimers()
+  })
 })

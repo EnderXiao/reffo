@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 /** 归一化动态值，让同类错误的 message 稳定（数字、UUID、邮箱、URL 归一为占位符）。 */
-function normalizeText(text: string): string {
+export function normalizeText(text: string): string {
   return text
     .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<uuid>')
     .replace(/\b\d+\b/g, '<n>')

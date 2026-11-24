@@ -401,6 +401,8 @@ export interface SaveResumeHistoryInput {
   completion_edit?: unknown
   expected_document?: {documentId: string; revision: number; resolvedDigest?: string}
   commit_id?: string
+  /** 服务端生成链路（生成任务 worker）写入：内容由服务端产出，不走客户端编辑校验。 */
+  server_generated?: boolean
   /** 只由服务端生成基准加载。 */
   action_baseline?: {actionPlan: import('@/shared/resume-actions').ResumeActionPlan; resolvedPlan: import('@/shared/resume-actions').ResolvedResumeActionPlan;
     review?: import('@/shared/resume-actions').ResumeActionReview; changeManifest?: import('@/shared/resume-actions').ResumeChangeManifest; identityState?: import('@/shared/resume-actions').ResumeIdentityState; deliveryState?: import('@/shared/resume-actions').ResumeDeliveryState; interviewBasis?: import('@/v5/types').InterviewGenerationBasis; matching?: unknown}
