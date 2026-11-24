@@ -11,6 +11,7 @@ import {assertGenerationJobVersion, currentGenerationStageFingerprints, hasGener
 import {generationJobFailure} from './generation-job-failure'
 import {isHistoryFullyDelivered} from './generation-job-delivery'
 import {hasLinkedCompletion} from '@/shared/resume-completion'
+import {historyCommitDigest} from './resume-history-commit'
 
 export function generationJobProgress(job: GenerationJob, failed = false): ResultSessionProgressRecord {
   const stages = ['analysis', 'matching', 'optimized', 'interview'] as const
@@ -56,7 +57,7 @@ export function jobHistory(
     experience_match: {years_required: 0, years_actual: 0, match_percentage: 0,
       relevant_experience: matching.experience_match ? [matching.experience_match] : []},
   } : undefined
-  return {
+  const history: SaveResumeHistoryInput = {
     id: `JD-${job.id}`, company: summary.company, position: summary.position,
     name: analysis.structured_resume.personal_info.name || '候选人', created_at: job.created_at,
     quality_score: analysis.quality_score, match_score: matching?.match_score ?? 0,
@@ -73,8 +74,10 @@ export function jobHistory(
     progress,
     ...(optimized?.completion_document ? {completion_baseline: optimized.completion_document} : {}),
     ...(optimized?.action_plan && optimized?.resolved_action_plan ? {action_baseline: {actionPlan: optimized.action_plan, resolvedPlan: optimized.resolved_action_plan, review: optimized.action_review, changeManifest: optimized.change_manifest, identityState: optimized.identity_state, deliveryState: optimized.delivery_state, matching}} : {}),
-    commit_id: `generation-${job.id}`,
   }
+  // 每个阶段的内容都不同，提交编号必须按内容寻址：固定用任务编号会让第二次提交撞上
+  // resume_history_commits 的幂等校验（RESUME_COMMIT_CONFLICT），并且重试也无法自愈。
+  return {...history, commit_id: `generation-${job.id}-${historyCommitDigest(history).slice(0, 16)}`}
 }
 
 export class GenerationJobWorker {
