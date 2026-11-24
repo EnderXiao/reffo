@@ -1,0 +1,16 @@
+backend/src/services/generation-job-commit.test.ts
+  h_1edca6cb63ac1c 1-124
+backend/src/services/generation-jobs.ts
+  h_1edca6cb63ac1c 14,60,78-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "deec285f0a9a08540aacfc473a08ece45bee9057",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
