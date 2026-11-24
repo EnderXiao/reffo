@@ -84,6 +84,105 @@ export interface TrackingRequirementQuery {
   offset?: number;
 }
 
+export interface DiagnosisSummary {
+  days: number;
+  windowStart: string;
+  failedRuns: number;
+  failedJobs: number;
+  providerAttempts: number;
+  providerFailures: number;
+  failureRatePercent: number | null;
+  topErrorCodes: { code: string; count: number }[];
+  topFailureClasses: { class: string; count: number }[];
+  topModels: { model: string; count: number }[];
+}
+
+export interface DiagnosticRunItem {
+  runId: string;
+  failedAt: string;
+  reason: string | null;
+  status: string;
+  eventCount: number;
+  failedCalls: number;
+  attempts: number;
+  maxLatencyMs: number | null;
+  lastCallAt: string | null;
+  models: string[];
+  errorCodes: string[];
+  failureClasses: string[];
+  jobId: string | null;
+  jobStage: string | null;
+  jobErrorCode: string | null;
+  jobError: string | null;
+  retryable: boolean | null;
+}
+
+export interface DiagnosticEvent {
+  id: string;
+  type: string;
+  stepRunId: string | null;
+  attemptId: string | null;
+  occurredAt: string;
+  payload: Record<string, unknown>;
+}
+
+export interface DiagnosticProviderCall {
+  id: string;
+  callId: string;
+  eventKind: string;
+  provider: string;
+  model: string;
+  stage: string | null;
+  retryIndex: number;
+  callReason: string | null;
+  occurredAt: string;
+  latencyMs: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  reasoningTokens: number | null;
+  providerRequestId: string | null;
+  errorCode: string | null;
+  failureClass: string | null;
+  providerStatus: number | null;
+}
+
+export interface DiagnosticJob {
+  id: string;
+  status: string;
+  stage: string;
+  error: string | null;
+  failure: { code: string; stage: string; retryable: boolean; action: string; occurredAt: string; issueCodes: string[] } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiagnosticRunDetail {
+  runId: string;
+  failureSample: { reason: string; status: string; eventCount: number; createdAt: string } | null;
+  job: DiagnosticJob | null;
+  events: DiagnosticEvent[];
+  providerCalls: DiagnosticProviderCall[];
+}
+
+export interface DiagnosticAnalysis {
+  conclusion: string;
+  confidence: 'high' | 'medium' | 'low';
+  rootCauseClass: string;
+  confirmedEvidence: string[];
+  uncertainFactors: string[];
+  recommendedActions: string[];
+  followUpQuestions: string[];
+}
+
+export interface DiagnosticAnalysisResult {
+  runId: string;
+  model: string;
+  analyzedAt: string;
+  events: DiagnosticEvent[];
+  providerCalls: DiagnosticProviderCall[];
+  analysis: DiagnosticAnalysis;
+}
+
 export interface DashboardPage {
   id: string;
   name: string;
@@ -108,12 +207,14 @@ export interface ErrorTrace {
 export class DashboardRequestError extends Error {
   readonly status: number;
   readonly code: string;
+  readonly serverMessage?: string;
 
-  constructor(message: string, status: number, code: string) {
+  constructor(message: string, status: number, code: string, serverMessage?: string) {
     super(message);
     this.name = 'DashboardRequestError';
     this.status = status;
     this.code = code;
+    this.serverMessage = serverMessage;
   }
 }
 
@@ -139,7 +240,7 @@ function isDashboardSession(value: unknown): value is DashboardSession {
     (value.environment === 'local' || value.environment === 'nonprod' || value.environment === 'prod');
 }
 
-type RequestOptions = { method?: 'POST' | 'PATCH'; body?: unknown; signal?: AbortSignal; sessionCheck?: boolean; retried?: boolean };
+type RequestOptions = { method?: 'POST' | 'PATCH'; body?: unknown; signal?: AbortSignal; sessionCheck?: boolean; retried?: boolean; timeoutMs?: number };
 type Query = Record<string, string | number | undefined>;
 const BASE = '/api/v1/dashboard';
 const AUTH_MESSAGES = { 401: '登录已失效，请重新登录', 403: '当前账号无后台权限' };
@@ -202,7 +303,7 @@ export function createDashboardClient(options: { apiOrigin?: string; fetcher?: t
     if (init.signal?.aborted) controller.abort();
     init.signal?.addEventListener('abort', abort, { once: true });
     let timedOut = false;
-    const timeout = setTimeout(() => { timedOut = true; abort(); }, 20_000);
+    const timeout = setTimeout(() => { timedOut = true; abort(); }, init.timeoutMs ?? 20_000);
     const startedGeneration = generation;
     pending.add(controller);
     try {
@@ -238,8 +339,14 @@ export function createDashboardClient(options: { apiOrigin?: string; fetcher?: t
       }
       controller.signal.throwIfAborted();
       if (startedGeneration !== generation) throw new DOMException('请求已取消', 'AbortError');
-      if (!res.ok) throw new DashboardRequestError('后台请求失败（HTTP ' + res.status + '），请重试', res.status, 'HTTP_ERROR');
-      if (isRecord(body) && body.success === false) throw new DashboardRequestError('后台未能完成请求，请重试', res.status, 'API_ERROR');
+      if (!res.ok) {
+        const serverMessage = isRecord(body) && isRecord(body.error) && typeof body.error.message === 'string' ? body.error.message : undefined;
+        throw new DashboardRequestError('后台请求失败（HTTP ' + res.status + '），请重试', res.status, 'HTTP_ERROR', serverMessage);
+      }
+      if (isRecord(body) && body.success === false) {
+        const serverMessage = isRecord(body.error) && typeof body.error.message === 'string' ? body.error.message : undefined;
+        throw new DashboardRequestError('后台未能完成请求，请重试', res.status, 'API_ERROR', serverMessage);
+      }
       if (!isRecord(body) || body.success !== true || !('data' in body) || body.data == null) {
         throw new DashboardRequestError('后台返回的数据格式异常，请重试', res.status, 'INVALID_RESPONSE');
       }
@@ -296,6 +403,27 @@ export function createDashboardClient(options: { apiOrigin?: string; fetcher?: t
     updateTrackingRequirementStatus(id: string, status: 'pending' | 'implemented', signal?: AbortSignal) {
       return request<unknown>('/tracking/requirements/' + encodeURIComponent(id), {}, { method: 'PATCH', body: { status }, signal });
     },
+    fetchDiagnosticSummary(days = 7, signal?: AbortSignal) {
+      return request<DiagnosisSummary>('/diagnostics/summary', { days }, { signal });
+    },
+    fetchDiagnosticRuns(params: { days: number; limit?: number; offset?: number; model?: string; error?: string }, signal?: AbortSignal) {
+      return request<{ runs: DiagnosticRunItem[]; hasMore: boolean }>('/diagnostics/runs', { ...params, limit: params.limit ?? 20, offset: params.offset ?? 0 }, { signal });
+    },
+    fetchDiagnosticRun(runId: string, signal?: AbortSignal) {
+      return request<DiagnosticRunDetail>('/diagnostics/runs/' + encodeURIComponent(runId), {}, { signal });
+    },
+    async requestDiagnosticAnalysis(runId: string, signal?: AbortSignal) {
+      // 分析耗时较长，放宽只读请求的默认 20s 超时；429 展示服务端限流文案，502 提示稍后重试。
+      try {
+        // 必须带请求体：dashboard guard 要求写请求为 JSON Content-Type，空 body 会被拒绝。
+        return await request<DiagnosticAnalysisResult>('/diagnostics/runs/' + encodeURIComponent(runId) + '/analysis', {}, { method: 'POST', body: {}, signal, timeoutMs: 120_000 });
+      } catch (error) {
+        if (!(error instanceof DashboardRequestError)) throw error;
+        if (error.status === 429 && error.serverMessage) throw new DashboardRequestError(error.serverMessage, 429, error.code);
+        if (error.status === 502) throw new DashboardRequestError('AI 分析暂不可用，请稍后重试', 502, error.code);
+        throw error;
+      }
+    },
   };
 }
 
@@ -305,4 +433,5 @@ export const {
   fetchIssues, fetchTrend, fetchErrorByTraceId, fetchAnalytics, fetchAnalyticsEvents,
   fetchQuery, fetchDaySeries, fetchPages, fetchPage, fetchTrackingPages, fetchTrackingRequirements,
   createTrackingRequirement, updateTrackingRequirementStatus,
+  fetchDiagnosticSummary, fetchDiagnosticRuns, fetchDiagnosticRun, requestDiagnosticAnalysis,
 } = client;

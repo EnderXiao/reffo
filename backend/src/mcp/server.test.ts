@@ -59,7 +59,7 @@ describe('dashboard MCP API client', () => {
     await server.close()
   })
 
-  test('SDK lists all thirteen tools and calls a tool through in-memory transport', async () => {
+  test('SDK lists all sixteen tools and calls a tool through in-memory transport', async () => {
     const { fetchImpl } = setupFetch()
     const server = createServer(new DashboardApiClient({ baseUrl: new URL('http://localhost:3000/api/v1/dashboard'), token: 'token', fetchImpl, timeoutMs: 1000 }))
     const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair()
@@ -68,7 +68,9 @@ describe('dashboard MCP API client', () => {
     await mcpClient.connect(clientTransport)
     const tools = await mcpClient.listTools()
     expect(tools.tools.map((tool) => tool.name)).toEqual([
-      'searchErrorByTraceId', 'listRecentErrors', 'listIssues', 'getIssueDetail', 'queryAnalyticsEvents',
+      'searchErrorByTraceId', 'listRecentErrors', 'listIssues', 'getIssueDetail',
+      'listDiagnosticRuns', 'getDiagnosticRun', 'analyzeDiagnosticRun',
+      'queryAnalyticsEvents',
       'listTrackingRequirements', 'getTrackingRequirement', 'markTrackingRequirementImplemented',
       'listChartTypes', 'listDashboardPages', 'createDashboardPage', 'addChart', 'deleteChart',
     ])
@@ -147,7 +149,7 @@ describe('real stdio MCP process', () => {
       await mcpClient.connect(transport)
       const tools = await mcpClient.listTools()
       expect(calls.session).toBe(1)
-      expect(tools.tools).toHaveLength(13)
+      expect(tools.tools).toHaveLength(16)
       const read = await mcpClient.callTool({ name: 'listDashboardPages', arguments: {} })
       const readResult = read as { isError?: boolean; content?: Array<{ text?: string }> }
       expect(readResult.isError).not.toBe(true)

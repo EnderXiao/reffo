@@ -16,6 +16,7 @@ import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 import {generationJobRoutes} from '@/routes/generation-jobs'
 import {telemetryRoutes} from '@/routes/telemetry'
 import {dashboardRoutes} from '@/routes/dashboard'
+import {dashboardDiagnosticsRoutes} from '@/routes/dashboard-diagnostics'
 import {dashboardPagesRoutes} from '@/routes/dashboard-pages'
 import {trackingRequirementRoutes} from '@/routes/tracking-requirements'
 import {generationJobWorker} from '@/services/generation-jobs'
@@ -102,6 +103,7 @@ async function bootstrap() {
     .use(generationJobRoutes)
     .use(telemetryRoutes)
     .use(dashboardRoutes)
+    .use(dashboardDiagnosticsRoutes)
     .use(dashboardPagesRoutes)
     .use(trackingRequirementRoutes)
     // 启动服务
