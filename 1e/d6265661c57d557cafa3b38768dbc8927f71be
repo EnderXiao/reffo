@@ -1,0 +1,14 @@
+backend/src/services/generation-job-version.test.ts
+  h_1edca6cb63ac1c 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ed6265661c57d557cafa3b38768dbc8927f71be",
+  "prompts": {},
+  "humans": {
+    "h_1edca6cb63ac1c": {
+      "author": "xiaoganyun <xiaoganyun@xiaomi.com>"
+    }
+  }
+}
