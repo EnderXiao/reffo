@@ -32,6 +32,30 @@ export const targetedJobExtractionSchema = jobExtractionCandidateSchema.extend({
 export type JobSuccessProfile = z.infer<typeof jobSuccessProfileSchema>
 export type TargetedJobExtraction = z.infer<typeof targetedJobExtractionSchema>
 
+export const jobExtractionTransportSchema = jobExtractionCandidateSchema.omit({ coverageClaim: true })
+export const targetedJobExtractionTransportSchema = targetedJobExtractionSchema.omit({ coverageClaim: true })
+
+export function materializeJobExtractionTransport(value: unknown, targeted: boolean) {
+  const schema = targeted ? targetedJobExtractionTransportSchema : jobExtractionTransportSchema
+  // An older model may echo the previous coverage summary. The server rebuilds it from actual records.
+  const parsed = schema.extend({coverageClaim: z.unknown().optional()}).safeParse(value)
+  if (!parsed.success) return parsed
+  const candidate = parsed.data
+  return {
+    success: true as const,
+    data: {
+      ...candidate,
+      coverageClaim: {
+        mappedSourceBlockIds: [...new Set([
+          ...candidate.basicInfoSourceBlockIds,
+          ...candidate.requirementCandidates.map(requirement => requirement.sourceBlockId),
+        ])],
+        unmappedSourceBlockIds: [...new Set(candidate.unmappedFragments.map(fragment => fragment.sourceBlockId))],
+      },
+    },
+  }
+}
+
 export const jobFitMapSchema = z.object({
   contractVersion: z.enum(['job-fit-map-v1', 'job-fit-map-v2']),
   links: z.array(z.object({

@@ -4,9 +4,13 @@ import { createDigest } from '@/harness/run-context'
 import type { ChatMessage } from '@/providers/llm-provider'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { p06CompositionOutputSchema } from '@/v5/composition/contract'
+import { hasNoInterviewStoryEvidence } from '@/v5/interview-context'
 import { entryWritingV6OutputSchema, entryWritingTransportSchema, isEntryWritingEnvelope } from '@/v5/writing/entries'
 import { p06DslOutputSchema } from '@/v5/composition/dsl'
-import { isJobTargetedEnvelope, jobFitMapTransportSchema, targetedJobExtractionSchema } from '@/v5/targeting/contracts'
+import {
+  isJobTargetedEnvelope, jobExtractionTransportSchema, jobFitMapTransportSchema,
+  targetedJobExtractionSchema, targetedJobExtractionTransportSchema,
+} from '@/v5/targeting/contracts'
 import { resumeDocumentFromEnvelope, resumeExtractionTransportSchema } from '@/v5/resume-extraction-transport'
 import {
   blindABEvaluationSchema,
@@ -270,7 +274,9 @@ export function schemaForV5Component(component: V5PromptComponent, envelope?: un
     }
     case 'P10':
     case 'P10R':
-      return interviewPreparationSchema
+      return hasNoInterviewStoryEvidence(envelope)
+        ? interviewPreparationSchema.extend({storyRecommendations: interviewPreparationSchema.shape.storyRecommendations.min(0).length(0)})
+        : interviewPreparationSchema
     case 'P11':
       return resumeQualityJudgeResultSchema
     case 'P12':
@@ -356,12 +362,14 @@ export function compileV5Prompt(input: {
   // These sparse attestations are consumed only by local source validators.
   // Keep them in persisted data, never duplicate them in model context.
   const serializedEnvelope = JSON.stringify(input.envelope, (key, value) => (
-    key === 'sourceLineContinuations' || key === 'sourceContinuation' ? undefined : value
+    key === 'sourceLineContinuations' || key === 'sourceContinuation'
+    || (input.component === 'P02R' && key === 'coverageClaim') ? undefined : value
   ))
   const schema = schemaForV5Component(input.component, input.envelope)
   const extractionDocument = input.component === 'P01' || input.component === 'P01R'
     ? resumeDocumentFromEnvelope(input.envelope) : null
   const providerSchema = extractionDocument ? resumeExtractionTransportSchema(extractionDocument)
+    : ['P02', 'P02R'].includes(input.component) ? (isJobTargetedEnvelope(input.envelope) ? targetedJobExtractionTransportSchema : jobExtractionTransportSchema)
     : ['P03', 'P03R'].includes(input.component) && isJobTargetedEnvelope(input.envelope) ? jobFitMapTransportSchema
     : input.component === 'P06C' && isEntryWritingEnvelope(input.envelope) ? entryWritingTransportSchema(input.envelope) : schema
   const schemaName = input.component === 'P06C'

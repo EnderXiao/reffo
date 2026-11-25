@@ -1,10 +1,37 @@
 import type { EvidenceAtom, ResumeEvidenceBundle } from '@/v5/types'
 
+function isSupportedEducation(atom: EvidenceAtom) {
+  return atom.claimType === 'education' && atom.status === 'source_supported' && !atom.riskFlags.length
+}
+
+function degreeLabel(label: string) {
+  return /^(?:本科|专科|(?:理学|工学|文学|管理学|工商管理|经济学|法学|教育学|医学|艺术学|哲学|农学|历史学|军事学)?(?:学士|硕士|博士)(?:学位)?|B\.?Sc\.?|M\.?Sc\.?|MBA|Ph\.?D\.?|(?:Bachelor|Master|Doctor)(?: of (?:Science|Arts|Engineering|Philosophy|Business Administration))?)$/iu.test(label)
+}
+
 /** An explicit standalone degree can be preserved as layout metadata, never inferred from a school. */
 export function explicitEducationDegree(atom: EvidenceAtom) {
-  if (atom.claimType !== 'education' || atom.status !== 'source_supported' || atom.riskFlags.length > 0) return null
+  if (!isSupportedEducation(atom)) return null
   const label = atom.verbatimText.trim()
-  return /^(?:本科|专科|(?:理学|工学|文学|管理学|工商管理|经济学|法学|教育学|医学|艺术学|哲学|农学|历史学|军事学)?(?:学士|硕士|博士)(?:学位)?|B\.?Sc\.?|M\.?Sc\.?|MBA|Ph\.?D\.?|(?:Bachelor|Master|Doctor)(?: of (?:Science|Arts|Engineering|Philosophy|Business Administration))?)$/iu.test(label) ? label : null
+  return degreeLabel(label) ? label : null
+}
+
+export function explicitEducationTimeline(atom: EvidenceAtom) {
+  if (!isSupportedEducation(atom)) return undefined
+  const fields = atom.verbatimText.trim().replace(/^[-*+•]\s+/u, '').split(/[|｜丨]/u).map(field => field.trim())
+  if (fields.length !== 4) return undefined
+  const [organization, major, degree, end] = fields
+  if (!/(?:大学|学院|学校)$|\b(?:university|college|school|institute)\b/iu.test(organization)
+    || !major || !degreeLabel(degree) || !/^(?:19|20)\d{2}(?:[./](?:0?[1-9]|1[0-2]))?$/u.test(end)) return undefined
+  return {organization, title: `${major}｜${degree}`, start: null, end}
+}
+
+/** A verified metadata line can also be the sole source for an education scope. */
+export function isScopeTimelineEvidence(atom: EvidenceAtom, scope: ResumeEvidenceBundle['timeline'][number]): boolean {
+  if (atom.claimType === 'timeline') return true
+  if (scope.kind !== 'education' || atom.sourceScopeId !== scope.scopeId) return false
+  const explicit = explicitEducationTimeline(atom)
+  return !!explicit && explicit.organization === scope.organization && explicit.title === scope.title
+    && explicit.start === scope.start && explicit.end === scope.end
 }
 
 /** Prefer additional education information over repeating the server-rendered heading. */

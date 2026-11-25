@@ -6,7 +6,8 @@ import { createSingleStepFixture } from './single-step-fixtures'
 import { MemoryCheckpointStorage } from './checkpoint-storage-fixture'
 import { MemoryAnalysisCacheStorage } from './analysis-cache-storage-fixture'
 import { V5AnalysisCacheRepository } from '@/repositories/v5-analysis-cache-repository'
-import { FIXTURE_RESUME, FIXTURE_JD } from './fixtures'
+import { createV5ResultFixture, FIXTURE_RESUME, FIXTURE_JD } from './fixtures'
+import { V5WorkflowBlockedError } from '@/v5/errors'
 
 const uncachedStages: ConstructorParameters<typeof V5SingleStepAdapter>[3] = {resolve: async input => ({value: await input.compute({timeoutMs:205000,signal:new AbortController().signal}), cacheStatus: 'disabled'})}
 
@@ -92,6 +93,49 @@ test('legacy-shaped single requests run V5 only, preserve context across instanc
   expect(interview.data.follow_up_questions).toHaveLength(3)
   expect(await adapter().interview(cachedAnalysis.data, normalized, generated.data.optimized_resume, 'user1')).toEqual(interview)
   expect(versions).toHaveLength(5)
+})
+
+test('blocked, fallback and structurally invalid results never enter the successful checkpoint cache', async () => {
+  for (const kind of ['blocked', 'fallback', 'invalid_document'] as const) {
+    const storage = new MemoryCheckpointStorage()
+    const fixture = createSingleStepFixture()
+    const baseWorkflow = fixture.createWorkflow()
+    const rejected = createV5ResultFixture()
+    if (kind === 'blocked') rejected.deliveryDecision = 'block'
+    else if (kind === 'fallback') {
+      rejected.usedSafeFallback = true
+      rejected.usedAnyFallback = true
+      rejected.generationProvenance!.artifactOrigin = 'server_renderer'
+      rejected.deliveryDiagnostics.provenance.usedSafeFallback = true
+      rejected.deliveryDiagnostics.provenance.usedAnyFallback = true
+    } else {
+      rejected.completionDocument = {schemaVersion: 'resume-completion-v4'} as NonNullable<typeof rejected.completionDocument>
+    }
+    const adapter = new V5SingleStepAdapter(
+      new V5CheckpointRepository(`rejected-${kind}`, storage),
+      () => ({
+        extractResume: input => baseWorkflow.extractResume(input),
+        matchResume: (input, extraction) => baseWorkflow.matchResume(input, extraction),
+        generateResume: async () => rejected,
+        prepareInterview: (basis, timeoutMs, signal) => baseWorkflow.prepareInterview(basis, timeoutMs, signal),
+      }),
+      new V5AnalysisCacheRepository(new MemoryAnalysisCacheStorage()),
+      uncachedStages,
+    )
+    const analysis = await adapter.analyze(FIXTURE_RESUME, `rejected-${kind}`)
+    const matching = await adapter.match(analysis.data.structured_resume, FIXTURE_JD, `rejected-${kind}`)
+    const token = matching.data.jd_structure._v5_context
+
+    await expect(adapter.generate(analysis.data.structured_resume, matching.data, `rejected-${kind}`))
+      .rejects.toBeInstanceOf(V5WorkflowBlockedError)
+
+    const saved = (await new V5CheckpointRepository(`rejected-${kind}`, storage).load(token, `rejected-${kind}`)).payload as {
+      generated?: unknown
+      generationFingerprint?: string
+    }
+    expect(saved.generated).toBeUndefined()
+    expect(saved.generationFingerprint).toBeUndefined()
+  }
 })
 
 test('analysis cache keys isolate users, resume content and release configuration', () => {

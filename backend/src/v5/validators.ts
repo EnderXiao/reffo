@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { formatTimelineHeading as timelineHeading } from '@/v5/composition/timeline-display'
 import { deriveInterviewCaseGroups } from '@/v5/interview-source-structure'
 import { interviewResultEvidenceAtoms, hasIncompleteInterviewResult } from '@/v5/interview-results'
-import { educationCompanion, educationDetailPriority, isEducationIdentityOnly } from '@/v5/writing/education'
+import { educationCompanion, educationDetailPriority, isEducationIdentityOnly, isScopeTimelineEvidence } from '@/v5/writing/education'
 import { isExactWorkScopeBrief, workScopeBrief } from '@/v5/writing/work-coverage'
 import { entryLayoutItemLimit } from '@/v5/writing/entry-layout'
 import type {
@@ -462,8 +462,10 @@ function identityEvidenceIds(resume: ResumeEvidenceBundle) {
 function timelineEvidenceIds(resume: ResumeEvidenceBundle) {
   const evidence = new Map(resume.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
   return new Set(resume.timeline
-    .flatMap(item => item.evidenceIds)
-    .filter(id => evidence.get(id)?.claimType === 'timeline'))
+    .flatMap(item => item.evidenceIds.filter(id => {
+      const atom = evidence.get(id)
+      return atom && isScopeTimelineEvidence(atom, item)
+    })))
 }
 
 export function hasRenderableTimelineLine(
@@ -476,7 +478,7 @@ export function hasRenderableTimelineLine(
     const atom = evidence.get(id)
     return Boolean(
       atom
-      && atom.claimType === 'timeline'
+      && isScopeTimelineEvidence(atom, timeline)
       && atom.status !== 'excluded'
       && !atom.riskFlags.includes('sensitive_pii')
     )
@@ -1642,11 +1644,13 @@ function isTimelineOutputPath(outputPath: string) {
 
 function timelineClaimScopeIds(
   claim: GeneratedResumeArtifact['claims'][number],
-  evidence: ReadonlyMap<string, EvidenceAtom>
+  evidence: ReadonlyMap<string, EvidenceAtom>,
+  allowedEvidence: ReadonlySet<string>
 ) {
   return [...new Set(claim.evidenceIds
+    .filter(id => allowedEvidence.has(id))
     .map(id => evidence.get(id))
-    .filter((atom): atom is EvidenceAtom => Boolean(atom && atom.claimType === 'timeline'))
+    .filter((atom): atom is EvidenceAtom => Boolean(atom))
     .map(atom => atom.sourceScopeId))]
 }
 
@@ -2247,7 +2251,7 @@ export function validateGeneratedResumeArtifact(input: {
       continue
     }
     if (isTimelineOutputPath(claim.outputPath)) {
-      const timelineScopes = timelineClaimScopeIds(claim, evidence)
+      const timelineScopes = timelineClaimScopeIds(claim, evidence, allowedTimelineEvidence)
       const plannedAsTimelineLine = timelineScopes.length === 1
         && scopePlanById.get(timelineScopes[0])?.treatment === 'timeline_line'
       if (!plannedAsTimelineLine) {
@@ -2556,7 +2560,7 @@ export function validateGeneratedResumeArtifact(input: {
       isTimelineOutputPath(claim.outputPath)
       && (
         claim.outputPath === `timeline.${scopePlan.scopeId}`
-        || timelineClaimScopeIds(claim, evidence).includes(scopePlan.scopeId)
+        || timelineClaimScopeIds(claim, evidence, allowedTimelineEvidence).includes(scopePlan.scopeId)
       )
     ))
     if (scopePlan.treatment === 'timeline_line') {

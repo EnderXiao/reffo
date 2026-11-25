@@ -1,4 +1,4 @@
-import { normalizeWrittenEntry, writtenEntrySchema, writtenEntryV2Schema, writtenEntryV3Schema, writtenEntryV4Schema, writtenEntryV5Schema, writtenEntryV6Schema, materializeWrittenEntry, type WrittenEntry } from '@/v5/writing/entries'
+import { ENTRY_WRITING_POLICY, normalizeEntryWritingOutput, normalizeWrittenEntry, writtenEntrySchema, writtenEntryV2Schema, writtenEntryV3Schema, writtenEntryV4Schema, writtenEntryV5Schema, writtenEntryV6Schema, materializeWrittenEntry, type WrittenEntry } from '@/v5/writing/entries'
 
 /** Frames only complete objects in the root entries array; braces inside JSON
  * strings, escapes, and arbitrary network chunk boundaries are not delimiters. */
@@ -11,7 +11,11 @@ export class EntryJsonStream {
   private contractVersion = ''
   private start = -1
   private disabled = false
-  constructor(private readonly receive: (entry: WrittenEntry) => void, private readonly maxCharacters = 2_000_000) {}
+  constructor(
+    private readonly receive: (entry: WrittenEntry) => void,
+    private readonly maxCharacters = 2_000_000,
+    private readonly auxiliaryEntryIds?: ReadonlySet<string>,
+  ) {}
 
   push(delta: string) {
     if (this.disabled) return
@@ -44,7 +48,10 @@ export class EntryJsonStream {
           const framed = this.buffer.slice(this.start, i + 1)
           this.start = -1
           try {
-            const value = normalizeWrittenEntry(JSON.parse(framed))
+            const raw = JSON.parse(framed)
+            const value = this.contractVersion === ENTRY_WRITING_POLICY
+              ? (normalizeEntryWritingOutput({contractVersion: ENTRY_WRITING_POLICY, entries: [raw]}, this.auxiliaryEntryIds).value as {entries: unknown[]}).entries[0]
+              : normalizeWrittenEntry(raw)
             if (this.contractVersion === 'entry-writing-v2' || this.contractVersion === 'entry-writing-v3' || this.contractVersion === 'entry-writing-v4' || this.contractVersion === 'entry-writing-v5' || this.contractVersion === 'entry-writing-v6') {
               const parsed = (this.contractVersion === 'entry-writing-v6' ? writtenEntryV6Schema : this.contractVersion === 'entry-writing-v5' ? writtenEntryV5Schema : this.contractVersion === 'entry-writing-v4' ? writtenEntryV4Schema : this.contractVersion === 'entry-writing-v3' ? writtenEntryV3Schema : writtenEntryV2Schema).safeParse(value)
               if (parsed.success) this.receive(materializeWrittenEntry(parsed.data))

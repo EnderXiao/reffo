@@ -131,11 +131,12 @@ describe('explicit interview story requirement links', () => {
   test('P10 and repair use the same explicit association and selective-topic contract', () => {
     for (const component of ['P10', 'P10R'] as const) {
       const compiled = compileV5Prompt({ component, envelope: { payload: {} } })
-      expect(compiled.promptVersion).toContain('interview-links-v5-r14')
+      expect(compiled.promptVersion).toContain('interview-links-v5-r16')
       const prompt = compiled.messages.map(message => message.content).join('\n')
       expect(prompt).toContain('requirementLinks')
-      expect(prompt).toContain('不按证据交集、同公司或 actionIds 扩散岗位关联')
-      expect(prompt).toContain('不是必须逐项展示的清单')
+      expect(prompt).toMatch(/(?:共享证据|证据共享)、同公司或 actionIds/)
+      expect(prompt).toContain('preparationTopics 只')
+      expect(prompt).toContain('3–5 个非空字符串组成的数组')
       expect(prompt).not.toContain('未入选故事的主题仍由系统独立展示')
     }
   })

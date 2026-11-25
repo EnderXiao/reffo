@@ -460,10 +460,13 @@ class RoutingProvider implements LlmProvider {
     } else throw new Error(`unexpected prompt version: ${version}`)
 
     if (version.includes('-p01-') || version.includes('-p01r-')) {
-      const candidate = value as ResumeExtractionCandidate
+      const {coverageClaim: _coverageClaim, ...candidate} = value as ResumeExtractionCandidate
       value = { ...candidate, factCandidates: candidate.factCandidates.map(({
         blockRelativeSpan, verbatimText, normalizedClaim, numericAtoms, ...annotation
       }) => annotation) }
+    } else if (version.includes('-p02-') || version.includes('-p02r-')) {
+      const {coverageClaim: _coverageClaim, ...candidate} = value as JobExtractionCandidate
+      value = candidate
     }
     const parsed = input.structuredOutput?.schema.safeParse(value)
     if (parsed && !parsed.success) throw new Error(`fake output schema mismatch: ${parsed.error.message}`)

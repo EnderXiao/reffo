@@ -1781,6 +1781,7 @@ async function main() {
             runId: `${v5Result.runId}-ab`,
             resumeEvidenceBundle: evaluationInput?.resumeEvidenceBundle ?? v5Result.resumeEvidenceBundle,
             jobRequirementBundle: evaluationInput?.jobRequirementBundle ?? v5Result.jobRequirementBundle,
+            originalResumeMarkdown: history.resume_content,
             originalJobDescription: history.jd_content,
             candidateLeft: evaluationInput?.baselineArtifact ?? baselineArtifact(history.optimized_content),
             candidateRight: evaluationInput?.candidateArtifact ?? v5Result.artifact,

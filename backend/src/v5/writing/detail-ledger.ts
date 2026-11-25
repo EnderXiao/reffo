@@ -65,6 +65,32 @@ function explicitlyUndocumentedAnswer(item: EntryCoverage[number]) {
     || new RegExp(`(?:^|[，,；;。])\\s*(?:来源|源材料|当前材料|材料)(?:中)?(?:尚|仍)?(?:未记录|未说明|未提供|未明确)(?:具体的?)?(?:${labels})(?=[，,；;。]|$)`, 'u').test(item.answer ?? '')
 }
 
+function contradictoryCoverage(item: EntryCoverage[number]) {
+  return item.status === 'known' && (explicitlyUndocumentedAnswer(item)
+    || item.element === 'result' && ['unknown', 'not_applicable'].includes(item.resultKind ?? ''))
+}
+
+export function repairCoverageLedger(entry: EntryBrief, written: WrittenEntry): WrittenEntry {
+  const allowed = new Set([...entry.facts.map(fact => fact.evidenceId),
+    ...entry.gapContextFacts.filter(fact => fact.scopeId === entry.scopeId).map(fact => fact.evidenceId)])
+  const project = new Set(entry.projectIdentity?.evidenceIds)
+  const coverage = written.coverage?.map(item => {
+    const ids = [...new Set(item.evidenceIds)]
+    if (item.status === 'not_applicable') return item.evidenceIds.length
+      ? {...item, evidenceIds: [], answer: '此要素不适用于本条。'} : item
+    const rejected = ids.some(id => !allowed.has(id) && (item.element !== 'project' || !project.has(id)))
+    if (rejected || (item.status === 'known' && !ids.length)) {
+      // A coverage note never certifies the body. Discard its unverified
+      // answer and keep the independently validated paragraphs intact.
+      return {...item, status: 'ambiguous' as const, evidenceIds: [],
+        answer: '该要素的覆盖说明缺少可核对的本条来源。',
+        ...(item.element === 'result' ? {resultKind: 'unknown' as const} : {})}
+    }
+    return {...item, evidenceIds: ids, ...(contradictoryCoverage(item) ? {status: 'ambiguous' as const} : {})}
+  })
+  return {...written, coverage}
+}
+
 /** Only deterministic source signals become seeds; missing background is not automatically a gap. */
 export function buildDetailSeeds(entry: EntryBrief, atoms: readonly EvidenceAtom[]): DetailSeed[] {
   if (entry.slot.kind !== 'business_bullet' || !entry.scopeId) return []
@@ -87,7 +113,8 @@ export function buildDetailSeeds(entry: EntryBrief, atoms: readonly EvidenceAtom
 
 export function inspectDetailLedger(input: {entry: EntryBrief; written: WrittenEntry}): ValidationIssue[] {
   const issues: ValidationIssue[] = []
-  const report = (code: string, text: string) => issues.push(writingIssue(code, input.entry.slot.outputPath, [], text))
+  const report = (code: string, text: string, subcode?: string) =>
+    issues.push({...writingIssue(code, input.entry.slot.outputPath, [], text), ...(subcode ? {subcode} : {})})
   const details = input.written.detailAssessments ?? []
   const seen = new Set<string>()
   for (const seed of input.entry.detailSeeds ?? []) {
@@ -106,9 +133,9 @@ export function inspectDetailLedger(input: {entry: EntryBrief; written: WrittenE
   }
   for (const item of input.written.coverage ?? []) {
     if (!item.answer?.trim() || !item.resultKind && item.element === 'result') report('WRITER_COVERAGE_ANSWER_MISSING', '五要素必须给出具体语义回答或明确为何未知；结果区分交付物、采纳与业务成果。')
-    if (item.status === 'known' && (explicitlyUndocumentedAnswer(item)
-      || item.element === 'result' && ['unknown', 'not_applicable'].includes(item.resultKind ?? ''))) {
-      report('WRITER_COVERAGE_INVALID', `五要素${item.element}自报未记录这一维度或结果类型未知，不能同时标为known；请保留实际已有回答，并将未明方面标为missing或ambiguous，不强造填写格。`)
+    if (contradictoryCoverage(item)) {
+      report('WRITER_COVERAGE_INVALID', `五要素${item.element}自报未记录这一维度或结果类型未知，不能同时标为known；请保留实际已有回答，并将未明方面标为missing或ambiguous，不强造填写格。`,
+        'COVERAGE_STATUS_CONTRADICTION')
     }
   }
   return issues

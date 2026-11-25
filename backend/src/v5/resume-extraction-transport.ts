@@ -24,13 +24,15 @@ export function resumeExtractionTransportSchema(document: CanonicalSourceDocumen
       ? z.enum(sourceIds as [string, ...string[]])
       : z.string(),
   }).strict()
-  return resumeExtractionCandidateSchema.extend({
+  return resumeExtractionCandidateSchema.omit({ coverageClaim: true }).extend({
     factCandidates: z.array(factSchema).max(document.blocks.length),
   }).strict()
 }
 
 export function materializeResumeExtractionTransport(value: unknown, document: CanonicalSourceDocument) {
-  const parsed = resumeExtractionTransportSchema(document).safeParse(value)
+  const parsed = resumeExtractionTransportSchema(document).extend({
+    coverageClaim: resumeExtractionCandidateSchema.shape.coverageClaim.optional(),
+  }).safeParse(value)
   if (!parsed.success) return parsed
   const candidate = parsed.data
   const seen = new Set<string>()
@@ -46,6 +48,10 @@ export function materializeResumeExtractionTransport(value: unknown, document: C
   const blocks = new Map(document.blocks.map(block => [block.sourceBlockId, block]))
   return resumeExtractionCandidateSchema.safeParse({
     ...candidate,
+    coverageClaim: candidate.coverageClaim ?? {
+      mappedSourceBlockIds: [...seen],
+      unmappedSourceBlockIds: [...new Set(candidate.unmappedFragments.map(fragment => fragment.sourceBlockId))],
+    },
     factCandidates: candidate.factCandidates.map(fact => {
       const block = blocks.get(fact.sourceBlockId)!
       return {

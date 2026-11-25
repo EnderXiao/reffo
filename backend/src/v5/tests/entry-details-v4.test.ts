@@ -11,7 +11,7 @@ import type {EvidenceAtom} from '@/v5/types'
 import {writingIssue} from '@/v5/writing/facts'
 import {sourceUncertainties, sourceClaimTemplate, uncertaintyDetailRequirements} from '@/v5/writing/source-uncertainties'
 import {selectCompletionGaps} from '@/v5/writing/gap-selection'
-import {safeRecoveredEntry, buildDetailSeeds} from '@/v5/writing/detail-ledger'
+import {safeRecoveredEntry, buildDetailSeeds, inspectDetailLedger, repairCoverageLedger} from '@/v5/writing/detail-ledger'
 import {collectGaps, applyCompletionCommand, prepareResumeExport, serializeWithoutAllGapClauses} from '@/shared/resume-completion'
 
 test('a trailing research blank reuses the known sentence stop and preserves an exactly safe omission', () => {
@@ -437,6 +437,33 @@ test('all entry skeleton errors are returned together before spending a correcti
   try { f.compile() } catch (error) {issues = (error as {issues: typeof issues}).issues}
   expect(issues.filter(issue => issue.code === 'WRITER_COVERAGE_INVALID').map(issue => issue.outputPath))
     .toEqual([f.brief.slot.outputPath, other.slot.outputPath])
+})
+
+test('coverage recovery corrects an explicitly unknown dimension without rewriting the entry', () => {
+  const f = fixture()
+  const written = safeRecoveredEntry(f.brief)
+  const result = written.coverage!.find(item => item.element === 'result')!
+  Object.assign(result, {status: 'known', resultKind: 'unknown', answer: '材料未说明实际效果。'})
+  const issues = inspectDetailLedger({entry: f.brief, written})
+  expect(issues.map(issue => issue.subcode)).toContain('COVERAGE_STATUS_CONTRADICTION')
+  const corrected = repairCoverageLedger(f.brief, written)
+  expect(corrected.paragraphs).toEqual(written.paragraphs)
+  expect(corrected.detailAssessments).toEqual(written.detailAssessments)
+  expect(corrected.coverage?.find(item => item.element === 'result')).toMatchObject({status: 'ambiguous', resultKind: 'unknown'})
+  expect(inspectDetailLedger({entry: f.brief, written: corrected})).toEqual([])
+})
+
+test('coverage repair drops untrusted metadata without adding body or claiming it was missing', () => {
+  const f = fixture()
+  const written = safeRecoveredEntry(f.brief)
+  const result = written.coverage!.find(item => item.element === 'result')!
+  Object.assign(result, {status: 'known', resultKind: 'business_outcome', evidenceIds: ['foreign'], answer: '无来源增长。'})
+  const corrected = repairCoverageLedger(f.brief, written)
+  expect(corrected.paragraphs).toEqual(written.paragraphs)
+  expect(corrected.coverage?.find(item => item.element === 'result')).toMatchObject({
+    status: 'ambiguous', resultKind: 'unknown', evidenceIds: [],
+  })
+  expect(JSON.stringify(corrected.coverage)).not.toContain('无来源增长')
 })
 
 test('same-scope known answers enter both the body fact pool and final rendering allocation', () => {

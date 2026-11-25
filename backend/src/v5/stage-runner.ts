@@ -12,7 +12,8 @@ import { compileV5Prompt, type CompiledV5Prompt } from '@/v5/prompt-compiler'
 import type { V5PromptComponent } from '@/v5/prompts'
 import { normalizeBlindABEvaluationSemanticsWithAudit } from '@/v5/schemas'
 import { materializeResumeExtractionTransport, resumeDocumentFromEnvelope } from '@/v5/resume-extraction-transport'
-import { isEntryWritingEnvelope, normalizeEntryWritingOutput } from '@/v5/writing/entries'
+import { isJobTargetedEnvelope, materializeJobExtractionTransport } from '@/v5/targeting/contracts'
+import { auxiliaryEntryIdsFromEnvelope, isEntryWritingEnvelope, normalizeEntryWritingOutput } from '@/v5/writing/entries'
 
 export interface V5StageRunOptions {
   provider?: LlmProvider
@@ -466,14 +467,17 @@ export async function runV5StructuredStage<T>(input: {
   const rawParsedDigest = createDigest(parsed)
   let normalizationApplied = false
   let normalizationChanges: string[] = []
+  let transportValidationError: z.ZodError | undefined
   if (input.component === 'P06C' && isEntryWritingEnvelope(input.envelope)) {
-    const normalized = normalizeEntryWritingOutput(parsed)
+    const normalized = normalizeEntryWritingOutput(parsed, auxiliaryEntryIdsFromEnvelope(input.envelope))
     parsed = normalized.value
-    normalizationApplied = normalized.removedNotes > 0 || normalized.rejectedReceiptCount > 0
     normalizationChanges = [
       ...(normalized.removedNotes ? ['empty_entry_id_note_removed'] : []),
       ...(normalized.rejectedReceiptCount ? [`invalid_action_receipt_quarantined:${normalized.rejectedReceiptCount}`] : []),
+      ...(normalized.materializedReceiptCount ? [`action_receipt_explanation_materialized:${normalized.materializedReceiptCount}`] : []),
+      ...(normalized.materializedCoverageCount ? [`auxiliary_entry_coverage_materialized:${normalized.materializedCoverageCount}`] : []),
     ]
+    normalizationApplied = normalizationChanges.length > 0
   }
   if ((input.component === 'P01' || input.component === 'P01R') && !compiled.schema.safeParse(parsed).success) {
     const document = resumeDocumentFromEnvelope(input.envelope)
@@ -487,6 +491,16 @@ export async function runV5StructuredStage<T>(input: {
       parsed = materialized.data
       normalizationApplied = true
       normalizationChanges = ['source_block_fields_materialized']
+    }
+  }
+  if ((input.component === 'P02' || input.component === 'P02R') && !compiled.schema.safeParse(parsed).success) {
+    const materialized = materializeJobExtractionTransport(parsed, isJobTargetedEnvelope(input.envelope))
+    if (materialized.success) {
+      parsed = materialized.data
+      normalizationApplied = true
+      normalizationChanges.push('source_block_coverage_materialized')
+    } else {
+      transportValidationError = materialized.error
     }
   }
   if (input.component === 'P12') {
@@ -520,7 +534,8 @@ export async function runV5StructuredStage<T>(input: {
 
   const validated = compiled.schema.safeParse(parsed)
   if (!validated.success) {
-    const validationIssues = summarizeZodIssues(validated.error)
+    const error = transportValidationError ?? validated.error
+    const validationIssues = summarizeZodIssues(error)
     if (input.options?.eventBus && input.options.stepContext) {
       await input.options.eventBus.publish(createHarnessEvent({
         type: 'output.validated',
@@ -538,6 +553,11 @@ export async function runV5StructuredStage<T>(input: {
           errorCode: 'V5_SCHEMA_VALIDATION_FAILED',
           validationIssueCount: validationIssues.length,
           validationIssueCodes: [...new Set(validationIssues.map(item => item.code))].sort(),
+          ...(['P02', 'P02R', 'P06C'].includes(input.component) ? {validationIssuePaths: error.issues.slice(0, 20).map(issue => ({
+            code: issue.code,
+            path: issue.path.map(part => typeof part === 'number' || /^[a-zA-Z][a-zA-Z0-9_]{0,47}$/u.test(part) ? part : '*').join('.'),
+            ...(issue.code === 'invalid_type' ? {expected: issue.expected, received: issue.received} : {}),
+          }))} : {}),
         },
       }))
     }

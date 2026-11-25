@@ -1134,7 +1134,7 @@ export class V5ResumeOptimizationWorkflow {
                     resume: resumeEvidenceBundle, policy: generationPolicy, previewEntryId: entry.entryId })
                   journal.preview(entry.entryId, brief.order, preview.deliveryParagraphs.get(entry.entryId) ?? [])
                 } catch { /* Invalid previews stay private; final compilation diagnoses them. */ }
-              }) : undefined
+              }, undefined, new Set(entryPlan.entries.filter(entry => entry.slot.kind !== 'business_bullet').map(entry => entry.entryId))) : undefined
               await setState('drafting')
               const writerStep = await runStep({
                 runContext, eventBus: this.eventBus, stepName: 'v5_p06c_supported_writer',

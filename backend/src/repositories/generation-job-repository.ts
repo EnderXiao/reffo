@@ -87,16 +87,16 @@ export class GenerationJobRepository {
     const expires = new Date(Date.now() + leaseDuration).toISOString()
     if (env.DATABASE_PROVIDER === 'supabase') {
       const candidates = await service().request<GenerationJob[]>(table, {searchParams: {
-        status: 'in.(queued,running)', lease_expires_at: `lt.${now}`, order: 'created_at.asc', limit: 1}})
+        status: 'in.(queued,running)', lease_expires_at: `lte.${now}`, order: 'created_at.asc', limit: 1}})
       const candidate = candidates[0]
       if (!candidate) return null
       const rows = await service().request<GenerationJob[]>(table, {method: 'PATCH', prefer: 'return=representation',
-        searchParams: {id: `eq.${candidate.id}`, status: 'in.(queued,running)', lease_expires_at: `lt.${now}`},
+        searchParams: {id: `eq.${candidate.id}`, status: 'in.(queued,running)', lease_expires_at: `lte.${now}`},
         body: {status: 'running', lease_token: token, lease_expires_at: expires, updated_at: now}})
       return rows[0] ?? null
     }
     return decode(database().query(`UPDATE resume_generation_jobs SET status = 'running', lease_token = ?, lease_expires_at = ?, updated_at = ?
-      WHERE id = (SELECT id FROM resume_generation_jobs WHERE status IN ('queued','running') AND lease_expires_at < ?
+      WHERE id = (SELECT id FROM resume_generation_jobs WHERE status IN ('queued','running') AND lease_expires_at <= ?
       ORDER BY created_at LIMIT 1) RETURNING *`).get(token, expires, now, now) as GenerationJob | null)
   }
 

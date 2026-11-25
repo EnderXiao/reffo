@@ -292,6 +292,19 @@ describe('结果页', () => {
     expect(within(resumeTab).getByText('步骤正在生成中')).toBeTruthy()
   })
 
+  test('简历就绪时保留完成入口，面试建议独立显示生成中', () => {
+    const handleComplete = jest.fn()
+    const handleRetryStage = jest.fn()
+    render(<PageView {...model} handleComplete={handleComplete} handleRetryStage={handleRetryStage}
+      progress={{...model.progress, interview: 'pending'}} />)
+
+    fireEvent.click(screen.getByLabelText('面试建议'))
+    expect(screen.getByText('正在生成面试建议，可以先查看简历')).toBeTruthy()
+    expect(handleRetryStage).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('完成'))
+    expect(handleComplete).toHaveBeenCalledTimes(1)
+  })
+
   test('每个故事完整显示各自的讲述方案，引用独立保留', () => {
     const stories = [{
       title: '核心业务系统项目', background: '核心业务系统审批流程复杂', result: '按期完成上线',

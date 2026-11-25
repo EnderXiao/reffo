@@ -9,6 +9,7 @@ import {summarizeGenerationJob} from '@/types/generation-job'
 import {publishGenerationJobUpdate, subscribeGenerationJobUpdates} from '@/services/generation-job-events'
 import {singleStepFingerprint} from '@/v5/single-step-adapter'
 import {generationJobRetryChanges} from '@/services/generation-job-version'
+import {recordGenerationLifecycle} from '@/services/generation-lifecycle'
 
 const jobParams = t.Object({id: t.String({pattern: '^[a-f0-9-]{36}$'})})
 export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'})
@@ -33,6 +34,8 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
     }, singleStepFingerprint())
     set.status = 202
     publishGenerationJobUpdate(job)
+    recordGenerationLifecycle('accepted', {jobId: job.id})
+    void generationJobWorker.tick()
     return {success: true, data: summarizeGenerationJob(job)}
   }, {body: t.Object({request_id: t.String({pattern: '^[a-f0-9-]{36}$'}),
     resume_markdown: t.String({minLength: 10, maxLength: 200000}), jd_text: t.String({minLength: 10, maxLength: 100000}),

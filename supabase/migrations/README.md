@@ -48,6 +48,8 @@
 | 5 | `202611120005_stage_leases_source_delete.sql` | 跨进程stage lease；`delete_resume_source`将源记录删除与瞬态缓存/检查点/导出撤销置于同一事务 |
 | 6 | `202611120006_ocr_delivery_diagnostics.sql` | 源简历OCR `parse_id`关联与不可变PDF快照六类门禁；新增列可空，旧记录继续可读 |
 | 7 | `202611130007_stage_revocation_epochs.sql` | 撤销事件生成独立epoch，claim绑定当前epoch，store按租约与epoch共同CAS；允许撤销后使用完整源输入重新计算，禁止旧任务复活 |
+| 8 | `202611130008_completion_upgrade_cas.sql` | 填写文档升级按完整旧快照 CAS |
+| 9 | `202611250001_resume_interview_tasks.sql` | 原子登记首版面试任务，独立存储建议与租约，删除历史时级联删除任务。修正已有历史与源简历删除函数对文本 owner 字段的比较 |
 
 SQLite在对应repository初始化时执行等价增量迁移；旧 `match_score NOT NULL` 表会在事务中重建，保留已有行、索引和触发器。源记录增加owner后将历史本地行归属开发账户，新增OCR列保持可空。SQLite验证不代表Supabase RPC已经运行成功。
 

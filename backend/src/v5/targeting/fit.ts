@@ -35,6 +35,7 @@ const FINANCIAL_SPECIALTIES = [
   {label: '证券专项', pattern: /证券/u},
 ] as const
 const INDEPENDENT_OWNERSHIP_PATTERN = /独立(?:主导|牵头|负责|完成|承担|开展|建设|交付|规划|进行|推进|推动|设计|解决|从)|全权/u
+const INDEPENDENT_FORMULATION_PATTERN = /独立制定/u
 
 export function unprovenSpecialties(targetText: string, sourceTexts: string[]) {
   return SPECIALTY_SIGNALS.filter(signal => signal.pattern.test(targetText)
@@ -197,6 +198,8 @@ export function inspectFitRequirementScopeDetails(link: JobFitMap['links'][numbe
   // that industry. A named specialty may still use its broad industry label.
   for (const signal of FINANCIAL_SPECIALTIES) introduced('JOB_FIT_FOREIGN_DOMAIN_GATE', signal.label, signal.pattern)
   introduced('JOB_FIT_INVENTED_OWNERSHIP_GATE', '独立责任', INDEPENDENT_OWNERSHIP_PATTERN)
+  // An explicit formulation task supports that action without granting ownership of the whole delivery.
+  introduced('JOB_FIT_INVENTED_OWNERSHIP_GATE', '独立制定', INDEPENDENT_FORMULATION_PATTERN)
   for (const signal of MODEL_SPECIALTY_SIGNALS) introduced('JOB_FIT_INVENTED_SPECIALTY_GATE', signal.label, signal.pattern)
   if (/基础|基本|一定/u.test(source) && !/系统化|体系化|系统性|精通|专家级|高级/u.test(source)) {
     report('JOB_FIT_INVENTED_PROFICIENCY_GATE', '超出基础程度', /系统化|体系化|系统性|精通|专家级|高级/u)
@@ -222,7 +225,9 @@ export function prepareJobFitScopeRepair(fit: JobFitMap, targets: JobTarget[], i
       sourceBoundaries: targets.filter(target => targetIds.has(target.id)).map(target => ({targetId: target.id,
         sourceQuote: target.sourceQuote ?? target.text,
         excludedCriteria: issues.filter(issue => issue.outputPath === target.id).flatMap(issue =>
-          issue.code === 'JOB_FIT_INVENTED_OWNERSHIP_GATE' ? ['此原文未要求独立责任；“未证明独立主导/负责/承担”不构成该要求的差距。责任边界只如实写参与、实习或团队贡献。']
+          issue.code === 'JOB_FIT_INVENTED_OWNERSHIP_GATE' ? [hasUnexcludedScopeMention(target.sourceQuote ?? target.text, INDEPENDENT_FORMULATION_PATTERN)
+            ? '按原文保留独立制定及对应对象。以真实证据核对这一动作，不把它扩大为独立主导、牵头或独立负责整体交付。'
+            : '沿用原文明示的责任动词和对象，删除原文没有的独立责任。实际责任边界如实说明参与、实习或团队贡献。']
           : issue.code === 'JOB_FIT_INVENTED_SPECIALTY_GATE' ? [`此原文未要求${MODEL_SPECIALTY_SIGNALS.filter(signal => !hasUnexcludedScopeMention(target.sourceQuote ?? target.text, signal.pattern)).map(signal => signal.label).join('、')}；这些专项不能出现在本项的待证明方面、差距或补充要求中。原文实际要求的专项仍按真实证据判断；真实角色只写已证实的参与范围。`]
           : issue.code === 'JOB_FIT_FOREIGN_DOMAIN_GATE' ? [hasUnexcludedScopeMention(target.sourceQuote ?? target.text, FINANCIAL_CONTEXT_PATTERN)
             ? `此原文明示的行业条件应保留，但未要求${[...(!hasUnexcludedScopeMention(target.sourceQuote ?? target.text, FINANCIAL_DOMAIN_PATTERN) ? ['金融行业'] : []), ...FINANCIAL_SPECIALTIES.filter(signal => !hasUnexcludedScopeMention(target.sourceQuote ?? target.text, signal.pattern)).map(signal => signal.label)].join('、')}；不要把交易流程或广义行业经验升级成这些专项门槛。`

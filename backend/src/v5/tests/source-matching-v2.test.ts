@@ -190,6 +190,24 @@ test('every public judgment reason preserves source ownership and basic proficie
   expect(inspectFitRequirementScope({...original,difference:'参与经验已有，完整建设过程未说明。'},target)).toContain('JOB_FIT_INVENTED_SCOPE_GATE')
 })
 
+test('explicit independent formulation retains the exact job threshold without adding overall ownership', () => {
+  const fixture = createTargetingFixture()
+  const target = {...fixture.targets[0]!, kind: 'requirement' as const, sourceQuote: '能独立制定运营方案、撰写运营文案'}
+  const partial = {...fixture.fit.links[0]!, difference: '当前材料尚未证明独立制定运营方案。'}
+
+  expect(inspectFitRequirementScope(partial, target)).toEqual([])
+  expect(inspectFitRequirementScope(partial, {...target, sourceQuote: '能制定运营方案、撰写运营文案'}))
+    .toContain('JOB_FIT_INVENTED_OWNERSHIP_GATE')
+  const expanded = {...partial, difference: '当前材料尚未证明独立主导整个运营活动。'}
+  expect(inspectFitRequirementScope(expanded, target)).toContain('JOB_FIT_INVENTED_OWNERSHIP_GATE')
+
+  const issue = {issueId: 'ownership', code: 'JOB_FIT_INVENTED_OWNERSHIP_GATE', severity: 'error' as const,
+    outputPath: target.id, claimId: null, evidenceIds: [], requirementIds: [], message: 'scope', expectedConstraint: 'per source scope', replacementText: null}
+  const repair = prepareJobFitScopeRepair(fixture.fit, [target], [issue])!
+  const {sourceBoundaries} = repair.currentOutput as {sourceBoundaries: Array<{excludedCriteria: string[]}>}
+  expect(sourceBoundaries[0]!.excludedCriteria.join('')).toContain('按原文保留独立制定')
+})
+
 test('safe partial source practice becomes a bounded strength without certifying the whole requirement', () => {
  const f=createTargetingFixture(),link=f.fit.links.find(item=>item.targetId===f.job.requirementAtoms[0]!.requirementId)!
  f.fit.narratives=[]

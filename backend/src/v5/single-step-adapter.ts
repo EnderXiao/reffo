@@ -19,6 +19,8 @@ import {validateCompletionDocument, isCompletionV4, serializeDraft} from '@/shar
 import { createTrustedResumeExtractionCache } from '@/v5/resume-extraction-cache'
 import { V5ResumeOptimizationWorkflow, type V5MatchingCheckpoint } from '@/v5/main/workflow'
 import { toResumeAnalysis, toMatchAnalysis, toLegacyMvpProcessResponse, toInterviewPreparation } from '@/v5/main/compatibility'
+import {isV5ProductDeliverable} from '@/v5/delivery-gate'
+import {V5WorkflowBlockedError} from '@/v5/errors'
 import { V5_WORKFLOW_VERSION, type V5ResumeExtractionResult, type V5WorkflowResult } from '@/v5/types'
 import type { ResumeAnalysis, InterviewSuggestions } from '@/types'
 import manifest from '@/v5/prompts/manifest.json'
@@ -121,6 +123,24 @@ function checkpoint(value: unknown): Checkpoint {
   return row as unknown as Checkpoint
 }
 
+function isReusableGenerationResult(value: unknown): value is V5WorkflowResult {
+  if (!value || typeof value !== 'object') return false
+  const result = value as V5WorkflowResult
+  return isV5ProductDeliverable(result)
+    && (!result.completionDocument || validateCompletionDocument(result.completionDocument, result.deliveryMarkdown).ok)
+}
+
+function assertGenerationDeliverable(result: V5WorkflowResult) {
+  if (!isV5ProductDeliverable(result)) toLegacyMvpProcessResponse(result)
+  if (result.completionDocument && !validateCompletionDocument(result.completionDocument, result.deliveryMarkdown).ok) {
+    const error = new V5WorkflowBlockedError({
+      code: 'V5_COMPLETION_DOCUMENT_INVALID', state: 'blocked_fact_validation', message: '生成的填写结构与简历正文不一致。',
+    })
+    error.runId = result.runId
+    throw error
+  }
+}
+
 type StageWorkflow = Pick<V5ResumeOptimizationWorkflow, 'extractResume' | 'matchResume' | 'generateResume' | 'prepareInterview'>
 
 export class V5SingleStepAdapter {
@@ -217,14 +237,19 @@ export class V5SingleStepAdapter {
 
   async generate(structured: unknown, matching: unknown, owner: string) {
     const {row, stored} = await this.matching(structured, matching, owner)
-    const reusableGenerated = stored.generationFingerprint === resumeStageFingerprint('generation') ? stored.generated : undefined
+    const reusableGenerated = stored.generationFingerprint === resumeStageFingerprint('generation')
+      && isReusableGenerationResult(stored.generated) ? stored.generated : undefined
     const cached = reusableGenerated ? {value:reusableGenerated} : await this.stageCache.resolve<V5WorkflowResult>({owner,stage:'generation',
       dependency:{source:stored.checkpoint.extraction.resumeEvidenceBundle,job:stored.checkpoint.jobRequirementBundle,analysis:stored.checkpoint.matchAnalysis,
         fit:stored.checkpoint.jobFitMap ?? null},sourceDigest:stored.sourceDigest ?? stored.checkpoint.extraction.canonicalSourceDocument.sha256,
-      compute:({timeoutMs,signal})=>this.workflow(owner).generateResume(stored.checkpoint,{workflowTimeoutMs:Math.min(180000,timeoutMs),signal}),
-      validate:(value):value is V5WorkflowResult=>!!value && typeof value==='object' && !!(value as V5WorkflowResult).runId
-        && (!(value as V5WorkflowResult).completionDocument || validateCompletionDocument((value as V5WorkflowResult).completionDocument).ok)})
+      compute:async({timeoutMs,signal})=>{
+        const result=await this.workflow(owner).generateResume(stored.checkpoint,{workflowTimeoutMs:Math.min(180000,timeoutMs),signal})
+        assertGenerationDeliverable(result)
+        return result
+      },
+      validate:isReusableGenerationResult})
     const result = cached.value
+    assertGenerationDeliverable(result)
     const response = toLegacyMvpProcessResponse(result)
     const completionContext = reusableGenerated && stored.completionContext ? stored.completionContext
       : response.step3_completion_document && response.step3_completion_document.schemaVersion !== 'resume-completion-v1'

@@ -93,6 +93,22 @@ export const writtenEntryV5Schema = writtenEntryV4Schema.extend({
 export const entryWritingV5OutputSchema = z.object({contractVersion: z.literal('entry-writing-v5'), entries: z.array(writtenEntryV5Schema).max(100)}).strict()
 export const writtenEntryV6Schema = writtenEntryV5Schema.extend({paragraphs: z.array(z.object({unitId: z.string().min(1), role: paragraphRoleSchema, segments: z.array(entrySegmentV6Schema).min(1)}).strict()).min(1).max(12)})
 export const entryWritingV6OutputSchema = z.object({contractVersion: z.literal(ENTRY_WRITING_POLICY), entries: z.array(writtenEntryV6Schema).max(100)}).strict()
+const actionReceiptTransportSchema = writtenEntryV6Schema.shape.actionReceipts.element.omit({explanation: true})
+const entryWritingRequestSchema = z.object({payload: z.object({
+  entries: z.array(z.object({entryId: z.string(), coverageRequired: z.boolean().optional()})).min(1).max(100),
+})})
+
+function auxiliaryEntryCoverage(): z.infer<typeof writtenEntryV6Schema.shape.coverage> {
+  return (['responsibility', 'project', 'problem', 'solution', 'result'] as const).map(element => ({
+    element, status: 'not_applicable', evidenceIds: [], resultKind: 'not_applicable',
+    answer: '本条为技能、教育或其他辅助信息，不适用项目经历五要素；正文仍须逐项通过来源校验。',
+  }))
+}
+
+export function auxiliaryEntryIdsFromEnvelope(envelope: unknown) {
+  const request = entryWritingRequestSchema.safeParse(envelope)
+  return new Set(request.success ? request.data.payload.entries.filter(entry => entry.coverageRequired === false).map(entry => entry.entryId) : [])
+}
 const compatibleEntryOutputSchema = z.object({
   contractVersion: z.enum(['entry-writing-v1', 'entry-writing-v2', 'entry-writing-v3', 'entry-writing-v4', 'entry-writing-v5', ENTRY_WRITING_POLICY]), entries: z.array(writtenEntrySchema).max(100),
 }).strict()
@@ -143,40 +159,65 @@ export function normalizeWrittenEntry(value: unknown): unknown {
   return entry
 }
 
-export function normalizeEntryWritingOutput(value: unknown) {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return { value, removedNotes: 0, rejectedReceiptCount: 0 }
+export function normalizeEntryWritingOutput(value: unknown, auxiliaryEntryIds?: ReadonlySet<string>) {
+  const noChanges = {value, removedNotes: 0, rejectedReceiptCount: 0, materializedReceiptCount: 0, materializedCoverageCount: 0}
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return noChanges
   const record = value as Record<string, unknown>
-  if (!['entry-writing-v1', 'entry-writing-v2', 'entry-writing-v3', 'entry-writing-v4', 'entry-writing-v5', ENTRY_WRITING_POLICY].includes(String(record.contractVersion)) || !Array.isArray(record.entries)) return { value, removedNotes: 0, rejectedReceiptCount: 0 }
+  if (!['entry-writing-v1', 'entry-writing-v2', 'entry-writing-v3', 'entry-writing-v4', 'entry-writing-v5', ENTRY_WRITING_POLICY].includes(String(record.contractVersion)) || !Array.isArray(record.entries)) return noChanges
   let removedNotes = 0
   let rejectedReceiptCount = 0
+  let materializedReceiptCount = 0
+  let materializedCoverageCount = 0
   const receiptSchema = writtenEntrySchema.shape.actionReceipts.unwrap().element
   const entries = record.entries.map(entry => {
     const normalized = normalizeWrittenEntry(entry)
     if (normalized !== entry) removedNotes += 1
     if (typeof normalized === 'object' && normalized !== null && !Array.isArray(normalized)) {
-      const written = normalized as Record<string, unknown>
+      let written = normalized as Record<string, unknown>
+      if (record.contractVersion === ENTRY_WRITING_POLICY && typeof written.entryId === 'string'
+        && auxiliaryEntryIds?.has(written.entryId) && !writtenEntryV6Schema.shape.coverage.safeParse(written.coverage).success) {
+        written = {...written, coverage: auxiliaryEntryCoverage()}
+        materializedCoverageCount += 1
+      }
       if (Array.isArray(written.actionReceipts)) {
         // Receipts are untrusted adoption metadata. Quarantine the whole bad
         // receipt; stripping unknown fields would falsely endorse its claim.
-        const receipts = written.actionReceipts.filter(receipt => receiptSchema.safeParse(receipt).success)
+        const before = materializedReceiptCount
+        const receipts = written.actionReceipts.flatMap(receipt => {
+          if (receiptSchema.safeParse(receipt).success) return [receipt]
+          if (record.contractVersion !== ENTRY_WRITING_POLICY) return []
+          const compact = actionReceiptTransportSchema.safeParse(receipt)
+          if (!compact.success) return []
+          materializedReceiptCount += 1
+          // Final adoption explanation is computed separately from verified document anchors.
+          return [{...compact.data, explanation: '行动引用已记录，采用情况以最终正文核对为准。'}]
+        })
         const rejected = written.actionReceipts.length - receipts.length
         rejectedReceiptCount += rejected
-        if (rejected) return {...written, actionReceipts: receipts}
+        if (rejected || materializedReceiptCount !== before) return {...written, actionReceipts: receipts}
       }
+      return written
     }
     return normalized
   })
-  return { value: removedNotes || rejectedReceiptCount ? { ...record, entries } : value, removedNotes, rejectedReceiptCount }
+  return { value: removedNotes || rejectedReceiptCount || materializedReceiptCount || materializedCoverageCount
+    ? { ...record, entries } : value, removedNotes, rejectedReceiptCount, materializedReceiptCount, materializedCoverageCount }
 }
 
 /** 约束本次请求的 ID 和数量；重复、缺失仍由最终集合校验明确诊断。 */
 export function entryWritingTransportSchema(envelope: unknown) {
-  const {payload} = z.object({payload: z.object({entries: z.array(z.object({entryId: z.string()})).min(1).max(100)})}).parse(envelope)
+  const {payload} = entryWritingRequestSchema.parse(envelope)
   const ids = payload.entries.map(entry => entry.entryId)
   const diagnostics = inspectEntrySet(ids, ids)
   if (!diagnostics.passed) throw new EntrySetValidationError(diagnostics, 'ENTRY_PLAN_INVALID')
   return entryWritingV6OutputSchema.extend({
-    entries: z.array(writtenEntryV6Schema.extend({entryId: z.enum(ids as [string, ...string[]])})).length(ids.length),
+    entries: z.array(writtenEntryV6Schema.extend({
+      entryId: z.enum(ids as [string, ...string[]]),
+      actionReceipts: z.array(actionReceiptTransportSchema),
+      ...(payload.entries.some(entry => entry.coverageRequired === false) ? {
+        coverage: writtenEntryV6Schema.shape.coverage.nullable(),
+      } : {}),
+    })).length(ids.length),
   })
 }
 
@@ -545,6 +586,7 @@ export function entryWritingPayload(plan: EntryWritingPlan) {
     // Body first, abstraction last; presentation order remains server-owned.
     entries: [...plan.entries].sort((a, b) => Number(['summary', 'skills'].includes(a.section)) - Number(['summary', 'skills'].includes(b.section)) || a.order - b.order)
       .map(entry => ({ entryId: entry.entryId, section: entry.section,
+        coverageRequired: entry.slot.kind === 'business_bullet',
         paragraphLimit: entryParagraphLimit(entry.slot.kind === 'business_bullet',
           plan.renderingPlan.scopePlans.find(scope => scope.scopeId === entry.scopeId)?.treatment === 'compress'),
         purpose: SECTION_WRITING_ROLES[entry.section] ?? '准确呈现与岗位相关的源材料。',
@@ -598,10 +640,7 @@ export function compileEntryWriting(input: {
   for (const entry of entries.filter(entry => entry.slot.kind !== 'business_bullet')) {
     const written = byId.get(entry.entryId)
     if (!written?.coverage) continue
-    written.coverage = ['responsibility', 'project', 'problem', 'solution', 'result'].map(element => ({
-      element: element as NonNullable<WrittenEntry['coverage']>[number]['element'], status: 'not_applicable' as const,
-      evidenceIds: [], answer: '本条为技能、教育或其他辅助信息，不适用项目经历五要素；正文仍须逐项通过来源校验。', resultKind: 'not_applicable' as const,
-    }))
+    written.coverage = auxiliaryEntryCoverage()
   }
   const fail = (code: string) => { throw new SupportedWritingError([writingIssue(code, 'entries', [], '经历结构与服务端计划不一致。')]) }
   const diagnostics = inspectEntrySet(entries.map(entry => entry.entryId), output.entries.map(entry => entry.entryId))

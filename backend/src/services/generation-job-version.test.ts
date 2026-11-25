@@ -1,7 +1,7 @@
 import {describe, expect, test} from 'bun:test'
 import type {GenerationJob, GenerationJobPayload} from '@/types/generation-job'
 import {assertGenerationJobVersion, generationJobRetryChanges, GenerationJobVersionError} from './generation-job-version'
-import {GenerationJobWorker} from './generation-jobs'
+import {GenerationJobWorker, jobHistory} from './generation-jobs'
 import type {v5SingleStepAdapter} from '@/v5/single-step-adapter'
 import type {ResumeHistoryRecord} from '@/types'
 import {V5WorkflowBlockedError} from '@/v5/errors'
@@ -40,7 +40,6 @@ function workerHarness(initial: GenerationJob, options: {existingHistory?: Resum
     },
     match: async () => {calls.model++; throw options.matchingError ?? new Error('test stops after analysis')},
     generate: async () => {calls.model++; throw new Error('unexpected generation')},
-    interview: async () => {calls.model++; throw new Error('unexpected interview')},
   }
   const histories: ConstructorParameters<typeof GenerationJobWorker>[2] = {
     findById: async () => options.existingHistory ?? null,
@@ -51,6 +50,20 @@ function workerHarness(initial: GenerationJob, options: {existingHistory?: Resum
 }
 
 describe('生成版本与显式重试', () => {
+  test('简历已交付时可以在没有面试建议的情况下保存历史', () => {
+    const job = makeJob({stage: 'saving'})
+    job.payload = {
+      ...job.payload,
+      analysis,
+      matching: {match_score: 70, skill_match: {matched: []}, hard_requirements_match: {}, optimization_suggestions: []} as unknown as NonNullable<GenerationJobPayload['matching']>,
+      optimized: {optimized_resume: '# 已交付简历', changes_summary: [], preparation_topics: [],
+        strategy_review: undefined, improvement_score: null},
+    }
+    const history = jobHistory(job)
+    expect(history.progress).toEqual({analysis: 'done', matching: 'done', optimized: 'done', interview: 'pending'})
+    expect(history.process_result).not.toHaveProperty('interview')
+  })
+
   test('旧的部分结果不能混入新版本，纯输入可以执行', () => {
     const job = makeJob()
     expect(() => assertGenerationJobVersion(job.payload, fingerprint)).not.toThrow()

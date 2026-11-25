@@ -19,6 +19,8 @@ import { V5WorkflowBlockedError } from '@/v5/errors'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 import {consumeResumeQuota, ensureResumeQuotaAvailable, ResumeQuotaError} from '@/services/resume-quota'
 import {resumeHistoryRepository} from '@/repositories/resume-history-repository'
+import {hasManagedInterview, projectManagedInterview, resumeInterviewWorker, retryManagedInterview} from '@/services/resume-interview-tasks'
+import type {InterviewSuggestions} from '@/types'
 import {historyDocumentRef, ResumeHistoryCommitError} from '@/services/resume-history-commit'
 import {saveCompletionBaseline} from '@/services/resume-completion-baseline'
 import {persistInputParseTrace} from '@/services/generation-input-trace'
@@ -572,6 +574,16 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
           if (!body.document_ref || body.document_ref.documentId!==actual.documentId || body.document_ref.revision!==actual.revision
             || (body.document_ref.resolvedDigest!==undefined && body.document_ref.resolvedDigest!==actual.resolvedDigest)) {
             throw new ResumeHistoryCommitError('RESUME_VERSION_CONFLICT','当前稿已更新，请先保存当前版本再生成面试建议')
+          }
+          if (hasManagedInterview(history)) {
+            const projected = await projectManagedInterview(owner, history)
+            const {interview} = projected.process_result as {interview?: InterviewSuggestions}
+            if (projected.interview_task?.status === 'done' && interview) return {success: true, data: interview} satisfies ApiResponse<InterviewSuggestions>
+            if (projected.interview_task?.status === 'failed' || projected.interview_task?.status === 'stale') {
+              if (await retryManagedInterview(owner, history)) void resumeInterviewWorker.tick()
+            }
+            set.status = 409
+            return {success: false, error: {code: 'INTERVIEW_BACKGROUND_PENDING', message: '面试建议将在后台生成，稍后重新打开查看'}}
           }
         }
         return singleStepSuccess(await v5SingleStepAdapter.interview(body.analysis, body.matching, body.optimized_resume, owner, {history:history??undefined}), startedAt)

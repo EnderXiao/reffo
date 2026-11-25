@@ -10,6 +10,7 @@ interface SupabaseRequestOptions {
   searchParams?: Record<string, string | number | boolean | undefined>
   body?: unknown
   prefer?: string
+  signal?: AbortSignal
 }
 
 export class SupabaseRestError extends Error {
@@ -75,6 +76,7 @@ export class SupabaseRestClient {
     const accessToken = this.options.accessToken || apiKey
     const response = await fetch(buildUrl(path, options.searchParams), {
       method: options.method ?? 'GET',
+      signal: options.signal,
       headers: {
         apikey: apiKey,
         Authorization: `Bearer ${accessToken}`,

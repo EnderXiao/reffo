@@ -111,8 +111,8 @@ test.each(requiredCases)('required display flag follows explicit qualification, 
 test.each(['P03','P03R'] as const)('%s keeps display length soft and preserves qualification and source boundaries', component => {
   const prompt = compileV5Prompt({component,envelope:{payload:{jobTargetingPolicy:'job-targeted-v1'}}})
   const system = prompt.messages[0].content
-  expect(system).toContain('difference只写差距判断')
+  expect(system).toMatch(/difference 约 30–50 字[^。；]*差距/)
   expect(system).toContain('一个主要编辑动作')
-  expect(system).toContain('字数是软参考，不机械截断、不删限定词')
-  expect(system).toContain('建议是生成前计划')
+  expect(system).toMatch(/字数[是为]软参考/)
+  expect(system).toMatch(/不(?:报告|宣称)完成|不宣称已完成/)
 })

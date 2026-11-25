@@ -126,6 +126,9 @@ function getBlockedStageMessage(
   generationError?: string | null,
 ) {
   const stageStatus = getVisibleStageStatus(stageKey, progress)
+  if (stageKey === 'interview' && progress.optimized === 'done' && stageStatus === 'generating') {
+    return {stageStatus, message: '正在生成面试建议，可以先查看简历'}
+  }
   const message = stageStatus === 'failed'
     ? generationError || '生成失败，请稍后重试'
     : generationError ||
@@ -233,7 +236,7 @@ function getVisibleStageStatus(
 
   if (progress.interview === 'done') return 'ready'
   if (progress.interview === 'failed') return 'failed'
-  if (progress.interview === 'generating') return 'generating'
+  if (progress.interview === 'generating' || progress.optimized === 'done') return 'generating'
 
   return 'pending'
 }
@@ -722,7 +725,7 @@ export default function PageView({
   const readyStages = RESULT_STAGES.filter(stage => stageAvailability[stage.key])
   const blockedStages = RESULT_STAGES.filter(stage => !stageAvailability[stage.key])
   const activeReadyIndex = Math.max(0, readyStages.findIndex(stage => stage.key === activeStage.key))
-  const isComplete = progress.interview === 'done'
+  const isComplete = progress.optimized === 'done' && (!enteredFromLanding || progress.interview === 'done')
   const hasRenderableResult = Boolean(result)
   const resultStyle = useMemo(() => ({
     '--reffo-result-progress': backgroundProgress,

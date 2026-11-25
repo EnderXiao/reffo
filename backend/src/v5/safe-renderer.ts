@@ -2,6 +2,7 @@ import type { EvidenceAtom, GeneratedResumeArtifact, ResumeEvidenceBundle, V5Res
 import { formatTimelineHeading } from '@/v5/composition/timeline-display'
 import { V5_SCHEMA_VERSION } from '@/v5/types'
 import { deriveEvidenceAssemblies } from '@/v5/composition/evidence-assembly'
+import { isScopeTimelineEvidence } from '@/v5/writing/education'
 import {
   hasRenderableTimelineLine,
   measureArtifactMarkdown,
@@ -190,7 +191,7 @@ export function renderSourcePreservingArtifact(input: {
           .filter((atom): atom is EvidenceAtom => Boolean(
             atom
             && atom.status !== 'excluded'
-            && atom.claimType === 'timeline'
+            && isScopeTimelineEvidence(atom, scope)
             && !atom.riskFlags.includes('sensitive_pii')
           ))
         const text = metadataLine(scope)

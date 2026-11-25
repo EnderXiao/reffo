@@ -8,7 +8,7 @@ export class ResumeHistoryCommitError extends Error {
 }
 
 export function historyCommitDigest(input: SaveResumeHistoryInput) {
-  const {completion_baseline: _baseline, action_baseline: _action, commit_id: _commit, ...request} = input
+  const {completion_baseline: _baseline, action_baseline: _action, commit_id: _commit, interview_task_version: _interviewTask, ...request} = input
   return createCanonicalDigest(request)
 }
 

@@ -15,6 +15,7 @@ export interface DoubleOrderAbInput {
   runId: string
   resumeEvidenceBundle: ResumeEvidenceBundle
   jobRequirementBundle: JobRequirementBundle
+  originalResumeMarkdown?: string
   originalJobDescription?: string
   candidateLeft: GeneratedResumeArtifact
   candidateRight: GeneratedResumeArtifact
@@ -178,8 +179,21 @@ function compactJobRequirements(job: JobRequirementBundle) {
 interface BlindAbPayload {
   resumeEvidenceBundle: ReturnType<typeof compactResumeEvidence>
   jobRequirementBundle: ReturnType<typeof compactJobRequirements>
-  originalJob: { available: boolean; blocks: Array<{ sourceBlockId: string; text: string; inputRiskFlags: string[] }> }
+  originalResume: ReturnType<typeof projectOriginalSource>
+  originalJob: ReturnType<typeof projectOriginalSource>
   candidates: Array<{ candidateId: 'A' | 'B'; markdown: string }>
+}
+
+function projectOriginalSource(value: string | undefined, documentId: string, resume: ResumeEvidenceBundle) {
+  const blocks = value?.trim() ? canonicalizeSourceDocument(value, documentId).canonicalDocument.blocks : []
+  return {
+    available: blocks.length > 0,
+    blocks: blocks.map(({ sourceBlockId, text, inputRiskFlags }) => ({
+      sourceBlockId,
+      inputRiskFlags,
+      text: redactResumeIdentityText(text, resume),
+    })),
+  }
 }
 
 function envelope(
@@ -192,18 +206,12 @@ function envelope(
     runId: input.runId,
     workflowVersion: V5_WORKFLOW_VERSION,
     payload: {
-      // P12 needs the auditable facts, timeline and requirements—not the
-      // extraction bookkeeping that repeats the same material. Keeping this
-      // projection local to the offline evaluator halves large-case inputs
-      // without changing the judge prompt or its output schema.
+      // The independent source blocks let P12 detect omissions in both the
+      // generated resume and the extraction used to create it.
       resumeEvidenceBundle: compactResumeEvidence(input.resumeEvidenceBundle, [first, second].map(candidate => redactResumeIdentityText(candidate.markdown, input.resumeEvidenceBundle))),
       jobRequirementBundle: compactJobRequirements(input.jobRequirementBundle),
-      originalJob: {
-        available: Boolean(input.originalJobDescription?.trim()),
-        blocks: input.originalJobDescription?.trim()
-          ? canonicalizeSourceDocument(input.originalJobDescription, 'jd:offline-audit').canonicalDocument.blocks
-            .map(({ sourceBlockId, text, inputRiskFlags }) => ({ sourceBlockId, inputRiskFlags, text: redactResumeIdentityText(text, input.resumeEvidenceBundle) })) : [],
-      },
+      originalResume: projectOriginalSource(input.originalResumeMarkdown, 'resume:offline-audit', input.resumeEvidenceBundle),
+      originalJob: projectOriginalSource(input.originalJobDescription, 'jd:offline-audit', input.resumeEvidenceBundle),
       candidates: [
         { candidateId: 'A', markdown: redactResumeIdentityText(first.markdown, input.resumeEvidenceBundle) },
         { candidateId: 'B', markdown: redactResumeIdentityText(second.markdown, input.resumeEvidenceBundle) },

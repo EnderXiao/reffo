@@ -59,6 +59,7 @@ export function buildInterviewContext(result: Pick<V5WorkflowResult,
   const evidenceIds = (ids: string[]) => ids.filter(id => selected.has(id))
   const selectedAtoms = eligible.filter(atom => selected.has(atom.evidenceId))
   const scopeIds = new Set(selectedAtoms.map(atom => atom.sourceScopeId))
+  const timelineScopeIds = new Set(resume.timeline.map(item => item.scopeId))
   const compactAtom = (atom: EvidenceAtom) => ({
     evidenceId: atom.evidenceId,
     ...(atom.provenance ? {provenance: atom.provenance} : {}),
@@ -79,6 +80,8 @@ export function buildInterviewContext(result: Pick<V5WorkflowResult,
   })
   return {
     contextVersion: 'interview-evidence-v2' as const,
+    hasStoryEvidence: selectedAtoms.some(atom => timelineScopeIds.has(atom.sourceScopeId)
+      && STORY_TYPES.has(atom.claimType) && !atom.riskFlags.some(flag => flag === 'future_or_planned' || flag === 'conflicting')),
     // Topics authorize preparation only; their source statements never enter the fact pool.
     preparationTopics: filterInterviewPreparationTopics(result.preparationTopics ?? [], resume).map(topic => ({...topic,
       sourceEvidenceIds: topic.sourceEvidenceIds.filter(id => resume.evidenceAtoms.some(atom => atom.evidenceId === id
@@ -132,4 +135,13 @@ export function buildInterviewContext(result: Pick<V5WorkflowResult,
       contextUsed: match.contextUsed,
     },
   }
+}
+
+/** Read the server-built context, including on repair, without inspecting the rejected draft. */
+export function hasNoInterviewStoryEvidence(value: unknown, depth = 0): boolean {
+  if (depth > 6 || !value || typeof value !== 'object' || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
+  if (record.contextVersion === 'interview-evidence-v2') return record.hasStoryEvidence === false
+  return hasNoInterviewStoryEvidence(record.payload, depth + 1)
+    || hasNoInterviewStoryEvidence(record.originalEnvelope, depth + 1)
 }
