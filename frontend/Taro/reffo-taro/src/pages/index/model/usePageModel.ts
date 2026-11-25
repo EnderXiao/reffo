@@ -296,8 +296,10 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
   const cardItems = useMemo(() => {
     const historyIds = new Set(historySummaries.map(summary => summary.id))
     const tasks = generationTasks.filter(task => task.status !== 'cancelled')
+    // 已确认的任务由 history 卡片承载：history 被删除后任务卡片不得复活，
+    // 否则用户删除简历后首页卡片依然存在。
     const visibleTasks = tasks
-      .filter(task => !task.confirmed_at || !historyIds.has(task.history_id || ''))
+      .filter(task => !task.confirmed_at)
       .sort((left, right) => right.created_at.localeCompare(left.created_at))
     const taskHistoryIds = new Set(visibleTasks.map(task => task.history_id))
     return [
@@ -405,10 +407,25 @@ export function usePageModel(logoSource: string): IndexPageViewModel {
 
     if (card.generationStatus === 'failed' && card.generationTaskId) {
       const taskId = card.generationTaskId
-      feedback.modal({title: '重新生成这份简历？', content: '将从已保存的生成阶段继续。', confirmText: '重试',
-        onConfirm: () => {void generationTasksApi.action(taskId, 'retry')
-          .then(task => useBackgroundGenerationStore.getState().upsert(task))
-          .catch(error => feedback.error(error instanceof Error ? error.message : '重试失败'))}})
+      const runRetry = () => {void generationTasksApi.action(taskId, 'retry')
+        .then(task => useBackgroundGenerationStore.getState().upsert(task))
+        .catch(error => feedback.error(error instanceof Error ? error.message : '重试失败'))}
+      feedback.modal({
+        title: '这份简历生成失败了',
+        content: '可以重试继续生成，或者删除这个任务。',
+        confirmText: '重试',
+        cancelText: '删除',
+        showCancel: true,
+        tone: 'guide',
+        cancelTone: 'danger',
+        onConfirm: runRetry,
+        onCancel: () => {
+          feedback.modal({title: '删除失败的任务？', content: '删除后无法恢复，需要重新发起生成。', confirmText: '删除', tone: 'danger',
+            onConfirm: () => {void generationTasksApi.action(taskId, 'cancel')
+              .then(task => useBackgroundGenerationStore.getState().upsert(task))
+              .catch(error => feedback.error(error instanceof Error ? error.message : '删除失败'))}})
+        },
+      })
       return Promise.resolve()
     }
 

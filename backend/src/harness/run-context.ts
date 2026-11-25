@@ -33,15 +33,17 @@ export function createRunContext(
 export function createStepExecutionContext(
   runContext: RunContext,
   stepName: string,
-  attemptNumber = 1,
   signal?: AbortSignal
 ): StepExecutionContext {
+  // attemptNumber 当前固定为 1：一次 step 只记录一条 attempt，
+  // 阶段级重试/修复由 repairAttempt 和 recovery.* 事件表达，
+  // 不要通过此函数伪造 attempt 拓扑。
   return {
     ...runContext,
     stepName,
     stepRunId: randomUUID(),
     attemptId: randomUUID(),
-    attemptNumber,
+    attemptNumber: 1,
     signal,
   }
 }

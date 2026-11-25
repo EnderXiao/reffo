@@ -1,3 +1,4 @@
+import type {ResumeHistoryRecord} from '@/types'
 import {validateActionPlan, reconcileEditorialActions, buildChangeManifest, changeManifestDescriptions, type ResumeChangeManifest, type ResumeActionPlan, type ResolvedResumeActionPlan, type ResumeActionReview} from '@/shared/resume-actions'
 import {collectGaps, completionIdentityName, completionVersion, hasLinkedCompletion} from '@/shared/resume-completion'
 import {replayCompletionOperation, serializeDraft, validateCompletionDocument, validateOmissionSafety,
@@ -60,10 +61,18 @@ function assertReplay(input: Pick<SaveResumeHistoryInput, 'completion_edit'>, ba
   }
 }
 
+type PreviousCompletionSnapshot = Pick<ResumeHistoryRecord, 'process_result'> &
+  Partial<Pick<ResumeHistoryRecord, 'optimized_content' | 'progress'>>
+
+function canSeedPartialHistory(previous?: PreviousCompletionSnapshot | null) {
+  return Boolean(previous && previous.optimized_content === '' && previous.progress && previous.progress.optimized !== 'done' &&
+    !record(record(previous.process_result)?.optimized)?.completion_document)
+}
+
 /** Validate the merged snapshot before persistence, including partial history updates. */
 export function assertResumeCompletionSnapshot(
   input: Pick<SaveResumeHistoryInput, 'optimized_content' | 'process_result' | 'completion_edit' | 'completion_baseline' | 'expected_document'>,
-  previous?: Pick<SaveResumeHistoryInput, 'process_result'> | null,
+  previous?: PreviousCompletionSnapshot | null,
 ) {
   const optimized = record(record(input.process_result)?.optimized)
   const previousOptimized = record(record(previous?.process_result)?.optimized)
@@ -95,11 +104,12 @@ export function assertResumeCompletionSnapshot(
   }
   if (validation.document.schemaVersion === 'resume-completion-v1') return
   if (previous === undefined) return
-  const base = previous ? completionDocumentFromSnapshot(previous.process_result) : input.completion_baseline
+  const savedDocument = canSeedPartialHistory(previous) ? null : previous
+  const base = savedDocument ? completionDocumentFromSnapshot(savedDocument.process_result) : input.completion_baseline
   if (!base || !validateCompletionDocument(base).ok) {
     throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '未找到服务端生成基准，请恢复生成记录后保存')
   }
-  if (hasLinkedCompletion(validation.document) && previous) {
+  if (hasLinkedCompletion(validation.document) && savedDocument) {
     if (!input.expected_document || input.expected_document.documentId !== base.documentId || input.expected_document.revision !== base.revision) {
       throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '当前稿已更新，请保留本地修改并核对版本')
     }
@@ -113,7 +123,8 @@ export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, prev
   const rawResult = record(input.process_result)
   const {server_interview_basis: _clientBasis, server_completion_upgrade_archive: _clientArchive,
     server_interview_task: _clientTask, ...publicResult} = rawResult ?? {}
-  const interviewTask = previous ? record(previous.process_result)?.server_interview_task : input.interview_task_version
+  const savedDocument = canSeedPartialHistory(previous) ? null : previous
+  const interviewTask = savedDocument ? record(savedDocument.process_result)?.server_interview_task : input.interview_task_version
   const trustedArchive = record(previous?.process_result)?.server_completion_upgrade_archive
   const result = rawResult ? publicResult : undefined
   const optimized = record(result?.optimized)
@@ -126,13 +137,13 @@ export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, prev
   }
   const oldResult = record(previous?.process_result)
   const oldOptimized = record(oldResult?.optimized)
-  const trusted = previous ? {actionPlan: oldOptimized?.action_plan, resolvedPlan: oldOptimized?.resolved_action_plan,
+  const trusted = savedDocument ? {actionPlan: oldOptimized?.action_plan, resolvedPlan: oldOptimized?.resolved_action_plan,
     review: oldOptimized?.action_review, changeManifest: oldOptimized?.change_manifest, identityState: oldOptimized?.identity_state, deliveryState: oldOptimized?.delivery_state, interviewBasis: record(oldResult?.server_interview_basis)?.result, matching: oldResult?.matching} : input.action_baseline
   if (!trusted?.actionPlan || !trusted.resolvedPlan || validateActionPlan(trusted.actionPlan as ResumeActionPlan, trusted.resolvedPlan as ResolvedResumeActionPlan).length) {
     throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '优化行动基准不可用，请重新打开有效稿件')
   }
   const resolved = trusted.resolvedPlan as ResolvedResumeActionPlan
-  if (previous && input.expected_document?.resolvedDigest !== resolved.resolvedDigest) {
+  if (savedDocument && input.expected_document?.resolvedDigest !== resolved.resolvedDigest) {
     throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '优化方案版本已更新，请保留本地修改并重新核对')
   }
   const actionReview = reconcileEditorialActions({resolvedPlan: resolved, document, previousReview: trusted.review as ResumeActionReview | undefined})

@@ -2,6 +2,7 @@ import {env} from '@/config/env'
 import type {RequestUserContext} from '@/auth/request-context'
 import {getDatabase} from '@/repositories/database'
 import {createSupabaseRestClient} from '@/repositories/supabase/client'
+import {referralRewardRepository} from '@/repositories/referral-reward-repository'
 
 export class ResumeQuotaError extends Error {
   readonly code = 'RESUME_DAILY_LIMIT_REACHED'
@@ -54,7 +55,13 @@ async function consumeSupabase(context: RequestUserContext, date: string, checkO
 export async function ensureResumeQuotaAvailable(context: RequestUserContext) {
   if (isUnlimited(context.userId)) return null
   const date = dayKey()
-  if (env.DATABASE_PROVIDER === 'supabase') return consumeSupabase(context, date, true)
+  if (env.DATABASE_PROVIDER === 'supabase') {
+    // 邀请奖励额度优先：有余额时放行，不消耗每日限额。
+    if (await referralRewardRepository.getBonus(context.userId) > 0) {
+      return {limit: env.RESUME_DAILY_LIMIT, used: 0, bonusCovered: true}
+    }
+    return consumeSupabase(context, date, true)
+  }
   const db = ensureSqliteTable()
   const row = db.query('SELECT daily_limit, used_count FROM resume_daily_quotas WHERE user_id = ? AND quota_date = ?').get(context.userId, date) as {daily_limit: number; used_count: number} | null
   if (row && row.used_count >= row.daily_limit) throw new ResumeQuotaError(row.daily_limit, row.used_count)
@@ -62,14 +69,15 @@ export async function ensureResumeQuotaAvailable(context: RequestUserContext) {
 }
 
 export async function getResumeQuota(context: RequestUserContext) {
-  if (isUnlimited(context.userId)) return {unlimited: true as const, limit: null, used: 0, remaining: null}
+  if (isUnlimited(context.userId)) return {unlimited: true as const, limit: null, used: 0, remaining: null, bonusCount: 0}
   try {
     const current = await ensureResumeQuotaAvailable(context)
-    if (!current) return {unlimited: true as const, limit: null, used: 0, remaining: null}
-    return {unlimited: false as const, limit: current?.limit || env.RESUME_DAILY_LIMIT, used: current?.used || 0, remaining: Math.max(0, (current?.limit || env.RESUME_DAILY_LIMIT) - (current?.used || 0))}
+    if (!current) return {unlimited: true as const, limit: null, used: 0, remaining: null, bonusCount: 0}
+    const bonusCount = env.DATABASE_PROVIDER === 'supabase' ? await referralRewardRepository.getBonus(context.userId) : 0
+    return {unlimited: false as const, limit: current?.limit || env.RESUME_DAILY_LIMIT, used: current?.used || 0, remaining: Math.max(0, (current?.limit || env.RESUME_DAILY_LIMIT) - (current?.used || 0)), bonusCount}
   } catch (error) {
     if (error instanceof ResumeQuotaError) {
-      return {unlimited: false as const, limit: error.limit, used: error.used, remaining: 0}
+      return {unlimited: false as const, limit: error.limit, used: error.used, remaining: 0, bonusCount: 0}
     }
     throw error
   }
@@ -78,7 +86,13 @@ export async function getResumeQuota(context: RequestUserContext) {
 export async function consumeResumeQuota(context: RequestUserContext) {
   if (isUnlimited(context.userId)) return null
   const date = dayKey()
-  if (env.DATABASE_PROVIDER === 'supabase') return consumeSupabase(context, date, false)
+  if (env.DATABASE_PROVIDER === 'supabase') {
+    // 奖励额度优先消费，余额不足再走每日限额。
+    if (await referralRewardRepository.consumeBonus(context.userId)) {
+      return {limit: env.RESUME_DAILY_LIMIT, used: 0, bonusConsumed: true}
+    }
+    return consumeSupabase(context, date, false)
+  }
   const db = ensureSqliteTable()
   const now = new Date().toISOString()
   const result = db.transaction(() => {

@@ -3,6 +3,7 @@ import {env} from '@/config/env'
 import {getDatabase} from './database'
 import {createSupabaseRestClient} from './supabase/client'
 import {ResumeQuotaError} from '@/services/resume-quota'
+import {referralRewardRepository} from './referral-reward-repository'
 import type {GenerationJob, GenerationJobInput} from '@/types/generation-job'
 
 const table = '/rest/v1/resume_generation_jobs'
@@ -107,6 +108,14 @@ export class GenerationJobRepository {
 
   async quota(job: GenerationJob, consume: boolean) {
     if (env.APP_ENV === 'local' || env.RESUME_QUOTA_UNLIMITED_USER_IDS.includes(job.user_id)) return
+    if (env.DATABASE_PROVIDER === 'supabase') {
+      // 邀请奖励额度优先：消费时先扣奖励余额，检查时余额大于零直接放行。
+      if (consume) {
+        if (await referralRewardRepository.consumeBonus(job.user_id)) return
+      } else if (await referralRewardRepository.getBonus(job.user_id) > 0) {
+        return
+      }
+    }
     const date = new Intl.DateTimeFormat('en-CA', {timeZone: env.RESUME_QUOTA_TIME_ZONE,
       year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date())
     const rows = await service().request<Array<{allowed: boolean; daily_limit: number; used_count: number}>>(

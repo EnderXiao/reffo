@@ -1,12 +1,13 @@
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
 import { createHarnessEvent } from '@/harness/events'
-import { createRunContext } from '@/harness/run-context'
+import { createRunContext, type RunContext } from '@/harness/run-context'
 import type { LlmProvider } from '@/providers/llm-provider'
 import { V5WorkflowPluginRegistry } from '@/v5/plugins/registry'
 import type { V5WorkflowPlugin, V5WorkflowPluginContext, V5WorkflowPluginManifest } from '@/v5/plugins/contract'
 import { V5_WORKFLOW_VERSION, type ResumeAgentState } from '@/v5/types'
 
 export interface V5StageRuntimeOptions {
+  runContext?: RunContext
   eventBus?: HarnessEventBus
   timeoutMs?: number
   signal?: AbortSignal
@@ -18,14 +19,15 @@ export interface V5StageRuntimeOptions {
 
 /** 每次请求独立持有插件依赖、状态和预算；完整流程与单步共用。 */
 export class V5StageRuntime {
-  readonly runContext = createRunContext(V5_WORKFLOW_VERSION)
+  readonly runContext: RunContext
   readonly registry = new V5WorkflowPluginRegistry()
   readonly manifest: V5WorkflowPluginManifest = { plugins: [] }
   readonly context: V5WorkflowPluginContext
   private currentState: ResumeAgentState = 'received'
 
   constructor(private readonly options: V5StageRuntimeOptions = {}) {
-    this.runContext.signal=options.signal
+    this.runContext = options.runContext ?? createRunContext(V5_WORKFLOW_VERSION)
+    if (options.signal) this.runContext.signal = options.signal
     const timeoutMs = options.timeoutMs ?? 600000
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('INVALID_V5_WORKFLOW_TIMEOUT')
     const deadline = Date.now() + timeoutMs

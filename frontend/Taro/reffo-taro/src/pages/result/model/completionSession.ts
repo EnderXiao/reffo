@@ -4,9 +4,9 @@ import type {LatestResultSession} from '@/utils/result-session'
 export function historyCompletionBaseline(history: ResumeHistory): NonNullable<LatestResultSession['baseHistorySnapshot']> {
   return {
     optimizedContent: history.optimizedContent,
-    completionDocument: history.processResult?.optimized.completion_document,
+    completionDocument: history.processResult?.optimized?.completion_document,
     updatedAt: history.updatedAt,
-    resolvedDigest: history.processResult?.optimized.resolved_action_plan?.resolvedDigest,
+    resolvedDigest: history.processResult?.optimized?.resolved_action_plan?.resolvedDigest,
   }
 }
 

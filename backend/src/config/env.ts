@@ -1,7 +1,10 @@
 import { parseDeepSeekExtractionThinking } from './deepseek-thinking'
 import { assertV5ReleaseConfiguration } from './v5-release'
 
-const NONPROD_CORS_ORIGIN = 'https://reffo-web-nonprod.onrender.com'
+const NONPROD_CORS_ORIGINS = [
+  'https://reffo-web-nonprod.onrender.com',
+  'https://nonprod.reffo.cn',
+]
 
 const DEFAULT_CORS_ORIGINS = [
   'http://localhost:5173',
@@ -10,7 +13,7 @@ const DEFAULT_CORS_ORIGINS = [
   'http://127.0.0.1:4173',
   'http://localhost:10086',
   'http://127.0.0.1:10086',
-  NONPROD_CORS_ORIGIN,
+  ...NONPROD_CORS_ORIGINS,
 ]
 
 function parseCorsOrigin(value: string | undefined, appEnv: AppEnv) {
@@ -28,8 +31,10 @@ function parseCorsOrigin(value: string | undefined, appEnv: AppEnv) {
     .map(origin => origin.trim())
     .filter(Boolean)
 
-  if (appEnv === 'nonprod' && !origins.includes(NONPROD_CORS_ORIGIN)) {
-    origins.push(NONPROD_CORS_ORIGIN)
+  if (appEnv === 'nonprod') {
+    for (const origin of NONPROD_CORS_ORIGINS) {
+      if (!origins.includes(origin)) origins.push(origin)
+    }
   }
 
   return origins
@@ -137,6 +142,9 @@ export const env = {
   DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'enabled',
   DEEPSEEK_P01_THINKING_MODE: parseDeepSeekExtractionThinking(process.env.DEEPSEEK_P01_THINKING_MODE || 'enabled'),
   DEEPSEEK_REASONING_EFFORT: process.env.DEEPSEEK_REASONING_EFFORT || 'high',
+  // 生产默认全局关 think 时，写作阶段（P06C）单独开低强度推理，压住证据引用错位率。
+  DEEPSEEK_WRITING_THINKING_MODE: process.env.DEEPSEEK_WRITING_THINKING_MODE || 'enabled',
+  DEEPSEEK_WRITING_REASONING_EFFORT: process.env.DEEPSEEK_WRITING_REASONING_EFFORT || 'low',
   // DeepSeek thinking consumes the same completion budget as final output.
   // Reserve an explicit budget when a provider caller omits maxOutputTokens.
   DEEPSEEK_THINKING_MAX_TOKENS: parsePositiveInteger(process.env.DEEPSEEK_THINKING_MAX_TOKENS, 12000),
@@ -145,6 +153,8 @@ export const env = {
     .map((model) => model.trim())
     .filter(Boolean),
   V5_QUALITY_JUDGE_ENABLED: parseBoolean(process.env.V5_QUALITY_JUDGE_ENABLED, false),
+  // 分步调用共享的会话级时间预算：/analyze 起算，/match、/generate、/interview 按剩余预算收紧各自上限。
+  V5_SESSION_BUDGET_MS: parsePositiveInteger(process.env.V5_SESSION_BUDGET_MS, 480000),
   V5_CONTEXT_WINDOW_TOKENS: parsePositiveInteger(process.env.V5_CONTEXT_WINDOW_TOKENS, 64000),
   V5_STRUCTURED_OUTPUT_MODE: parseV5StructuredOutputMode(process.env.V5_STRUCTURED_OUTPUT_MODE),
   // GLM-OCR Configuration

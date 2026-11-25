@@ -553,11 +553,16 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       fromCache = Boolean(history);
     }
 
-    if (!history && (!isGuest || isLocalRuntime)) {
+    // 已知确切 id 时始终尝试 API，不再依赖 isLocalRuntime 环境判断：
+    // public-config 在弱网下失败会返回 false，游客会因此被静默判空。
+    // 后端会按环境鉴权兜底；任何「拿不到」（404/401/网络失败）都按 null 处理，
+    // 由调用方决定重试或回退。
+    if (!history) {
       try {
         history = await resumeHistoryApi.getHistory(id);
       } catch (error) {
-        const isMissing = error instanceof Error && /not found|不存在/i.test(error.message);
+        const isMissing = error instanceof Error
+          && /not found|不存在|未登录|登录状态无效|请先登录|token|鉴权/i.test(error.message);
         if (!isMissing) {
           throw error;
         }

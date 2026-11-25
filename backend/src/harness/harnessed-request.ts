@@ -25,8 +25,14 @@ export interface HarnessedRequestContext {
 
 export interface HarnessedRequestInput<TResult> {
   workflowVersion: string
+  workflowName?: RunContext['workflowName']
   inputDigestSource: unknown
   workflowTimeoutMs?: number
+  runContext?: RunContext
+  eventBus?: HarnessEventBus
+  steps?: StepRunSnapshot[]
+  publishWorkflowEvents?: boolean
+  createFailureSample?: boolean
   execute: (context: HarnessedRequestContext) => Promise<TResult>
 }
 
@@ -51,50 +57,55 @@ function createDefaultEventBus() {
 export async function runHarnessedRequest<TResult>(
   input: HarnessedRequestInput<TResult>
 ): Promise<{ result: TResult; meta: HarnessResponseMeta }> {
-  const runContext = createRunContext(input.workflowVersion)
-  const eventBus = createDefaultEventBus()
-  const steps: StepRunSnapshot[] = []
+  const runContext = input.runContext ?? createRunContext(input.workflowVersion, input.workflowName)
+  const eventBus = input.eventBus ?? createDefaultEventBus()
+  const steps = input.steps ?? []
   const startedAtMs = Date.now()
   const workflowDeadline = startedAtMs + (input.workflowTimeoutMs ?? 480000)
   const getRemainingWorkflowTimeout = () => Math.max(1, workflowDeadline - Date.now())
 
-  await eventBus.publish(
-    createHarnessEvent({
-      type: 'workflow.started',
-      runId: runContext.runId,
-      requestId: runContext.requestId,
-      payload: {
-        workflowName: runContext.workflowName,
-        workflowVersion: runContext.workflowVersion,
-        inputDigest: createDigest(input.inputDigestSource),
-        startedAt: runContext.startedAt,
-      },
-    })
-  )
+  if (input.publishWorkflowEvents !== false) {
+    await eventBus.publish(
+      createHarnessEvent({
+        type: 'workflow.started',
+        runId: runContext.runId,
+        requestId: runContext.requestId,
+        payload: {
+          workflowName: runContext.workflowName,
+          workflowVersion: runContext.workflowVersion,
+          inputDigest: createDigest(input.inputDigestSource),
+          startedAt: runContext.startedAt,
+        },
+      })
+    )
+  }
 
   try {
     const result = await input.execute({ runContext, eventBus, steps, getRemainingWorkflowTimeout })
     const finishedAt = new Date().toISOString()
     const durationMs = Date.now() - startedAtMs
 
-    await eventBus.publish(
-      createHarnessEvent({
-        type: 'workflow.succeeded',
-        runId: runContext.runId,
-        requestId: runContext.requestId,
-        payload: {
-          workflowName: runContext.workflowName,
-          workflowVersion: runContext.workflowVersion,
-          finishedAt,
-          durationMs,
-        },
-      })
-    )
+    if (input.publishWorkflowEvents !== false) {
+      await eventBus.publish(
+        createHarnessEvent({
+          type: 'workflow.succeeded',
+          runId: runContext.runId,
+          requestId: runContext.requestId,
+          payload: {
+            workflowName: runContext.workflowName,
+            workflowVersion: runContext.workflowVersion,
+            finishedAt,
+            durationMs,
+          },
+        })
+      )
+    }
 
     return {
       result,
       meta: {
         run_id: runContext.runId,
+        workflow_version: runContext.workflowVersion,
         workflow_status: 'succeeded',
         step_statuses: steps,
         duration_ms: durationMs,
@@ -109,23 +120,25 @@ export async function runHarnessedRequest<TResult>(
     const durationMs = Date.now() - startedAtMs
     const errorMessage = error instanceof Error ? error.message : '未知错误'
 
-    await eventBus.publish(
-      createHarnessEvent({
-        type: 'workflow.failed',
-        runId: runContext.runId,
-        requestId: runContext.requestId,
-        payload: {
-          workflowName: runContext.workflowName,
-          workflowVersion: runContext.workflowVersion,
-          finishedAt,
-          durationMs,
-          errorCode: error instanceof StepRunError ? error.step.errorCode : undefined,
-          errorMessage,
-        },
-      })
-    )
+    if (input.publishWorkflowEvents !== false) {
+      await eventBus.publish(
+        createHarnessEvent({
+          type: 'workflow.failed',
+          runId: runContext.runId,
+          requestId: runContext.requestId,
+          payload: {
+            workflowName: runContext.workflowName,
+            workflowVersion: runContext.workflowVersion,
+            finishedAt,
+            durationMs,
+            errorCode: error instanceof StepRunError ? error.step.errorCode : undefined,
+            errorMessage,
+          },
+        })
+      )
+    }
 
-    try {
+    if (input.createFailureSample !== false) try {
       await new HarnessRunRepository().createFailureSampleIfAbsent(
         runContext.runId,
         buildBusinessFailureSampleReason(

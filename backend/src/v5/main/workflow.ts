@@ -9,12 +9,14 @@ import {attachIdentityCompletion, serializeDraft, hasLinkedCompletion} from '@/s
 import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus'
 import { createHarnessEvent } from '@/harness/events'
 import { createDigest, type RunContext, type StepExecutionContext } from '@/harness/run-context'
+import { runHarnessedRequest, type HarnessedRequestContext } from '@/harness/harnessed-request'
 import { runStep, StepRunError, type StepRunSnapshot } from '@/harness/run-step'
 import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
 import type { LlmProvider } from '@/providers/llm-provider'
 import {fallbackLlmProvider} from '@/providers/fallback-provider'
+import { BudgetAwareThinkingProvider } from '@/providers/budget-aware-thinking-provider'
 import { env } from '@/config/env'
 import { assertV5ProductionWorkflow } from '@/config/v5-release'
 import { buildRequirementAnalysis } from '@/v5/targeting/presentation'
@@ -488,6 +490,8 @@ export { V5WorkflowBlockedError } from '@/v5/errors'
 export class V5ResumeOptimizationWorkflow {
   private readonly provider?: LlmProvider
   private readonly judgeProvider?: LlmProvider
+  /** 当前请求的共享剩余时间预算；仅供 BudgetAwareThinkingProvider 读取。 */
+  private thinkingBudgetRemainingMs: (() => number) | null = null
   private readonly resumeExtractionCache?: TrustedResumeExtractionCache
   private readonly eventBus: HarnessEventBus
   private readonly pluginOverrides: V5WorkflowOptions['pluginOverrides']
@@ -499,8 +503,15 @@ export class V5ResumeOptimizationWorkflow {
   private readonly onTargetingAnalysis?: V5WorkflowOptions['onTargetingAnalysis']
 
   constructor(options: V5WorkflowOptions = {}) {
-    this.provider = options.provider
-    this.judgeProvider = options.judgeProvider ?? options.provider
+    // 剩余预算低于阈值时自动关闭 thinking：串行调用链在预算告急时
+    // 继续开推理模式几乎必然超时，改用非推理模式保住交付。
+    const budgetAware = (provider: LlmProvider | undefined): LlmProvider | undefined => (
+      provider
+        ? new BudgetAwareThinkingProvider(provider, () => this.thinkingBudgetRemainingMs?.() ?? Number.POSITIVE_INFINITY)
+        : provider
+    )
+    this.provider = budgetAware(options.provider)
+    this.judgeProvider = budgetAware(options.judgeProvider ?? options.provider)
     this.resumeExtractionCache = options.resumeExtractionCache
     this.eventBus = options.eventBus ?? (options.enableDefaultSubscribers === false ? createHarnessEventBus() : createDefaultEventBus())
     this.pluginOverrides = options.pluginOverrides
@@ -518,9 +529,25 @@ export class V5ResumeOptimizationWorkflow {
   }
 
   async extractResume(input: V5ResumeExtractionInput): Promise<V5ResumeExtractionResult> {
-    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 300000,input.signal)
+    const {result} = await runHarnessedRequest({
+      workflowVersion: V5_WORKFLOW_VERSION,
+      inputDigestSource: {resume: input.resumeMarkdown},
+      workflowTimeoutMs: input.workflowTimeoutMs ?? 300000,
+      eventBus: this.eventBus,
+      publishWorkflowEvents: false,
+      execute: harness => this.extractResumeInternal(input, harness),
+    })
+    return result
+  }
+
+  private async extractResumeInternal(
+    input: V5ResumeExtractionInput,
+    harness: HarnessedRequestContext
+  ): Promise<V5ResumeExtractionResult> {
+    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 300000, harness, input.signal)
     const { runContext } = runtime
     const remaining = runtime.context.remainingMs
+    this.thinkingBudgetRemainingMs = remaining
     const setState = (next: ResumeAgentState) => runtime.setState(next)
 
     await this.eventBus.publish(createHarnessEvent({
@@ -554,6 +581,7 @@ export class V5ResumeOptimizationWorkflow {
         runContext,
         timeoutMs: remaining(),
       })
+      harness.steps.push(resumeStep.step)
       await setState('resume_extracted')
 
       await this.eventBus.publish(createHarnessEvent({
@@ -573,7 +601,7 @@ export class V5ResumeOptimizationWorkflow {
 
       return {
         state: 'resume_extracted',
-        stepStatuses: [resumeStep.step],
+        stepStatuses: harness.steps,
         releaseStatus: 'preproduction_candidate',
         runId: runContext.runId,
         canonicalSourceDocument: sourceDocument.canonicalDocument,
@@ -637,14 +665,32 @@ export class V5ResumeOptimizationWorkflow {
     if (result.deliveryDecision !== 'deliver' || result.usedSafeFallback) throw new V5WorkflowBlockedError({
       code: 'V5_INTERVIEW_REQUIRES_DELIVERABLE', state: 'blocked_quality_validation', message: '请先完成可交付简历生成。',
     })
-    const runtime = this.createRuntime(timeoutMs,signal)
+    const {result: interviewResult} = await runHarnessedRequest({
+      workflowVersion: V5_WORKFLOW_VERSION,
+      inputDigestSource: {artifact: result.artifact, job: result.jobRequirementBundle},
+      workflowTimeoutMs: timeoutMs,
+      eventBus: this.eventBus,
+      publishWorkflowEvents: false,
+      execute: harness => this.prepareInterviewInternal(result, timeoutMs, harness, signal),
+    })
+    return interviewResult
+  }
+
+  private async prepareInterviewInternal(
+    generated: import('@/v5/types').InterviewGenerationBasis,
+    timeoutMs: number,
+    harness: HarnessedRequestContext,
+    signal?: AbortSignal,
+  ): Promise<{runId: string; preparation: InterviewPreparation; stepStatuses: StepRunSnapshot[]}> {
+    const runtime = this.createRuntime(timeoutMs, harness, signal)
     const {runContext} = runtime
-    const stepStatuses: StepRunSnapshot[] = []
+    this.thinkingBudgetRemainingMs = runtime.context.remainingMs
+    const stepStatuses = harness.steps
     await this.eventBus.publish(createHarnessEvent({
       type: 'workflow.started', runId: runContext.runId, requestId: runContext.requestId,
       payload: {workflowName: runContext.workflowName, workflowVersion: runContext.workflowVersion,
-        executionMode: 'interview_only', parentRunId: result.runId, startedAt: runContext.startedAt,
-        inputDigest: createDigest({artifact: result.artifact, job: result.jobRequirementBundle, preparationTopics: result.preparationTopics})},
+        executionMode: 'interview_only', parentRunId: generated.runId, startedAt: runContext.startedAt,
+        inputDigest: createDigest({artifact: generated.artifact, job: generated.jobRequirementBundle, preparationTopics: generated.preparationTopics})},
     }))
     try {
       const preparation = await runtime.execute({
@@ -654,10 +700,10 @@ export class V5ResumeOptimizationWorkflow {
             const step = await runStep({runContext, eventBus: this.eventBus, stepName: 'v5_p10_interview',
               timeoutMs: runtime.context.remainingMs(), execute: stepContext => this.runRepairableStage<InterviewPreparation>({
                 component: 'P10', repairComponent: 'P10R', stepContext,
-                documentIds: [result.resumeEvidenceBundle.sourceDocument.documentId],
-                envelope: this.envelope(runContext.runId, buildInterviewContext(result)),
-                validate: preparation => validateInterviewPreparation({preparation, artifact: result.artifact,
-                  resume: result.resumeEvidenceBundle, job: result.jobRequirementBundle, match: result.matchAnalysis}),
+                documentIds: [generated.resumeEvidenceBundle.sourceDocument.documentId],
+                envelope: this.envelope(runContext.runId, buildInterviewContext(generated)),
+                validate: preparation => validateInterviewPreparation({preparation, artifact: generated.artifact,
+                  resume: generated.resumeEvidenceBundle, job: generated.jobRequirementBundle, match: generated.matchAnalysis}),
               })})
             stepStatuses.push(step.step)
             return step.result
@@ -685,11 +731,28 @@ export class V5ResumeOptimizationWorkflow {
     extraction?: V5ResumeExtractionResult
     matching?: V5MatchingCheckpoint
   } = {}): Promise<V5WorkflowResult | V5MatchingCheckpoint> {
+    const {result} = await runHarnessedRequest({
+      workflowVersion: V5_WORKFLOW_VERSION,
+      inputDigestSource: {resume: input.resumeMarkdown, jd: input.jobDescription},
+      workflowTimeoutMs: input.workflowTimeoutMs,
+      eventBus: this.eventBus,
+      publishWorkflowEvents: false,
+      execute: harness => this.runStagesInternal(input, resume, harness),
+    })
+    return result
+  }
 
-    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 600000,input.signal)
+  private async runStagesInternal(input: V5WorkflowInput, resume: {
+    stopAfterMatching?: boolean
+    extraction?: V5ResumeExtractionResult
+    matching?: V5MatchingCheckpoint
+  }, harness: HarnessedRequestContext): Promise<V5WorkflowResult | V5MatchingCheckpoint> {
+
+    const runtime = this.createRuntime(input.workflowTimeoutMs ?? 600000, harness, input.signal)
     const { runContext, manifest: pluginManifest } = runtime
     const remaining = runtime.context.remainingMs
-    const steps: StepRunSnapshot[] = []
+    this.thinkingBudgetRemainingMs = remaining
+    const steps = harness.steps
     let entryWritingRecord: V5WorkflowResult['entryWriting']
     let deliveryMarkdown: string | undefined
     let completionDocument: V5WorkflowResult['completionDocument']
@@ -794,7 +857,7 @@ export class V5ResumeOptimizationWorkflow {
               runContext,
               eventBus: this.eventBus,
               stepName: 'v5_p02_job_extract',
-              timeoutMs: Math.min(300000, remaining()),
+              timeoutMs: Math.min(180000, remaining()),
               execute: async stepContext => {
                 const envelope = this.envelope(runContext.runId, {
                   canonicalJobDocument: jobDocument.canonicalDocument,
@@ -1874,9 +1937,10 @@ export class V5ResumeOptimizationWorkflow {
     }
   }
 
-  private createRuntime(timeoutMs: number,signal?:AbortSignal) {
+  private createRuntime(timeoutMs: number, harness?: HarnessedRequestContext, signal?: AbortSignal) {
     return new V5StageRuntime({
-      eventBus: this.eventBus,
+      runContext: harness?.runContext,
+      eventBus: harness?.eventBus ?? this.eventBus,
       timeoutMs,
       signal,
       provider: this.provider,

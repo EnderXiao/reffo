@@ -21,8 +21,11 @@ export interface FeedbackModalOptions {
   cancelText?: string
   showCancel?: boolean
   tone?: FeedbackTone
+  cancelTone?: FeedbackTone
   onConfirm?: () => void
   onCancel?: () => void
+  /** 中性关闭（× 按钮 / 点击背景），不触发 onCancel。 */
+  onClose?: () => void
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null
@@ -187,6 +190,7 @@ function injectToastStyle() {
     }
 
     .reffo-feedback-modal {
+      position: relative;
       width: min(343px, calc(100vw - 24px));
       min-height: 204px;
       padding: 22px 17px 12px;
@@ -263,10 +267,32 @@ function injectToastStyle() {
 
     .reffo-feedback-modal__button--danger {
       background: #f7145f;
+      color: #ffffff;
+    }
+
+    .reffo-feedback-modal__button--warning {
+      background: #ffb020;
     }
 
     .reffo-feedback-modal__button--guide {
       background: #17c964;
+    }
+
+    .reffo-feedback-modal__close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 14px;
+      background: transparent;
+      color: #8e8e93;
+      font-size: 20px;
+      line-height: 28px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
     }
 
     @keyframes reffo-feedback-toast-spin {
@@ -398,15 +424,21 @@ function showCustomH5Modal(options: FeedbackModalOptions) {
 
   const showCancel = options.showCancel !== false
   const tone = options.tone || 'guide'
+  const cancelTone = options.cancelTone || 'secondary'
   const layer = document.createElement('div')
   const modal = document.createElement('section')
   const title = document.createElement('h2')
   const content = document.createElement('div')
   const actions = document.createElement('div')
   const confirmButton = document.createElement('button')
+  const closeButton = document.createElement('button')
 
   layer.className = 'reffo-feedback-modal-layer'
   layer.setAttribute('role', 'presentation')
+  layer.addEventListener('click', event => {
+    // 点击背景关闭：走中性 onClose，不触发 onCancel。
+    if (event.target === layer) closeCustomModal(options.onClose)
+  })
   modal.className = 'reffo-feedback-modal'
   modal.setAttribute('role', 'dialog')
   modal.setAttribute('aria-modal', 'true')
@@ -426,7 +458,9 @@ function showCustomH5Modal(options: FeedbackModalOptions) {
 
   if (showCancel) {
     const cancelButton = document.createElement('button')
-    cancelButton.className = 'reffo-feedback-modal__button reffo-feedback-modal__button--secondary'
+    cancelButton.className = cancelTone === 'secondary'
+      ? 'reffo-feedback-modal__button reffo-feedback-modal__button--secondary'
+      : 'reffo-feedback-modal__button reffo-feedback-modal__button--' + cancelTone
     cancelButton.type = 'button'
     cancelButton.textContent = options.cancelText || '取消'
     cancelButton.addEventListener('click', () => {
@@ -435,8 +469,16 @@ function showCustomH5Modal(options: FeedbackModalOptions) {
     actions.appendChild(cancelButton)
   }
 
+  closeButton.className = 'reffo-feedback-modal__close'
+  closeButton.type = 'button'
+  closeButton.setAttribute('aria-label', '关闭')
+  closeButton.textContent = '×'
+  closeButton.addEventListener('click', () => {
+    closeCustomModal(options.onClose)
+  })
+
   actions.appendChild(confirmButton)
-  modal.append(title, content, actions)
+  modal.append(title, content, actions, closeButton)
   layer.appendChild(modal)
   document.body.appendChild(layer)
   modalRoot = layer

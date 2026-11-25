@@ -41,6 +41,9 @@ create or replace function public.enqueue_initial_resume_interview()
 returns trigger language plpgsql security invoker set search_path = public as $$
 declare initial_version text := new.process_result->>'server_interview_task';
 begin
+  if tg_op = 'UPDATE' and old.process_result->>'server_interview_task' is not null then
+    return new;
+  end if;
   if current_user not in ('anon', 'authenticated') and initial_version is not null then
     insert into public.resume_interview_tasks(user_id, history_id, version) values(new.user_id, new.id, initial_version);
   end if;
@@ -49,7 +52,7 @@ end;
 $$;
 
 drop trigger if exists enqueue_resume_interview on public.resume_histories;
-create trigger enqueue_resume_interview after insert on public.resume_histories
+create trigger enqueue_resume_interview after insert or update of process_result on public.resume_histories
   for each row execute function public.enqueue_initial_resume_interview();
 
 -- V5 checkpoints and the analysis cache use text owners (including guest).

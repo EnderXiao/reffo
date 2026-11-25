@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState} from 'react'
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {
   useHistoryStore,
   useLandingFlowStore,
@@ -44,7 +44,12 @@ import {
   buildSourceResumePayload,
 } from './utils/resumeMarkdown'
 import {useCreateFlowRoute} from './model/useCreateFlowRoute'
-import {generationTasksApi, createGenerationRequestId, type GenerationTask} from '@/services/backgroundGeneration'
+import {
+  createGenerationRequestId,
+  generationTasksApi,
+  subscribeGenerationTaskEvents,
+  type GenerationTask,
+} from '@/services/backgroundGeneration'
 import {useBackgroundGenerationStore} from '@/store/backgroundGenerationStore'
 import {resumeApi} from '@/services/resume'
 import * as jobMetadataUtils from './utils/jobMetadata'
@@ -78,6 +83,7 @@ export interface CreatePageViewModel {
   handleReturnHome: () => Promise<void>
   handleCancelGeneration: () => void
   handleContinueInBackground: () => Promise<void>
+  handleGenerationPresentationComplete: () => void
   handleClose: () => void
   isLandingFlow: boolean
   handleLandingSkip: () => Promise<void>
@@ -378,6 +384,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
   const generationRequestRef = useRef(0)
   const generationTaskRef = useRef<string | null>(null)
   const generationTaskStatusRef = useRef<GenerationTask['status'] | null>(null)
+  const generationPresentationPromiseRef = useRef<Promise<void> | null>(null)
+  const generationPresentationResolveRef = useRef<(() => void) | null>(null)
+  const generationPresentationCompletedRef = useRef(false)
   const backgroundNavigationRef = useRef(false)
   const workspaceGenerationRunRef = useRef<number | null>(null)
   const autoGenerateStartedRef = useRef(false)
@@ -440,6 +449,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       uploadRequestRef.current += 1
       jobAttachmentRequestRef.current += 1
       generationRequestRef.current += 1
+      generationPresentationResolveRef.current?.()
+      generationPresentationResolveRef.current = null
+      generationPresentationPromiseRef.current = null
       const taskId = generationTaskRef.current
       const taskStatus = generationTaskStatusRef.current
       if (taskId && (taskStatus === 'queued' || taskStatus === 'running') && !backgroundNavigationRef.current) {
@@ -1131,9 +1143,23 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     backgroundNavigationRef.current = false
     generationTaskRef.current = null
     generationTaskStatusRef.current = null
+    const presentationAlreadyCompleted = generationPresentationCompletedRef.current
+    generationPresentationCompletedRef.current = false
+    const generationPresentationPromise = new Promise<void>(resolve => {
+      generationPresentationResolveRef.current = resolve
+      if (presentationAlreadyCompleted) {
+        resolve()
+        generationPresentationResolveRef.current = null
+      }
+    })
+    generationPresentationPromiseRef.current = generationPresentationPromise
     const workspaceRunId = resumeWorkspaceActions.startGeneration('analyzing')
     workspaceGenerationRunRef.current = workspaceRunId
     setGenerationError(null)
+    const waitForGenerationPresentation = async () => {
+      await generationPresentationPromise
+      return generationRequestRef.current === requestId && !backgroundNavigationRef.current
+    }
 
     try {
       // Landing must analyze the resume explicitly selected in the onboarding deck.
@@ -1191,56 +1217,123 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         }
         generationTaskRef.current = task.id
         generationTaskStatusRef.current = task.status
-        while (generationRequestRef.current === requestId) {
-          if (backgroundNavigationRef.current) {
-            await wait(200)
-            continue
-          }
-
-          if (task.status === 'completed' && task.history_id) {
-            generationTaskRef.current = null
-            generationTaskStatusRef.current = null
-            await route.navigate(routePaths.result, {id: task.history_id, jobId: task.id})
-            return true
-          }
-          if (task.status === 'failed') {
-            generationTaskStatusRef.current = task.status
-            throw new Error(task.error || '生成失败，请重试')
-          }
-          if (task.status === 'cancelled') {
-            generationTaskRef.current = null
-            generationTaskStatusRef.current = null
-            return false
-          }
+        let observedTask = task
+        let streamHealthy = false
+        let reconcilePromise: Promise<void> | null = null
+        let notifyTaskUpdate: (() => void) | null = null
+        let taskUpdateTimer: ReturnType<typeof setTimeout> | null = null
+        const consumeTask = (next: GenerationTask) => {
+          if (next.id !== observedTask.id || next.updated_at < observedTask.updated_at) return
+          observedTask = next
+          useBackgroundGenerationStore.getState().upsert(next)
+          if (generationRequestRef.current !== requestId) return
+          generationTaskStatusRef.current = next.status
           setGenerationState(previous => previous ? {...previous,
-            phase: task.stage === 'analysis' ? 'analyzing' : task.stage === 'matching' ? 'matching' : 'generating'} : previous)
-          await wait(1800)
-          if (generationRequestRef.current !== requestId) return false
-          if (backgroundNavigationRef.current) continue
-          try {
-            task = await generationTasksApi.get(task.id)
-            if (generationRequestRef.current !== requestId) return false
-            generationTaskStatusRef.current = task.status
-            useBackgroundGenerationStore.getState().upsert(task)
-          } catch {
-            if (generationRequestRef.current !== requestId) return false
-            if (backgroundNavigationRef.current) continue
-            feedback.message('暂时无法获取进度，任务仍在后台继续')
-            backgroundNavigationRef.current = true
-            try {
-              await route.reset(routePaths.home, {backgroundTaskId: task.id})
-            } catch (error) {
-              if (generationRequestRef.current !== requestId) return false
-              backgroundNavigationRef.current = false
-              feedback.error(error instanceof Error ? error.message : '返回首页失败，请重试')
+            phase: next.stage === 'analysis' ? 'analyzing' : next.stage === 'matching' ? 'matching' : 'generating'} : previous)
+          notifyTaskUpdate?.()
+        }
+        const waitForTaskUpdate = () => new Promise<void>(resolve => {
+          const finish = () => {
+            if (taskUpdateTimer) clearTimeout(taskUpdateTimer)
+            taskUpdateTimer = null
+            notifyTaskUpdate = null
+            resolve()
+          }
+          notifyTaskUpdate = finish
+          taskUpdateTimer = setTimeout(finish, 1800)
+        })
+        const reconcileTask = () => {
+          if (reconcilePromise) return reconcilePromise
+          reconcilePromise = generationTasksApi.get(observedTask.id).then(next => {
+            if (generationRequestRef.current === requestId) consumeTask(next)
+          }).catch(() => {
+            streamHealthy = false
+          }).finally(() => {
+            reconcilePromise = null
+          })
+          return reconcilePromise
+        }
+        const unsubscribe = subscribeGenerationTaskEvents({
+          onOpen: () => {
+            streamHealthy = true
+            void reconcileTask()
+          },
+          onTask: consumeTask,
+          onError: () => {
+            streamHealthy = false
+          },
+          onClose: () => {
+            streamHealthy = false
+          },
+        })
+        try {
+          while (generationRequestRef.current === requestId) {
+            if (backgroundNavigationRef.current) {
+              await wait(200)
               continue
             }
-            generationTaskRef.current = null
-            generationTaskStatusRef.current = null
-            return true
+
+            task = observedTask
+            const canEnterResult = (
+              candidate: GenerationTask,
+            ): candidate is GenerationTask & {history_id: string} => (
+              (candidate.status === 'running' || candidate.status === 'completed') &&
+              Boolean(candidate.history_id) &&
+              candidate.stage !== 'analysis' &&
+              candidate.stage !== 'matching'
+            )
+            if (canEnterResult(task)) {
+              if (!await waitForGenerationPresentation()) {
+                if (generationRequestRef.current !== requestId) return false
+                continue
+              }
+              task = observedTask
+              if (!canEnterResult(task)) continue
+              generationTaskRef.current = null
+              generationTaskStatusRef.current = null
+              await route.navigate(routePaths.result, {id: task.history_id, jobId: task.id})
+              return true
+            }
+            if (task.status === 'failed') {
+              generationTaskStatusRef.current = task.status
+              throw new Error(task.error || '生成失败，请重试')
+            }
+            if (task.status === 'cancelled') {
+              generationTaskRef.current = null
+              generationTaskStatusRef.current = null
+              return false
+            }
+            setGenerationState(previous => previous ? {...previous,
+              phase: task.stage === 'analysis' ? 'analyzing' : task.stage === 'matching' ? 'matching' : 'generating'} : previous)
+            await waitForTaskUpdate()
+            if (generationRequestRef.current !== requestId) return false
+            if (backgroundNavigationRef.current) continue
+            if (streamHealthy) continue
+            try {
+              consumeTask(await generationTasksApi.get(observedTask.id))
+            } catch {
+              if (generationRequestRef.current !== requestId) return false
+              if (backgroundNavigationRef.current) continue
+              feedback.message('暂时无法获取进度，任务仍在后台继续')
+              backgroundNavigationRef.current = true
+              try {
+                await route.reset(routePaths.home, {backgroundTaskId: observedTask.id})
+              } catch (error) {
+                if (generationRequestRef.current !== requestId) return false
+                backgroundNavigationRef.current = false
+                feedback.error(error instanceof Error ? error.message : '返回首页失败，请重试')
+                continue
+              }
+              generationTaskRef.current = null
+              generationTaskStatusRef.current = null
+              return true
+            }
           }
+          return false
+        } finally {
+          if (taskUpdateTimer) clearTimeout(taskUpdateTimer)
+          unsubscribe()
         }
-        return false
       }
 
       const presetJdId = isLandingFlow ? landingJob?.id : undefined
@@ -1335,6 +1428,9 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
         return true
       }
 
+      if (!await waitForGenerationPresentation()) {
+        return generationRequestRef.current === requestId
+      }
       await route.navigate(isLandingFlow ? routePaths.landingResult : routePaths.result)
       return true
     } catch (error) {
@@ -1350,6 +1446,8 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
       feedback.error(message)
       return false
     } finally {
+      generationPresentationPromiseRef.current = null
+      generationPresentationResolveRef.current = null
       if (generationRequestRef.current === requestId) {
         setGenerationState(null)
         setIsSavingCurrentStep(false)
@@ -1447,6 +1545,12 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     }
   }
 
+  const handleGenerationPresentationComplete = useCallback(() => {
+    generationPresentationCompletedRef.current = true
+    generationPresentationResolveRef.current?.()
+    generationPresentationResolveRef.current = null
+  }, [])
+
   const handleDeleteHistoryResume = async () => {
     if (!isHistoryEditMode || !editHistoryId) {
       return false
@@ -1527,6 +1631,7 @@ export function usePageModel(options: CreatePageModelOptions = {}): CreatePageVi
     handleReturnHome,
     handleCancelGeneration,
     handleContinueInBackground,
+    handleGenerationPresentationComplete,
     handleClose,
     isLandingFlow,
     handleLandingSkip,

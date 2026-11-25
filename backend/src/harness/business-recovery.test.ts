@@ -71,7 +71,7 @@ describe('business recovery', () => {
     const eventBus = new FakeHarnessEventBus()
     const runContext = createRunContext('test')
     const controller = new AbortController()
-    const stepContext = createStepExecutionContext(runContext, 'analyze_resume', 1, controller.signal)
+    const stepContext = createStepExecutionContext(runContext, 'analyze_resume', controller.signal)
     let repairCount = 0
 
     const recovered = await evaluateWithBusinessRecovery({
@@ -116,7 +116,7 @@ describe('business recovery', () => {
     const eventBus = new FakeHarnessEventBus()
     const runContext = createRunContext('test')
     const controller = new AbortController()
-    const stepContext = createStepExecutionContext(runContext, 'match_resume_to_jd', 1, controller.signal)
+    const stepContext = createStepExecutionContext(runContext, 'match_resume_to_jd', controller.signal)
     const initialEvaluation = evaluateMatchAnalysisBusiness(incompleteMatch)
     expect(initialEvaluation.issues.map(issue => issue.code)).toEqual(['INCOMPLETE_OPTIMIZATION_STRATEGY_DETAIL'])
     let repairCount = 0

@@ -26,7 +26,7 @@ flowchart LR
   J --> K[结果页读取当前稿的面试状态]
 ```
 
-后台任务逐段保存 analysis、matching、optimized，任务重试可复用已经保存的阶段结果。前端创建时提交源简历、JD 文本、公司/岗位/地点元数据以及可选解析追踪 ID。面试任务按用户、历史记录及填写文档版本读取与重试。已经编辑的稿件可以单独生成新建议，删除历史时同步撤销该记录的面试任务。[后台生成入口](../src/services/generation-jobs.ts) · [面试任务](../src/services/resume-interview-tasks.ts)
+后台任务逐段保存 analysis、matching、optimized。分析完成后即可进入结果页查看进度，后续阶段更新同一条历史记录。任务重试可复用已经保存的阶段结果。前端创建时提交源简历、JD 文本、公司/岗位/地点元数据以及可选解析追踪 ID。面试任务按用户、历史记录及填写文档版本读取与重试。已经编辑的稿件可以单独生成新建议，删除历史时同步撤销该记录的面试任务。[后台生成入口](../src/services/generation-jobs.ts) · [面试任务](../src/services/resume-interview-tasks.ts)
 
 ### Landing 体验
 

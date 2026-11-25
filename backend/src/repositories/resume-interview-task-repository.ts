@@ -44,6 +44,13 @@ export function ensureResumeInterviewEnqueueTrigger(db: Database) {
       INSERT INTO resume_interview_tasks(user_id, history_id, version, available_at, updated_at)
       VALUES(NEW.user_id, NEW.id, json_extract(NEW.process_result_json, '$.server_interview_task'), NEW.updated_at, NEW.updated_at);
     END;
+    CREATE TRIGGER IF NOT EXISTS enqueue_resume_interview_on_delivery AFTER UPDATE OF process_result_json ON resume_histories
+    WHEN json_type(NEW.process_result_json, '$.server_interview_task') = 'text'
+      AND json_extract(OLD.process_result_json, '$.server_interview_task') IS NULL
+    BEGIN
+      INSERT INTO resume_interview_tasks(user_id, history_id, version, available_at, updated_at)
+      VALUES(NEW.user_id, NEW.id, json_extract(NEW.process_result_json, '$.server_interview_task'), NEW.updated_at, NEW.updated_at);
+    END;
   `)
 }
 

@@ -20,14 +20,30 @@ export function isResumeExtractionRequest(input: {
   return /^5\.0\.0-p01(?:-resume-evidence|r-resume-evidence-repair)-r\d+$/u.test(input.promptVersion ?? '')
 }
 
+/** 写作阶段（P06C）可单独开 thinking：生产默认关 think 时，写作引用证据需要推理。 */
+export function isWritingRequest(input: {
+  promptManifest?: { componentPromptId: string }
+  promptVersion?: string
+}) {
+  const component = input.promptManifest?.componentPromptId
+  if (component !== undefined) return component === 'P06C'
+  return /-p06c-/iu.test(input.promptVersion ?? '')
+}
+
 export function resolveDeepSeekStageThinking(
   global: DeepSeekThinkingSettings,
   extractionMode: DeepSeekExtractionThinkingMode,
-  extractionRequest: boolean
+  extractionRequest: boolean,
+  writingSettings: DeepSeekThinkingSettings,
+  writingRequest: boolean
 ): DeepSeekThinkingSettings {
-  return extractionRequest && extractionMode !== 'inherit'
-    ? { ...global, mode: extractionMode }
-    : global
+  if (extractionRequest && extractionMode !== 'inherit') {
+    return { ...global, mode: extractionMode }
+  }
+  if (writingRequest && writingSettings.mode !== 'default') {
+    return writingSettings
+  }
+  return global
 }
 
 /** Pure configuration shared by the request adapter and the cache fingerprint. */

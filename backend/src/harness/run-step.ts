@@ -58,10 +58,10 @@ function toErrorCode(error: unknown) {
 export async function runStep<TResult>(input: RunStepInput<TResult>): Promise<RunStepResult<TResult>> {
   const eventBus = input.eventBus ?? createHarnessEventBus()
   const controller = new AbortController()
-  const abortFromRun=()=>controller.abort(input.runContext.signal?.reason)
-  if(input.runContext.signal?.aborted)abortFromRun()
-  else input.runContext.signal?.addEventListener('abort',abortFromRun,{once:true})
-  const stepContext = createStepExecutionContext(input.runContext, input.stepName, 1, controller.signal)
+  const abortFromRun = () => controller.abort(input.runContext.signal?.reason)
+  if (input.runContext.signal?.aborted) abortFromRun()
+  else input.runContext.signal?.addEventListener('abort', abortFromRun, { once: true })
+  const stepContext = createStepExecutionContext(input.runContext, input.stepName, controller.signal)
   const { stepRunId, attemptId } = stepContext
   const startedAt = new Date().toISOString()
   const stepBase = {

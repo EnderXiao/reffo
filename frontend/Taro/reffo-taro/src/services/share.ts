@@ -5,7 +5,17 @@ import type {
   PublicShareLink,
 } from '@/types/share'
 
+export interface ReferralClaimRewardResult {
+  claimed: boolean
+  reason: string | null
+  bonus_count: number
+}
+
 export class ShareApi {
+  async claimReferralReward(token: string, email: string): Promise<ReferralClaimRewardResult> {
+    return apiClient.post<ReferralClaimRewardResult>('/share-links/claim-reward', {token, email})
+  }
+
   async createLink(input: CreateShareLinkInput, idempotencyKey: string): Promise<CreatedShareLink> {
     return apiClient.post<CreatedShareLink>('/share-links', input, {
       header: {'Idempotency-Key': idempotencyKey},
