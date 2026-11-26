@@ -2,6 +2,7 @@ import {useState} from 'react'
 import {shareApi} from '@/services/share'
 import type {ShareContentMode} from '@/types/share'
 import {feedback} from '@/utils/feedback'
+import {track} from '@/utils/analytics'
 import {renderShareImage} from '@/utils/share/share-image-renderer.h5'
 import {buildShareImageFilename} from '@/utils/share/share-image-spec'
 import {
@@ -36,6 +37,7 @@ export function useShareAction({historyId, mode}: UseShareActionOptions) {
 
   const shareImage = async () => {
     if (busyChannel) return
+    track('click_share_image', {history_id: historyId, mode})
     setBusyChannel('image')
     try {
       const createdLink = await createLink('image')
@@ -65,6 +67,7 @@ export function useShareAction({historyId, mode}: UseShareActionOptions) {
 
   const shareLink = async () => {
     if (busyChannel) return
+    track('click_share_link', {history_id: historyId, mode})
     setBusyChannel('link')
     try {
       const link = await createLink('link')

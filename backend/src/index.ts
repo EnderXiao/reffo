@@ -14,6 +14,11 @@ import { profileRoutes } from '@/routes/profile'
 import { startV5CheckpointCleanup } from '@/repositories/v5-checkpoint-repository'
 import { startSupabaseHarnessCleanup } from '@/harness/supabase-cleanup'
 import {generationJobRoutes} from '@/routes/generation-jobs'
+import {telemetryRoutes} from '@/routes/telemetry'
+import {dashboardRoutes} from '@/routes/dashboard'
+import {dashboardDiagnosticsRoutes} from '@/routes/dashboard-diagnostics'
+import {dashboardPagesRoutes} from '@/routes/dashboard-pages'
+import {trackingRequirementRoutes} from '@/routes/tracking-requirements'
 import {generationJobWorker} from '@/services/generation-jobs'
 import {resumeInterviewWorker} from '@/services/resume-interview-tasks'
 import {resumeExportRoutes} from '@/routes/resume-export'
@@ -22,6 +27,8 @@ import {cleanupProviderCallEvents} from '@/services/provider-call-recorder'
 import {evaluateResumeAction} from '@/services/resume-action-evaluator'
 import {registerResumeActionEvaluator, startResumeReviewWorker} from '@/services/resume-review-service'
 import {startResumeExportCleanup} from '@/services/resume-export-service'
+import {requestTraceStorage, getTraceId} from '@/shared/request-context'
+import {httpErrorHandler} from '@/http-error-handler'
 
 /**
  * 启动应用
@@ -63,47 +70,20 @@ async function bootstrap() {
     // CORS 支持
     .use(
       cors({
-        origin: env.CORS_ORIGIN,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Reffo-Completion-Schema'],
+        origin: Array.isArray(env.CORS_ORIGIN) ? [...env.CORS_ORIGIN, ...env.DASHBOARD_ALLOWED_ORIGINS] : env.CORS_ORIGIN,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Reffo-Completion-Schema', 'X-Request-Id'],
         credentials: true,
+        exposeHeaders: ['X-Request-Id', 'Retry-After'],
       })
     )
-    // 全局错误处理
-    .onError(({ code, error, set }) => {
-      console.error('Global error handler:', code, error)
-
-      if (code === 'VALIDATION') {
-        set.status = 400
-        return {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: '请求参数验证失败',
-          },
-        }
-      }
-
-      if (code === 'NOT_FOUND') {
-        set.status = 404
-        return {
-          success: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: '请求的资源不存在',
-          },
-        }
-      }
-
-      set.status = 500
-      return {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: '服务暂时不可用，请稍后重试',
-        },
-      }
+    // 请求级 traceId：响应头回传，供前端报障时定位
+    .onRequest(({ set }) => {
+      const traceId = getTraceId()
+      if (traceId) set.headers['X-Request-Id'] = traceId
     })
+    // 全局错误处理
+    .onError(httpErrorHandler)
     // 根路径
     .get('/', () => ({
       message: 'Welcome to Reffo MVP API',
@@ -122,11 +102,20 @@ async function bootstrap() {
     .use(resumeExportRoutes)
     .use(shareLinkRoutes)
     .use(generationJobRoutes)
+    .use(telemetryRoutes)
+    .use(dashboardRoutes)
+    .use(dashboardDiagnosticsRoutes)
+    .use(dashboardPagesRoutes)
+    .use(trackingRequirementRoutes)
     // 启动服务
-    .listen({
-      hostname: env.HOST,
-      port: env.PORT,
-    })
+  Bun.serve({
+    hostname: env.HOST,
+    port: env.PORT,
+    fetch: (request) => {
+      const traceId = request.headers.get('x-request-id') ?? crypto.randomUUID()
+      return requestTraceStorage.run({ traceId }, () => app.handle(request))
+    },
+  })
 
   startSupabaseHarnessCleanup()
   startV5CheckpointCleanup()

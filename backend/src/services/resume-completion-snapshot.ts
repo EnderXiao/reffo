@@ -119,7 +119,10 @@ export function assertResumeCompletionSnapshot(
 
 /** Recompute trusted editorial state after replay; clients cannot certify their own changes. */
 export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, previous?: import('@/types').ResumeHistoryRecord | null): SaveResumeHistoryInput {
-  assertResumeCompletionSnapshot(input, previous)
+  // 生成任务 worker 的写入由服务端产出，没有客户端编辑记录，不能用客户端校验契约
+  // （服务端基准 / expected_document）要求它；HTTP 路由不接收该字段。
+  if (input.server_generated && !input.action_baseline) return input
+  if (!input.server_generated) assertResumeCompletionSnapshot(input, previous)
   const rawResult = record(input.process_result)
   const {server_interview_basis: _clientBasis, server_completion_upgrade_archive: _clientArchive,
     server_interview_task: _clientTask, ...publicResult} = rawResult ?? {}
@@ -143,7 +146,7 @@ export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, prev
     throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '优化行动基准不可用，请重新打开有效稿件')
   }
   const resolved = trusted.resolvedPlan as ResolvedResumeActionPlan
-  if (savedDocument && input.expected_document?.resolvedDigest !== resolved.resolvedDigest) {
+  if (!input.server_generated && savedDocument && input.expected_document?.resolvedDigest !== resolved.resolvedDigest) {
     throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '优化方案版本已更新，请保留本地修改并重新核对')
   }
   const actionReview = reconcileEditorialActions({resolvedPlan: resolved, document, previousReview: trusted.review as ResumeActionReview | undefined})

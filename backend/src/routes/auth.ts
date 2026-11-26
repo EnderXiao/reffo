@@ -74,7 +74,7 @@ async function requestSupabaseAuth<T>(
   path: string,
   options: {
     body?: unknown
-    method?: 'GET' | 'POST' | 'PATCH'
+    method?: 'GET' | 'POST' | 'PATCH' | 'PUT'
     accessToken?: string
   } = {},
 ): Promise<T> {
@@ -135,6 +135,14 @@ function mapAuthProxyError(error: SupabaseAuthProxyError) {
 
   if (code === 'otp_disabled') {
     return {code: 'AUTH_OTP_DISABLED', message: '邮箱验证码登录暂时不可用，请稍后重试'}
+  }
+
+  if (code === 'same_password') {
+    return {code: 'AUTH_SAME_PASSWORD', message: '新密码不能与当前密码相同'}
+  }
+
+  if (code === 'weak_password') {
+    return {code: 'AUTH_WEAK_PASSWORD', message: '密码强度不足，请至少使用 6 位字符'}
   }
 
   if (code === 'email_not_confirmed') {
@@ -593,7 +601,7 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
       try {
         const payload = readDecryptedPayload(body)
         await requestSupabaseAuth('/auth/v1/user', {
-          method: 'PATCH',
+          method: 'PUT',
           accessToken: readAccessToken(payload),
           body: {password: readPassword(payload)},
         })

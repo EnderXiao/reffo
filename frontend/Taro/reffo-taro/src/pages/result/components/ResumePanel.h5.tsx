@@ -6,6 +6,7 @@ import type {ResumeExportTarget} from '@/services/resumeExport'
 import type {ProcessResult} from '@/types'
 import {useAuthStore} from '@/store/authStore'
 import {feedback} from '@/utils/feedback'
+import {track} from '@/utils/analytics'
 import {findResumeReferenceLines, isCurrentResumeReference, type ResumeReference} from '../model/analysisPresentation'
 import {useResumeCompletionEditor, type CompletionCommit} from '../model/useResumeCompletionEditor'
 import {ResumeDocument} from './ResumeDocument.h5'
@@ -61,6 +62,7 @@ export function ResumePanel({result, companyName, positionName, onOptimizedResum
     if (isBusy) { feedback.message('请先保存或取消当前编辑'); return }
     if (loaded.status === 'repair_required') { setDownloadError('请先通过行末铅笔修复标出的内容，再下载。'); return }
     if (!prepareDownload) { setDownloadError('当前入口暂不支持正式下载，请从历史记录重新打开后重试'); return }
+    track('click_result_export_pdf')
     setDownloading(true)
     setDownloadError('')
     const snapshot = loaded.document

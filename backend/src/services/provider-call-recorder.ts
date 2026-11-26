@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto'
+import type {Database} from 'bun:sqlite'
 import {env} from '@/config/env'
 import {getDatabase} from '@/repositories/database'
 import {createSupabaseRestClient} from '@/repositories/supabase/client'
@@ -23,6 +24,8 @@ export interface ProviderCallEvent {
   reasoning_tokens: number | null
   provider_request_id: string | null
   error_code: string | null
+  failure_class: string | null
+  provider_status: number | null
   expires_at: string
 }
 export interface ProviderCallEventStorage {append(event: ProviderCallEvent): Promise<void>}
@@ -31,10 +34,23 @@ function database() {
   db.exec(`CREATE TABLE IF NOT EXISTS provider_calls (id TEXT PRIMARY KEY,call_id TEXT NOT NULL,event_kind TEXT NOT NULL,
     run_id TEXT,step_run_id TEXT,attempt_id TEXT,stage TEXT,provider TEXT NOT NULL,model TEXT NOT NULL,retry_index INTEGER NOT NULL,
     call_reason TEXT,occurred_at TEXT NOT NULL,latency_ms INTEGER,input_tokens INTEGER,output_tokens INTEGER,reasoning_tokens INTEGER,
-    provider_request_id TEXT,error_code TEXT,expires_at TEXT NOT NULL,UNIQUE(call_id,event_kind));
+    provider_request_id TEXT,error_code TEXT,failure_class TEXT,provider_status INTEGER,expires_at TEXT NOT NULL,UNIQUE(call_id,event_kind));
     CREATE INDEX IF NOT EXISTS provider_calls_run ON provider_calls(run_id,occurred_at);
     CREATE INDEX IF NOT EXISTS provider_calls_expiry ON provider_calls(expires_at);`)
+  ensureProviderCallColumns(db)
   return db
+}
+
+// 旧库迁移：CREATE IF NOT EXISTS 不会给已存在的表补列，这里对缺失列 ALTER TABLE 补齐；
+// 多连接并发初始化可能同时加列，duplicate column 视为已就绪并忽略。
+export function ensureProviderCallColumns(db: Database) {
+  const columns = new Set((db.query('PRAGMA table_info(provider_calls)').all() as Array<{name: string}>).map(column => column.name))
+  for (const [column, definition] of [['failure_class', 'TEXT'], ['provider_status', 'INTEGER']] as const) {
+    if (columns.has(column)) continue
+    try { db.exec(`ALTER TABLE provider_calls ADD COLUMN ${column} ${definition}`) } catch (error) {
+      if (!String(error instanceof Error ? error.message : error).includes('duplicate column')) throw error
+    }
+  }
 }
 export const providerCallEventStorage: ProviderCallEventStorage = {
   async append(event) {
@@ -47,6 +63,26 @@ export const providerCallEventStorage: ProviderCallEventStorage = {
       .run(...entries.map(([, value]) => value))
   },
 }
+/** 失败分类只保存类别与状态码，绝不保存任意 message 文本。 */
+export function classifyProviderFailure(error: unknown): {failureClass: string | null; providerStatus: number | null} {
+  const name = error instanceof Error ? error.name : ''
+  const message = error instanceof Error ? error.message : ''
+  if (message.includes('PROVIDER_STREAM_INCOMPLETE')) return {failureClass: 'stream_incomplete', providerStatus: null}
+  if (message.includes('PROVIDER_STREAM_SIZE_EXCEEDED')) return {failureClass: 'stream_size_exceeded', providerStatus: null}
+  // 命名 SDK 错误优先于通用 status 判定：RateLimitError 等自带 status，需保留语义分类。
+  if (name === 'APIConnectionTimeoutError' || name.includes('Timeout')) return {failureClass: 'timeout', providerStatus: null}
+  if (name === 'APIConnectionError') return {failureClass: 'network', providerStatus: null}
+  if (name === 'RateLimitError') return {failureClass: 'rate_limit', providerStatus: null}
+  if (name === 'AuthenticationError') return {failureClass: 'auth', providerStatus: null}
+  if (name === 'BadRequestError') return {failureClass: 'bad_request', providerStatus: null}
+  if (name === 'AbortError') return {failureClass: 'aborted', providerStatus: null}
+  if (error && typeof error === 'object' && 'status' in error) {
+    const status = Number((error as {status: unknown}).status)
+    if (Number.isInteger(status) && status >= 100 && status <= 599) return {failureClass: 'provider_http', providerStatus: status}
+  }
+  return {failureClass: error instanceof Error ? error.name : 'sdk_error', providerStatus: null}
+}
+
 /** Each physical request has immutable requested and terminal events; missing usage stays null. */
 export class ProviderCallRecorder {
   constructor(private readonly storage: ProviderCallEventStorage = providerCallEventStorage) {}
@@ -57,6 +93,7 @@ export class ProviderCallRecorder {
       attempt_id: input.stepContext?.attemptId ?? null, stage: input.promptManifest?.componentPromptId ?? input.stepContext?.stepName ?? null,
       provider, model, retry_index: input.callMetadata?.retryIndex ?? 0, call_reason: input.callMetadata?.callReason ?? null,
       input_tokens: null, output_tokens: null, reasoning_tokens: null, provider_request_id: null, error_code: null,
+      failure_class: null, provider_status: null,
       expires_at: new Date(started + env.DIAGNOSTIC_RETENTION_MS).toISOString()}
     // Observability failure cannot cause a second model request or alter the business result.
     const append = async (event: ProviderCallEvent) => {try {await this.storage.append(event)} catch {console.error('[ProviderCalls] 调用事件暂未持久化')}}
@@ -65,8 +102,12 @@ export class ProviderCallRecorder {
       complete: (result: ChatCompletionResult) => append({...base,id: randomUUID(),event_kind: 'completed',occurred_at: new Date().toISOString(),
         latency_ms: Date.now() - started,model: result.model,input_tokens: result.inputTokens ?? null,output_tokens: result.outputTokens ?? null,
         reasoning_tokens: result.reasoningTokens ?? null,provider_request_id: result.providerRequestId ?? null}),
-      fail: (error: unknown) => append({...base,id: randomUUID(),event_kind: 'failed',occurred_at: new Date().toISOString(),latency_ms: Date.now() - started,
-        error_code: error && typeof error === 'object' && 'status' in error ? `HTTP_${String(error.status)}` : error instanceof Error ? error.name : 'PROVIDER_CALL_FAILED'}),
+      fail: (error: unknown) => {
+        const {failureClass, providerStatus} = classifyProviderFailure(error)
+        return append({...base,id: randomUUID(),event_kind: 'failed',occurred_at: new Date().toISOString(),latency_ms: Date.now() - started,
+          error_code: error && typeof error === 'object' && 'status' in error ? `HTTP_${String(error.status)}` : error instanceof Error ? error.name : 'PROVIDER_CALL_FAILED',
+          failure_class: failureClass, provider_status: providerStatus})
+      },
     }
   }
 }

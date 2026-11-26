@@ -5,6 +5,7 @@ import {useAuthStore} from '@/store/authStore'
 import {storage} from '@/utils/storage'
 import {bootstrapHomeData, refreshHomeData} from '@/utils/home-data-bootstrap'
 import {routePaths} from '@/shared/routing'
+import {initializeAnalyticsLifecycle} from '@/utils/analytics'
 
 import './app.scss'
 
@@ -29,8 +30,10 @@ async function guardLandingEntry() {
 
 class App extends Component<PropsWithChildren> {
   private unsubscribeAuth?: () => void
+  private disposeAnalytics?: () => void
 
   componentDidMount() {
+    this.disposeAnalytics = initializeAnalyticsLifecycle()
     initializeNavigationTransitions()
     void guardLandingEntry()
     if (!isProfileMockUrl()) void bootstrapHomeData()
@@ -48,6 +51,7 @@ class App extends Component<PropsWithChildren> {
   }
 
   componentWillUnmount() {
+    this.disposeAnalytics?.()
     this.unsubscribeAuth?.()
   }
 

@@ -10,6 +10,7 @@ import {shareApi} from '@/services/share'
 import {clearShareInviteToken, readShareInviteToken} from '@/utils/share-invite'
 import {useAuthStore} from '@/store/authStore'
 import {feedback} from '@/utils/feedback'
+import {track} from '@/utils/analytics'
 import {storage} from '@/utils/storage'
 import {routePaths, useRouteTransition} from '@/shared/routing'
 
@@ -222,6 +223,7 @@ export default function AuthPage() {
       return
     }
 
+    track('click_login_submit')
     try {
       const registered = await checkEmailRegistered(normalizedEmail)
       if (!registered) {
@@ -299,6 +301,7 @@ export default function AuthPage() {
       return
     }
 
+    track('submit_password_reset_request')
     try {
       const config = await requestPasswordReset({email: normalizedEmail})
       setEmail(normalizedEmail)
@@ -324,6 +327,7 @@ export default function AuthPage() {
       return
     }
 
+    track('click_register_submit')
     try {
       const registered = await checkEmailRegistered(normalizedEmail)
       if (registered) {
@@ -426,6 +430,7 @@ export default function AuthPage() {
       return
     }
 
+    track('click_resend_otp', {purpose: otpPurpose})
     try {
       const config = otpPurpose === 'login'
         ? await sendEmailOtp(email)
@@ -443,6 +448,7 @@ export default function AuthPage() {
   }
 
   const handleOAuth = async (provider: OAuthProvider) => {
+    track('click_oauth_login', {provider})
     try {
       await signInWithOAuth(provider)
     } catch (errorValue) {

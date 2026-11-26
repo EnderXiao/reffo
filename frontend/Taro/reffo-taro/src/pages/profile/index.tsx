@@ -9,6 +9,7 @@ import {useSourceResumeStore} from '@/store/sourceResumeStore'
 import {profileApi, type ResumeQuota} from '@/services/profile'
 import {feedback} from '@/utils/feedback'
 import {routePaths, useRouteTransition} from '@/shared/routing'
+import {track} from '@/utils/analytics'
 import ProfileAvatar from './components/ProfileAvatar'
 import './index.scss'
 
@@ -66,6 +67,7 @@ export default function ProfilePage() {
       void route.replace(routePaths.auth)
       return
     }
+    track('view_profile')
     if (!profile) void loadProfile()
     void loadHistorySummaries({skipIfLoaded: true})
     void loadLatestSourceSummary({skipIfLoaded: true})
@@ -74,6 +76,7 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => {
     if (signingOut) return
+    track('click_profile_sign_out')
     setSigningOut(true)
     try {
       await signOut()

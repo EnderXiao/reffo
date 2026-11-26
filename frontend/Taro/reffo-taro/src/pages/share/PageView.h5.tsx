@@ -10,6 +10,7 @@ import '@/styles/responsive-layout.scss'
 import PhysicsBadge from './PhysicsBadge.h5'
 import ShareBlankCard from './ShareBlankCard.h5'
 import {useShareAction} from './useShareAction.h5'
+import {track} from '@/utils/analytics'
 import type {ShareContentMode} from '@/types/share'
 import type {SharePageViewModel} from './usePageModel'
 import './index.h5.scss'
@@ -73,6 +74,7 @@ export default function PageView({
     ) return
     setModeTransition({from: mode, to: nextMode, direction, phase: 'exit'})
     handleModeChange(nextMode)
+    track('click_share_mode_switch', {mode: nextMode})
   }, [handleModeChange, isReturning, jobAvailable, mode, modeTransition])
 
   const handleCardDragStateChange = useCallback((dragging: boolean) => {

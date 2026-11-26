@@ -227,6 +227,7 @@ export class SupabaseResumeHistoryRepository implements ResumeHistoryRepositoryC
       process_result: updates.process_result ?? existing.process_result,
       completion_edit: updates.completion_edit,
       commit_id: updates.commit_id,
+      server_generated: updates.server_generated,
       expected_document: updates.expected_document,
       action_baseline: updates.action_baseline,
       completion_baseline: updates.completion_baseline,

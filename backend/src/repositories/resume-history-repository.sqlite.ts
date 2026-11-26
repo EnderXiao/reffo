@@ -207,7 +207,7 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
     if (requestedId) {
       const db = ensureDatabase()
       const confirmed = input.commit_id && db.query('SELECT 1 FROM resume_history_commits WHERE owner_id = ? AND commit_id = ?').get(context.userId,input.commit_id)
-      if (!confirmed) assertResumeCompletionSnapshot(input,this.findById(context,requestedId))
+      if (!confirmed && !input.server_generated) assertResumeCompletionSnapshot(input,this.findById(context,requestedId))
     }
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
@@ -366,6 +366,7 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
       process_result: updates.process_result ?? existing.process_result,
       completion_edit: updates.completion_edit,
       commit_id: updates.commit_id,
+      server_generated: updates.server_generated,
       expected_document: updates.expected_document,
       action_baseline: updates.action_baseline,
       completion_baseline: updates.completion_baseline,

@@ -2,6 +2,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {useDidHide, useDidShow} from '@tarojs/taro'
 import type {HomeCardItem} from '@/components/business/HomeCardDeck/shared'
 import {useHistoryStore} from '@/store/historyStore'
+import {track} from '@/utils/analytics'
 import {routePaths, usePageRoute, useRouteTransition} from '@/shared/routing'
 import {
   consumeCompleteInitialEntry,
@@ -100,7 +101,10 @@ export function usePageModel(): CompletePageViewModel {
     return () => { active = false }
   }, [historyId, historySummary, loadHistory, loadHistorySummaries, retryAttempt])
 
-  const handleRetry = useCallback(() => setRetryAttempt(attempt => attempt + 1), [])
+  const handleRetry = useCallback(() => {
+    track('click_complete_retry')
+    setRetryAttempt(attempt => attempt + 1)
+  }, [])
 
   const clearAutoReturnTimer = useCallback(() => {
     if (autoReturnTimerRef.current == null) {
@@ -140,6 +144,7 @@ export function usePageModel(): CompletePageViewModel {
       return
     }
 
+    track('click_complete_share', {history_id: historySummary.id})
     clearAutoReturnTimer()
     hasNavigatedRef.current = true
     setIsSharingTransition(true)
@@ -155,6 +160,7 @@ export function usePageModel(): CompletePageViewModel {
       return
     }
 
+    track('click_complete_continue')
     clearAutoReturnTimer()
     hasNavigatedRef.current = true
     void route.reset(

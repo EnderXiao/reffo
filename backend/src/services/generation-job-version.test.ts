@@ -168,8 +168,12 @@ describe('生成版本与显式重试', () => {
     const job = makeJob({stage: 'saving'})
     job.payload.failure = {code: 'GENERATION_FAILED', stage: 'saving', issueCodes: [], retryable: false,
       action: 'inspect_harness_events', occurredAt: now}
-    const existing = {id: `JD-${job.id}`, optimized_content: '用户后来填写的正文'} as ResumeHistoryRecord
-    const harness = workerHarness(job, {existingHistory: existing})
+    const existing = {
+      id: `JD-${job.id}`,
+      optimized_content: '用户后来填写的正文',
+      progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: 'pending'},
+    } satisfies Pick<ResumeHistoryRecord, 'id' | 'optimized_content' | 'progress'>
+    const harness = workerHarness(job, {existingHistory: existing as ResumeHistoryRecord})
     await harness.worker.execute(job)
     expect(harness.calls.model).toBe(0)
     expect(harness.calls.historySave).toBe(0)

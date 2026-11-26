@@ -114,6 +114,10 @@ export const env = {
   AUTH_REQUIRED: parseBoolean(process.env.AUTH_REQUIRED, parseAppEnv(process.env.APP_ENV) === 'prod'),
   DEV_USER_ID: process.env.DEV_USER_ID || '00000000-0000-4000-8000-000000000001',
 
+  // 后台始终认证；名单仅用于引导首位 owner，数据库中的禁用/降权优先。
+  DASHBOARD_OWNER_USER_IDS: parseUserIdList(process.env.DASHBOARD_OWNER_USER_IDS),
+  DASHBOARD_ALLOWED_ORIGINS: (process.env.DASHBOARD_ALLOWED_ORIGINS || '').split(',').map(item => item.trim()).filter(Boolean),
+
   // Supabase Configuration
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY || '',
@@ -228,6 +232,14 @@ export function getOcrEnvStatus() {
  * 验证必需的环境变量
  */
 export function validateEnv() {
+  for (const userId of env.DASHBOARD_OWNER_USER_IDS) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) throw new Error('DASHBOARD_OWNER_USER_IDS must contain UUIDs')
+  }
+  for (const origin of env.DASHBOARD_ALLOWED_ORIGINS) {
+    const url = new URL(origin)
+    if (url.origin !== origin || (url.protocol !== 'https:' && !(env.APP_ENV === 'local' && url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))) throw new Error('DASHBOARD_ALLOWED_ORIGINS must contain exact HTTPS origins (loopback HTTP is local only)')
+  }
+  if (env.APP_ENV !== 'local' && env.CORS_ORIGIN === true) throw new Error('Wildcard CORS is not allowed outside local')
   assertV5ReleaseConfiguration(env)
   if (!env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY is required in environment variables')

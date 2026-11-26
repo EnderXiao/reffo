@@ -1260,3 +1260,39 @@ describe('旧稿自动升级到v4', () => {
     hook.unmount()
   })
 })
+
+describe('未完成历史详情页', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockResultId = null
+    mockGenerationJobId = null
+    useResumeWorkspaceStore.getState().reset()
+    jest.mocked(useRouter).mockReturnValue({params: {}} as never)
+    jest.mocked(saveLatestResultSession).mockResolvedValue(undefined)
+  })
+
+  afterEach(() => { jest.restoreAllMocks() })
+
+  test('只有 analysis、无正文的历史不报「加载失败」', async () => {
+    const errorSpy = jest.spyOn(feedback, 'error')
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const historyId = 'JD-incomplete-0001'
+    mockResultId = historyId
+    mockGenerationJobId = '22222222-2222-4222-8222-222222222222'
+    jest.mocked(getLatestResultSession).mockResolvedValue(null)
+    const history = {
+      id: historyId, name: '', company: '小米', position: '前端工程师',
+      createdAt: '2026-11-20T08:14:40Z', qualityScore: 0, matchScore: null, tags: [],
+      resumeContent: '# 源简历', jdContent: '岗位职责', optimizedContent: '',
+      processResult: {analysis},
+      progress: {analysis: 'done', matching: 'generating', optimized: 'pending', interview: 'pending'},
+    } as unknown as ResumeHistory
+    jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockResolvedValue(history)
+
+    const {result} = renderHook(() => usePageModel())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    const messages = [errorSpy.mock.calls, consoleSpy.mock.calls].flat()
+    expect(messages.some(call => String(call[0]).includes('加载失败') || String(call[0]).includes('加载历史记录失败') || String(call[0]).includes('加载结果失败'))).toBe(false)
+  })
+})

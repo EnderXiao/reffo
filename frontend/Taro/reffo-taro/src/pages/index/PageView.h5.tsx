@@ -18,6 +18,7 @@ import HomeLoadingCover from './components/HomeLoadingCover.h5'
 import {HOME_PAGE_CONTENT} from './constants/content'
 import {resolveUserAvatar} from '@/utils/generated-avatar'
 import {useAuthStore} from '@/store/authStore'
+import {track} from '@/utils/analytics'
 import './index.h5.scss'
 
 type HeroMode = 'brand' | 'strategy' | 'create'
@@ -536,7 +537,10 @@ export default function PageView({
           {session ? (
             <View
               className='reffo-home__account-button reffo-home__account-button--avatar'
-              onClick={() => runNavigation('profile', () => route.navigate(routePaths.profile))}
+              onClick={() => {
+                track('click_home_profile')
+                runNavigation('profile', () => route.navigate(routePaths.profile))
+              }}
               aria-label='打开用户资料'
             >
               <Image

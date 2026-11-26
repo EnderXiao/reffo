@@ -11,6 +11,8 @@ interface SupabaseRequestOptions {
   body?: unknown
   prefer?: string
   signal?: AbortSignal
+  timeoutMs?: number
+  maxResponseBytes?: number
 }
 
 export class SupabaseRestError extends Error {
@@ -54,8 +56,25 @@ function buildUrl(path: string, searchParams?: SupabaseRequestOptions['searchPar
   return url
 }
 
-async function parseResponse(response: Response) {
-  const text = await response.text()
+async function parseResponse(response: Response, maxBytes?: number) {
+  let text: string
+  if (!maxBytes) text = await response.text()
+  else {
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+    let size = 0
+    text = ''
+    if (reader) try {
+      while (true) {
+        const {value,done} = await reader.read()
+        if (done) break
+        size += value.byteLength
+        if (size > maxBytes) { await reader.cancel(); throw new SupabaseRestError('Supabase response exceeded dashboard budget',503) }
+        text += decoder.decode(value,{stream:true})
+      }
+      text += decoder.decode()
+    } finally { reader.releaseLock() }
+  }
 
   if (!text) {
     return null
@@ -74,9 +93,13 @@ export class SupabaseRestClient {
   async request<T>(path: string, options: SupabaseRequestOptions = {}): Promise<T> {
     const apiKey = getApiKey(this.options)
     const accessToken = this.options.accessToken || apiKey
+    const timeoutSignal = options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : undefined
+    const signal = options.signal && timeoutSignal
+      ? AbortSignal.any([options.signal, timeoutSignal])
+      : options.signal ?? timeoutSignal
     const response = await fetch(buildUrl(path, options.searchParams), {
       method: options.method ?? 'GET',
-      signal: options.signal,
+      signal,
       headers: {
         apikey: apiKey,
         Authorization: `Bearer ${accessToken}`,
@@ -86,7 +109,7 @@ export class SupabaseRestClient {
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
     })
 
-    const payload = await parseResponse(response)
+    const payload = await parseResponse(response, options.maxResponseBytes)
 
     if (!response.ok) {
       const message =
@@ -107,6 +130,8 @@ export function createSupabaseRestClient(options: SupabaseClientOptions) {
 
 export async function getSupabaseAuthUser(accessToken: string) {
   const response = await fetch(`${getSupabaseBaseUrl()}/auth/v1/user`, {
+    signal: AbortSignal.timeout(5000),
+    redirect: 'error',
     headers: {
       apikey: env.SUPABASE_PUBLISHABLE_KEY,
       Authorization: `Bearer ${accessToken}`,

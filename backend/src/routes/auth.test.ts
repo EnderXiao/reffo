@@ -186,7 +186,7 @@ describe('authRoutes', () => {
   test('decrypts password updates before forwarding to Supabase', async () => {
     globalThis.fetch = (async (input: string | URL, init?: RequestInit) => {
       expect(String(input)).toBe('https://example.supabase.co/auth/v1/user')
-      expect(init?.method).toBe('PATCH')
+      expect(init?.method).toBe('PUT')
       expect(init?.headers).toMatchObject({Authorization: 'Bearer access-token'})
       expect(JSON.parse(String(init?.body))).toEqual({password: 'new-secret-password'})
       return new Response(JSON.stringify({id: 'user-1'}), {status: 200})
@@ -205,6 +205,52 @@ describe('authRoutes', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       data: {updated: true},
+    })
+  })
+
+  test('maps same_password error for password updates', async () => {
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      code: 422,
+      error_code: 'same_password',
+      msg: 'New password should be different from the old password.',
+    }), {status: 422})) as unknown as typeof fetch
+
+    const response = await authRoutes.handle(new Request('http://localhost/api/v1/auth/password-update', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(encryptPasswordPayloadForTest({
+        access_token: 'access-token',
+        password: 'same-secret-password',
+      })),
+    }))
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: {code: 'AUTH_SAME_PASSWORD', message: '新密码不能与当前密码相同'},
+    })
+  })
+
+  test('maps weak_password error for password updates', async () => {
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      code: 422,
+      error_code: 'weak_password',
+      msg: 'Password should be at least 6 characters.',
+    }), {status: 422})) as unknown as typeof fetch
+
+    const response = await authRoutes.handle(new Request('http://localhost/api/v1/auth/password-update', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(encryptPasswordPayloadForTest({
+        access_token: 'access-token',
+        password: '123',
+      })),
+    }))
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: {code: 'AUTH_WEAK_PASSWORD', message: '密码强度不足，请至少使用 6 位字符'},
     })
   })
 

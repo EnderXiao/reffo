@@ -9,9 +9,11 @@ import type {ResumeHistoryRepositoryContract} from '@/repositories/interfaces'
 import {publishGenerationJobUpdate} from '@/services/generation-job-events'
 import {assertGenerationJobVersion, currentGenerationStageFingerprints, hasGenerationStages, withoutGenerationFailure} from './generation-job-version'
 import {generationJobFailure} from './generation-job-failure'
+import {isHistoryFullyDelivered} from './generation-job-delivery'
 import {hasLinkedCompletion} from '@/shared/resume-completion'
 import {resumeInterviewVersion} from './resume-interview-tasks'
 import {recordGenerationLifecycle} from './generation-lifecycle'
+import {historyCommitDigest} from './resume-history-commit'
 
 export function generationJobProgress(job: GenerationJob, failed = false): ResultSessionProgressRecord {
   const stages = ['analysis', 'matching', 'optimized', 'interview'] as const
@@ -57,7 +59,8 @@ export function jobHistory(
     experience_match: {years_required: 0, years_actual: 0, match_percentage: 0,
       relevant_experience: matching.experience_match ? [matching.experience_match] : []},
   } : undefined
-  return {
+  const history: SaveResumeHistoryInput = {
+    server_generated: true,
     id: `JD-${job.id}`, company: summary.company, position: summary.position,
     name: analysis.structured_resume.personal_info.name || '候选人', created_at: job.created_at,
     quality_score: analysis.quality_score, match_score: matching?.match_score ?? 0,
@@ -75,6 +78,9 @@ export function jobHistory(
     ...(optimized?.completion_document ? {completion_baseline: optimized.completion_document} : {}),
     ...(optimized?.action_plan && optimized?.resolved_action_plan ? {action_baseline: {actionPlan: optimized.action_plan, resolvedPlan: optimized.resolved_action_plan, review: optimized.action_review, changeManifest: optimized.change_manifest, identityState: optimized.identity_state, deliveryState: optimized.delivery_state, matching}} : {}),
   }
+  // 每个阶段的内容都不同，提交编号必须按内容寻址：固定用任务编号会让第二次提交撞上
+  // resume_history_commits 的幂等校验（RESUME_COMMIT_CONFLICT），并且重试也无法自愈。
+  return {...history, commit_id: `generation-${job.id}-${historyCommitDigest(history).slice(0, 16)}`}
 }
 
 export class GenerationJobWorker {
@@ -120,13 +126,15 @@ export class GenerationJobWorker {
       const savedHistory = await this.histories.findById(
         {userId: job.user_id, useServiceRole: true}, job.history_id || `JD-${job.id}`,
       )
-      if (savedHistory?.optimized_content.trim() &&
-          (!savedHistory.progress || savedHistory.progress.optimized === 'done')) {
+      if (savedHistory && isHistoryFullyDelivered(savedHistory)) {
         await save({status: 'completed', history_id: savedHistory.id, error: null, lease_token: null,
           ...(job.payload.failure ? {payload: withoutGenerationFailure(job.payload)} : {})})
         return
       }
-      if (savedHistory && !job.history_id) await save({history_id: savedHistory.id})
+      // 历史存在但未跑完（分析阶段就已落库）：把 job 关联回这条记录，继续执行剩余阶段。
+      if (savedHistory && !job.history_id) {
+        await save({history_id: savedHistory.id})
+      }
       const fingerprint = this.releaseFingerprint()
       assertGenerationJobVersion(job.payload, fingerprint)
       if (!hasGenerationStages(job.payload) && (!job.payload.stageFingerprints || job.payload.releaseFingerprint !== fingerprint)) {
@@ -182,7 +190,6 @@ export class GenerationJobWorker {
       }
       if (job.stage !== 'saving') await save({stage: 'saving'})
       const historyInput = jobHistory(job)
-      historyInput.commit_id = 'generation-' + job.id
       if (job.payload.optimized?.completion_document && hasLinkedCompletion(job.payload.optimized.completion_document)) {
         const trusted = await loadCompletionBaselineBundle(job.user_id, historyInput.process_result)
         historyInput.action_baseline = trusted.actionBaseline
