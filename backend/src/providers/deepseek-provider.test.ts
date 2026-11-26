@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type OpenAI from 'openai'
 import { z } from 'zod'
-import { deepSeekThinkingParameters, evaluationDeepSeekPolicy, parseDeepSeekThinking, parseDeepSeekExtractionThinking, isResumeExtractionRequest, isWritingRequest, resolveDeepSeekStageThinking } from '@/config/deepseek-thinking'
+import { deepSeekThinkingParameters, evaluationDeepSeekPolicy, parseDeepSeekThinking, isResumeExtractionRequest, isWritingRequest, resolveDeepSeekStageThinking } from '@/config/deepseek-thinking'
 import { compileV5Prompt } from '@/v5/prompt-compiler'
 import { createRunContext, createStepExecutionContext } from '@/harness/run-context'
 import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
@@ -75,7 +75,7 @@ describe('DeepSeek physical call accounting', () => {
   function recordedProvider(create: FakeCompletionCreate) {
     const events: ProviderCallEvent[] = []
     const recorder = new ProviderCallRecorder({append: async event => {events.push(event)}})
-    return {events, provider: new DeepSeekProvider(createClient(create), undefined, 'inherit', recorder)}
+    return {events, provider: new DeepSeekProvider(createClient(create), undefined, recorder)}
   }
 
   test('preflight observer failures and already cancelled requests never count as transport calls', async () => {
@@ -209,14 +209,14 @@ describe('DeepSeekProvider abort signals', () => {
 })
 
 describe('explicit DeepSeek V4 thinking', () => {
-  test('routes real compiled P01/P01R metadata without disabling JD or Writer thinking', async () => {
+  test('routes real compiled extraction and interview metadata independently of JD and Writer', async () => {
     const sent: Array<Record<string, unknown>> = []
     const eventBus = new FakeHarnessEventBus()
     const provider = new DeepSeekProvider(createClient(async body => {
       sent.push(body as Record<string, unknown>)
       return createResponse()
-    }), parseDeepSeekThinking('enabled', 'low'), 'disabled')
-    for (const component of ['P01', 'P01R', 'P02', 'P03', 'P06C'] as const) {
+    }), parseDeepSeekThinking('enabled', 'low'))
+    for (const component of ['P01', 'P01R', 'P10', 'P10R', 'P02', 'P03', 'P06C'] as const) {
       const compiled = compileV5Prompt({ component, envelope: { payload: {} } })
       await provider.complete({ model: 'deepseek-v4-flash', messages: compiled.messages,
         promptVersion: compiled.promptVersion, promptManifest: compiled.manifest,
@@ -224,14 +224,14 @@ describe('explicit DeepSeek V4 thinking', () => {
         stepContext: createStepExecutionContext(createRunContext(), component),
       })
     }
-    for (const body of sent.slice(0, 2)) {
+    for (const body of sent.slice(0, 4)) {
       expect(body).toMatchObject({ thinking: { type: 'disabled' }, max_tokens: 14400 })
       expect(body).not.toHaveProperty('reasoning_effort')
     }
-    for (const body of sent.slice(2)) expect(body).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'low' })
+    for (const body of sent.slice(4)) expect(body).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'low' })
     expect(eventBus.events.filter(e => e.type === 'provider.requested').map(e => e.payload.thinking))
       .toEqual(sent.map(body => body.thinking))
-    expect(sent).toHaveLength(5)
+    expect(sent).toHaveLength(7)
   })
 
   test('P01 disabled mode never performs the reasoning-only internal retry', async () => {
@@ -239,19 +239,17 @@ describe('explicit DeepSeek V4 thinking', () => {
     const provider = new DeepSeekProvider(createClient(async () => {
       calls += 1
       return createFrames({ content: '' })
-    }), parseDeepSeekThinking('enabled'), 'disabled')
+    }), parseDeepSeekThinking('enabled'))
     await expect(provider.complete({ model: 'deepseek-v4-flash', messages: [],
       promptVersion: '5.0.0-p01-resume-evidence-r17', maxOutputTokens: 14400 })).rejects.toThrow('AI 返回内容为空')
     expect(calls).toBe(1)
   })
 
-  test('defaults to inheritance and selects stages only from trusted exact metadata', () => {
-    expect(parseDeepSeekExtractionThinking()).toBe('inherit')
-    expect(() => parseDeepSeekExtractionThinking('default')).toThrow('INVALID_DEEPSEEK_P01_THINKING_MODE')
+  test('disables extraction thinking for trusted exact stage metadata', () => {
     const global = parseDeepSeekThinking('enabled', 'max')
     const writing = parseDeepSeekThinking('enabled', 'low')
-    expect(resolveDeepSeekStageThinking(global, 'inherit', true, writing, false)).toEqual(global)
-    expect(resolveDeepSeekStageThinking(global, 'disabled', false, writing, false)).toEqual(global)
+    expect(resolveDeepSeekStageThinking(global, 'disabled', writing, false)).toEqual({...global, mode: 'disabled'})
+    expect(resolveDeepSeekStageThinking(global, undefined, writing, false)).toEqual(global)
     expect(isResumeExtractionRequest({ promptVersion: '5.0.0-p01r-resume-evidence-repair-r17' })).toBe(true)
     expect(isResumeExtractionRequest({ promptVersion: 'user said P01' })).toBe(false)
     expect(isResumeExtractionRequest({ promptVersion: '5.0.0-p01-resume-evidence-r17',
@@ -262,25 +260,13 @@ describe('explicit DeepSeek V4 thinking', () => {
   test('writing stage can enable low-effort thinking while global stays disabled', () => {
     const global = parseDeepSeekThinking('disabled', 'low')
     const writing = parseDeepSeekThinking('enabled', 'low')
-    expect(resolveDeepSeekStageThinking(global, 'inherit', false, writing, true)).toEqual(writing)
-    expect(resolveDeepSeekStageThinking(global, 'inherit', false, writing, false)).toEqual(global)
-    expect(resolveDeepSeekStageThinking(global, 'disabled', true, writing, true)).toEqual({ ...global, mode: 'disabled' })
+    expect(resolveDeepSeekStageThinking(global, undefined, writing, true)).toEqual(writing)
+    expect(resolveDeepSeekStageThinking(global, undefined, writing, false)).toEqual(global)
+    expect(resolveDeepSeekStageThinking(global, 'disabled', writing, true)).toEqual({ ...global, mode: 'disabled' })
     expect(isWritingRequest({ promptManifest: { componentPromptId: 'P06C' } })).toBe(true)
     expect(isWritingRequest({ promptManifest: { componentPromptId: 'P03' } })).toBe(false)
     expect(isWritingRequest({ promptVersion: '5.3.0-p06c-entry-writer-r10' })).toBe(true)
     expect(isWritingRequest({ promptVersion: 'user said P06C' })).toBe(false)
-  })
-
-  test('extraction mode alters extraction policy fingerprints without altering global policy', () => {
-    const global = parseDeepSeekThinking('enabled', 'low')
-    const writing = parseDeepSeekThinking('enabled', 'low')
-    const policy = (override: 'inherit' | 'disabled', extraction: boolean) => {
-      const settings = resolveDeepSeekStageThinking(global, override, extraction, writing, false)
-      return evaluationDeepSeekPolicy('deepseek-v4-flash', settings.mode, settings.effort)
-    }
-    expect(policy('disabled', true)).not.toEqual(policy('inherit', true))
-    expect(policy('disabled', false)).toEqual(policy('inherit', false))
-    expect(() => evaluationDeepSeekPolicy('deepseek-chat', 'disabled')).toThrow()
   })
 
   test('leaves legacy requests unchanged without an explicit mode', async () => {

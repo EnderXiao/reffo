@@ -1,3 +1,4 @@
+import type {Database} from 'bun:sqlite'
 import type { RequestUserContext } from '@/auth/request-context'
 import {env} from '@/config/env'
 import { getDatabase, resetDatabaseConnection } from '@/repositories/database'
@@ -211,107 +212,121 @@ export class SqliteResumeHistoryRepository implements ResumeHistoryRepositoryCon
     }
     return this.executeWithRecovery(() => {
       const db = ensureDatabase()
-      return db.transaction(() => {
-      if (input.commit_id) {
-        const commit = db.query('SELECT request_digest, acknowledgement_json FROM resume_history_commits WHERE owner_id = ? AND commit_id = ?').get(context.userId, input.commit_id) as {request_digest: string; acknowledgement_json: string} | null
-        if (commit) {
-          if (commit.request_digest !== requestDigest) throw new ResumeHistoryCommitError('RESUME_COMMIT_CONFLICT', '本次提交编号已用于其他修改，请重新保存')
-          return JSON.parse(commit.acknowledgement_json) as ResumeHistoryRecord
-        }
-      }
-      const now = new Date().toISOString()
-      const owner = requestedId
-        ? db.query('SELECT user_id FROM resume_histories WHERE id = ?').get(requestedId) as {user_id: string} | null
-        : null
-      const id = requestedId && (!owner || owner.user_id === context.userId)
-        ? requestedId
-        : createHistoryId(this.getExistingIds(input.created_at), input.created_at)
-      const previous = mapRowToRecord(db.query('SELECT * FROM resume_histories WHERE user_id = ? AND id = ?').get(context.userId, id) as Record<string, unknown> | null)
-      assertExpectedHistory(input, previous)
-      input = prepareResumeHistorySnapshot(input, previous)
-
-      db.query(`
-        INSERT INTO resume_histories (
-          id,
-          user_id,
-          position,
-          company,
-          name,
-          created_at,
-          updated_at,
-          quality_score,
-          match_score,
-          tags_json,
-          resume_content,
-          jd_content,
-          optimized_content,
-          optimization_suggestions_json,
-          changes_summary_json,
-          process_result_json,
-          result_context_json,
-          progress_json,
-          card_color,
-          card_pattern
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          user_id = excluded.user_id,
-          position = excluded.position,
-          company = excluded.company,
-          name = excluded.name,
-          created_at = excluded.created_at,
-          updated_at = excluded.updated_at,
-          quality_score = excluded.quality_score,
-          match_score = excluded.match_score,
-          tags_json = excluded.tags_json,
-          resume_content = excluded.resume_content,
-          jd_content = excluded.jd_content,
-          optimized_content = excluded.optimized_content,
-          optimization_suggestions_json = excluded.optimization_suggestions_json,
-          changes_summary_json = excluded.changes_summary_json,
-          process_result_json = excluded.process_result_json,
-          result_context_json = excluded.result_context_json,
-          progress_json = excluded.progress_json,
-          card_color = excluded.card_color,
-          card_pattern = excluded.card_pattern
-        WHERE resume_histories.user_id = excluded.user_id
-      `).run(
-        id,
-        context.userId,
-        input.position,
-        input.company,
-        input.name,
-        input.created_at,
-        now,
-        input.quality_score,
-        input.match_score,
-        JSON.stringify(input.tags),
-        input.resume_content,
-        input.jd_content,
-        input.optimized_content,
-        stringifyOptional(input.optimization_suggestions),
-        stringifyOptional(input.changes_summary),
-        stringifyOptional(withoutPendingCompletionEdits(input.process_result)),
-        stringifyOptional(input.result_context),
-        stringifyOptional(input.progress),
-        input.card_color ?? null,
-        input.card_pattern ?? null
-      )
-
-      const saved = mapRowToRecord(db.query('SELECT * FROM resume_histories WHERE user_id = ? AND id = ?').get(context.userId, id) as Record<string, unknown> | null)
-
-      if (!saved) {
-        throw new Error('保存历史记录失败')
-      }
-
-      const acknowledgement = {...saved, ...(historyCommitAck(input, saved) ? {commit_ack: historyCommitAck(input, saved)} : {})}
-      enqueueResumeReviewTasks(db, context.userId, saved)
-      const sourceDigest = canonicalizeSourceDocument(saved.resume_content,'stage-source').canonicalDocument.sha256
-      db.query('INSERT OR IGNORE INTO resume_stage_refs (owner_id,history_id,source_digest) VALUES (?,?,?)').run(context.userId,saved.id,sourceDigest)
-      if (input.commit_id) db.query('INSERT INTO resume_history_commits (owner_id,commit_id,request_digest,history_id,acknowledgement_json,created_at) VALUES (?,?,?,?,?,?)').run(
-        context.userId, input.commit_id, requestDigest, saved.id, JSON.stringify(acknowledgement), now)
-      return acknowledgement
-      }).immediate()
+      return db.transaction(() => this.writeHistory(db, context, input, requestDigest)).immediate()
     })
+  }
+
+  generationDatabase() {
+    return ensureDatabase()
+  }
+
+  saveGenerationHistory(db: Database, context: RequestUserContext, input: SaveResumeHistoryInput) {
+    const previous = mapRowToRecord(db.query('SELECT * FROM resume_histories WHERE user_id = ? AND id = ?')
+      .get(context.userId, input.id!) as Record<string, unknown> | null)
+    const requestDigest = historyCommitDigest(input)
+    return this.writeHistory(db, context, {...input, card_color: previous?.card_color, card_pattern: previous?.card_pattern}, requestDigest)
+  }
+
+  private writeHistory(db: Database, context: RequestUserContext, input: SaveResumeHistoryInput, requestDigest: string): ResumeHistoryRecord {
+    const requestedId = input.id?.trim()
+    if (input.commit_id) {
+      const commit = db.query('SELECT request_digest, acknowledgement_json FROM resume_history_commits WHERE owner_id = ? AND commit_id = ?').get(context.userId, input.commit_id) as {request_digest: string; acknowledgement_json: string} | null
+      if (commit) {
+        if (commit.request_digest !== requestDigest) throw new ResumeHistoryCommitError('RESUME_COMMIT_CONFLICT', '本次提交编号已用于其他修改，请重新保存')
+        return JSON.parse(commit.acknowledgement_json) as ResumeHistoryRecord
+      }
+    }
+    const now = new Date().toISOString()
+    const owner = requestedId
+      ? db.query('SELECT user_id FROM resume_histories WHERE id = ?').get(requestedId) as {user_id: string} | null
+      : null
+    const id = requestedId && (!owner || owner.user_id === context.userId)
+      ? requestedId
+      : createHistoryId(this.getExistingIds(input.created_at), input.created_at)
+    const previous = mapRowToRecord(db.query('SELECT * FROM resume_histories WHERE user_id = ? AND id = ?').get(context.userId, id) as Record<string, unknown> | null)
+    assertExpectedHistory(input, previous)
+    input = prepareResumeHistorySnapshot(input, previous)
+
+    db.query(`
+      INSERT INTO resume_histories (
+        id,
+        user_id,
+        position,
+        company,
+        name,
+        created_at,
+        updated_at,
+        quality_score,
+        match_score,
+        tags_json,
+        resume_content,
+        jd_content,
+        optimized_content,
+        optimization_suggestions_json,
+        changes_summary_json,
+        process_result_json,
+        result_context_json,
+        progress_json,
+        card_color,
+        card_pattern
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        user_id = excluded.user_id,
+        position = excluded.position,
+        company = excluded.company,
+        name = excluded.name,
+        created_at = excluded.created_at,
+        updated_at = excluded.updated_at,
+        quality_score = excluded.quality_score,
+        match_score = excluded.match_score,
+        tags_json = excluded.tags_json,
+        resume_content = excluded.resume_content,
+        jd_content = excluded.jd_content,
+        optimized_content = excluded.optimized_content,
+        optimization_suggestions_json = excluded.optimization_suggestions_json,
+        changes_summary_json = excluded.changes_summary_json,
+        process_result_json = excluded.process_result_json,
+        result_context_json = excluded.result_context_json,
+        progress_json = excluded.progress_json,
+        card_color = excluded.card_color,
+        card_pattern = excluded.card_pattern
+      WHERE resume_histories.user_id = excluded.user_id
+    `).run(
+      id,
+      context.userId,
+      input.position,
+      input.company,
+      input.name,
+      input.created_at,
+      now,
+      input.quality_score,
+      input.match_score,
+      JSON.stringify(input.tags),
+      input.resume_content,
+      input.jd_content,
+      input.optimized_content,
+      stringifyOptional(input.optimization_suggestions),
+      stringifyOptional(input.changes_summary),
+      stringifyOptional(withoutPendingCompletionEdits(input.process_result)),
+      stringifyOptional(input.result_context),
+      stringifyOptional(input.progress),
+      input.card_color ?? null,
+      input.card_pattern ?? null
+    )
+
+    const saved = mapRowToRecord(db.query('SELECT * FROM resume_histories WHERE user_id = ? AND id = ?').get(context.userId, id) as Record<string, unknown> | null)
+
+    if (!saved) {
+      throw new Error('保存历史记录失败')
+    }
+
+    const acknowledgement = {...saved, ...(historyCommitAck(input, saved) ? {commit_ack: historyCommitAck(input, saved)} : {})}
+    enqueueResumeReviewTasks(db, context.userId, saved)
+    const sourceDigest = canonicalizeSourceDocument(saved.resume_content,'stage-source').canonicalDocument.sha256
+    db.query('INSERT OR IGNORE INTO resume_stage_refs (owner_id,history_id,source_digest) VALUES (?,?,?)').run(context.userId,saved.id,sourceDigest)
+    if (input.commit_id) db.query('INSERT INTO resume_history_commits (owner_id,commit_id,request_digest,history_id,acknowledgement_json,created_at) VALUES (?,?,?,?,?,?)').run(
+      context.userId, input.commit_id, requestDigest, saved.id, JSON.stringify(acknowledgement), now)
+    return acknowledgement
   }
 
   list(context: RequestUserContext, limit = 100): ResumeHistoryRecord[] {

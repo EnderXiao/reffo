@@ -3,12 +3,8 @@ export interface DeepSeekThinkingSettings {
   effort: 'low' | 'high' | 'max'
 }
 
-export type DeepSeekExtractionThinkingMode = 'inherit' | 'enabled' | 'disabled'
-
-export function parseDeepSeekExtractionThinking(value = 'inherit'): DeepSeekExtractionThinkingMode {
-  if (value !== 'inherit' && value !== 'enabled' && value !== 'disabled') throw new Error('INVALID_DEEPSEEK_P01_THINKING_MODE')
-  return value
-}
+export const RESUME_EXTRACTION_THINKING_MODE = 'disabled' as const
+export const INTERVIEW_THINKING_MODE = 'disabled' as const
 
 /** Only trusted request metadata selects a stage, never text in a résumé. */
 export function isResumeExtractionRequest(input: {
@@ -18,6 +14,15 @@ export function isResumeExtractionRequest(input: {
   const component = input.promptManifest?.componentPromptId
   if (component !== undefined) return component === 'P01' || component === 'P01R'
   return /^5\.0\.0-p01(?:-resume-evidence|r-resume-evidence-repair)-r\d+$/u.test(input.promptVersion ?? '')
+}
+
+export function isInterviewRequest(input: {
+  promptManifest?: { componentPromptId: string }
+  promptVersion?: string
+}) {
+  const component = input.promptManifest?.componentPromptId
+  if (component !== undefined) return component === 'P10' || component === 'P10R'
+  return /^5\.1\.0-p10r?-interview-links-v5-r\d+$/u.test(input.promptVersion ?? '')
 }
 
 /** 写作阶段（P06C）可单独开 thinking：生产默认关 think 时，写作引用证据需要推理。 */
@@ -32,13 +37,12 @@ export function isWritingRequest(input: {
 
 export function resolveDeepSeekStageThinking(
   global: DeepSeekThinkingSettings,
-  extractionMode: DeepSeekExtractionThinkingMode,
-  extractionRequest: boolean,
+  fixedMode: 'disabled' | undefined,
   writingSettings: DeepSeekThinkingSettings,
   writingRequest: boolean
 ): DeepSeekThinkingSettings {
-  if (extractionRequest && extractionMode !== 'inherit') {
-    return { ...global, mode: extractionMode }
+  if (fixedMode) {
+    return { ...global, mode: fixedMode }
   }
   if (writingRequest && writingSettings.mode !== 'default') {
     return writingSettings

@@ -88,7 +88,6 @@ case "${action}" in
         {key:"AI_MODEL",value:"deepseek-v4-flash"},
         {key:"AI_FALLBACK_MODELS",value:""},
         {key:"DEEPSEEK_THINKING_MODE",value:"enabled"},
-        {key:"DEEPSEEK_P01_THINKING_MODE",value:"disabled"},
         {key:"DEEPSEEK_REASONING_EFFORT",value:"low"},
         {key:"CORS_ORIGIN",value:$frontendOrigin}
       ]

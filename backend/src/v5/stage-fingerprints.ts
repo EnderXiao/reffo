@@ -1,3 +1,4 @@
+import {INTERVIEW_THINKING_MODE, RESUME_EXTRACTION_THINKING_MODE} from '@/config/deepseek-thinking'
 import {createCanonicalDigest} from '@/harness/run-context'
 import {env} from '@/config/env'
 import {V5_PROMPT_VERSIONS} from '@/v5/prompts'
@@ -8,7 +9,8 @@ import manifest from '@/v5/prompts/manifest.json'
 export type ResumeCachedStage = 'extraction' | 'matching' | 'generation' | 'interview'
 export function resumeStageFingerprint(stage: ResumeCachedStage, versions: Record<string, string> = V5_PROMPT_VERSIONS) {
   const provider = {model: env.AI_MODEL,endpoint: env.OPENAI_BASE_URL,structuredOutput: env.V5_STRUCTURED_OUTPUT_MODE,
-    thinking: stage === 'extraction' ? env.DEEPSEEK_P01_THINKING_MODE : env.DEEPSEEK_THINKING_MODE,
+    thinking: stage === 'extraction' ? RESUME_EXTRACTION_THINKING_MODE
+      : stage === 'interview' ? INTERVIEW_THINKING_MODE : env.DEEPSEEK_THINKING_MODE,
     contextWindowTokens:env.V5_CONTEXT_WINDOW_TOKENS}
   const components = stage === 'extraction' ? ['P01','P01R'] : stage === 'matching' ? ['P02','P02R','P03','P03R']
     : stage === 'interview' ? ['P10','P10R'] : ['P04','P05','P05R','P06C','P07','P08','P09']

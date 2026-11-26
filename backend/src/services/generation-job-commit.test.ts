@@ -89,26 +89,24 @@ describe('生成任务的历史提交编号', () => {
     const output = isolated(`
       import {GenerationJobWorker} from './src/services/generation-jobs.ts'
       import {getDatabase} from './src/repositories/database.ts'
+      import {generationJobRepository} from './src/repositories/generation-job-repository.ts'
       const analysis = ${JSON.stringify(analysis)}
       const matching = ${JSON.stringify(matching)}
       const {createPlainCompletionDocument, serializeDraft} = await import('./src/shared/resume-completion.ts')
       const document = createPlainCompletionDocument(['# Jeremy Smith', '', '## Optimized'].join(String.fromCharCode(10)))
       const optimized = {optimized_resume: serializeDraft(document), completion_document: document,
         changes_summary: ['突出架构能力'], improvement_score: 4}
-      let job = {id:'11111111-1111-4111-8111-111111111111', user_id:'user-1', status:'running', stage:'analysis',
-        background:false, read_at:null, confirmed_at:null, history_id:null, error:null,
-        created_at:'2026-11-24T06:14:49.000Z', updated_at:'2026-11-24T06:14:50.000Z',
-        lease_token:'lease-token', lease_expires_at:'2026-11-24T06:19:50.000Z', quota_charged:false,
-        payload:{input:{resume_markdown:'# Jeremy Smith\\n\\n## Experience', jd_text:'岗位职责：负责前端架构与交付',
-          company:'OpenAI', position:'前端工程师', location:'上海'}}}
-      const repository = {patch: async (user, id, changes) => (job = {...job, ...changes}), renew: async () => job,
-        quota: async () => undefined, claim: async () => null, create: async () => job, get: async () => job, list: async () => [job]}
+      const id = '11111111-1111-4111-8111-111111111111'
+      const owner = 'user-1'
+      await generationJobRepository.create(owner, id, ${JSON.stringify(input)})
+      const job = await generationJobRepository.claim()
       const adapter = {analyze: async () => ({data: analysis, cache: {status: 'miss'}}), match: async () => ({data: matching}),
         generate: async () => ({data: optimized})}
-      const worker = new GenerationJobWorker(repository, adapter)
+      const worker = new GenerationJobWorker(generationJobRepository, adapter)
       await worker.execute(job)
       const commits = getDatabase().query('SELECT COUNT(*) AS total, COUNT(DISTINCT commit_id) AS distinctIds FROM resume_history_commits').get()
-      console.log(JSON.stringify({status: job.status, historyId: job.history_id, commits}))
+      const saved = await generationJobRepository.get(owner, id)
+      console.log(JSON.stringify({status: saved.status, historyId: saved.history_id, commits}))
     `)
 
     expect(output.status).toBe('completed')

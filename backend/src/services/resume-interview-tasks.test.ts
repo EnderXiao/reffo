@@ -19,6 +19,8 @@ import {createSingleStepFixture} from '@/v5/tests/single-step-fixtures'
 import {GenerationJobWorker} from './generation-jobs'
 import {historyDocumentRef} from './resume-history-commit'
 import {projectManagedInterview, ResumeInterviewWorker, retryManagedInterview} from './resume-interview-tasks'
+import {generationJobRoutes} from '@/routes/generation-jobs'
+import {env} from '@/config/env'
 
 test('SQLite delivers a saved resume before P10 and keeps concurrent writes scoped to the saved version', async () => {
   if (!process.env.REFFO_INTERVIEW_TASK_TEST_DATABASE) {
@@ -115,4 +117,57 @@ test('SQLite delivers a saved resume before P10 and keeps concurrent writes scop
   expect(await resumeInterviewTaskRepository.finish(reclaimed, 'done')).toBe(false)
   expect(await resumeInterviewTaskRepository.find(context.userId, historyId, first.version)).toBeNull()
   expect(await resumeHistoryRepository.findById(context, historyId)).toBeNull()
+
+  const cancel = (id: string) => generationJobRoutes.handle(new Request(
+    `http://localhost/api/v1/generation-jobs/${id}/cancel`, {method: 'POST'},
+  ))
+  const cancelledId = randomUUID()
+  const cancelledHistoryId = `JD-${cancelledId}`
+  const localContext = {userId: env.DEV_USER_ID, useServiceRole: true}
+  await generationJobRepository.create(localContext.userId, cancelledId, input)
+  const beforeDelivery = await generationJobRepository.claim()
+  expect(beforeDelivery?.id).toBe(cancelledId)
+  const workerRepository: ConstructorParameters<typeof GenerationJobWorker>[0] = {
+    claim: () => generationJobRepository.claim(),
+    renew: job => generationJobRepository.renew(job),
+    quota: (job, consume) => generationJobRepository.quota(job, consume),
+    patch: (...args) => generationJobRepository.patch(...args),
+    stop: (...args) => generationJobRepository.stop(...args),
+    commit: async (job, next, history) => {
+      if (next.status === 'completed') expect((await cancel(cancelledId)).status).toBe(200)
+      return generationJobRepository.commit(job, next, history)
+    },
+  }
+  await new GenerationJobWorker(workerRepository, adapter).execute(beforeDelivery!)
+  const cancelledHistory = await resumeHistoryRepository.findById(localContext, cancelledHistoryId)
+  expect(cancelledHistory?.optimized_content).toBe('')
+  expect(cancelledHistory?.progress).toMatchObject({analysis: 'done', matching: 'done', optimized: 'failed'})
+  expect(cancelledHistory?.process_result).not.toHaveProperty('optimized')
+  expect(await resumeInterviewTaskRepository.claim()).toBeNull()
+  expect((await generationJobRepository.get(localContext.userId, cancelledId))?.status).toBe('cancelled')
+
+  const deliveredId = randomUUID()
+  await generationJobRepository.create(localContext.userId, deliveredId, input)
+  const afterDelivery = await generationJobRepository.claim()
+  expect(afterDelivery?.id).toBe(deliveredId)
+  await new GenerationJobWorker(generationJobRepository, adapter).execute(afterDelivery!)
+  expect((await cancel(deliveredId)).status).toBe(409)
+  const deliveredHistory = await resumeHistoryRepository.findById(localContext, `JD-${deliveredId}`)
+  expect((await projectManagedInterview(localContext.userId, deliveredHistory!)).interview_task?.status).toBe('pending')
+  expect(deliveredHistory?.optimized_content).toContain('团队交付3个功能')
+
+  // 模拟旧版本保存了正文和可信基线，任务确认及首版面试登记尚未完成。
+  const legacyHistoryId = deliveredHistory!.id
+  const db = getDatabase()
+  db.query('DELETE FROM resume_interview_tasks WHERE user_id = ? AND history_id = ?').run(localContext.userId, legacyHistoryId)
+  db.query("UPDATE resume_histories SET process_result_json = json_remove(process_result_json, '$.server_interview_task') WHERE user_id = ? AND id = ?")
+    .run(localContext.userId, legacyHistoryId)
+  await generationJobRepository.patch(localContext.userId, deliveredId, {status: 'running', lease_token: 'legacy-recovery-lease',
+    lease_expires_at: new Date(Date.now() + 90_000).toISOString()})
+  const legacyJob = (await generationJobRepository.get(localContext.userId, deliveredId))!
+  await new GenerationJobWorker(generationJobRepository, adapter).execute(legacyJob)
+  const recovered = (await resumeHistoryRepository.findById(localContext, legacyHistoryId))!
+  expect(recovered.optimized_content).toBe(deliveredHistory!.optimized_content)
+  expect((await generationJobRepository.get(localContext.userId, deliveredId))?.status).toBe('completed')
+  expect((await projectManagedInterview(localContext.userId, recovered)).interview_task?.status).toBe('pending')
 })

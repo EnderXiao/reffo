@@ -127,6 +127,20 @@ function toSaveRow(context: RequestUserContext, id: string, input: SaveResumeHis
   }
 }
 
+export function resumeHistoryCommitParameters(context: RequestUserContext, input: SaveResumeHistoryInput, id: string,
+  previous: ResumeHistoryRecord | null, requestDigest: string) {
+  assertExpectedHistory(input, previous)
+  const snapshot = prepareResumeHistorySnapshot(input, previous)
+  const row = toSaveRow(context, id, snapshot, new Date().toISOString())
+  const tasks = buildResumeReviewTasks(context.userId, mapRowToRecord(row))
+  return {p_record: row, p_commit_id: input.commit_id ?? null, p_request_digest: requestDigest,
+    p_expected: previous ? {...historyDocumentRef(previous.process_result), updatedAt: previous.updated_at} : null,
+    p_tasks: tasks.map(task => ({id: task.id, owner_id: task.ownerId, history_id: task.historyId, document_id: task.documentId,
+      revision: task.revision, resolved_digest: task.resolvedDigest, action_id: task.actionId, input_digest: task.inputDigest,
+      task_generation: task.taskGeneration})),
+    p_source_digest: canonicalizeSourceDocument(input.resume_content, 'stage-source').canonicalDocument.sha256}
+}
+
 export class SupabaseResumeHistoryRepository implements ResumeHistoryRepositoryContract {
   private async getExistingIds(context: RequestUserContext, createdAt?: string) {
     const idPrefix = `${HISTORY_ID_PREFIX}${formatHistoryIdDate(createdAt)}`
@@ -155,20 +169,9 @@ export class SupabaseResumeHistoryRepository implements ResumeHistoryRepositoryC
       }
     }
     const previous = input.id?.trim() ? await this.findById(context, input.id.trim()) : null
-    assertExpectedHistory(input, previous)
-    input = prepareResumeHistorySnapshot(input, previous)
-    const now = new Date().toISOString()
     const id = input.id?.trim() || createHistoryId(await this.getExistingIds(context, input.created_at), input.created_at)
-    const row = toSaveRow(context, id, input, now)
-    const provisional = mapRowToRecord(row)
-    const tasks = buildResumeReviewTasks(context.userId, provisional)
     const result = await client.request<{record?: ResumeHistoryRow; commit_ack?: ResumeHistoryRecord['commit_ack']; conflict?: string}>('/rest/v1/rpc/commit_resume_history', {
-      method: 'POST', body: {p_owner_id: context.userId, p_record: row,
-        p_commit_id: input.commit_id ?? null, p_request_digest: requestDigest,
-        p_expected: previous ? {...historyDocumentRef(previous.process_result), updatedAt: previous.updated_at} : null,
-        p_tasks: tasks.map(task => ({id: task.id, owner_id: task.ownerId, history_id: task.historyId, document_id: task.documentId,
-          revision: task.revision, resolved_digest: task.resolvedDigest, action_id: task.actionId, input_digest: task.inputDigest,
-          task_generation: task.taskGeneration})), p_task_ttl_ms: 72 * 60 * 60 * 1000,p_source_digest: canonicalizeSourceDocument(input.resume_content,'stage-source').canonicalDocument.sha256}})
+      method: 'POST', body: {p_owner_id: context.userId, ...resumeHistoryCommitParameters(context, input, id, previous, requestDigest)}})
     if (result.conflict || !result.record) throw new ResumeHistoryCommitError(result.conflict === 'commit' ? 'RESUME_COMMIT_CONFLICT' : 'RESUME_VERSION_CONFLICT', '当前稿已更新或提交不一致，请保留本地修改并核对版本')
     return {...mapRowToRecord(result.record), ...(result.commit_ack ? {commit_ack: result.commit_ack} : {})}
   }

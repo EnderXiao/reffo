@@ -1,10 +1,15 @@
 import {randomUUID} from 'node:crypto'
+import type {Database} from 'bun:sqlite'
 import {env} from '@/config/env'
 import {getDatabase} from './database'
 import {createSupabaseRestClient} from './supabase/client'
 import {ResumeQuotaError} from '@/services/resume-quota'
 import {referralRewardRepository} from './referral-reward-repository'
 import type {GenerationJob, GenerationJobInput} from '@/types/generation-job'
+import type {SaveResumeHistoryInput} from '@/types'
+import {sqliteResumeHistoryRepository} from './resume-history-repository.sqlite'
+import {resumeHistoryCommitParameters, supabaseResumeHistoryRepository} from './resume-history-repository.supabase'
+import {historyCommitDigest, ResumeHistoryCommitError} from '@/services/resume-history-commit'
 
 const table = '/rest/v1/resume_generation_jobs'
 const service = () => createSupabaseRestClient({useServiceRole: true})
@@ -28,7 +33,101 @@ function decode(row: GenerationJob | null): GenerationJob | null {
       payload: typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload}
 }
 
+type GenerationJobCommit = {
+  stage: GenerationJob['stage']
+  payload: GenerationJob['payload']
+  status: 'running' | 'completed'
+  history_id: string
+  interviewRecovery?: {version: string; expectedUpdatedAt: string}
+}
+
+function readSqliteJob(db: Database, userId: string, id: string) {
+  return decode(db.query('SELECT * FROM resume_generation_jobs WHERE id = ? AND user_id = ?').get(id, userId) as GenerationJob | null)
+}
+
 export class GenerationJobRepository {
+  async commit(job: GenerationJob, next: GenerationJobCommit, history?: SaveResumeHistoryInput): Promise<GenerationJob | null> {
+    const historyId = job.history_id ?? `JD-${job.id}`
+    if (next.history_id !== historyId || (history && history.id !== historyId)) throw new Error('GENERATION_HISTORY_MISMATCH')
+    const context = {userId: job.user_id, useServiceRole: true}
+    const digest = history ? historyCommitDigest(history) : null
+    if (env.DATABASE_PROVIDER === 'supabase') {
+      const previous = history ? await supabaseResumeHistoryRepository.findById(context, historyId) : null
+      const parameters = history && digest ? resumeHistoryCommitParameters(context, {...history,
+        card_color: previous?.card_color, card_pattern: previous?.card_pattern}, historyId, previous, digest) : null
+      const result = await service().request<{job?: GenerationJob; conflict?: string}>('/rest/v1/rpc/commit_resume_generation_job', {
+        method: 'POST', body: {p_owner_id: job.user_id, p_job_id: job.id, p_lease: job.lease_token,
+          p_stage: job.stage, p_next: next, p_history: parameters},
+      })
+      if (result.conflict) {
+        throw new ResumeHistoryCommitError(result.conflict === 'commit' ? 'RESUME_COMMIT_CONFLICT' : 'RESUME_VERSION_CONFLICT', '生成历史已更新')
+      }
+      return result.job ?? null
+    }
+    const db = sqliteResumeHistoryRepository.generationDatabase()
+    return db.transaction(() => {
+      const current = readSqliteJob(db, job.user_id, job.id)
+      if (current?.status === 'completed' && next.status === 'completed' && history?.commit_id) {
+        const receipt = db.query('SELECT 1 FROM resume_history_commits WHERE owner_id = ? AND commit_id = ? AND request_digest = ? AND history_id = ?')
+          .get(job.user_id, history.commit_id, digest, historyId)
+        if (receipt) return current
+      }
+      if (!current || current.status !== 'running' || current.stage !== job.stage || !job.lease_token ||
+          current.lease_token !== job.lease_token || Date.parse(current.lease_expires_at) <= Date.now()) return null
+      if ((current.history_id ?? `JD-${current.id}`) !== historyId) return null
+      const saved = db.query('SELECT optimized_content FROM resume_histories WHERE user_id = ? AND id = ?')
+        .get(job.user_id, historyId) as {optimized_content: string} | null
+      if (history) {
+        if (saved?.optimized_content.trim()) throw new ResumeHistoryCommitError('RESUME_VERSION_CONFLICT', '生成历史已更新')
+        const written = sqliteResumeHistoryRepository.saveGenerationHistory(db, context, history)
+        if (written.id !== historyId) throw new Error('GENERATION_HISTORY_MISMATCH')
+      } else if (!saved) {
+        return null
+      }
+      if (next.interviewRecovery) {
+        const recovery = next.interviewRecovery
+        const updated = db.query(`UPDATE resume_histories SET process_result_json = json_set(process_result_json,
+          '$.server_interview_task', ?), updated_at = ?
+          WHERE user_id = ? AND id = ? AND updated_at = ? AND json_extract(process_result_json, '$.server_interview_task') IS NULL
+          AND json_extract(process_result_json, '$.server_interview_basis.version') = 'interview-generation-basis-v1'
+          AND json_type(process_result_json, '$.interview') IS NULL`)
+          .run(recovery.version, new Date().toISOString(), job.user_id, historyId, recovery.expectedUpdatedAt)
+        if (!updated.changes) throw new ResumeHistoryCommitError('RESUME_VERSION_CONFLICT', '生成历史已更新')
+      }
+      return decode(db.query(`UPDATE resume_generation_jobs SET stage = ?, payload = ?, status = ?, history_id = ?,
+        error = NULL, lease_token = ?, updated_at = ? WHERE user_id = ? AND id = ? RETURNING *`)
+        .get(next.stage, JSON.stringify(next.payload), next.status, historyId,
+          next.status === 'completed' ? null : current.lease_token, new Date().toISOString(), job.user_id, job.id) as GenerationJob)
+    }).immediate()
+  }
+
+  async stop(userId: string, id: string, failure?: {lease: string; stage: GenerationJob['stage']; error: string; payload: GenerationJob['payload']}): Promise<GenerationJob | null> {
+    if (env.DATABASE_PROVIDER === 'supabase') {
+      const result = await service().request<{job?: GenerationJob}>('/rest/v1/rpc/stop_resume_generation_job', {
+        method: 'POST', body: {p_owner_id: userId, p_job_id: id, p_failure: failure ?? null},
+      })
+      return result.job ?? null
+    }
+    const db = sqliteResumeHistoryRepository.generationDatabase()
+    return db.transaction(() => {
+      const job = readSqliteJob(db, userId, id)
+      if (!job || job.status === 'completed') return null
+      if (failure && (job.status !== 'running' || job.lease_token !== failure.lease || job.stage !== failure.stage ||
+          Date.parse(job.lease_expires_at) <= Date.now())) return null
+      if (job.status === 'cancelled') return job
+      const now = new Date().toISOString()
+      db.query(`UPDATE resume_histories SET progress_json = (
+          SELECT json_group_object(key, CASE value WHEN 'generating' THEN 'failed' ELSE value END) FROM json_each(progress_json)
+        ), updated_at = ? WHERE user_id = ? AND id = ? AND trim(optimized_content) = ''
+        AND EXISTS (SELECT 1 FROM json_each(progress_json) WHERE value = 'generating')`)
+        .run(now, userId, job.history_id ?? `JD-${job.id}`)
+      return decode(db.query(`UPDATE resume_generation_jobs SET status = ?, payload = ?, error = ?, lease_token = NULL,
+        updated_at = ? WHERE user_id = ? AND id = ? RETURNING *`)
+        .get(failure ? 'failed' : 'cancelled', JSON.stringify(failure?.payload ?? job.payload), failure?.error ?? job.error,
+          now, userId, id) as GenerationJob)
+    }).immediate()
+  }
+
   async create(userId: string, id: string, input: GenerationJobInput, releaseFingerprint?: string) {
     const now = new Date().toISOString()
     const job: GenerationJob = {id, user_id: userId, status: 'queued', stage: 'analysis', background: false,
@@ -66,10 +165,11 @@ export class GenerationJobRepository {
   }
 
   async patch(userId: string, id: string, changes: Partial<GenerationJob>, guard: {lease?: string; status?: string} = {}) {
-    const update = {...changes, updated_at: new Date().toISOString()}
+    const now = new Date().toISOString()
+    const update = {...changes, updated_at: now}
     if (env.DATABASE_PROVIDER === 'supabase') {
       const rows = await service().request<GenerationJob[]>(table, {method: 'PATCH', prefer: 'return=representation',
-        searchParams: {id: `eq.${id}`, user_id: `eq.${userId}`, ...(guard.lease ? {lease_token: `eq.${guard.lease}`} : {}),
+        searchParams: {id: `eq.${id}`, user_id: `eq.${userId}`, ...(guard.lease ? {lease_token: `eq.${guard.lease}`, lease_expires_at: `gt.${now}`} : {}),
           ...(guard.status ? {status: `eq.${guard.status}`} : {})}, body: update})
       return rows[0] ?? null
     }
@@ -77,8 +177,8 @@ export class GenerationJobRepository {
     const values = entries.map(([key, value]) => key === 'payload' ? JSON.stringify(value)
       : typeof value === 'boolean' ? Number(value) : value) as Array<string | number | null>
     const row = database().query(`UPDATE resume_generation_jobs SET ${entries.map(([key]) => `${key} = ?`).join(',')}
-      WHERE id = ? AND user_id = ? ${guard.lease ? 'AND lease_token = ?' : ''} ${guard.status ? 'AND status = ?' : ''} RETURNING *`)
-      .get(...values, id, userId, ...(guard.lease ? [guard.lease] : []), ...(guard.status ? [guard.status] : [])) as GenerationJob | null
+      WHERE id = ? AND user_id = ? ${guard.lease ? 'AND lease_token = ? AND lease_expires_at > ?' : ''} ${guard.status ? 'AND status = ?' : ''} RETURNING *`)
+      .get(...values, id, userId, ...(guard.lease ? [guard.lease, now] : []), ...(guard.status ? [guard.status] : [])) as GenerationJob | null
     return decode(row)
   }
 

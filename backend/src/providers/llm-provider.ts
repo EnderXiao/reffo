@@ -70,6 +70,7 @@ export interface ChatCompletionResult {
   streamChunkCount?: number
   providerRequestId?: string
   finishReason?: string | null
+  thinkingMode?: 'default' | 'enabled' | 'disabled'
   inputTokens?: number
   outputTokens?: number
   physicalAttempts?: number

@@ -10,7 +10,7 @@ import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus
 import { createHarnessEvent } from '@/harness/events'
 import { createDigest, type RunContext, type StepExecutionContext } from '@/harness/run-context'
 import { runHarnessedRequest, type HarnessedRequestContext } from '@/harness/harnessed-request'
-import { runStep, StepRunError, type StepRunSnapshot } from '@/harness/run-step'
+import { runStep, StepRunError, StepTimeoutError, type StepRunSnapshot } from '@/harness/run-step'
 import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
@@ -378,6 +378,10 @@ function unwrapStepRunError(error: unknown) {
 
 function normalizeBlockedError(error: unknown): V5WorkflowBlockedError {
   const cause = unwrapStepRunError(error)
+  if (cause instanceof StepTimeoutError) {
+    return new V5WorkflowBlockedError({code: 'V5_WORKFLOW_TIMEOUT', state: 'provider_failure',
+      message: cause.message, retryable: true, httpStatus: 503})
+  }
   if (cause instanceof V5PluginExecutionError) {
     if (cause.code === 'PLUGIN_TIMEOUT' || cause.code === 'PLUGIN_CANCELLED') {
       return new V5WorkflowBlockedError({
@@ -2087,7 +2091,7 @@ export class V5ResumeOptimizationWorkflow {
           options: {
             provider: this.provider,
             eventBus: this.eventBus,
-            stepContext: input.stepContext,
+            stepContext: {...input.stepContext, sourceShardIndex: chunkIndex},
             inputDocumentIds: [chunk.documentId],
           },
         })
@@ -2239,7 +2243,7 @@ export class V5ResumeOptimizationWorkflow {
           options: {
             provider: this.provider,
             eventBus: this.eventBus,
-            stepContext: input.stepContext,
+            stepContext: {...input.stepContext, sourceShardIndex: primary.chunkIndex},
             inputDocumentIds: [chunk.documentId],
             repairAttempt: 1,
           },

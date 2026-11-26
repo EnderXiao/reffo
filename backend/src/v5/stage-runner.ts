@@ -378,7 +378,8 @@ export async function runV5StructuredStage<T>(input: {
       maxProviderModels: input.options?.maxProviderModels,
       })
       if (providerResult.finishReason !== 'length') break
-      if (!thinkingFallbackAttempted && isReasoningOnlyTruncation(providerResult)) {
+      if (providerResult.thinkingMode === 'disabled' && !providerResult.content.trim()) break
+      if (providerResult.thinkingMode !== 'disabled' && !thinkingFallbackAttempted && isReasoningOnlyTruncation(providerResult)) {
         providerResult = await retryWithThinkingDisabled({
           component: input.component,
           compiled,

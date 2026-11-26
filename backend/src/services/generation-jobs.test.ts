@@ -1,7 +1,7 @@
 import {expect, test} from 'bun:test'
 import {GenerationJobWorker} from '@/services/generation-jobs'
 import type {GenerationJob} from '@/types/generation-job'
-import type {ResumeHistoryRecord, SaveResumeHistoryInput} from '@/types'
+import type {SaveResumeHistoryInput} from '@/types'
 
 function createJob(): GenerationJob {
   return {
@@ -72,6 +72,11 @@ test('后台任务逐阶段保存同一份简历，交付时无需等待面试�
       job = {...job, ...changes}
       return job
     },
+    commit: async (_job: GenerationJob, next: Partial<GenerationJob>, input?: SaveResumeHistoryInput) => {
+      if (input) historyInputs.push(input)
+      job = {...job, ...next}
+      return job
+    },
     renew: async () => job,
     quota: async () => undefined,
     claim: async () => null,
@@ -79,20 +84,7 @@ test('后台任务逐阶段保存同一份简历，交付时无需等待面试�
     get: async () => job,
     list: async () => [job],
   }
-  const histories = {
-    save: async (_context: unknown, input: SaveResumeHistoryInput) => {
-      historyInputs.push(input)
-      return input as unknown as ResumeHistoryRecord
-    },
-    update: async (_context: unknown, _id: string, input: SaveResumeHistoryInput) => {
-      historyInputs.push(input)
-      return input as unknown as ResumeHistoryRecord
-    },
-    list: async () => [],
-    findById: async () => null,
-    delete: async () => true,
-    clear: async () => 0,
-  }
+  const histories = {findById: async () => null}
   const adapter = {
     analyze: async () => ({data: analysis, cache: {status: 'miss'}}),
     match: async () => ({data: matching}),

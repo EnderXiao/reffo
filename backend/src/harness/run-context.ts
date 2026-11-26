@@ -15,6 +15,8 @@ export interface StepExecutionContext extends RunContext {
   attemptId: string
   attemptNumber: number
   signal?: AbortSignal
+  deadlineMonotonicMs?: number
+  sourceShardIndex?: number
 }
 
 export function createRunContext(

@@ -6,13 +6,12 @@ export function v5ReleaseWorkflowOptions() {
 
 export function assertV5ReleaseConfiguration(config: {
   AI_MODEL: string; OPENAI_BASE_URL: string
-  DEEPSEEK_THINKING_MODE: string; DEEPSEEK_P01_THINKING_MODE: string
+  DEEPSEEK_THINKING_MODE: string
 }) {
   if (config.AI_MODEL !== 'deepseek-v4-flash'
     || config.OPENAI_BASE_URL.replace(/\/$/u, '') !== 'https://api.deepseek.com'
-    || !['enabled', 'disabled'].includes(config.DEEPSEEK_THINKING_MODE)
-    || !['enabled', 'disabled'].includes(config.DEEPSEEK_P01_THINKING_MODE)) {
-    throw new Error('entry-r5 requires the release configuration: DeepSeek endpoint, deepseek-v4-flash, and explicit global/P01 thinking modes')
+    || !['enabled', 'disabled'].includes(config.DEEPSEEK_THINKING_MODE)) {
+    throw new Error('entry-r5 requires the release configuration: DeepSeek endpoint, deepseek-v4-flash, and explicit global thinking mode')
   }
 }
 

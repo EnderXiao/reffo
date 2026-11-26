@@ -7,6 +7,17 @@ import { runV5StructuredStage, V5ProviderCallError } from '@/v5/stage-runner'
 import { V5_SCHEMA_VERSION, type BlindABEvaluation } from '@/v5/types'
 
 describe('v5 structured stage transport completion', () => {
+  test('does not repeat an empty length-truncated request with thinking already disabled', async () => {
+    let calls = 0
+    const provider: LlmProvider = {complete: async () => {
+      calls++
+      return {provider: 'fake', model: 'fixture', content: '', finishReason: 'length', thinkingMode: 'disabled', latencyMs: 1}
+    }}
+    await expect(runV5StructuredStage({component: 'P01', envelope: {payload: {}}, options: {provider}}))
+      .rejects.toMatchObject({code: 'V5_OUTPUT_TRUNCATED'})
+    expect(calls).toBe(1)
+  })
+
   test('classifies transient and non-transient provider failures before workflow recovery', async () => {
     for (const [status, retryable] of [[429, true], [400, false]] as const) {
       const provider: LlmProvider = {

@@ -67,6 +67,9 @@ export const providerCallEventStorage: ProviderCallEventStorage = {
 export function classifyProviderFailure(error: unknown): {failureClass: string | null; providerStatus: number | null} {
   const name = error instanceof Error ? error.name : ''
   const message = error instanceof Error ? error.message : ''
+  if (name === 'StepTimeoutError' || (typeof error === 'object' && error !== null && 'code' in error && error.code === 'V5_WORKFLOW_TIMEOUT')) {
+    return {failureClass: 'stage_timeout', providerStatus: null}
+  }
   if (message.includes('PROVIDER_STREAM_INCOMPLETE')) return {failureClass: 'stream_incomplete', providerStatus: null}
   if (message.includes('PROVIDER_STREAM_SIZE_EXCEEDED')) return {failureClass: 'stream_size_exceeded', providerStatus: null}
   // 命名 SDK 错误优先于通用 status 判定：RateLimitError 等自带 status，需保留语义分类。

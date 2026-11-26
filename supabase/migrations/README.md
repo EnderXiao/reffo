@@ -50,6 +50,7 @@
 | 7 | `202611130007_stage_revocation_epochs.sql` | 撤销事件生成独立epoch，claim绑定当前epoch，store按租约与epoch共同CAS；允许撤销后使用完整源输入重新计算，禁止旧任务复活 |
 | 8 | `202611130008_completion_upgrade_cas.sql` | 填写文档升级按完整旧快照 CAS |
 | 9 | `202611250001_resume_interview_tasks.sql` | 原子登记首版面试任务，独立存储建议与租约，删除历史时级联删除任务。修正已有历史与源简历删除函数对文本 owner 字段的比较 |
+| 10 | `202611260001_generation_job_delivery.sql` | 在同一事务中提交生成阶段、历史、成稿和首版面试任务，按任务锁决定交付或取消 |
 
 SQLite在对应repository初始化时执行等价增量迁移；旧 `match_score NOT NULL` 表会在事务中重建，保留已有行、索引和触发器。源记录增加owner后将历史本地行归属开发账户，新增OCR列保持可空。SQLite验证不代表Supabase RPC已经运行成功。
 

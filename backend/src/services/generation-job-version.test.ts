@@ -30,6 +30,16 @@ function workerHarness(initial: GenerationJob, options: {existingHistory?: Resum
       current = {...current, ...structuredClone(changes)}
       return current
     },
+    commit: async (_job, changes, history) => {
+      if (history) calls.historySave++
+      current = {...current, ...structuredClone(changes), ...(changes.status === 'completed' ? {lease_token: null} : {})}
+      return current
+    },
+    stop: async (_owner, _id, failure) => {
+      if (!failure) return null
+      current = {...current, status: 'failed', payload: failure.payload, error: failure.error, lease_token: null}
+      return current
+    },
     quota: async (_job, consume) => {calls.quota.push(consume)},
   }
   const adapter: ConstructorParameters<typeof GenerationJobWorker>[1] = {
@@ -43,8 +53,6 @@ function workerHarness(initial: GenerationJob, options: {existingHistory?: Resum
   }
   const histories: ConstructorParameters<typeof GenerationJobWorker>[2] = {
     findById: async () => options.existingHistory ?? null,
-    save: async () => {calls.historySave++; return {id: `JD-${current.id}`} as ResumeHistoryRecord},
-    update: async () => {calls.historySave++; return {id: `JD-${current.id}`} as ResumeHistoryRecord},
   }
   return {worker: new GenerationJobWorker(repository, adapter, histories, () => fingerprint),
     getJob: () => current, calls}

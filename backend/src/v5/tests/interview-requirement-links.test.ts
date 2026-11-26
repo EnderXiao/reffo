@@ -131,8 +131,9 @@ describe('explicit interview story requirement links', () => {
   test('P10 and repair use the same explicit association and selective-topic contract', () => {
     for (const component of ['P10', 'P10R'] as const) {
       const compiled = compileV5Prompt({ component, envelope: { payload: {} } })
-      expect(compiled.promptVersion).toContain('interview-links-v5-r16')
+      expect(compiled.promptVersion).toContain('interview-links-v5-r17')
       const prompt = compiled.messages.map(message => message.content).join('\n')
+      expect(prompt).toContain('根键固定为 schemaVersion、questions、storyRecommendations、followUpQuestions')
       expect(prompt).toContain('requirementLinks')
       expect(prompt).toMatch(/(?:共享证据|证据共享)、同公司或 actionIds/)
       expect(prompt).toContain('preparationTopics 只')

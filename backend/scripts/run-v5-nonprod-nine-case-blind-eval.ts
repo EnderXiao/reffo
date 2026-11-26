@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { evaluationDeepSeekPolicy, parseDeepSeekThinking, parseDeepSeekExtractionThinking, resolveDeepSeekStageThinking, isResumeExtractionRequest } from '@/config/deepseek-thinking'
+import { evaluationDeepSeekPolicy, INTERVIEW_THINKING_MODE, RESUME_EXTRACTION_THINKING_MODE, isInterviewRequest, isResumeExtractionRequest } from '@/config/deepseek-thinking'
 import type { DoubleOrderAbResult } from '@/v5/ab-evaluator'
 import { canonicalizeSourceDocument } from '@/v5/canonical-source'
 import {
@@ -903,13 +903,8 @@ async function main() {
   const implementationDigest = await createImplementationDigest(backendRoot)
   const model = process.env.AI_MODEL?.trim() || 'deepseek-chat'
   const generationPolicy = evaluationDeepSeekPolicy(model, process.env.DEEPSEEK_THINKING_MODE, process.env.DEEPSEEK_REASONING_EFFORT)
-  const extractionThinkingMode = parseDeepSeekExtractionThinking(process.env.DEEPSEEK_P01_THINKING_MODE)
-  const extractionThinking = resolveDeepSeekStageThinking(
-    parseDeepSeekThinking(process.env.DEEPSEEK_THINKING_MODE, process.env.DEEPSEEK_REASONING_EFFORT),
-    extractionThinkingMode, true,
-    parseDeepSeekThinking(process.env.DEEPSEEK_WRITING_THINKING_MODE, process.env.DEEPSEEK_WRITING_REASONING_EFFORT), false
-  )
-  const extractionPolicy = evaluationDeepSeekPolicy(model, extractionThinking.mode, extractionThinking.effort)
+  const extractionPolicy = model === 'deepseek-chat' ? null : evaluationDeepSeekPolicy(model, RESUME_EXTRACTION_THINKING_MODE)
+  const interviewPolicy = model === 'deepseek-chat' ? null : evaluationDeepSeekPolicy(model, INTERVIEW_THINKING_MODE)
   const contextWindowTokens = Number.parseInt(process.env.V5_CONTEXT_WINDOW_TOKENS || '64000', 10)
   if (!Number.isSafeInteger(contextWindowTokens) || contextWindowTokens <= 0) {
     throw new Error('V5_CONTEXT_WINDOW_TOKENS 必须是正安全整数')
@@ -1579,7 +1574,8 @@ async function main() {
                 messages: request.messages,
                 response: { content: response.content, finishReason: response.finishReason },
                 providerMetadata: { requestedModel: model, returnedModel: response.model,
-                  generationPolicy: isResumeExtractionRequest(request) ? extractionPolicy : generationPolicy,
+                  generationPolicy: isResumeExtractionRequest(request) ? extractionPolicy
+                    : isInterviewRequest(request) ? interviewPolicy : generationPolicy,
                   inputTokens: response.inputTokens, outputTokens: response.outputTokens, reasoningTokens: response.reasoningTokens },
               })
             } catch {

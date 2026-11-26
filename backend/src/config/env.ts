@@ -1,4 +1,3 @@
-import { parseDeepSeekExtractionThinking } from './deepseek-thinking'
 import { assertV5ReleaseConfiguration } from './v5-release'
 
 const NONPROD_CORS_ORIGINS = [
@@ -144,7 +143,6 @@ export const env = {
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || 'https://api.deepseek.com',
   AI_MODEL: process.env.AI_MODEL || 'deepseek-v4-flash',
   DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'enabled',
-  DEEPSEEK_P01_THINKING_MODE: parseDeepSeekExtractionThinking(process.env.DEEPSEEK_P01_THINKING_MODE || 'enabled'),
   DEEPSEEK_REASONING_EFFORT: process.env.DEEPSEEK_REASONING_EFFORT || 'high',
   // 生产默认全局关 think 时，写作阶段（P06C）单独开低强度推理，压住证据引用错位率。
   DEEPSEEK_WRITING_THINKING_MODE: process.env.DEEPSEEK_WRITING_THINKING_MODE || 'enabled',

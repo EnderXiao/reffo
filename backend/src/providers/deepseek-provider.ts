@@ -2,7 +2,7 @@ import OpenAI from 'openai'
 import {providerCallRecorder, type ProviderCallRecorder} from '@/services/provider-call-recorder'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { env } from '@/config/env'
-import { deepSeekThinkingParameters, parseDeepSeekThinking, isResumeExtractionRequest, isWritingRequest, resolveDeepSeekStageThinking, type DeepSeekThinkingSettings, type DeepSeekExtractionThinkingMode } from '@/config/deepseek-thinking'
+import { deepSeekThinkingParameters, parseDeepSeekThinking, isResumeExtractionRequest, isInterviewRequest, isWritingRequest, resolveDeepSeekStageThinking, RESUME_EXTRACTION_THINKING_MODE, INTERVIEW_THINKING_MODE, type DeepSeekThinkingSettings } from '@/config/deepseek-thinking'
 import { createHarnessEvent } from '@/harness/events'
 import { createDigest } from '@/harness/run-context'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
@@ -48,7 +48,6 @@ export class DeepSeekProvider implements LlmProvider {
   private readonly client: OpenAI
 
   constructor(client?: OpenAI, private readonly thinkingSettings?: DeepSeekThinkingSettings,
-    private readonly extractionThinkingMode: DeepSeekExtractionThinkingMode = env.DEEPSEEK_P01_THINKING_MODE,
     private readonly callRecorder: Pick<ProviderCallRecorder, 'begin'> = providerCallRecorder,
     private readonly writingThinkingSettings: DeepSeekThinkingSettings = parseDeepSeekThinking(env.DEEPSEEK_WRITING_THINKING_MODE, env.DEEPSEEK_WRITING_REASONING_EFFORT)) {
     this.client = client ?? new OpenAI({
@@ -60,10 +59,12 @@ export class DeepSeekProvider implements LlmProvider {
 
   async complete(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     const model = input.model ?? env.AI_MODEL
+    const fixedThinkingMode = model === 'deepseek-chat' ? undefined
+      : isResumeExtractionRequest(input) ? RESUME_EXTRACTION_THINKING_MODE
+        : isInterviewRequest(input) ? INTERVIEW_THINKING_MODE : undefined
     const resolvedSettings = resolveDeepSeekStageThinking(
       this.thinkingSettings ?? parseDeepSeekThinking(env.DEEPSEEK_THINKING_MODE, env.DEEPSEEK_REASONING_EFFORT),
-      this.extractionThinkingMode,
-      isResumeExtractionRequest(input),
+      fixedThinkingMode,
       this.writingThinkingSettings,
       isWritingRequest(input)
     )
@@ -108,6 +109,10 @@ export class DeepSeekProvider implements LlmProvider {
             repairScope: input.callMetadata?.repairScope,
             retryIndex: input.callMetadata?.retryIndex ?? 0,
             budgetRemaining: input.callMetadata?.budgetRemaining ?? null,
+            ...(input.stepContext.sourceShardIndex === undefined ? {} : {sourceShardIndex: input.stepContext.sourceShardIndex}),
+            ...(input.stepContext.deadlineMonotonicMs === undefined ? {} : {
+              stageBudgetRemainingMs: Math.max(0, Math.round(input.stepContext.deadlineMonotonicMs - performance.now())),
+            }),
             promptManifest: input.promptManifest,
           },
         })
@@ -173,7 +178,7 @@ export class DeepSeekProvider implements LlmProvider {
         if (!finished) throw new Error('PROVIDER_STREAM_INCOMPLETE')
         return { id, model: resolvedModel, choices: [{ message: { content }, finish_reason: finishReason }], usage }
       } catch (error) {
-        await call.fail(error)
+        await call.fail(requestSignal.signal?.aborted ? requestSignal.signal.reason : error)
         throw error
       } finally {
         requestSignal.dispose()
@@ -194,6 +199,7 @@ export class DeepSeekProvider implements LlmProvider {
       streamChunkCount,
       providerRequestId: response.id,
       finishReason: response.choices[0]?.finish_reason,
+      thinkingMode: settings.mode,
       inputTokens: response.usage?.prompt_tokens,
       outputTokens: response.usage?.completion_tokens,
       physicalAttempts,
@@ -234,6 +240,7 @@ export class DeepSeekProvider implements LlmProvider {
             contextMode: input.callMetadata?.contextMode,
             retryIndex: input.callMetadata?.retryIndex ?? 0,
             reasoningTokens: result.reasoningTokens,
+            ...(input.stepContext.sourceShardIndex === undefined ? {} : {sourceShardIndex: input.stepContext.sourceShardIndex}),
             requestedModel: model,
             ...responseThinking,
             thinkingMode: settings.mode,
