@@ -14,6 +14,8 @@ import type {ResumeActionReview, ResumeIdentityState, ResolvedResumeActionPlan, 
 import type {ResumeCompletionDocument} from '@/shared/resume-completion'
 import {projectResumeHistoryScore} from '@/services/resume-history-score'
 import {projectHistoryInterviewPresentation} from '@/services/interview-history-presentation'
+import {hasManagedInterview, projectManagedInterview, resumeInterviewWorker, retryManagedInterview} from '@/services/resume-interview-tasks'
+import {recordGenerationLifecycle} from '@/services/generation-lifecycle'
 
 const resultStepStatusSchema = t.Union([
   t.Literal('pending'),
@@ -150,7 +152,8 @@ export function publicResumeHistory(record: ResumeHistoryRecord): ResumeHistoryR
   record = projectResumeHistoryScore(record)
   record = projectHistoryInterviewPresentation(record)
   if (!record.process_result || typeof record.process_result !== 'object' || Array.isArray(record.process_result)) return record
-  const {server_interview_basis: _privateBasis, server_completion_upgrade_archive: _privateArchive, ...processResult} = record.process_result as Record<string, unknown>
+  const {server_interview_basis: _privateBasis, server_completion_upgrade_archive: _privateArchive,
+    server_interview_task: _privateTask, ...processResult} = record.process_result as Record<string, unknown>
   const optimized = processResult.optimized && typeof processResult.optimized === 'object' && !Array.isArray(processResult.optimized)
     ? processResult.optimized as Record<string, unknown> : undefined
   if (!optimized?.completion_document) return {...record, process_result: processResult}
@@ -166,9 +169,10 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
     async ({ headers, set }) => {
       try {
         const userContext = await resolveRequestUser(headers)
+        const history = await resumeHistoryRepository.list(userContext)
         const response: ApiResponse<ResumeHistoryRecord[]> = {
           success: true,
-          data: (await resumeHistoryRepository.list(userContext)).map(publicResumeHistory),
+          data: history.map(item => publicResumeHistory(projectManagedInterview(item))),
         }
 
         return response
@@ -246,7 +250,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
 
         const response: ApiResponse<ResumeHistoryRecord> = {
           success: true,
-          data: publicResumeHistory(result),
+          data: publicResumeHistory(projectManagedInterview(result)),
         }
 
         return response
@@ -287,7 +291,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
       const next = upgradeResumeCompletion(history, body.expected_document)
       const saved = next === history ? history : await resumeHistoryRepository.upgradeCompletion(context, history, next)
       set.headers['Cache-Control'] = 'no-store'
-      return {success: true, data: publicResumeHistory(saved)} satisfies ApiResponse<ResumeHistoryRecord>
+      return {success: true, data: publicResumeHistory(projectManagedInterview(saved))} satisfies ApiResponse<ResumeHistoryRecord>
     } catch (error) {
       if (error instanceof RequestAuthError) return toAuthErrorResponse(error, set)
       if (error instanceof ResumeCompletionSnapshotError || error instanceof ResumeHistoryCommitError) return toCompletionErrorResponse(error, set)
@@ -311,6 +315,34 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
       set.status = 500; return {success: false, error: {code: 'RESUME_REVIEW_UNAVAILABLE', message: '暂时无法获取核对状态'}}
     }
   }, {query: t.Object({revision: t.Optional(t.String())})})
+  .post('/:id/interview/retry', async ({params, headers, set}) => {
+    try {
+      const context = await resolveRequestUser(headers)
+      const history = await resumeHistoryRepository.findById(context, params.id)
+      if (!history) {
+        set.status = 404
+        return {success: false, error: {code: 'RESUME_HISTORY_NOT_FOUND', message: '生成历史不存在或已删除'}}
+      }
+      if (!await retryManagedInterview(context.userId, history)) {
+        set.status = 409
+        return {success: false, error: {code: 'INTERVIEW_TASK_UNAVAILABLE', message: '首次交付稿的面试建议暂不可恢复'}}
+      }
+      if (projectManagedInterview(history).interview_task?.status === 'failed') void resumeInterviewWorker.tick()
+      const current = await resumeHistoryRepository.findById(context, params.id)
+      if (!current) {
+        set.status = 404
+        return {success: false, error: {code: 'RESUME_HISTORY_NOT_FOUND', message: '生成历史不存在或已删除'}}
+      }
+      set.headers['Cache-Control'] = 'no-store'
+      return {success: true, data: publicResumeHistory(projectManagedInterview(current))}
+    } catch (error) {
+      if (error instanceof RequestAuthError) return toAuthErrorResponse(error, set)
+      console.error('重试面试任务失败')
+      set.status = 500
+      return {success: false, error: {code: 'INTERVIEW_RETRY_FAILED', message: '面试建议暂时无法重试'}}
+    }
+  }, {params: t.Object({id: t.String({minLength: 1})}),
+    detail: {summary: '重试首次交付稿的面试建议', tags: ['ResumeHistory']}})
   .get(
     '/:id',
     async ({ params, headers, set }) => {
@@ -329,9 +361,14 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
           } satisfies ApiResponse<never>
         }
 
+        const projected = projectManagedInterview(result)
+        if (hasManagedInterview(result)) {
+          set.headers['Cache-Control'] = 'no-store'
+          recordGenerationLifecycle('history_readable', {historyId: result.id})
+        }
         return {
           success: true,
-          data: publicResumeHistory(result),
+          data: publicResumeHistory(projected),
         } satisfies ApiResponse<ResumeHistoryRecord>
       } catch (error) {
         if (error instanceof RequestAuthError) {
@@ -381,7 +418,7 @@ export const resumeHistoryRoutes = new Elysia({ prefix: '/api/v1/resume-history'
 
         return {
           success: true,
-          data: publicResumeHistory(result),
+          data: publicResumeHistory(projectManagedInterview(result)),
         } satisfies ApiResponse<ResumeHistoryRecord>
       } catch (error) {
         if (error instanceof RequestAuthError) {

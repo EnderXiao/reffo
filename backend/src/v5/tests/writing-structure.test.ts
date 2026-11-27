@@ -46,14 +46,14 @@ test('source delivery and validation skills survive alongside the fixed named sk
 
 test('targeted matching loads a single contract and retains the default legacy prompt separately', () => {
   const targeted = compileV5Prompt({ component:'P03',envelope:{payload:{jobTargetingPolicy:'job-targeted-v1'}} })
-  expect(targeted.promptVersion).toBe('5.1.0-p03-job-fit-map-r15')
+  expect(targeted.promptVersion).toBe('5.1.0-p03-job-fit-map-r17')
   expect(targeted.manifest.promptFilePath).toBe('prompts/P03-targeted.md')
   expect(targeted.messages[0].content).not.toContain('下方为兼容规则')
   expect(targeted.messages[0].content).not.toContain('每个适用 RequirementAtom 必须且只能进入')
   expect(compileV5Prompt({component:'P03',envelope:{payload:{source:{jobTargetingPolicy:'job-targeted-v1'}}}}).promptVersion)
     .toBe('5.1.0-p03-job-fit-map-r5')
   const repair = compileV5Prompt({component:'P03R',envelope:{payload:{originalEnvelope:{payload:{jobTargetingPolicy:'job-targeted-v1'}}}}})
-  expect(repair.promptVersion).toBe('5.1.0-p03r-job-fit-map-repair-r16')
+  expect(repair.promptVersion).toBe('5.1.0-p03r-job-fit-map-repair-r18')
   expect(repair.maxOutputTokens).toBe(targeted.maxOutputTokens)
 })
 

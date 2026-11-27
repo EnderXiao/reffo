@@ -10,8 +10,27 @@ import {publishGenerationJobUpdate} from '@/services/generation-job-events'
 import {assertGenerationJobVersion, currentGenerationStageFingerprints, hasGenerationStages, withoutGenerationFailure} from './generation-job-version'
 import {generationJobFailure} from './generation-job-failure'
 import {isHistoryFullyDelivered} from './generation-job-delivery'
-import {hasLinkedCompletion} from '@/shared/resume-completion'
+import {hasLinkedCompletion, serializeDraft, validateCompletionDocument} from '@/shared/resume-completion'
+import {resumeInterviewVersion} from './resume-interview-tasks'
+import {recordGenerationLifecycle} from './generation-lifecycle'
 import {historyCommitDigest} from './resume-history-commit'
+import {createCanonicalDigest} from '@/harness/run-context'
+import {savedInterviewGenerationBasis} from '@/v5/current-interview-snapshot'
+import type {ResumeHistoryRecord} from '@/types'
+
+function recoverInitialInterview(history: ResumeHistoryRecord, job: GenerationJob) {
+  const result = history.process_result as {interview?: unknown; server_interview_task?: string; optimized?: {completion_document?: unknown}} | undefined
+  const optimized = job.payload.optimized
+  if (result?.interview || result?.server_interview_task || !optimized?.completion_document) return
+  const document = validateCompletionDocument(result?.optimized?.completion_document, history.optimized_content)
+  const basis = savedInterviewGenerationBasis(history)
+  if (!document.ok || !basis?.completionDocument || !hasLinkedCompletion(document.document) ||
+    document.document.documentId !== basis.completionDocument.documentId ||
+    document.document.documentId !== optimized.completion_document.documentId) return
+  const version = resumeInterviewVersion(optimized.completion_document, optimized.optimized_resume)
+  if (version !== resumeInterviewVersion(basis.completionDocument, serializeDraft(basis.completionDocument))) return
+  return {version, expectedUpdatedAt: history.updated_at}
+}
 
 export function generationJobProgress(job: GenerationJob, failed = false): ResultSessionProgressRecord {
   const stages = ['analysis', 'matching', 'optimized', 'interview'] as const
@@ -87,9 +106,9 @@ export class GenerationJobWorker {
   private timer?: ReturnType<typeof setInterval>
 
   constructor(
-    private readonly repository: Pick<GenerationJobRepository, 'renew' | 'patch' | 'quota' | 'claim'> = generationJobRepository,
-    private readonly adapter: Pick<typeof v5SingleStepAdapter, 'analyze' | 'match' | 'generate' | 'interview'> = v5SingleStepAdapter,
-    private readonly histories: Pick<ResumeHistoryRepositoryContract, 'findById' | 'save' | 'update'> = resumeHistoryRepository,
+    private readonly repository: Pick<GenerationJobRepository, 'renew' | 'patch' | 'quota' | 'claim' | 'commit' | 'stop'> = generationJobRepository,
+    private readonly adapter: Pick<typeof v5SingleStepAdapter, 'analyze' | 'match' | 'generate'> = v5SingleStepAdapter,
+    private readonly histories: Pick<ResumeHistoryRepositoryContract, 'findById'> = resumeHistoryRepository,
     private readonly releaseFingerprint = singleStepFingerprint,
   ) {}
 
@@ -107,14 +126,25 @@ export class GenerationJobWorker {
       job = updated
       publishGenerationJobUpdate(updated)
     }
-    const saveHistory = async (
-      nextJob: GenerationJob,
-      progress: ResultSessionProgressRecord,
-    ) => {
-      const input = jobHistory(nextJob, progress)
-      return nextJob.history_id
-        ? this.histories.update({userId: job.user_id, useServiceRole: true}, nextJob.history_id, input)
-        : this.histories.save({userId: job.user_id, useServiceRole: true}, input)
+    const commit = async (stage: GenerationJob['stage'], payload: GenerationJob['payload'],
+      status: 'running' | 'completed', history?: SaveResumeHistoryInput, interviewRecovery?: ReturnType<typeof recoverInitialInterview>) => {
+      if (lostLease) throw new Error('JOB_LEASE_LOST')
+      const history_id = job.history_id ?? `JD-${job.id}`
+      if (history) {
+        history.id = history_id
+        if (status === 'completed') {
+          const digest = createCanonicalDigest({history: historyCommitDigest(history), interview: history.interview_task_version ?? null})
+          history.commit_id = `generation-${job.id}-delivery-${digest.slice(0, 16)}`
+        } else {
+          const digest = createCanonicalDigest({lease: job.lease_token, history: historyCommitDigest(history)})
+          history.commit_id = `generation-${job.id}-${digest.slice(0, 16)}`
+        }
+      }
+      const updated = await this.repository.commit(job, {stage, payload, status, history_id,
+        ...(interviewRecovery ? {interviewRecovery} : {})}, history)
+      if (!updated) {lostLease = true; throw new Error('JOB_LEASE_LOST')}
+      job = updated
+      publishGenerationJobUpdate(updated)
     }
 
     try {
@@ -124,8 +154,7 @@ export class GenerationJobWorker {
         {userId: job.user_id, useServiceRole: true}, job.history_id || `JD-${job.id}`,
       )
       if (savedHistory && isHistoryFullyDelivered(savedHistory)) {
-        await save({status: 'completed', history_id: savedHistory.id, error: null, lease_token: null,
-          ...(job.payload.failure ? {payload: withoutGenerationFailure(job.payload)} : {})})
+        await commit('saving', withoutGenerationFailure(job.payload), 'completed', undefined, recoverInitialInterview(savedHistory, job))
         return
       }
       // 历史存在但未跑完（分析阶段就已落库）：把 job 关联回这条记录，继续执行剩余阶段。
@@ -138,110 +167,68 @@ export class GenerationJobWorker {
         await save({payload: {...job.payload, releaseFingerprint: fingerprint, stageFingerprints: currentGenerationStageFingerprints()}})
       }
       if (!job.payload.analysis) {
-        await save({stage: 'analysis'})
+        if (job.stage !== 'analysis') await save({stage: 'analysis'})
         const result = await this.adapter.analyze(job.payload.input.resume_markdown, job.user_id,
           {onCacheMiss: async () => {if (!job.quota_charged) await this.repository.quota(job, false)}})
-        if (!job.quota_charged && (result.cache.status === 'miss' || result.cache.status === 'disabled')) {
+        const chargeQuota = !job.quota_charged && (result.cache.status === 'miss' || result.cache.status === 'disabled')
+        if (chargeQuota) {
           await this.repository.quota(job, true)
           await save({quota_charged: true})
         }
         await persistGenerationInputTrace(job, 'analysis', result.runId)
         const payload = {...job.payload, analysis: result.data,
           traceRunIds: {...job.payload.traceRunIds, ...(result.runId ? {analysis: result.runId} : {})}}
-        const nextJob = {...job, payload}
-        const history = await saveHistory(nextJob, {
+        const history = jobHistory({...job, payload}, {
           analysis: 'done',
           matching: 'generating',
           optimized: 'pending',
           interview: 'pending',
         })
-        if (!history) throw new Error('生成阶段历史保存失败')
-        await save({payload, stage: 'matching', history_id: history.id})
-      } else if (!job.history_id) {
-        const history = await saveHistory(job, generationJobProgress(job))
-        if (!history) throw new Error('生成阶段历史保存失败')
-        await save({history_id: history.id, stage: job.stage === 'analysis' ? 'matching' : job.stage})
+        await commit('matching', payload, 'running', history)
       }
       if (!job.payload.matching) {
-        await save({stage: 'matching'})
+        if (job.stage !== 'matching') await save({stage: 'matching'})
         const result = await this.adapter.match(job.payload.analysis!.structured_resume, job.payload.input.jd_text, job.user_id)
         await persistGenerationInputTrace(job, 'matching', result.runId)
         const payload = {...job.payload, matching: result.data,
           traceRunIds: {...job.payload.traceRunIds, ...(result.runId ? {matching: result.runId} : {})}}
-        const history = await saveHistory({...job, payload}, {
+        const history = jobHistory({...job, payload}, {
           analysis: 'done',
           matching: 'done',
           optimized: 'generating',
           interview: 'pending',
         })
-        if (!history) throw new Error('匹配阶段历史保存失败')
-        await save({payload, stage: 'optimized', history_id: history.id})
+        await commit('optimized', payload, 'running', history)
       }
       if (!job.payload.optimized) {
-        await save({stage: 'optimized'})
+        if (job.stage !== 'optimized') await save({stage: 'optimized'})
         const result = await this.adapter.generate(job.payload.analysis!.structured_resume, job.payload.matching, job.user_id)
         await persistGenerationInputTrace(job, 'optimized', result.runId)
-        const payload = {...job.payload, optimized: result.data,
-          traceRunIds: {...job.payload.traceRunIds, ...(result.runId ? {optimized: result.runId} : {})}}
-        const history = await saveHistory({...job, payload}, {
-          analysis: 'done',
-          matching: 'done',
-          optimized: 'done',
-          interview: 'generating',
-        })
-        if (!history) throw new Error('优化阶段历史保存失败')
-        await save({payload, stage: 'interview', history_id: history.id})
+        await save({stage: 'saving', payload: {...job.payload, optimized: result.data,
+          traceRunIds: {...job.payload.traceRunIds, ...(result.runId ? {optimized: result.runId} : {})}}})
       }
-      if (!job.payload.interview) {
-        await save({stage: 'interview'})
-        const result = await this.adapter.interview(job.payload.analysis, job.payload.matching, job.payload.optimized!.optimized_resume, job.user_id)
-        await persistGenerationInputTrace(job, 'interview', result.runId)
-        const payload = {...job.payload, interview: result.data,
-          traceRunIds: {...job.payload.traceRunIds, ...(result.runId ? {interview: result.runId} : {})}}
-        const history = await saveHistory({...job, payload}, {
-          analysis: 'done',
-          matching: 'done',
-          optimized: 'done',
-          interview: 'done',
-        })
-        if (!history) throw new Error('面试阶段历史保存失败')
-        await save({payload, stage: 'saving', history_id: history.id})
-      }
-      await save({stage: 'saving'})
-      if (!job.history_id) throw new Error('生成结果历史编号不存在')
-      const finalInput = jobHistory(job)
+      if (job.stage !== 'saving') await save({stage: 'saving'})
+      const historyInput = jobHistory(job)
       if (job.payload.optimized?.completion_document && hasLinkedCompletion(job.payload.optimized.completion_document)) {
-        const trusted = await loadCompletionBaselineBundle(job.user_id, finalInput.process_result)
-        finalInput.action_baseline = trusted.actionBaseline
+        const trusted = await loadCompletionBaselineBundle(job.user_id, historyInput.process_result)
+        historyInput.action_baseline = trusted.actionBaseline
+        if (!job.payload.interview) {
+          if (!trusted.actionBaseline?.interviewBasis) throw new Error('GENERATION_INTERVIEW_BASIS_MISSING')
+          historyInput.interview_task_version = resumeInterviewVersion(job.payload.optimized.completion_document, historyInput.optimized_content)
+        }
       }
-      await this.histories.update({userId: job.user_id, useServiceRole: true}, job.history_id, finalInput)
-      await save({status: 'completed', history_id: job.history_id, error: null, lease_token: null,
-        ...(job.payload.failure ? {payload: withoutGenerationFailure(job.payload)} : {})})
+      await commit('saving', withoutGenerationFailure(job.payload), 'completed', historyInput)
+      recordGenerationLifecycle('resume_saved', {jobId: job.id, historyId: job.history_id!, durationMs: Date.now() - Date.parse(job.created_at)})
     } catch (error) {
-      // 任务失败必须落一条可见日志：worker 只向外收敛 message，
-      // 原始错误此前被完全吞掉，排障只能反查 harness 库。
-      console.error('[GenerationJobWorker] execute failed:', {
-        jobId: job.id,
-        stage: job.stage,
-        errorName: error instanceof Error ? error.name : 'UnknownError',
-        errorCode: error && typeof error === 'object' && 'code' in error
-          ? String((error as {code?: unknown}).code)
-          : undefined,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        agentState: error && typeof error === 'object' && 'state' in error
-          ? String((error as {state?: unknown}).state)
-          : undefined,
-      })
-      if (!lostLease) {
+      if (!lostLease && job.lease_token) {
         const {message, failure} = generationJobFailure(error, job.stage)
         if (failure.runId) await persistGenerationInputTrace(job, job.stage, failure.runId)
-        if (job.history_id) {
-          await saveHistory(job, generationJobProgress(job, true)).catch(() => undefined)
+        const failed = await this.repository.stop(job.user_id, job.id, {lease: job.lease_token,
+          stage: job.stage, error: message, payload: {...job.payload, failure}})
+        if (failed) {
+          publishGenerationJobUpdate(failed)
+          recordGenerationLifecycle('generation_failed', {jobId: job.id, code: failure.code, runId: failure.runId})
         }
-        const failed = await this.repository.patch(job.user_id, job.id, {status: 'failed', error: message, lease_token: null,
-          payload: {...job.payload, failure}},
-          {lease: job.lease_token!, status: 'running'})
-        if (failed) publishGenerationJobUpdate(failed)
       }
     } finally {
       clearInterval(heartbeat)
@@ -255,6 +242,7 @@ export class GenerationJobWorker {
       const job = await this.repository.claim()
       if (!job) return
       publishGenerationJobUpdate(job)
+      recordGenerationLifecycle('claimed', {jobId: job.id, durationMs: Date.now() - Date.parse(job.created_at)})
       this.active += 1
       void this.execute(job).catch(() => console.error('生成任务状态保存失败'))
         .finally(() => {this.active -= 1; void this.tick()})

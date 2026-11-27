@@ -1,72 +1,16 @@
-export interface DeepSeekThinkingSettings {
-  mode: 'default' | 'enabled' | 'disabled'
-  effort: 'low' | 'high' | 'max'
-}
+export const V5_THINKING_MODE = 'disabled' as const
 
-export type DeepSeekExtractionThinkingMode = 'inherit' | 'enabled' | 'disabled'
-
-export function parseDeepSeekExtractionThinking(value = 'inherit'): DeepSeekExtractionThinkingMode {
-  if (value !== 'inherit' && value !== 'enabled' && value !== 'disabled') throw new Error('INVALID_DEEPSEEK_P01_THINKING_MODE')
-  return value
-}
-
-/** Only trusted request metadata selects a stage, never text in a résumé. */
-export function isResumeExtractionRequest(input: {
-  promptManifest?: { componentPromptId: string }
-  promptVersion?: string
-}) {
-  const component = input.promptManifest?.componentPromptId
-  if (component !== undefined) return component === 'P01' || component === 'P01R'
-  return /^5\.0\.0-p01(?:-resume-evidence|r-resume-evidence-repair)-r\d+$/u.test(input.promptVersion ?? '')
-}
-
-/** 写作阶段（P06C）可单独开 thinking：生产默认关 think 时，写作引用证据需要推理。 */
-export function isWritingRequest(input: {
-  promptManifest?: { componentPromptId: string }
-  promptVersion?: string
-}) {
-  const component = input.promptManifest?.componentPromptId
-  if (component !== undefined) return component === 'P06C'
-  return /-p06c-/iu.test(input.promptVersion ?? '')
-}
-
-export function resolveDeepSeekStageThinking(
-  global: DeepSeekThinkingSettings,
-  extractionMode: DeepSeekExtractionThinkingMode,
-  extractionRequest: boolean,
-  writingSettings: DeepSeekThinkingSettings,
-  writingRequest: boolean
-): DeepSeekThinkingSettings {
-  if (extractionRequest && extractionMode !== 'inherit') {
-    return { ...global, mode: extractionMode }
-  }
-  if (writingRequest && writingSettings.mode !== 'default') {
-    return writingSettings
-  }
-  return global
-}
-
-/** Pure configuration shared by the request adapter and the cache fingerprint. */
-export function parseDeepSeekThinking(mode = 'default', effort = 'high'): DeepSeekThinkingSettings {
-  if (mode !== 'default' && mode !== 'enabled' && mode !== 'disabled') throw new Error('INVALID_DEEPSEEK_THINKING_MODE')
-  if (effort !== 'low' && effort !== 'high' && effort !== 'max') throw new Error('INVALID_DEEPSEEK_REASONING_EFFORT')
-  return { mode, effort }
-}
-
-export function deepSeekThinkingParameters(model: string, endpoint: string, settings: DeepSeekThinkingSettings) {
-  if (settings.mode === 'default') return {}
+export function deepSeekThinkingParameters(model: string, endpoint: string) {
   if (!/^https:\/\/api\.deepseek\.com(?:\/v1)?\/?$/u.test(endpoint)
-    || !/^deepseek-v4-(?:flash|pro)$/u.test(model)) throw new Error('DEEPSEEK_THINKING_MODEL_MISMATCH')
-  return settings.mode === 'enabled'
-    ? { thinking: { type: 'enabled' as const }, reasoning_effort: settings.effort }
-    : { thinking: { type: 'disabled' as const } }
+    || !/^(?:deepseek-chat|deepseek-v4-(?:flash|pro))$/u.test(model)) {
+    throw new Error('DEEPSEEK_THINKING_MODEL_MISMATCH')
+  }
+  return { thinking: { type: V5_THINKING_MODE } }
 }
 
-export function evaluationDeepSeekPolicy(model: string, mode?: string, effort?: string) {
-  const settings = parseDeepSeekThinking(mode, effort)
-  if (model === 'deepseek-chat' && settings.mode === 'default') return null
-  if (model !== 'deepseek-v4-flash' || settings.mode === 'default') throw new Error('EVALUATION_MODEL_OR_MODE_NOT_APPROVED')
+export function evaluationDeepSeekPolicy(model: string) {
+  if (model !== 'deepseek-v4-flash' && model !== 'deepseek-chat') throw new Error('EVALUATION_MODEL_NOT_APPROVED')
   return { version: 'deepseek-thinking-v1' as const, model,
-    ...deepSeekThinkingParameters(model, 'https://api.deepseek.com', settings),
+    ...deepSeekThinkingParameters(model, 'https://api.deepseek.com'),
     outputAccounting: 'completion_tokens_including_reasoning' as const }
 }

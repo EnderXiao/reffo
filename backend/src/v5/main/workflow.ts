@@ -10,13 +10,12 @@ import { createHarnessEventBus, type HarnessEventBus } from '@/harness/event-bus
 import { createHarnessEvent } from '@/harness/events'
 import { createDigest, type RunContext, type StepExecutionContext } from '@/harness/run-context'
 import { runHarnessedRequest, type HarnessedRequestContext } from '@/harness/harnessed-request'
-import { runStep, StepRunError, type StepRunSnapshot } from '@/harness/run-step'
+import { runStep, StepRunError, StepTimeoutError, type StepRunSnapshot } from '@/harness/run-step'
 import { logHarnessEvent } from '@/harness/subscribers/log-subscriber'
 import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscriber'
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
 import type { LlmProvider } from '@/providers/llm-provider'
 import {fallbackLlmProvider} from '@/providers/fallback-provider'
-import { BudgetAwareThinkingProvider } from '@/providers/budget-aware-thinking-provider'
 import { env } from '@/config/env'
 import { assertV5ProductionWorkflow } from '@/config/v5-release'
 import { buildRequirementAnalysis } from '@/v5/targeting/presentation'
@@ -378,6 +377,10 @@ function unwrapStepRunError(error: unknown) {
 
 function normalizeBlockedError(error: unknown): V5WorkflowBlockedError {
   const cause = unwrapStepRunError(error)
+  if (cause instanceof StepTimeoutError) {
+    return new V5WorkflowBlockedError({code: 'V5_WORKFLOW_TIMEOUT', state: 'provider_failure',
+      message: cause.message, retryable: true, httpStatus: 503})
+  }
   if (cause instanceof V5PluginExecutionError) {
     if (cause.code === 'PLUGIN_TIMEOUT' || cause.code === 'PLUGIN_CANCELLED') {
       return new V5WorkflowBlockedError({
@@ -490,8 +493,6 @@ export { V5WorkflowBlockedError } from '@/v5/errors'
 export class V5ResumeOptimizationWorkflow {
   private readonly provider?: LlmProvider
   private readonly judgeProvider?: LlmProvider
-  /** 当前请求的共享剩余时间预算；仅供 BudgetAwareThinkingProvider 读取。 */
-  private thinkingBudgetRemainingMs: (() => number) | null = null
   private readonly resumeExtractionCache?: TrustedResumeExtractionCache
   private readonly eventBus: HarnessEventBus
   private readonly pluginOverrides: V5WorkflowOptions['pluginOverrides']
@@ -503,15 +504,8 @@ export class V5ResumeOptimizationWorkflow {
   private readonly onTargetingAnalysis?: V5WorkflowOptions['onTargetingAnalysis']
 
   constructor(options: V5WorkflowOptions = {}) {
-    // 剩余预算低于阈值时自动关闭 thinking：串行调用链在预算告急时
-    // 继续开推理模式几乎必然超时，改用非推理模式保住交付。
-    const budgetAware = (provider: LlmProvider | undefined): LlmProvider | undefined => (
-      provider
-        ? new BudgetAwareThinkingProvider(provider, () => this.thinkingBudgetRemainingMs?.() ?? Number.POSITIVE_INFINITY)
-        : provider
-    )
-    this.provider = budgetAware(options.provider)
-    this.judgeProvider = budgetAware(options.judgeProvider ?? options.provider)
+    this.provider = options.provider
+    this.judgeProvider = options.judgeProvider ?? options.provider
     this.resumeExtractionCache = options.resumeExtractionCache
     this.eventBus = options.eventBus ?? (options.enableDefaultSubscribers === false ? createHarnessEventBus() : createDefaultEventBus())
     this.pluginOverrides = options.pluginOverrides
@@ -547,7 +541,6 @@ export class V5ResumeOptimizationWorkflow {
     const runtime = this.createRuntime(input.workflowTimeoutMs ?? 300000, harness, input.signal)
     const { runContext } = runtime
     const remaining = runtime.context.remainingMs
-    this.thinkingBudgetRemainingMs = remaining
     const setState = (next: ResumeAgentState) => runtime.setState(next)
 
     await this.eventBus.publish(createHarnessEvent({
@@ -684,7 +677,6 @@ export class V5ResumeOptimizationWorkflow {
   ): Promise<{runId: string; preparation: InterviewPreparation; stepStatuses: StepRunSnapshot[]}> {
     const runtime = this.createRuntime(timeoutMs, harness, signal)
     const {runContext} = runtime
-    this.thinkingBudgetRemainingMs = runtime.context.remainingMs
     const stepStatuses = harness.steps
     await this.eventBus.publish(createHarnessEvent({
       type: 'workflow.started', runId: runContext.runId, requestId: runContext.requestId,
@@ -751,7 +743,6 @@ export class V5ResumeOptimizationWorkflow {
     const runtime = this.createRuntime(input.workflowTimeoutMs ?? 600000, harness, input.signal)
     const { runContext, manifest: pluginManifest } = runtime
     const remaining = runtime.context.remainingMs
-    this.thinkingBudgetRemainingMs = remaining
     const steps = harness.steps
     let entryWritingRecord: V5WorkflowResult['entryWriting']
     let deliveryMarkdown: string | undefined
@@ -1197,7 +1188,7 @@ export class V5ResumeOptimizationWorkflow {
                     resume: resumeEvidenceBundle, policy: generationPolicy, previewEntryId: entry.entryId })
                   journal.preview(entry.entryId, brief.order, preview.deliveryParagraphs.get(entry.entryId) ?? [])
                 } catch { /* Invalid previews stay private; final compilation diagnoses them. */ }
-              }) : undefined
+              }, undefined, new Set(entryPlan.entries.filter(entry => entry.slot.kind !== 'business_bullet').map(entry => entry.entryId))) : undefined
               await setState('drafting')
               const writerStep = await runStep({
                 runContext, eventBus: this.eventBus, stepName: 'v5_p06c_supported_writer',
@@ -2087,7 +2078,7 @@ export class V5ResumeOptimizationWorkflow {
           options: {
             provider: this.provider,
             eventBus: this.eventBus,
-            stepContext: input.stepContext,
+            stepContext: {...input.stepContext, sourceShardIndex: chunkIndex},
             inputDocumentIds: [chunk.documentId],
           },
         })
@@ -2239,7 +2230,7 @@ export class V5ResumeOptimizationWorkflow {
           options: {
             provider: this.provider,
             eventBus: this.eventBus,
-            stepContext: input.stepContext,
+            stepContext: {...input.stepContext, sourceShardIndex: primary.chunkIndex},
             inputDocumentIds: [chunk.documentId],
             repairAttempt: 1,
           },

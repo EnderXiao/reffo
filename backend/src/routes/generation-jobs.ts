@@ -6,13 +6,13 @@ import {v5CheckpointStorage} from '@/repositories/v5-checkpoint-repository'
 import {createDigest} from '@/harness/run-context'
 import {env} from '@/config/env'
 import {ensureResumeQuotaAvailable, ResumeQuotaError} from '@/services/resume-quota'
-import {generationJobProgress, generationJobWorker, jobHistory} from '@/services/generation-jobs'
-import {resumeHistoryRepository} from '@/repositories/resume-history-repository'
+import {generationJobWorker} from '@/services/generation-jobs'
 import {normalizeMarkdownText} from '@/services/text-normalizer'
 import {summarizeGenerationJob, type GenerationJob} from '@/types/generation-job'
 import {publishGenerationJobUpdate, subscribeGenerationJobUpdates} from '@/services/generation-job-events'
 import {singleStepFingerprint} from '@/v5/single-step-adapter'
 import {generationJobRetryChanges} from '@/services/generation-job-version'
+import {recordGenerationLifecycle} from '@/services/generation-lifecycle'
 
 const jobParams = t.Object({id: t.String({pattern: '^[a-f0-9-]{36}$'})})
 
@@ -56,6 +56,8 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
     }, singleStepFingerprint())
     set.status = 202
     publishGenerationJobUpdate(job)
+    recordGenerationLifecycle('accepted', {jobId: job.id})
+    void generationJobWorker.tick()
     return {success: true, data: summarizeGenerationJob(job)}
   }, {body: t.Object({request_id: t.String({pattern: '^[a-f0-9-]{36}$'}),
     resume_markdown: t.String({minLength: 10, maxLength: 200000}), jd_text: t.String({minLength: 10, maxLength: 100000}),
@@ -140,17 +142,21 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
       (action === 'background' && !['queued', 'running'].includes(job.status))
       || ((action === 'read' || action === 'confirm') && job.status !== 'completed')
       || (action === 'retry' && job.status !== 'failed')
-      || (action === 'cancel' && !['queued', 'running', 'failed', 'cancelled'].includes(job.status))
     if (invalidAction) {
       set.status = 409
       return {success: false, error: {code: 'JOB_STATE_CHANGED', message: '任务状态已更新，请刷新后重试'}}
+    }
+    if (action === 'cancel') {
+      const cancelled = await generationJobRepository.stop(job.user_id, job.id)
+      if (!cancelled) {set.status = 409; return {success: false, error: {code: 'JOB_STATE_CHANGED', message: '任务状态已更新，请刷新后重试'}}}
+      publishGenerationJobUpdate(cancelled)
+      return {success: true, data: summarizeGenerationJob(cancelled)}
     }
     const now = new Date().toISOString()
     const changes: Partial<GenerationJob> = action === 'background' ? {background: true}
       : action === 'read' ? {read_at: job.read_at || now}
         : action === 'confirm' ? {confirmed_at: job.confirmed_at || now, read_at: job.read_at || now}
-          : action === 'cancel' ? {status: 'cancelled' as const, lease_token: null}
-            : generationJobRetryChanges(job, singleStepFingerprint(), now)
+          : generationJobRetryChanges(job, singleStepFingerprint(), now)
     if (action === 'retry') {
       // 重试 = 新会话：刷新 matching checkpoint 的会话预算；checkpoint 已过期
       // （TTL 24h）则清空已保存阶段，从头重新生成。
@@ -160,18 +166,6 @@ export const generationJobRoutes = new Elysia({prefix: '/api/v1/generation-jobs'
     const updated = await generationJobRepository.patch(job.user_id, job.id, changes, {status: job.status})
     if (!updated) {set.status = 409; return {success: false, error: {code: 'JOB_STATE_CHANGED', message: '任务状态已更新，请重试'}}}
     publishGenerationJobUpdate(updated)
-    // 取消后把历史进度收敛成 failed，避免记录永远停在 generating 而被当成进行中。
-    if (action === 'cancel') {
-      try {
-        await resumeHistoryRepository.update(
-          {userId: job.user_id, useServiceRole: true},
-          updated.history_id ?? `JD-${updated.id}`,
-          jobHistory(updated, generationJobProgress(updated, true)),
-        )
-      } catch (error) {
-        console.error('取消任务时收敛历史进度失败:', error instanceof Error ? error.message : error)
-      }
-    }
     if (action === 'retry') void generationJobWorker.tick()
     return {success: true, data: summarizeGenerationJob(updated)}
   }, {params: t.Object({id: jobParams.properties.id, action: t.Union([

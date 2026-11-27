@@ -10,6 +10,7 @@ import { V5_SCHEMA_VERSION } from '@/v5/types'
 import { measureArtifactMarkdown, plannedContentEvidenceIds } from '@/v5/validators'
 import { compositionSectionForScopeKind } from '@/v5/composition/blueprint'
 import { formatTimelineHeading as timelineText } from '@/v5/composition/timeline-display'
+import { isScopeTimelineEvidence } from '@/v5/writing/education'
 import {
   P06_COMPOSITION_COMPILER_VERSION,
   P06_COMPOSITION_CONTRACT_VERSION,
@@ -267,7 +268,7 @@ export function renderValidatedCompositionArtifact(input: {
         const scopePlan = scopePlanById.get(timeline.scopeId)
         if (!scopePlan || scopePlan.treatment === 'omit') continue
         if (scopePlan.treatment === 'timeline_line') {
-          const atoms = atomsFor(timeline.evidenceIds).filter(atom => atom.claimType === 'timeline')
+          const atoms = atomsFor(timeline.evidenceIds).filter(atom => isScopeTimelineEvidence(atom, timeline))
           const text = timelineText(timeline)
           if (text && atoms.length > 0) {
             items.push({

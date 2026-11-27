@@ -99,7 +99,7 @@ describe('durable stage coordination',()=>{
       try{await new ResumeStageCacheRepository({leaseMs:100,renewMs:15,requestMs:65}).resolve({...input,compute:async({signal})=>{
         await new Promise((resolve,reject)=>signal.addEventListener('abort',()=>{settled=true;reject(signal.reason)},{once:true}));return {ok:true}
       }})}catch(e){error=e}
-      assert.ok(error instanceof ResumeStageCacheBusyError);assert.equal(settled,true);assert.ok(Date.now()-started<300)
+      assert.equal(error?.code,'V5_WORKFLOW_TIMEOUT');assert.equal(settled,true);assert.ok(Date.now()-started<300)
       assert.equal(db.query('SELECT COUNT(*) n FROM resume_stage_cache').get().n,0)
       console.log(JSON.stringify({deadlineCancelled:true,noUnsettledPublication:true}))
     `)).toEqual({deadlineCancelled:true,noUnsettledPublication:true})

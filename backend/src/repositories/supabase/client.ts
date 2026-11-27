@@ -10,6 +10,7 @@ interface SupabaseRequestOptions {
   searchParams?: Record<string, string | number | boolean | undefined>
   body?: unknown
   prefer?: string
+  signal?: AbortSignal
   timeoutMs?: number
   maxResponseBytes?: number
 }
@@ -92,9 +93,13 @@ export class SupabaseRestClient {
   async request<T>(path: string, options: SupabaseRequestOptions = {}): Promise<T> {
     const apiKey = getApiKey(this.options)
     const accessToken = this.options.accessToken || apiKey
+    const timeoutSignal = options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : undefined
+    const signal = options.signal && timeoutSignal
+      ? AbortSignal.any([options.signal, timeoutSignal])
+      : options.signal ?? timeoutSignal
     const response = await fetch(buildUrl(path, options.searchParams), {
       method: options.method ?? 'GET',
-      ...(options.timeoutMs ? {signal: AbortSignal.timeout(options.timeoutMs)} : {}),
+      signal,
       headers: {
         apikey: apiKey,
         Authorization: `Bearer ${accessToken}`,

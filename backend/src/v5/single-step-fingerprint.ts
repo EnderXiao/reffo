@@ -1,3 +1,4 @@
+import {V5_THINKING_MODE} from '@/config/deepseek-thinking'
 import {createDigest} from '@/harness/run-context'
 import {env} from '@/config/env'
 import {V5_WORKFLOW_VERSION} from '@/v5/types'
@@ -11,6 +12,6 @@ export function singleStepFingerprint() {
     writer: ENTRY_WRITING_POLICY, skeleton: SKELETON_POLICY_VERSION, document: 'resume-completion-v2',
     promptBudget: {version: V5_PROMPT_BUDGET_VERSION, ceilings: V5_PROMPT_MAX_OUTPUT_TOKENS,
       contextWindowTokens: env.V5_CONTEXT_WINDOW_TOKENS},
-    model: env.AI_MODEL, endpoint: env.OPENAI_BASE_URL, thinking: env.DEEPSEEK_THINKING_MODE,
-    extractionThinking: env.DEEPSEEK_P01_THINKING_MODE, structuredOutput: env.V5_STRUCTURED_OUTPUT_MODE})
+    model: env.AI_MODEL, endpoint: env.OPENAI_BASE_URL, thinking: V5_THINKING_MODE,
+    extractionThinking: V5_THINKING_MODE, structuredOutput: env.V5_STRUCTURED_OUTPUT_MODE})
 }

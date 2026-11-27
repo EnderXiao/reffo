@@ -38,10 +38,10 @@ describe('Harness recovery advice', () => {
     })
   })
 
-  test('maps exhausted thinking-disabled truncation recovery to a bounded output action', () => {
+  test('maps exhausted truncation recovery to a bounded output action', () => {
     expect(recoveryAdviceForErrorCode('V5_OUTPUT_TRUNCATED')).toMatchObject({
       retryable: false,
-      action: 'retry_with_thinking_disabled_and_reduced_scope',
+      action: 'retry_with_reduced_scope',
     })
   })
 })

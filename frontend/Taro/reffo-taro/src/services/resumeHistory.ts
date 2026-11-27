@@ -23,6 +23,7 @@ interface ResumeHistoryApiRecord {
   process_result?: unknown;
   result_context?: unknown;
   progress?: unknown;
+  interview_task?: ResumeHistory['interviewTask'];
   card_color?: string;
   card_pattern?: string;
   commit_ack?: ResumeHistory['commitAck'];
@@ -45,7 +46,7 @@ interface ResumeHistorySummaryApiRecord {
   card_pattern?: string;
 }
 
-type ResumeHistoryApiPayload = Omit<ResumeHistoryApiRecord, 'id' | 'updated_at'> & {
+type ResumeHistoryApiPayload = Omit<ResumeHistoryApiRecord, 'id' | 'updated_at' | 'interview_task'> & {
   id?: string | null;
   completion_edit?: import('@/shared/resume-completion').CompletionEditJournal;
   commit_id?: string;
@@ -126,6 +127,7 @@ function toResumeHistory(record: ResumeHistoryApiRecord): ResumeHistory {
     ...(processResult ? {processResult: {...processResult, matching: normalizeMatching(processResult.matching)}} : {}),
     ...(record.result_context ? {resultContext: record.result_context as ResumeHistory['resultContext']} : {}),
     ...(record.progress ? {progress: record.progress as ResumeHistory['progress']} : {}),
+    ...(record.interview_task ? {interviewTask: record.interview_task} : {}),
     ...(record.card_color ? {cardColor: record.card_color} : {}),
     ...(record.card_pattern ? {cardPattern: record.card_pattern} : {}),
   };
@@ -164,6 +166,13 @@ export class ResumeHistoryApi {
   async getHistory(id: string): Promise<ResumeHistory> {
     const response = await apiClient.get<ResumeHistoryApiRecord>(
       `/resume-history/${encodeURIComponent(id)}`,
+    );
+    return toResumeHistory(response);
+  }
+
+  async retryInterview(id: string): Promise<ResumeHistory> {
+    const response = await apiClient.post<ResumeHistoryApiRecord>(
+      `/resume-history/${encodeURIComponent(id)}/interview/retry`,
     );
     return toResumeHistory(response);
   }

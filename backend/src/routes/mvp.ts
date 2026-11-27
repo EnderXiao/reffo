@@ -19,6 +19,8 @@ import { V5WorkflowBlockedError } from '@/v5/errors'
 import type { ApiResponse, MvpProcessResponse } from '@/types'
 import {consumeResumeQuota, ensureResumeQuotaAvailable, ResumeQuotaError} from '@/services/resume-quota'
 import {resumeHistoryRepository} from '@/repositories/resume-history-repository'
+import {hasManagedInterview, projectManagedInterview, storedInterview} from '@/services/resume-interview-tasks'
+import type {InterviewSuggestions} from '@/types'
 import {historyDocumentRef, ResumeHistoryCommitError} from '@/services/resume-history-commit'
 import {saveCompletionBaseline} from '@/services/resume-completion-baseline'
 import {persistInputParseTrace} from '@/services/generation-input-trace'
@@ -573,6 +575,15 @@ export const mvpRoutes = new Elysia({ prefix: '/api/v1/mvp' })
         const history = body.history_id ? await resumeHistoryRepository.findById({userId:owner,useServiceRole:true},body.history_id) : undefined
         if (body.history_id && !history) throw new ResumeHistoryCommitError('RESUME_VERSION_CONFLICT','简历历史已删除，请重新打开当前记录')
         if (history) {
+          const interview = storedInterview(history)
+          if (interview) return {success: true, data: interview} satisfies ApiResponse<InterviewSuggestions>
+          if (hasManagedInterview(history)) {
+            const status = projectManagedInterview(history).interview_task?.status
+            set.status = 409
+            return status === 'pending'
+              ? {success: false, error: {code: 'INTERVIEW_BACKGROUND_PENDING', message: '面试建议将在后台生成，稍后重新打开查看'}}
+              : {success: false, error: {code: 'INTERVIEW_TASK_UNAVAILABLE', message: '请在结果页查看首轮面试任务状态'}}
+          }
           const actual=historyDocumentRef(history.process_result)
           if (!body.document_ref || body.document_ref.documentId!==actual.documentId || body.document_ref.revision!==actual.revision
             || (body.document_ref.resolvedDigest!==undefined && body.document_ref.resolvedDigest!==actual.resolvedDigest)) {

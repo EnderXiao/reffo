@@ -27,6 +27,10 @@ export interface ResultSessionProgress {
   interview?: ResultStepStatus;
 }
 
+export interface ResumeInterviewTask {
+  status: 'pending' | 'done' | 'failed' | 'stale';
+}
+
 export interface ResumeHistory {
   id: string;
   position: string; // 岗位名称
@@ -45,6 +49,7 @@ export interface ResumeHistory {
   processResult?: Partial<ProcessResult>; // 生成结果快照，后台任务可能只包含已完成阶段
   resultContext?: ResultSessionContext; // 生成上下文，用于结果页继续保存/编辑
   progress?: ResultSessionProgress; // 结果生成进度快照
+  interviewTask?: ResumeInterviewTask;
   cardColor?: string; // 卡片背景色
   cardPattern?: string; // 卡片图案类型
   completionCommit?: {commitId: string; expectedDocument?: {documentId: string; revision: number; resolvedDigest?: string}};

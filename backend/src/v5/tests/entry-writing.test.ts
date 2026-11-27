@@ -6,6 +6,8 @@ import { createTargetingFixture } from '@/v5/tests/targeting-fixtures'
 import { buildWritingPlan, writingPayload } from '@/v5/writing/plan'
 import { assertEntryDeliveryProjection, buildEntryWritingPlan, compileEntryWriting, entryWritingPayload, ENTRY_WRITING_POLICY, isEntryWritingEnvelope, entryWritingOutputSchema, entryWritingV4OutputSchema, entryWritingV6OutputSchema, normalizeEntryWritingOutput, removeUnsupportedCollaboratorMentions, removeRepeatedResearchDeliverable, hasRepeatedSkillCase } from '@/v5/writing/entries'
 import { compileV5Prompt } from '@/v5/prompt-compiler'
+import { runV5StructuredStage } from '@/v5/stage-runner'
+import { EntryJsonStream } from '@/v5/writing/entry-stream'
 import { validateGeneratedResumeArtifact } from '@/v5/validators'
 import { parseEvaluationRunnerArgs } from '@/v5/evaluation-runner-support'
 import { workScopeBrief } from '@/v5/writing/work-coverage'
@@ -124,7 +126,75 @@ test('invalid action receipt transport is quarantined whole without relaxing bod
     expect(entryWritingOutputSchema.safeParse(normalizeEntryWritingOutput(invalid).value).success).toBe(false)
   }
   const unknown = {contractVersion: 'unrecognized', entries: value.entries}
-  expect(normalizeEntryWritingOutput(unknown)).toEqual({value: unknown, removedNotes: 0, rejectedReceiptCount: 0})
+  expect(normalizeEntryWritingOutput(unknown)).toEqual({
+    value: unknown, removedNotes: 0, rejectedReceiptCount: 0, materializedReceiptCount: 0, materializedCoverageCount: 0,
+  })
+})
+
+test('materializes compact P06C receipts in primary and correction calls without changing their references', async () => {
+  const f = fixture(true)
+  const payload = entryWritingPayload(f.entryPlan)
+  const {entries} = entryWritingV6OutputSchema.parse({
+    contractVersion: ENTRY_WRITING_POLICY,
+    entries: f.output.entries.map(entry => v5FixtureEntry(entry, payload.entries.find(brief => brief.entryId === entry.entryId)!)),
+  })
+  const segment = entries[0].paragraphs[0].segments[0]
+  if (segment.kind !== 'fact') throw new Error('Fixture requires a fact segment')
+  const receipt = {actionId: 'action', unitIds: [entries[0].paragraphs[0].unitId],
+    evidenceIds: segment.evidenceIds, detailIds: [], coveredAspectIds: []}
+  for (const correction of [false, true]) {
+    const selectedEntries = correction ? entries.slice(0, 1) : entries
+    const envelope = {payload: {...payload, ...(correction ? {
+      entries: payload.entries.filter(entry => entry.entryId === entries[0].entryId),
+      correction: {requiredEntryIds: [entries[0].entryId]},
+    } : {})}}
+    const result = await runV5StructuredStage<ReturnType<typeof entryWritingV6OutputSchema.parse>>({
+      component: 'P06C', envelope, options: {provider: {complete: async request => {
+        const value = {contractVersion: ENTRY_WRITING_POLICY, entries: selectedEntries.map((entry, index) => ({
+          ...entry, actionReceipts: index === 0 ? [receipt] : [],
+        }))}
+        request.structuredOutput?.schema.parse(value)
+        return {provider: 'fixture', model: 'fixture', content: JSON.stringify(value), finishReason: 'stop', latencyMs: 1}
+      }}},
+    })
+    expect(result.outputAudit.normalizationChanges).toEqual(['action_receipt_explanation_materialized:1'])
+    expect(result.value.entries[0].actionReceipts[0]).toMatchObject(receipt)
+    expect(result.value.entries[0].paragraphs).toEqual(entries[0].paragraphs)
+  }
+})
+
+test('builds coverage only for server-designated auxiliary entries and reports malformed business coverage paths', async () => {
+  const f = fixture(true)
+  const payload = entryWritingPayload(f.entryPlan)
+  const business = payload.entries.find(entry => entry.coverageRequired)!
+  const auxiliary = payload.entries.find(entry => !entry.coverageRequired)!
+  const entries = f.output.entries.map(entry => v5FixtureEntry(entry, payload.entries.find(brief => brief.entryId === entry.entryId)!))
+  const run = (invalidBusiness: boolean) => runV5StructuredStage<ReturnType<typeof entryWritingV6OutputSchema.parse>>({
+    component: 'P06C', envelope: {payload}, options: {provider: {complete: async request => {
+      const value = {contractVersion: ENTRY_WRITING_POLICY, entries: entries.map(entry => ({
+        ...entry, coverage: entry.entryId === auxiliary.entryId || invalidBusiness && entry.entryId === business.entryId ? null : entry.coverage,
+      }))}
+      request.structuredOutput?.schema.parse(value)
+      return {provider: 'fixture', model: 'fixture', content: JSON.stringify(value), finishReason: 'stop', latencyMs: 1}
+    }}},
+  })
+  const result = await run(false)
+  expect(result.value.entries.find(entry => entry.entryId === auxiliary.entryId)!.coverage)
+    .toEqual(Array.from({length: 5}, (_, index) => expect.objectContaining({
+      element: ['responsibility', 'project', 'problem', 'solution', 'result'][index], status: 'not_applicable', evidenceIds: [],
+    })))
+  expect(result.outputAudit.normalizationChanges).toEqual(['auxiliary_entry_coverage_materialized:1'])
+  const previewed: string[] = []
+  const stream = new EntryJsonStream(entry => previewed.push(entry.entryId), undefined, new Set([auxiliary.entryId]))
+  stream.push(JSON.stringify({contractVersion: ENTRY_WRITING_POLICY,
+    entries: entries.filter(entry => [auxiliary.entryId, business.entryId].includes(entry.entryId)).map(entry => ({
+      ...entry, coverage: null,
+    }))}))
+  expect(previewed).toEqual([auxiliary.entryId])
+  await expect(run(true)).rejects.toMatchObject({
+    code: 'V5_SCHEMA_VALIDATION_FAILED',
+    validationIssues: [expect.objectContaining({path: `entries.${entries.findIndex(entry => entry.entryId === business.entryId)}.coverage`})],
+  })
 })
 
 test('scope-only work gets an exact server-owned brief, not an empty title or an invented contribution', () => {
@@ -180,11 +250,16 @@ test('versioned entry prompt uses strict segments and budgets metadata without i
   expect(old.promptVersion).toBe('5.1.0-p06c-supported-writer-r19')
   expect(next.manifest.promptFilePath).toBe('prompts/P06C-entry.md')
   expect(next.schema).toBe(entryWritingV6OutputSchema)
-  expect(next.promptVersion).toBe('5.7.0-p06c-entry-routed-v6-r6')
+  expect(next.promptVersion).toBe('5.7.0-p06c-entry-routed-v6-r10')
   expect(next.maxOutputTokens).toBe(7200)
   expect(entryWritingPayload(f.entryPlan).outputLength).toEqual(writingPayload(f.base).outputLength)
+  expect(next.messages[0].content.length).toBeLessThan(11000)
   expect(next.messages[0].content).toContain('方案行')
   expect(next.messages[0].content).toContain('不是四项强制填空')
+  expect(next.messages[0].content).toContain('detailAssessments')
+  expect(next.messages[0].content).toContain('uncertaintyResolutions')
+  expect(next.messages[0].content).toContain('actionReceipts')
+  expect(next.messages[0].content).toContain('preparationTopicIds')
   expect(next.messages[0].content).not.toContain('每个 blueprint.slots')
   expect(next.messages[0].content).not.toContain('无安全证据使用 null')
   expect(isEntryWritingEnvelope({ payload: { source: { entryWritingPolicy: ENTRY_WRITING_POLICY } } })).toBe(false)

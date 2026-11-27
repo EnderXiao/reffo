@@ -126,6 +126,9 @@ function getBlockedStageMessage(
   generationError?: string | null,
 ) {
   const stageStatus = getVisibleStageStatus(stageKey, progress)
+  if (stageKey === 'interview' && progress.optimized === 'done' && stageStatus === 'generating') {
+    return {stageStatus, message: '正在生成面试建议，可以先查看简历'}
+  }
   const message = stageStatus === 'failed'
     ? generationError || '生成失败，请稍后重试'
     : generationError ||
@@ -233,7 +236,7 @@ function getVisibleStageStatus(
 
   if (progress.interview === 'done') return 'ready'
   if (progress.interview === 'failed') return 'failed'
-  if (progress.interview === 'generating') return 'generating'
+  if (progress.interview === 'generating' || progress.optimized === 'done') return 'generating'
 
   return 'pending'
 }
@@ -477,12 +480,10 @@ function InterviewPanel({
   result,
   resumeContent,
   jdContent,
-  onRefresh,
 }: {
   result: ProcessResult
   resumeContent: string
   jdContent: string
-  onRefresh?: () => void
 }) {
   const stale = interviewNeedsRefresh(result)
   const missingSkills = normalizeItems(result.matching.skill_match.missing_skills, 3)
@@ -512,7 +513,6 @@ function InterviewPanel({
     <View className='reffo-result__panel reffo-result__panel--interview'>
       {stale && <div className='reffo-result__analysis-caption' role='status'>
         简历已更新，以下建议基于较早版本。
-        {onRefresh && <button type='button' className='reffo-result__analysis-toggle' onClick={onRefresh}>按当前稿更新面试建议</button>}
       </div>}
       <SectionTitle icon={chatTagIcon}>可能的问题</SectionTitle>
       <View className='reffo-result__question-list'>
@@ -591,7 +591,6 @@ function ResultContent({
   onLocateReference,
   reference,
   prepareDownload,
-  onInterviewRefresh,
   retryCompletionSave,
 }: {
   stage: ResultStageKey
@@ -608,7 +607,6 @@ function ResultContent({
   onLocateReference: (reference: ResumeReference) => void
   reference?: ResumeReference
   prepareDownload?: ResultPageViewModel['prepareDownload']
-  onInterviewRefresh?: () => void
   retryCompletionSave?: ResultPageViewModel['retryCompletionSave']
 }) {
   if (stage === 'analysis') return <AnalysisPanel result={result} onLocateReference={onLocateReference} />
@@ -629,7 +627,7 @@ function ResultContent({
       />
     )
   }
-  return <InterviewPanel result={result} resumeContent={resumeContent} jdContent={jdContent} onRefresh={onInterviewRefresh} />
+  return <InterviewPanel result={result} resumeContent={resumeContent} jdContent={jdContent} />
 }
 
 type ResultPageViewProps = ResultPageViewModel & {
@@ -646,6 +644,7 @@ export default function PageView({
   progress,
   progressPercent,
   generationError,
+  interviewUnavailable,
   enteredFromCard,
   enteredFromLanding,
   returnCard,
@@ -722,7 +721,7 @@ export default function PageView({
   const readyStages = RESULT_STAGES.filter(stage => stageAvailability[stage.key])
   const blockedStages = RESULT_STAGES.filter(stage => !stageAvailability[stage.key])
   const activeReadyIndex = Math.max(0, readyStages.findIndex(stage => stage.key === activeStage.key))
-  const isComplete = progress.interview === 'done'
+  const isComplete = progress.optimized === 'done' && (!enteredFromLanding || progress.interview === 'done')
   const hasRenderableResult = Boolean(result)
   const resultStyle = useMemo(() => ({
     '--reffo-result-progress': backgroundProgress,
@@ -925,7 +924,7 @@ export default function PageView({
 
     if (!stageAvailability[nextStage.key]) {
       const stageStatus = getVisibleStageStatus(nextStage.key, progress)
-      if (stageStatus === 'failed') {
+      if (stageStatus === 'failed' && (nextStage.key !== 'interview' || !interviewUnavailable)) {
         setBlockedBubble(null)
         void handleRetryStage(nextStage.key satisfies ResultRetryStageKey)
         return
@@ -954,7 +953,7 @@ export default function PageView({
       stageTransitionTimerRef.current = null
       setStageTransition(current => current?.toIndex === nextIndex ? null : current)
     }, RESULT_STAGE_SWITCH_DURATION)
-  }, [canLeaveEditor, handleRetryStage, progress, showBlockedBubble, stageAvailability, stageIndex])
+  }, [canLeaveEditor, handleRetryStage, interviewUnavailable, progress, showBlockedBubble, stageAvailability, stageIndex])
 
   const handleLocateReference = (reference: ResumeReference) => {
     if (!result || !canLeaveEditor() || !isCurrentResumeReference(reference, result)) return
@@ -1382,7 +1381,7 @@ export default function PageView({
                         onClick={() => requestStageSwitch(index)}
                         aria-label={stageStatus === 'failed' && stage.key === 'resume'
                           ? '重试最佳简历'
-                          : stageStatus === 'failed' && stage.key === 'interview'
+                          : stageStatus === 'failed' && stage.key === 'interview' && !interviewUnavailable
                             ? '重试面试建议'
                             : stage.label}
                       >
@@ -1414,7 +1413,7 @@ export default function PageView({
                     onClick={() => requestStageSwitch(index)}
                     aria-label={stageStatus === 'failed' && stage.key === 'resume'
                       ? '重试最佳简历'
-                      : stageStatus === 'failed' && stage.key === 'interview'
+                      : stageStatus === 'failed' && stage.key === 'interview' && !interviewUnavailable
                         ? '重试面试建议'
                         : stage.label}
                   >
@@ -1513,7 +1512,6 @@ export default function PageView({
                         completionSaveStatus={completionSaveStatus}
                         recoveryConflict={recoveryConflict}
                         onLocateReference={handleLocateReference}
-                        onInterviewRefresh={() => { if (canLeaveEditor()) void handleRetryStage('interview') }}
                       />
                     </View>
                     <View
@@ -1539,7 +1537,6 @@ export default function PageView({
                         completionSaveStatus={completionSaveStatus}
                         recoveryConflict={recoveryConflict}
                         onLocateReference={handleLocateReference}
-                        onInterviewRefresh={() => { if (canLeaveEditor()) void handleRetryStage('interview') }}
                       />
                     </View>
                   </>
@@ -1563,7 +1560,6 @@ export default function PageView({
                       completionSaveStatus={completionSaveStatus}
                       recoveryConflict={recoveryConflict}
                       onLocateReference={handleLocateReference}
-                        onInterviewRefresh={() => { if (canLeaveEditor()) void handleRetryStage('interview') }}
                       reference={resumeReference}
                     />
                   </View>

@@ -40,7 +40,7 @@ test.each(['valid', 'corrected_number', 'uncorrected_number', 'empty_note', 'rec
         unprovenAspects: [{text: '目标业务环境', reason: '尚未提供相同业务环境的实践。'}],
         roleBoundary: '团队参与。', supportRelation: 'domain_transfer',
       })), narratives: [], questions: [] }
-    } else if (version === '5.7.0-p06c-entry-routed-v6-r6') {
+    } else if (version === '5.7.0-p06c-entry-routed-v6-r10') {
       if (versions.filter(v => v.includes('-p06c-')).length === 1) expect(input.onContentDelta).toBeFunction()
       expect(input.maxOutputTokens).toBe(7200)
       expect(input.maxProviderAttempts).toBe(1)

@@ -1,3 +1,4 @@
+import type {ResumeHistoryRecord} from '@/types'
 import {validateActionPlan, reconcileEditorialActions, buildChangeManifest, changeManifestDescriptions, type ResumeChangeManifest, type ResumeActionPlan, type ResolvedResumeActionPlan, type ResumeActionReview} from '@/shared/resume-actions'
 import {collectGaps, completionIdentityName, completionVersion, hasLinkedCompletion} from '@/shared/resume-completion'
 import {replayCompletionOperation, serializeDraft, validateCompletionDocument, validateOmissionSafety,
@@ -60,10 +61,18 @@ function assertReplay(input: Pick<SaveResumeHistoryInput, 'completion_edit'>, ba
   }
 }
 
+type PreviousCompletionSnapshot = Pick<ResumeHistoryRecord, 'process_result'> &
+  Partial<Pick<ResumeHistoryRecord, 'optimized_content' | 'progress'>>
+
+function canSeedPartialHistory(previous?: PreviousCompletionSnapshot | null) {
+  return Boolean(previous && previous.optimized_content === '' && previous.progress && previous.progress.optimized !== 'done' &&
+    !record(record(previous.process_result)?.optimized)?.completion_document)
+}
+
 /** Validate the merged snapshot before persistence, including partial history updates. */
 export function assertResumeCompletionSnapshot(
   input: Pick<SaveResumeHistoryInput, 'optimized_content' | 'process_result' | 'completion_edit' | 'completion_baseline' | 'expected_document'>,
-  previous?: Pick<SaveResumeHistoryInput, 'process_result'> | null,
+  previous?: PreviousCompletionSnapshot | null,
 ) {
   const optimized = record(record(input.process_result)?.optimized)
   const previousOptimized = record(record(previous?.process_result)?.optimized)
@@ -95,11 +104,12 @@ export function assertResumeCompletionSnapshot(
   }
   if (validation.document.schemaVersion === 'resume-completion-v1') return
   if (previous === undefined) return
-  const base = previous ? completionDocumentFromSnapshot(previous.process_result) : input.completion_baseline
+  const savedDocument = canSeedPartialHistory(previous) ? null : previous
+  const base = savedDocument ? completionDocumentFromSnapshot(savedDocument.process_result) : input.completion_baseline
   if (!base || !validateCompletionDocument(base).ok) {
     throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '未找到服务端生成基准，请恢复生成记录后保存')
   }
-  if (hasLinkedCompletion(validation.document) && previous) {
+  if (hasLinkedCompletion(validation.document) && savedDocument) {
     if (!input.expected_document || input.expected_document.documentId !== base.documentId || input.expected_document.revision !== base.revision) {
       throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '当前稿已更新，请保留本地修改并核对版本')
     }
@@ -111,10 +121,16 @@ export function assertResumeCompletionSnapshot(
 export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, previous?: import('@/types').ResumeHistoryRecord | null): SaveResumeHistoryInput {
   // 生成任务 worker 的写入由服务端产出，没有客户端编辑记录，不能用客户端校验契约
   // （服务端基准 / expected_document）要求它；HTTP 路由不接收该字段。
-  if (input.server_generated) return input
-  assertResumeCompletionSnapshot(input, previous)
+  if (input.server_generated && !input.action_baseline) return input
+  if (!input.server_generated) assertResumeCompletionSnapshot(input, previous)
   const rawResult = record(input.process_result)
-  const {server_interview_basis: _clientBasis, server_completion_upgrade_archive: _clientArchive, ...publicResult} = rawResult ?? {}
+  const {server_interview_basis: _clientBasis, server_completion_upgrade_archive: _clientArchive,
+    server_interview_task: _clientTask, ...publicResult} = rawResult ?? {}
+  const savedDocument = canSeedPartialHistory(previous) ? null : previous
+  const oldResult = record(previous?.process_result)
+  const interviewTask = savedDocument ? oldResult?.server_interview_task : input.interview_task_version
+  const savedInterview = record(oldResult?.interview)
+  const interviewProgress = savedDocument?.progress?.interview ?? 'pending'
   const trustedArchive = record(previous?.process_result)?.server_completion_upgrade_archive
   const result = rawResult ? publicResult : undefined
   const optimized = record(result?.optimized)
@@ -123,17 +139,17 @@ export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, prev
     if (!result) return input
     const previousBasis = record(previous?.process_result)?.server_interview_basis
     return {...input, process_result: {...result, ...(previousBasis ? {server_interview_basis: previousBasis} : {}),
+      ...(interviewTask ? {server_interview_task: interviewTask, interview: savedInterview} : {}),
       ...(trustedArchive ? {server_completion_upgrade_archive: trustedArchive} : {})}}
   }
-  const oldResult = record(previous?.process_result)
   const oldOptimized = record(oldResult?.optimized)
-  const trusted = previous ? {actionPlan: oldOptimized?.action_plan, resolvedPlan: oldOptimized?.resolved_action_plan,
+  const trusted = savedDocument ? {actionPlan: oldOptimized?.action_plan, resolvedPlan: oldOptimized?.resolved_action_plan,
     review: oldOptimized?.action_review, changeManifest: oldOptimized?.change_manifest, identityState: oldOptimized?.identity_state, deliveryState: oldOptimized?.delivery_state, interviewBasis: record(oldResult?.server_interview_basis)?.result, matching: oldResult?.matching} : input.action_baseline
   if (!trusted?.actionPlan || !trusted.resolvedPlan || validateActionPlan(trusted.actionPlan as ResumeActionPlan, trusted.resolvedPlan as ResolvedResumeActionPlan).length) {
     throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '优化行动基准不可用，请重新打开有效稿件')
   }
   const resolved = trusted.resolvedPlan as ResolvedResumeActionPlan
-  if (previous && input.expected_document?.resolvedDigest !== resolved.resolvedDigest) {
+  if (!input.server_generated && savedDocument && input.expected_document?.resolvedDigest !== resolved.resolvedDigest) {
     throw new ResumeCompletionSnapshotError('RESUME_COMPLETION_MISMATCH', '优化方案版本已更新，请保留本地修改并重新核对')
   }
   const actionReview = reconcileEditorialActions({resolvedPlan: resolved, document, previousReview: trusted.review as ResumeActionReview | undefined})
@@ -144,12 +160,16 @@ export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, prev
   const deliveryState = assessResumeDelivery({document, identity: identityState as ResumeIdentityState,
     review: actionReview, resolvedPlan: resolved, changeManifest, previous: trusted.deliveryState})
   const preparationTopics = record(trusted.interviewBasis)?.preparationTopics ?? oldOptimized?.preparation_topics
-  const {server_interview_basis: _untrustedInterviewBasis, ...safeResult} = result
-  return {...input, name: completionIdentityName(document) ?? input.name, process_result: {...safeResult,
+  const {interview, ...resumeResult} = result
+  return {...input, name: completionIdentityName(document) ?? input.name,
+    ...(interviewTask ? {progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: interviewProgress}} : {}),
+    process_result: {...resumeResult,
     ...(trusted.interviewBasis ? {server_interview_basis: {version: 'interview-generation-basis-v1', result: trusted.interviewBasis}} : {}),
     ...(trustedArchive ? {server_completion_upgrade_archive: trustedArchive} : {}),
+    ...(interviewTask && trusted.interviewBasis ? {server_interview_task: interviewTask} : {}),
     ...(trusted.matching ? {matching: trusted.matching} : {}),
-    ...(record(safeResult.interview) ? {interview: {...record(safeResult.interview), preparation_topics: preparationTopics}} : {}),
+    ...(interviewTask ? (savedInterview ? {interview: savedInterview} : {})
+      : record(interview) ? {interview: {...record(interview), preparation_topics: preparationTopics}} : {}),
     optimized: {...optimized, action_plan: trusted.actionPlan, resolved_action_plan: resolved,
       action_review: actionReview, change_manifest: changeManifest, changes_summary: changeManifestDescriptions(changeManifest), identity_state: identityState, delivery_state: deliveryState,
       preparation_topics: preparationTopics}}}

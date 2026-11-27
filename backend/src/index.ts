@@ -20,6 +20,7 @@ import {dashboardDiagnosticsRoutes} from '@/routes/dashboard-diagnostics'
 import {dashboardPagesRoutes} from '@/routes/dashboard-pages'
 import {trackingRequirementRoutes} from '@/routes/tracking-requirements'
 import {generationJobWorker} from '@/services/generation-jobs'
+import {resumeInterviewWorker} from '@/services/resume-interview-tasks'
 import {resumeExportRoutes} from '@/routes/resume-export'
 import {cleanupResumeTransientData} from '@/services/resume-transient-data'
 import {cleanupProviderCallEvents} from '@/services/provider-call-recorder'
@@ -124,6 +125,7 @@ async function bootstrap() {
   const transientCleanup=setInterval(()=>{void Promise.all([cleanupResumeTransientData(),cleanupProviderCallEvents()]).catch(()=>console.error('[Retention] 短期数据清理暂未完成'))},60_000)
   transientCleanup.unref?.()
   generationJobWorker.start()
+  resumeInterviewWorker.start()
 
   console.log('\n🚀 Reffo MVP 服务启动成功！')
   console.log('========================================')

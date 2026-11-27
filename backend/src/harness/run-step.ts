@@ -39,6 +39,15 @@ export class StepRunError extends Error {
   }
 }
 
+export class StepTimeoutError extends Error {
+  readonly code = 'STEP_TIMEOUT'
+
+  constructor() {
+    super('阶段执行时间已用完')
+    this.name = 'StepTimeoutError'
+  }
+}
+
 function toErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : '未知错误'
 }
@@ -88,7 +97,8 @@ export async function runStep<TResult>(input: RunStepInput<TResult>): Promise<Ru
   )
 
   if (input.timeoutMs && input.timeoutMs > 0) {
-    timeout = setTimeout(() => controller.abort(), input.timeoutMs)
+    stepContext.deadlineMonotonicMs = performance.now() + input.timeoutMs
+    timeout = setTimeout(() => controller.abort(new StepTimeoutError()), input.timeoutMs)
   }
 
   try {
@@ -124,9 +134,10 @@ export async function runStep<TResult>(input: RunStepInput<TResult>): Promise<Ru
       },
     }
   } catch (error) {
+    const cause = controller.signal.reason instanceof StepTimeoutError ? controller.signal.reason : error
     const finishedAt = new Date().toISOString()
-    const errorCode = toErrorCode(error)
-    const errorMessage = toErrorMessage(error)
+    const errorCode = toErrorCode(cause)
+    const errorMessage = toErrorMessage(cause)
     const recoveryAdvice = recoveryAdviceForErrorCode(errorCode)
 
     await eventBus.publish(
@@ -154,7 +165,7 @@ export async function runStep<TResult>(input: RunStepInput<TResult>): Promise<Ru
       errorCode,
       errorMessage,
       recoveryAdvice,
-    }, error)
+    }, cause)
   } finally {
     input.runContext.signal?.removeEventListener('abort',abortFromRun)
     if (timeout) {

@@ -1,18 +1,14 @@
-import type {ResultSessionProgressRecord} from '@/types'
+import type {ResumeHistoryRecord} from '@/types'
 
 /**
- * 只有真正跑完全部阶段的历史才算“已完成”。
- * 历史记录在 analysis 阶段就会落库，不能只看记录是否存在：
- * 否则中断的任务在下次 tick 时会被误判完成，永远停在「生成中」。
+ * 历史记录在 analysis 阶段就会落库。已有可展示正文时，简历已交付，
+ * 面试建议可以独立生成。旧版历史也可通过完整进度或结果识别。
  */
-export function isHistoryFullyDelivered(history: {
-  progress?: ResultSessionProgressRecord | null
-  processResult?: {optimized?: unknown; interview?: unknown; [key: string]: unknown} | null
-  optimizedContent?: string | null
-}): boolean {
+export function isHistoryFullyDelivered(history: Pick<ResumeHistoryRecord, 'progress' | 'process_result' | 'optimized_content'>): boolean {
   const progress = history.progress
   if (progress && progress.interview === 'done' && progress.optimized === 'done') return true
-  if (history.processResult?.interview && history.processResult?.optimized) return true
+  const result = history.process_result as {optimized?: unknown; interview?: unknown} | undefined
+  if (result?.interview && result?.optimized) return true
   // 已有可展示正文（用户编辑或旧版本写入）：不能重跑覆盖。
-  return Boolean(history.optimizedContent && history.optimizedContent.trim())
+  return history.optimized_content.trim().length > 0
 }

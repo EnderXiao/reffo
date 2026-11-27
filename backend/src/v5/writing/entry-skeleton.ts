@@ -212,7 +212,7 @@ export function inspectEntrySkeleton(input: {
   const hasSegments = input.paragraphs.some(paragraph => paragraph.segments)
   if (!hasSegments) return issues // Historical text-only replay has no cloze contract.
   if (!input.coverage || new Set(input.coverage.map(item => item.element)).size !== 5) {
-    report('WRITER_COVERAGE_INVALID', '五要素覆盖图必须完整且每项恰好一次。')
+    report('WRITER_COVERAGE_INVALID', '五要素覆盖图必须完整且每项恰好一次。', {subcode: 'COVERAGE_ELEMENTS_INVALID'})
     return issues
   }
   const ownIds = new Set(input.facts.map(fact => fact.evidenceId))
@@ -224,7 +224,7 @@ export function inspectEntrySkeleton(input: {
     if (new Set(item.evidenceIds).size !== item.evidenceIds.length || item.evidenceIds.some(id => !allowed.has(id))
       || (item.status === 'known' && !item.evidenceIds.length)
       || (item.status === 'not_applicable' && item.evidenceIds.length)) {
-      report('WRITER_COVERAGE_INVALID', '覆盖图引用必须来自本经历的有效事实，已知要素须有引用。')
+      report('WRITER_COVERAGE_INVALID', '覆盖图引用必须来自本经历的有效事实，已知要素须有引用。', {subcode: 'COVERAGE_REFERENCES_INVALID'})
     }
     if (input.business && input.hasProjectIdentity && item.element === 'project' && item.status !== 'known') {
       report('WRITER_KNOWN_ELEMENT_BLANKED', '标题已明确真实项目或任职对象，不得将其重新标成缺失。')

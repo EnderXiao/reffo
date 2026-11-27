@@ -10,7 +10,8 @@ import { createResumeFixture } from './fixtures'
 
 function compactFixture() {
   const { document, candidate } = createResumeFixture()
-  const compact = { ...candidate, factCandidates: candidate.factCandidates.map(({
+  const { coverageClaim: _coverageClaim, ...annotations } = candidate
+  const compact = { ...annotations, factCandidates: candidate.factCandidates.map(({
     blockRelativeSpan, verbatimText, normalizedClaim, numericAtoms, ...annotation
   }) => annotation) }
   return { document, candidate, compact }
@@ -52,6 +53,10 @@ describe('P01 compact source-bound transport', () => {
         } } },
       })
       expect(result.value.factCandidates[2].verbatimText).toBe(document.blocks[2].text)
+      expect(result.value.coverageClaim).toEqual({
+        mappedSourceBlockIds: compact.factCandidates.map(fact => fact.sourceBlockId),
+        unmappedSourceBlockIds: compact.unmappedFragments.map(fragment => fragment.sourceBlockId),
+      })
       expect(result.outputAudit.normalizationApplied).toBe(true)
       expect(result.outputAudit.rawOutputDigest).not.toBe(result.outputAudit.validatedOutputDigest)
     }
@@ -91,6 +96,7 @@ describe('P01 compact source-bound transport', () => {
     expect(compiled.providerSchema.safeParse(compact).success).toBe(true)
     expect(compiled.providerSchema.safeParse(candidate).success).toBe(false)
     expect(resumeExtractionTransportSchema(document).safeParse(compact).success).toBe(true)
+    expect(materializeResumeExtractionTransport({...compact, coverageClaim: candidate.coverageClaim}, document).success).toBe(true)
   })
 
   test('code can only lower inconsistent risk status, never elevate it', () => {

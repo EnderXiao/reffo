@@ -6,24 +6,26 @@ describe('生成历史完成度判定', () => {
   test('只有 analysis 的历史不算完成', () => {
     expect(isHistoryFullyDelivered({
       progress: {analysis: 'done', matching: 'generating', optimized: 'pending', interview: 'pending'},
-      processResult: {analysis: {}},
+      process_result: {analysis: {}},
+      optimized_content: '',
     })).toBe(false)
   })
 
   test('全部阶段 done 才算完成', () => {
     expect(isHistoryFullyDelivered({
       progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: 'done'},
+      optimized_content: '',
     })).toBe(true)
   })
 
   test('进度缺失但结果里有 optimized 与 interview 也算完成', () => {
-    expect(isHistoryFullyDelivered({processResult: {optimized: {}, interview: {}}})).toBe(true)
-    expect(isHistoryFullyDelivered({processResult: {optimized: {}}})).toBe(false)
+    expect(isHistoryFullyDelivered({process_result: {optimized: {}, interview: {}}, optimized_content: ''})).toBe(true)
+    expect(isHistoryFullyDelivered({process_result: {optimized: {}}, optimized_content: ''})).toBe(false)
   })
 
   test('已有可展示正文视为完成，避免重跑覆盖用户编辑', () => {
-    expect(isHistoryFullyDelivered({optimizedContent: '用户后来填写的正文'})).toBe(true)
-    expect(isHistoryFullyDelivered({optimizedContent: '   '})).toBe(false)
+    expect(isHistoryFullyDelivered({optimized_content: '用户后来填写的正文'})).toBe(true)
+    expect(isHistoryFullyDelivered({optimized_content: '   '})).toBe(false)
   })
 })
 

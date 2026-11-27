@@ -15,6 +15,7 @@ export interface GenerationTask {
   error: string | null
   created_at: string
   updated_at: string
+  interview_status?: 'pending' | 'running' | 'done' | 'failed' | 'unavailable' | null
 }
 
 export interface GenerationTaskInput {

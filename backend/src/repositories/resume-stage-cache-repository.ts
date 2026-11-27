@@ -89,7 +89,10 @@ export class ResumeStageCacheRepository {
     const controller=new AbortController()
     let acquired=false, lostLease=false, heartbeat:ReturnType<typeof setInterval>|undefined, renewing=false
     const abort=()=>{lostLease=true;controller.abort(new ResumeStageCacheBusyError())}
-    const requestTimer=setTimeout(abort,remaining())
+    const requestTimer=setTimeout(()=>controller.abort(new V5WorkflowBlockedError({
+      code: 'V5_WORKFLOW_TIMEOUT', state: 'provider_failure', retryable: true, httpStatus: 503,
+      message: '阶段执行时间已用完',
+    })),remaining())
     requestTimer.unref?.()
     // Bound storage coordination too. An unknown claim result is never permission to issue a second paid computation.
     const coordinate = async <R>(operation: Promise<R>):Promise<R> => {
@@ -121,6 +124,7 @@ export class ResumeStageCacheRepository {
       const prior=await coordinate(readReady())
       if(prior!==null)return {value:prior,cacheStatus:'coalesced' as const}
       const value = await input.compute({timeoutMs: remaining(),signal:controller.signal})
+      controller.signal.throwIfAborted()
       if(lostLease || remaining()<=0)throw new ResumeStageCacheBusyError()
       if (!input.validate(value)) throw new Error('STAGE_CACHE_ARTIFACT_INVALID')
       // Renew verifies ownership immediately before publishing; delete/revocation and expired leases cannot resurrect a result.
@@ -139,6 +143,7 @@ export class ResumeStageCacheRepository {
       if(await coordinate(readReady())===null)throw new ResumeStageCacheBusyError()
       return {value,cacheStatus:'miss' as const}
     }catch(error){
+      if (error instanceof V5WorkflowBlockedError && error.code === 'V5_WORKFLOW_TIMEOUT') throw error
       if(controller.signal.aborted)throw controller.signal.reason
       if(error instanceof ResumeStageCacheBusyError)throw error
       // Storage errors cannot establish absence of another worker, so preserve checkpoints and report recoverable coordination failure.

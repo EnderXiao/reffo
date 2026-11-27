@@ -93,12 +93,13 @@ describe('v5 prompt compiler and strict schemas', () => {
   test('P12 separates candidate quotations, audit-source limitations and recruiting quality', () => {
     const compiled = compileV5Prompt({ component: 'P12', envelope: { payload: {} } })
     const system = compiled.messages[0].content
-    expect(compiled.promptVersion).toBe('5.1.0-p12-material-conditional-ab-r2')
+    expect(compiled.promptVersion).toBe('5.1.0-p12-material-conditional-ab-r3')
     expect(compiled.maxOutputTokens).toBe(6_000)
     expect(system).toContain('每条评语必须以「正文连续短摘录」开头')
     expect(system).toContain('仍使用现有字符串数组，不新增字段')
     expect(system).toContain('没有进入正文时不算泄漏')
     expect(system).toContain('没在这个视图中找到某数字不等于证明它是新增')
+    expect(system).toContain('原材料中可确认但未抽取的重要事实也计入选材和召回评审')
     expect(system).toContain('合法的单行任职时间线不是空三级章节')
     expect(system).toContain('不因没有数字自动低分')
     expect(system).toContain('缺少本岗经历属于匹配度')
@@ -108,7 +109,7 @@ describe('v5 prompt compiler and strict schemas', () => {
   test('removes only the unreferenced duplicate root from prompt schemas and preserves every reference', () => {
     for (const component of COMPONENTS) {
       const compiled = compileV5Prompt({ component, envelope: { payload: {} } })
-      const original = zodResponseFormat(compiled.schema, compiled.schemaName).json_schema.schema
+      const original = zodResponseFormat(compiled.providerSchema, compiled.schemaName).json_schema.schema
       if (!original) throw new Error(`Missing output schema for ${component}`)
       const originalSerialized = JSON.stringify(original)
       const compacted = JSON.parse(compiled.messages[1].content.split('STRICT_OUTPUT_JSON_SCHEMA:\n')[1]) as Record<string, unknown>
@@ -518,7 +519,7 @@ describe('v5 prompt compiler and strict schemas', () => {
       for (const rule of ['缺上下文不等于冲突', '自述不等于无效', '指标名称、数值、单位、观察周期和业务规模',
         '同一对象、指标、周期和口径', '前后变化、子集与总量、不同周期、重复展示', '分类只做一遍',
         '只评价本片可见材料', 'prompt_injection_like_text', 'source_qualified']) expect(prompt).toContain(rule)
-      expect(V5_PROMPT_VERSIONS[component]).toEndWith('-r19')
+      expect(V5_PROMPT_VERSIONS[component]).toEndWith('-r20')
       expect(prompt).toContain('风险定位不是整段裁决')
       expect(prompt).toContain('独立职责')
       expect(prompt).toContain('temporalRiskQuote')

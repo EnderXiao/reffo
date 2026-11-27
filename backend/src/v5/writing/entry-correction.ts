@@ -4,6 +4,7 @@ import type {EntryCorrectionDecision} from './recovery-diagnostics'
 import { SupportedWritingError } from './compiler'
 import { entryWritingOutputSchema, entryWritingPayload, type EntryBrief, type EntryWritingPlan, type WrittenEntry } from './entries'
 import { EntrySetValidationError, inspectEntrySet } from './entry-set'
+import {repairCoverageLedger} from './detail-ledger'
 
 const CORRECTABLE = new Set([
   'WRITER_ENTRY_LAYOUT_EXCEEDED',
@@ -184,6 +185,7 @@ export async function writeValidatedEntries<T>(input: {
   let previous: ReturnType<typeof entryWritingOutputSchema.parse> | undefined
   let initialIssueCodes: string[] | undefined
   const decisions: EntryCorrectionDecision[] = []
+  const plannedEntries = new Map(input.plan.entries.map(entry => [entry.entryId, entry]))
   const record = (decision: EntryCorrectionDecision) => {decisions.push(decision); input.onDecision?.(decision)}
   const mapErrors = (error: SupportedWritingError) => error.issues.filter(issue => issue.severity === 'error').map(issue => {
     const entries = input.plan.entries.filter(entry => ownsIssue(entry, issue))
@@ -200,14 +202,17 @@ export async function writeValidatedEntries<T>(input: {
     const response = entryWritingOutputSchema.parse(await input.write(payload, attempt))
     const diagnostics = inspectEntrySet(payload.requiredEntryIds, response.entries.map(entry => entry.entryId))
     if (!diagnostics.passed) throw new EntrySetValidationError(diagnostics)
-    const replacements = new Map(response.entries.map(entry => [entry.entryId, entry]))
+    const repaired = response.contractVersion === 'entry-writing-v6' ? {
+      ...response, entries: response.entries.map(written => repairCoverageLedger(plannedEntries.get(written.entryId)!, written)),
+    } : response
+    const replacements = new Map(repaired.entries.map(entry => [entry.entryId, entry]))
     const output = previous ? { ...previous, entries: previous.entries.map(entry => {
       const replacement = replacements.get(entry.entryId)
       if (!replacement) return entry
       const preserved = payload.correction?.issues.find(issue => issue.entryId === entry.entryId)?.preserveParagraphIndices ?? []
       // A local correction cannot silently edit or drop unrelated paragraphs.
       return mergeCorrectedEntry(entry, replacement, preserved, payload.correction?.issues.filter(issue => issue.entryId === entry.entryId) ?? [])
-    }) } : response
+    }) } : repaired
     try {
       return { result: input.validate(output), repairAttempts: attempt }
     } catch (error) {

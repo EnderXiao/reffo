@@ -47,6 +47,7 @@ function parsePromptPayload(input: ChatCompletionInput) {
       }>
     } & Record<string, unknown>
     candidates: Array<{ candidateId: 'A' | 'B'; markdown: string }>
+    originalResume: { available: boolean; blocks: Array<{ sourceBlockId: string; text: string; inputRiskFlags: string[] }> }
     originalJob: { available: boolean; blocks: Array<{ sourceBlockId: string; text: string; inputRiskFlags: string[] }> }
   }
 }
@@ -372,13 +373,14 @@ describe('v5 compatibility and offline A/B', () => {
     expect(payloads[0].resumeEvidenceBundle.auditSourceLimitations).toMatchObject({ isCompleteSource: false })
     expect(payloads[0].resumeEvidenceBundle).toEqual(payloads[1].resumeEvidenceBundle)
   })
-  test('retains original JD tasks omitted by extraction in both blinded orders, without exposing contact data', async () => {
+  test('retains independent original work and requirements omitted by extraction in both blinded orders', async () => {
     const fixture = createV5ResultFixture(), payloads: ReturnType<typeof parsePromptPayload>[] = []
     const provider = new class extends AbProvider {
       override async complete(input: ChatCompletionInput) { payloads.push(parsePromptPayload(input)); return super.complete(input) }
     }()
     await runDoubleOrderBlindAb({ runId: 'raw-jd', resumeEvidenceBundle: fixture.resumeEvidenceBundle,
       jobRequirementBundle: fixture.jobRequirementBundle, originalJobDescription: '负责供应商质量整改。\n联系 hiring@example.com。',
+      originalResumeMarkdown: '张三协助跟踪 18 项供应商质量整改。\n邮箱 work@example.com。',
       candidateLeft: { ...fixture.artifact, markdown: 'LEFT\n参与整理。' }, candidateRight: { ...fixture.artifact, markdown: 'RIGHT\n参与整理。' },
     }, { provider })
     expect(payloads).toHaveLength(2)
@@ -386,6 +388,11 @@ describe('v5 compatibility and offline A/B', () => {
     expect(payloads[0].originalJob.blocks[0].text).toBe('负责供应商质量整改。')
     expect(JSON.stringify(payloads[0].originalJob)).not.toContain('hiring@example.com')
     expect(payloads[0].originalJob).toEqual(payloads[1].originalJob)
+    expect(payloads[0].originalResume.available).toBe(true)
+    expect(payloads[0].originalResume.blocks[0]).toMatchObject({sourceBlockId: 'B0001', text: '[姓名已隐藏]协助跟踪 18 项供应商质量整改。'})
+    expect(JSON.stringify(payloads[0].originalResume)).not.toContain('work@example.com')
+    expect(JSON.stringify(payloads[0].resumeEvidenceBundle)).not.toContain('18 项供应商质量整改')
+    expect(payloads[0].originalResume).toEqual(payloads[1].originalResume)
   })
 
   test('invalid forward citations stop offline evaluation before another paid call', async () => {

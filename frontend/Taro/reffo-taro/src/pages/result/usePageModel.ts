@@ -37,7 +37,7 @@ import {
   type GenerationTask,
 } from '@/services/backgroundGeneration'
 import {useBackgroundGenerationStore} from '@/store/backgroundGenerationStore'
-import {interviewNeedsRefresh, upgradeInterviewPresentation} from './model/interviewReferences'
+import {upgradeInterviewPresentation} from './model/interviewReferences'
 import {mergeAuthoritativeReview} from './model/actionReviewState'
 import {historyCompletionBaseline, resolveHistorySession, resultSnapshotKey, sameCompletionState} from './model/completionSession'
 import {acknowledgeCompletionEdits, appendCompletionEdits, rebaseCompletionEdits} from './model/completionJournal'
@@ -76,6 +76,21 @@ function normalizeInterviewResult(result: Partial<ProcessResult>) {
     follow_up_questions: Array.isArray(interview.follow_up_questions)
       ? interview.follow_up_questions
       : [],
+  }
+}
+
+function projectManagedInterview(session: LatestResultSession, history: ResumeHistory): LatestResultSession {
+  const job = history.interviewTask
+  if (!job) return session
+  const remote = history.processResult
+  if (session.interviewTask?.status === 'done' && job.status !== 'done') return session
+  const interview = job.status === 'done' && remote ? normalizeInterviewResult(remote) : EMPTY_INTERVIEW
+  const status = job.status === 'stale' ? 'failed' : job.status
+  return {
+    ...session,
+    interviewTask: job,
+    progress: {...(session.progress ?? DONE_PROGRESS), interview: status},
+    result: {...session.result, interview},
   }
 }
 
@@ -239,6 +254,7 @@ export interface ResultPageViewModel {
   progress: LatestResultSessionProgress
   progressPercent: number
   generationError: string | null
+  interviewUnavailable?: boolean
   enteredFromCard: boolean
   enteredFromLanding: boolean
   returnCard: HomeCardItem | null
@@ -351,6 +367,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [returnCard, setReturnCard] = useState<HomeCardItem | null>(null)
   const continuationRef = useRef(0)
+  const interviewRetryEpochRef = useRef<number | null>(null)
   const workspaceGenerationRunRef = useRef<number | null>(null)
   const isContinuingRef = useRef(false)
   const generationJobUnsubscribeRef = useRef<(() => void) | null>(null)
@@ -375,6 +392,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     recoveryRef.current = null
     setRecoveryConflict(false)
     setCompletionSaveStatus('idle')
+    setGenerationError(null)
     acknowledgedCompletionRef.current = null
     appliedCompletionRef.current.clear()
     savedSnapshotRef.current = null
@@ -387,8 +405,8 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
 
     if (initialSession) {
       initialSessionRef.current = null
-      const completed = Object.values({...getDefaultProgress(initialSession.result), ...initialSession.progress}).every(status => status === 'done')
-      if (initialSession.originHistoryId && completed) void loadFromLatestSession(initialSession)
+      const optimized = initialSession.progress?.optimized ?? getDefaultProgress(initialSession.result).optimized
+      if (initialSession.originHistoryId && optimized === 'done') void loadFromLatestSession(initialSession)
       else void continueLatestSession(initialSession)
       return
     }
@@ -431,27 +449,30 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
 
     setReturnCard(toHistoryCardItem(displayHistory))
-    // 后台任务推进时会覆盖会话快照；这里必须同时刷新服务端基线，否则任务完成后的首次保存
-    // 拿不到 completionDocument，请求会缺少 expected_document 并被服务端按版本冲突拒绝。
-    latestSessionRef.current = {
+    // 后台任务更新快照时一并刷新服务端基线，供后续保存提交 expected_document。
+    const session = projectManagedInterview({
       result: processResult,
       context,
       progress: historyProgress,
       originHistoryId: history.id,
       baseHistorySnapshot: historyCompletionBaseline(history),
-    }
-    setResult(processResult)
+    }, history)
+    latestSessionRef.current = session
+    savedSnapshotRef.current = resultSnapshotKey(session.result)
+    setResult(session.result)
     setResultContext(context)
-    syncWorkspaceResult(processResult, context)
-    setProgress(historyProgress)
+    syncWorkspaceResult(session.result, context)
+    setProgress(session.progress ?? historyProgress)
     setSaved(true)
     setSavedHistoryId(history.id)
   }
 
-  const refreshHistorySnapshot = (id: string) => {
+  const refreshHistorySnapshot = (id: string, epoch: number) => {
+    const canApply = () => epoch === pageEpochRef.current && latestSessionRef.current?.progress?.optimized !== 'done'
     const refresh = historyRefreshQueueRef.current.catch(() => undefined).then(async () => {
-      const history = await useHistoryStore.getState().loadHistory(id, {force: true})
-      if (history) applyHistorySnapshot(history)
+      if (!canApply()) return
+      const history = await loadOwnedHistory(id)
+      if (history && canApply()) applyHistorySnapshot(history)
     })
     historyRefreshQueueRef.current = refresh.then(() => undefined, () => undefined)
     return refresh
@@ -487,8 +508,8 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
   }
 
-  const consumeGenerationTask = async (task: GenerationTask, historyId: string) => {
-    if (task.id !== generationJobId || task.updated_at < generationTaskUpdatedAtRef.current) return
+  const consumeGenerationTask = async (task: GenerationTask, historyId: string, epoch: number) => {
+    if (epoch !== pageEpochRef.current || task.id !== generationJobId || task.updated_at < generationTaskUpdatedAtRef.current) return
     generationTaskUpdatedAtRef.current = task.updated_at
     useBackgroundGenerationStore.getState().upsert(task)
 
@@ -499,7 +520,15 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
 
     syncGenerationTaskWorkspace(task)
     if (task.status === 'running' || task.status === 'completed') {
-      await refreshHistorySnapshot(historyId)
+      await refreshHistorySnapshot(historyId, epoch)
+      if (epoch !== pageEpochRef.current) return
+    }
+    const currentInterview = latestSessionRef.current?.interviewTask?.status
+    const nextInterview = task.interview_status === 'running' ? 'pending'
+      : task.interview_status === 'unavailable' ? 'stale' : task.interview_status
+    if (nextInterview && currentInterview && currentInterview !== nextInterview) {
+      const history = await resumeHistoryApi.getHistory(historyId)
+      if (epoch === pageEpochRef.current && task.updated_at >= generationTaskUpdatedAtRef.current) refreshManagedInterview(history)
     }
 
     if (task.status === 'failed') {
@@ -524,8 +553,9 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         generationJobReadRef.current = true
         try {
           const updated = await generationTasksApi.action(generationJobId!, 'read')
-          useBackgroundGenerationStore.getState().upsert(updated)
+          if (epoch === pageEpochRef.current) useBackgroundGenerationStore.getState().upsert(updated)
         } catch {
+          if (epoch !== pageEpochRef.current) return
           generationJobReadRef.current = false
           feedback.message('已读状态暂未同步，稍后可重试')
         }
@@ -533,10 +563,10 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     }
   }
 
-  const watchGenerationJob = async (historyId: string) => {
+  const watchGenerationJob = async (historyId: string, epoch: number) => {
     if (!generationJobId) return
     const consume = (task: GenerationTask) => {
-      void consumeGenerationTask(task, historyId).catch(error => {
+      void consumeGenerationTask(task, historyId, epoch).catch(error => {
         console.error('同步后台生成进度失败:', error)
       })
     }
@@ -547,6 +577,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       console.error('获取后台生成任务失败:', error)
     }
 
+    if (epoch !== pageEpochRef.current) return
     const unsubscribe = subscribeGenerationTaskEvents({
       onTask: consume,
       onOpen: () => {
@@ -565,7 +596,8 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     const pollTimer = setInterval(() => {
       if (stopped) return
       generationTasksApi.get(generationJobId).then(task => {
-        if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') {
+        if ((task.status === 'completed' && task.interview_status !== 'pending' && task.interview_status !== 'running')
+          || task.status === 'failed' || task.status === 'cancelled') {
           stop()
         }
         consume(task)
@@ -628,15 +660,18 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         }
 
         const context = buildContextFromHistory(history)
-        const historySession: LatestResultSession = {
+        const historySession = projectManagedInterview({
           result: processResult,
           context,
           progress: historyProgress,
           originHistoryId: id,
           baseHistorySnapshot: historyCompletionBaseline(history),
-        }
+        }, history)
         const resolution = resolveHistorySession(history, processResult, localSession)
-        const upgradedLocal = localSession ? {...localSession, result: upgradeInterviewPresentation(localSession.result, processResult)} : null
+        const upgradedLocal = localSession ? history.interviewTask
+          ? projectManagedInterview(localSession, history)
+          : {...localSession, result: upgradeInterviewPresentation(localSession.result, processResult)}
+          : null
         const resolvedSession = resolution === 'session' && upgradedLocal ? upgradedLocal : historySession
         recoveryRef.current = resolution === 'conflict' && localSession
           ? {history: historySession, session: upgradedLocal!} : null
@@ -648,13 +683,13 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         setResultContext(resolvedSession.context)
         syncWorkspaceResult(resolvedSession.result, resolvedSession.context)
         setProgress(resolvedSession.progress ?? historyProgress)
-        savedSnapshotRef.current = resultSnapshotKey(processResult)
+        savedSnapshotRef.current = resultSnapshotKey(historySession.result)
         setSaved(resolution === 'history')
         remoteHistoryIdRef.current = id
         setSavedHistoryId(id)
-
+        setLoading(false)
         if (generationJobId) {
-          await watchGenerationJob(id)
+          await watchGenerationJob(id, epoch)
         } else {
           resumeWorkspaceActions.markGenerationCompleted()
         }
@@ -667,7 +702,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       console.error('加载历史记录失败:', error)
       feedback.error('加载失败')
     } finally {
-      setLoading(false)
+      if (epoch === pageEpochRef.current) setLoading(false)
     }
   }
 
@@ -676,15 +711,18 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     try {
       let session = providedSession ?? await getLatestResultSession()
       if (epoch !== pageEpochRef.current) return
+      let historyUnavailable = false
       if (session?.originHistoryId) {
         const sessionProgress = {...getDefaultProgress(session.result), ...session.progress}
-        if (Object.values(sessionProgress).every(status => status === 'done')) {
+        if (sessionProgress.optimized === 'done') {
           try {
             const history = await loadOwnedHistory(session.originHistoryId)
             if (epoch !== pageEpochRef.current) return
-            if (history?.processResult) session = {...session, result: upgradeInterviewPresentation(session.result, history.processResult)}
+            if (history?.interviewTask) session = projectManagedInterview(session, history)
+            else if (history?.processResult) session = {...session, result: upgradeInterviewPresentation(session.result, history.processResult)}
+            else historyUnavailable = true
           } catch {
-            // 展示升级读取失败时继续恢复本地稿，不触发生成。
+            historyUnavailable = true
           }
         }
       }
@@ -721,7 +759,8 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         syncWorkspaceResult(sessionResult, session.context)
         setReturnCard(null)
         setProgress(sessionProgress)
-        void continueLatestSession(nextSession)
+        if (nextSession.interviewTask) resumeWorkspaceActions.markGenerationCompleted()
+        else if (!historyUnavailable) void continueLatestSession(nextSession)
       } else {
         // Taro H5 首帧 URL 可能尚未更新，pageRoute 捕获的 params 缺 id，
         // 导致误走本分支：短暂等待后从 window.location 重读 history id，
@@ -795,7 +834,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
   }
 
   const continueLatestSession = async (session: LatestResultSession) => {
-    if (isContinuingRef.current) return
+    if (isContinuingRef.current || session.interviewTask) return
 
     const owner = ownerRef.current
     const runId = continuationRef.current + 1
@@ -905,41 +944,27 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
         currentResult = resultRef.current ?? currentResult
         currentSession = {...currentSession, result: currentResult}
 
-        let interview: ProcessResult['interview'] | undefined
-        for (let attempt = 0; attempt < 3; attempt += 1) {
+        if ((currentResult.optimized.completion_document?.revision ?? 0) > 0 && useAuthStore.getState().session) {
+          await enqueueHistorySave(false, true)
           currentResult = resultRef.current ?? currentResult
-          let requestDocument = currentResult.optimized.completion_document
-          if (requestDocument && requestDocument.revision > 0 && useAuthStore.getState().session) {
-            await enqueueHistorySave(false, true)
-            currentResult = resultRef.current ?? currentResult
-            requestDocument = currentResult.optimized.completion_document
-          }
-          const requestOptimized = currentResult.optimized
-          const historyId = remoteHistoryIdRef.current
-          const options = {
-            ...(enteredFromLanding ? {landing: true, presetJdId: currentSession.context.presetJdId} : {}),
-            ...(historyId && requestDocument ? {historyId, documentRef: {documentId: requestDocument.documentId,
-              revision: requestDocument.revision, resolvedDigest: requestOptimized.resolved_action_plan?.resolvedDigest}} : {}),
-          }
-          const response = await resumeApi.generateInterviewSuggestions(currentResult.analysis, currentResult.matching,
-            requestOptimized, ...(Object.keys(options).length ? [options] : []))
-          if (continuationRef.current !== runId || ownerRef.current !== owner || useAuthStore.getState().session?.user.id !== owner) return
-          const latest = resultRef.current?.optimized
-          if (!requestDocument || (latest?.completion_document?.documentId === requestDocument.documentId
-            && latest.completion_document.revision === requestDocument.revision)) {
-            interview = {...response, ...(requestDocument ? {based_on_document: {documentId: requestDocument.documentId,
-              revision: requestDocument.revision, resolvedDigest: requestOptimized.resolved_action_plan?.resolvedDigest}} : {})}
-            break
-          }
         }
-        if (!interview) throw new Error('简历在面试建议生成期间持续更新，请保存后重试面试建议')
-
+        const requestOptimized = currentResult.optimized
+        const document = requestOptimized.completion_document
+        const reference = document ? {documentId: document.documentId, revision: document.revision,
+          resolvedDigest: requestOptimized.resolved_action_plan?.resolvedDigest} : undefined
+        const historyId = remoteHistoryIdRef.current
+        const options = {
+          ...(enteredFromLanding ? {landing: true, presetJdId: currentSession.context.presetJdId} : {}),
+          ...(historyId && reference ? {historyId, documentRef: reference} : {}),
+        }
+        const response = await resumeApi.generateInterviewSuggestions(currentResult.analysis, currentResult.matching,
+          requestOptimized, ...(Object.keys(options).length ? [options] : []))
         if (continuationRef.current !== runId || ownerRef.current !== owner || useAuthStore.getState().session?.user.id !== owner) return
 
         const latestResult = resultRef.current ?? currentResult
         currentResult = {
           ...latestResult,
-          interview,
+          interview: response.based_on_document || !reference ? response : {...response, based_on_document: reference},
         }
         currentProgress = {
           ...(latestSessionRef.current?.progress ?? generatingProgress),
@@ -1012,14 +1037,13 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       feedback.message('请先完成当前填写的保存')
       return null
     }
+    if (!allowIncomplete && (latestSessionRef.current?.progress ?? progress).optimized !== 'done') {
+      feedback.message('简历正在生成，请稍后')
+      return null
+    }
     const snapshotKey = resultSnapshotKey(currentResult)
     if (savedSnapshotRef.current === snapshotKey && !pendingHistoryCommitRef.current
       && !currentResult.optimized.completion_edit?.operations.length) return remoteHistoryIdRef.current
-
-    if (!allowIncomplete && progress.interview !== 'done') {
-      feedback.message('正在生成中，请稍后')
-      return null
-    }
 
     try {
       const epoch = pageEpochRef.current
@@ -1076,7 +1100,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
           ...(resultContext?.jdParseId ? {jdParseId: resultContext.jdParseId} : {}),
           ...(resultContext?.resumeParseId ? {resumeParseId: resultContext.resumeParseId} : {}),
         },
-        progress,
+        progress: currentSession?.progress ?? progress,
       }
       const baseline = currentSession?.baseHistorySnapshot
       const expected = baseline?.completionDocument
@@ -1113,10 +1137,16 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       pendingHistoryCommitRef.current = null
       if (!localOnly && submittedDocument) acknowledgedCompletionRef.current = {documentId: submittedDocument.documentId, revision: submittedDocument.revision}
       remoteHistoryIdRef.current = historyId
+      let savedSession = latestSessionRef.current ?? currentSession
       if (resultRef.current && !localOnly) {
         let acknowledged = {...resultRef.current, optimized: acknowledgeCompletionEdits(resultRef.current.optimized, currentResult.optimized)}
         if (persisted?.processResult && sameCompletionState(resultRef.current.optimized, currentResult.optimized)) {
           acknowledged = {...acknowledged, optimized: mergeAuthoritativeReview(acknowledged.optimized, persisted.processResult.optimized)}
+          if (persisted.interviewTask && savedSession) {
+            savedSession = projectManagedInterview({...savedSession, result: acknowledged}, persisted)
+            acknowledged = savedSession.result
+            if (savedSession.progress) setProgress(savedSession.progress)
+          }
         }
         setResult(acknowledged)
         syncWorkspaceResult(acknowledged, resultContext)
@@ -1126,11 +1156,10 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       savedSnapshotRef.current = savedKey
       setSaved(resultRef.current != null && resultSnapshotKey(resultRef.current) === savedKey)
       setSavedHistoryId(historyId)
-      const latest = latestSessionRef.current ?? currentSession
-      if (latest) {
+      if (savedSession) {
         const nextSession: LatestResultSession = {
-          ...latest,
-          result: resultRef.current ?? latest.result,
+          ...savedSession,
+          result: resultRef.current ?? savedSession.result,
           originHistoryId: historyId,
           pendingHistoryCommit: undefined,
           baseHistorySnapshot: historyCompletionBaseline(persisted ?? {...history, id: historyId}),
@@ -1177,42 +1206,85 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     return write
   }
 
+  const refreshManagedInterview = (history: ResumeHistory) => {
+    const session = latestSessionRef.current
+    const current = resultRef.current
+    if (!session || !current || !history.interviewTask || history.id !== remoteHistoryIdRef.current) return
+    const projected = projectManagedInterview({...session, result: current}, history)
+    if (session.interviewTask?.status === projected.interviewTask?.status
+      && JSON.stringify(current.interview) === JSON.stringify(projected.result.interview)) return
+    const nextSession = {...projected, sessionSequence: ++sessionSequenceRef.current}
+    if (savedSnapshotRef.current === resultSnapshotKey(current)) {
+      savedSnapshotRef.current = resultSnapshotKey(nextSession.result)
+    }
+    latestSessionRef.current = nextSession
+    setResult(nextSession.result)
+    if (nextSession.progress) setProgress(nextSession.progress)
+    resumeWorkspaceActions.setInterview(nextSession.result.interview)
+    void queueSessionSave(nextSession).catch(() => undefined)
+  }
+
+  const interviewTaskStatus = latestSessionRef.current?.interviewTask?.status
+  useEffect(() => {
+    if (generationJobId || !savedHistoryId || interviewTaskStatus !== 'pending' || !hasCompletionRemoteAccess) return
+    const epoch = pageEpochRef.current
+    return subscribeGenerationTaskEvents({
+      onTask: task => {
+        if (task.history_id !== savedHistoryId || !task.interview_status || ['pending', 'running'].includes(task.interview_status)) return
+        void resumeHistoryApi.getHistory(savedHistoryId).then(history => {
+          if (epoch === pageEpochRef.current) refreshManagedInterview(history)
+        }).catch(() => undefined)
+      },
+    })
+  }, [generationJobId, savedHistoryId, interviewTaskStatus, ownerId, hasCompletionRemoteAccess])
+
   useEffect(() => {
     const optimized = result?.optimized
     const document = optimized?.completion_document
-    const pending = optimized?.action_review?.outcomes.some(item => item.state === 'pending_review')
-    if (!savedHistoryId || !document || !pending || !hasCompletionRemoteAccess) return
+    const pendingReview = document && optimized?.action_review?.outcomes.some(item => item.state === 'pending_review')
+    if (!savedHistoryId || (!pendingReview && (interviewTaskStatus !== 'pending' || recoveryConflict)) || !hasCompletionRemoteAccess) return
     const epoch = pageEpochRef.current
     const owner = ownerRef.current
     let active = true
     let attempts = 0
     let timer: ReturnType<typeof setTimeout> | undefined
     const poll = async () => {
-      if (!active || ++attempts > 30) return
+      if (!active || epoch !== pageEpochRef.current || remoteHistoryIdRef.current !== savedHistoryId) return
+      attempts += 1
       try {
         const history = await resumeHistoryApi.getHistory(savedHistoryId)
-        if (!active || epoch !== pageEpochRef.current || owner !== ownerRef.current) return
+        if (!active || epoch !== pageEpochRef.current || owner !== ownerRef.current
+          || owner !== useAuthStore.getState().session?.user.id || history.id !== remoteHistoryIdRef.current) return
+        if (!recoveryRef.current && latestSessionRef.current?.interviewTask?.status === 'pending') {
+          refreshManagedInterview(history)
+        }
         const current = resultRef.current
-        if (!current || !history.processResult) return
-        const merged = mergeAuthoritativeReview(current.optimized, history.processResult.optimized)
-        if (merged !== current.optimized && JSON.stringify(merged) !== JSON.stringify(current.optimized)) {
-          const next = {...current, optimized: merged}
-          setResult(next)
-          syncWorkspaceResult(next, latestSessionRef.current?.context)
-          if (latestSessionRef.current) {
-            const session = {...latestSessionRef.current, result: next, sessionSequence: ++sessionSequenceRef.current}
-            latestSessionRef.current = session
-            await queueSessionSave(session)
+        if (current && history.processResult && pendingReview) {
+          const merged = mergeAuthoritativeReview(current.optimized, history.processResult.optimized)
+          if (merged !== current.optimized && JSON.stringify(merged) !== JSON.stringify(current.optimized)) {
+            const next = {...current, optimized: merged}
+            setResult(next)
+            syncWorkspaceResult(next, latestSessionRef.current?.context)
+            if (latestSessionRef.current) {
+              const session = {...latestSessionRef.current, result: next, sessionSequence: ++sessionSequenceRef.current}
+              latestSessionRef.current = session
+              await queueSessionSave(session)
+            }
           }
         }
-        if (!merged.action_review?.outcomes.some(item => item.state === 'pending_review')) return
-      } catch { /* 读取失败保留当前状态，不能触发重新生成或覆盖编辑稿。 */ }
-      if (active) timer = setTimeout(() => void poll(), 2000)
+      } catch (error) {
+        if (error instanceof RequestError && error.statusCode && [401, 403, 404].includes(error.statusCode)) return
+      }
+      const stillWaitingInterview = !recoveryRef.current && latestSessionRef.current?.interviewTask?.status === 'pending'
+      const stillWaitingReview = resultRef.current?.optimized.action_review?.outcomes.some(item => item.state === 'pending_review')
+      if (active && (stillWaitingInterview || (attempts < 30 && stillWaitingReview))) {
+        timer = setTimeout(() => void poll(), stillWaitingInterview && attempts > 10 ? 10000 : 2000)
+      }
     }
     timer = setTimeout(() => void poll(), 1000)
     return () => { active = false; if (timer) clearTimeout(timer) }
   }, [savedHistoryId, result?.optimized.completion_document?.documentId, result?.optimized.completion_document?.revision,
-    result?.optimized.action_review?.reviewRevision, ownerId, hasCompletionRemoteAccess])
+    result?.optimized.action_review?.reviewRevision, interviewTaskStatus, recoveryConflict, ownerId, hasCompletionRemoteAccess])
 
   useEffect(() => {
     const document = result?.optimized.completion_document
@@ -1254,23 +1326,32 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       if (!history.processResult || !isCompletionV4(history.processResult.optimized.completion_document)) {
         throw new Error('新版填写结构暂未就绪，当前编辑稿已保留')
       }
-      const next: ProcessResult = {...history.processResult,
+      const upgradedResult = {
+        ...history.processResult,
         optimized: {...history.processResult.optimized, optimized_resume: history.optimizedContent},
-        interview: normalizeInterviewResult(history.processResult)}
-      const session: LatestResultSession = {...(latestSessionRef.current ?? {context: buildContextFromHistory(history)}),
-        result: next, originHistoryId: historyId, progress: history.progress ?? progress,
-        pendingHistoryCommit: undefined, baseHistorySnapshot: historyCompletionBaseline(history),
-        sessionSequence: ++sessionSequenceRef.current}
+        interview: normalizeInterviewResult(history.processResult),
+      }
+      const session = projectManagedInterview({
+        ...latestSessionRef.current,
+        context: latestSessionRef.current?.context ?? buildContextFromHistory(history),
+        result: upgradedResult,
+        originHistoryId: historyId,
+        progress: history.progress ?? progress,
+        pendingHistoryCommit: undefined,
+        baseHistorySnapshot: historyCompletionBaseline(history),
+        sessionSequence: ++sessionSequenceRef.current,
+      }, history)
       // 先写入完整会话，下一次打开不能把旧稿重新带回升级后的记录。
       await queueSessionSave(session)
       if (!stillCurrent()) return
       latestSessionRef.current = session
-      setResult(next)
-      syncWorkspaceResult(next, session.context)
+      setResult(session.result)
+      if (session.progress) setProgress(session.progress)
+      syncWorkspaceResult(session.result, session.context)
       useHistoryStore.getState().acceptHistory(history)
       remoteHistoryIdRef.current = historyId
-      acknowledgedCompletionRef.current = {documentId: snapshot.documentId, revision: next.optimized.completion_document!.revision}
-      savedSnapshotRef.current = resultSnapshotKey(next)
+      acknowledgedCompletionRef.current = {documentId: snapshot.documentId, revision: session.result.optimized.completion_document!.revision}
+      savedSnapshotRef.current = resultSnapshotKey(session.result)
       setSavedHistoryId(historyId)
       setSaved(true)
     })
@@ -1318,6 +1399,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
 
   const prepareDownload = async (): Promise<ResumeExportTarget> => {
     if (!useAuthStore.getState().session) throw new Error('请登录后下载正式 PDF，当前编辑稿已保留')
+    if ((latestSessionRef.current?.progress ?? progress).optimized !== 'done') throw new Error('简历正在生成，请稍后下载')
     const current = resultRef.current?.optimized
     const loaded = current && normalizeCompletionDocument(current.optimized_resume, current.completion_document)
     if (!loaded || loaded.blocked || loaded.status === 'repair_required') throw new Error('简历填写结构需要修复，请先检查对应内容')
@@ -1336,7 +1418,7 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       return
     }
 
-    if (progress.interview !== 'done') {
+    if (progress.optimized !== 'done' || (enteredFromLanding && progress.interview !== 'done')) {
       feedback.message('正在生成中，请稍后')
       return
     }
@@ -1433,15 +1515,36 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       ? progress.analysis === 'failed'
       : stage === 'resume'
         ? progress.matching === 'failed' || progress.optimized === 'failed'
-        : progress.interview === 'failed' || (progress.interview === 'done' && interviewNeedsRefresh(result))
+        : progress.interview === 'failed' && latestSessionRef.current?.interviewTask?.status !== 'stale'
 
-    if (completionSaveStatus !== 'idle') { feedback.message('请先完成当前填写的保存'); return }
+    const managedInterview = stage === 'interview' && Boolean(latestSessionRef.current?.interviewTask)
+    if (!managedInterview && completionSaveStatus !== 'idle') { feedback.message('请先完成当前填写的保存'); return }
     if (!failedStage) {
       handlePendingStage()
       return
     }
 
     track('click_result_retry_stage', {stage})
+    if (managedInterview) {
+      const epoch = pageEpochRef.current
+      const owner = ownerRef.current
+      if (interviewRetryEpochRef.current === epoch) return
+      interviewRetryEpochRef.current = epoch
+      try {
+        const id = remoteHistoryIdRef.current
+        if (!id || epoch !== pageEpochRef.current || owner !== useAuthStore.getState().session?.user.id) return
+        const history = await resumeHistoryApi.retryInterview(id)
+        if (epoch === pageEpochRef.current && owner === useAuthStore.getState().session?.user.id) {
+          refreshManagedInterview(history)
+        }
+      } catch (error) {
+        if (epoch === pageEpochRef.current) feedback.message(error instanceof Error ? error.message : '面试建议暂时无法重试')
+      } finally {
+        if (interviewRetryEpochRef.current === epoch) interviewRetryEpochRef.current = null
+      }
+      return
+    }
+
     if (!resultContext) {
       feedback.message('缺少简历或岗位信息，无法重试')
       return
@@ -1495,11 +1598,6 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       },
     }
 
-    setResult(nextResult)
-    syncWorkspaceResult(nextResult, resultContext)
-    setSaved(false)
-    setCompletionSaveStatus('saving')
-
     const context = latestSessionRef.current?.context ?? resultContext
     if (!context) {
       setCompletionSaveStatus('failed')
@@ -1514,6 +1612,11 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
       sessionSequence: ++sessionSequenceRef.current,
     }
     latestSessionRef.current = nextSession
+    setResult(nextSession.result)
+    if (nextSession.progress) setProgress(nextSession.progress)
+    syncWorkspaceResult(nextSession.result, resultContext)
+    setSaved(false)
+    setCompletionSaveStatus('saving')
     try {
       await queueSessionSave(nextSession)
       if (hasCompletionRemoteAccess && document && document.schemaVersion !== 'resume-completion-v1') {
@@ -1604,8 +1707,9 @@ export function usePageModel(options: ResultPageModelOptions = {}): ResultPageVi
     saved,
     isCompleting,
     progress,
-    progressPercent: getProgressPercent(progress),
-    generationError,
+    progressPercent: progress.optimized === 'done' && !enteredFromLanding ? 100 : getProgressPercent(progress),
+    interviewUnavailable: interviewTaskStatus === 'stale',
+    generationError: interviewTaskStatus === 'stale' ? '面试建议暂不可用' : generationError,
     enteredFromCard,
     enteredFromLanding,
     returnCard,

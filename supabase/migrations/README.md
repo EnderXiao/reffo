@@ -48,6 +48,9 @@
 | 5 | `202611120005_stage_leases_source_delete.sql` | 跨进程stage lease；`delete_resume_source`将源记录删除与瞬态缓存/检查点/导出撤销置于同一事务 |
 | 6 | `202611120006_ocr_delivery_diagnostics.sql` | 源简历OCR `parse_id`关联与不可变PDF快照六类门禁；新增列可空，旧记录继续可读 |
 | 7 | `202611130007_stage_revocation_epochs.sql` | 撤销事件生成独立epoch，claim绑定当前epoch，store按租约与epoch共同CAS；允许撤销后使用完整源输入重新计算，禁止旧任务复活 |
+| 8 | `202611130008_completion_upgrade_cas.sql` | 填写文档升级按完整旧快照 CAS |
+| 9 | `202611250001_resume_interview_tasks.sql` | 原子登记首版面试任务，独立存储建议与租约，删除历史时级联删除任务。修正已有历史与源简历删除函数对文本 owner 字段的比较 |
+| 10 | `202611260001_generation_job_delivery.sql` | 在同一事务中提交生成阶段、历史、成稿和首版面试任务，按任务锁决定交付或取消 |
 
 SQLite在对应repository初始化时执行等价增量迁移；旧 `match_score NOT NULL` 表会在事务中重建，保留已有行、索引和触发器。源记录增加owner后将历史本地行归属开发账户，新增OCR列保持可空。SQLite验证不代表Supabase RPC已经运行成功。
 
@@ -64,3 +67,11 @@ SQLite在对应repository初始化时执行等价增量迁移；旧 `match_score
 `202611130008_completion_upgrade_cas.sql` 为既有 `commit_resume_history` RPC 增加可选的完整旧 `processResult` CAS 条件，不新增数据列，不批量改写历史记录。服务端对单条拥有者历史执行 v4 升级时携带此条件，防止覆盖没有改变文档 revision 或 updated_at 的并发后台复核。既有普通保存请求不携带该字段时继续沿用原 CAS 协议。
 
 云端启用 v4 历史升级前必须应用 008；本地 SQLite 已在升级事务中对旧 process_result 做等价校验。SQLite 实测和 Supabase REST/RPC mock 不代表远端 PostgreSQL 已执行迁移。回滚时保留 v4 读取、保存、导出能力和该 RPC 条件，不能把已经升级的文档降级覆盖。
+
+## 2026-11-27 首轮面试任务合并
+
+`202611270001_generation_job_interview.sql` 将首轮面试状态迁入 `resume_generation_jobs`，将已有的最新成功建议及版本引用迁回 `resume_histories`。它停用旧入队触发器和旧任务写权限，保留原表供核对，并在新版本号下补齐简历交付和取消 RPC。
+
+迁移与新版后端安排在同一次发布。迁移开始后，旧版服务仍可提交简历并由数据库登记新任务，新版面试 Worker 上线后接手执行。旧表正在处理的首轮任务保留原租约期限，等待期限结束后恢复。发布时校验旧建议可读、首轮失败可重试、SSE 断线可补查，以及面试写回保留同时保存的正文。
+
+目标环境验收并确认没有旧版 Worker 后，用单独的后续 migration 删除 `public.enqueue_initial_resume_interview()` 与 `public.resume_interview_tasks`。仍需保留历史记录的保护触发器。迁移之后若需回滚应用，回滚版本需支持新任务状态和历史结果存储。

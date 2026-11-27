@@ -12,7 +12,8 @@ import { compileV5Prompt, type CompiledV5Prompt } from '@/v5/prompt-compiler'
 import type { V5PromptComponent } from '@/v5/prompts'
 import { normalizeBlindABEvaluationSemanticsWithAudit } from '@/v5/schemas'
 import { materializeResumeExtractionTransport, resumeDocumentFromEnvelope } from '@/v5/resume-extraction-transport'
-import { isEntryWritingEnvelope, normalizeEntryWritingOutput } from '@/v5/writing/entries'
+import { isJobTargetedEnvelope, materializeJobExtractionTransport } from '@/v5/targeting/contracts'
+import { auxiliaryEntryIdsFromEnvelope, isEntryWritingEnvelope, normalizeEntryWritingOutput } from '@/v5/writing/entries'
 
 export interface V5StageRunOptions {
   provider?: LlmProvider
@@ -105,12 +106,12 @@ export class V5ProviderCallError extends Error {
 
 interface V5TransportRecoveryInput {
   component: V5PromptComponent
-  action: 'repair_json' | 'disable_thinking'
+  action: 'repair_json'
   eventBus?: HarnessEventBus
   stepContext?: StepExecutionContext
   reason: string
-  triggerErrorCode: 'V5_JSON_PARSE_FAILED' | 'V5_OUTPUT_TRUNCATED'
-  recoveryMode: 'json_repair' | 'thinking_disabled'
+  triggerErrorCode: 'V5_JSON_PARSE_FAILED'
+  recoveryMode: 'json_repair'
   outputDigest?: string
   providerResult?: ChatCompletionResult
 }
@@ -201,7 +202,6 @@ async function repairV5JsonOutput(input: {
         retryIndex: 1,
         budgetRemaining: null,
       },
-      thinkingOverride: 'disabled',
       maxProviderAttempts: 1,
       maxProviderModels: 1,
     })
@@ -232,93 +232,6 @@ async function repairV5JsonOutput(input: {
     }
     throw error
   }
-}
-
-async function retryWithThinkingDisabled(input: {
-  component: V5PromptComponent
-  compiled: CompiledV5Prompt
-  provider: LlmProvider
-  providerPromptManifest: NonNullable<ChatCompletionInput['promptManifest']>
-  options?: V5StageRunOptions
-}): Promise<ChatCompletionResult> {
-  const recoveryInput: V5TransportRecoveryInput = {
-    component: input.component,
-    action: 'disable_thinking',
-    eventBus: input.options?.eventBus,
-    stepContext: input.options?.stepContext,
-    reason: 'reasoning-only structured output truncation',
-    triggerErrorCode: 'V5_OUTPUT_TRUNCATED',
-    recoveryMode: 'thinking_disabled',
-  }
-  await publishV5TransportRecoveryStatus(recoveryInput, 'recovery.planned')
-  await publishV5TransportRecoveryStatus(recoveryInput, 'recovery.started')
-
-  try {
-    const providerResult = await input.provider.complete({
-      messages: input.compiled.messages,
-      model: input.options?.model,
-      temperature: input.compiled.temperature,
-      structuredOutput: {
-        name: input.compiled.schemaName,
-        schema: input.compiled.providerSchema,
-        strict: true,
-      },
-      maxOutputTokens: input.compiled.maxOutputTokens,
-      promptVersion: input.compiled.promptVersion,
-      promptManifest: input.providerPromptManifest,
-      eventBus: input.options?.eventBus,
-      stepContext: input.options?.stepContext,
-      callMetadata: {
-        callReason: 'thinking_fallback',
-        contextMode: 'full',
-        repairScope: ['thinking_disabled'],
-        retryIndex: 1,
-        budgetRemaining: null,
-      },
-      thinkingOverride: 'disabled',
-      maxProviderAttempts: 1,
-      maxProviderModels: 1,
-    })
-
-    if (providerResult.finishReason === 'length') {
-      await publishV5TransportRecoveryStatus({
-        ...recoveryInput,
-        reason: 'thinking-disabled structured output still reached the length limit',
-        providerResult,
-      }, 'recovery.failed')
-      throw new V5StructuredOutputError({
-        code: 'V5_OUTPUT_TRUNCATED',
-        component: input.component,
-        message: `${input.component} thinking-disabled 重试仍达到模型长度上限；停止继续追问。`,
-        unsafeOutput: providerResult.content,
-      })
-    }
-
-    await publishV5TransportRecoveryStatus({
-      ...recoveryInput,
-      reason: 'thinking-disabled structured output completed',
-      outputDigest: createDigest(providerResult.content),
-      providerResult,
-    }, 'recovery.succeeded')
-    return providerResult
-  } catch (error) {
-    if (!(error instanceof V5StructuredOutputError)) {
-      await publishV5TransportRecoveryStatus({
-        ...recoveryInput,
-        reason: 'thinking-disabled Provider 请求失败',
-      }, 'recovery.failed')
-      throw new V5ProviderCallError({ component: input.component, cause: error })
-    }
-    throw error
-  }
-}
-
-function isReasoningOnlyTruncation(result: ChatCompletionResult) {
-  if (result.finishReason !== 'length') return false
-  if (!result.content.trim()) return true
-  const reasoningTokens = result.reasoningTokens ?? 0
-  const outputTokens = result.outputTokens ?? 0
-  return reasoningTokens > 0 && outputTokens > 0 && reasoningTokens / outputTokens >= 0.8
 }
 
 export async function runV5StructuredStage<T>(input: {
@@ -353,7 +266,6 @@ export async function runV5StructuredStage<T>(input: {
   let providerResult: ChatCompletionResult
   let continuation = ''
   const maxContinuations = 2
-  let thinkingFallbackAttempted = false
   try {
     for (let attempt = 0; ; attempt += 1) {
       const messages = continuation
@@ -377,22 +289,7 @@ export async function runV5StructuredStage<T>(input: {
       maxProviderModels: input.options?.maxProviderModels,
       })
       if (providerResult.finishReason !== 'length') break
-      if (!thinkingFallbackAttempted && isReasoningOnlyTruncation(providerResult)) {
-        providerResult = await retryWithThinkingDisabled({
-          component: input.component,
-          compiled,
-          provider,
-          providerPromptManifest: {
-            ...providerPromptManifest,
-            transportRepairAttempt: 0,
-            transportRecoveryMode: 'thinking_disabled',
-          },
-          options: input.options,
-        })
-        thinkingFallbackAttempted = true
-        continuation = ''
-        break
-      }
+      if (!providerResult.content.trim()) break
       if (attempt >= maxContinuations) break
       continuation += providerResult.content
     }
@@ -466,14 +363,17 @@ export async function runV5StructuredStage<T>(input: {
   const rawParsedDigest = createDigest(parsed)
   let normalizationApplied = false
   let normalizationChanges: string[] = []
+  let transportValidationError: z.ZodError | undefined
   if (input.component === 'P06C' && isEntryWritingEnvelope(input.envelope)) {
-    const normalized = normalizeEntryWritingOutput(parsed)
+    const normalized = normalizeEntryWritingOutput(parsed, auxiliaryEntryIdsFromEnvelope(input.envelope))
     parsed = normalized.value
-    normalizationApplied = normalized.removedNotes > 0 || normalized.rejectedReceiptCount > 0
     normalizationChanges = [
       ...(normalized.removedNotes ? ['empty_entry_id_note_removed'] : []),
       ...(normalized.rejectedReceiptCount ? [`invalid_action_receipt_quarantined:${normalized.rejectedReceiptCount}`] : []),
+      ...(normalized.materializedReceiptCount ? [`action_receipt_explanation_materialized:${normalized.materializedReceiptCount}`] : []),
+      ...(normalized.materializedCoverageCount ? [`auxiliary_entry_coverage_materialized:${normalized.materializedCoverageCount}`] : []),
     ]
+    normalizationApplied = normalizationChanges.length > 0
   }
   if ((input.component === 'P01' || input.component === 'P01R') && !compiled.schema.safeParse(parsed).success) {
     const document = resumeDocumentFromEnvelope(input.envelope)
@@ -487,6 +387,16 @@ export async function runV5StructuredStage<T>(input: {
       parsed = materialized.data
       normalizationApplied = true
       normalizationChanges = ['source_block_fields_materialized']
+    }
+  }
+  if ((input.component === 'P02' || input.component === 'P02R') && !compiled.schema.safeParse(parsed).success) {
+    const materialized = materializeJobExtractionTransport(parsed, isJobTargetedEnvelope(input.envelope))
+    if (materialized.success) {
+      parsed = materialized.data
+      normalizationApplied = true
+      normalizationChanges.push('source_block_coverage_materialized')
+    } else {
+      transportValidationError = materialized.error
     }
   }
   if (input.component === 'P12') {
@@ -520,7 +430,8 @@ export async function runV5StructuredStage<T>(input: {
 
   const validated = compiled.schema.safeParse(parsed)
   if (!validated.success) {
-    const validationIssues = summarizeZodIssues(validated.error)
+    const error = transportValidationError ?? validated.error
+    const validationIssues = summarizeZodIssues(error)
     if (input.options?.eventBus && input.options.stepContext) {
       await input.options.eventBus.publish(createHarnessEvent({
         type: 'output.validated',
@@ -538,6 +449,11 @@ export async function runV5StructuredStage<T>(input: {
           errorCode: 'V5_SCHEMA_VALIDATION_FAILED',
           validationIssueCount: validationIssues.length,
           validationIssueCodes: [...new Set(validationIssues.map(item => item.code))].sort(),
+          ...(['P02', 'P02R', 'P06C'].includes(input.component) ? {validationIssuePaths: error.issues.slice(0, 20).map(issue => ({
+            code: issue.code,
+            path: issue.path.map(part => typeof part === 'number' || /^[a-zA-Z][a-zA-Z0-9_]{0,47}$/u.test(part) ? part : '*').join('.'),
+            ...(issue.code === 'invalid_type' ? {expected: issue.expected, received: issue.received} : {}),
+          }))} : {}),
         },
       }))
     }

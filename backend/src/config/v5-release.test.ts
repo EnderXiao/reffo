@@ -13,13 +13,10 @@ test('production accepts only the explicitly released complete Writer combinatio
   expect(() => assertV5ProductionWorkflow(config,{artifactGenerationMode:'dsl_v1',jobTargetingPolicy:'job-targeted-v2'})).toThrow()
 })
 
-test('R5 rejects model or thinking-mode drift', () => {
-  const config = {AI_MODEL:'deepseek-v4-flash',OPENAI_BASE_URL:'https://api.deepseek.com',
-    DEEPSEEK_THINKING_MODE:'disabled',DEEPSEEK_P01_THINKING_MODE:'disabled'}
+test('R5 rejects model or endpoint drift', () => {
+  const config = {AI_MODEL:'deepseek-v4-flash',OPENAI_BASE_URL:'https://api.deepseek.com'}
   expect(() => assertV5ReleaseConfiguration(config)).not.toThrow()
-  expect(() => assertV5ReleaseConfiguration({...config,DEEPSEEK_THINKING_MODE:'enabled',DEEPSEEK_P01_THINKING_MODE:'enabled'})).not.toThrow()
-  for (const override of [{AI_MODEL:'deepseek-chat'},{OPENAI_BASE_URL:'https://example.invalid'},
-    {DEEPSEEK_THINKING_MODE:'default'},{DEEPSEEK_P01_THINKING_MODE:'inherit'}]) {
+  for (const override of [{AI_MODEL:'deepseek-chat'},{OPENAI_BASE_URL:'https://example.invalid'}]) {
     expect(() => assertV5ReleaseConfiguration({...config,...override})).toThrow()
   }
 })

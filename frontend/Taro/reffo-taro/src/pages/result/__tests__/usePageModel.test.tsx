@@ -1,5 +1,5 @@
 import {useAuthStore} from '@/store/authStore'
-import {act, renderHook, waitFor} from '@testing-library/react'
+import {act, cleanup, renderHook, waitFor} from '@testing-library/react'
 import {afterEach, beforeEach, describe, expect, jest, test} from '@jest/globals'
 import {useRouter} from '@tarojs/taro'
 import {resumeApi} from '@/services/resume'
@@ -30,7 +30,8 @@ import {historyCompletionBaseline} from '../model/completionSession'
 import {savePendingLandingHistory} from '@/utils/pending-landing-data'
 
 let mockResultId: string | null = null
-let mockJobId: string | null = null
+let mockGenerationJobId: string | null = null
+const mockNavigate = jest.fn()
 
 jest.mock('@/services/runtime-config', () => {
   const mockJest = require('@jest/globals').jest as typeof jest
@@ -69,7 +70,7 @@ jest.mock('@/shared/routing', () => ({
   usePageRoute: () => ({
     params: {},
     path: '/pages/result/index',
-    readString: (key: string) => key === 'id' ? mockResultId : key === 'jobId' ? mockJobId : null,
+    readString: (key: string) => key === 'id' ? mockResultId : key === 'jobId' ? mockGenerationJobId : null,
     readBoolean: () => false,
     readNumber: () => null,
   }),
@@ -80,7 +81,7 @@ jest.mock('@/shared/routing', () => ({
     home: '/pages/index/index',
   },
   useRouteTransition: () => ({
-    navigate: jest.fn(),
+    navigate: mockNavigate,
     replace: jest.fn(),
     reset: jest.fn(),
   }),
@@ -191,11 +192,158 @@ function editCompletion(document: ReturnType<typeof completionV2Fixture>, type: 
   return result
 }
 
+function managedHistory(status: NonNullable<ResumeHistory['interviewTask']>['status']): ResumeHistory {
+  const document = createCompletionDocument({...completionV2Fixture(), schemaVersion: 'resume-completion-v4'})
+  const result = completionResult(document)
+  return {
+    id: 'managed-history',
+    name: '测试用户',
+    company: '测试公司',
+    position: '产品经理',
+    createdAt: '2026-09-27T10:00:00Z',
+    qualityScore: 88,
+    matchScore: 91,
+    tags: [],
+    resumeContent: '# Resume',
+    jdContent: '岗位职责',
+    optimizedContent: result.optimized.optimized_resume,
+    processResult: {
+      ...result,
+      interview: status === 'done'
+        ? {...interview, questions: ['请说明你的主要贡献'], based_on_document: {documentId: document.documentId, revision: document.revision}}
+        : interview,
+    },
+    progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: status === 'stale' ? 'failed' : status},
+    interviewTask: {status},
+  }
+}
+
+describe('后台面试建议与简历交付', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockResultId = 'managed-history'
+    useAuthStore.setState({session: {accessToken: 'test-token', user: {id: 'managed-user'}}})
+    jest.mocked(getLatestResultSession).mockResolvedValue(null)
+    jest.mocked(saveLatestResultSession).mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    cleanup()
+    jest.restoreAllMocks()
+    jest.useRealTimers()
+    useAuthStore.setState({session: null})
+    useHistoryStore.setState({histories: []})
+    mockResultId = null
+    mockGenerationJobId = null
+  })
+
+  test.each(['pending', 'failed'] as const)('面试建议为 %s 时仍可保存、下载和完成', async status => {
+    const history = managedHistory(status)
+    jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockResolvedValue(history)
+    const write = jest.spyOn(resumeHistoryApi, 'updateHistory')
+    const {result} = renderHook(() => usePageModel())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.progress.interview).toBe(status)
+    expect(result.current.result?.optimized.optimized_resume).toBe(history.optimizedContent)
+
+    await act(async () => {
+      await expect(result.current.handleSave()).resolves.toBe(history.id)
+      await expect(result.current.prepareDownload!()).resolves.toEqual({
+        historyId: history.id, documentId: 'fixture-document', revision: 0,
+      })
+      await result.current.handleComplete()
+    })
+    expect(mockNavigate).toHaveBeenCalledWith('/pages/complete/index')
+    expect(write).not.toHaveBeenCalled()
+    expect(resumeApi.generateInterviewSuggestions).not.toHaveBeenCalled()
+  })
+
+  test('同步任务的已读状态期间已能打开简历', async () => {
+    mockGenerationJobId = 'generation-job'
+    const history = managedHistory('pending')
+    jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockResolvedValue(history)
+    const pendingTask = jest.spyOn(generationTasksApi, 'get').mockReturnValue(new Promise(() => undefined))
+    const {result} = renderHook(() => usePageModel())
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(pendingTask).toHaveBeenCalledWith('generation-job')
+    expect(result.current.result?.optimized.optimized_resume).toBe(history.optimizedContent)
+    expect(result.current.needsCompletion).toBe(true)
+  })
+
+  test('面试失败后独立重试，并从历史记录读取已生成建议', async () => {
+    jest.useFakeTimers()
+    const failed = managedHistory('failed')
+    jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockResolvedValue(failed)
+    const retry = jest.spyOn(resumeHistoryApi, 'retryInterview').mockResolvedValue(managedHistory('pending'))
+    const get = jest.spyOn(resumeHistoryApi, 'getHistory')
+      .mockRejectedValueOnce(new Error('暂时无法读取'))
+      .mockResolvedValueOnce(managedHistory('done'))
+    const {result} = renderHook(() => usePageModel())
+    await waitFor(() => expect(result.current.progress.interview).toBe('failed'))
+    await act(async () => { await result.current.handleRetryStage('interview') })
+    expect(retry).toHaveBeenCalledWith(failed.id)
+    expect(result.current.progress.interview).toBe('pending')
+    await act(async () => { await jest.advanceTimersByTimeAsync(1000) })
+    expect(result.current.progress.interview).toBe('pending')
+    await act(async () => { await jest.advanceTimersByTimeAsync(2000) })
+    expect(result.current.progress.interview).toBe('done')
+    expect(result.current.result?.interview.questions).toEqual(['请说明你的主要贡献'])
+    expect(result.current.saved).toBe(true)
+    await act(async () => { await jest.advanceTimersByTimeAsync(30000) })
+    expect(get).toHaveBeenCalledTimes(2)
+    expect(resumeApi.generateInterviewSuggestions).not.toHaveBeenCalled()
+  })
+
+  test('历史页收到面试完成事件后立即读回建议', async () => {
+    jest.useFakeTimers()
+    const pending = managedHistory('pending')
+    jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockResolvedValue(pending)
+    const get = jest.spyOn(resumeHistoryApi, 'getHistory').mockResolvedValue(managedHistory('done'))
+    const stream = jest.mocked(subscribeGenerationTaskEvents)
+    const {result} = renderHook(() => usePageModel())
+    await waitFor(() => expect(stream).toHaveBeenCalled())
+    const handlers = stream.mock.calls.at(-1)![0]
+    const event = createGenerationTask({status: 'completed', history_id: pending.id, interview_status: 'done'})
+
+    await act(async () => handlers.onTask({...event, history_id: 'another-history'}))
+    expect(get).not.toHaveBeenCalled()
+    await act(async () => handlers.onTask(event))
+
+    expect(get).toHaveBeenCalledWith(pending.id)
+    expect(result.current.progress.interview).toBe('done')
+    expect(result.current.result?.interview.questions).toEqual(['请说明你的主要贡献'])
+  })
+
+  test('本地新稿保留原版面试建议', async () => {
+    const history = managedHistory('done')
+    const original = history.processResult!
+    const document = original.optimized.completion_document!
+    const edited = editCompletion(document, 'fill', '验收标准')
+    jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockResolvedValue(history)
+    jest.mocked(getLatestResultSession).mockResolvedValue({
+      ...createSession(),
+      originHistoryId: history.id,
+      baseHistorySnapshot: historyCompletionBaseline(history),
+      result: {...original, optimized: {...original.optimized,
+        completion_document: edited.document, optimized_resume: serializeDraft(edited.document)}},
+      progress: history.progress,
+    })
+    const {result} = renderHook(() => usePageModel())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.result?.optimized.optimized_resume).toBe(serializeDraft(edited.document))
+    expect(result.current.result?.interview.questions).toEqual(['请说明你的主要贡献'])
+    expect(result.current.result?.interview.based_on_document).toEqual(original.interview.based_on_document)
+    expect(result.current.progress.interview).toBe('done')
+    expect(resumeApi.generateInterviewSuggestions).not.toHaveBeenCalled()
+  })
+})
+
 describe('Result usePageModel workspace generation state', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockResultId = null
-    mockJobId = null
+    mockGenerationJobId = null
     useResumeWorkspaceStore.getState().reset()
     jest.mocked(useRouter).mockReturnValue({params: {}} as never)
     jest.mocked(getLatestResultSession).mockResolvedValue(createSession())
@@ -299,7 +447,7 @@ describe('Result usePageModel workspace generation state', () => {
     let currentHistory = analysisOnlyHistory
     let streamHandlers: GenerationTaskStreamHandlers | null = null
     mockResultId = historyId
-    mockJobId = taskId
+    mockGenerationJobId = taskId
     jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockImplementation(async () => currentHistory)
     jest.mocked(generationTasksApi.get).mockResolvedValue(createGenerationTask({id: taskId, history_id: historyId}))
     jest.mocked(subscribeGenerationTaskEvents).mockImplementation(handlers => {
@@ -1138,7 +1286,7 @@ describe('未完成历史详情页', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockResultId = null
-    mockJobId = null
+    mockGenerationJobId = null
     useResumeWorkspaceStore.getState().reset()
     jest.mocked(useRouter).mockReturnValue({params: {}} as never)
     jest.mocked(saveLatestResultSession).mockResolvedValue(undefined)
@@ -1151,7 +1299,7 @@ describe('未完成历史详情页', () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     const historyId = 'JD-incomplete-0001'
     mockResultId = historyId
-    mockJobId = '22222222-2222-4222-8222-222222222222'
+    mockGenerationJobId = '22222222-2222-4222-8222-222222222222'
     jest.mocked(getLatestResultSession).mockResolvedValue(null)
     const history = {
       id: historyId, name: '', company: '小米', position: '前端工程师',

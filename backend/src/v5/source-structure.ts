@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import { explicitGraduationMonth } from '@/v5/writing/education'
+import { explicitEducationTimeline, explicitGraduationMonth } from '@/v5/writing/education'
 import type { CanonicalSourceDocument, ResumeEvidenceBundle } from '@/v5/types'
 
 export const SOURCE_STRUCTURE_VERSION = 'source-structure-v2' as const
@@ -53,9 +53,37 @@ function sourceAsOf(document: CanonicalSourceDocument) {
   return dates.length === 1 ? dates[0]! : null
 }
 
+function restoreUnscopedEducation(document: CanonicalSourceDocument, bundle: ResumeEvidenceBundle) {
+  const blocks = new Map(document.blocks.map(block => [block.sourceBlockId, block]))
+  const ownedScopes = new Set(bundle.timeline.map(item => item.scopeId))
+  const educationKey = (item: Pick<ResumeEvidenceBundle['timeline'][number], 'organization' | 'title' | 'end'>) =>
+    JSON.stringify([item.organization, item.title?.split(/[|｜丨]/u).map(field => field.trim()), item.end])
+  const knownEducation = new Set(bundle.timeline.filter(item => item.kind === 'education').map(educationKey))
+  const recovered: ResumeEvidenceBundle['timeline'] = []
+  const evidenceAtoms = bundle.evidenceAtoms.map(atom => {
+    if (ownedScopes.has(atom.sourceScopeId)) return atom
+    const block = blocks.get(atom.sourceBlockId)
+    if (!block || !/^(?:教育背景|教育经历|education)$/iu.test(block.sectionHint?.trim() ?? '')
+      || block.inputRiskFlags.length || atom.sourceDocumentHash !== document.sha256 || block.text.trim() !== atom.verbatimText.trim()) return atom
+    const exact = explicitEducationTimeline(atom)
+    if (!exact || knownEducation.has(educationKey(exact))) return atom
+    const scopeId = `srv_education_${document.sha256.slice(0, 12)}_${atom.sourceBlockId}`
+    recovered.push({...exact, scopeId, kind: 'education', evidenceIds: [atom.evidenceId]})
+    knownEducation.add(educationKey(exact))
+    return {...atom, sourceScopeId: scopeId, numericAtoms: atom.numericAtoms.map(number => ({...number, ownerScope: scopeId}))}
+  })
+  if (!recovered.length) return bundle
+  const scopeByEvidence = new Map(recovered.map(item => [item.evidenceIds[0]!, item.scopeId]))
+  const sections = bundle.sections.map(section => section.type === 'education' ? {...section, scopeIds: [...new Set([
+    ...section.scopeIds, ...section.evidenceIds.flatMap(id => scopeByEvidence.get(id) ?? []),
+  ])]} : section)
+  return {...bundle, evidenceAtoms, sections, timeline: [...bundle.timeline, ...recovered]}
+}
+
 /** Server-owned source inheritance changes only the new bundle, never raw blocks or a historical revision. */
 export function preserveSourceTimeline(document: CanonicalSourceDocument, bundle: ResumeEvidenceBundle,
   options: {previousStructure?: SourceStructure} = {}): ResumeEvidenceBundle {
+  bundle = restoreUnscopedEducation(document, bundle)
   const atoms = new Map(bundle.evidenceAtoms.map(atom => [atom.evidenceId, atom]))
   const blockIndex = new Map(document.blocks.map((block, index) => [block.sourceBlockId, index]))
   const contexts = sourceContexts(document)

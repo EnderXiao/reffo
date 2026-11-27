@@ -2,6 +2,7 @@ import type {v5SingleStepAdapter} from '@/v5/single-step-adapter'
 
 export type GenerationJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type GenerationJobStage = 'analysis' | 'matching' | 'optimized' | 'interview' | 'saving'
+export type GenerationInterviewStatus = 'pending' | 'running' | 'done' | 'failed' | 'unavailable'
 export interface GenerationJobFailure {
   code: string
   stage: GenerationJobStage
@@ -48,8 +49,11 @@ export interface GenerationJob {
   lease_expires_at: string
   quota_charged: boolean
   payload: GenerationJobPayload
+  interview_status?: GenerationInterviewStatus | null
+  interview_available_at?: string | null
+  interview_lease_token?: string | null
 }
-export type GenerationJobSummary = Omit<GenerationJob, 'user_id' | 'payload' | 'lease_token' | 'lease_expires_at' | 'quota_charged'> & {
+export type GenerationJobSummary = Omit<GenerationJob, 'user_id' | 'payload' | 'lease_token' | 'lease_expires_at' | 'quota_charged' | 'interview_available_at' | 'interview_lease_token'> & {
   company: string
   position: string
   location: string
@@ -57,7 +61,7 @@ export type GenerationJobSummary = Omit<GenerationJob, 'user_id' | 'payload' | '
   failure?: GenerationJobFailure
 }
 export function summarizeGenerationJob(job: GenerationJob): GenerationJobSummary {
-  const {user_id, payload, lease_token, lease_expires_at, quota_charged, ...summary} = job
+  const {user_id, payload, lease_token, lease_expires_at, quota_charged, interview_available_at, interview_lease_token, ...summary} = job
   const basic = payload.matching?.jd_structure?.basic_info
   return {...summary,
     company: payload.input.company || basic?.company || '目标公司',

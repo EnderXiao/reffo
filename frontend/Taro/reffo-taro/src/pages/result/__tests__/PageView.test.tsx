@@ -292,6 +292,19 @@ describe('结果页', () => {
     expect(within(resumeTab).getByText('步骤正在生成中')).toBeTruthy()
   })
 
+  test('简历就绪时保留完成入口，面试建议独立显示生成中', () => {
+    const handleComplete = jest.fn()
+    const handleRetryStage = jest.fn()
+    render(<PageView {...model} handleComplete={handleComplete} handleRetryStage={handleRetryStage}
+      progress={{...model.progress, interview: 'pending'}} />)
+
+    fireEvent.click(screen.getByLabelText('面试建议'))
+    expect(screen.getByText('正在生成面试建议，可以先查看简历')).toBeTruthy()
+    expect(handleRetryStage).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('完成'))
+    expect(handleComplete).toHaveBeenCalledTimes(1)
+  })
+
   test('每个故事完整显示各自的讲述方案，引用独立保留', () => {
     const stories = [{
       title: '核心业务系统项目', background: '核心业务系统审批流程复杂', result: '按期完成上线',
@@ -429,7 +442,7 @@ describe('策略与生成正文的对应', () => {
   })
 })
 
-test('简历更新后面试标旧版本，复用面试更新入口', () => {
+test('简历更新后仍展示原版面试建议和版本说明', () => {
   const document = {...createPlainCompletionDocument('# 测试用户\n\n完成真实项目交付', {documentId: 'interview-version'}), revision: 2}
   const current: ProcessResult = {...result, optimized: {...result.optimized, completion_document: document, optimized_resume: serializeDraft(document)},
     interview: {...result.interview, based_on_document: {documentId: document.documentId, revision: 1}}}
@@ -437,8 +450,8 @@ test('简历更新后面试标旧版本，复用面试更新入口', () => {
   render(<PageView {...model} result={current} handleRetryStage={retry} />)
   fireEvent.click(screen.getByLabelText('面试建议'))
   expect(screen.getByText('简历已更新，以下建议基于较早版本。')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', {name: '按当前稿更新面试建议'}))
-  expect(retry).toHaveBeenCalledWith('interview')
+  expect(screen.queryByRole('button', {name: '按当前稿更新面试建议'})).toBeNull()
+  expect(retry).not.toHaveBeenCalled()
 })
 
 

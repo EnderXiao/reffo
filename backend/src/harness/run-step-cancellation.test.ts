@@ -28,3 +28,12 @@ test('an already aborted run never starts a provider operation',async()=>{
   await expect(runStep({runContext:{...createRunContext(),signal:controller.signal},stepName:'not-started',execute:async()=>{calls++;return true}})).rejects.toMatchObject({cause:reason})
   expect(calls).toBe(0)
 })
+
+test('attributes a noisy transport abort to the timer that exhausted the stage budget', async () => {
+  await expect(runStep({runContext: createRunContext(), stepName: 'extract', timeoutMs: 10,
+    execute: async ({signal, deadlineMonotonicMs}) => {
+      expect(deadlineMonotonicMs).toBeGreaterThan(performance.now())
+      return new Promise<never>((_, reject) => signal!.addEventListener('abort', () => reject(new Error('connection closed')), {once: true}))
+    },
+  })).rejects.toMatchObject({step: {errorCode: 'STEP_TIMEOUT'}, cause: {code: 'STEP_TIMEOUT'}})
+})

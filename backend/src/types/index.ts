@@ -188,6 +188,7 @@ export interface InterviewStoryRecommendation {
 }
 
 export interface InterviewSuggestions {
+  based_on_document?: {documentId: string; revision: number; resolvedDigest?: string}
   presentation?: InterviewPresentation
   preparation_topics?: import('@/v5/writing/information-routing').InterviewPreparationTopic[]
   questions: string[]
@@ -344,6 +345,7 @@ export interface ResultSessionProgressRecord {
 }
 
 export interface ResumeHistoryRecord {
+  interview_task?: {status: 'pending' | 'done' | 'failed' | 'stale'}
   commit_ack?: {commit_id: string; document_id: string | null; revision: number | null; resolved_digest: string | null}
   id: string
   position: string
@@ -408,6 +410,8 @@ export interface SaveResumeHistoryInput {
     review?: import('@/shared/resume-actions').ResumeActionReview; changeManifest?: import('@/shared/resume-actions').ResumeChangeManifest; identityState?: import('@/shared/resume-actions').ResumeIdentityState; deliveryState?: import('@/shared/resume-actions').ResumeDeliveryState; interviewBasis?: import('@/v5/types').InterviewGenerationBasis; matching?: unknown}
   /** 仅服务端从已归属的生成记录读取，HTTP 不接收该字段。 */
   completion_baseline?: import('@/shared/resume-completion').ResumeCompletionDocument
+  /** 仅后台生成任务可以登记首版面试建议。 */
+  interview_task_version?: string
   result_context?: ResultSessionContextRecord
   progress?: ResultSessionProgressRecord
   card_color?: string | null

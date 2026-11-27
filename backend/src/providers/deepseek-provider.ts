@@ -2,7 +2,7 @@ import OpenAI from 'openai'
 import {providerCallRecorder, type ProviderCallRecorder} from '@/services/provider-call-recorder'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { env } from '@/config/env'
-import { deepSeekThinkingParameters, parseDeepSeekThinking, isResumeExtractionRequest, isWritingRequest, resolveDeepSeekStageThinking, type DeepSeekThinkingSettings, type DeepSeekExtractionThinkingMode } from '@/config/deepseek-thinking'
+import { deepSeekThinkingParameters, V5_THINKING_MODE } from '@/config/deepseek-thinking'
 import { createHarnessEvent } from '@/harness/events'
 import { createDigest } from '@/harness/run-context'
 import type { ChatCompletionInput, ChatCompletionResult, LlmProvider } from '@/providers/llm-provider'
@@ -47,10 +47,8 @@ function composeAbortSignals(...candidates: Array<AbortSignal | undefined>) {
 export class DeepSeekProvider implements LlmProvider {
   private readonly client: OpenAI
 
-  constructor(client?: OpenAI, private readonly thinkingSettings?: DeepSeekThinkingSettings,
-    private readonly extractionThinkingMode: DeepSeekExtractionThinkingMode = env.DEEPSEEK_P01_THINKING_MODE,
-    private readonly callRecorder: Pick<ProviderCallRecorder, 'begin'> = providerCallRecorder,
-    private readonly writingThinkingSettings: DeepSeekThinkingSettings = parseDeepSeekThinking(env.DEEPSEEK_WRITING_THINKING_MODE, env.DEEPSEEK_WRITING_REASONING_EFFORT)) {
+  constructor(client?: OpenAI,
+    private readonly callRecorder: Pick<ProviderCallRecorder, 'begin'> = providerCallRecorder) {
     this.client = client ?? new OpenAI({
       apiKey: env.OPENAI_API_KEY,
       baseURL: env.OPENAI_BASE_URL,
@@ -60,19 +58,8 @@ export class DeepSeekProvider implements LlmProvider {
 
   async complete(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     const model = input.model ?? env.AI_MODEL
-    const resolvedSettings = resolveDeepSeekStageThinking(
-      this.thinkingSettings ?? parseDeepSeekThinking(env.DEEPSEEK_THINKING_MODE, env.DEEPSEEK_REASONING_EFFORT),
-      this.extractionThinkingMode,
-      isResumeExtractionRequest(input),
-      this.writingThinkingSettings,
-      isWritingRequest(input)
-    )
-    const settings = input.thinkingOverride === 'disabled'
-      ? { ...resolvedSettings, mode: 'disabled' as const }
-      : resolvedSettings
-    const thinking = deepSeekThinkingParameters(model, env.OPENAI_BASE_URL, settings)
+    const thinking = deepSeekThinkingParameters(model, env.OPENAI_BASE_URL)
     const maxOutputTokens = input.maxOutputTokens
-      ?? (settings.mode === 'enabled' ? env.DEEPSEEK_THINKING_MAX_TOKENS : undefined)
     const startedAt = Date.now()
     const startedAtIso = new Date(startedAt).toISOString()
     const inputDigest = createDigest(input.messages.map((message) => message.content).join('\n'))
@@ -93,11 +80,10 @@ export class DeepSeekProvider implements LlmProvider {
             transportMode: 'stream',
             promptVersion: input.promptVersion,
             inputDigest,
-            temperature: settings.mode === 'enabled' ? undefined : input.temperature,
+            temperature: input.temperature,
             ...thinking,
-            thinkingMode: settings.mode,
-            reasoningEffort: settings.mode === 'enabled' ? settings.effort : null,
-            thinkingOverride: input.thinkingOverride ?? null,
+            thinkingMode: V5_THINKING_MODE,
+            reasoningEffort: null,
             maxOutputTokens,
             strictSchema: input.structuredOutput?.name,
             strictSchemaTransport: input.structuredOutput
@@ -108,6 +94,10 @@ export class DeepSeekProvider implements LlmProvider {
             repairScope: input.callMetadata?.repairScope,
             retryIndex: input.callMetadata?.retryIndex ?? 0,
             budgetRemaining: input.callMetadata?.budgetRemaining ?? null,
+            ...(input.stepContext.sourceShardIndex === undefined ? {} : {sourceShardIndex: input.stepContext.sourceShardIndex}),
+            ...(input.stepContext.deadlineMonotonicMs === undefined ? {} : {
+              stageBudgetRemainingMs: Math.max(0, Math.round(input.stepContext.deadlineMonotonicMs - performance.now())),
+            }),
             promptManifest: input.promptManifest,
           },
         })
@@ -126,11 +116,10 @@ export class DeepSeekProvider implements LlmProvider {
       model,
       messages: input.messages,
       response_format: responseFormat,
-      ...(settings.mode === 'enabled' ? {} : { temperature: input.temperature }),
+      temperature: input.temperature,
       ...thinking,
       max_tokens: maxOutputTokens,
     }
-    const responseThinking = thinking
     const physicalAttempts = 1
     let timeToFirstChunkMs: number | undefined
     let timeToFirstContentMs: number | undefined
@@ -173,7 +162,7 @@ export class DeepSeekProvider implements LlmProvider {
         if (!finished) throw new Error('PROVIDER_STREAM_INCOMPLETE')
         return { id, model: resolvedModel, choices: [{ message: { content }, finish_reason: finishReason }], usage }
       } catch (error) {
-        await call.fail(error)
+        await call.fail(requestSignal.signal?.aborted ? requestSignal.signal.reason : error)
         throw error
       } finally {
         requestSignal.dispose()
@@ -194,6 +183,7 @@ export class DeepSeekProvider implements LlmProvider {
       streamChunkCount,
       providerRequestId: response.id,
       finishReason: response.choices[0]?.finish_reason,
+      thinkingMode: V5_THINKING_MODE,
       inputTokens: response.usage?.prompt_tokens,
       outputTokens: response.usage?.completion_tokens,
       physicalAttempts,
@@ -234,11 +224,11 @@ export class DeepSeekProvider implements LlmProvider {
             contextMode: input.callMetadata?.contextMode,
             retryIndex: input.callMetadata?.retryIndex ?? 0,
             reasoningTokens: result.reasoningTokens,
+            ...(input.stepContext.sourceShardIndex === undefined ? {} : {sourceShardIndex: input.stepContext.sourceShardIndex}),
             requestedModel: model,
-            ...responseThinking,
-            thinkingMode: settings.mode,
-            reasoningEffort: settings.mode === 'enabled' ? settings.effort : null,
-            thinkingOverride: input.thinkingOverride ?? null,
+            ...thinking,
+            thinkingMode: V5_THINKING_MODE,
+            reasoningEffort: null,
             outputDigest: createDigest(result.content),
             promptManifest: input.promptManifest
               ? {

@@ -1,7 +1,7 @@
 import {describe, expect, test} from 'bun:test'
 import type {GenerationJob, GenerationJobPayload} from '@/types/generation-job'
 import {assertGenerationJobVersion, generationJobRetryChanges, GenerationJobVersionError} from './generation-job-version'
-import {GenerationJobWorker} from './generation-jobs'
+import {GenerationJobWorker, jobHistory} from './generation-jobs'
 import type {v5SingleStepAdapter} from '@/v5/single-step-adapter'
 import type {ResumeHistoryRecord} from '@/types'
 import {V5WorkflowBlockedError} from '@/v5/errors'
@@ -30,6 +30,16 @@ function workerHarness(initial: GenerationJob, options: {existingHistory?: Resum
       current = {...current, ...structuredClone(changes)}
       return current
     },
+    commit: async (_job, changes, history) => {
+      if (history) calls.historySave++
+      current = {...current, ...structuredClone(changes), ...(changes.status === 'completed' ? {lease_token: null} : {})}
+      return current
+    },
+    stop: async (_owner, _id, failure) => {
+      if (!failure) return null
+      current = {...current, status: 'failed', payload: failure.payload, error: failure.error, lease_token: null}
+      return current
+    },
     quota: async (_job, consume) => {calls.quota.push(consume)},
   }
   const adapter: ConstructorParameters<typeof GenerationJobWorker>[1] = {
@@ -40,18 +50,29 @@ function workerHarness(initial: GenerationJob, options: {existingHistory?: Resum
     },
     match: async () => {calls.model++; throw options.matchingError ?? new Error('test stops after analysis')},
     generate: async () => {calls.model++; throw new Error('unexpected generation')},
-    interview: async () => {calls.model++; throw new Error('unexpected interview')},
   }
   const histories: ConstructorParameters<typeof GenerationJobWorker>[2] = {
     findById: async () => options.existingHistory ?? null,
-    save: async () => {calls.historySave++; return {id: `JD-${current.id}`} as ResumeHistoryRecord},
-    update: async () => {calls.historySave++; return {id: `JD-${current.id}`} as ResumeHistoryRecord},
   }
   return {worker: new GenerationJobWorker(repository, adapter, histories, () => fingerprint),
     getJob: () => current, calls}
 }
 
 describe('生成版本与显式重试', () => {
+  test('简历已交付时可以在没有面试建议的情况下保存历史', () => {
+    const job = makeJob({stage: 'saving'})
+    job.payload = {
+      ...job.payload,
+      analysis,
+      matching: {match_score: 70, skill_match: {matched: []}, hard_requirements_match: {}, optimization_suggestions: []} as unknown as NonNullable<GenerationJobPayload['matching']>,
+      optimized: {optimized_resume: '# 已交付简历', changes_summary: [], preparation_topics: [],
+        strategy_review: undefined, improvement_score: null},
+    }
+    const history = jobHistory(job)
+    expect(history.progress).toEqual({analysis: 'done', matching: 'done', optimized: 'done', interview: 'pending'})
+    expect(history.process_result).not.toHaveProperty('interview')
+  })
+
   test('旧的部分结果不能混入新版本，纯输入可以执行', () => {
     const job = makeJob()
     expect(() => assertGenerationJobVersion(job.payload, fingerprint)).not.toThrow()
@@ -155,9 +176,12 @@ describe('生成版本与显式重试', () => {
     const job = makeJob({stage: 'saving'})
     job.payload.failure = {code: 'GENERATION_FAILED', stage: 'saving', issueCodes: [], retryable: false,
       action: 'inspect_harness_events', occurredAt: now}
-    // findById 的契约是领域对象（camelCase）：已有正文明细视为用户已编辑，不能重跑覆盖。
-    const existing = {id: `JD-${job.id}`, optimizedContent: '用户后来填写的正文'} as unknown as ResumeHistoryRecord
-    const harness = workerHarness(job, {existingHistory: existing})
+    const existing = {
+      id: `JD-${job.id}`,
+      optimized_content: '用户后来填写的正文',
+      progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: 'pending'},
+    } satisfies Pick<ResumeHistoryRecord, 'id' | 'optimized_content' | 'progress'>
+    const harness = workerHarness(job, {existingHistory: existing as ResumeHistoryRecord})
     await harness.worker.execute(job)
     expect(harness.calls.model).toBe(0)
     expect(harness.calls.historySave).toBe(0)

@@ -4,6 +4,7 @@ import { JOB_TARGETING_POLICY, isJobTargetedEnvelope, jobFitMapTransportSchema, 
 import { buildJobTargets, validateTargetedJobExtraction } from '@/v5/targeting/profile'
 import { compactTargetingResume, coreTaskEvidence, projectLegacyMatch, targetingEvidenceScores, validateJobFitMap } from '@/v5/targeting/fit'
 import { createTargetingFixture } from '@/v5/tests/targeting-fixtures'
+import { runV5StructuredStage } from '@/v5/stage-runner'
 import { parseEvaluationRunnerArgs } from '@/v5/evaluation-runner-support'
 import { buildAdaptiveStrategy } from '@/v5/adaptive-policy'
 import { buildDeterministicV5ResumePlan } from '@/v5/validators'
@@ -47,6 +48,49 @@ function createClaimTypeCoverageFixture(claimType: 'result' | 'deliverable') {
 }
 
 describe('job-targeted internal contracts', () => {
+  test('restores P02 and P02R transport coverage while still validating missing source blocks', async () => {
+    const {document, candidate} = createTargetingFixture()
+    const {coverageClaim, ...compact} = candidate
+    const originalEnvelope = {payload: {jobTargetingPolicy: JOB_TARGETING_POLICY}}
+    for (const component of ['P02', 'P02R'] as const) {
+      const envelope = component === 'P02' ? originalEnvelope : {payload: {originalEnvelope, currentOutput: candidate}}
+      const run = (value: typeof compact) => runV5StructuredStage<typeof candidate>({
+        component, envelope, options: {provider: {complete: async request => {
+          expect(request.structuredOutput?.schema.safeParse(value).success).toBe(true)
+          return {provider: 'fixture', model: 'fixture', content: JSON.stringify(value), finishReason: 'stop', latencyMs: 1}
+        }}},
+      })
+      const normalized = await run(compact)
+      expect(normalized.value.coverageClaim).toEqual(coverageClaim)
+      expect(normalized.outputAudit.normalizationChanges).toContain('source_block_coverage_materialized')
+      expect(validateTargetedJobExtraction(document, normalized.value).passed).toBe(true)
+
+      const missing = await run({...compact, requirementCandidates: []})
+      expect(validateTargetedJobExtraction(document, missing.value).issues.some(issue => issue.code === 'BLOCK_SILENTLY_DROPPED')).toBe(true)
+    }
+  })
+  test('P02 repair diagnostics distinguish root uncertainty objects from profile strings', async () => {
+    const {candidate} = createTargetingFixture()
+    const {coverageClaim: _derived, ...compact} = candidate
+    const originalEnvelope = {payload: {jobTargetingPolicy: JOB_TARGETING_POLICY}}
+    const invalid = {...compact, uncertainties: ['需要来源记录'] }
+    for (const component of ['P02', 'P02R'] as const) {
+      const envelope = component === 'P02' ? originalEnvelope : {payload: {originalEnvelope, currentOutput: candidate}}
+      const prompt = compileV5Prompt({component, envelope})
+      expect(prompt.messages[0].content).toContain('uncertainties 是对象数组')
+      expect(prompt.messages[0].content).toContain('jobSuccessProfile.unknowns 是短字符串数组')
+      expect(prompt.messages[1].content).not.toContain('"coverageClaim"')
+      const run = runV5StructuredStage({
+        component, envelope, options: {provider: {complete: async () => ({
+          provider: 'fixture', model: 'fixture', content: JSON.stringify(invalid), finishReason: 'stop', latencyMs: 1,
+        })}},
+      })
+      await expect(run).rejects.toMatchObject({
+        code: 'V5_SCHEMA_VALIDATION_FAILED',
+        validationIssues: [expect.objectContaining({path: 'uncertainties.0', code: 'invalid_type'})],
+      })
+    }
+  })
   test('selects new contracts only from server wrappers, never from raw source or model repair output', () => {
     const envelope = { payload: { jobTargetingPolicy: JOB_TARGETING_POLICY } }
     expect(schemaForV5Component('P02', envelope)).toBe(targetedJobExtractionSchema)

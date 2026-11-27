@@ -93,6 +93,38 @@ runner v10 固定 `dsl_v1`，P06D 最多一次，artifact 模型修复为 0，in
 
 ## 独立续跑 P12
 
+### 改动前后配对评测
+
+任务级体验比较使用两个版本各自的本地测试服务。两个进程使用相同模型与配置，分别设置新的 `SQLITE_DATABASE_PATH` 和 `HARNESS_DATABASE_PATH`。保留同一版本的缓存用于重复请求。输入文件为 JSON 数组，每项包含唯一 `id`、`resume_markdown` 和 `jd_text`，使用合成或已获准的评测材料。版本标签记录实际运行的提交或构建。
+
+```bash
+cd backend
+bun run scripts/compare-generation-jobs.ts --fixtures /tmp/reffo-fixtures.json
+bun run scripts/compare-generation-jobs.ts --fixtures /tmp/reffo-fixtures.json \
+  --baseline http://127.0.0.1:3001/api/v1 --baseline-version <基线提交> \
+  --candidate http://127.0.0.1:3002/api/v1 --candidate-version <候选构建> \
+  --blind-output /tmp/reffo-blind-review --live
+```
+
+每项在两个版本上提交同一份材料，交替版本顺序。首次请求使用冷缓存，双方均读到简历时用全新任务 ID 重复提交原始输入。报告中的 `repeat` 表示同输入重复请求，实际命中情况由各服务的缓存记录核对。脚本保留已提交任务中的失败和超时，分别汇总可读简历和面试建议的结果。报告同时给出已观察里程碑的 P50/P95 和以全部受理任务为分母的 P50/P95。固定时限内可用率不足 95% 时，后者的 P95 为空。取时从客户端 POST 开始，`runningObservedMs` 受轮询间隔影响，`readableMs` 以结果详情接口首次返回可读正文为准。浏览器页面渲染与服务端持久化耗时应从各自的测试或事件记录获取。
+
+`review.json` 保存同一输入下的原简历、原 JD 和随机编号 A/B 的首次成稿。两侧都成功的样本进入盲评，任务失败保留在体验统计里。独立评审先在两份源材料上标注岗位核心任务、最有代表性的贡献与结果、参与程度及数据限定，再按七维标准比较匿名稿。用 `key.json` 在提交评审结果后解盲。两个文件均保存在本地私有目录，评审只读取 `review.json`。分别记录胜负和平局、事实门禁、重要成果召回和样本数。评审资料和标准参照 [招聘质量标准](./v5-recruiter-quality-standard.md)。
+
+### V5 交付重构合成样本记录
+
+以 `f893a8d` 为基线，两个服务各用隔离的 SQLite 数据库，并使用同一 DeepSeek 模型。在 P02 字段契约、P03 职责边界和 P06C 覆盖记录修正后的跑次中，两边均交付了以下简历和面试建议。时间自任务提交起算，取整到秒。
+
+| 合成样本 | 基线首份简历 | 候选首份简历 | 候选面试就绪 | 匿名稿偏好 |
+| --- | ---: | ---: | ---: | --- |
+| 企业服务产品运营 | 约 83 秒 | 约 62 秒 | 约 83 秒 | 候选，摘要更聚焦 |
+| 内容社区创作者运营 | 89 秒 | 53 秒 | 74 秒 | 基线，正文分项与来源更贴合 |
+
+两组草稿各保留 4 项代表性事实。早期跑次复现了基线的面试失败阻塞简历，以及候选的岗位结构、匹配和写作覆盖校验失败。上述耗时来自两组小样本，尚不足以估计总体 P95 或失败率。内容运营样本原样重复提交，基线约 1 秒、候选约 2 秒。该跑次后，为新任务增加了受理后立即尝试领取的路径。
+
+盲评检出了两组草稿中的本科学历遗漏。P01 已记录原文但没有对应的教育时间线，服务端补齐经核对的显式学历记录，交由现有编译器呈现。上表时间和偏好取自该修正之前的冻结稿。学历修正后，产品运营样本通过真实模型重新交付，约 67 秒可打开，原文学校、专业、学历、日期均出现在成稿中。同次面试建议校验失败，已保存简历仍可读取。P10/P10R 明确讲述提纲的数组结构后，对该稿单独重试约 22 秒生成 4 道问题与 2 个故事，简历正文一致。
+
+### 冻结生成结果的双顺序 P12
+
 当 `generation-only` 已完成，或 `full` 已写入完整 `v5_result` 后才在 P12 前失败，可以用 `judge-only` 从冻结生成目录补跑双顺序盲评。续跑必须使用全新的输出目录；运行器只读取 source-run，不会把旧 `v5_result` 伪装成当前实现生成的检查点。
 
 ```bash
@@ -114,7 +146,7 @@ bun --env-file=.env.nonprod run scripts/run-v5-nonprod-nine-case-blind-eval.ts \
 
 Provider 初始化前，运行器会校验 source manifest 与 `v5_result` 的 envelope、payload SHA-256、案例/历史输入摘要、原实现与配置指纹的相互绑定、当前 Schema、当前确定性成品门禁以及 Markdown 副本。只有 `state=succeeded`、`deliveryDecision=deliver`、三项质量门禁全部为 `pass`、未使用安全回退且产物来源为 `model`、`model_repair` 或当前默认的 `server_compiler` 才能进入 P12；`internal_only`、`review_required` 和历史回退产物均在外呼前拒绝。source-run 必须来自相同 runner 协议的 `generation-only` 或 `full`，案例选择必须完全一致，且 source/output 不得相同或互相嵌套。v8 source-run 不兼容 v9，必须使用全新的 v9 生成目录。若来源已有完整盲评、已成功或返回 Token 的 P12，或有未结算的 P12 预留，续跑会在外呼前阻断；只有已结算且 Provider 未返回 Token 的取消请求可在用户明确授权后补跑。没有返回用量不等于能够证明第三方绝对未计费。
 
-新的 judge-only 目录会保存自己的 run manifest、预算与 usage journal、从已验证来源确定性构造的 `blind_eval_input`、P12 双序结果和案例摘要。manifest 记录 source manifest 及各案例 `v5_result` 的原始内容摘要和原始指纹；评审检查点使用本次 judge-only 实现与配置指纹，因此不会伪造生成结果的来源。P12 按顺序执行两个匿名次序，第一序失败时不会发送第二序；发送给 P12 的上下文会去除重复抽取账本，只保留事实核验所需的证据、时间线、岗位需求和候选正文。单案例 judge-only 的硬上限为 2 次物理调用、150,000 输入 Token、20,000 输出 Token 和 5 分钟。
+新的 judge-only 目录会保存自己的 run manifest、预算与 usage journal、从已验证来源确定性构造的 `blind_eval_input`、P12 双序结果和案例摘要。manifest 记录 source manifest 及各案例 `v5_result` 的原始内容摘要和原始指纹；评审检查点使用本次 judge-only 实现与配置指纹，因此不会伪造生成结果的来源。P12 按顺序执行两个匿名次序，第一序失败时不会发送第二序。上下文包含按原顺序排列的简历与 JD 原始行，使用与匿名成稿相同的联系人遮蔽规则。评审独立读源材料，结合精简后的证据、时间线和需求定位事实。单案例 judge-only 的硬上限为 2 次物理调用、150,000 输入 Token、20,000 输出 Token 和 5 分钟。
 
 ## 私有响应记录与离线回放
 

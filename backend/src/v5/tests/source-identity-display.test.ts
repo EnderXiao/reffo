@@ -8,6 +8,7 @@ import {sourceBusinessDisplayText} from '@/v5/composition/source-display'
 import {toResumeAnalysis} from '@/v5/main/compatibility'
 import {renderValidatedCompositionArtifact} from '@/v5/composition/compiler'
 import {buildCompositionBlueprint} from '@/v5/composition/blueprint'
+import {buildDeterministicV5ResumePlan, validateGeneratedResumeArtifact} from '@/v5/validators'
 
 function fixture() {
   const r = createV5ResultFixture()
@@ -57,6 +58,45 @@ test('education adds academic distinction rather than repeating a heading with t
   expect(isEducationIdentityOnly({...atoms[1]!, verbatimText: '示例大学 | 服务系统设计 | 理学硕士2021-2025'}, scope)).toBe(false)
   expect(isEducationIdentityOnly({...atoms[1]!, verbatimText: '示例大学 | 服务系统设计 | 理学硕士2021-2024（2024.06毕业）'}, scope)).toBe(false)
   expect(educationDetailPriority(atoms[2]!, scope)).toBeGreaterThan(educationDetailPriority(atoms[1]!, scope))
+})
+
+test('a whole supported education row without a model timeline survives planning and rendering', () => {
+  const {r, atoms} = fixture()
+  const source = canonicalizeSourceDocument('# 林乔\n## 教育经历\n- 城南学院｜信息管理｜本科｜2020.06', 'unscoped-education').canonicalDocument
+  const nameBlock = source.blocks[0]!
+  const name = {...atoms[1]!, evidenceId: 'synthetic-name', sourceScopeId: 'identity', claimType: 'identity' as const,
+    sourceDocumentHash: source.sha256, sourceBlockId: nameBlock.sourceBlockId, sourceSpan: {start: nameBlock.canonicalStart, end: nameBlock.canonicalEnd},
+    verbatimText: nameBlock.text, normalizedClaim: '林乔', numericAtoms: []}
+  const block = source.blocks[2]!
+  const row = {...atoms[1]!, sourceScopeId: 'education', sourceBlockId: block.sourceBlockId, sourceDocumentHash: source.sha256,
+    sourceSpan: {start: block.canonicalStart, end: block.canonicalEnd}, verbatimText: block.text, normalizedClaim: block.text,
+    numericAtoms: [{raw: '2020.06', valueText: '2020.06', unit: null, qualifier: null, period: null, ownerScope: 'education'}]}
+  const empty = {...r.resumeEvidenceBundle, identity: {name: {value: '林乔', evidenceIds: [name.evidenceId]}, email: {value: null, evidenceIds: []},
+    phone: {value: null, evidenceIds: []}, cityLevelLocation: {value: null, evidenceIds: []}, links: []},
+    timeline: [], evidenceAtoms: [row, name], sections: [
+    {sectionId: 'education', type: 'education' as const, title: '教育经历', scopeIds: [], evidenceIds: [row.evidenceId]},
+  ]}
+  const resume = preserveSourceTimeline(source, empty)
+  const education = resume.timeline[0]!
+  expect(education).toMatchObject({kind: 'education', organization: '城南学院', title: '信息管理｜本科', start: null, end: '2020.06', evidenceIds: [row.evidenceId]})
+  expect(toResumeAnalysis({...r, resumeEvidenceBundle: resume}).structured_resume.education[0]).toMatchObject({major: '信息管理', degree: '本科', time_range: '2020.06'})
+  expect(resume.sections[0]!.scopeIds).toEqual([education.scopeId])
+  expect(resume.evidenceAtoms[0]!.numericAtoms[0]!.ownerScope).toBe(education.scopeId)
+  expect(preserveSourceTimeline(source, resume).timeline).toEqual(resume.timeline)
+  expect(preserveSourceTimeline(source, {...empty, evidenceAtoms: [{...row, riskFlags: ['future_or_planned']}]}).timeline).toEqual([])
+  expect(preserveSourceTimeline(source, {...empty, evidenceAtoms: [{...row, verbatimText: '城南学院｜本科'}]}).timeline).toEqual([])
+
+  const policy = {...r.generationPolicy, sectionOrder: ['education'], targetBusinessBulletMin: 0, targetBusinessBulletTarget: 0,
+    outputLength: {...r.generationPolicy.outputLength, hardMin: 0, softMin: 0}}
+  const plan = buildDeterministicV5ResumePlan({resume, job: r.jobRequirementBundle, match: r.matchAnalysis, policy,
+    profile: r.strategyProfile, targetingScores: new Map()})
+  expect(plan.scopePlans).toEqual([expect.objectContaining({scopeId: education.scopeId, treatment: 'timeline_line', bulletBudget: 0})])
+  const blueprint = buildCompositionBlueprint({resume, plan, policy})
+  const {artifact} = renderValidatedCompositionArtifact({resume, plan, policy, blueprint, composition: {contractVersion: 'p06-composition-v1', blocks: []}})
+  expect(artifact.markdown).toContain('## 教育背景\n\n城南学院｜信息管理｜本科｜2020.06')
+  expect(artifact.claims).toContainEqual(expect.objectContaining({outputPath: `timeline.${education.scopeId}`, evidenceIds: [row.evidenceId]}))
+  const checked = validateGeneratedResumeArtifact({artifact, resume, plan, policy, gateMode: 'relaxed_release'})
+  expect(checked.issues.filter(issue => issue.severity === 'error').map(issue => issue.code)).toEqual([])
 })
 
 test('school-scoped awards retain exact school attribution in a separate honors section', () => {

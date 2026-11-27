@@ -1,7 +1,7 @@
 import {expect, test} from 'bun:test'
 import {GenerationJobWorker} from '@/services/generation-jobs'
 import type {GenerationJob} from '@/types/generation-job'
-import type {ResumeHistoryRecord, SaveResumeHistoryInput} from '@/types'
+import type {SaveResumeHistoryInput} from '@/types'
 
 function createJob(): GenerationJob {
   return {
@@ -60,13 +60,7 @@ const optimized = {
   improvement_score: 4,
 }
 
-const interview = {
-  questions: ['请介绍一次架构优化'],
-  story_recommendations: [],
-  follow_up_questions: [],
-}
-
-test('后台任务分析完成后写入部分历史，并逐阶段更新同一结果', async () => {
+test('后台任务逐阶段保存同一份简历，交付时无需等待面试建议', async () => {
   let job = createJob()
   const historyInputs: SaveResumeHistoryInput[] = []
   const repository = {
@@ -78,6 +72,11 @@ test('后台任务分析完成后写入部分历史，并逐阶段更新同一�
       job = {...job, ...changes}
       return job
     },
+    commit: async (_job: GenerationJob, next: Partial<GenerationJob>, input?: SaveResumeHistoryInput) => {
+      if (input) historyInputs.push(input)
+      job = {...job, ...next}
+      return job
+    },
     renew: async () => job,
     quota: async () => undefined,
     claim: async () => null,
@@ -85,25 +84,12 @@ test('后台任务分析完成后写入部分历史，并逐阶段更新同一�
     get: async () => job,
     list: async () => [job],
   }
-  const histories = {
-    save: async (_context: unknown, input: SaveResumeHistoryInput) => {
-      historyInputs.push(input)
-      return input as unknown as ResumeHistoryRecord
-    },
-    update: async (_context: unknown, _id: string, input: SaveResumeHistoryInput) => {
-      historyInputs.push(input)
-      return input as unknown as ResumeHistoryRecord
-    },
-    list: async () => [],
-    findById: async () => null,
-    delete: async () => true,
-    clear: async () => 0,
-  }
+  const histories = {findById: async () => null}
   const adapter = {
     analyze: async () => ({data: analysis, cache: {status: 'miss'}}),
     match: async () => ({data: matching}),
     generate: async () => ({data: optimized}),
-    interview: async () => ({data: interview}),
+    interview: async () => { throw new Error('生成简历时不应调用面试阶段') },
   }
   const worker = new GenerationJobWorker(
     repository as never,
@@ -113,7 +99,7 @@ test('后台任务分析完成后写入部分历史，并逐阶段更新同一�
 
   await worker.execute(createJob())
 
-  expect(historyInputs).toHaveLength(5)
+  expect(historyInputs).toHaveLength(3)
   expect(historyInputs[0].id).toBe(`JD-${job.id}`)
   expect(historyInputs[0].process_result).toMatchObject({analysis})
   expect(historyInputs[0].process_result).not.toHaveProperty('matching')
@@ -133,15 +119,16 @@ test('后台任务分析完成后写入部分历史，并逐阶段更新同一�
     analysis: 'done',
     matching: 'done',
     optimized: 'done',
-    interview: 'generating',
+    interview: 'pending',
   })
   const finalResult = historyInputs.at(-1)?.process_result as {
     analysis?: typeof analysis
     matching?: {match_score?: number}
     optimized?: typeof optimized
-    interview?: typeof interview
   }
-  expect(finalResult).toMatchObject({analysis, optimized, interview})
+  expect(finalResult).toMatchObject({analysis, optimized})
+  expect(finalResult).not.toHaveProperty('interview')
+  expect(historyInputs.every(input => input.id === job.history_id)).toBe(true)
   expect(finalResult.matching?.match_score).toBe(matching.match_score)
   expect(job.status).toBe('completed')
   expect(job.history_id).toBe(`JD-${job.id}`)

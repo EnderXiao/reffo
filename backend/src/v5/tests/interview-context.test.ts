@@ -6,6 +6,31 @@ import { validateInterviewPreparation } from '@/v5/validators'
 import type { EvidenceAtom, InterviewPreparation } from '@/v5/types'
 
 describe('P10 evidence context', () => {
+  test('provides questions and follow-ups without fabricated stories for materials without interview practice evidence', () => {
+    const result = createV5ResultFixture()
+    const full = buildInterviewContext(result)
+    expect(full.hasStoryEvidence).toBe(true)
+    result.resumeEvidenceBundle.evidenceAtoms = result.resumeEvidenceBundle.evidenceAtoms.filter(atom => atom.claimType === 'skill')
+    const sparse = buildInterviewContext(result)
+    expect(sparse.hasStoryEvidence).toBe(false)
+    const value = {schemaVersion: '5.0.0', storyRecommendations: [],
+      questions: (['core_task', 'project_deep_dive', 'gap_or_transfer', 'context_scenario'] as const).map(category => ({
+        category, question: '能否举出真实例子？', relatedRequirementIds: [], relatedEvidenceIds: [], preparationFocus: '准备本人真实实践', assumptionContextIds: [],
+      })),
+      followUpQuestions: Array.from({length: 3}, () => ({
+        question: '如何评价该岗位的交付？', purpose: '了解验收标准', relatedRequirementIds: [], assumptionContextIds: [],
+      })),
+    }
+    for (const component of ['P10', 'P10R'] as const) {
+      const envelopeFor = (context: typeof sparse) => component === 'P10'
+        ? {payload: context} : {payload: {originalEnvelope: {payload: context}, currentOutput: sparse}}
+      expect(compileV5Prompt({component, envelope: envelopeFor(sparse)}).schema.safeParse(value).success).toBe(true)
+      expect(compileV5Prompt({component, envelope: envelopeFor(full)}).schema.safeParse(value).success).toBe(false)
+    }
+    const checked = validateInterviewPreparation({preparation: value as InterviewPreparation, artifact: result.artifact,
+      resume: result.resumeEvidenceBundle, job: result.jobRequirementBundle, match: result.matchAnalysis})
+    expect(checked.passed).toBe(true)
+  })
   test('explicit story options partition references by their real source scope',()=>{
     const result=createV5ResultFixture(), context=buildInterviewContext(result)
     const atoms=context.resumeEvidenceBundle.evidenceAtoms
