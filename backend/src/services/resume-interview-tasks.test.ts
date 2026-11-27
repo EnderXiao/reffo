@@ -6,7 +6,6 @@ import {expect, test} from 'bun:test'
 import {getDatabase} from '@/repositories/database'
 import {generationJobRepository} from '@/repositories/generation-job-repository'
 import {resumeHistoryRepository} from '@/repositories/resume-history-repository'
-import {resumeInterviewTaskRepository} from '@/repositories/resume-interview-task-repository'
 import {V5CheckpointRepository} from '@/repositories/v5-checkpoint-repository'
 import {V5AnalysisCacheRepository} from '@/repositories/v5-analysis-cache-repository'
 import {publicResumeHistory} from '@/routes/resume-history'
@@ -21,8 +20,9 @@ import {historyDocumentRef} from './resume-history-commit'
 import {projectManagedInterview, ResumeInterviewWorker, retryManagedInterview} from './resume-interview-tasks'
 import {generationJobRoutes} from '@/routes/generation-jobs'
 import {env} from '@/config/env'
+import {subscribeGenerationJobUpdates} from './generation-job-events'
 
-test('SQLite delivers a saved resume before P10 and keeps concurrent writes scoped to the saved version', async () => {
+test('SQLite delivers before P10 and retains the first resume version through edits, retry and lease recovery', async () => {
   if (!process.env.REFFO_INTERVIEW_TASK_TEST_DATABASE) {
     const directory = mkdtempSync(join(tmpdir(), 'reffo-interview-task-'))
     try {
@@ -56,41 +56,18 @@ test('SQLite delivers a saved resume before P10 and keeps concurrent writes scop
   expect(complete?.status).toBe('completed')
   expect(fixture.interviewInputs).toHaveLength(0)
   const historyId = complete!.history_id!
-  const read = async () => projectManagedInterview(context.userId, (await resumeHistoryRepository.findById(context, historyId))!)
+  const read = async () => projectManagedInterview((await resumeHistoryRepository.findById(context, historyId))!)
   const initial = await read()
   expect(initial.optimized_content).toContain('团队交付3个功能')
   expect(initial.interview_task?.status).toBe('pending')
   expect(publicResumeHistory(initial).process_result).not.toHaveProperty('server_interview_task')
 
-  const first = (await resumeInterviewTaskRepository.claim())!
-  await new ResumeInterviewWorker(resumeInterviewTaskRepository, resumeHistoryRepository, {
-    interview: async () => { throw new Error('fixture provider timeout') },
-  }).execute(first)
-  const failed = await read()
-  expect(failed.interview_task?.status).toBe('failed')
-  expect(failed.optimized_content).toBe(initial.optimized_content)
-  expect((await generationJobRepository.get(context.userId, id))?.status).toBe('completed')
-  await Promise.all([retryManagedInterview(context.userId, failed), retryManagedInterview(context.userId, failed)])
-  const retry = (await resumeInterviewTaskRepository.claim())!
-  expect(retry.version).toBe(first.version)
-  expect(await resumeInterviewTaskRepository.claim()).toBeNull()
-  expect(await resumeInterviewTaskRepository.finish(first, 'failed')).toBe(false)
-  await new ResumeInterviewWorker(resumeInterviewTaskRepository, resumeHistoryRepository, adapter).execute(retry)
-  const done = await read()
-  expect(done.interview_task?.status).toBe('done')
-  const result = done.process_result as {optimized: {completion_document: ResumeCompletionDocument}}
-  const reference = historyDocumentRef(done.process_result)
-  expect(done.process_result).toHaveProperty('interview.based_on_document', reference)
-  const work = result.optimized.completion_document
-
-  const publicResult = publicResumeHistory(done).process_result as Record<string, unknown>
-  await resumeHistoryRepository.update(context, historyId, {
-    process_result: {...publicResult, interview: {}, server_interview_task: 'forged'},
-    progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: 'failed'},
-    expected_document: {documentId: work.documentId, revision: work.revision, resolvedDigest: reference.resolvedDigest!},
-  })
-  expect((await read()).process_result).toHaveProperty('interview.based_on_document', reference)
-
+  const first = (await generationJobRepository.claimInterview())!
+  expect(first.id).toBe(id)
+  const initialVersion = historyDocumentRef(initial.process_result)
+  const original = initial.process_result as {optimized: {completion_document: ResumeCompletionDocument}}
+  const work = original.optimized.completion_document
+  const publicResult = publicResumeHistory(initial).process_result as Record<string, unknown>
   const gap = collectGaps(work).find(item => item.kind === 'optional_gap_clause')!
   const change = applyCompletionCommand(work, {documentId: work.documentId, baseRevision: work.revision,
     gapId: gap.gapId, type: 'fill', value: '梳理交互流程'})
@@ -98,24 +75,57 @@ test('SQLite delivers a saved resume before P10 and keeps concurrent writes scop
   const markdown = serializeDraft(change.document)
   await resumeHistoryRepository.update(context, historyId, {
     optimized_content: markdown,
-    process_result: {...publicResult, optimized: {...result.optimized, completion_document: change.document, optimized_resume: markdown}},
+    process_result: {...publicResult, optimized: {...original.optimized, completion_document: change.document, optimized_resume: markdown}},
     completion_edit: {documentId: work.documentId, baseRevision: work.revision, operations: [change.operation]},
-    expected_document: {documentId: work.documentId, revision: work.revision, resolvedDigest: reference.resolvedDigest!},
+    expected_document: {documentId: work.documentId, revision: work.revision, resolvedDigest: initialVersion.resolvedDigest!},
   })
-  const edited = await read()
-  expect(edited.interview_task?.status).toBe('stale')
-  expect(edited.process_result).not.toHaveProperty('interview')
-  expect(await retryManagedInterview(context.userId, edited)).toBe(true)
-  const oldLease = (await resumeInterviewTaskRepository.claim())!
-  expect(oldLease.version).not.toBe(first.version)
-  getDatabase().query('UPDATE resume_interview_tasks SET available_at = ? WHERE user_id = ? AND version = ?')
-    .run('2026-11-10T00:00:00.000Z', context.userId, oldLease.version)
-  const reclaimed = (await resumeInterviewTaskRepository.claim())!
-  expect(reclaimed.lease_token).not.toBe(oldLease.lease_token)
-  expect(await resumeInterviewTaskRepository.finish(oldLease, 'done')).toBe(false)
+  expect((await read()).interview_task?.status).toBe('pending')
+  await new ResumeInterviewWorker(generationJobRepository, resumeHistoryRepository, {
+    interview: async () => { throw new Error('fixture provider timeout') },
+  }).execute(first)
+  const failed = await read()
+  expect(failed.interview_task?.status).toBe('failed')
+  expect(failed.optimized_content).toBe(markdown)
+  expect((await generationJobRepository.get(context.userId, id))?.status).toBe('completed')
+  expect(await retryManagedInterview('different-owner', failed)).toBe(false)
+  await Promise.all([retryManagedInterview(context.userId, failed), retryManagedInterview(context.userId, failed)])
+  const retry = (await generationJobRepository.claimInterview())!
+  expect(retry.id).toBe(first.id)
+  expect(await generationJobRepository.claimInterview()).toBeNull()
+  expect(await generationJobRepository.finishInterview(first, 'failed')).toBeNull()
+  getDatabase().query('UPDATE resume_generation_jobs SET interview_available_at = ? WHERE id = ?')
+    .run('2026-11-10T00:00:00.000Z', retry.id)
+  const reclaimed = (await generationJobRepository.claimInterview())!
+  expect(reclaimed.interview_lease_token).not.toBe(retry.interview_lease_token)
+  expect(await generationJobRepository.finishInterview(retry, 'failed')).toBeNull()
+  const notifications: Array<{status: string | null | undefined; resultWritten: boolean}> = []
+  const unsubscribe = subscribeGenerationJobUpdates(event => {
+    if (event.job.id !== id) return
+    const resultWritten = getDatabase().query(`SELECT 1 FROM resume_histories WHERE user_id = ? AND id = ?
+      AND json_type(process_result_json, '$.interview') = 'object'`).get(context.userId, historyId) != null
+    notifications.push({status: event.job.interview_status, resultWritten})
+  })
+  await new ResumeInterviewWorker(generationJobRepository, resumeHistoryRepository, adapter).execute(reclaimed)
+  unsubscribe()
+  const done = await read()
+  expect(done.interview_task?.status).toBe('done')
+  const reference = historyDocumentRef(done.process_result)
+  expect(reference.revision).toBe(change.document.revision)
+  expect(done.optimized_content).toBe(markdown)
+  expect(done.process_result).toHaveProperty('interview.based_on_document', initialVersion)
+  expect(fixture.interviewInputs).toHaveLength(1)
+  expect(notifications).toEqual([{status: 'done', resultWritten: true}])
+  await resumeHistoryRepository.update(context, historyId, {
+    process_result: {...publicResumeHistory(done).process_result as Record<string, unknown>, interview: {}, server_interview_task: 'forged'},
+    progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: 'failed'},
+    expected_document: {documentId: work.documentId, revision: change.document.revision, resolvedDigest: reference.resolvedDigest!},
+  })
+  const saved = await read()
+  expect(saved.process_result).toHaveProperty('interview.based_on_document', initialVersion)
+  expect(await retryManagedInterview(context.userId, saved)).toBe(true)
+  expect(await generationJobRepository.claimInterview()).toBeNull()
   expect(await resumeHistoryRepository.delete(context, historyId)).toBe(true)
-  expect(await resumeInterviewTaskRepository.finish(reclaimed, 'done')).toBe(false)
-  expect(await resumeInterviewTaskRepository.find(context.userId, historyId, first.version)).toBeNull()
+  expect(await generationJobRepository.finishInterview(reclaimed, 'failed')).toBeNull()
   expect(await resumeHistoryRepository.findById(context, historyId)).toBeNull()
 
   const cancel = (id: string) => generationJobRoutes.handle(new Request(
@@ -143,7 +153,7 @@ test('SQLite delivers a saved resume before P10 and keeps concurrent writes scop
   expect(cancelledHistory?.optimized_content).toBe('')
   expect(cancelledHistory?.progress).toMatchObject({analysis: 'done', matching: 'done', optimized: 'failed'})
   expect(cancelledHistory?.process_result).not.toHaveProperty('optimized')
-  expect(await resumeInterviewTaskRepository.claim()).toBeNull()
+  expect(await generationJobRepository.claimInterview()).toBeNull()
   expect((await generationJobRepository.get(localContext.userId, cancelledId))?.status).toBe('cancelled')
 
   const deliveredId = randomUUID()
@@ -153,13 +163,13 @@ test('SQLite delivers a saved resume before P10 and keeps concurrent writes scop
   await new GenerationJobWorker(generationJobRepository, adapter).execute(afterDelivery!)
   expect((await cancel(deliveredId)).status).toBe(409)
   const deliveredHistory = await resumeHistoryRepository.findById(localContext, `JD-${deliveredId}`)
-  expect((await projectManagedInterview(localContext.userId, deliveredHistory!)).interview_task?.status).toBe('pending')
+  expect(projectManagedInterview(deliveredHistory!).interview_task?.status).toBe('pending')
   expect(deliveredHistory?.optimized_content).toContain('团队交付3个功能')
 
   // 模拟旧版本保存了正文和可信基线，任务确认及首版面试登记尚未完成。
   const legacyHistoryId = deliveredHistory!.id
   const db = getDatabase()
-  db.query('DELETE FROM resume_interview_tasks WHERE user_id = ? AND history_id = ?').run(localContext.userId, legacyHistoryId)
+  db.query('UPDATE resume_generation_jobs SET interview_status = NULL, interview_available_at = NULL WHERE id = ?').run(deliveredId)
   db.query("UPDATE resume_histories SET process_result_json = json_remove(process_result_json, '$.server_interview_task') WHERE user_id = ? AND id = ?")
     .run(localContext.userId, legacyHistoryId)
   await generationJobRepository.patch(localContext.userId, deliveredId, {status: 'running', lease_token: 'legacy-recovery-lease',
@@ -169,5 +179,6 @@ test('SQLite delivers a saved resume before P10 and keeps concurrent writes scop
   const recovered = (await resumeHistoryRepository.findById(localContext, legacyHistoryId))!
   expect(recovered.optimized_content).toBe(deliveredHistory!.optimized_content)
   expect((await generationJobRepository.get(localContext.userId, deliveredId))?.status).toBe('completed')
-  expect((await projectManagedInterview(localContext.userId, recovered)).interview_task?.status).toBe('pending')
+  expect(projectManagedInterview(recovered).interview_task?.status).toBe('pending')
+  expect((await generationJobRepository.get(localContext.userId, deliveredId))?.interview_status).toBe('pending')
 })

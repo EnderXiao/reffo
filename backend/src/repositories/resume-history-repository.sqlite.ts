@@ -10,7 +10,6 @@ import {assertExpectedHistory, historyCommitAck, historyCommitDigest, ResumeHist
 import {ensureResumeStageCacheTables} from '@/repositories/resume-stage-cache-repository'
 import {canonicalizeSourceDocument} from '@/v5/canonical-source'
 import {enqueueResumeReviewTasks, ensureResumeReviewTables} from '@/services/resume-review-service'
-import {ensureResumeInterviewEnqueueTrigger} from '@/repositories/resume-interview-task-repository'
 
 const HISTORY_ID_PREFIX = 'JD'
 const HISTORY_ID_SEQUENCE_LENGTH = 5
@@ -73,7 +72,6 @@ function ensureDatabase() {
 
   ensureResumeReviewTables(database)
   ensureResumeStageCacheTables()
-  ensureResumeInterviewEnqueueTrigger(database)
   return database
 }
 

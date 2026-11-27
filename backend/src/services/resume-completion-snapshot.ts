@@ -127,7 +127,10 @@ export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, prev
   const {server_interview_basis: _clientBasis, server_completion_upgrade_archive: _clientArchive,
     server_interview_task: _clientTask, ...publicResult} = rawResult ?? {}
   const savedDocument = canSeedPartialHistory(previous) ? null : previous
-  const interviewTask = savedDocument ? record(savedDocument.process_result)?.server_interview_task : input.interview_task_version
+  const oldResult = record(previous?.process_result)
+  const interviewTask = savedDocument ? oldResult?.server_interview_task : input.interview_task_version
+  const savedInterview = record(oldResult?.interview)
+  const interviewProgress = savedDocument?.progress?.interview ?? 'pending'
   const trustedArchive = record(previous?.process_result)?.server_completion_upgrade_archive
   const result = rawResult ? publicResult : undefined
   const optimized = record(result?.optimized)
@@ -136,9 +139,9 @@ export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, prev
     if (!result) return input
     const previousBasis = record(previous?.process_result)?.server_interview_basis
     return {...input, process_result: {...result, ...(previousBasis ? {server_interview_basis: previousBasis} : {}),
+      ...(interviewTask ? {server_interview_task: interviewTask, interview: savedInterview} : {}),
       ...(trustedArchive ? {server_completion_upgrade_archive: trustedArchive} : {})}}
   }
-  const oldResult = record(previous?.process_result)
   const oldOptimized = record(oldResult?.optimized)
   const trusted = savedDocument ? {actionPlan: oldOptimized?.action_plan, resolvedPlan: oldOptimized?.resolved_action_plan,
     review: oldOptimized?.action_review, changeManifest: oldOptimized?.change_manifest, identityState: oldOptimized?.identity_state, deliveryState: oldOptimized?.delivery_state, interviewBasis: record(oldResult?.server_interview_basis)?.result, matching: oldResult?.matching} : input.action_baseline
@@ -159,13 +162,14 @@ export function prepareResumeHistorySnapshot(input: SaveResumeHistoryInput, prev
   const preparationTopics = record(trusted.interviewBasis)?.preparationTopics ?? oldOptimized?.preparation_topics
   const {interview, ...resumeResult} = result
   return {...input, name: completionIdentityName(document) ?? input.name,
-    ...(interviewTask ? {progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: 'pending'}} : {}),
+    ...(interviewTask ? {progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: interviewProgress}} : {}),
     process_result: {...resumeResult,
     ...(trusted.interviewBasis ? {server_interview_basis: {version: 'interview-generation-basis-v1', result: trusted.interviewBasis}} : {}),
     ...(trustedArchive ? {server_completion_upgrade_archive: trustedArchive} : {}),
     ...(interviewTask && trusted.interviewBasis ? {server_interview_task: interviewTask} : {}),
     ...(trusted.matching ? {matching: trusted.matching} : {}),
-    ...(!interviewTask && record(interview) ? {interview: {...record(interview), preparation_topics: preparationTopics}} : {}),
+    ...(interviewTask ? (savedInterview ? {interview: savedInterview} : {})
+      : record(interview) ? {interview: {...record(interview), preparation_topics: preparationTopics}} : {}),
     optimized: {...optimized, action_plan: trusted.actionPlan, resolved_action_plan: resolved,
       action_review: actionReview, change_manifest: changeManifest, changes_summary: changeManifestDescriptions(changeManifest), identity_state: identityState, delivery_state: deliveryState,
       preparation_topics: preparationTopics}}}

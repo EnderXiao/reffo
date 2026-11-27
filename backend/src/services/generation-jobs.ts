@@ -10,7 +10,7 @@ import {publishGenerationJobUpdate} from '@/services/generation-job-events'
 import {assertGenerationJobVersion, currentGenerationStageFingerprints, hasGenerationStages, withoutGenerationFailure} from './generation-job-version'
 import {generationJobFailure} from './generation-job-failure'
 import {isHistoryFullyDelivered} from './generation-job-delivery'
-import {hasLinkedCompletion, validateCompletionDocument} from '@/shared/resume-completion'
+import {hasLinkedCompletion, serializeDraft, validateCompletionDocument} from '@/shared/resume-completion'
 import {resumeInterviewVersion} from './resume-interview-tasks'
 import {recordGenerationLifecycle} from './generation-lifecycle'
 import {historyCommitDigest} from './resume-history-commit'
@@ -20,13 +20,16 @@ import type {ResumeHistoryRecord} from '@/types'
 
 function recoverInitialInterview(history: ResumeHistoryRecord, job: GenerationJob) {
   const result = history.process_result as {interview?: unknown; server_interview_task?: string; optimized?: {completion_document?: unknown}} | undefined
-  if (result?.interview || result?.server_interview_task || !job.payload.optimized?.completion_document) return
+  const optimized = job.payload.optimized
+  if (result?.interview || result?.server_interview_task || !optimized?.completion_document) return
   const document = validateCompletionDocument(result?.optimized?.completion_document, history.optimized_content)
   const basis = savedInterviewGenerationBasis(history)
   if (!document.ok || !basis?.completionDocument || !hasLinkedCompletion(document.document) ||
     document.document.documentId !== basis.completionDocument.documentId ||
-    document.document.documentId !== job.payload.optimized.completion_document.documentId) return
-  return {version: resumeInterviewVersion(document.document, history.optimized_content), expectedUpdatedAt: history.updated_at}
+    document.document.documentId !== optimized.completion_document.documentId) return
+  const version = resumeInterviewVersion(optimized.completion_document, optimized.optimized_resume)
+  if (version !== resumeInterviewVersion(basis.completionDocument, serializeDraft(basis.completionDocument))) return
+  return {version, expectedUpdatedAt: history.updated_at}
 }
 
 export function generationJobProgress(job: GenerationJob, failed = false): ResultSessionProgressRecord {

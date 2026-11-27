@@ -1,12 +1,14 @@
 import {createCanonicalDigest} from '@/harness/run-context'
+import {generationJobRepository, type GenerationJobRepository} from '@/repositories/generation-job-repository'
 import {resumeHistoryRepository} from '@/repositories/resume-history-repository'
-import {resumeInterviewTaskRepository, type ResumeInterviewTask, type ResumeInterviewTaskRepository} from '@/repositories/resume-interview-task-repository'
-import {validateCompletionDocument, type ResumeCompletionDocument} from '@/shared/resume-completion'
-import type {ResumeHistoryRecord} from '@/types'
+import {serializeDraft, validateCompletionDocument, type ResumeCompletionDocument} from '@/shared/resume-completion'
+import type {InterviewSuggestions, ResumeHistoryRecord} from '@/types'
+import type {GenerationJob} from '@/types/generation-job'
+import {savedInterviewGenerationBasis} from '@/v5/current-interview-snapshot'
 import {v5SingleStepAdapter} from '@/v5/single-step-adapter'
+import {publishGenerationJobUpdate} from './generation-job-events'
 import {generationJobFailure} from './generation-job-failure'
 import {recordGenerationLifecycle} from './generation-lifecycle'
-import {historyDocumentRef} from './resume-history-commit'
 
 const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value)
   ? value as Record<string, unknown> : {}
@@ -15,126 +17,111 @@ export function resumeInterviewVersion(document: ResumeCompletionDocument, markd
   return createCanonicalDigest({document, markdown})
 }
 
-function currentInterviewVersion(history: ResumeHistoryRecord) {
-  const document = object(object(history.process_result).optimized).completion_document
-  const checked = validateCompletionDocument(document, history.optimized_content)
-  return checked.ok ? resumeInterviewVersion(checked.document, history.optimized_content) : undefined
-}
-
 export function hasManagedInterview(history: ResumeHistoryRecord) {
   const version = object(history.process_result).server_interview_task
   return typeof version === 'string' && /^[a-f0-9]{64}$/.test(version)
 }
 
-type InterviewRepository = Pick<ResumeInterviewTaskRepository, 'find' | 'retry' | 'claim' | 'renew' | 'finish'>
-const owner = (task: ResumeInterviewTask) => ({userId: task.user_id, useServiceRole: true})
-
-export function applyInterviewTask(history: ResumeHistoryRecord, task: ResumeInterviewTask | null): ResumeHistoryRecord {
-  const {interview: _interview, ...result} = object(history.process_result)
-  const status = !task || task.status === 'stale' ? 'stale'
-    : task.status === 'done' ? task.result ? 'done' : 'failed'
-      : task.status === 'failed' ? 'failed' : 'pending'
-  return {...history, interview_task: {status},
-    process_result: {...result, ...(status === 'done' ? {interview: task!.result} : {})},
-    progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: status === 'stale' ? 'pending' : status}}
+export function storedInterview(history: ResumeHistoryRecord): InterviewSuggestions | undefined {
+  const interview = object(object(history.process_result).interview)
+  if (Array.isArray(interview.questions) && Array.isArray(interview.story_recommendations)
+    && (interview.questions.length || interview.story_recommendations.length || (Array.isArray(interview.follow_up_questions) && interview.follow_up_questions.length))) {
+    return interview as unknown as InterviewSuggestions
+  }
 }
 
-function pendingInterviewProjection(history: ResumeHistoryRecord): ResumeHistoryRecord {
-  const projected = applyInterviewTask(history, null)
-  return {...projected, interview_task: {status: 'pending'}}
+function initialInterviewSnapshot(history: ResumeHistoryRecord) {
+  if (!hasManagedInterview(history)) return
+  const process = object(history.process_result)
+  const archive = object(process.server_completion_upgrade_archive)
+  for (const entry of [process.server_interview_basis, {version: 'interview-generation-basis-v1', result: archive.originalInterviewBasis}]) {
+    const snapshot = {...history, process_result: {...process, server_interview_basis: entry}}
+    const basis = savedInterviewGenerationBasis(snapshot)
+    if (!basis?.completionDocument) continue
+    try {
+      const markdown = serializeDraft(basis.completionDocument)
+      const checked = validateCompletionDocument(basis.completionDocument, markdown)
+      if (!checked.ok || resumeInterviewVersion(checked.document, markdown) !== process.server_interview_task) continue
+      return {
+        history: {...snapshot, optimized_content: markdown, process_result: {...snapshot.process_result,
+          optimized: {...object(process.optimized), completion_document: checked.document}}},
+        reference: {documentId: checked.document.documentId, revision: checked.document.revision,
+          ...(basis.resolvedActionPlan ? {resolvedDigest: basis.resolvedActionPlan.resolvedDigest} : {})},
+      }
+    } catch {
+      // An unverifiable legacy snapshot cannot supply input for a new model call.
+    }
+  }
 }
 
-export async function projectManagedInterview(userId: string, history: ResumeHistoryRecord,
-  repository: Pick<InterviewRepository, 'find'> = resumeInterviewTaskRepository): Promise<ResumeHistoryRecord> {
+export function projectManagedInterview(history: ResumeHistoryRecord): ResumeHistoryRecord {
   if (!hasManagedInterview(history)) return history
-  const version = currentInterviewVersion(history)
-  try {
-    return applyInterviewTask(history, version ? await repository.find(userId, history.id, version) : null)
-  } catch {
-    console.error('读取面试任务状态失败')
-    // A sidecar read outage must not prevent the owner from opening a saved resume.
-    return pendingInterviewProjection(history)
-  }
-}
-
-export async function projectManagedInterviews(userId: string, histories: ResumeHistoryRecord[]) {
-  const managed = histories.filter(hasManagedInterview)
-  const versions = new Map(managed.map(history => [history.id, currentInterviewVersion(history)]))
-  try {
-    const tasks = await resumeInterviewTaskRepository.findByVersions(userId, [...new Set([...versions.values()].filter(version => version !== undefined))])
-    const byVersion = new Map(tasks.map(task => [`${task.history_id}:${task.version}`, task]))
-    return histories.map(history => {
-      if (!versions.has(history.id)) return history
-      return applyInterviewTask(history, byVersion.get(`${history.id}:${versions.get(history.id)}`) ?? null)
-    })
-  } catch {
-    console.error('读取面试任务列表状态失败')
-    return histories.map(history => versions.has(history.id) ? pendingInterviewProjection(history) : history)
-  }
+  const status = storedInterview(history) ? 'done'
+    : history.progress?.interview === 'failed' ? initialInterviewSnapshot(history) ? 'failed' : 'stale' : 'pending'
+  return {...history, interview_task: {status},
+    progress: {analysis: 'done', matching: 'done', optimized: 'done', interview: status === 'stale' ? 'failed' : status}}
 }
 
 export async function retryManagedInterview(userId: string, history: ResumeHistoryRecord) {
-  if (!hasManagedInterview(history)) return false
-  const version = currentInterviewVersion(history)
-  if (!version) return false
-  const originalVersion = object(history.process_result).server_interview_task as string
-  const original = await resumeInterviewTaskRepository.find(userId, history.id, originalVersion)
-  if (!original) return false
-  const previous = version === originalVersion ? original : await resumeInterviewTaskRepository.find(userId, history.id, version)
-  await resumeInterviewTaskRepository.retry(userId, history.id, version, previous)
+  if (storedInterview(history)) return true
+  if (!initialInterviewSnapshot(history)) return false
+  const job = await generationJobRepository.retryInterview(userId, history.id)
+  if (!job || job.interview_status === 'unavailable') return false
+  if (job.interview_status === 'pending') {
+    publishGenerationJobUpdate(job)
+  }
   return true
 }
+
+type InterviewRepository = Pick<GenerationJobRepository, 'claimInterview' | 'renewInterview' | 'finishInterview'>
 
 export class ResumeInterviewWorker {
   private active = false
   private timer?: ReturnType<typeof setInterval>
 
   constructor(
-    private readonly repository: Pick<InterviewRepository, 'claim' | 'renew' | 'finish'> = resumeInterviewTaskRepository,
+    private readonly repository: InterviewRepository = generationJobRepository,
     private readonly histories: Pick<typeof resumeHistoryRepository, 'findById'> = resumeHistoryRepository,
     private readonly adapter: Pick<typeof v5SingleStepAdapter, 'interview'> = v5SingleStepAdapter,
   ) {}
 
-  async execute(task: ResumeInterviewTask) {
+  async execute(job: GenerationJob) {
+    if (!job.history_id) return
     let lostLease = false
     const heartbeat = setInterval(() => {
-      void this.repository.renew(task).then(renewed => { if (!renewed) lostLease = true }).catch(() => { lostLease = true })
+      void this.repository.renewInterview(job).then(renewed => { if (!renewed) lostLease = true }).catch(() => { lostLease = true })
     }, 20000)
     heartbeat.unref?.()
-    const load = async () => {
-      const history = await this.histories.findById(owner(task), task.history_id)
-      return history && hasManagedInterview(history) && currentInterviewVersion(history) === task.version ? history : null
-    }
-    const elapsedFrom = Date.now()
-    let result: Awaited<ReturnType<typeof v5SingleStepAdapter.interview>> | undefined
-    let failed = false
-    let failure: ReturnType<typeof generationJobFailure>['failure'] | undefined
+    const start = Date.now()
     try {
-      const history = await load()
+      const history = await this.histories.findById({userId: job.user_id, useServiceRole: true}, job.history_id)
+      const snapshot = history && initialInterviewSnapshot(history)
+      const previous = history && storedInterview(history)
       if (lostLease) return
-      if (!history) {
-        if (await this.repository.finish(task, 'stale')) recordGenerationLifecycle('interview_stale', {historyId: task.history_id})
-        return
+      let status: 'done' | 'failed' | 'unavailable' = previous ? 'done' : 'unavailable'
+      let data: InterviewSuggestions | undefined = previous || undefined
+      let failure: ReturnType<typeof generationJobFailure>['failure'] | undefined
+      let runId: string | undefined
+      if (snapshot && !previous) {
+        try {
+          const process = object(snapshot.history.process_result)
+          const result = await this.adapter.interview(process.analysis, process.matching, snapshot.history.optimized_content,
+            job.user_id, {history: snapshot.history})
+          status = 'done'
+          data = {...result.data, based_on_document: snapshot.reference}
+          runId = result.runId
+        } catch (error) {
+          status = 'failed'
+          failure = generationJobFailure(error, 'interview').failure
+        }
       }
-      try {
-        const process = object(history.process_result)
-        result = await this.adapter.interview(process.analysis, process.matching, history.optimized_content,
-          task.user_id, {history})
-      } catch (error) {
-        failed = true
-        failure = generationJobFailure(error, 'interview').failure
-      }
       if (lostLease) return
-      const current = await load()
-      if (lostLease) return
-      const status = !current ? 'stale' : failed ? 'failed' : 'done'
-      const reference = current && historyDocumentRef(current.process_result)
-      const data = result && reference?.documentId && reference.revision !== null ? {...result.data,
-        based_on_document: {documentId: reference.documentId, revision: reference.revision,
-          ...(reference.resolvedDigest ? {resolvedDigest: reference.resolvedDigest} : {})}} : result?.data
-      if (await this.repository.finish(task, status, status === 'done' ? data : null)) {
-        recordGenerationLifecycle(status === 'done' ? 'interview_ready' : status === 'failed' ? 'interview_failed' : 'interview_stale',
-          {historyId: task.history_id, durationMs: Date.now() - elapsedFrom, runId: result?.runId ?? failure?.runId, code: failure?.code})
+      const updated = await this.repository.finishInterview(job, status, data)
+      if (updated) {
+        publishGenerationJobUpdate(updated)
+        recordGenerationLifecycle(updated.interview_status === 'done' ? 'interview_ready'
+          : updated.interview_status === 'failed' ? 'interview_failed' : 'interview_stale',
+        {historyId: job.history_id, durationMs: Date.now() - start, runId: runId ?? failure?.runId, code: failure?.code})
       }
     } finally {
       clearInterval(heartbeat)
@@ -145,8 +132,11 @@ export class ResumeInterviewWorker {
     if (this.active) return
     this.active = true
     try {
-      const task = await this.repository.claim()
-      if (task) await this.execute(task)
+      const job = await this.repository.claimInterview()
+      if (job) {
+        publishGenerationJobUpdate(job)
+        await this.execute(job)
+      }
     } catch {
       console.error('处理面试任务队列失败')
     } finally {

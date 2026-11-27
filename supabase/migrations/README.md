@@ -67,3 +67,11 @@ SQLite在对应repository初始化时执行等价增量迁移；旧 `match_score
 `202611130008_completion_upgrade_cas.sql` 为既有 `commit_resume_history` RPC 增加可选的完整旧 `processResult` CAS 条件，不新增数据列，不批量改写历史记录。服务端对单条拥有者历史执行 v4 升级时携带此条件，防止覆盖没有改变文档 revision 或 updated_at 的并发后台复核。既有普通保存请求不携带该字段时继续沿用原 CAS 协议。
 
 云端启用 v4 历史升级前必须应用 008；本地 SQLite 已在升级事务中对旧 process_result 做等价校验。SQLite 实测和 Supabase REST/RPC mock 不代表远端 PostgreSQL 已执行迁移。回滚时保留 v4 读取、保存、导出能力和该 RPC 条件，不能把已经升级的文档降级覆盖。
+
+## 2026-11-27 首轮面试任务合并
+
+`202611270001_generation_job_interview.sql` 将首轮面试状态迁入 `resume_generation_jobs`，将已有的最新成功建议及版本引用迁回 `resume_histories`。它停用旧入队触发器和旧任务写权限，保留原表供核对，并在新版本号下补齐简历交付和取消 RPC。
+
+迁移与新版后端安排在同一次发布。迁移开始后，旧版服务仍可提交简历并由数据库登记新任务，新版面试 Worker 上线后接手执行。旧表正在处理的首轮任务保留原租约期限，等待期限结束后恢复。发布时校验旧建议可读、首轮失败可重试、SSE 断线可补查，以及面试写回保留同时保存的正文。
+
+目标环境验收并确认没有旧版 Worker 后，用单独的后续 migration 删除 `public.enqueue_initial_resume_interview()` 与 `public.resume_interview_tasks`。仍需保留历史记录的保护触发器。迁移之后若需回滚应用，回滚版本需支持新任务状态和历史结果存储。

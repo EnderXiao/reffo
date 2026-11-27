@@ -442,7 +442,7 @@ describe('策略与生成正文的对应', () => {
   })
 })
 
-test('简历更新后面试标旧版本，复用面试更新入口', () => {
+test('简历更新后仍展示原版面试建议和版本说明', () => {
   const document = {...createPlainCompletionDocument('# 测试用户\n\n完成真实项目交付', {documentId: 'interview-version'}), revision: 2}
   const current: ProcessResult = {...result, optimized: {...result.optimized, completion_document: document, optimized_resume: serializeDraft(document)},
     interview: {...result.interview, based_on_document: {documentId: document.documentId, revision: 1}}}
@@ -450,8 +450,8 @@ test('简历更新后面试标旧版本，复用面试更新入口', () => {
   render(<PageView {...model} result={current} handleRetryStage={retry} />)
   fireEvent.click(screen.getByLabelText('面试建议'))
   expect(screen.getByText('简历已更新，以下建议基于较早版本。')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', {name: '按当前稿更新面试建议'}))
-  expect(retry).toHaveBeenCalledWith('interview')
+  expect(screen.queryByRole('button', {name: '按当前稿更新面试建议'})).toBeNull()
+  expect(retry).not.toHaveBeenCalled()
 })
 
 

@@ -295,7 +295,27 @@ describe('后台面试建议与简历交付', () => {
     expect(resumeApi.generateInterviewSuggestions).not.toHaveBeenCalled()
   })
 
-  test('本地未同步的新稿不会带入旧版本的面试建议', async () => {
+  test('历史页收到面试完成事件后立即读回建议', async () => {
+    jest.useFakeTimers()
+    const pending = managedHistory('pending')
+    jest.spyOn(useHistoryStore.getState(), 'loadHistory').mockResolvedValue(pending)
+    const get = jest.spyOn(resumeHistoryApi, 'getHistory').mockResolvedValue(managedHistory('done'))
+    const stream = jest.mocked(subscribeGenerationTaskEvents)
+    const {result} = renderHook(() => usePageModel())
+    await waitFor(() => expect(stream).toHaveBeenCalled())
+    const handlers = stream.mock.calls.at(-1)![0]
+    const event = createGenerationTask({status: 'completed', history_id: pending.id, interview_status: 'done'})
+
+    await act(async () => handlers.onTask({...event, history_id: 'another-history'}))
+    expect(get).not.toHaveBeenCalled()
+    await act(async () => handlers.onTask(event))
+
+    expect(get).toHaveBeenCalledWith(pending.id)
+    expect(result.current.progress.interview).toBe('done')
+    expect(result.current.result?.interview.questions).toEqual(['请说明你的主要贡献'])
+  })
+
+  test('本地新稿保留原版面试建议', async () => {
     const history = managedHistory('done')
     const original = history.processResult!
     const document = original.optimized.completion_document!
@@ -312,8 +332,9 @@ describe('后台面试建议与简历交付', () => {
     const {result} = renderHook(() => usePageModel())
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.result?.optimized.optimized_resume).toBe(serializeDraft(edited.document))
-    expect(result.current.result?.interview.questions).toEqual([])
-    expect(result.current.progress.interview).toBe('failed')
+    expect(result.current.result?.interview.questions).toEqual(['请说明你的主要贡献'])
+    expect(result.current.result?.interview.based_on_document).toEqual(original.interview.based_on_document)
+    expect(result.current.progress.interview).toBe('done')
     expect(resumeApi.generateInterviewSuggestions).not.toHaveBeenCalled()
   })
 })
