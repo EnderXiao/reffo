@@ -2,14 +2,13 @@ import { test, expect } from 'bun:test'
 import type OpenAI from 'openai'
 import { z } from 'zod'
 import { DeepSeekProvider } from '@/providers/deepseek-provider'
-import { parseDeepSeekThinking } from '@/config/deepseek-thinking'
 
 function provider(frames: unknown[], observe?: (body: unknown, options: unknown) => void) {
   const client = { chat: { completions: { create: async (body: unknown, options: unknown) => {
     observe?.(body, options)
     return (async function* () { for (const frame of frames) yield frame })()
   } } } } as unknown as OpenAI
-  return new DeepSeekProvider(client, parseDeepSeekThinking('disabled'))
+  return new DeepSeekProvider(client)
 }
 const content = (text: string) => ({ id: 'r1', model: 'deepseek-v4-flash', choices: [{ index: 0, delta: { content: text }, finish_reason: null }] })
 const stop = (reason = 'stop') => ({ id: 'r1', choices: [{ index: 0, delta: {}, finish_reason: reason }] })

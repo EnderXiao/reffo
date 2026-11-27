@@ -142,14 +142,6 @@ export const env = {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || 'https://api.deepseek.com',
   AI_MODEL: process.env.AI_MODEL || 'deepseek-v4-flash',
-  DEEPSEEK_THINKING_MODE: process.env.DEEPSEEK_THINKING_MODE || 'enabled',
-  DEEPSEEK_REASONING_EFFORT: process.env.DEEPSEEK_REASONING_EFFORT || 'high',
-  // 生产默认全局关 think 时，写作阶段（P06C）单独开低强度推理，压住证据引用错位率。
-  DEEPSEEK_WRITING_THINKING_MODE: process.env.DEEPSEEK_WRITING_THINKING_MODE || 'enabled',
-  DEEPSEEK_WRITING_REASONING_EFFORT: process.env.DEEPSEEK_WRITING_REASONING_EFFORT || 'low',
-  // DeepSeek thinking consumes the same completion budget as final output.
-  // Reserve an explicit budget when a provider caller omits maxOutputTokens.
-  DEEPSEEK_THINKING_MAX_TOKENS: parsePositiveInteger(process.env.DEEPSEEK_THINKING_MAX_TOKENS, 12000),
   AI_FALLBACK_MODELS: (process.env.AI_FALLBACK_MODELS || '')
     .split(',')
     .map((model) => model.trim())

@@ -16,7 +16,6 @@ import { PersistenceSubscriber } from '@/harness/subscribers/persistence-subscri
 import { TraceSubscriber } from '@/harness/subscribers/trace-subscriber'
 import type { LlmProvider } from '@/providers/llm-provider'
 import {fallbackLlmProvider} from '@/providers/fallback-provider'
-import { BudgetAwareThinkingProvider } from '@/providers/budget-aware-thinking-provider'
 import { env } from '@/config/env'
 import { assertV5ProductionWorkflow } from '@/config/v5-release'
 import { buildRequirementAnalysis } from '@/v5/targeting/presentation'
@@ -494,8 +493,6 @@ export { V5WorkflowBlockedError } from '@/v5/errors'
 export class V5ResumeOptimizationWorkflow {
   private readonly provider?: LlmProvider
   private readonly judgeProvider?: LlmProvider
-  /** 当前请求的共享剩余时间预算；仅供 BudgetAwareThinkingProvider 读取。 */
-  private thinkingBudgetRemainingMs: (() => number) | null = null
   private readonly resumeExtractionCache?: TrustedResumeExtractionCache
   private readonly eventBus: HarnessEventBus
   private readonly pluginOverrides: V5WorkflowOptions['pluginOverrides']
@@ -507,15 +504,8 @@ export class V5ResumeOptimizationWorkflow {
   private readonly onTargetingAnalysis?: V5WorkflowOptions['onTargetingAnalysis']
 
   constructor(options: V5WorkflowOptions = {}) {
-    // 剩余预算低于阈值时自动关闭 thinking：串行调用链在预算告急时
-    // 继续开推理模式几乎必然超时，改用非推理模式保住交付。
-    const budgetAware = (provider: LlmProvider | undefined): LlmProvider | undefined => (
-      provider
-        ? new BudgetAwareThinkingProvider(provider, () => this.thinkingBudgetRemainingMs?.() ?? Number.POSITIVE_INFINITY)
-        : provider
-    )
-    this.provider = budgetAware(options.provider)
-    this.judgeProvider = budgetAware(options.judgeProvider ?? options.provider)
+    this.provider = options.provider
+    this.judgeProvider = options.judgeProvider ?? options.provider
     this.resumeExtractionCache = options.resumeExtractionCache
     this.eventBus = options.eventBus ?? (options.enableDefaultSubscribers === false ? createHarnessEventBus() : createDefaultEventBus())
     this.pluginOverrides = options.pluginOverrides
@@ -551,7 +541,6 @@ export class V5ResumeOptimizationWorkflow {
     const runtime = this.createRuntime(input.workflowTimeoutMs ?? 300000, harness, input.signal)
     const { runContext } = runtime
     const remaining = runtime.context.remainingMs
-    this.thinkingBudgetRemainingMs = remaining
     const setState = (next: ResumeAgentState) => runtime.setState(next)
 
     await this.eventBus.publish(createHarnessEvent({
@@ -688,7 +677,6 @@ export class V5ResumeOptimizationWorkflow {
   ): Promise<{runId: string; preparation: InterviewPreparation; stepStatuses: StepRunSnapshot[]}> {
     const runtime = this.createRuntime(timeoutMs, harness, signal)
     const {runContext} = runtime
-    this.thinkingBudgetRemainingMs = runtime.context.remainingMs
     const stepStatuses = harness.steps
     await this.eventBus.publish(createHarnessEvent({
       type: 'workflow.started', runId: runContext.runId, requestId: runContext.requestId,
@@ -755,7 +743,6 @@ export class V5ResumeOptimizationWorkflow {
     const runtime = this.createRuntime(input.workflowTimeoutMs ?? 600000, harness, input.signal)
     const { runContext, manifest: pluginManifest } = runtime
     const remaining = runtime.context.remainingMs
-    this.thinkingBudgetRemainingMs = remaining
     const steps = harness.steps
     let entryWritingRecord: V5WorkflowResult['entryWriting']
     let deliveryMarkdown: string | undefined

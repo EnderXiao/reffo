@@ -63,7 +63,10 @@ describe('ResumeOptimizationWorkflow v5-only entry', () => {
       expect(result.step3_optimized_resume).toBeTruthy()
       expect(getV5ReleaseDescriptor()).toMatchObject({
         profile: 'resume-linked-release-v1',
-        reasoningEffort: env.DEEPSEEK_REASONING_EFFORT,
+        thinkingMode: 'disabled',
+        extractionThinkingMode: 'disabled',
+        interviewThinkingMode: 'disabled',
+        reasoningEffort: null,
         writerPromptVersion: '5.7.0-p06c-entry-routed-v6-r10',
       })
     } finally {

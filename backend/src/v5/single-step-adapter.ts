@@ -1,4 +1,4 @@
-import {RESUME_EXTRACTION_THINKING_MODE} from '@/config/deepseek-thinking'
+import {V5_THINKING_MODE} from '@/config/deepseek-thinking'
 import {currentInterviewSnapshot, interviewGenerationBasis, savedInterviewGenerationBasis} from '@/v5/current-interview-snapshot'
 import type {ResumeHistoryRecord} from '@/types'
 import type { StepRunSnapshot } from '@/harness/run-step'
@@ -68,8 +68,8 @@ function extractionCacheFingerprints() {
     providerConfigFingerprint: createDigest({
       endpoint: env.OPENAI_BASE_URL,
       model: env.AI_MODEL,
-      thinking: env.DEEPSEEK_THINKING_MODE,
-      extractionThinking: RESUME_EXTRACTION_THINKING_MODE,
+      thinking: V5_THINKING_MODE,
+      extractionThinking: V5_THINKING_MODE,
       structuredOutput: env.V5_STRUCTURED_OUTPUT_MODE,
     }),
   }

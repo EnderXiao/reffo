@@ -1,4 +1,4 @@
-import {INTERVIEW_THINKING_MODE, RESUME_EXTRACTION_THINKING_MODE} from '@/config/deepseek-thinking'
+import {V5_THINKING_MODE} from '@/config/deepseek-thinking'
 import { env } from '@/config/env'
 import { v5ReleaseWorkflowOptions } from '@/config/v5-release'
 import manifest from '@/v5/prompts/manifest.json'
@@ -8,10 +8,10 @@ export function getV5ReleaseDescriptor() {
   const profile = 'resume-linked-release-v1' as const
   const writerVersion = manifest.variants.P06C_ENTRY
   return { profile, environment: env.APP_ENV, model: env.AI_MODEL,
-    thinkingMode: env.DEEPSEEK_THINKING_MODE,
-    extractionThinkingMode: RESUME_EXTRACTION_THINKING_MODE,
-    interviewThinkingMode: INTERVIEW_THINKING_MODE,
-    reasoningEffort: env.DEEPSEEK_REASONING_EFFORT,
+    thinkingMode: V5_THINKING_MODE,
+    extractionThinkingMode: V5_THINKING_MODE,
+    interviewThinkingMode: V5_THINKING_MODE,
+    reasoningEffort: null,
     ...v5ReleaseWorkflowOptions(),
     writerPromptVersion: writerVersion,
     deliveryPolicy: 'five-element-cloze-v4',

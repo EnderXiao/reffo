@@ -72,23 +72,19 @@ case "${action}" in
       exit 1
     fi
     # Render injects PORT for Web Services. Feature environments pin the
-    # nonprod Flash model, fallback, and thinking profile explicitly.
+    # nonprod Flash model and fallback policy explicitly.
     env_vars="$(jq --arg frontendOrigin "${frontend_origin}" '
       [.[] | select(
         .key != "PORT"
         and .key != "HOST"
         and .key != "AI_MODEL"
         and .key != "AI_FALLBACK_MODELS"
-        and .key != "DEEPSEEK_THINKING_MODE"
-        and .key != "DEEPSEEK_P01_THINKING_MODE"
-        and .key != "DEEPSEEK_REASONING_EFFORT"
+        and (.key | test("^DEEPSEEK_((P01|WRITING)_)?(THINKING_MODE|REASONING_EFFORT|THINKING_MAX_TOKENS)$") | not)
         and .key != "CORS_ORIGIN"
       )]
       + [
         {key:"AI_MODEL",value:"deepseek-v4-flash"},
         {key:"AI_FALLBACK_MODELS",value:""},
-        {key:"DEEPSEEK_THINKING_MODE",value:"enabled"},
-        {key:"DEEPSEEK_REASONING_EFFORT",value:"low"},
         {key:"CORS_ORIGIN",value:$frontendOrigin}
       ]
     ' <<<"${env_vars}")"

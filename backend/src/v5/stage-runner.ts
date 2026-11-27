@@ -106,12 +106,12 @@ export class V5ProviderCallError extends Error {
 
 interface V5TransportRecoveryInput {
   component: V5PromptComponent
-  action: 'repair_json' | 'disable_thinking'
+  action: 'repair_json'
   eventBus?: HarnessEventBus
   stepContext?: StepExecutionContext
   reason: string
-  triggerErrorCode: 'V5_JSON_PARSE_FAILED' | 'V5_OUTPUT_TRUNCATED'
-  recoveryMode: 'json_repair' | 'thinking_disabled'
+  triggerErrorCode: 'V5_JSON_PARSE_FAILED'
+  recoveryMode: 'json_repair'
   outputDigest?: string
   providerResult?: ChatCompletionResult
 }
@@ -202,7 +202,6 @@ async function repairV5JsonOutput(input: {
         retryIndex: 1,
         budgetRemaining: null,
       },
-      thinkingOverride: 'disabled',
       maxProviderAttempts: 1,
       maxProviderModels: 1,
     })
@@ -233,93 +232,6 @@ async function repairV5JsonOutput(input: {
     }
     throw error
   }
-}
-
-async function retryWithThinkingDisabled(input: {
-  component: V5PromptComponent
-  compiled: CompiledV5Prompt
-  provider: LlmProvider
-  providerPromptManifest: NonNullable<ChatCompletionInput['promptManifest']>
-  options?: V5StageRunOptions
-}): Promise<ChatCompletionResult> {
-  const recoveryInput: V5TransportRecoveryInput = {
-    component: input.component,
-    action: 'disable_thinking',
-    eventBus: input.options?.eventBus,
-    stepContext: input.options?.stepContext,
-    reason: 'reasoning-only structured output truncation',
-    triggerErrorCode: 'V5_OUTPUT_TRUNCATED',
-    recoveryMode: 'thinking_disabled',
-  }
-  await publishV5TransportRecoveryStatus(recoveryInput, 'recovery.planned')
-  await publishV5TransportRecoveryStatus(recoveryInput, 'recovery.started')
-
-  try {
-    const providerResult = await input.provider.complete({
-      messages: input.compiled.messages,
-      model: input.options?.model,
-      temperature: input.compiled.temperature,
-      structuredOutput: {
-        name: input.compiled.schemaName,
-        schema: input.compiled.providerSchema,
-        strict: true,
-      },
-      maxOutputTokens: input.compiled.maxOutputTokens,
-      promptVersion: input.compiled.promptVersion,
-      promptManifest: input.providerPromptManifest,
-      eventBus: input.options?.eventBus,
-      stepContext: input.options?.stepContext,
-      callMetadata: {
-        callReason: 'thinking_fallback',
-        contextMode: 'full',
-        repairScope: ['thinking_disabled'],
-        retryIndex: 1,
-        budgetRemaining: null,
-      },
-      thinkingOverride: 'disabled',
-      maxProviderAttempts: 1,
-      maxProviderModels: 1,
-    })
-
-    if (providerResult.finishReason === 'length') {
-      await publishV5TransportRecoveryStatus({
-        ...recoveryInput,
-        reason: 'thinking-disabled structured output still reached the length limit',
-        providerResult,
-      }, 'recovery.failed')
-      throw new V5StructuredOutputError({
-        code: 'V5_OUTPUT_TRUNCATED',
-        component: input.component,
-        message: `${input.component} thinking-disabled 重试仍达到模型长度上限；停止继续追问。`,
-        unsafeOutput: providerResult.content,
-      })
-    }
-
-    await publishV5TransportRecoveryStatus({
-      ...recoveryInput,
-      reason: 'thinking-disabled structured output completed',
-      outputDigest: createDigest(providerResult.content),
-      providerResult,
-    }, 'recovery.succeeded')
-    return providerResult
-  } catch (error) {
-    if (!(error instanceof V5StructuredOutputError)) {
-      await publishV5TransportRecoveryStatus({
-        ...recoveryInput,
-        reason: 'thinking-disabled Provider 请求失败',
-      }, 'recovery.failed')
-      throw new V5ProviderCallError({ component: input.component, cause: error })
-    }
-    throw error
-  }
-}
-
-function isReasoningOnlyTruncation(result: ChatCompletionResult) {
-  if (result.finishReason !== 'length') return false
-  if (!result.content.trim()) return true
-  const reasoningTokens = result.reasoningTokens ?? 0
-  const outputTokens = result.outputTokens ?? 0
-  return reasoningTokens > 0 && outputTokens > 0 && reasoningTokens / outputTokens >= 0.8
 }
 
 export async function runV5StructuredStage<T>(input: {
@@ -354,7 +266,6 @@ export async function runV5StructuredStage<T>(input: {
   let providerResult: ChatCompletionResult
   let continuation = ''
   const maxContinuations = 2
-  let thinkingFallbackAttempted = false
   try {
     for (let attempt = 0; ; attempt += 1) {
       const messages = continuation
@@ -378,23 +289,7 @@ export async function runV5StructuredStage<T>(input: {
       maxProviderModels: input.options?.maxProviderModels,
       })
       if (providerResult.finishReason !== 'length') break
-      if (providerResult.thinkingMode === 'disabled' && !providerResult.content.trim()) break
-      if (providerResult.thinkingMode !== 'disabled' && !thinkingFallbackAttempted && isReasoningOnlyTruncation(providerResult)) {
-        providerResult = await retryWithThinkingDisabled({
-          component: input.component,
-          compiled,
-          provider,
-          providerPromptManifest: {
-            ...providerPromptManifest,
-            transportRepairAttempt: 0,
-            transportRecoveryMode: 'thinking_disabled',
-          },
-          options: input.options,
-        })
-        thinkingFallbackAttempted = true
-        continuation = ''
-        break
-      }
+      if (!providerResult.content.trim()) break
       if (attempt >= maxContinuations) break
       continuation += providerResult.content
     }

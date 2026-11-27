@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import type OpenAI from 'openai'
 import { z } from 'zod'
-import { deepSeekThinkingParameters, evaluationDeepSeekPolicy, parseDeepSeekThinking, isResumeExtractionRequest, isWritingRequest, resolveDeepSeekStageThinking } from '@/config/deepseek-thinking'
+import { deepSeekThinkingParameters, evaluationDeepSeekPolicy } from '@/config/deepseek-thinking'
+import { env } from '@/config/env'
 import { compileV5Prompt } from '@/v5/prompt-compiler'
 import { createRunContext, createStepExecutionContext } from '@/harness/run-context'
 import { FakeHarnessEventBus } from '@/harness/testing/fake-event-bus'
 import { DeepSeekProvider } from '@/providers/deepseek-provider'
+import { FallbackLlmProvider } from '@/providers/fallback-provider'
 import {ProviderCallRecorder, type ProviderCallEvent} from '@/services/provider-call-recorder'
 
 type FakeCompletionOptions = {
@@ -75,7 +77,7 @@ describe('DeepSeek physical call accounting', () => {
   function recordedProvider(create: FakeCompletionCreate) {
     const events: ProviderCallEvent[] = []
     const recorder = new ProviderCallRecorder({append: async event => {events.push(event)}})
-    return {events, provider: new DeepSeekProvider(createClient(create), undefined, recorder)}
+    return {events, provider: new DeepSeekProvider(createClient(create), recorder)}
   }
 
   test('preflight observer failures and already cancelled requests never count as transport calls', async () => {
@@ -208,204 +210,92 @@ describe('DeepSeekProvider abort signals', () => {
   })
 })
 
-describe('explicit DeepSeek V4 thinking', () => {
-  test('routes real compiled extraction and interview metadata independently of JD and Writer', async () => {
+describe('fixed DeepSeek thinking policy', () => {
+  test('disables thinking for primary, repair and retry requests across V5 stages', async () => {
     const sent: Array<Record<string, unknown>> = []
     const eventBus = new FakeHarnessEventBus()
     const provider = new DeepSeekProvider(createClient(async body => {
       sent.push(body as Record<string, unknown>)
       return createResponse()
-    }), parseDeepSeekThinking('enabled', 'low'))
-    for (const component of ['P01', 'P01R', 'P10', 'P10R', 'P02', 'P03', 'P06C'] as const) {
-      const compiled = compileV5Prompt({ component, envelope: { payload: {} } })
-      await provider.complete({ model: 'deepseek-v4-flash', messages: compiled.messages,
-        promptVersion: compiled.promptVersion, promptManifest: compiled.manifest,
+    }))
+    for (const [component, repairAttempt] of [
+      ['P01', 0], ['P01R', 1], ['P02', 0], ['P02R', 1], ['P03', 0], ['P03R', 1],
+      ['P06C', 0], ['P06C', 1], ['P06C', 2], ['P08', 1], ['P10', 0], ['P10R', 1],
+    ] as const) {
+      const compiled = compileV5Prompt({ component, envelope: { payload: {} }, repairAttempt })
+      const result = await provider.complete({ model: 'deepseek-v4-flash', messages: compiled.messages,
+        promptVersion: compiled.promptVersion, promptManifest: compiled.manifest, temperature: 0.2,
         maxOutputTokens: 14400, eventBus,
         stepContext: createStepExecutionContext(createRunContext(), component),
       })
+      expect(result.thinkingMode).toBe('disabled')
     }
-    for (const body of sent.slice(0, 4)) {
-      expect(body).toMatchObject({ thinking: { type: 'disabled' }, max_tokens: 14400 })
+    expect(sent).toHaveLength(12)
+    for (const body of sent) {
+      expect(body).toMatchObject({ thinking: { type: 'disabled' }, max_tokens: 14400, temperature: 0.2 })
       expect(body).not.toHaveProperty('reasoning_effort')
     }
-    for (const body of sent.slice(4)) expect(body).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'low' })
-    expect(eventBus.events.filter(e => e.type === 'provider.requested').map(e => e.payload.thinking))
-      .toEqual(sent.map(body => body.thinking))
-    expect(sent).toHaveLength(7)
+    const providerEvents = eventBus.events.filter(event => event.type.startsWith('provider.'))
+    expect(providerEvents).toHaveLength(24)
+    for (const event of providerEvents) expect(event.payload).toMatchObject({ thinkingMode: 'disabled', reasoningEffort: null })
   })
 
-  test('P01 disabled mode never performs the reasoning-only internal retry', async () => {
+  test('keeps thinking disabled on network retry and fallback model requests', async () => {
+    const previousModels = env.AI_FALLBACK_MODELS
+    env.AI_FALLBACK_MODELS = ['deepseek-v4-pro']
+    const sent: Array<Record<string, unknown>> = []
+    const provider = new FallbackLlmProvider(new DeepSeekProvider(createClient(async body => {
+      const request = body as Record<string, unknown>
+      sent.push(request)
+      if (request.model === 'deepseek-v4-flash') throw Object.assign(new Error('provider unavailable'), {status: 503})
+      return createResponse()
+    })))
+    try {
+      await provider.complete({model: 'deepseek-v4-flash', messages: []})
+      expect(sent.map(body => body.model)).toEqual(['deepseek-v4-flash', 'deepseek-v4-flash', 'deepseek-v4-pro'])
+      for (const body of sent) {
+        expect(body.thinking).toEqual({type: 'disabled'})
+        expect(body).not.toHaveProperty('reasoning_effort')
+      }
+    } finally {
+      env.AI_FALLBACK_MODELS = previousModels
+    }
+  })
+
+  test('uses the same disabled setting in evaluation', () => {
+    expect(evaluationDeepSeekPolicy('deepseek-chat')).toMatchObject({thinking: {type: 'disabled'}})
+    expect(evaluationDeepSeekPolicy('deepseek-v4-flash')).toMatchObject({thinking: {type: 'disabled'}})
+    expect(() => evaluationDeepSeekPolicy('deepseek-v4-pro')).toThrow('EVALUATION_MODEL_NOT_APPROVED')
+    expect(() => deepSeekThinkingParameters('deepseek-v4-flash', 'https://example.com')).toThrow('DEEPSEEK_THINKING_MODEL_MISMATCH')
+  })
+
+  test('rejects a reasoning-only model before sending any request', async () => {
     let calls = 0
     const provider = new DeepSeekProvider(createClient(async () => {
       calls += 1
-      return createFrames({ content: '' })
-    }), parseDeepSeekThinking('enabled'))
-    await expect(provider.complete({ model: 'deepseek-v4-flash', messages: [],
-      promptVersion: '5.0.0-p01-resume-evidence-r17', maxOutputTokens: 14400 })).rejects.toThrow('AI 返回内容为空')
-    expect(calls).toBe(1)
-  })
-
-  test('disables extraction thinking for trusted exact stage metadata', () => {
-    const global = parseDeepSeekThinking('enabled', 'max')
-    const writing = parseDeepSeekThinking('enabled', 'low')
-    expect(resolveDeepSeekStageThinking(global, 'disabled', writing, false)).toEqual({...global, mode: 'disabled'})
-    expect(resolveDeepSeekStageThinking(global, undefined, writing, false)).toEqual(global)
-    expect(isResumeExtractionRequest({ promptVersion: '5.0.0-p01r-resume-evidence-repair-r17' })).toBe(true)
-    expect(isResumeExtractionRequest({ promptVersion: 'user said P01' })).toBe(false)
-    expect(isResumeExtractionRequest({ promptVersion: '5.0.0-p01-resume-evidence-r17',
-      promptManifest: { componentPromptId: 'P02' } })).toBe(false)
-    expect(isResumeExtractionRequest({})).toBe(false)
-  })
-
-  test('writing stage can enable low-effort thinking while global stays disabled', () => {
-    const global = parseDeepSeekThinking('disabled', 'low')
-    const writing = parseDeepSeekThinking('enabled', 'low')
-    expect(resolveDeepSeekStageThinking(global, undefined, writing, true)).toEqual(writing)
-    expect(resolveDeepSeekStageThinking(global, undefined, writing, false)).toEqual(global)
-    expect(resolveDeepSeekStageThinking(global, 'disabled', writing, true)).toEqual({ ...global, mode: 'disabled' })
-    expect(isWritingRequest({ promptManifest: { componentPromptId: 'P06C' } })).toBe(true)
-    expect(isWritingRequest({ promptManifest: { componentPromptId: 'P03' } })).toBe(false)
-    expect(isWritingRequest({ promptVersion: '5.3.0-p06c-entry-writer-r10' })).toBe(true)
-    expect(isWritingRequest({ promptVersion: 'user said P06C' })).toBe(false)
-  })
-
-  test('leaves legacy requests unchanged without an explicit mode', async () => {
-    let sent: Record<string, unknown> = {}
-    const provider = new DeepSeekProvider(createClient(async body => {
-      sent = body as Record<string, unknown>
       return createResponse()
-    }), parseDeepSeekThinking())
-    await provider.complete({ model: 'deepseek-chat', messages: [], temperature: 0, maxOutputTokens: 100 })
-    expect(sent.temperature).toBe(0)
-    expect(sent).not.toHaveProperty('thinking')
-    expect(sent).not.toHaveProperty('reasoning_effort')
+    }))
+    await expect(provider.complete({model: 'deepseek-reasoner', messages: []})).rejects.toThrow('DEEPSEEK_THINKING_MODEL_MISMATCH')
+    expect(calls).toBe(0)
   })
 
-  test('sends enabled/high, omits ineffective temperature and retains the total cap', async () => {
-    let sent: Record<string, unknown> = {}
-    const provider = new DeepSeekProvider(createClient(async body => {
-      sent = body as Record<string, unknown>
-      return createFrames({ model: 'deepseek-v4-flash-0731',
-        usage: { prompt_tokens: 30, completion_tokens: 90, prompt_cache_hit_tokens: 10, prompt_cache_miss_tokens: 20,
-          completion_tokens_details: { reasoning_tokens: 70 } } })
-    }), parseDeepSeekThinking('enabled'))
-    const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [], temperature: 0, maxOutputTokens: 100 })
-    expect(sent).toMatchObject({ thinking: { type: 'enabled' }, reasoning_effort: 'high', max_tokens: 100 })
-    expect(sent).not.toHaveProperty('temperature')
-    expect(result).toMatchObject({ model: 'deepseek-v4-flash-0731', requestedModel: 'deepseek-v4-flash',
-      inputTokens: 30, outputTokens: 90, reasoningTokens: 70, inputCacheHitTokens: 10, inputCacheMissTokens: 20 })
-    expect(result).not.toHaveProperty('reasoning_content')
-  })
-
-  test('honors a server-owned thinking-disabled transport recovery override', async () => {
-    let sent: Record<string, unknown> = {}
-    const eventBus = new FakeHarnessEventBus()
-    const provider = new DeepSeekProvider(createClient(async body => {
-      sent = body as Record<string, unknown>
-      return createResponse()
-    }), parseDeepSeekThinking('enabled', 'low'))
-
-    await provider.complete({
-      model: 'deepseek-v4-flash',
-      messages: [],
-      temperature: 0.2,
-      maxOutputTokens: 6_000,
-      thinkingOverride: 'disabled',
-      callMetadata: {
-        callReason: 'thinking_fallback',
-        contextMode: 'full',
-        repairScope: ['thinking_disabled'],
-        retryIndex: 1,
-        budgetRemaining: null,
-      },
-      eventBus,
-      stepContext: createStepExecutionContext(createRunContext(), 'thinking-fallback'),
-    })
-
-    expect(sent).toMatchObject({
-      thinking: { type: 'disabled' },
-      temperature: 0.2,
-      max_tokens: 6_000,
-    })
-    expect(sent).not.toHaveProperty('reasoning_effort')
-    expect(eventBus.events.filter(event => event.type.startsWith('provider.'))).toHaveLength(2)
-    for (const event of eventBus.events.filter(event => event.type.startsWith('provider.'))) {
-      expect(event.payload).toMatchObject({
-        thinkingMode: 'disabled',
-        reasoningEffort: null,
-        thinkingOverride: 'disabled',
-        callReason: 'thinking_fallback',
-      })
-    }
-  })
-
-  test('reserves a default completion budget when thinking request omits maxOutputTokens', async () => {
-    let sent: Record<string, unknown> = {}
-    const provider = new DeepSeekProvider(createClient(async body => {
-      sent = body as Record<string, unknown>
-      return createResponse()
-    }), parseDeepSeekThinking('enabled', 'low'))
-
-    await provider.complete({ model: 'deepseek-v4-flash', messages: [] })
-
-    expect(sent.max_tokens).toBe(12000)
-  })
-
-  test('returns structured empty-output usage without a hidden physical retry', async () => {
+  test('retains provider usage for unexpected reasoning-only output without a hidden retry', async () => {
     const sent: Array<Record<string, unknown>> = []
     const provider = new DeepSeekProvider(createClient(async body => {
       sent.push(body as Record<string, unknown>)
-      if (sent.length === 1) {
-        return createFrames({
-          id: 'reasoning-only',
-          content: '',
-          reasoningContent: 'omitted',
-          usage: { prompt_tokens: 2, completion_tokens: 20, completion_tokens_details: { reasoning_tokens: 20 } },
-        })
-      }
-      return createResponse()
-    }), parseDeepSeekThinking('enabled', 'high'))
-
-    const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [], maxProviderAttempts: 1,
-      structuredOutput: { name: 'test', schema: z.object({ ok: z.boolean() }), strict: true } })
-
-    expect(sent).toHaveLength(1)
-    expect(sent[0]).toMatchObject({ reasoning_effort: 'high', max_tokens: 12000 })
-    expect(result).toMatchObject({ content: '', physicalAttempts: 1, inputTokens: 2, outputTokens: 20, reasoningTokens: 20 })
-  })
-
-  test('allows disabled mode without sending reasoning effort', () => {
-    expect(deepSeekThinkingParameters('deepseek-v4-flash', 'https://api.deepseek.com', parseDeepSeekThinking('disabled')))
-      .toEqual({ thinking: { type: 'disabled' } })
-  })
-
-  test('does not leak DeepSeek settings to other endpoints or silently switch models', () => {
-    expect(() => deepSeekThinkingParameters('deepseek-v4-flash', 'https://example.com', parseDeepSeekThinking('enabled'))).toThrow()
-    expect(() => evaluationDeepSeekPolicy('deepseek-v4-pro', 'enabled')).toThrow()
-    expect(() => evaluationDeepSeekPolicy('deepseek-v4-flash')).toThrow()
-    expect(() => evaluationDeepSeekPolicy('deepseek-chat', 'enabled')).toThrow()
-    expect(() => parseDeepSeekThinking('true')).toThrow()
-    expect(() => parseDeepSeekThinking('enabled', 'medium')).toThrow()
-  })
-
-  test('fingerprints distinguish explicit mode and effort', () => {
-    const high = evaluationDeepSeekPolicy('deepseek-v4-flash', 'enabled', 'high')
-    expect(high).not.toEqual(evaluationDeepSeekPolicy('deepseek-v4-flash', 'enabled', 'low'))
-    expect(high).not.toEqual(evaluationDeepSeekPolicy('deepseek-v4-flash', 'disabled'))
-    expect(evaluationDeepSeekPolicy('deepseek-chat')).toBeNull()
-  })
-
-  test('retains actual usage for a reasoning-only structured truncation', async () => {
-    const provider = new DeepSeekProvider(createClient(async () => createFrames({
-      id: 'truncated',
-      content: '',
-      finishReason: 'length',
-      reasoningContent: 'private reasoning is not stored',
-      usage: { prompt_tokens: 20, completion_tokens: 100, completion_tokens_details: { reasoning_tokens: 100 } },
-    })), parseDeepSeekThinking('enabled'))
+      return createFrames({
+        id: 'truncated',
+        content: '',
+        finishReason: 'length',
+        reasoningContent: 'private reasoning is not stored',
+        usage: { prompt_tokens: 20, completion_tokens: 100, completion_tokens_details: { reasoning_tokens: 100 } },
+      })
+    }))
     const result = await provider.complete({ model: 'deepseek-v4-flash', messages: [], maxOutputTokens: 100,
       structuredOutput: { name: 'test', schema: z.object({ ok: z.boolean() }), strict: true } })
-    expect(result).toMatchObject({ content: '', finishReason: 'length', outputTokens: 100, reasoningTokens: 100 })
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({thinking: {type: 'disabled'}, max_tokens: 100})
+    expect(result).toMatchObject({ content: '', finishReason: 'length', physicalAttempts: 1, outputTokens: 100, reasoningTokens: 100 })
     expect(JSON.stringify(result)).not.toContain('private reasoning')
   })
 })

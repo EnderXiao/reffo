@@ -1,4 +1,4 @@
-import {INTERVIEW_THINKING_MODE, RESUME_EXTRACTION_THINKING_MODE} from '@/config/deepseek-thinking'
+import {V5_THINKING_MODE} from '@/config/deepseek-thinking'
 import {createCanonicalDigest} from '@/harness/run-context'
 import {env} from '@/config/env'
 import {V5_PROMPT_VERSIONS} from '@/v5/prompts'
@@ -9,15 +9,14 @@ import manifest from '@/v5/prompts/manifest.json'
 export type ResumeCachedStage = 'extraction' | 'matching' | 'generation' | 'interview'
 export function resumeStageFingerprint(stage: ResumeCachedStage, versions: Record<string, string> = V5_PROMPT_VERSIONS) {
   const provider = {model: env.AI_MODEL,endpoint: env.OPENAI_BASE_URL,structuredOutput: env.V5_STRUCTURED_OUTPUT_MODE,
-    thinking: stage === 'extraction' ? RESUME_EXTRACTION_THINKING_MODE
-      : stage === 'interview' ? INTERVIEW_THINKING_MODE : env.DEEPSEEK_THINKING_MODE,
+    thinking: V5_THINKING_MODE,
     contextWindowTokens:env.V5_CONTEXT_WINDOW_TOKENS}
   const components = stage === 'extraction' ? ['P01','P01R'] : stage === 'matching' ? ['P02','P02R','P03','P03R']
     : stage === 'interview' ? ['P10','P10R'] : ['P04','P05','P05R','P06C','P07','P08','P09']
   return createCanonicalDigest({stage,contract: `resume-${stage}-artifact-v1`,provider,
     prompts: Object.fromEntries(components.map(id => [id, versions[id] ?? null])),
     ...(stage === 'matching' ? {variants: {P03: manifest.variants.P03_TARGETED,P03R: manifest.variants.P03R_TARGETED}} : {}),
-    ...(stage === 'generation' ? {variant: manifest.variants.P06C_ENTRY} : {}),
+    ...(stage === 'generation' ? {variant: manifest.variants.P06C_ENTRY, writerThinking: V5_THINKING_MODE} : {}),
     ...(stage === 'extraction' ? {chunkPlan: RESUME_EXTRACTION_CHUNK_PLAN_VERSION,structure: 'source-structure-v2',sourceIdentity: 'explicit-source-education-row-v3'} : {}),
     ...(stage === 'matching' ? {targeting: 'job-targeted-v2',requirementScope:'field-assertion-specialty-ownership-v9',projection:'condition-semantics-partial-narrative-recovery-v6',judgment: 'requirement-judgment-v2',score: 'match-score-v3',action: 'resume-action-plan-v1',transportBudget:'schema-scoped-deadline-preflight-v3'} : {}),
     ...(stage === 'interview' ? {resultEvidence: 'literal-completed-clause-quantity-tail-v3',preparationTopics:'unique-actionable-case-topics-v2',presentation:'interview-presentation-v1',requirementLinks:'explicit-story-evidence-v1',revisionFacts:'user-fact-snapshot-v1'} : {}),
